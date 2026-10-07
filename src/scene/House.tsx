@@ -4,7 +4,9 @@ import { RigidBody, TrimeshCollider } from '@react-three/rapier'
 import type { Mesh } from 'three'
 import { assets } from '../assets/registry'
 import { buildTrimesh } from '../lib/collision'
+import { Ceilings } from './Ceilings'
 import { Door } from './Door'
+import { Exterior } from './Exterior'
 import { Floors } from './Floors'
 import { Furnishings } from './Furnishings'
 import { Lamps } from './Lamps'
@@ -50,6 +52,7 @@ export function House() {
     return (
       <>
         <GltfHouse url={assets.house} collisionUrl={assets.houseCollision} />
+        <Exterior />
         <Lamps fixtures={false} />
       </>
     )
@@ -58,6 +61,8 @@ export function House() {
     <>
       <Floors />
       <Walls />
+      <Ceilings />
+      <Exterior />
       <Furnishings />
       <Door />
       <Lamps />

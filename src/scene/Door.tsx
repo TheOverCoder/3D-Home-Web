@@ -32,6 +32,7 @@ export function Door() {
     id: DOOR.id,
     label: open ? 'Close the door' : 'Open the door',
     position: [hx + DOOR.width / 2, 1.0, hz],
+    aim: [hx + DOOR.width / 2, 1.1, hz],
     radius: 1.7,
     run: () => {
       playGesture('interact')

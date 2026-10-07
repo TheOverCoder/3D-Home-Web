@@ -194,6 +194,7 @@ function Screen({ def }: { def: ScreenDef }) {
     id: def.id,
     label: `Open “${def.title}”`,
     position: [def.position[0] + nx * 1.1, 1.0, def.position[2] + nz * 1.1],
+    aim: def.position,
     radius: 1.5,
     run: () => {
       playGesture('interact')
@@ -207,21 +208,31 @@ function Screen({ def }: { def: ScreenDef }) {
         <ScreenPanel def={def} active={active} />
       </group>
       <Pedestal def={def} active={active} />
-      {/* constant light count; only the active room's screen glows */}
-      <pointLight
-        position={[def.position[0] + nx * 0.7, def.position[1], def.position[2] + nz * 0.7]}
-        color={def.accent}
-        intensity={active ? 1.3 : 0}
-        distance={3.2}
-        decay={2}
-      />
     </>
+  )
+}
+
+/** One light shared by all screens: it sits in front of whichever screen belongs to the current room. */
+function ScreenGlow() {
+  const room = useHome((s) => s.room)
+  const def = SCREENS.find((s) => s.room === room)
+  const nx = def ? Math.sin(def.rotationY) : 0
+  const nz = def ? Math.cos(def.rotationY) : 0
+  return (
+    <pointLight
+      position={def ? [def.position[0] + nx * 0.7, def.position[1], def.position[2] + nz * 0.7] : [0, 1.5, 0]}
+      color={def?.accent ?? '#ffffff'}
+      intensity={def ? 1.3 : 0}
+      distance={3.2}
+      decay={2}
+    />
   )
 }
 
 export function Screens() {
   return (
     <>
+      <ScreenGlow />
       {SCREENS.map((def) => (
         <Screen key={def.id} def={def} />
       ))}

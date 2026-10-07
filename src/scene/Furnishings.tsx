@@ -1,12 +1,17 @@
 import { Suspense, useMemo, type ReactNode } from 'react'
 import { RoundedBox, useGLTF } from '@react-three/drei'
 import { CuboidCollider, RigidBody } from '@react-three/rapier'
-import { Box3, Mesh, Vector3 } from 'three'
+import { Box3, Mesh, Vector3, type Texture } from 'three'
+import { surface } from '../lib/proceduralTextures'
 import { assets } from '../assets/registry'
 
 type V3 = [number, number, number]
 
+let fabricNormal: Texture | undefined
+const weave = () => (fabricNormal ??= surface('fabric', 3, 3).normalMap)
+
 interface BProps {
+  fabric?: boolean // soft furnishing: adds a woven normal map
   size: V3
   position?: V3
   rotation?: V3
@@ -19,7 +24,7 @@ interface BProps {
 }
 
 /** A (rounded) box — the building block of every placeholder prop. */
-export function B({ size, position, rotation, color, roughness = 0.8, metalness = 0, radius = 0.015, emissive, emissiveIntensity }: BProps) {
+export function B({ size, position, rotation, color, roughness = 0.8, metalness = 0, radius = 0.015, emissive, emissiveIntensity, fabric }: BProps) {
   const material = (
     <meshStandardMaterial
       color={color}
@@ -27,6 +32,8 @@ export function B({ size, position, rotation, color, roughness = 0.8, metalness 
       metalness={metalness}
       emissive={emissive}
       emissiveIntensity={emissiveIntensity}
+      normalMap={fabric ? weave() : null}
+      normalScale={[0.8, 0.8]}
     />
   )
   if (radius <= 0) {
@@ -113,16 +120,16 @@ function Sofa() {
   const cushion = '#586b7e'
   return (
     <group>
-      <B size={[2.2, 0.36, 0.95]} position={[0, 0.26, 0]} color={fabric} roughness={0.95} radius={0.05} />
+      <B size={[2.2, 0.36, 0.95]} position={[0, 0.26, 0]} color={fabric} roughness={0.95} radius={0.05} fabric />
       {[-0.72, 0, 0.72].map((x) => (
-        <B key={x} size={[0.7, 0.14, 0.78]} position={[x, 0.5, 0.06]} color={cushion} roughness={0.95} radius={0.05} />
+        <B key={x} size={[0.7, 0.14, 0.78]} position={[x, 0.5, 0.06]} color={cushion} roughness={0.95} radius={0.05} fabric />
       ))}
-      <B size={[2.2, 0.55, 0.22]} position={[0, 0.7, -0.37]} color={fabric} roughness={0.95} radius={0.06} />
+      <B size={[2.2, 0.55, 0.22]} position={[0, 0.7, -0.37]} color={fabric} roughness={0.95} radius={0.06} fabric />
       {[-0.72, 0, 0.72].map((x) => (
-        <B key={x} size={[0.68, 0.4, 0.16]} position={[x, 0.74, -0.2]} rotation={[-0.14, 0, 0]} color={cushion} roughness={0.95} radius={0.06} />
+        <B key={x} size={[0.68, 0.4, 0.16]} position={[x, 0.74, -0.2]} rotation={[-0.14, 0, 0]} color={cushion} roughness={0.95} radius={0.06} fabric />
       ))}
       {[-1.03, 1.03].map((x) => (
-        <B key={x} size={[0.18, 0.56, 0.95]} position={[x, 0.37, 0]} color={fabric} roughness={0.95} radius={0.05} />
+        <B key={x} size={[0.18, 0.56, 0.95]} position={[x, 0.37, 0]} color={fabric} roughness={0.95} radius={0.05} fabric />
       ))}
       {[-0.95, 0.95].flatMap((x) => [-0.38, 0.38].map((z) => (
         <B key={`${x}${z}`} size={[0.06, 0.1, 0.06]} position={[x, 0.05, z]} color="#2a1d14" radius={0.01} />
@@ -309,10 +316,10 @@ function Bed() {
   return (
     <group>
       <B size={[1.7, 0.3, 2.1]} position={[0, 0.2, 0]} color="#5b4636" roughness={0.7} radius={0.02} />
-      <B size={[1.6, 0.24, 1.95]} position={[0, 0.47, -0.02]} color="#e6e2da" roughness={0.95} radius={0.06} />
-      <B size={[1.64, 0.07, 1.25]} position={[0, 0.62, -0.3]} color="#6f8497" roughness={0.95} radius={0.03} />
+      <B size={[1.6, 0.24, 1.95]} position={[0, 0.47, -0.02]} color="#e6e2da" roughness={0.95} radius={0.06} fabric />
+      <B size={[1.64, 0.07, 1.25]} position={[0, 0.62, -0.3]} color="#6f8497" roughness={0.95} radius={0.03} fabric />
       {[-0.4, 0.4].map((x) => (
-        <B key={x} size={[0.62, 0.14, 0.36]} position={[x, 0.65, 0.72]} color="#f3f1ec" roughness={0.95} radius={0.06} />
+        <B key={x} size={[0.62, 0.14, 0.36]} position={[x, 0.65, 0.72]} color="#f3f1ec" roughness={0.95} radius={0.06} fabric />
       ))}
       <B size={[1.8, 1.05, 0.1]} position={[0, 0.52, 1.04]} color="#5b4636" roughness={0.65} radius={0.02} />
     </group>
@@ -346,7 +353,7 @@ function Rug({ size, color }: { size: [number, number]; color: string }) {
   return (
     <mesh position={[0, 0.011, 0]} rotation-x={-Math.PI / 2} receiveShadow>
       <planeGeometry args={size} />
-      <meshStandardMaterial color={color} roughness={1} />
+      <meshStandardMaterial color={color} roughness={1} normalMap={weave()} normalScale={[0.7, 0.7]} />
     </mesh>
   )
 }

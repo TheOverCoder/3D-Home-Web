@@ -28,14 +28,14 @@ export function Intro() {
           {failure ? 'Unavailable here' : loading ? (progress > 0 && progress < 100 ? `Loading… ${Math.round(progress)}%` : 'Preparing the house…') : 'Enter the house'}
         </button>
         <ul className="keys touch" aria-label="Touch controls">
-          <li>left joystick to walk · drag to look · pinch to zoom</li>
+          <li>left joystick to walk · drag the scene to look</li>
           <li>tap <kbd>E</kbd> to interact</li>
         </ul>
         <ul className="keys desktop" aria-label="Controls">
           <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk</li>
           <li><kbd>Shift</kbd> run · <kbd>Space</kbd> jump</li>
-          <li>drag to look · scroll to zoom</li>
-          <li><kbd>E</kbd> interact</li>
+          <li>mouse to look (click the scene first)</li>
+          <li><kbd>E</kbd> interact · <kbd>V</kbd> change view</li>
         </ul>
         <details className="credits">
           <summary>Credits</summary>

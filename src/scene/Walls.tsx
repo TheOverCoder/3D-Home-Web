@@ -1,30 +1,39 @@
 import { useMemo, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { CuboidCollider, RigidBody } from '@react-three/rapier'
-import { Box3, MathUtils, Ray, Vector3, type MeshStandardMaterial } from 'three'
-import { DOORWAYS, HOUSE, ROOMS, type Vec3 } from '../data/layout'
+import { Box3, DoubleSide, MathUtils, Ray, Vector3, type MeshStandardMaterial } from 'three'
+import { DOORWAYS, HOUSE, ROOMS, WINDOWS, type Vec3, type WindowDef } from '../data/layout'
+import { surface } from '../lib/proceduralTextures'
 import { playerState } from '../lib/playerState'
+import { useHome } from '../store'
+
+type Kind = 'wall' | 'trim' | 'glass' | 'fabric' | 'dark'
 
 interface Seg {
   key: string
   center: Vec3
   size: Vec3
   color: string
-  solid: boolean // false = decorative lintel above a doorway (no collider)
+  kind: Kind
+  axis: 'x' | 'z' // direction the piece runs along
+  solid: boolean // gets a collider
+  bottom?: boolean // wall piece that touches the floor → baseboard
+  top?: boolean // wall piece that touches the ceiling → crown moulding
 }
 
-const INTERIOR = '#d4d0c8'
+const INTERIOR = '#d6d2ca'
+const TRIM = '#f4f2ee'
 const { wallHeight: H, wallThickness: T, doorHeight: DH } = HOUSE
 
-function run(
-  axis: 'x' | 'z',
-  at: number,
-  from: number,
-  to: number,
-  gaps: { centre: number; width: number }[],
-  color: string,
-  tag: string,
-): Seg[] {
+interface Gap {
+  centre: number
+  width: number
+  y0?: number // bottom of the opening (windows); default floor
+  y1?: number // top of the opening; default door height
+}
+
+/** A straight wall run, cut by openings. Pieces above/below an opening are generated too. */
+function run(axis: 'x' | 'z', at: number, from: number, to: number, gaps: Gap[], color: string, tag: string): Seg[] {
   const out: Seg[] = []
   const add = (a: number, b: number, y0: number, y1: number, solid: boolean, suffix: string) => {
     const len = b - a
@@ -37,7 +46,11 @@ function run(
       center: axis === 'x' ? [mid, cy, at] : [at, cy, mid],
       size: axis === 'x' ? [len, hh, T] : [T, hh, len],
       color,
+      kind: 'wall',
+      axis,
       solid,
+      bottom: y0 === 0,
+      top: y1 === H,
     })
   }
   let cursor = from
@@ -47,33 +60,101 @@ function run(
     .forEach((g, i) => {
       const a = g.centre - g.width / 2
       const b = g.centre + g.width / 2
+      const y0 = g.y0 ?? 0
+      const y1 = g.y1 ?? DH
       add(cursor, a, 0, H, true, `wall${i}`)
-      add(a, b, DH, H, false, `lintel${i}`)
+      if (y0 > 0) add(a, b, 0, y0, true, `sill${i}`)
+      add(a, b, y1, H, false, `lintel${i}`)
       cursor = b
     })
   add(cursor, to, 0, H, true, 'end')
   return out
 }
 
+/** A box placed relative to a wall: `along` the wall, `off` out of it (towards +normal), world y. */
+function piece(
+  axis: 'x' | 'z',
+  at: number,
+  along: number,
+  y: number,
+  off: number,
+  len: number,
+  height: number,
+  depth: number,
+  rest: Pick<Seg, 'key' | 'color' | 'kind' | 'solid'>,
+): Seg {
+  return {
+    ...rest,
+    axis,
+    center: axis === 'x' ? [along, y, at + off] : [at + off, y, along],
+    size: axis === 'x' ? [len, height, depth] : [depth, height, len],
+  }
+}
+
+function doorFrame(d: (typeof DOORWAYS)[keyof typeof DOORWAYS], tag: string): Seg[] {
+  const depth = T + 0.05
+  const jamb = 0.07
+  const rest = (k: string) => ({ key: `${tag}-${k}`, color: TRIM, kind: 'trim' as const, solid: false })
+  const lo = d.centre - d.width / 2
+  const hi = d.centre + d.width / 2
+  return [
+    piece(d.axis, d.at, lo - jamb / 2, DH / 2, 0, jamb, DH, depth, rest('l')),
+    piece(d.axis, d.at, hi + jamb / 2, DH / 2, 0, jamb, DH, depth, rest('r')),
+    piece(d.axis, d.at, d.centre, DH + jamb / 2, 0, d.width + jamb * 2, jamb, depth, rest('h')),
+  ]
+}
+
+function windowPieces(w: WindowDef): Seg[] {
+  const n = w.at > 0 ? -1 : 1 // towards the inside of the house
+  const h = w.top - w.sill
+  const mid = (w.sill + w.top) / 2
+  const bar = 0.05
+  const depth = T + 0.04
+  const r = (k: string, kind: Kind, solid = false, color = TRIM) => ({ key: `${w.id}-${k}`, color, kind, solid })
+  const lo = w.centre - w.width / 2
+  const hi = w.centre + w.width / 2
+  const P = (k: string, along: number, y: number, off: number, len: number, height: number, d: number, kind: Kind, solid = false, color = TRIM) =>
+    piece(w.axis, w.at, along, y, off, len, height, d, r(k, kind, solid, color))
+  return [
+    P('fl', lo + bar / 2, mid, 0, bar, h, depth, 'trim'),
+    P('fr', hi - bar / 2, mid, 0, bar, h, depth, 'trim'),
+    P('ft', w.centre, w.top - bar / 2, 0, w.width, bar, depth, 'trim'),
+    P('fb', w.centre, w.sill + bar / 2, 0, w.width, bar, depth, 'trim'),
+    P('mv', w.centre, mid, 0, 0.03, h - bar * 2, 0.06, 'trim'),
+    P('mh', w.centre, mid + h * 0.12, 0, w.width - bar * 2, 0.03, 0.06, 'trim'),
+    // the pane doubles as an invisible barrier so nothing walks or jumps out through the opening
+    P('glass', w.centre, mid, 0, w.width - bar * 2, h - bar * 2, 0.012, 'glass', true, '#cfe3f2'),
+    P('board', w.centre, w.sill - 0.02, n * 0.12, w.width + 0.16, 0.04, 0.26, 'trim'),
+    // curtains: two panels and a rod
+    P('cl', lo - 0.2, 1.33, n * 0.15, 0.34, 2.4, 0.08, 'fabric', false, '#c9bfae'),
+    P('cr', hi + 0.2, 1.33, n * 0.15, 0.34, 2.4, 0.08, 'fabric', false, '#c9bfae'),
+    P('rod', w.centre, 2.58, n * 0.15, w.width + 0.95, 0.03, 0.03, 'dark', false, '#2b2d30'),
+  ]
+}
+
 function buildSegments(): Seg[] {
   const { minX, maxX, minZ, maxZ } = HOUSE
   const e = T / 2
   const r = ROOMS
-  const zGaps = [DOORWAYS.livingOffice, DOORWAYS.kitchenBedroom]
-  const xGaps = [DOORWAYS.officeKitchen, DOORWAYS.livingBedroom]
+  const gapsOn = (axis: 'x' | 'z', at: number): Gap[] =>
+    WINDOWS.filter((w) => w.axis === axis && w.at === at).map((w) => ({ centre: w.centre, width: w.width, y0: w.sill, y1: w.top }))
+  const zGaps: Gap[] = [DOORWAYS.livingOffice, DOORWAYS.kitchenBedroom]
+  const xGaps: Gap[] = [DOORWAYS.officeKitchen, DOORWAYS.livingBedroom]
   return [
     // exterior, coloured per room so the inside reads correctly
-    ...run('x', minZ, minX - e, 0, [], r.office.wall, 'n-office'),
-    ...run('x', minZ, 0, maxX + e, [], r.kitchen.wall, 'n-kitchen'),
-    ...run('x', maxZ, minX - e, 0, [], r.living.wall, 's-living'),
-    ...run('x', maxZ, 0, maxX + e, [], r.bedroom.wall, 's-bedroom'),
-    ...run('z', minX, minZ - e, 0, [], r.office.wall, 'w-office'),
-    ...run('z', minX, 0, maxZ + e, [], r.living.wall, 'w-living'),
-    ...run('z', maxX, minZ - e, 0, [], r.kitchen.wall, 'e-kitchen'),
-    ...run('z', maxX, 0, maxZ + e, [], r.bedroom.wall, 'e-bedroom'),
+    ...run('x', minZ, minX - e, 0, gapsOn('x', minZ), r.office.wall, 'n-office'),
+    ...run('x', minZ, 0, maxX + e, gapsOn('x', minZ), r.kitchen.wall, 'n-kitchen'),
+    ...run('x', maxZ, minX - e, 0, gapsOn('x', maxZ), r.living.wall, 's-living'),
+    ...run('x', maxZ, 0, maxX + e, gapsOn('x', maxZ), r.bedroom.wall, 's-bedroom'),
+    ...run('z', minX, minZ - e, 0, gapsOn('z', minX), r.office.wall, 'w-office'),
+    ...run('z', minX, 0, maxZ + e, gapsOn('z', minX), r.living.wall, 'w-living'),
+    ...run('z', maxX, minZ - e, 0, gapsOn('z', maxX), r.kitchen.wall, 'e-kitchen'),
+    ...run('z', maxX, 0, maxZ + e, gapsOn('z', maxX), r.bedroom.wall, 'e-bedroom'),
     // interior cross walls with doorways
     ...run('x', 0, minX, maxX, zGaps, INTERIOR, 'mid-z'),
     ...run('z', 0, minZ, maxZ, xGaps, INTERIOR, 'mid-x'),
+    ...Object.entries(DOORWAYS).flatMap(([k, d]) => doorFrame(d, `door-${k}`)),
+    ...WINDOWS.flatMap(windowPieces),
   ]
 }
 
@@ -82,27 +163,41 @@ const tmp = new Vector3()
 const point = new Vector3()
 // feet, hips, head — a wall that hides any of them fades
 const SAMPLE_HEIGHTS = [-0.7, 0, 0.7]
+const NONE: number[] = []
 
-/** Box walls with colliders. Walls that sit between the camera and the player fade out. */
+const BASE_OPACITY: Partial<Record<Kind, number>> = { glass: 0.16 }
+
+/** Walls, window frames, curtains, trim, colliders. Pieces between the camera and the player fade out. */
 export function Walls() {
   const segs = useMemo(buildSegments, [])
-  const mats = useRef<(MeshStandardMaterial | null)[]>([])
-  const boxes = useMemo(
+  const plaster = useMemo(() => surface('plaster', 1, 1), [])
+  const textures = useMemo(
     () =>
       segs.map((s) => {
-        const b = new Box3().setFromCenterAndSize(new Vector3(...s.center), new Vector3(...s.size))
-        return b.expandByScalar(0.02)
+        if (s.kind === 'wall') {
+          const len = Math.max(s.size[0], s.size[2])
+          return surface('plaster', len / 2.2, s.size[1] / 2.2)
+        }
+        if (s.kind === 'fabric') return surface('fabric', 3, 6)
+        return plaster
       }),
+    [segs, plaster],
+  )
+  const mats = useRef<(MeshStandardMaterial | null)[][]>(segs.map(() => []))
+  const boxes = useMemo(
+    () => segs.map((s) => new Box3().setFromCenterAndSize(new Vector3(...s.center), new Vector3(...s.size)).expandByScalar(0.02)),
     [segs],
   )
   const fade = useRef<number[]>(segs.map(() => 1))
   const camera = useThree((s) => s.camera)
 
   useFrame((_, dt) => {
+    const state = useHome.getState()
+    const inside = state.view === 'first' && state.phase === 'playing'
     ray.origin.copy(camera.position)
     for (let i = 0; i < segs.length; i++) {
       let blocked = false
-      for (const dy of SAMPLE_HEIGHTS) {
+      for (const dy of inside ? NONE : SAMPLE_HEIGHTS) {
         point.set(playerState.position.x, playerState.position.y + dy, playerState.position.z)
         const length = camera.position.distanceTo(point)
         ray.direction.copy(point).sub(camera.position).normalize()
@@ -112,34 +207,91 @@ export function Walls() {
           break
         }
       }
-      fade.current[i] = MathUtils.damp(fade.current[i], blocked ? 0.08 : 1, 10, dt)
-      const mat = mats.current[i]
-      if (!mat) continue
-      const o = fade.current[i]
-      mat.opacity = o
-      const transparent = o < 0.995
-      if (mat.transparent !== transparent) {
-        mat.transparent = transparent
-        mat.depthWrite = !transparent
-        mat.needsUpdate = true
+      fade.current[i] = MathUtils.damp(fade.current[i], blocked ? 0.06 : 1, 10, dt)
+      const o = fade.current[i] * (BASE_OPACITY[segs[i].kind] ?? 1)
+      const transparent = segs[i].kind === 'glass' || fade.current[i] < 0.995
+      for (const mat of mats.current[i]) {
+        if (!mat) continue
+        mat.opacity = o
+        if (mat.transparent !== transparent) {
+          mat.transparent = transparent
+          mat.depthWrite = !transparent
+          mat.needsUpdate = true
+        }
       }
     }
   })
 
   return (
     <group>
-      {segs.map((s, i) => (
-        <mesh key={s.key} position={s.center} castShadow receiveShadow>
-          <boxGeometry args={s.size} />
-          <meshStandardMaterial
-            ref={(m) => {
-              mats.current[i] = m
-            }}
-            color={s.color}
-            roughness={0.92}
-          />
-        </mesh>
-      ))}
+      {segs.map((s, i) => {
+        const tex = textures[i]
+        const onX = s.axis === 'x'
+        const len = onX ? s.size[0] : s.size[2]
+        const trimDepth = T + 0.04
+        return (
+          <group key={s.key} position={s.center}>
+            <mesh castShadow={s.kind !== 'glass'} receiveShadow={s.kind !== 'glass'}>
+              <boxGeometry args={s.size} />
+              {s.kind === 'glass' ? (
+                <meshStandardMaterial
+                  ref={(m) => {
+                    mats.current[i][0] = m
+                  }}
+                  color={s.color}
+                  roughness={0.04}
+                  metalness={0}
+                  envMapIntensity={1.6}
+                  transparent
+                  depthWrite={false}
+                  side={DoubleSide}
+                />
+              ) : (
+                <meshStandardMaterial
+                  ref={(m) => {
+                    mats.current[i][0] = m
+                  }}
+                  color={s.color}
+                  map={s.kind === 'wall' || s.kind === 'fabric' ? tex.map : null}
+                  normalMap={s.kind === 'wall' || s.kind === 'fabric' ? tex.normalMap : null}
+                  normalScale={s.kind === 'fabric' ? [0.9, 0.9] : [0.5, 0.5]}
+                  roughnessMap={s.kind === 'wall' || s.kind === 'fabric' ? tex.roughnessMap : null}
+                  roughness={s.kind === 'trim' ? 0.35 : s.kind === 'dark' ? 0.4 : 1}
+                  metalness={s.kind === 'dark' ? 0.6 : 0}
+                />
+              )}
+            </mesh>
+            {s.kind === 'wall' && (s.bottom || s.top) && (
+              <>
+                {s.bottom && (
+                  <mesh position={[0, -s.size[1] / 2 + 0.055, 0]} receiveShadow>
+                    <boxGeometry args={onX ? [len, 0.11, trimDepth] : [trimDepth, 0.11, len]} />
+                    <meshStandardMaterial
+                      ref={(m) => {
+                        mats.current[i][1] = m
+                      }}
+                      color={TRIM}
+                      roughness={0.35}
+                    />
+                  </mesh>
+                )}
+                {s.top && (
+                  <mesh position={[0, s.size[1] / 2 - 0.035, 0]} receiveShadow>
+                    <boxGeometry args={onX ? [len, 0.07, trimDepth + 0.03] : [trimDepth + 0.03, 0.07, len]} />
+                    <meshStandardMaterial
+                      ref={(m) => {
+                        mats.current[i][2] = m
+                      }}
+                      color={TRIM}
+                      roughness={0.35}
+                    />
+                  </mesh>
+                )}
+              </>
+            )}
+          </group>
+        )
+      })}
       <RigidBody type="fixed" colliders={false}>
         {segs
           .filter((s) => s.solid)

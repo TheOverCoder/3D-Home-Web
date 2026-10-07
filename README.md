@@ -19,8 +19,8 @@ Add `?debug` to the URL to expose `window.__home` (store, player state, `telepor
 
 ## Controls
 
-`WASD`/arrows walk · `Shift` run · `Space` jump · drag to look · wheel to zoom · `E` interact · `Esc` close a screen.
-On touch devices an on-screen joystick and buttons appear.
+`WASD`/arrows walk · `Shift` run · `Space` jump · mouse to look (click the scene to capture the pointer; dragging also works) · `E` interact with what is in the centre of the view · `V` first/third person · `Esc` close a screen.
+On touch devices an on-screen joystick and buttons appear; drag the scene to look.
 
 ## What is in the box
 
@@ -30,7 +30,8 @@ On touch devices an on-screen joystick and buttons appear.
 | **Screens** | Each room has a wall screen (live canvas texture) plus a floating 3D bar chart on a pedestal. `E` next to it opens the full content. Edit `src/data/screens.ts` — **current text is placeholder**. |
 | **Interactions** | Pick up / put down items (physics bodies you can also push), toggle lamps, open the hinged kitchen↔bedroom door. Add more with `useInteractable` (`src/lib/interaction.ts`). |
 | **Character** | Physics capsule (ecctrl). Placeholder mannequin until `character.glb` + `animations.glb` are added. |
-| **Camera** | Third person, orbit/zoom, and walls between the camera and the player fade out. |
+| **Camera** | **First person by default** (eye height, head bob, crosshair, interaction by aim). `V` switches to a third-person orbit camera where walls and the roof fade out of the way. |
+| **Look** | Enclosed rooms with ceilings and downlights, windows with curtains and a view of a lawn and trees, daylight and sun shafts through the windows, baseboards, crown moulding and door frames, procedural PBR floors / plaster / fabric, ambient occlusion, bloom, filmic tone mapping. |
 | **Quality** | Starts on High (AO + bloom + MSAA) and drops to Low automatically if the frame rate falls; toggle in the HUD. |
 
 ## Assets
@@ -62,6 +63,6 @@ scripts/      optimize-models.mjs · fetch-polyhaven.mjs
 
 ## Known limits
 
-- No ceilings (dollhouse view); the stand-in HDRI is 512×256 — fine for light, not for sharp reflections.
+- Furniture and the character are simple placeholders; textures are generated in code. Poly Haven-grade realism needs the real assets (see above).
 - `scripts/fetch-polyhaven.mjs` has not been run end to end (the build sandbox blocks polyhaven.com).
 - Headless software rendering runs at a few fps, so frame-rate and visual quality on real GPUs are unverified.

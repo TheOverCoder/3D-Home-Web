@@ -34,7 +34,7 @@ export default function Experience() {
       shadows="percentage"
       flat
       dpr={quality === 'high' ? [1, 2] : [1, 1.25]}
-      camera={{ fov: 50, near: 0.1, far: 120, position: [0, 6, 9] }}
+      camera={{ fov: 50, near: 0.1, far: 1500, position: [0, 6, 9] }}
       gl={{ antialias: false, powerPreference: 'high-performance' }}
       style={{ position: 'fixed', inset: 0, zIndex: 0 }}
     >

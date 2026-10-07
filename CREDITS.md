@@ -4,8 +4,8 @@ Keep this file and `src/data/credits.ts` (shown in the app's intro) in sync. Any
 
 ## Bundled today (placeholders)
 
-- Stand-in HDRI (`apartment`, 512×256) — [`@pmndrs/assets`](https://github.com/pmndrs/assets), declared CC0-1.0. Believed to derive from Poly Haven; verify before relying on that.
-- Inter typeface for 3D labels — The Inter Project Authors, SIL Open Font License 1.1.
+- Daylight and surface textures are generated in code (no third-party image files).
+- Inter typeface for 3D labels (packaged by [`@pmndrs/assets`](https://github.com/pmndrs/assets), declared CC0-1.0) — The Inter Project Authors, SIL Open Font License 1.1.
 - three.js, @react-three/fiber, @react-three/drei, @react-three/rapier, @react-three/postprocessing, ecctrl, zustand — MIT.
 
 ## Real assets (add when downloaded)

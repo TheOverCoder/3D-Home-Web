@@ -1,10 +1,11 @@
-import { Suspense, useEffect, useState } from 'react'
-import { Environment } from '@react-three/drei'
-import { DataTexture, EquirectangularReflectionMapping, LinearFilter, LinearSRGBColorSpace, type Texture } from 'three'
-import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader.js'
+import { Suspense, useEffect } from 'react'
+import { Environment, Sky } from '@react-three/drei'
 import { assets } from '../assets/registry'
+import { SUN } from '../data/layout'
 import { ErrorBoundary } from '../lib/ErrorBoundary'
 import { useHome } from '../store'
+
+const SUN_DIR = SUN
 
 function EnvReady() {
   const markReady = useHome((s) => s.markReady)
@@ -12,50 +13,30 @@ function EnvReady() {
   return null
 }
 
-/** Decodes a base64 `data:` EXR in memory. No fetch(), so it also works where connect-src is locked down. */
-function decodeExr(dataUri: string): Texture {
-  const binary = atob(dataUri.slice(dataUri.indexOf(',') + 1))
-  const bytes = new Uint8Array(binary.length)
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-  const exr = new EXRLoader().parse(bytes.buffer)
-  const texture = new DataTexture(exr.data, exr.width, exr.height, exr.format, exr.type)
-  texture.colorSpace = LinearSRGBColorSpace
-  texture.mapping = EquirectangularReflectionMapping
-  texture.minFilter = texture.magFilter = LinearFilter
-  texture.generateMipmaps = false
-  texture.flipY = true
-  texture.needsUpdate = true
-  return texture
+/** Daylight as seen from outside: sky dome over a lawn-coloured disc. Lights the scene when there is no real HDRI. */
+function DaylightProbe() {
+  return (
+    <>
+      <Sky distance={400} sunPosition={SUN_DIR} turbidity={3} rayleigh={1.3} mieCoefficient={0.004} mieDirectionalG={0.85} />
+      <mesh rotation-x={-Math.PI / 2} position={[0, -2, 0]}>
+        <circleGeometry args={[200, 16]} />
+        <meshBasicMaterial color="#7d7566" />
+      </mesh>
+    </>
+  )
 }
 
-/** Image-based lighting: the real HDRI if one was dropped in, otherwise a small bundled stand-in. */
-function Hdri() {
-  const [fallback, setFallback] = useState<Texture>()
-  const markReady = useHome((s) => s.markReady)
-
-  useEffect(() => {
-    if (assets.hdri) return
-    let live = true
-    // 512×256 EXR from @pmndrs/assets (CC0) — enough for soft ambient light, not for sharp reflections
-    import('@pmndrs/assets/hdri/apartment.exr')
-      .then((m) => live && setFallback(decodeExr(m.default)))
-      .catch((error) => {
-        console.warn('[3d-home] stand-in HDRI failed to load; continuing without image-based lighting', error)
-        markReady('env')
-      })
-    return () => {
-      live = false
-    }
-  }, [markReady])
-
-  if (!assets.hdri && !fallback) return null
-  // own boundary: while the HDRI decodes, only this subtree is hidden — never the physics world
+/** Image-based lighting: the real HDRI if one was dropped in, otherwise a generated daylight probe. */
+function Ibl() {
+  // own boundary: while an HDRI decodes, only this subtree is hidden — never the physics world
   return (
     <Suspense fallback={null}>
       {assets.hdri ? (
-        <Environment files={assets.hdri} background={false} environmentIntensity={0.7} />
+        <Environment files={assets.hdri} background={false} environmentIntensity={0.55} />
       ) : (
-        <Environment map={fallback} background={false} environmentIntensity={0.7} />
+        <Environment frames={1} resolution={128} far={900} background={false} environmentIntensity={0.55}>
+          <DaylightProbe />
+        </Environment>
       )}
       <EnvReady />
     </Suspense>
@@ -66,25 +47,28 @@ export function Lighting() {
   const markReady = useHome((s) => s.markReady)
   return (
     <>
-      <color attach="background" args={['#0d1014']} />
+      <color attach="background" args={['#a9c4e0']} />
+      <fog attach="fog" args={['#bdd0e2', 70, 420]} />
+      {/* the sky you see through windows and over the roof */}
+      <Sky distance={900} sunPosition={SUN_DIR} turbidity={3} rayleigh={1.3} mieCoefficient={0.004} mieDirectionalG={0.85} />
       <ErrorBoundary fallback={null} onError={() => markReady('env')}>
-        <Hdri />
+        <Ibl />
       </ErrorBoundary>
-      <hemisphereLight args={['#dfe9ff', '#3a3028', 0.25]} />
+      <hemisphereLight args={['#dfe9ff', '#3a3028', 0.12]} />
       <directionalLight
-        position={[9, 15, 8]}
-        intensity={2.4}
-        color="#fff1dc"
+        position={[SUN[0] * 1.6, SUN[1] * 1.6, SUN[2] * 1.6]}
+        intensity={3.4}
+        color="#fff1d8"
         castShadow
         shadow-mapSize={[2048, 2048]}
-        shadow-camera-left={-11}
-        shadow-camera-right={11}
-        shadow-camera-top={11}
-        shadow-camera-bottom={-11}
+        shadow-camera-left={-12}
+        shadow-camera-right={12}
+        shadow-camera-top={12}
+        shadow-camera-bottom={-12}
         shadow-camera-near={1}
-        shadow-camera-far={40}
-        shadow-bias={-0.0004}
-        shadow-normalBias={0.03}
+        shadow-camera-far={60}
+        shadow-bias={-0.0003}
+        shadow-normalBias={0.025}
       />
     </>
   )

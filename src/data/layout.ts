@@ -32,7 +32,7 @@ export const ROOMS: Record<RoomId, RoomDef> = {
     bounds: { minX: -7, maxX: 0, minZ: -6, maxZ: 0 },
     floor: 'wood',
     floorTint: '#b99872',
-    wall: '#d8d2c8',
+    wall: '#e2dccf',
   },
   kitchen: {
     id: 'kitchen',
@@ -40,7 +40,7 @@ export const ROOMS: Record<RoomId, RoomDef> = {
     bounds: { minX: 0, maxX: 7, minZ: -6, maxZ: 0 },
     floor: 'tile',
     floorTint: '#d9dcd8',
-    wall: '#e4e7e2',
+    wall: '#eef0ea',
   },
   living: {
     id: 'living',
@@ -48,7 +48,7 @@ export const ROOMS: Record<RoomId, RoomDef> = {
     bounds: { minX: -7, maxX: 0, minZ: 0, maxZ: 6 },
     floor: 'wood',
     floorTint: '#a8825a',
-    wall: '#cfc9bf',
+    wall: '#e0d8c9',
   },
   bedroom: {
     id: 'bedroom',
@@ -56,7 +56,7 @@ export const ROOMS: Record<RoomId, RoomDef> = {
     bounds: { minX: 0, maxX: 7, minZ: 0, maxZ: 6 },
     floor: 'carpet',
     floorTint: '#8d8a86',
-    wall: '#c9ced3',
+    wall: '#d9dfe4',
   },
 }
 
@@ -67,6 +67,32 @@ export function roomAt(x: number, z: number): RoomId | null {
   }
   return null
 }
+
+export interface WindowDef {
+  id: string
+  axis: 'x' | 'z' // the wall runs along this axis (x: wall at z = at, z: wall at x = at)
+  at: number
+  centre: number
+  width: number
+  sill: number
+  top: number
+}
+
+// Windows sit in exterior walls only. The sun comes from the south-east, so the south and east walls
+// let direct light in; the others give soft daylight.
+export const WINDOWS: WindowDef[] = [
+  { id: 'win-living-south', axis: 'x', at: 6, centre: -1.2, width: 1.5, sill: 0.9, top: 2.2 },
+  { id: 'win-living-west', axis: 'z', at: -7, centre: 1.9, width: 1.4, sill: 0.9, top: 2.2 },
+  { id: 'win-bedroom-south', axis: 'x', at: 6, centre: 1.7, width: 1.4, sill: 0.9, top: 2.2 },
+  { id: 'win-bedroom-east', axis: 'z', at: 7, centre: 5.0, width: 1.3, sill: 0.9, top: 2.2 },
+  { id: 'win-kitchen-east', axis: 'z', at: 7, centre: -2.6, width: 1.6, sill: 0.9, top: 2.2 },
+  { id: 'win-kitchen-north', axis: 'x', at: -6, centre: 5.0, width: 0.9, sill: 1.2, top: 2.2 },
+  { id: 'win-office-north', axis: 'x', at: -6, centre: -5.6, width: 1.2, sill: 1.0, top: 2.2 },
+  { id: 'win-office-west', axis: 'z', at: -7, centre: -4.9, width: 1.3, sill: 0.9, top: 2.2 },
+]
+
+/** Direction of the sun (towards it). Drives both the light and the sky. */
+export const SUN: Vec3 = [12, 9, 10]
 
 export const SPAWN: Vec3 = [-3.5, 1.4, 1.3]
 

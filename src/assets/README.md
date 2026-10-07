@@ -10,7 +10,7 @@ Leave it out and a built-in placeholder is used instead — so the app always ru
 | `models/character.glb` | Rigged humanoid | Auto-scaled to 1.75 m and grounded at its feet, so export scale/origin don't matter. Should face +z. |
 | `models/animations.glb` | Animation clips on the **same rig** | If omitted, clips inside `character.glb` are used. |
 | `models/props/<id>.glb` | Replaces one placeholder prop | Fitted into the placeholder's collision box. Ids: `sofa coffee-table tv-console plant-living desk chair bookshelf plant-studio counter fridge island stool-a stool-b bed nightstand wardrobe`. |
-| `hdri/home.hdr` (or `.exr`) | Image-based lighting | Any single `.hdr`/`.exr` works; `home.*` wins. 1k–2k is plenty for lighting. |
+| `hdri/home.hdr` (or `.exr`) | Image-based lighting | Any single `.hdr`/`.exr` works; `home.*` wins. 1k–2k is plenty for lighting. Without one the scene lights itself from a generated daylight sky. |
 
 Animation clips are matched **by name pattern** (`src/lib/clips.ts`): `Idle_Loop`, `Walk_Loop`, `Jog_Fwd_Loop`/`Sprint_Loop`,
 `Jump_Start`, `Jump_Loop`, `Jump_Land`; and `Interact` / `PickUp…` for gestures. Check names with the
