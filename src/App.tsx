@@ -1,4 +1,5 @@
 import { lazy, Suspense } from 'react'
+import { ErrorBoundary } from './lib/ErrorBoundary'
 import { playerState } from './lib/playerState'
 import { useHome } from './store'
 import { Hud } from './ui/Hud'
@@ -16,9 +17,16 @@ if (import.meta.env.DEV || new URLSearchParams(location.search).has('debug')) {
 export function App() {
   return (
     <>
-      <Suspense fallback={null}>
-        <Experience />
-      </Suspense>
+      <ErrorBoundary
+        fallback={null}
+        onError={() =>
+          useHome.getState().setFailure('The 3D scene could not start. WebGL or WebAssembly is probably blocked in this browser or frame.')
+        }
+      >
+        <Suspense fallback={null}>
+          <Experience />
+        </Suspense>
+      </ErrorBoundary>
       <Hud />
       <TouchControls />
       <ScreenModal />

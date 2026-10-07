@@ -7,6 +7,7 @@ export function Intro() {
   const ready = useHome((s) => s.ready.scene && s.ready.env)
   const setPhase = useHome((s) => s.setPhase)
   const progress = useHome((s) => s.progress)
+  const failure = useHome((s) => s.failure)
   if (phase !== 'intro') return null
 
   const loading = !ready
@@ -18,8 +19,13 @@ export function Intro() {
         <p className="lede">
           Walk through the house room by room. Every room has a screen with information you can open and explore.
         </p>
-        <button className="primary" disabled={loading} onClick={() => setPhase('playing')}>
-          {loading ? (progress > 0 && progress < 100 ? `Loading… ${Math.round(progress)}%` : 'Preparing the house…') : 'Enter the house'}
+        {failure && (
+          <p className="failure" role="alert">
+            {failure}
+          </p>
+        )}
+        <button className="primary" disabled={loading || !!failure} onClick={() => setPhase('playing')}>
+          {failure ? 'Unavailable here' : loading ? (progress > 0 && progress < 100 ? `Loading… ${Math.round(progress)}%` : 'Preparing the house…') : 'Enter the house'}
         </button>
         <ul className="keys touch" aria-label="Touch controls">
           <li>left joystick to walk · drag to look · pinch to zoom</li>

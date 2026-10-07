@@ -15,6 +15,7 @@ interface HomeState {
   phase: 'intro' | 'playing'
   ready: { scene: boolean; env: boolean }
   progress: number
+  failure: string | null
   room: RoomId | null
   nearby: Nearby | null
   screen: string | null
@@ -27,6 +28,7 @@ interface HomeState {
 
   setPhase: (phase: HomeState['phase']) => void
   markReady: (key: 'scene' | 'env') => void
+  setFailure: (failure: string | null) => void
   setRoom: (room: RoomId | null) => void
   setNearby: (nearby: Nearby | null) => void
   openScreen: (id: string) => void
@@ -45,6 +47,7 @@ export const useHome = create<HomeState>()((set, get) => ({
   phase: 'intro',
   ready: { scene: false, env: false },
   progress: 0,
+  failure: null,
   room: null,
   nearby: null,
   screen: null,
@@ -57,6 +60,7 @@ export const useHome = create<HomeState>()((set, get) => ({
 
   setPhase: (phase) => set({ phase }),
   markReady: (key) => set((s) => (s.ready[key] ? s : { ready: { ...s.ready, [key]: true } })),
+  setFailure: (failure) => set({ failure }),
   setRoom: (room) => set({ room }),
   setNearby: (nearby) => set({ nearby }),
   openScreen: (screen) => set({ screen, nearby: null }),
