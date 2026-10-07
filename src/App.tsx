@@ -1,0 +1,28 @@
+import { lazy, Suspense } from 'react'
+import { playerState } from './lib/playerState'
+import { useHome } from './store'
+import { Hud } from './ui/Hud'
+import { Intro } from './ui/Intro'
+import { ScreenModal } from './ui/ScreenModal'
+import { TouchControls } from './ui/TouchControls'
+
+// three.js, Rapier and the whole scene load in their own chunk so the intro paints immediately.
+const Experience = lazy(() => import('./scene/Experience'))
+
+if (import.meta.env.DEV || new URLSearchParams(location.search).has('debug')) {
+  ;(window as unknown as Record<string, unknown>).__home = { useHome, playerState }
+}
+
+export function App() {
+  return (
+    <>
+      <Suspense fallback={null}>
+        <Experience />
+      </Suspense>
+      <Hud />
+      <TouchControls />
+      <ScreenModal />
+      <Intro />
+    </>
+  )
+}

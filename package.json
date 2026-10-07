@@ -1,0 +1,41 @@
+{
+  "name": "3d-home-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "assets:hdri": "node scripts/fetch-polyhaven.mjs",
+    "assets:optimize": "node scripts/optimize-models.mjs"
+  },
+  "dependencies": {
+    "@pmndrs/assets": "^1.7.0",
+    "@react-three/drei": "^10.7.9",
+    "@react-three/fiber": "^9.8.1",
+    "@react-three/postprocessing": "^3.1.3",
+    "@react-three/rapier": "^2.2.0",
+    "ecctrl": "^2.0.2",
+    "n8ao": "^2.0.1",
+    "postprocessing": "^6.39.5",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "three": "^0.186.1",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@gltf-transform/cli": "^4.5.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/three": "^0.186.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.3"
+  },
+  "engines": {
+    "node": ">=20.19"
+  },
+  "description": "A walkable 3D house with interactive screens in every room"
+}

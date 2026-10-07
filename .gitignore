@@ -1,0 +1,9 @@
+node_modules
+dist
+*.log
+.DS_Store
+.env
+.env.*
+# un-optimized source models; optimized output goes in src/assets/models
+src/assets/models/raw/
+src/assets/hdri/raw/
