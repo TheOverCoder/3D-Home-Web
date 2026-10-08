@@ -1,7 +1,7 @@
 import { Suspense, useMemo, type ReactNode } from 'react'
 import { useGLTF } from '@react-three/drei'
 import { CuboidCollider, RigidBody } from '@react-three/rapier'
-import { Box3, BoxGeometry, DoubleSide, Mesh, PlaneGeometry, Vector3, type BufferGeometry, type Texture } from 'three'
+import { Box3, BoxGeometry, DoubleSide, Mesh, PlaneGeometry, Vector3, type BufferGeometry, type Light, type Object3D, type Texture } from 'three'
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
 import { boxProject } from '../lib/boxProject'
 import { material, surface, type MaterialKind } from '../lib/proceduralTextures'
@@ -73,12 +73,16 @@ function GlbProp({ url, size }: { url: string; size: V3 }) {
     const fitted = new Box3().setFromObject(clone)
     const centre = fitted.getCenter(new Vector3())
     clone.position.set(-centre.x, -fitted.min.y, -centre.z)
+    const lights: Object3D[] = []
     clone.traverse((o) => {
       if ((o as Mesh).isMesh) {
         o.castShadow = true
         o.receiveShadow = true
       }
+      // product shots ship their own studio lights; extra lights would change the shader of the whole scene
+      if ((o as Light).isLight) lights.push(o)
     })
+    lights.forEach((l) => l.removeFromParent())
     return clone
   }, [scene, size])
   return <primitive object={object} />
@@ -260,6 +264,20 @@ function Chair() {
   )
 }
 
+function Armchair() {
+  const cloth = '#8a6f5a'
+  return (
+    <group>
+      <B size={[0.82, 0.3, 0.8]} position={[0, 0.25, 0]} color={cloth} roughness={1} radius={0.06} mat="fabric" tile={0.32} />
+      <B size={[0.66, 0.12, 0.62]} position={[0, 0.46, 0.05]} color="#9b8068" roughness={1} radius={0.05} mat="fabric" tile={0.32} />
+      <B size={[0.82, 0.55, 0.16]} position={[0, 0.62, -0.32]} rotation={[-0.12, 0, 0]} color={cloth} roughness={1} radius={0.06} mat="fabric" tile={0.32} />
+      {[-0.37, 0.37].map((x) => (
+        <B key={x} size={[0.14, 0.26, 0.74]} position={[x, 0.5, 0.02]} color={cloth} roughness={1} radius={0.05} mat="fabric" tile={0.32} />
+      ))}
+    </group>
+  )
+}
+
 function Bookshelf() {
   const books = useMemo(() => {
     const palette = ['#b4543a', '#3d6a8a', '#d7b25a', '#4d7a58', '#7a4d7a', '#c9c2b3', '#355c63']
@@ -412,7 +430,8 @@ export function Furnishings() {
       <Solid id="sofa" position={[-3.5, 0, 2.5]} size={[2.2, 0.95, 0.95]}><Sofa /></Solid>
       <Solid id="coffee-table" position={[-3.5, 0, 3.95]} size={[1.1, 0.42, 0.6]}><CoffeeTable /></Solid>
       <Solid id="tv-console" position={[-3.5, 0, 5.65]} size={[1.8, 0.5, 0.45]}><TvConsole /></Solid>
-      <Solid id="plant-living" position={[-6.4, 0, 5.3]} size={[0.45, 1.1, 0.45]}><Plant tall={1.3} /></Solid>
+      <Solid id="plant-living" position={[-6.35, 0, 5.35]} size={[0.7, 1.3, 0.7]}><Plant tall={1.3} /></Solid>
+      <Solid id="armchair" position={[-5.85, 0, 3.4]} rotationY={Math.PI / 2} size={[0.85, 0.95, 0.85]}><Armchair /></Solid>
       <Decor position={[-3.5, 0, 3.5]}><Rug size={[3.0, 2.2]} color="#8c6f5a" /></Decor>
       <Decor position={[-6.88, 1.65, 3.4]} rotationY={Math.PI / 2}><Frame size={[1.1, 0.75]} color="#c9b79c" accent="#3d6a8a" /></Decor>
       <Decor position={[-6.88, 1.6, 4.7]} rotationY={Math.PI / 2}><Frame size={[0.6, 0.8]} color="#d9d0c0" accent="#b4543a" /></Decor>

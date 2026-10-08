@@ -1,0 +1,42 @@
+[
+  {
+    "id": "hdri-blouberg-sunrise",
+    "kind": "hdri",
+    "url": "https://raw.githubusercontent.com/mrdoob/three.js/r160/examples/textures/equirectangular/blouberg_sunrise_2_1k.hdr",
+    "dest": "src/assets/hdri/home.hdr",
+    "what": "Blouberg Sunrise 2 (1k HDRI) — soft, neutral daylight for image-based lighting",
+    "by": "Poly Haven",
+    "license": "CC0",
+    "source": "https://polyhaven.com/a/blouberg_sunrise_2"
+  },
+  {
+    "id": "sofa",
+    "kind": "model",
+    "url": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/GlamVelvetSofa/glTF-Binary/GlamVelvetSofa.glb",
+    "dest": "src/assets/models/raw/props/sofa.glb",
+    "what": "Glam Velvet Sofa",
+    "by": "Wayfair, LLC (Khronos glTF Sample Assets)",
+    "license": "CC-BY 4.0",
+    "source": "https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/GlamVelvetSofa"
+  },
+  {
+    "id": "armchair",
+    "kind": "model",
+    "url": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/SheenChair/glTF-Binary/SheenChair.glb",
+    "dest": "src/assets/models/raw/props/armchair.glb",
+    "what": "Sheen Chair (slipper chair)",
+    "by": "Wayfair, LLC (Khronos glTF Sample Assets)",
+    "license": "CC0",
+    "source": "https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/SheenChair"
+  },
+  {
+    "id": "plant-living",
+    "kind": "model",
+    "url": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/DiffuseTransmissionPlant/glTF-Binary/DiffuseTransmissionPlant.glb",
+    "dest": "src/assets/models/raw/props/plant-living.glb",
+    "what": "Diffuse Transmission Plant",
+    "by": "Darmstadt Graphics Group GmbH (Khronos glTF Sample Assets)",
+    "license": "CC-BY 4.0",
+    "source": "https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/DiffuseTransmissionPlant"
+  }
+]

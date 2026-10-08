@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "assets:hdri": "node scripts/fetch-polyhaven.mjs",
-    "assets:optimize": "node scripts/optimize-models.mjs"
+    "assets:optimize": "node scripts/optimize-models.mjs",
+    "assets:fetch": "node scripts/fetch-assets.mjs"
   },
   "dependencies": {
     "@pmndrs/assets": "^1.7.0",

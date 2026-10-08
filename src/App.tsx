@@ -9,7 +9,12 @@ import { SettingsPanel } from './ui/SettingsPanel'
 import { TouchControls } from './ui/TouchControls'
 
 // three.js, Rapier and the whole scene load in their own chunk so the intro paints immediately.
-const Experience = lazy(() => import('./scene/Experience'))
+// real texture sets (if any were dropped in src/assets/textures) must be decoded before the scene builds its materials
+const Experience = lazy(async () => {
+  const [scene, textures] = await Promise.all([import('./scene/Experience'), import('./lib/realTextures')])
+  await textures.loadRealTextures()
+  return scene
+})
 
 if (import.meta.env.DEV || new URLSearchParams(location.search).has('debug')) {
   ;(window as unknown as Record<string, unknown>).__home = { useHome, playerState }

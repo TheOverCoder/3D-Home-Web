@@ -7,9 +7,9 @@ import type { FloorKind } from '../data/layout'
 const SIZE = 512
 
 export interface Surface {
-  map: CanvasTexture
-  normalMap: CanvasTexture
-  roughnessMap: CanvasTexture
+  map: Texture
+  normalMap: Texture
+  roughnessMap: Texture
 }
 
 function rng(seed: number) {
@@ -324,7 +324,7 @@ export type SurfaceKind = FloorKind | 'plaster' | 'fabric' | 'grass' | 'skin' | 
 /** A surface with its own UV repeat (textures share their canvases, so this is cheap). */
 export function surface(kind: SurfaceKind, repeatX: number, repeatY: number): Surface {
   const src = (base[kind] ??= builders[kind]())
-  const copy = (t: CanvasTexture): CanvasTexture => {
+  const copy = (t: Texture): Texture => {
     const c = t.clone()
     c.needsUpdate = true
     c.repeat.set(repeatX, repeatY)
@@ -338,4 +338,13 @@ export type { Texture }
 /** The shared, un-cloned maps of a furniture material (UVs are in "tiles", so no per-use repeat is needed). */
 export function material(kind: MaterialKind | 'leaf'): Surface {
   return (base[kind] ??= builders[kind]())
+}
+
+/**
+ * Swaps individual maps of a surface for real photographic ones (see src/assets/README.md → textures).
+ * Must run before the scene is built; anything not supplied keeps its generated map.
+ */
+export function overrideSurface(kind: SurfaceKind | 'leaf', maps: Partial<Surface>) {
+  const current = (base[kind] ??= builders[kind]())
+  base[kind] = { map: maps.map ?? current.map, normalMap: maps.normalMap ?? current.normalMap, roughnessMap: maps.roughnessMap ?? current.roughnessMap }
 }

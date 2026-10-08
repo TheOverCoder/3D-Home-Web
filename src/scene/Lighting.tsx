@@ -33,7 +33,7 @@ function Ibl() {
   return (
     <Suspense fallback={null}>
       {assets.hdri ? (
-        <Environment files={assets.hdri} background={false} environmentIntensity={0.4} />
+        <Environment files={assets.hdri} background={false} environmentIntensity={0.75} />
       ) : (
         <Environment frames={1} resolution={128} far={900} background={false} environmentIntensity={0.4}>
           <DaylightProbe />

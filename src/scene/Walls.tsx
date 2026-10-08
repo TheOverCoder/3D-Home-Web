@@ -214,11 +214,16 @@ export function Walls() {
     [segs],
   )
   const fade = useRef<number[]>(segs.map(() => 1))
+  const settled = useRef(false)
   const camera = useThree((s) => s.camera)
 
   useFrame((_, dt) => {
     const state = useHome.getState()
     const inside = state.view === 'first' && state.phase === 'playing'
+    // in first person nothing ever fades, so once every wall is fully back there is nothing left to do
+    if (inside && settled.current) return
+    settled.current = false
+    let allBack = true
     ray.origin.copy(camera.position)
     for (let i = 0; i < segs.length; i++) {
       let blocked = false
@@ -233,6 +238,7 @@ export function Walls() {
         }
       }
       fade.current[i] = MathUtils.damp(fade.current[i], blocked ? 0.06 : 1, 10, dt)
+      if (fade.current[i] < 0.999) allBack = false
       const o = fade.current[i] * (BASE_OPACITY[segs[i].kind] ?? 1)
       const transparent = segs[i].kind === 'glass' || fade.current[i] < 0.995
       for (const mat of mats.current[i]) {
@@ -245,6 +251,7 @@ export function Walls() {
         }
       }
     }
+    settled.current = inside && allBack
   })
 
   return (

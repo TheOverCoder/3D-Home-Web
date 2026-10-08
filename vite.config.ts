@@ -8,7 +8,8 @@ export default defineConfig({
   assetsInclude: ['**/*.glb', '**/*.gltf', '**/*.hdr', '**/*.exr', '**/*.ktx2'],
   build: {
     target: 'es2022',
-    assetsInlineLimit: 0,
+    // INLINE_ASSETS=1 embeds models/HDRIs as data: URIs — for hosts that only serve a fixed list of file types
+    assetsInlineLimit: process.env.INLINE_ASSETS ? 100_000_000 : 0,
     chunkSizeWarningLimit: 3000,
   },
 })

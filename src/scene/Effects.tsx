@@ -42,7 +42,7 @@ export function Effects() {
 
   const fx: JSX.Element[] = []
   // moderate intensity: strong AO turns the dark undersides of furniture into noisy black patches
-  if (high) fx.push(<N8AO key="ao" aoRadius={0.7} intensity={1.6} distanceFalloff={1.1} aoSamples={20} denoiseSamples={10} denoiseRadius={10} quality="medium" halfRes />)
+  if (high) fx.push(<N8AO key="ao" aoRadius={0.6} intensity={1.15} color="#2a2018" distanceFalloff={1.0} aoSamples={20} denoiseSamples={10} denoiseRadius={10} quality="medium" halfRes />)
   if (high && depthOfField) {
     fx.push(
       <DepthOfField
@@ -58,7 +58,7 @@ export function Effects() {
   fx.push(<Bloom key="bloom" intensity={high ? 0.6 : 0.35} luminanceThreshold={1} luminanceSmoothing={0.25} mipmapBlur />)
   if (high) fx.push(<ChromaticAberration key="ca" offset={fringe} radialModulation modulationOffset={0.25} />)
   fx.push(<ToneMapping key="tm" mode={ToneMappingMode.AGX} />)
-  fx.push(<BrightnessContrast key="bc" brightness={-0.035} contrast={0.16} />)
+  fx.push(<BrightnessContrast key="bc" brightness={-0.01} contrast={0.1} />)
   fx.push(<HueSaturation key="hs" saturation={0.1} />)
   fx.push(<Vignette key="vig" offset={0.22} darkness={0.72} />)
   if (filmGrain) fx.push(<Noise key="grain" blendFunction={BlendFunction.SOFT_LIGHT} opacity={0.1} />)
