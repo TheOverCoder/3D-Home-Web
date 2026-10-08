@@ -212,10 +212,114 @@ function skin(): Surface {
   }, 1.1)
 }
 
-const base: Record<string, Surface> = {}
-const builders = { wood, tile, carpet, plaster, fabric, grass, skin }
 
-export type SurfaceKind = FloorKind | 'plaster' | 'fabric' | 'grass' | 'skin'
+// ─────────────── furniture materials ───────────────
+// Neutral, tint-able maps: the prop's `color` multiplies them, `roughness` scales the roughness map.
+// They are projected onto boxes in metres (see boxProject) so grain and weave keep a real-world size.
+
+/** Tileable cellular noise: distance to the nearest of a jittered point per cell. */
+function worley(cells: number, seed: number) {
+  const r = rng(seed)
+  const pts = Array.from({ length: cells * cells }, () => [r(), r()] as const)
+  return (u: number, v: number) => {
+    const x = u * cells
+    const y = v * cells
+    const cx = Math.floor(x)
+    const cy = Math.floor(y)
+    let best = 9
+    for (let j = -1; j <= 1; j++) {
+      for (let i = -1; i <= 1; i++) {
+        const gx = cx + i
+        const gy = cy + j
+        const p = pts[((gy % cells) + cells) % cells * cells + (((gx % cells) + cells) % cells)]
+        const d = Math.hypot(gx + p[0] - x, gy + p[1] - y)
+        if (d < best) best = d
+      }
+    }
+    return Math.min(1, best)
+  }
+}
+
+/** Veneered wood: fine pores along u with a slow cathedral figure. */
+function veneer(): Surface {
+  const pores = fbm(3, 61, 4, 90)
+  const figure = fbm(2, 63, 3, 6)
+  const tone = fbm(4, 65, 3)
+  return make((u, v) => {
+    const warp = figure(u, v) * 3.2
+    const ring = Math.abs(Math.sin((v + warp * 0.18) * Math.PI * 2 * 5))
+    const g = pores(u, v)
+    const k = 0.84 + ring * 0.12 + g * 0.1 + (tone(u, v) - 0.5) * 0.12
+    return { r: 250 * k, g: 244 * k, b: 238 * k, h: g * 0.5 + ring * 0.3, rough: 0.9 + (1 - g) * 0.15 }
+  }, 3.2)
+}
+
+/** Pebbled leather. */
+function leather(): Surface {
+  const cell = worley(26, 71)
+  const mottle = fbm(5, 73, 3)
+  return make((u, v) => {
+    const d = cell(u, v)
+    const crease = d > 0.82 ? 0.78 : 1
+    const k = (0.9 + mottle(u, v) * 0.14) * crease
+    return { r: 250 * k, g: 248 * k, b: 246 * k, h: Math.sqrt(Math.min(1, d * 1.2)) - (d > 0.82 ? 0.5 : 0), rough: 0.62 + (1 - d) * 0.25 }
+  }, 3)
+}
+
+/** Brushed metal: streaks along u. */
+function brushed(): Surface {
+  const streak = fbm(1, 81, 3, 260)
+  const fine = fbm(2, 83, 2, 500)
+  const wash = fbm(3, 85, 3)
+  return make((u, v) => {
+    const s = streak(u, v)
+    const f = fine(u, v)
+    const k = 0.9 + s * 0.06 + f * 0.04 + (wash(u, v) - 0.5) * 0.06
+    return { r: 250 * k, g: 250 * k, b: 252 * k, h: (s + f) * 0.4, rough: 0.82 + s * 0.2 }
+  }, 0.35)
+}
+
+/** Polished stone / quartz with soft veining. */
+function stone(): Surface {
+  const warp = fbm(3, 91, 4)
+  const speck = fbm(90, 93, 2)
+  const cloud = fbm(4, 95, 3)
+  return make((u, v) => {
+    const w = warp(u, v) * 6
+    const vein = Math.pow(1 - Math.abs(Math.sin((u * 2 + v * 1 + w) * Math.PI)), 14)
+    const k = 0.93 + cloud(u, v) * 0.07 + speck(u, v) * 0.03 - vein * 0.16
+    return { r: 250 * k, g: 250 * k, b: 248 * k, h: speck(u, v) * 0.15, rough: 0.7 + speck(u, v) * 0.2 }
+  }, 0.9)
+}
+
+/** Satin paint / lacquer: a faint orange-peel texture. */
+function paint(): Surface {
+  const peel = fbm(70, 101, 3)
+  const wash = fbm(3, 103, 3)
+  return make((u, v) => {
+    const k = 0.965 + peel(u, v) * 0.035 + (wash(u, v) - 0.5) * 0.03
+    return { r: 252 * k, g: 252 * k, b: 252 * k, h: peel(u, v), rough: 0.85 + peel(u, v) * 0.12 }
+  }, 1)
+}
+
+/** Houseplant leaf: midrib, side veins and a lighter edge (mapped onto a lens-shaped card). */
+function leaf(): Surface {
+  const mottle = fbm(8, 111, 3)
+  return make((u, v) => {
+    const across = Math.abs(u - 0.5) * 2 // 0 at the midrib → 1 at the edge
+    const rib = Math.max(0, 1 - across * 14)
+    const side = Math.pow(Math.abs(Math.sin((v * 9 - across * 2.4) * Math.PI)), 12) * (1 - across) * 0.55
+    const k = 0.78 + mottle(u, v) * 0.3
+    const vein = Math.max(rib, side)
+    return { r: (60 + vein * 70) * k, g: (118 + vein * 55) * k, b: (62 + vein * 40) * k, h: -vein * 0.6 + mottle(u, v) * 0.1, rough: 0.55 }
+  }, 3)
+}
+
+const base: Record<string, Surface> = {}
+const builders = { wood, tile, carpet, plaster, fabric, grass, skin, veneer, leather, brushed, stone, paint, leaf }
+
+export type MaterialKind = 'veneer' | 'leather' | 'fabric' | 'brushed' | 'stone' | 'paint'
+export type SurfaceKind = FloorKind | 'plaster' | 'fabric' | 'grass' | 'skin' | 'leaf' | MaterialKind
 
 /** A surface with its own UV repeat (textures share their canvases, so this is cheap). */
 export function surface(kind: SurfaceKind, repeatX: number, repeatY: number): Surface {
@@ -230,3 +334,8 @@ export function surface(kind: SurfaceKind, repeatX: number, repeatY: number): Su
 }
 
 export type { Texture }
+
+/** The shared, un-cloned maps of a furniture material (UVs are in "tiles", so no per-use repeat is needed). */
+export function material(kind: MaterialKind | 'leaf'): Surface {
+  return (base[kind] ??= builders[kind]())
+}

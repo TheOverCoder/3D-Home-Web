@@ -1,7 +1,7 @@
 import { useMemo, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { CuboidCollider, RigidBody } from '@react-three/rapier'
-import { Box3, DoubleSide, MathUtils, Ray, Vector3, type MeshStandardMaterial } from 'three'
+import { Box3, BoxGeometry, DoubleSide, MathUtils, Ray, Vector3, type MeshStandardMaterial } from 'three'
 import { DOORWAYS, HOUSE, ROOMS, WINDOWS, type Vec3, type WindowDef } from '../data/layout'
 import { surface } from '../lib/proceduralTextures'
 import { playerState } from '../lib/playerState'
@@ -19,6 +19,22 @@ interface Seg {
   solid: boolean // gets a collider
   bottom?: boolean // wall piece that touches the floor → baseboard
   top?: boolean // wall piece that touches the ceiling → crown moulding
+}
+
+/** A curtain panel: a box whose faces ripple into soft vertical folds. */
+function pleatedBox(size: Vec3, axis: 'x' | 'z'): BoxGeometry {
+  const long = axis === 'x' ? size[0] : size[2]
+  const folds = Math.max(2, Math.round(long / 0.09))
+  const g = new BoxGeometry(size[0], size[1], size[2], axis === 'x' ? folds * 4 : 1, 1, axis === 'z' ? folds * 4 : 1)
+  const pos = g.getAttribute('position')
+  for (let i = 0; i < pos.count; i++) {
+    const along = axis === 'x' ? pos.getX(i) : pos.getZ(i)
+    const wave = Math.sin((along / long) * folds * Math.PI * 2) * 0.016
+    if (axis === 'x') pos.setZ(i, pos.getZ(i) + wave * Math.sign(pos.getZ(i) || 1))
+    else pos.setX(i, pos.getX(i) + wave * Math.sign(pos.getX(i) || 1))
+  }
+  g.computeVertexNormals()
+  return g
 }
 
 const INTERIOR = '#d6d2ca'
@@ -189,6 +205,7 @@ export function Walls() {
       }),
     [segs, plaster],
   )
+  const geometries = useMemo(() => segs.map((s) => (s.kind === 'fabric' ? pleatedBox(s.size, s.axis) : null)), [segs])
   const mats = useRef<(MeshStandardMaterial | null)[][]>(segs.map(() => []))
   const boxes = useMemo(
     () => segs.map((s) => new Box3().setFromCenterAndSize(new Vector3(...s.center), new Vector3(...s.size)).expandByScalar(0.02)),
@@ -237,8 +254,8 @@ export function Walls() {
         const trimDepth = T + 0.04
         return (
           <group key={s.key} position={s.center}>
-            <mesh castShadow={s.kind !== 'glass'} receiveShadow={s.kind !== 'glass'}>
-              <boxGeometry args={s.size} />
+            <mesh castShadow={s.kind !== 'glass'} receiveShadow={s.kind !== 'glass'} geometry={geometries[i] ?? undefined}>
+              {!geometries[i] && <boxGeometry args={s.size} />}
               {s.kind === 'glass' ? (
                 <meshStandardMaterial
                   ref={(m) => {

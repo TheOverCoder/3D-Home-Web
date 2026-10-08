@@ -33,9 +33,9 @@ function Ibl() {
   return (
     <Suspense fallback={null}>
       {assets.hdri ? (
-        <Environment files={assets.hdri} background={false} environmentIntensity={0.3} />
+        <Environment files={assets.hdri} background={false} environmentIntensity={0.4} />
       ) : (
-        <Environment frames={1} resolution={128} far={900} background={false} environmentIntensity={0.28}>
+        <Environment frames={1} resolution={128} far={900} background={false} environmentIntensity={0.4}>
           <DaylightProbe />
         </Environment>
       )}
@@ -57,7 +57,7 @@ export function Lighting() {
       <ErrorBoundary fallback={null} onError={() => markReady('env')}>
         <Ibl />
       </ErrorBoundary>
-      <hemisphereLight args={['#dfe9ff', '#3a3028', 0.05]} />
+      <hemisphereLight args={['#dfe9ff', '#4a3d32', 0.24]} />
       <directionalLight
         position={[SUN[0] * 1.6, SUN[1] * 1.6, SUN[2] * 1.6]}
         intensity={2.5}
@@ -70,6 +70,7 @@ export function Lighting() {
         shadow-camera-bottom={-12}
         shadow-camera-near={1}
         shadow-camera-far={60}
+        shadow-radius={3}
         shadow-bias={-0.0003}
         shadow-normalBias={0.025}
       />

@@ -1,8 +1,10 @@
 import { Suspense, useMemo, type ReactNode } from 'react'
 import { RoundedBox, useGLTF } from '@react-three/drei'
 import { CuboidCollider, RigidBody } from '@react-three/rapier'
-import { Box3, Mesh, Vector3, type Texture } from 'three'
-import { surface } from '../lib/proceduralTextures'
+import { Box3, DoubleSide, Mesh, PlaneGeometry, Vector3, type Texture } from 'three'
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
+import { boxProject } from '../lib/boxProject'
+import { material, surface, type MaterialKind } from '../lib/proceduralTextures'
 import { assets } from '../assets/registry'
 
 type V3 = [number, number, number]
@@ -12,6 +14,8 @@ const weave = () => (fabricNormal ??= surface('fabric', 3, 3).normalMap)
 
 interface BProps {
   fabric?: boolean // soft furnishing: adds a woven normal map
+  mat?: MaterialKind // physically-sized surface (grain, weave, brushed streaks…) projected onto the box
+  tile?: number // metres covered by one tile of `mat`
   size: V3
   position?: V3
   rotation?: V3
@@ -24,8 +28,33 @@ interface BProps {
 }
 
 /** A (rounded) box — the building block of every placeholder prop. */
-export function B({ size, position, rotation, color, roughness = 0.8, metalness = 0, radius = 0.015, emissive, emissiveIntensity, fabric }: BProps) {
-  const material = (
+export function B({ size, position, rotation, color, roughness = 0.8, metalness = 0, radius = 0.015, emissive, emissiveIntensity, fabric, mat, tile = 0.6 }: BProps) {
+  // textured boxes share their map set and carry projected UVs
+  const set = mat ? material(mat) : null
+  const geometry = useMemo(() => {
+    if (!mat) return null
+    const r = Math.max(0.001, Math.min(radius, Math.min(...size) / 2 - 1e-3))
+    return boxProject(new RoundedBoxGeometry(size[0], size[1], size[2], 3, r), tile, (position?.[0] ?? 0) * 3.1 + (position?.[2] ?? 0) * 1.7)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mat, tile, radius, size[0], size[1], size[2], position?.[0], position?.[2]])
+  if (set && geometry) {
+    return (
+      <mesh geometry={geometry} position={position} rotation={rotation} castShadow receiveShadow>
+        <meshStandardMaterial
+          color={color}
+          map={set.map}
+          normalMap={set.normalMap}
+          roughnessMap={set.roughnessMap}
+          roughness={roughness}
+          metalness={metalness}
+          normalScale={[1, 1]}
+          emissive={emissive}
+          emissiveIntensity={emissiveIntensity}
+        />
+      </mesh>
+    )
+  }
+  const surfaceMaterial = (
     <meshStandardMaterial
       color={color}
       roughness={roughness}
@@ -40,7 +69,7 @@ export function B({ size, position, rotation, color, roughness = 0.8, metalness 
     return (
       <mesh position={position} rotation={rotation} castShadow receiveShadow>
         <boxGeometry args={size} />
-        {material}
+        {surfaceMaterial}
       </mesh>
     )
   }
@@ -54,7 +83,7 @@ export function B({ size, position, rotation, color, roughness = 0.8, metalness 
       castShadow
       receiveShadow
     >
-      {material}
+      {surfaceMaterial}
     </RoundedBox>
   )
 }
@@ -120,16 +149,16 @@ function Sofa() {
   const cushion = '#586b7e'
   return (
     <group>
-      <B size={[2.2, 0.36, 0.95]} position={[0, 0.26, 0]} color={fabric} roughness={0.95} radius={0.05} fabric />
+      <B size={[2.2, 0.36, 0.95]} position={[0, 0.26, 0]} color={fabric} roughness={1} radius={0.05} mat="fabric" tile={0.32} />
       {[-0.72, 0, 0.72].map((x) => (
-        <B key={x} size={[0.7, 0.14, 0.78]} position={[x, 0.5, 0.06]} color={cushion} roughness={0.95} radius={0.05} fabric />
+        <B key={x} size={[0.7, 0.14, 0.78]} position={[x, 0.5, 0.06]} color={cushion} roughness={1} radius={0.05} mat="fabric" tile={0.32} />
       ))}
-      <B size={[2.2, 0.55, 0.22]} position={[0, 0.7, -0.37]} color={fabric} roughness={0.95} radius={0.06} fabric />
+      <B size={[2.2, 0.55, 0.22]} position={[0, 0.7, -0.37]} color={fabric} roughness={1} radius={0.06} mat="fabric" tile={0.32} />
       {[-0.72, 0, 0.72].map((x) => (
-        <B key={x} size={[0.68, 0.4, 0.16]} position={[x, 0.74, -0.2]} rotation={[-0.14, 0, 0]} color={cushion} roughness={0.95} radius={0.06} fabric />
+        <B key={x} size={[0.68, 0.4, 0.16]} position={[x, 0.74, -0.2]} rotation={[-0.14, 0, 0]} color={cushion} roughness={1} radius={0.06} mat="fabric" tile={0.32} />
       ))}
       {[-1.03, 1.03].map((x) => (
-        <B key={x} size={[0.18, 0.56, 0.95]} position={[x, 0.37, 0]} color={fabric} roughness={0.95} radius={0.05} fabric />
+        <B key={x} size={[0.18, 0.56, 0.95]} position={[x, 0.37, 0]} color={fabric} roughness={1} radius={0.05} mat="fabric" tile={0.32} />
       ))}
       {[-0.95, 0.95].flatMap((x) => [-0.38, 0.38].map((z) => (
         <B key={`${x}${z}`} size={[0.06, 0.1, 0.06]} position={[x, 0.05, z]} color="#2a1d14" radius={0.01} />
@@ -141,8 +170,8 @@ function Sofa() {
 function CoffeeTable() {
   return (
     <group>
-      <B size={[1.1, 0.05, 0.6]} position={[0, 0.4, 0]} color="#7b5a3c" roughness={0.45} radius={0.02} />
-      <B size={[1.0, 0.04, 0.5]} position={[0, 0.16, 0]} color="#6a4c32" roughness={0.5} radius={0.015} />
+      <B size={[1.1, 0.05, 0.6]} position={[0, 0.4, 0]} color="#a07448" roughness={0.55} radius={0.02} mat="veneer" tile={0.9} />
+      <B size={[1.0, 0.04, 0.5]} position={[0, 0.16, 0]} color="#8a6340" roughness={0.6} radius={0.015} mat="veneer" tile={0.9} />
       {[-0.5, 0.5].flatMap((x) => [-0.25, 0.25].map((z) => (
         <B key={`${x}${z}`} size={[0.05, 0.38, 0.05]} position={[x, 0.19, z]} color="#3d2a1b" radius={0.01} />
       )))}
@@ -153,43 +182,71 @@ function CoffeeTable() {
 function TvConsole() {
   return (
     <group>
-      <B size={[1.8, 0.46, 0.45]} position={[0, 0.25, 0]} color="#2f2b28" roughness={0.6} radius={0.02} />
+      <B size={[1.8, 0.46, 0.45]} position={[0, 0.25, 0]} color="#6b5646" roughness={0.6} radius={0.02} mat="veneer" tile={1} />
       {[-0.45, 0.45].map((x) => (
-        <B key={x} size={[0.8, 0.34, 0.02]} position={[x, 0.26, 0.23]} color="#3b3531" roughness={0.5} radius={0.01} />
+        <B key={x} size={[0.8, 0.34, 0.02]} position={[x, 0.26, 0.23]} color="#7a634f" roughness={0.55} radius={0.01} mat="veneer" tile={1} />
       ))}
     </group>
   )
 }
 
+let leafGeo: PlaneGeometry | undefined
+/** A lens-shaped leaf card, folded along its midrib and drooping at the tip. */
+function leafGeometry() {
+  if (leafGeo) return leafGeo
+  const g = new PlaneGeometry(1, 1, 4, 8)
+  const pos = g.getAttribute('position')
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i) // -0.5 … 0.5
+    const t = pos.getY(i) + 0.5 // 0 at the stem … 1 at the tip
+    const width = Math.pow(Math.sin(Math.PI * Math.min(1, t * 0.92 + 0.04)), 0.75)
+    const w = x * width * 0.62
+    pos.setXYZ(i, w, t, Math.abs(w) * 0.55 - 0.32 * t * t)
+  }
+  g.computeVertexNormals()
+  leafGeo = g
+  return g
+}
+
 function Plant({ tall = 1 }: { tall?: number }) {
-  const leaves = useMemo(
-    () =>
-      Array.from({ length: 9 }, (_, i) => {
-        const a = (i / 9) * Math.PI * 2
-        return {
-          key: i,
-          position: [Math.cos(a) * 0.14, 0.5 + (i % 3) * 0.18 * tall, Math.sin(a) * 0.14] as V3,
-          scale: [0.1, 0.22 * tall, 0.07] as V3,
-          tilt: [Math.sin(a) * 0.5, 0, -Math.cos(a) * 0.5] as V3,
-        }
-      }),
-    [tall],
-  )
+  const leaves = useMemo(() => {
+    let seed = Math.round(tall * 97)
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
+    return Array.from({ length: 16 }, (_, i) => {
+      const a = i * 2.4 + rnd() * 0.4 // golden-angle spiral
+      const lift = 0.32 + (i / 16) * 0.5 * tall
+      const len = (0.38 + rnd() * 0.18) * (0.8 + tall * 0.25) * (1 - (i / 16) * 0.2)
+      return { key: i, a, y: lift, len, tilt: 0.55 + rnd() * 0.45 - (i / 16) * 0.25 }
+    })
+  }, [tall])
+  const set = material('leaf')
   return (
     <group>
       <mesh position={[0, 0.17, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.2, 0.15, 0.34, 20]} />
-        <meshStandardMaterial color="#9a6244" roughness={0.8} />
+        <cylinderGeometry args={[0.2, 0.15, 0.34, 24]} />
+        <meshStandardMaterial color="#b0704c" roughness={0.85} normalMap={surface('plaster', 4, 2).normalMap} normalScale={[0.8, 0.8]} />
       </mesh>
-      <mesh position={[0, 0.34, 0]}>
-        <cylinderGeometry args={[0.185, 0.185, 0.02, 20]} />
+      <mesh position={[0, 0.355, 0]}>
+        <cylinderGeometry args={[0.185, 0.185, 0.02, 24]} />
         <meshStandardMaterial color="#2a1f17" roughness={1} />
       </mesh>
+      <mesh position={[0, 0.34 + 0.2 * tall, 0]}>
+        <cylinderGeometry args={[0.012, 0.016, 0.4 * tall, 8]} />
+        <meshStandardMaterial color="#4f6b3a" roughness={0.8} />
+      </mesh>
       {leaves.map((l) => (
-        <mesh key={l.key} position={l.position} scale={l.scale} rotation={l.tilt} castShadow>
-          <sphereGeometry args={[1, 12, 10]} />
-          <meshStandardMaterial color={l.key % 2 ? '#3f7a45' : '#52915a'} roughness={0.7} />
-        </mesh>
+        <group key={l.key} position={[0, l.y, 0]} rotation={[0, l.a, 0]}>
+          <mesh geometry={leafGeometry()} rotation={[l.tilt, 0, 0]} scale={[l.len, l.len, l.len]} castShadow>
+            <meshStandardMaterial
+              color={l.key % 2 ? '#d6ffd0' : '#f0fff0'}
+              map={set.map}
+              normalMap={set.normalMap}
+              roughnessMap={set.roughnessMap}
+              roughness={1}
+              side={DoubleSide}
+            />
+          </mesh>
+        </group>
       ))}
     </group>
   )
@@ -198,9 +255,9 @@ function Plant({ tall = 1 }: { tall?: number }) {
 function Desk() {
   return (
     <group>
-      <B size={[1.8, 0.05, 0.8]} position={[0, 0.735, 0]} color="#8d6a48" roughness={0.45} radius={0.015} />
+      <B size={[1.8, 0.05, 0.8]} position={[0, 0.735, 0]} color="#c0905f" roughness={0.55} radius={0.015} mat="veneer" tile={1} />
       {[-0.84, 0.84].map((x) => (
-        <B key={x} size={[0.05, 0.71, 0.7]} position={[x, 0.355, 0]} color="#2c2c2e" roughness={0.5} metalness={0.4} radius={0.01} />
+        <B key={x} size={[0.05, 0.71, 0.7]} position={[x, 0.355, 0]} color="#35363a" roughness={0.8} metalness={0.7} radius={0.01} mat="brushed" tile={0.5} />
       ))}
       <B size={[1.62, 0.3, 0.02]} position={[0, 0.5, -0.33]} color="#2c2c2e" roughness={0.5} radius={0.01} />
     </group>
@@ -210,8 +267,8 @@ function Desk() {
 function Chair() {
   return (
     <group>
-      <B size={[0.5, 0.07, 0.5]} position={[0, 0.5, 0]} color="#2e3338" roughness={0.9} radius={0.03} />
-      <B size={[0.48, 0.55, 0.06]} position={[0, 0.82, -0.23]} rotation={[-0.08, 0, 0]} color="#2e3338" roughness={0.9} radius={0.03} />
+      <B size={[0.5, 0.07, 0.5]} position={[0, 0.5, 0]} color="#3a4047" roughness={1} radius={0.03} mat="fabric" tile={0.25} />
+      <B size={[0.48, 0.55, 0.06]} position={[0, 0.82, -0.23]} rotation={[-0.08, 0, 0]} color="#3a4047" roughness={1} radius={0.03} mat="fabric" tile={0.25} />
       <mesh position={[0, 0.25, 0]} castShadow>
         <cylinderGeometry args={[0.03, 0.03, 0.5, 12]} />
         <meshStandardMaterial color="#9ca3a8" metalness={0.8} roughness={0.3} />
@@ -245,14 +302,14 @@ function Bookshelf() {
   return (
     <group>
       {[-0.7, 0.7].map((x) => (
-        <B key={x} size={[0.04, 2.0, 0.38]} position={[x, 1.0, 0]} color="#6b4e34" roughness={0.6} radius={0.008} />
+        <B key={x} size={[0.04, 2.0, 0.38]} position={[x, 1.0, 0]} color="#8a6542" roughness={0.65} radius={0.008} mat="veneer" tile={0.9} />
       ))}
-      <B size={[1.4, 2.0, 0.02]} position={[0, 1.0, -0.18]} color="#5a4129" roughness={0.7} radius={0} />
+      <B size={[1.4, 2.0, 0.02]} position={[0, 1.0, -0.18]} color="#6e5034" roughness={0.75} radius={0} mat="veneer" tile={0.9} />
       {[0.03, 0.4, 0.8, 1.2, 1.6, 1.99].map((y) => (
-        <B key={y} size={[1.4, 0.04, 0.38]} position={[0, y, 0]} color="#6b4e34" roughness={0.6} radius={0.008} />
+        <B key={y} size={[1.4, 0.04, 0.38]} position={[0, y, 0]} color="#8a6542" roughness={0.65} radius={0.008} mat="veneer" tile={0.9} />
       ))}
       {books.map((b) => (
-        <B key={b.key} size={[b.w, b.h, 0.24]} position={[b.x, b.y, 0.0]} color={b.c} roughness={0.8} radius={0.004} />
+        <B key={b.key} size={[b.w, b.h, 0.24]} position={[b.x, b.y, 0.0]} color={b.c} roughness={0.9} radius={0.004} mat="fabric" tile={0.12} />
       ))}
     </group>
   )
@@ -261,13 +318,13 @@ function Bookshelf() {
 function Counter() {
   return (
     <group>
-      <B size={[4.6, 0.86, 0.62]} position={[0, 0.43, 0]} color="#3d4a52" roughness={0.55} radius={0.01} />
-      <B size={[4.66, 0.05, 0.68]} position={[0, 0.885, 0.0]} color="#e8e7e2" roughness={0.25} radius={0.01} />
+      <B size={[4.6, 0.86, 0.62]} position={[0, 0.43, 0]} color="#4e5d66" roughness={0.75} radius={0.01} mat="paint" tile={0.6} />
+      <B size={[4.66, 0.05, 0.68]} position={[0, 0.885, 0.0]} color="#eceae4" roughness={0.38} radius={0.01} mat="stone" tile={1.4} />
       {[-1.6, -0.55, 0.5, 1.55].map((x) => (
-        <B key={x} size={[0.94, 0.7, 0.02]} position={[x, 0.42, 0.315]} color="#47565f" roughness={0.5} radius={0.005} />
+        <B key={x} size={[0.94, 0.7, 0.02]} position={[x, 0.42, 0.315]} color="#5a6a74" roughness={0.7} radius={0.005} mat="paint" tile={0.6} />
       ))}
       {/* sink + hob */}
-      <B size={[0.7, 0.02, 0.4]} position={[-0.55, 0.915, 0]} color="#9aa3a8" metalness={0.8} roughness={0.25} radius={0.005} />
+      <B size={[0.7, 0.02, 0.4]} position={[-0.55, 0.915, 0]} color="#b5bcc0" metalness={0.9} roughness={0.5} radius={0.005} mat="brushed" tile={0.5} />
       <B size={[0.6, 0.012, 0.5]} position={[1.55, 0.915, 0]} color="#17191b" roughness={0.2} radius={0.005} />
     </group>
   )
@@ -276,7 +333,7 @@ function Counter() {
 function Fridge() {
   return (
     <group>
-      <B size={[0.8, 1.9, 0.75]} position={[0, 0.95, 0]} color="#c9ced1" metalness={0.55} roughness={0.35} radius={0.02} />
+      <B size={[0.8, 1.9, 0.75]} position={[0, 0.95, 0]} color="#cfd3d6" metalness={0.8} roughness={0.5} radius={0.02} mat="brushed" tile={1.2} />
       <B size={[0.78, 0.015, 0.02]} position={[0, 1.2, 0.38]} color="#6f777c" metalness={0.6} roughness={0.4} radius={0.004} />
       <B size={[0.03, 0.5, 0.04]} position={[0.3, 1.5, 0.4]} color="#3b4146" metalness={0.8} roughness={0.3} radius={0.01} />
       <B size={[0.03, 0.4, 0.04]} position={[0.3, 0.75, 0.4]} color="#3b4146" metalness={0.8} roughness={0.3} radius={0.01} />
@@ -287,8 +344,8 @@ function Fridge() {
 function Island() {
   return (
     <group>
-      <B size={[2.0, 0.86, 0.9]} position={[0, 0.43, 0]} color="#4d5d52" roughness={0.6} radius={0.015} />
-      <B size={[2.1, 0.05, 1.0]} position={[0, 0.885, 0]} color="#ece9e1" roughness={0.22} radius={0.012} />
+      <B size={[2.0, 0.86, 0.9]} position={[0, 0.43, 0]} color="#5d7064" roughness={0.75} radius={0.015} mat="paint" tile={0.6} />
+      <B size={[2.1, 0.05, 1.0]} position={[0, 0.885, 0]} color="#f0ede6" roughness={0.38} radius={0.012} mat="stone" tile={1.4} />
     </group>
   )
 }
@@ -315,13 +372,13 @@ function Stool() {
 function Bed() {
   return (
     <group>
-      <B size={[1.7, 0.3, 2.1]} position={[0, 0.2, 0]} color="#5b4636" roughness={0.7} radius={0.02} />
-      <B size={[1.6, 0.24, 1.95]} position={[0, 0.47, -0.02]} color="#e6e2da" roughness={0.95} radius={0.06} fabric />
-      <B size={[1.64, 0.07, 1.25]} position={[0, 0.62, -0.3]} color="#6f8497" roughness={0.95} radius={0.03} fabric />
+      <B size={[1.7, 0.3, 2.1]} position={[0, 0.2, 0]} color="#6d5441" roughness={0.7} radius={0.02} mat="veneer" tile={1} />
+      <B size={[1.6, 0.24, 1.95]} position={[0, 0.47, -0.02]} color="#e6e2da" roughness={1} radius={0.06} mat="fabric" tile={0.32} />
+      <B size={[1.64, 0.07, 1.25]} position={[0, 0.62, -0.3]} color="#6f8497" roughness={1} radius={0.03} mat="fabric" tile={0.32} />
       {[-0.4, 0.4].map((x) => (
-        <B key={x} size={[0.62, 0.14, 0.36]} position={[x, 0.65, 0.72]} color="#f3f1ec" roughness={0.95} radius={0.06} fabric />
+        <B key={x} size={[0.62, 0.14, 0.36]} position={[x, 0.65, 0.72]} color="#f3f1ec" roughness={1} radius={0.06} mat="fabric" tile={0.32} />
       ))}
-      <B size={[1.8, 1.05, 0.1]} position={[0, 0.52, 1.04]} color="#5b4636" roughness={0.65} radius={0.02} />
+      <B size={[1.8, 1.05, 0.1]} position={[0, 0.52, 1.04]} color="#6d5441" roughness={0.7} radius={0.02} mat="leather" tile={0.4} />
     </group>
   )
 }
@@ -329,9 +386,9 @@ function Bed() {
 function Nightstand() {
   return (
     <group>
-      <B size={[0.5, 0.5, 0.45]} position={[0, 0.3, 0]} color="#7b5a3c" roughness={0.5} radius={0.015} />
-      <B size={[0.46, 0.14, 0.02]} position={[0, 0.4, 0.23]} color="#6a4c32" roughness={0.5} radius={0.005} />
-      <B size={[0.5, 0.03, 0.45]} position={[0, 0.565, 0]} color="#8d6a48" roughness={0.4} radius={0.01} />
+      <B size={[0.5, 0.5, 0.45]} position={[0, 0.3, 0]} color="#a07448" roughness={0.6} radius={0.015} mat="veneer" tile={0.8} />
+      <B size={[0.46, 0.14, 0.02]} position={[0, 0.4, 0.23]} color="#8a6340" roughness={0.6} radius={0.005} mat="veneer" tile={0.8} />
+      <B size={[0.5, 0.03, 0.45]} position={[0, 0.565, 0]} color="#b58656" roughness={0.5} radius={0.01} mat="veneer" tile={0.8} />
     </group>
   )
 }
@@ -339,9 +396,9 @@ function Nightstand() {
 function Wardrobe() {
   return (
     <group>
-      <B size={[1.6, 2.2, 0.6]} position={[0, 1.1, 0]} color="#d9d6ce" roughness={0.55} radius={0.015} />
-      <B size={[0.78, 2.1, 0.02]} position={[-0.4, 1.1, 0.31]} color="#cfcbc2" roughness={0.5} radius={0.005} />
-      <B size={[0.78, 2.1, 0.02]} position={[0.4, 1.1, 0.31]} color="#cfcbc2" roughness={0.5} radius={0.005} />
+      <B size={[1.6, 2.2, 0.6]} position={[0, 1.1, 0]} color="#e3e0d8" roughness={0.75} radius={0.015} mat="paint" tile={0.7} />
+      <B size={[0.78, 2.1, 0.02]} position={[-0.4, 1.1, 0.31]} color="#dbd8cf" roughness={0.7} radius={0.005} mat="paint" tile={0.7} />
+      <B size={[0.78, 2.1, 0.02]} position={[0.4, 1.1, 0.31]} color="#dbd8cf" roughness={0.7} radius={0.005} mat="paint" tile={0.7} />
       {[-0.06, 0.06].map((x) => (
         <B key={x} size={[0.02, 0.4, 0.03]} position={[x, 1.1, 0.34]} color="#2c2c2e" metalness={0.8} roughness={0.3} radius={0.005} />
       ))}

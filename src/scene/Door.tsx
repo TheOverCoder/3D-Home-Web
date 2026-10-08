@@ -46,7 +46,7 @@ export function Door() {
         args={[DOOR.width / 2, DOOR.height / 2, DOOR.thickness / 2]}
         position={[DOOR.width / 2, DOOR.height / 2, 0]}
       />
-      <B size={[DOOR.width - 0.02, DOOR.height - 0.02, DOOR.thickness]} position={[DOOR.width / 2, DOOR.height / 2, 0]} color="#8a6a4c" roughness={0.55} radius={0.008} />
+      <B size={[DOOR.width - 0.02, DOOR.height - 0.02, DOOR.thickness]} position={[DOOR.width / 2, DOOR.height / 2, 0]} color="#b58a60" roughness={0.6} radius={0.008} mat="veneer" tile={1.1} />
       <B size={[0.12, 0.03, 0.1]} position={[DOOR.width - 0.12, 1.0, 0]} color="#c9ccce" metalness={0.9} roughness={0.25} radius={0.008} />
     </RigidBody>
   )

@@ -6,6 +6,7 @@ import { assets } from '../assets/registry'
 import { buildTrimesh } from '../lib/collision'
 import { Ceilings } from './Ceilings'
 import { Door } from './Door'
+import { Dressing } from './Dressing'
 import { Exterior } from './Exterior'
 import { Floors } from './Floors'
 import { Furnishings } from './Furnishings'
@@ -64,6 +65,7 @@ export function House() {
       <Ceilings />
       <Exterior />
       <Furnishings />
+      <Dressing />
       <Door />
       <Lamps />
     </>

@@ -172,7 +172,7 @@ function Pedestal({ def, active }: { def: ScreenDef; active: boolean }) {
       </RigidBody>
       <mesh position={[0, 0.42, 0]} castShadow receiveShadow>
         <cylinderGeometry args={[0.3, 0.34, 0.84, 36]} />
-        <meshStandardMaterial color="#14171c" metalness={0.7} roughness={0.35} />
+        <meshStandardMaterial color="#4a5460" metalness={0.25} roughness={0.5} />
       </mesh>
       <mesh position={[0, 0.845, 0]}>
         <cylinderGeometry args={[0.31, 0.31, 0.012, 36]} />
