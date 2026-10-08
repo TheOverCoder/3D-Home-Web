@@ -1,5 +1,6 @@
 import { useMemo, type ReactNode } from 'react'
 import { CanvasTexture, DoubleSide, LatheGeometry, SRGBColorSpace, Vector2 } from 'three'
+import { HOUSE } from '../data/layout'
 import { surface } from '../lib/proceduralTextures'
 import { B } from './Furnishings'
 
@@ -267,7 +268,7 @@ function Faucet() {
 function Pendant({ x, z }: { x: number; z: number }) {
   return (
     <group position={[x, 0, z]}>
-      <Cyl r={0.004} h={1.0} position={[0, 2.4, 0]} color="#1b1c1e" rough={0.8} segments={5} />
+      <Cyl r={0.004} h={HOUSE.wallHeight - 1.9} position={[0, (HOUSE.wallHeight + 1.9) / 2, 0]} color="#1b1c1e" rough={0.8} segments={5} />
       <Cyl r={0.17} top={0.05} h={0.18} position={[0, 1.86, 0]} color="#232528" rough={0.4} metal={0.5} segments={28} />
       <mesh position={[0, 1.78, 0]}>
         <sphereGeometry args={[0.05, 14, 12]} />
@@ -444,7 +445,7 @@ function House() {
       <At position={[1.7, 0, 5.875]}><Radiator width={1.0} /></At>
       {/* smoke detectors */}
       {[[-3.5, -3.0], [3.5, -3.0], [-3.5, 3.0], [3.5, 3.0]].map(([x, z]) => (
-        <At key={`${x}${z}`} position={[x + 1.2, 2.88, z + 0.8]}><SmokeDetector /></At>
+        <At key={`${x}${z}`} position={[x + 1.2, HOUSE.wallHeight - 0.02, z + 0.8]}><SmokeDetector /></At>
       ))}
     </>
   )

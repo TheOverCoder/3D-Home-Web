@@ -7,7 +7,7 @@ import { EcctrlCameraControls, type EcctrlCameraControlsHandle } from 'ecctrl/ca
 import { useButtonStore, useJoystickStore } from 'ecctrl/input'
 import { CameraControlsImpl } from '@react-three/drei'
 import { MathUtils, Quaternion, Vector3, type Group } from 'three'
-import { SPAWN, roomAt } from '../data/layout'
+import { HOUSE, SPAWN, roomAt } from '../data/layout'
 import { debugSet } from '../lib/debug'
 import { focus } from '../lib/focus'
 import { playGesture } from '../lib/gestures'
@@ -289,6 +289,10 @@ function CameraRig({ ecctrl, feet }: { ecctrl: RefObject<EcctrlHandle | null>; f
       .set(0, EYE_HEIGHT - NECK_UP + NECK_UP * Math.cos(th) + NECK_FRONT * Math.sin(th) + Math.sin(b.t * 2) * b.amp, NECK_FRONT + NECK_UP * Math.sin(th) - NECK_FRONT * Math.cos(th))
       .applyAxisAngle(UP, look.yaw)
     camera.position.set(eye.x + neck.x, eye.y + neck.y, eye.z + neck.z)
+    // never let the eyes leave the shell: a ceiling lid stops the body, this catches everything else
+    camera.position.y = Math.min(camera.position.y, HOUSE.wallHeight - 0.12)
+    camera.position.x = MathUtils.clamp(camera.position.x, HOUSE.minX + 0.12, HOUSE.maxX - 0.12)
+    camera.position.z = MathUtils.clamp(camera.position.z, HOUSE.minZ + 0.12, HOUSE.maxZ - 0.12)
     camera.rotation.set(look.pitch, look.yaw, Math.sin(b.t) * b.amp * 0.35, 'YXZ')
     // priority -0.5: right after CameraControls (-1), which keeps writing its own pose, and before every
     // other system that reads the camera this frame (ceilings, held item, wall fade, interaction)

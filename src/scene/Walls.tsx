@@ -3,6 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { CuboidCollider, RigidBody } from '@react-three/rapier'
 import { Box3, BoxGeometry, DoubleSide, MathUtils, Ray, Vector3, type MeshStandardMaterial } from 'three'
 import { DOORWAYS, HOUSE, ROOMS, WINDOWS, type Vec3, type WindowDef } from '../data/layout'
+import { boxProject } from '../lib/boxProject'
 import { surface } from '../lib/proceduralTextures'
 import { playerState } from '../lib/playerState'
 import { useHome } from '../store'
@@ -193,19 +194,20 @@ const BASE_OPACITY: Partial<Record<Kind, number>> = { glass: 0.16 }
 export function Walls() {
   const segs = useMemo(buildSegments, [])
   const plaster = useMemo(() => surface('plaster', 1, 1), [])
-  const textures = useMemo(
+  const textures = useMemo(() => segs.map((s) => (s.kind === 'fabric' ? surface('fabric', 3, 6) : plaster)), [segs, plaster])
+  // walls share one plaster texture set; their UVs are projected in metres (one tile = 2.2 m), which is what lets
+  // identical walls merge into a single draw in first person
+  const geometries = useMemo(
     () =>
-      segs.map((s) => {
-        if (s.kind === 'wall') {
-          const len = Math.max(s.size[0], s.size[2])
-          return surface('plaster', len / 2.2, s.size[1] / 2.2)
-        }
-        if (s.kind === 'fabric') return surface('fabric', 3, 6)
-        return plaster
-      }),
-    [segs, plaster],
+      segs.map((s) =>
+        s.kind === 'fabric'
+          ? pleatedBox(s.size, s.axis)
+          : s.kind === 'wall'
+            ? boxProject(new BoxGeometry(s.size[0], s.size[1], s.size[2]), 2.2, s.center[0] * 0.73 + s.center[2] * 1.31)
+            : null,
+      ),
+    [segs],
   )
-  const geometries = useMemo(() => segs.map((s) => (s.kind === 'fabric' ? pleatedBox(s.size, s.axis) : null)), [segs])
   const mats = useRef<(MeshStandardMaterial | null)[][]>(segs.map(() => []))
   const boxes = useMemo(
     () => segs.map((s) => new Box3().setFromCenterAndSize(new Vector3(...s.center), new Vector3(...s.size)).expandByScalar(0.02)),

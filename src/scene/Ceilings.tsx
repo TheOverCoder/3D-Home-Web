@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
+import { CuboidCollider, RigidBody } from '@react-three/rapier'
 import { MathUtils, type Group, type Mesh, type MeshStandardMaterial, type PointLight } from 'three'
 import { HOUSE, ROOMS, type RoomId } from '../data/layout'
 import { levels } from '../lib/lightLevels'
@@ -82,13 +83,25 @@ function CeilingLight({ id }: { id: RoomId }) {
   useFrame(() => {
     if (light.current) light.current.intensity = ceiling * levels[id]
   })
-  return <pointLight ref={light} position={[(minX + maxX) / 2, H - 0.7, (minZ + maxZ) / 2]} color={color} intensity={ceiling} distance={10} decay={2} />
+  return <pointLight ref={light} position={[(minX + maxX) / 2, H - 0.9, (minZ + maxZ) / 2]} color={color} intensity={ceiling} distance={10} decay={2} />
+}
+
+/** An unseen floor-to-sky lid so nobody can jump (or climb furniture and jump) through the ceiling. */
+function CeilingCollider() {
+  const w = (HOUSE.maxX - HOUSE.minX) / 2 + 0.5
+  const d = (HOUSE.maxZ - HOUSE.minZ) / 2 + 0.5
+  return (
+    <RigidBody type="fixed" colliders={false}>
+      <CuboidCollider args={[w, 0.5, d]} position={[(HOUSE.minX + HOUSE.maxX) / 2, H + 0.5, (HOUSE.minZ + HOUSE.maxZ) / 2]} />
+    </RigidBody>
+  )
 }
 
 export function Ceilings() {
   const ids = Object.keys(ROOMS) as RoomId[]
   return (
     <>
+      <CeilingCollider />
       {ids.map((id) => (
         <Ceiling key={id} id={id} />
       ))}

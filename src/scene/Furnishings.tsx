@@ -1,7 +1,7 @@
 import { Suspense, useMemo, type ReactNode } from 'react'
-import { RoundedBox, useGLTF } from '@react-three/drei'
+import { useGLTF } from '@react-three/drei'
 import { CuboidCollider, RigidBody } from '@react-three/rapier'
-import { Box3, DoubleSide, Mesh, PlaneGeometry, Vector3, type Texture } from 'three'
+import { Box3, BoxGeometry, DoubleSide, Mesh, PlaneGeometry, Vector3, type BufferGeometry, type Texture } from 'three'
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
 import { boxProject } from '../lib/boxProject'
 import { material, surface, type MaterialKind } from '../lib/proceduralTextures'
@@ -27,64 +27,40 @@ interface BProps {
   emissiveIntensity?: number
 }
 
+const boxCache = new Map<string, BufferGeometry>()
+
+/** Shared box geometry: plain for small or sharp pieces, softly rounded otherwise (kept light on triangles). */
+function boxGeometry(size: V3, radius: number, tile?: number, offset = 0): BufferGeometry {
+  const key = `${size.join(',')}|${radius}|${tile ?? ''}|${tile ? offset.toFixed(2) : ''}`
+  let g = boxCache.get(key)
+  if (!g) {
+    const r = Math.min(radius, Math.min(...size) / 2 - 1e-3)
+    g = r < 0.008 ? new BoxGeometry(size[0], size[1], size[2]) : new RoundedBoxGeometry(size[0], size[1], size[2], 2, r)
+    if (tile) boxProject(g, tile, offset)
+    boxCache.set(key, g)
+  }
+  return g
+}
+
 /** A (rounded) box — the building block of every placeholder prop. */
 export function B({ size, position, rotation, color, roughness = 0.8, metalness = 0, radius = 0.015, emissive, emissiveIntensity, fabric, mat, tile = 0.6 }: BProps) {
   // textured boxes share their map set and carry projected UVs
   const set = mat ? material(mat) : null
-  const geometry = useMemo(() => {
-    if (!mat) return null
-    const r = Math.max(0.001, Math.min(radius, Math.min(...size) / 2 - 1e-3))
-    return boxProject(new RoundedBoxGeometry(size[0], size[1], size[2], 3, r), tile, (position?.[0] ?? 0) * 3.1 + (position?.[2] ?? 0) * 1.7)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mat, tile, radius, size[0], size[1], size[2], position?.[0], position?.[2]])
-  if (set && geometry) {
-    return (
-      <mesh geometry={geometry} position={position} rotation={rotation} castShadow receiveShadow>
-        <meshStandardMaterial
-          color={color}
-          map={set.map}
-          normalMap={set.normalMap}
-          roughnessMap={set.roughnessMap}
-          roughness={roughness}
-          metalness={metalness}
-          normalScale={[1, 1]}
-          emissive={emissive}
-          emissiveIntensity={emissiveIntensity}
-        />
-      </mesh>
-    )
-  }
-  const surfaceMaterial = (
-    <meshStandardMaterial
-      color={color}
-      roughness={roughness}
-      metalness={metalness}
-      emissive={emissive}
-      emissiveIntensity={emissiveIntensity}
-      normalMap={fabric ? weave() : null}
-      normalScale={[0.8, 0.8]}
-    />
-  )
-  if (radius <= 0) {
-    return (
-      <mesh position={position} rotation={rotation} castShadow receiveShadow>
-        <boxGeometry args={size} />
-        {surfaceMaterial}
-      </mesh>
-    )
-  }
+  const geometry = boxGeometry(size, radius, mat ? tile : undefined, (position?.[0] ?? 0) * 3.1 + (position?.[2] ?? 0) * 1.7)
   return (
-    <RoundedBox
-      args={size}
-      radius={Math.min(radius, Math.min(...size) / 2 - 1e-3)}
-      smoothness={3}
-      position={position}
-      rotation={rotation}
-      castShadow
-      receiveShadow
-    >
-      {surfaceMaterial}
-    </RoundedBox>
+    <mesh geometry={geometry} position={position} rotation={rotation} castShadow receiveShadow>
+      <meshStandardMaterial
+        color={color}
+        roughness={roughness}
+        metalness={metalness}
+        emissive={emissive}
+        emissiveIntensity={emissiveIntensity}
+        map={set?.map ?? null}
+        normalMap={set ? set.normalMap : fabric ? weave() : null}
+        roughnessMap={set?.roughnessMap ?? null}
+        normalScale={set ? [1, 1] : [0.8, 0.8]}
+      />
+    </mesh>
   )
 }
 
@@ -123,9 +99,12 @@ function Solid({ id, position, rotationY = 0, size, children }: SolidProps) {
     <RigidBody type="fixed" colliders={false} position={position} rotation={[0, rotationY, 0]}>
       <CuboidCollider args={[size[0] / 2, size[1] / 2, size[2] / 2]} position={[0, size[1] / 2, 0]} />
       {url ? (
-        <Suspense fallback={children}>
-          <GlbProp url={url} size={size} />
-        </Suspense>
+        // a real model replaces the placeholder later: never merge this group into the static batch
+        <group userData={{ noBatch: true }}>
+          <Suspense fallback={children}>
+            <GlbProp url={url} size={size} />
+          </Suspense>
+        </group>
       ) : (
         children
       )}

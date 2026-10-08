@@ -26,7 +26,7 @@ export const HOUSE = {
   maxX: 7,
   minZ: -6,
   maxZ: 6,
-  wallHeight: 2.9,
+  wallHeight: 3.1,
   wallThickness: 0.16,
   doorHeight: 2.1,
 } as const
