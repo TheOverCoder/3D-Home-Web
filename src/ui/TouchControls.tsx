@@ -7,7 +7,8 @@ const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)
 export function TouchControls() {
   const phase = useHome((s) => s.phase)
   const screen = useHome((s) => s.screen)
-  if (!coarse || phase !== 'playing' || screen) return null
+  const settingsOpen = useHome((s) => s.settingsOpen)
+  if (!coarse || phase !== 'playing' || screen || settingsOpen) return null
   return (
     <>
       <Joystick joystickWrapperStyle={{ left: 12, bottom: 20 }} />

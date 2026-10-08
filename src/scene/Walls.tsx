@@ -97,10 +97,12 @@ function doorFrame(d: (typeof DOORWAYS)[keyof typeof DOORWAYS], tag: string): Se
   const rest = (k: string) => ({ key: `${tag}-${k}`, color: TRIM, kind: 'trim' as const, solid: false })
   const lo = d.centre - d.width / 2
   const hi = d.centre + d.width / 2
+  // Inside the opening: their outer faces touch the wall back-to-back (never coplanar, same direction),
+  // and they stand proud of both wall faces by the extra depth.
   return [
-    piece(d.axis, d.at, lo - jamb / 2, DH / 2, 0, jamb, DH, depth, rest('l')),
-    piece(d.axis, d.at, hi + jamb / 2, DH / 2, 0, jamb, DH, depth, rest('r')),
-    piece(d.axis, d.at, d.centre, DH + jamb / 2, 0, d.width + jamb * 2, jamb, depth, rest('h')),
+    piece(d.axis, d.at, lo + jamb / 2, (DH - jamb) / 2, 0, jamb, DH - jamb, depth, rest('l')),
+    piece(d.axis, d.at, hi - jamb / 2, (DH - jamb) / 2, 0, jamb, DH - jamb, depth, rest('r')),
+    piece(d.axis, d.at, d.centre, DH - jamb / 2, 0, d.width, jamb, depth, rest('h')),
   ]
 }
 
@@ -124,7 +126,7 @@ function windowPieces(w: WindowDef): Seg[] {
     P('mh', w.centre, mid + h * 0.12, 0, w.width - bar * 2, 0.03, 0.06, 'trim'),
     // the pane doubles as an invisible barrier so nothing walks or jumps out through the opening
     P('glass', w.centre, mid, 0, w.width - bar * 2, h - bar * 2, 0.012, 'glass', true, '#cfe3f2'),
-    P('board', w.centre, w.sill - 0.02, n * 0.12, w.width + 0.16, 0.04, 0.26, 'trim'),
+    P('board', w.centre, w.sill - 0.016, n * 0.12, w.width + 0.16, 0.04, 0.26, 'trim'),
     // curtains: two panels and a rod
     P('cl', lo - 0.2, 1.33, n * 0.15, 0.34, 2.4, 0.08, 'fabric', false, '#c9bfae'),
     P('cr', hi + 0.2, 1.33, n * 0.15, 0.34, 2.4, 0.08, 'fabric', false, '#c9bfae'),
@@ -139,20 +141,24 @@ function buildSegments(): Seg[] {
   const gapsOn = (axis: 'x' | 'z', at: number): Gap[] =>
     WINDOWS.filter((w) => w.axis === axis && w.at === at).map((w) => ({ centre: w.centre, width: w.width, y0: w.sill, y1: w.top }))
   const zGaps: Gap[] = [DOORWAYS.livingOffice, DOORWAYS.kitchenBedroom]
-  const xGaps: Gap[] = [DOORWAYS.officeKitchen, DOORWAYS.livingBedroom]
+  const xGapsNorth: Gap[] = [DOORWAYS.officeKitchen]
+  const xGapsSouth: Gap[] = [DOORWAYS.livingBedroom]
+  // Every junction is built so that no two pieces overlap: north/south walls own the corners, west/east
+  // walls stop at their inner faces, the z = 0 wall owns the central crossing, the x = 0 wall stops at it.
   return [
     // exterior, coloured per room so the inside reads correctly
     ...run('x', minZ, minX - e, 0, gapsOn('x', minZ), r.office.wall, 'n-office'),
     ...run('x', minZ, 0, maxX + e, gapsOn('x', minZ), r.kitchen.wall, 'n-kitchen'),
     ...run('x', maxZ, minX - e, 0, gapsOn('x', maxZ), r.living.wall, 's-living'),
     ...run('x', maxZ, 0, maxX + e, gapsOn('x', maxZ), r.bedroom.wall, 's-bedroom'),
-    ...run('z', minX, minZ - e, 0, gapsOn('z', minX), r.office.wall, 'w-office'),
-    ...run('z', minX, 0, maxZ + e, gapsOn('z', minX), r.living.wall, 'w-living'),
-    ...run('z', maxX, minZ - e, 0, gapsOn('z', maxX), r.kitchen.wall, 'e-kitchen'),
-    ...run('z', maxX, 0, maxZ + e, gapsOn('z', maxX), r.bedroom.wall, 'e-bedroom'),
+    ...run('z', minX, minZ + e, 0, gapsOn('z', minX), r.office.wall, 'w-office'),
+    ...run('z', minX, 0, maxZ - e, gapsOn('z', minX), r.living.wall, 'w-living'),
+    ...run('z', maxX, minZ + e, 0, gapsOn('z', maxX), r.kitchen.wall, 'e-kitchen'),
+    ...run('z', maxX, 0, maxZ - e, gapsOn('z', maxX), r.bedroom.wall, 'e-bedroom'),
     // interior cross walls with doorways
-    ...run('x', 0, minX, maxX, zGaps, INTERIOR, 'mid-z'),
-    ...run('z', 0, minZ, maxZ, xGaps, INTERIOR, 'mid-x'),
+    ...run('x', 0, minX + e, maxX - e, zGaps, INTERIOR, 'mid-z'),
+    ...run('z', 0, minZ + e, -e, xGapsNorth, INTERIOR, 'mid-x-n'),
+    ...run('z', 0, e, maxZ - e, xGapsSouth, INTERIOR, 'mid-x-s'),
     ...Object.entries(DOORWAYS).flatMap(([k, d]) => doorFrame(d, `door-${k}`)),
     ...WINDOWS.flatMap(windowPieces),
   ]
@@ -258,6 +264,9 @@ export function Walls() {
                   roughnessMap={s.kind === 'wall' || s.kind === 'fabric' ? tex.roughnessMap : null}
                   roughness={s.kind === 'trim' ? 0.35 : s.kind === 'dark' ? 0.4 : 1}
                   metalness={s.kind === 'dark' ? 0.6 : 0}
+                  polygonOffset={s.kind !== 'wall'}
+                  polygonOffsetFactor={-1}
+                  polygonOffsetUnits={-1}
                 />
               )}
             </mesh>
@@ -272,11 +281,14 @@ export function Walls() {
                       }}
                       color={TRIM}
                       roughness={0.35}
+                      polygonOffset
+                      polygonOffsetFactor={-1}
+                      polygonOffsetUnits={-1}
                     />
                   </mesh>
                 )}
                 {s.top && (
-                  <mesh position={[0, s.size[1] / 2 - 0.035, 0]} receiveShadow>
+                  <mesh position={[0, s.size[1] / 2 - 0.039, 0]} receiveShadow>
                     <boxGeometry args={onX ? [len, 0.07, trimDepth + 0.03] : [trimDepth + 0.03, 0.07, len]} />
                     <meshStandardMaterial
                       ref={(m) => {
@@ -284,6 +296,9 @@ export function Walls() {
                       }}
                       color={TRIM}
                       roughness={0.35}
+                      polygonOffset
+                      polygonOffsetFactor={-1}
+                      polygonOffsetUnits={-1}
                     />
                   </mesh>
                 )}

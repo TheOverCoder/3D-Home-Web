@@ -1,19 +1,59 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { PICKUPS, ROOMS } from '../data/layout'
 import { triggerInteraction } from '../lib/interaction'
+import { useSettings } from '../settings'
 import { useHome } from '../store'
+
+/** Room name that fades in when you walk into a new room, like a film title. */
+function RoomTitle() {
+  const room = useHome((s) => s.room)
+  const [shown, setShown] = useState<{ name: string; key: number } | null>(null)
+  const seq = useRef(0)
+  const last = useRef(room)
+
+  useEffect(() => {
+    if (!room || room === last.current) {
+      last.current = room ?? last.current
+      return
+    }
+    last.current = room
+    setShown({ name: ROOMS[room].name, key: ++seq.current })
+    const t = setTimeout(() => setShown(null), 3200)
+    return () => clearTimeout(t)
+  }, [room])
+
+  return shown ? (
+    <div className="room-title" key={shown.key} aria-live="polite">
+      {shown.name}
+    </div>
+  ) : null
+}
+
+/** One quiet line the first time you step inside; everything else lives in the settings panel. */
+function FirstHint() {
+  const hintShown = useHome((s) => s.hintShown)
+  const [visible, setVisible] = useState(!hintShown)
+  useEffect(() => {
+    if (hintShown) return
+    useHome.getState().markHintShown()
+    const t = setTimeout(() => setVisible(false), 7000)
+    return () => clearTimeout(t)
+  }, [hintShown])
+  return visible ? (
+    <div className="first-hint" aria-hidden="true">
+      Move with <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> · look with the mouse · <kbd>Esc</kbd> for settings
+    </div>
+  ) : null
+}
 
 export function Hud() {
   const phase = useHome((s) => s.phase)
-  const room = useHome((s) => s.room)
   const nearby = useHome((s) => s.nearby)
   const carrying = useHome((s) => s.carrying)
   const screen = useHome((s) => s.screen)
-  const quality = useHome((s) => s.quality)
-  const setQuality = useHome((s) => s.setQuality)
+  const settingsOpen = useHome((s) => s.settingsOpen)
   const toast = useHome((s) => s.toast)
-  const view = useHome((s) => s.view)
-  const setView = useHome((s) => s.setView)
+  const cinema = useSettings((s) => s.cinema)
 
   useEffect(() => {
     if (!toast) return
@@ -24,23 +64,13 @@ export function Hud() {
   if (phase !== 'playing') return null
 
   const carried = PICKUPS.find((p) => p.id === carrying)
-  const prompt = screen ? null : nearby?.label ?? (carried ? `Put down the ${carried.name}` : null)
+  const prompt = screen || settingsOpen ? null : nearby?.label ?? (carried ? `Put down the ${carried.name}` : null)
 
   return (
     <>
-      <div className="hud-top">
-        {room && <span className="chip">{ROOMS[room].name}</span>}
-        {carried && <span className="chip subtle">Carrying: {carried.name}</span>}
-        <span className="spacer" />
-        <button className="chip button" onClick={() => setView(view === 'first' ? 'third' : 'first')} aria-label="Switch between first and third person view (V)">
-          View: {view === 'first' ? 'First person' : 'Third person'}
-        </button>
-        <button className="chip button" onClick={() => setQuality(quality === 'high' ? 'low' : 'high')} aria-label="Toggle graphics quality">
-          Graphics: {quality === 'high' ? 'High' : 'Low'}
-        </button>
-      </div>
-
-      {view === 'first' && !screen && <div className={nearby ? 'crosshair on' : 'crosshair'} aria-hidden="true" />}
+      {cinema && <div className="cinema-bars" aria-hidden="true" />}
+      <RoomTitle />
+      <FirstHint />
 
       <div className="hud-prompt" aria-live="polite">
         {prompt && (
@@ -49,10 +79,6 @@ export function Hud() {
             <span>{prompt}</span>
           </button>
         )}
-      </div>
-
-      <div className="hud-help" aria-hidden="true">
-        <kbd>WASD</kbd> walk · <kbd>Shift</kbd> run · <kbd>Space</kbd> jump · <kbd>E</kbd> interact · <kbd>V</kbd> change view · click and move the mouse to look
       </div>
 
       {toast && (

@@ -5,6 +5,8 @@ import { Physics } from '@react-three/rapier'
 import { useHome } from '../store'
 import { Effects } from './Effects'
 import { House } from './House'
+import { LightDirector } from './LightDirector'
+import { LightShafts } from './LightShafts'
 import { Lighting } from './Lighting'
 import { Pickups } from './Pickups'
 import { Player } from './Player'
@@ -43,6 +45,8 @@ export default function Experience() {
       <Suspense fallback={null}>
         <Physics gravity={[0, -9.81, 0]}>
           <House />
+          <LightShafts />
+          <LightDirector />
           <Screens />
           <Pickups />
           <Player />

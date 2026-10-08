@@ -71,8 +71,8 @@ export function dropPosition(): [number, number, number] {
 
 /** Runs whatever the player is currently standing next to; otherwise drops what they carry. */
 export function triggerInteraction() {
-  const { nearby, carrying, screen, drop } = useHome.getState()
-  if (screen) return
+  const { nearby, carrying, screen, settingsOpen, drop } = useHome.getState()
+  if (screen || settingsOpen) return
   if (nearby) {
     registry.get(nearby.id)?.run()
     return

@@ -90,7 +90,7 @@ function ScreenPanel({ def, active }: { def: ScreenDef; active: boolean }) {
       <RoundedBox args={[w + 0.08, h + 0.08, 0.05]} radius={0.012} smoothness={3} castShadow>
         <meshStandardMaterial color="#0a0b0d" roughness={0.35} metalness={0.6} />
       </RoundedBox>
-      <mesh position={[0, 0, 0.026]}>
+      <mesh position={[0, 0, 0.028]}>
         <planeGeometry args={[w, h]} />
         <meshStandardMaterial
           map={texture}
@@ -98,6 +98,9 @@ function ScreenPanel({ def, active }: { def: ScreenDef; active: boolean }) {
           emissive={new Color('#ffffff')}
           emissiveIntensity={active ? 1.5 : 0.8}
           roughness={0.65}
+          polygonOffset
+          polygonOffsetFactor={-2}
+          polygonOffsetUnits={-2}
         />
       </mesh>
     </group>

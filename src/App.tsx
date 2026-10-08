@@ -5,6 +5,7 @@ import { useHome } from './store'
 import { Hud } from './ui/Hud'
 import { Intro } from './ui/Intro'
 import { ScreenModal } from './ui/ScreenModal'
+import { SettingsPanel } from './ui/SettingsPanel'
 import { TouchControls } from './ui/TouchControls'
 
 // three.js, Rapier and the whole scene load in their own chunk so the intro paints immediately.
@@ -30,6 +31,7 @@ export function App() {
       <Hud />
       <TouchControls />
       <ScreenModal />
+      <SettingsPanel />
       <Intro />
     </>
   )

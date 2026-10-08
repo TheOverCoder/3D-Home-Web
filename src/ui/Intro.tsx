@@ -27,16 +27,7 @@ export function Intro() {
         <button className="primary" disabled={loading || !!failure} onClick={() => setPhase('playing')}>
           {failure ? 'Unavailable here' : loading ? (progress > 0 && progress < 100 ? `Loading… ${Math.round(progress)}%` : 'Preparing the house…') : 'Enter the house'}
         </button>
-        <ul className="keys touch" aria-label="Touch controls">
-          <li>left joystick to walk · drag the scene to look</li>
-          <li>tap <kbd>E</kbd> to interact</li>
-        </ul>
-        <ul className="keys desktop" aria-label="Controls">
-          <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk</li>
-          <li><kbd>Shift</kbd> run · <kbd>Space</kbd> jump</li>
-          <li>mouse to look (click the scene first)</li>
-          <li><kbd>E</kbd> interact · <kbd>V</kbd> change view</li>
-        </ul>
+        <p className="tip">Press <kbd>Esc</kbd> at any time for controls and settings.</p>
         <details className="credits">
           <summary>Credits</summary>
           <ul>

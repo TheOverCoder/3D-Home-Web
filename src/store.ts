@@ -17,6 +17,8 @@ interface HomeState {
   progress: number
   failure: string | null
   view: 'first' | 'third'
+  settingsOpen: boolean
+  hintShown: boolean
   room: RoomId | null
   nearby: Nearby | null
   screen: string | null
@@ -31,6 +33,8 @@ interface HomeState {
   markReady: (key: 'scene' | 'env') => void
   setFailure: (failure: string | null) => void
   setView: (view: 'first' | 'third') => void
+  setSettingsOpen: (open: boolean) => void
+  markHintShown: () => void
   setRoom: (room: RoomId | null) => void
   setNearby: (nearby: Nearby | null) => void
   openScreen: (id: string) => void
@@ -51,6 +55,8 @@ export const useHome = create<HomeState>()((set, get) => ({
   progress: 0,
   failure: null,
   view: 'first',
+  settingsOpen: false,
+  hintShown: false,
   room: null,
   nearby: null,
   screen: null,
@@ -65,6 +71,8 @@ export const useHome = create<HomeState>()((set, get) => ({
   markReady: (key) => set((s) => (s.ready[key] ? s : { ready: { ...s.ready, [key]: true } })),
   setFailure: (failure) => set({ failure }),
   setView: (view) => set({ view }),
+  setSettingsOpen: (settingsOpen) => set({ settingsOpen, nearby: settingsOpen ? null : get().nearby }),
+  markHintShown: () => set({ hintShown: true }),
   setRoom: (room) => set({ room }),
   setNearby: (nearby) => set({ nearby }),
   openScreen: (screen) => set({ screen, nearby: null }),

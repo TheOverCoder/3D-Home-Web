@@ -1,6 +1,9 @@
-import { DoubleSide } from 'three'
+import { useRef } from 'react'
+import { useFrame } from '@react-three/fiber'
+import { DoubleSide, type PointLight } from 'three'
 import { LAMPS, type LampDef } from '../data/layout'
 import { useInteractable } from '../lib/interaction'
+import { levels } from '../lib/lightLevels'
 import { playGesture } from '../lib/gestures'
 import { useHome } from '../store'
 
@@ -49,6 +52,13 @@ function Fixture({ def, on }: { def: LampDef; on: boolean }) {
 function Lamp({ def, fixture }: { def: LampDef; fixture: boolean }) {
   const on = useHome((s) => s.lamps[def.id])
   const toggleLamp = useHome((s) => s.toggleLamp)
+  const light = useRef<PointLight>(null)
+  const current = useRef(on ? 1 : 0)
+  // fades up and down instead of popping, and dims a little when you are elsewhere in the house
+  useFrame((_, dt) => {
+    current.current += ((useHome.getState().lamps[def.id] ? 1 : 0) - current.current) * (1 - Math.exp(-7 * dt))
+    if (light.current) light.current.intensity = 6.5 * current.current * (0.6 + 0.4 * levels[def.room])
+  })
   useInteractable({
     id: def.id,
     label: on ? 'Switch the light off' : 'Switch the light on',
@@ -63,7 +73,7 @@ function Lamp({ def, fixture }: { def: LampDef; fixture: boolean }) {
     <>
       {fixture && <Fixture def={def} on={on} />}
       {/* constant light count (intensity 0 when off) so toggling never recompiles shaders */}
-      <pointLight position={def.position} color={WARM} intensity={on ? 7 : 0} distance={7} decay={1.6} />
+      <pointLight ref={light} position={def.position} color={WARM} intensity={on ? 6.5 : 0} distance={7} decay={1.7} />
     </>
   )
 }

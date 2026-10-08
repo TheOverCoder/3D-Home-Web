@@ -6,9 +6,15 @@ export type RoomId = 'living' | 'office' | 'kitchen' | 'bedroom'
 export type FloorKind = 'wood' | 'tile' | 'carpet'
 export type Vec3 = [number, number, number]
 
+export interface Mood {
+  ceiling: number // intensity of the room's downlight (candela)
+  color: string // its colour temperature
+}
+
 export interface RoomDef {
   id: RoomId
   name: string
+  mood: Mood
   bounds: { minX: number; maxX: number; minZ: number; maxZ: number }
   floor: FloorKind
   floorTint: string
@@ -29,6 +35,7 @@ export const ROOMS: Record<RoomId, RoomDef> = {
   office: {
     id: 'office',
     name: 'Studio',
+    mood: { ceiling: 9, color: '#eef1ff' }, // cooler, brighter: a place to work
     bounds: { minX: -7, maxX: 0, minZ: -6, maxZ: 0 },
     floor: 'wood',
     floorTint: '#b99872',
@@ -37,6 +44,7 @@ export const ROOMS: Record<RoomId, RoomDef> = {
   kitchen: {
     id: 'kitchen',
     name: 'Kitchen',
+    mood: { ceiling: 11, color: '#fff3df' },
     bounds: { minX: 0, maxX: 7, minZ: -6, maxZ: 0 },
     floor: 'tile',
     floorTint: '#d9dcd8',
@@ -45,6 +53,7 @@ export const ROOMS: Record<RoomId, RoomDef> = {
   living: {
     id: 'living',
     name: 'Living room',
+    mood: { ceiling: 5, color: '#ffd7a6' }, // warm and low, the lamps do the work
     bounds: { minX: -7, maxX: 0, minZ: 0, maxZ: 6 },
     floor: 'wood',
     floorTint: '#a8825a',
@@ -53,12 +62,21 @@ export const ROOMS: Record<RoomId, RoomDef> = {
   bedroom: {
     id: 'bedroom',
     name: 'Bedroom',
+    mood: { ceiling: 4, color: '#ffcf98' },
     bounds: { minX: 0, maxX: 7, minZ: 0, maxZ: 6 },
     floor: 'carpet',
     floorTint: '#8d8a86',
     wall: '#d9dfe4',
   },
 }
+
+/** Rooms that share a doorway: their light bleeds into each other. */
+export const ADJACENT: [RoomId, RoomId][] = [
+  ['living', 'office'],
+  ['office', 'kitchen'],
+  ['kitchen', 'bedroom'],
+  ['living', 'bedroom'],
+]
 
 export function roomAt(x: number, z: number): RoomId | null {
   for (const room of Object.values(ROOMS)) {

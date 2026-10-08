@@ -1,19 +1,22 @@
 import { useEffect, useRef, type RefObject } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
+import { useRapier } from '@react-three/rapier'
 import { Ecctrl, type EcctrlHandle } from 'ecctrl'
 import { EcctrlAnimationStateController } from 'ecctrl/animation'
 import { EcctrlCameraControls, type EcctrlCameraControlsHandle } from 'ecctrl/camera'
 import { useButtonStore, useJoystickStore } from 'ecctrl/input'
 import { CameraControlsImpl } from '@react-three/drei'
 import { MathUtils, Quaternion, Vector3, type Group } from 'three'
-import { PICKUPS, SPAWN, roomAt } from '../data/layout'
+import { SPAWN, roomAt } from '../data/layout'
 import { debugSet } from '../lib/debug'
+import { focus } from '../lib/focus'
+import { playGesture } from '../lib/gestures'
 import { findNearest, triggerInteraction, type ViewRay } from '../lib/interaction'
-import { addLook, look } from '../lib/look'
+import { addLook, look, look as lookState } from '../lib/look'
 import { playerState } from '../lib/playerState'
+import { useSettings } from '../settings'
 import { useHome } from '../store'
-import { Avatar } from './Avatar'
-import { PickupMesh } from './Pickups'
+import { Avatar, HeldItem } from './Avatar'
 
 const CAPSULE_HALF = 0.5
 const CAPSULE_RADIUS = 0.28
@@ -21,6 +24,10 @@ const FLOAT = 0.12
 // body-centre → feet: the capsule hovers FLOAT above the floor
 const FEET = CAPSULE_HALF + CAPSULE_RADIUS + FLOAT
 const EYE_HEIGHT = 1.62 // above the feet
+const BODY_BACK = 0.14 // how far the body sits behind the eyes in first person
+// the eyes sit above and in front of the neck pivot, so tipping the head forward moves them forward and down
+const NECK_UP = 0.12
+const NECK_FRONT = 0.09
 
 const KEYS: Record<string, 'forward' | 'backward' | 'leftward' | 'rightward' | 'jump' | 'run'> = {
   KeyW: 'forward',
@@ -41,6 +48,7 @@ const isTyping = (t: EventTarget | null) =>
 
 // Current keyboard state. Events only mutate this; <Player /> applies it to the controller every
 // frame, so a key pressed while the scene is momentarily suspended is never lost.
+let lastOpened = 0 // when the settings panel last opened (see the Esc handling)
 const keys = { forward: false, backward: false, leftward: false, rightward: false, jump: false, run: false }
 const held = new Set<string>()
 
@@ -64,11 +72,16 @@ function useKeyboard() {
     const onDown = (e: KeyboardEvent) => {
       if (isTyping(e.target)) return
       const state = useHome.getState()
-      if (e.code === 'Escape' && state.screen) {
-        state.closeScreen()
+      if (e.code === 'Escape') {
+        if (state.screen) state.closeScreen()
+        else if (state.phase === 'playing') {
+          // some browsers also deliver this Esc after releasing the pointer lock, which already opened the panel
+          if (!state.settingsOpen) state.setSettingsOpen(true)
+          else if (performance.now() - lastOpened > 250) state.setSettingsOpen(false)
+        }
         return
       }
-      if (state.phase !== 'playing' || state.screen) return
+      if (state.phase !== 'playing' || state.screen || state.settingsOpen) return
       if (e.code === 'KeyE') {
         if (!e.repeat) triggerInteraction()
         return
@@ -90,7 +103,8 @@ function useKeyboard() {
     window.addEventListener('keyup', onUp)
     window.addEventListener('blur', release)
     const unsub = useHome.subscribe((s, p) => {
-      if ((s.screen && !p.screen) || (s.phase !== 'playing' && p.phase === 'playing')) release()
+      if (s.settingsOpen && !p.settingsOpen) lastOpened = performance.now()
+      if ((s.screen && !p.screen) || (s.settingsOpen && !p.settingsOpen) || (s.phase !== 'playing' && p.phase === 'playing')) release()
     })
     return () => {
       window.removeEventListener('keydown', onDown)
@@ -112,9 +126,15 @@ function LookInput() {
     let dragging = false
     let lastX = 0
     let lastY = 0
+    let wasLocked = false
+    let expectedUnlock = false
     const active = () => {
       const s = useHome.getState()
-      return s.view === 'first' && s.phase === 'playing' && !s.screen
+      return s.view === 'first' && s.phase === 'playing' && !s.screen && !s.settingsOpen
+    }
+    const look = (dx: number, dy: number, base: number) => {
+      const { sensitivity, invertY } = useSettings.getState()
+      addLook(dx, invertY ? -dy : dy, base * sensitivity)
     }
     const onDown = (e: PointerEvent) => {
       if (!active()) return
@@ -133,9 +153,9 @@ function LookInput() {
     const onMove = (e: PointerEvent) => {
       if (!active()) return
       if (document.pointerLockElement === dom) {
-        addLook(e.movementX, e.movementY)
+        look(e.movementX, e.movementY, 0.0022)
       } else if (dragging) {
-        addLook(e.clientX - lastX, e.clientY - lastY, 0.0032)
+        look(e.clientX - lastX, e.clientY - lastY, 0.0032)
         lastX = e.clientX
         lastY = e.clientY
       }
@@ -144,77 +164,58 @@ function LookInput() {
       dragging = false
       dom.releasePointerCapture?.(e.pointerId)
     }
+    // Esc while the pointer is captured releases it; treat that as "pause" and show the settings
+    const onLockChange = () => {
+      if (document.pointerLockElement === dom) {
+        wasLocked = true
+        return
+      }
+      if (!wasLocked) return
+      wasLocked = false
+      const s = useHome.getState()
+      if (!expectedUnlock && s.phase === 'playing' && !s.screen && !s.settingsOpen) s.setSettingsOpen(true)
+      expectedUnlock = false
+    }
     dom.addEventListener('pointerdown', onDown)
     dom.addEventListener('pointermove', onMove)
     dom.addEventListener('pointerup', onUp)
     dom.addEventListener('pointercancel', onUp)
+    document.addEventListener('pointerlockchange', onLockChange)
     const unsub = useHome.subscribe((s) => {
-      if ((s.screen || s.view !== 'first') && document.pointerLockElement === dom) document.exitPointerLock()
+      if ((s.screen || s.settingsOpen || s.view !== 'first') && document.pointerLockElement === dom) {
+        expectedUnlock = true
+        document.exitPointerLock()
+      }
     })
     debugSet('addLook', addLook)
-    debugSet('look', look)
+    debugSet('look', lookState)
     return () => {
       dom.removeEventListener('pointerdown', onDown)
       dom.removeEventListener('pointermove', onMove)
       dom.removeEventListener('pointerup', onUp)
       dom.removeEventListener('pointercancel', onUp)
+      document.removeEventListener('pointerlockchange', onLockChange)
       unsub()
     }
   }, [dom])
   return null
 }
 
-/** What the avatar carries, seen from outside (third person). */
-function CarriedItem() {
-  const id = useHome((s) => s.carrying)
-  const def = PICKUPS.find((p) => p.id === id)
-  if (!def) return null
-  return (
-    <group position={[0.16, 1.02, 0.42]}>
-      <PickupMesh kind={def.kind} />
-    </group>
-  )
-}
-
-const fwd = new Vector3()
-const right = new Vector3()
-const up = new Vector3(0, 1, 0)
-
-/** What you carry, seen from your own eyes: held low and to the right, following the view. */
-function HeldItem() {
-  const id = useHome((s) => s.carrying)
-  const view = useHome((s) => s.view)
-  const camera = useThree((s) => s.camera)
-  const group = useRef<Group>(null)
-  const def = PICKUPS.find((p) => p.id === id)
-
-  useFrame(() => {
-    const g = group.current
-    if (!g) return
-    camera.getWorldDirection(fwd)
-    right.crossVectors(fwd, up).normalize()
-    g.position.copy(camera.position).addScaledVector(fwd, 0.55).addScaledVector(right, 0.24).addScaledVector(up, -0.24)
-    g.quaternion.copy(camera.quaternion)
-  })
-
-  if (!def || view !== 'first') return null
-  return (
-    <group ref={group}>
-      <PickupMesh kind={def.kind} />
-    </group>
-  )
-}
-
 const facing = new Vector3()
 const q = new Quaternion()
 const eye = new Vector3()
 const aim = new Vector3()
+const fwd = new Vector3()
+const neck = new Vector3()
+const UP = new Vector3(0, 1, 0)
 
 function CameraRig({ ecctrl, feet }: { ecctrl: RefObject<EcctrlHandle | null>; feet: RefObject<Group | null> }) {
   const controls = useRef<EcctrlCameraControlsHandle>(null)
   const phase = useHome((s) => s.phase)
   const view = useHome((s) => s.view)
   const screen = useHome((s) => s.screen)
+  const settingsOpen = useHome((s) => s.settingsOpen)
+  const fovSetting = useSettings((s) => s.fov)
   const { ACTION } = CameraControlsImpl
   const size = useThree((s) => s.size)
   const camera = useThree((s) => s.camera)
@@ -226,10 +227,10 @@ function CameraRig({ ecctrl, feet }: { ecctrl: RefObject<EcctrlHandle | null>; f
     if (!('fov' in camera)) return
     const portrait = size.width / size.height < 1
     const firstPerson = view === 'first' && phase === 'playing'
-    camera.fov = firstPerson ? (portrait ? 84 : 72) : portrait ? 68 : 50
+    camera.fov = firstPerson ? (portrait ? fovSetting + 12 : fovSetting) : portrait ? 68 : 50
     camera.near = firstPerson ? 0.05 : 0.1
     camera.updateProjectionMatrix()
-  }, [camera, size.width, size.height, view, phase])
+  }, [camera, size.width, size.height, view, phase, fovSetting])
 
   useEffect(() => {
     const c = controls.current
@@ -279,10 +280,15 @@ function CameraRig({ ecctrl, feet }: { ecctrl: RefObject<EcctrlHandle | null>; f
     if (!g) return
     g.getWorldPosition(eye)
     const b = bob.current
-    const walking = playerState.grounded && playerState.speed > 0.3 && !state.screen
+    const walking = playerState.grounded && playerState.speed > 0.3 && !state.screen && useSettings.getState().headBob
     b.amp = MathUtils.damp(b.amp, walking ? Math.min(playerState.speed / 2.3, 1.7) * 0.02 : 0, 8, dt)
     b.t += dt * Math.min(playerState.speed, 5) * 2.7
-    camera.position.set(eye.x, eye.y + EYE_HEIGHT + Math.sin(b.t * 2) * b.amp, eye.z)
+    const th = look.pitch
+    // eye position relative to the body, in the view's yaw frame (camera forward is local −z)
+    neck
+      .set(0, EYE_HEIGHT - NECK_UP + NECK_UP * Math.cos(th) + NECK_FRONT * Math.sin(th) + Math.sin(b.t * 2) * b.amp, NECK_FRONT + NECK_UP * Math.sin(th) - NECK_FRONT * Math.cos(th))
+      .applyAxisAngle(UP, look.yaw)
+    camera.position.set(eye.x + neck.x, eye.y + neck.y, eye.z + neck.z)
     camera.rotation.set(look.pitch, look.yaw, Math.sin(b.t) * b.amp * 0.35, 'YXZ')
     // priority -0.5: right after CameraControls (-1), which keeps writing its own pose, and before every
     // other system that reads the camera this frame (ceilings, held item, wall fade, interaction)
@@ -292,7 +298,7 @@ function CameraRig({ ecctrl, feet }: { ecctrl: RefObject<EcctrlHandle | null>; f
     <EcctrlCameraControls
       ref={controls}
       makeDefault
-      enabled={phase === 'playing' && view === 'third' && !screen}
+      enabled={phase === 'playing' && view === 'third' && !screen && !settingsOpen}
       smoothTime={0.14}
       draggingSmoothTime={0.08}
       minDistance={2.5}
@@ -308,9 +314,11 @@ function CameraRig({ ecctrl, feet }: { ecctrl: RefObject<EcctrlHandle | null>; f
 export function Player() {
   const ecctrl = useRef<EcctrlHandle>(null)
   const feet = useRef<Group>(null)
+  const bodyYaw = useRef<Group>(null)
   const view = useHome((s) => s.view)
   const camera = useThree((s) => s.camera)
   const scene = useThree((s) => s.scene)
+  const { world, rapier } = useRapier()
   const acc = useRef(0)
   const prevInteract = useRef(false)
   useKeyboard()
@@ -327,6 +335,7 @@ export function Player() {
     debugSet('ecctrl', () => ecctrl.current)
     debugSet('camera', camera)
     debugSet('scene', scene)
+    debugSet('gesture', playGesture)
   }, [camera, scene])
 
   useFrame((_, dt) => {
@@ -340,6 +349,18 @@ export function Player() {
     playerState.grounded = handle.isOnGround
 
     const state = useHome.getState()
+    // First person: the visible body always faces where you look. The physics body turns by itself only while
+    // it is awake and moving, so its stale heading is cancelled out here instead of waiting for it.
+    const yawGroup = bodyYaw.current
+    if (yawGroup) {
+      if (state.view === 'first') {
+        const z = handle.bodyZAxis
+        const d = look.yaw + Math.PI - Math.atan2(z.x, z.z)
+        yawGroup.rotation.y = Math.atan2(Math.sin(d), Math.cos(d))
+      } else yawGroup.rotation.y = 0
+    }
+    // first person: the body turns with the view (and strafes), like your own
+    handle.setLockForward(state.view === 'first')
     if (state.view === 'first') {
       // "forward" for dropping things and picking what to interact with is where you are looking
       playerState.facing.x = -Math.sin(look.yaw)
@@ -354,11 +375,20 @@ export function Player() {
 
     if (state.phase !== 'playing') return
 
-    if (!state.screen) handle.setMovement(keys)
+    // lens focus: distance to the first thing along the view (the body itself is excluded)
+    camera.getWorldDirection(aim)
+    const hit =
+      state.view === 'first'
+        ? world.castRay(new rapier.Ray(camera.position, aim), 30, true, undefined, undefined, undefined, handle.body)
+        : null
+    const wanted = state.view === 'first' ? (hit ? hit.timeOfImpact : 14) : camera.position.distanceTo(pos)
+    focus.distance += (Math.max(0.4, wanted) - focus.distance) * (1 - Math.exp(-6 * dt))
+
+    if (!state.screen && !state.settingsOpen) handle.setMovement(keys)
     else handle.setMovement({ forward: false, backward: false, leftward: false, rightward: false, jump: false, run: false })
 
     // on-screen controls (touch devices)
-    if (matchMedia('(pointer: coarse)').matches && !state.screen) {
+    if (matchMedia('(pointer: coarse)').matches && !state.screen && !state.settingsOpen) {
       const joy = useJoystickStore.getState().joysticks.default
       const buttons = useButtonStore.getState().buttons
       handle.setMovement({
@@ -377,7 +407,7 @@ export function Player() {
     acc.current = 0
     const room = roomAt(pos.x, pos.z)
     if (room !== state.room) state.setRoom(room)
-    if (state.screen) return
+    if (state.screen || state.settingsOpen) return
     let view: ViewRay | undefined
     if (state.view === 'first') {
       camera.getWorldDirection(aim)
@@ -403,11 +433,12 @@ export function Player() {
         enableToggleRun={false}
       >
         <group ref={feet} position={[0, -FEET, 0]}>
-          {/* your own body is not drawn from inside it */}
-          <group visible={view === 'third'}>
-            <Avatar />
+          {/* in first person the body sits just behind the eyes so you look down onto your own arms, hands and feet */}
+          <group ref={bodyYaw}>
+            <group position={[0, 0, view === 'first' ? -BODY_BACK : 0]}>
+              <Avatar />
+            </group>
           </group>
-          {view === 'third' && <CarriedItem />}
         </group>
       </Ecctrl>
       <HeldItem />

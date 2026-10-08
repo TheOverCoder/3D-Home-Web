@@ -202,10 +202,20 @@ function grass(): Surface {
   }, 2.5)
 }
 
-const base: Record<string, Surface> = {}
-const builders = { wood, tile, carpet, plaster, fabric, grass }
+function skin(): Surface {
+  const pores = fbm(180, 41, 2)
+  const mottle = fbm(7, 13, 3)
+  return make((u, v) => {
+    const m = 0.93 + mottle(u, v) * 0.1
+    const c = 245 * m
+    return { r: c, g: c * 0.97, b: c * 0.95, h: pores(u, v), rough: 0.5 + pores(u, v) * 0.15 }
+  }, 1.1)
+}
 
-export type SurfaceKind = FloorKind | 'plaster' | 'fabric' | 'grass'
+const base: Record<string, Surface> = {}
+const builders = { wood, tile, carpet, plaster, fabric, grass, skin }
+
+export type SurfaceKind = FloorKind | 'plaster' | 'fabric' | 'grass' | 'skin'
 
 /** A surface with its own UV repeat (textures share their canvases, so this is cheap). */
 export function surface(kind: SurfaceKind, repeatX: number, repeatY: number): Surface {
