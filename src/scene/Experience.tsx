@@ -3,6 +3,7 @@ import { Canvas, useThree } from '@react-three/fiber'
 import { PerformanceMonitor, Preload, useProgress } from '@react-three/drei'
 import { Physics } from '@react-three/rapier'
 import { debugSet } from '../lib/debug'
+import { registerRenderer } from '../lib/diagnostics'
 import { useHome } from '../store'
 import { Effects } from './Effects'
 import { House } from './House'
@@ -18,7 +19,9 @@ const lockedQuality = new URLSearchParams(location.search).get('quality')
 function Ready() {
   const markReady = useHome((s) => s.markReady)
   const gl = useThree((s) => s.gl)
+  const camera = useThree((s) => s.camera)
   debugSet('gl', gl)
+  useEffect(() => registerRenderer(gl, camera), [gl, camera])
   useEffect(() => markReady('scene'), [markReady])
   return null
 }

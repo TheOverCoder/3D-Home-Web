@@ -1,4 +1,5 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { collectDiagnostics } from '../lib/diagnostics'
 import { DEFAULT_SETTINGS, useSettings, type Settings } from '../settings'
 import { useHome } from '../store'
 
@@ -61,6 +62,19 @@ export function SettingsPanel() {
   const settings = useSettings()
   const update = (patch: Partial<Settings>) => settings.update(patch)
   const closeRef = useRef<HTMLButtonElement>(null)
+  const [copied, setCopied] = useState<'idle' | 'ok' | 'failed'>('idle')
+  const copyReport = async () => {
+    const text = collectDiagnostics()
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied('ok')
+    } catch {
+      // clipboard blocked (embedded frame, insecure origin): show the text so it can be copied by hand
+      window.prompt('Copy this report:', text)
+      setCopied('failed')
+    }
+    setTimeout(() => setCopied('idle'), 2500)
+  }
 
   useEffect(() => {
     if (open) closeRef.current?.focus()
@@ -155,6 +169,15 @@ export function SettingsPanel() {
               </Row>
               <Row label="Cinema bars">
                 <Toggle id="set-cinema" label="Cinema bars" checked={settings.cinema} onChange={(cinema) => update({ cinema })} />
+              </Row>
+            </section>
+
+            <section>
+              <h3>Something looks wrong?</h3>
+              <Row label="Copy a report" hint="GPU, browser, where you stand, recent errors — paste it in the chat">
+                <button id="copy-report" className="ghost" onClick={copyReport}>
+                  {copied === 'ok' ? 'Copied ✓' : copied === 'failed' ? 'Shown above' : 'Copy diagnostics'}
+                </button>
               </Row>
             </section>
 

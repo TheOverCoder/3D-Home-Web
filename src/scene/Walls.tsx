@@ -145,8 +145,8 @@ function windowPieces(w: WindowDef): Seg[] {
     P('glass', w.centre, mid, 0, w.width - bar * 2, h - bar * 2, 0.012, 'glass', true, '#cfe3f2'),
     P('board', w.centre, w.sill - 0.016, n * 0.12, w.width + 0.16, 0.04, 0.26, 'trim'),
     // curtains: two panels and a rod
-    P('cl', lo - 0.2, 1.33, n * 0.15, 0.34, 2.4, 0.08, 'fabric', false, '#c9bfae'),
-    P('cr', hi + 0.2, 1.33, n * 0.15, 0.34, 2.4, 0.08, 'fabric', false, '#c9bfae'),
+    P('cl', lo - 0.2, 1.33, n * 0.15, 0.34, 2.4, 0.08, 'fabric', true, '#c9bfae'),
+    P('cr', hi + 0.2, 1.33, n * 0.15, 0.34, 2.4, 0.08, 'fabric', true, '#c9bfae'),
     P('rod', w.centre, 2.58, n * 0.15, w.width + 0.95, 0.03, 0.03, 'dark', false, '#2b2d30'),
   ]
 }

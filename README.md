@@ -22,7 +22,7 @@ Add `?debug` to the URL to expose `window.__home` (store, player state, `telepor
 `WASD`/arrows walk · `Shift` run · `Space` jump · mouse to look (click the scene to capture the pointer; dragging also works) · `E` interact with what is in the view · `V` first/third person · `Esc` close a screen, or open the settings.
 The screen stays clear on purpose: just a small ⚙ in the corner. It opens a drawer with the full shortcut list and the settings
 (camera, field of view, look speed, invert Y, walking sway, quality, depth of field, atmosphere, film grain, cinema bars) — all remembered between visits.
-Looking down in first person shows your own body and hands. On touch devices an on-screen joystick and buttons appear; drag the scene to look.
+Looking down in first person shows your own body and hands. If something looks wrong, ⚙ → *Copy diagnostics* puts a report (GPU, browser, position, recent errors) on the clipboard. On touch devices an on-screen joystick and buttons appear; drag the scene to look.
 
 ## What is in the box
 

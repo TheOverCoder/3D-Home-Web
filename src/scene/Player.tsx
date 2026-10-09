@@ -291,8 +291,10 @@ function CameraRig({ ecctrl, feet }: { ecctrl: RefObject<EcctrlHandle | null>; f
     camera.position.set(eye.x + neck.x, eye.y + neck.y, eye.z + neck.z)
     // never let the eyes leave the shell: a ceiling lid stops the body, this catches everything else
     camera.position.y = Math.min(camera.position.y, HOUSE.wallHeight - 0.12)
-    camera.position.x = MathUtils.clamp(camera.position.x, HOUSE.minX + 0.12, HOUSE.maxX - 0.12)
-    camera.position.z = MathUtils.clamp(camera.position.z, HOUSE.minZ + 0.12, HOUSE.maxZ - 0.12)
+    // walls are centred on HOUSE's edges: stay clear of their inner faces
+    const wall = HOUSE.wallThickness / 2 + 0.1
+    camera.position.x = MathUtils.clamp(camera.position.x, HOUSE.minX + wall, HOUSE.maxX - wall)
+    camera.position.z = MathUtils.clamp(camera.position.z, HOUSE.minZ + wall, HOUSE.maxZ - wall)
     camera.rotation.set(look.pitch, look.yaw, Math.sin(b.t) * b.amp * 0.35, 'YXZ')
     // priority -0.5: right after CameraControls (-1), which keeps writing its own pose, and before every
     // other system that reads the camera this frame (ceilings, held item, wall fade, interaction)
@@ -323,6 +325,7 @@ export function Player() {
   const camera = useThree((s) => s.camera)
   const scene = useThree((s) => s.scene)
   const { world, rapier } = useRapier()
+  debugSet('physics', { world, rapier })
   const acc = useRef(0)
   const prevInteract = useRef(false)
   useKeyboard()

@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
+import { CylinderCollider, RigidBody } from '@react-three/rapier'
 import { DoubleSide, type PointLight } from 'three'
 import { LAMPS, type LampDef } from '../data/layout'
 import { useInteractable } from '../lib/interaction'
@@ -73,6 +74,12 @@ function Lamp({ def, fixture }: { def: LampDef; fixture: boolean }) {
   return (
     <>
       {fixture && <Fixture def={def} on={on} />}
+      {/* a standing lamp has its shade at head height: without a body you could walk into it and the whole view turns to glowing white */}
+      {fixture && def.kind === 'floor' && (
+        <RigidBody type="fixed" colliders={false} position={[def.position[0], 0, def.position[2]]}>
+          <CylinderCollider args={[0.9, 0.32]} position={[0, 0.9, 0]} />
+        </RigidBody>
+      )}
       {/* constant light count (intensity 0 when off) so toggling never recompiles shaders */}
       <pointLight ref={light} position={def.position} color={WARM} intensity={on ? 6.5 : 0} distance={7} decay={1.7} />
     </>
