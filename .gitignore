@@ -7,3 +7,6 @@ dist
 # un-optimized source models; optimized output goes in src/assets/models
 src/assets/models/raw/
 src/assets/hdri/raw/
+
+# agent worktrees (temporary, never committed)
+.claude/worktrees/
