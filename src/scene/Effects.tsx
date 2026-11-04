@@ -1,4 +1,4 @@
-import { useMemo, useRef, type JSX } from 'react'
+import { useCallback, useMemo, useRef, type JSX } from 'react'
 import { useFrame } from '@react-three/fiber'
 import {
   Bloom,
@@ -19,12 +19,21 @@ import { focus } from '../lib/focus'
 import { useSettings } from '../settings'
 import { useHome } from '../store'
 
+interface N8AOPass {
+  autoDetectTransparency: boolean
+  configuration: { transparencyAware: boolean }
+}
+
 /**
  * The film look, in order: contact shadows → lens focus → bloom on the bright things → a lens fringe →
  * filmic tone mapping → grade (a touch of contrast and colour) → vignette → grain.
+ * Per tier: high has all of it with MSAA ×4; medium keeps the AO (cheaper sampling), bloom and grade with
+ * MSAA ×2 and drops the lens effects; low is tone mapping, grade and a light bloom only.
  */
 export function Effects() {
-  const high = useHome((s) => s.quality === 'high')
+  const quality = useHome((s) => s.quality)
+  const high = quality === 'high'
+  const medium = quality === 'medium'
   const view = useHome((s) => s.view)
   const depthOfField = useSettings((s) => s.depthOfField)
   const filmGrain = useSettings((s) => s.filmGrain)
@@ -32,6 +41,15 @@ export function Effects() {
   debugSet('settings', useSettings)
   debugSet('focus', focus)
   const fringe = useMemo(() => new Vector2(0.0005, 0.0007), [])
+  // N8AO turns "transparency aware" on by itself as soon as it sees a transparent material (window glass,
+  // fading walls). That costs two extra full-scene renders, two full-resolution copies and three walks over the
+  // whole scene graph (with a fresh Map of every object — garbage-collector stutter) every frame, all to keep AO
+  // off glass, which has almost none anyway. Off, for good.
+  const aoRef = useCallback((pass: N8AOPass | null) => {
+    if (!pass) return
+    pass.autoDetectTransparency = false
+    pass.configuration.transparencyAware = false
+  }, [])
 
   // follow whatever the player looks at (distance measured in <Player />)
   useFrame(() => {
@@ -42,7 +60,20 @@ export function Effects() {
 
   const fx: JSX.Element[] = []
   // moderate intensity: strong AO turns the dark undersides of furniture into noisy black patches
-  if (high) fx.push(<N8AO key="ao" aoRadius={0.6} intensity={1.15} color="#2a2018" distanceFalloff={1.0} aoSamples={20} denoiseSamples={10} denoiseRadius={10} quality="medium" halfRes />)
+  if (high || medium) {
+    fx.push(
+      <N8AO
+        key="ao"
+        ref={aoRef as never}
+        aoRadius={0.6}
+        intensity={1.15}
+        color="#2a2018"
+        distanceFalloff={1.0}
+        quality={high ? 'medium' : 'performance'}
+        halfRes
+      />,
+    )
+  }
   if (high && depthOfField) {
     fx.push(
       <DepthOfField
@@ -55,12 +86,12 @@ export function Effects() {
       />,
     )
   }
-  fx.push(<Bloom key="bloom" intensity={high ? 0.6 : 0.35} luminanceThreshold={1} luminanceSmoothing={0.25} mipmapBlur />)
+  fx.push(<Bloom key="bloom" intensity={high ? 0.6 : medium ? 0.5 : 0.35} luminanceThreshold={1} luminanceSmoothing={0.25} mipmapBlur levels={high ? 8 : 6} />)
   if (high) fx.push(<ChromaticAberration key="ca" offset={fringe} radialModulation modulationOffset={0.25} />)
   fx.push(<ToneMapping key="tm" mode={ToneMappingMode.AGX} />)
   fx.push(<BrightnessContrast key="bc" brightness={-0.01} contrast={0.1} />)
   fx.push(<HueSaturation key="hs" saturation={0.1} />)
   fx.push(<Vignette key="vig" offset={0.22} darkness={0.72} />)
   if (filmGrain) fx.push(<Noise key="grain" blendFunction={BlendFunction.SOFT_LIGHT} opacity={0.1} />)
-  return <EffectComposer multisampling={high ? 4 : 0}>{fx}</EffectComposer>
+  return <EffectComposer multisampling={high ? 4 : medium ? 2 : 0}>{fx}</EffectComposer>
 }

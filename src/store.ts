@@ -1,6 +1,9 @@
 import { create } from 'zustand'
 import { DOOR, LAMPS, PICKUPS, type RoomId, type Vec3 } from './data/layout'
 
+/** Picture quality tier: high = full film look, medium = the look without the costliest passes, low = plain and fast. */
+export type Quality = 'high' | 'medium' | 'low'
+
 export interface ItemState {
   pos: Vec3
   rev: number // bumped on every drop so the physics body is re-created at the new spot
@@ -26,7 +29,8 @@ interface HomeState {
   doors: Record<string, boolean>
   items: Record<string, ItemState>
   carrying: string | null
-  quality: 'high' | 'low'
+  quality: Quality
+  qualityAuto: boolean // true while the frame-rate monitor may move `quality` up or down
   toast: { text: string; id: number } | null
 
   setPhase: (phase: HomeState['phase']) => void
@@ -43,7 +47,7 @@ interface HomeState {
   toggleDoor: (id: string) => void
   pickUp: (id: string) => void
   drop: (pos: Vec3) => void
-  setQuality: (quality: HomeState['quality']) => void
+  setQuality: (quality: Quality, auto?: boolean) => void // a pick without `auto` pins it
   showToast: (text: string) => void
 }
 
@@ -65,6 +69,7 @@ export const useHome = create<HomeState>()((set, get) => ({
   items: Object.fromEntries(PICKUPS.map((p) => [p.id, { pos: p.position, rev: 0 }])),
   carrying: null,
   quality: 'high',
+  qualityAuto: true,
   toast: null,
 
   setPhase: (phase) => set({ phase }),
@@ -88,6 +93,6 @@ export const useHome = create<HomeState>()((set, get) => ({
       items: { ...s.items, [id]: { pos, rev: s.items[id].rev + 1 } },
     }))
   },
-  setQuality: (quality) => set({ quality }),
+  setQuality: (quality, auto = false) => set({ quality, qualityAuto: auto }),
   showToast: (text) => set({ toast: { text, id: ++toastId } }),
 }))
