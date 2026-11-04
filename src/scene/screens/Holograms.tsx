@@ -252,7 +252,7 @@ function onSphere(lat: number, lon: number, r: number) {
 }
 
 function Globe({ def, reveal }: { def: ScreenDef; reveal: Reveal }) {
-  const R = 0.24
+  const R = 0.27
   const spin = useRef<Group>(null)
   const home = useRef<Mesh>(null)
   const mats = useRef<(Material | null)[]>([])
@@ -298,7 +298,7 @@ function Globe({ def, reveal }: { def: ScreenDef; reveal: Reveal }) {
     return { grid, arcs, dots, homePos }
   }, [def])
   useEffect(() => () => (grid.dispose(), arcs.dispose(), dots.dispose()), [grid, arcs, dots])
-  const base = [0.28, 0.9, 1, 0.06]
+  const base = [0.6, 0.95, 1, 0.55]
   useFade(reveal, mats, base)
   const total = arcs.getAttribute('position').count
   useFrame((state, dt) => {
@@ -314,7 +314,7 @@ function Globe({ def, reveal }: { def: ScreenDef; reveal: Reveal }) {
     <group position={[0, 0.38, 0]} rotation={[0.25, 0, 0.12]}>
       <group ref={spin}>
         <lineSegments geometry={grid}>
-          <lineBasicMaterial ref={reg(0)} color={def.accent} transparent depthWrite={false} />
+          <lineBasicMaterial ref={reg(0)} color={hot(def.accent, 1.2)} transparent depthWrite={false} />
         </lineSegments>
         <lineSegments geometry={arcs}>
           <lineBasicMaterial ref={reg(1)} color={hot('#ffffff', 1.3)} transparent depthWrite={false} />
@@ -327,9 +327,10 @@ function Globe({ def, reveal }: { def: ScreenDef; reveal: Reveal }) {
           <meshBasicMaterial color={hot('#ffffff', 2)} />
         </mesh>
       </group>
-      <mesh>
-        <sphereGeometry args={[R * 0.98, 32, 16]} />
-        <meshBasicMaterial ref={reg(3)} color={def.accent} transparent depthWrite={false} blending={AdditiveBlending} />
+      {/* a dark glass core behind the lines, so the globe still reads against a bright window */}
+      <mesh renderOrder={-1}>
+        <sphereGeometry args={[R * 0.97, 32, 16]} />
+        <meshBasicMaterial ref={reg(3)} color="#0a1424" transparent depthWrite={false} />
       </mesh>
     </group>
   )
