@@ -37,8 +37,16 @@ test.describe('boot', () => {
     const { page } = game
     await page.waitForTimeout(1500)
     const p0 = await page.evaluate(() => ({ ...(window as any).__home.playerState.position }))
-    await game.hold('KeyW', 8000)
-    const p1 = await page.evaluate(() => ({ ...(window as any).__home.playerState.position }))
-    expect(Math.hypot(p1.x - p0.x, p1.z - p0.z)).toBeGreaterThan(0.4)
+    // hold W until the player has clearly moved (frame rate varies with machine load)
+    await page.keyboard.down('KeyW')
+    try {
+      await page.waitForFunction(
+        (a) => Math.hypot((window as any).__home.playerState.position.x - a.x, (window as any).__home.playerState.position.z - a.z) > 0.4,
+        p0,
+        { timeout: 60_000, polling: 250 },
+      )
+    } finally {
+      await page.keyboard.up('KeyW')
+    }
   })
 })

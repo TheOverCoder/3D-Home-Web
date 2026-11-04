@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "assets:hdri": "node scripts/fetch-polyhaven.mjs",
     "assets:optimize": "node scripts/optimize-models.mjs",
-    "assets:fetch": "node scripts/fetch-assets.mjs"
+    "assets:fetch": "node scripts/fetch-assets.mjs",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@pmndrs/assets": "^1.7.0",
