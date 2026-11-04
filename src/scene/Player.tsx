@@ -18,6 +18,7 @@ import { addLook, look, look as lookState } from '../lib/look'
 import { playerState } from '../lib/playerState'
 import { useSettings } from '../settings'
 import { useHome } from '../store'
+import { AimMarker } from './AimMarker'
 import { Avatar, HeldItem } from './Avatar'
 
 const CAPSULE_HALF = 0.5
@@ -627,6 +628,9 @@ export function Player() {
         enableToggleRun={false}
         springK={0}
         dampingC={0}
+        // ecctrl's self-righting torque is also once per frame: too weak at a low frame rate to stop a knock
+        // from a table edge tipping the capsule (and the eyes with it). A person does not tip: only yaw is free.
+        enabledRotations={[false, true, false]}
         accDeltaTime={perFrame(ACC_60, fps)}
         decDeltaTime={perFrame(DEC_60, fps)}
       >
@@ -640,6 +644,7 @@ export function Player() {
         </group>
       </Ecctrl>
       <HeldItem />
+      <AimMarker />
       <CameraRig ecctrl={ecctrl} feet={feet} />
       <LookInput />
     </>

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { CuboidCollider, RigidBody, type RapierRigidBody } from '@react-three/rapier'
+import { impactSound, placeSound } from '../audio/sound'
 import { PICKUPS, type PickupDef } from '../data/layout'
 import { registerInteractable } from '../lib/interaction'
 import { playGesture } from '../lib/gestures'
@@ -51,6 +52,7 @@ function Pickup({ def }: { def: PickupDef }) {
   const carried = useHome((s) => s.carrying === def.id)
   const body = useRef<RapierRigidBody>(null)
   const position = useRef({ x: item.pos[0], y: item.pos[1], z: item.pos[2] })
+  const lastHit = useRef(0)
 
   // The interactable follows the physics body, so a pushed or dropped item stays pickable.
   useEffect(() => {
@@ -81,6 +83,21 @@ function Pickup({ def }: { def: PickupDef }) {
     position.current.z = t.z
   })
 
+  // knocks and drops are heard: louder the faster the item was moving, at most every 90 ms per item
+  const onCollisionEnter = () => {
+    const b = body.current
+    if (!b) return
+    const now = performance.now()
+    if (now - lastHit.current < 90) return
+    const v = b.linvel()
+    const speed = Math.hypot(v.x, v.y, v.z)
+    if (speed < 0.35) return
+    lastHit.current = now
+    const t = b.translation()
+    const { pan, near } = placeSound(t.x, t.z)
+    impactSound(def.kind, Math.min(1, speed / 3.5) * (0.4 + 0.6 * near), pan)
+  }
+
   if (carried) return null
   return (
     <RigidBody
@@ -93,6 +110,7 @@ function Pickup({ def }: { def: PickupDef }) {
       restitution={0.05}
       linearDamping={0.4}
       angularDamping={0.8}
+      onCollisionEnter={onCollisionEnter}
     >
       <CuboidCollider args={HALF[def.kind]} />
       <PickupMesh kind={def.kind} />

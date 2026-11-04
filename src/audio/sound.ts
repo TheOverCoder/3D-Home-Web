@@ -3,6 +3,7 @@
 // to start audio before one) and every function here is a silent no-op until then, or while sound is off.
 // No three.js in here: the entry chunk imports this file.
 import type { FloorKind, RoomId } from '../data/layout'
+import { playerState } from '../lib/playerState'
 
 interface Engine {
   ac: AudioContext
@@ -20,6 +21,16 @@ let wantedRoom: RoomId | null = null
 let ambient: { filter: BiquadFilterNode; gain: GainNode; hum: GainNode; fan: GainNode; fanFilter: BiquadFilterNode } | null = null
 
 const rnd = (a: number, b: number) => a + Math.random() * (b - a)
+
+/** Stereo position (−1 left … 1 right) and nearness (0..1) of a sound at (x, z), heard where the player stands and faces. */
+export function placeSound(x: number, z: number) {
+  const p = playerState.position
+  const f = playerState.facing
+  const dx = x - p.x
+  const dz = z - p.z
+  const d = Math.hypot(dx, dz) || 1e-6
+  return { pan: ((-f.z * dx + f.x * dz) / d) * 0.75, near: Math.max(0, Math.min(1, 1 - d / 9)) }
+}
 
 function noiseBuffer(ac: AudioContext, seconds: number, brown: boolean) {
   const buf = ac.createBuffer(1, Math.floor(ac.sampleRate * seconds), ac.sampleRate)

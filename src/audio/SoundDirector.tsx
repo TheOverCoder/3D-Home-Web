@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
 import { DOOR, LAMPS } from '../data/layout'
 import { debugSet } from '../lib/debug'
-import { playerState } from '../lib/playerState'
 import { useSettings } from '../settings'
 import { useHome } from '../store'
 import {
@@ -11,6 +10,7 @@ import {
   duckAmbient,
   lampSwitch,
   pickupSound,
+  placeSound as place,
   screenSound,
   setRoomTone,
   setSoundPrefs,
@@ -18,18 +18,6 @@ import {
   uiClick,
   unlockAudio,
 } from './sound'
-
-/** Stereo position and nearness of a sound at (x, z), heard from where the player stands and faces. */
-function place(x: number, z: number) {
-  const p = playerState.position
-  const f = playerState.facing
-  const dx = x - p.x
-  const dz = z - p.z
-  const d = Math.hypot(dx, dz) || 1e-6
-  // right-hand vector of the facing direction
-  const pan = ((-f.z * dx + f.x * dz) / d) * 0.75
-  return { pan, near: Math.max(0, Math.min(1, 1 - d / 9)) }
-}
 
 /**
  * Wires the procedural sound to the app: unlocks audio on the first gesture, follows the Sound settings,

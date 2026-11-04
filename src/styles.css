@@ -82,7 +82,19 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   transition: transform 0.15s, filter 0.15s;
 }
 .primary:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.08); }
+.primary:active:not(:disabled) { transform: translateY(1px) scale(0.99); filter: brightness(0.96); }
 .primary:disabled { opacity: 0.55; cursor: progress; }
+
+/* loading: a hairline that fills under the button */
+.loadbar { position: relative; height: 3px; margin-top: 12px; border-radius: 3px; overflow: hidden; background: rgba(255, 255, 255, 0.08); }
+.loadbar span { position: absolute; inset: 0; transform-origin: left; background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 50%, transparent), var(--accent)); transition: transform 0.35s ease-out; }
+.loadbar::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent); transform: translateX(-100%); animation: sheen 1.6s ease-in-out infinite; }
+@keyframes sheen { to { transform: translateX(100%); } }
+
+input[type='range']:focus-visible,
+summary:focus-visible,
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+.prompt:active { transform: scale(0.97); }
 
 .failure { margin: 0 0 14px; padding: 10px 12px; border-radius: 10px; border: 1px solid #7a3b3b; background: rgba(122, 59, 59, 0.25); color: #f0c4c4; font-size: 13.5px; }
 .keys.touch { display: none; }
