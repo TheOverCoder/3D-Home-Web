@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "assets:hdri": "node scripts/fetch-polyhaven.mjs",
     "assets:optimize": "node scripts/optimize-models.mjs",
-    "assets:fetch": "node scripts/fetch-assets.mjs"
+    "assets:fetch": "node scripts/fetch-assets.mjs",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@pmndrs/assets": "^1.7.0",
@@ -28,6 +29,7 @@
   },
   "devDependencies": {
     "@gltf-transform/cli": "^4.5.1",
+    "@playwright/test": "^1.63.0",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@types/three": "^0.186.0",
