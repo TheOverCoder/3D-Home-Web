@@ -66,7 +66,7 @@ export function collectDiagnostics(): string {
           contextLost: gl.isContextLost(),
         }
       : 'no renderer yet',
-    app: { phase: s.phase, view: s.view, quality: s.quality, room: s.room, screenOpen: s.screen, carrying: s.carrying },
+    app: { phase: s.phase, view: s.view, quality: s.quality, qualityAuto: s.qualityAuto, room: s.room, screenOpen: s.screen, carrying: s.carrying },
     settings: useSettings.getState(),
     where: {
       player: [p.x, p.y, p.z].map((n) => +n.toFixed(2)),

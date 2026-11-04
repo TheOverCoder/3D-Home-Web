@@ -58,6 +58,7 @@ export function SettingsPanel() {
   const view = useHome((s) => s.view)
   const setView = useHome((s) => s.setView)
   const quality = useHome((s) => s.quality)
+  const qualityAuto = useHome((s) => s.qualityAuto)
   const setQuality = useHome((s) => s.setQuality)
   const settings = useSettings()
   const update = (patch: Partial<Settings>) => settings.update(patch)
@@ -147,13 +148,15 @@ export function SettingsPanel() {
 
             <section>
               <h3>Picture</h3>
-              <Row label="Quality">
+              <Row label="Quality" hint={qualityAuto ? `Follows the frame rate · now ${quality[0].toUpperCase()}${quality.slice(1)}` : 'Fixed'}>
                 <Segmented
                   label="Quality"
-                  value={quality}
-                  onChange={setQuality}
+                  value={qualityAuto ? 'auto' : quality}
+                  onChange={(q) => (q === 'auto' ? setQuality(quality, true) : setQuality(q))}
                   options={[
+                    { value: 'auto', label: 'Auto' },
                     { value: 'high', label: 'High' },
+                    { value: 'medium', label: 'Medium' },
                     { value: 'low', label: 'Low' },
                   ]}
                 />
