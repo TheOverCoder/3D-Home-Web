@@ -155,8 +155,8 @@ function Cards({ def, reveal }: { def: ScreenDef; reveal: Reveal }) {
     refs.current.forEach((m, i) => {
       if (!m) return
       const k = i - (n - 1) / 2
-      const a = k * 0.36 * r
-      m.position.set(Math.sin(a) * 0.5, 0.34 + Math.abs(k) * -0.025 * r + Math.sin(t * 1.3 + i * 1.7) * 0.012, Math.cos(a) * 0.5 - 0.5 - i * 0.004)
+      const a = k * 0.5 * r
+      m.position.set(Math.sin(a) * 0.62, 0.4 + Math.abs(k) * -0.03 * r + Math.sin(t * 1.3 + i * 1.7) * 0.012, Math.cos(a) * 0.62 - 0.62 - i * 0.004)
       m.rotation.set(Math.sin(t * 0.9 + i) * 0.03, a, k * -0.04 * r)
       ;(m.material as MeshBasicMaterial).opacity = r
     })
@@ -171,7 +171,7 @@ function Cards({ def, reveal }: { def: ScreenDef; reveal: Reveal }) {
           }}
           renderOrder={i}
         >
-          <planeGeometry args={[0.32, 0.2]} />
+          <planeGeometry args={[0.36, 0.225]} />
           <meshBasicMaterial map={textures[i]} transparent side={DoubleSide} depthWrite={false} />
         </mesh>
       ))}
