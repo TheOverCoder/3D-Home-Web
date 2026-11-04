@@ -15,6 +15,7 @@ export const CREDITS: Credit[] = [
   { what: 'Teacup and saucer (coffee table)', by: 'Poly Haven, Eric Chadwick — Khronos glTF Sample Assets', license: 'CC0', url: 'https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/DiffuseTransmissionTeacup' },
   { what: 'Water Bottle (studio desk)', by: 'Microsoft — Khronos glTF Sample Assets', license: 'CC0', url: 'https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/WaterBottle' },
   { what: 'Blouberg Sunrise 2 HDRI (lighting)', by: 'Poly Haven', license: 'CC0', url: 'https://polyhaven.com/a/blouberg_sunrise_2' },
+  { what: 'Fabric Pattern 07 normal map (woven fabrics)', by: 'Poly Haven', license: 'CC0', url: 'https://polyhaven.com/a/fabric_pattern_07' },
   { what: 'Inter typeface (3D labels), via @pmndrs/assets', by: 'The Inter Project Authors', license: 'SIL OFL 1.1', url: 'https://rsms.me/inter/' },
   { what: 'three.js, react-three-fiber, drei, Rapier, ecctrl', by: 'their respective authors', license: 'MIT / Apache-2.0' },
 ]

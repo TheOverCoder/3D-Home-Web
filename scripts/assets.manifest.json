@@ -86,5 +86,15 @@
     "textureSize": 512,
     "simplify": 0.2,
     "simplifyError": 0.003
+  },
+  {
+    "id": "fabric-normal",
+    "kind": "texture",
+    "url": "https://raw.githubusercontent.com/godotengine/godot-demo-projects/master/3d/soft_body_physics/textures/polyhaven/fabric_pattern_07_nor_gl_1k.jpg",
+    "dest": "src/assets/textures/fabric/fabric_pattern_07_nor_gl_1k.jpg",
+    "what": "Fabric Pattern 07 normal map (1k, OpenGL) — the photographed linen weave for every generated fabric; the gingham colour map is deliberately not used",
+    "by": "Poly Haven (mirrored in godotengine/godot-demo-projects)",
+    "license": "CC0",
+    "source": "https://polyhaven.com/a/fabric_pattern_07"
   }
 ]
