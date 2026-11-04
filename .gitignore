@@ -7,3 +7,5 @@ dist
 # un-optimized source models; optimized output goes in src/assets/models
 src/assets/models/raw/
 src/assets/hdri/raw/
+test-results
+playwright-report
