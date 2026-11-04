@@ -2,7 +2,7 @@ import { useMemo, type ReactNode } from 'react'
 import { CanvasTexture, DoubleSide, LatheGeometry, SRGBColorSpace, Vector2 } from 'three'
 import { HOUSE } from '../data/layout'
 import { surface } from '../lib/proceduralTextures'
-import { B } from './Furnishings'
+import { B, GlbDecor } from './Furnishings'
 
 // Small things that make rooms look lived in. Purely decorative (no colliders) and tiny, so the
 // player walks "through" them only where nobody can reach — they all sit on furniture, walls or ceilings.
@@ -153,6 +153,7 @@ function LivingRoom() {
       <At position={[-3.78, 0.425, 3.95]} rotationY={0.15}><Magazines /></At>
       <At position={[-3.18, 0.425, 4.08]}><Remote /></At>
       <At position={[-3.1, 0.425, 3.84]}><Vase /></At>
+      <GlbDecor id="teacup" position={[-3.45, 0.425, 3.8]} rotationY={0.6} size={[0.15, 0.07, 0.155]} shadow={false} />
       {/* a vase on the console, wall clock opposite the sofa */}
       <At position={[-2.85, 0.48, 5.7]}><Vase /></At>
       <At position={[-0.1, 2.05, 1.15]} rotationY={-Math.PI / 2}><WallClock /></At>
@@ -200,6 +201,7 @@ function Studio() {
         <B size={[0.06, 0.03, 0.1]} position={[0.28, 0.019, 0.04]} color="#1f2124" roughness={0.4} radius={0.02} />
       </At>
       <At position={[-2.68, 0.76, -5.62]}><PenCup /></At>
+      <GlbDecor id="water-bottle" position={[-2.72, 0.76, -5.42]} rotationY={2.2} size={[0.085, 0.205, 0.085]} shadow={false} />
       <At position={[-4.0, 0.76, -5.68]} rotationY={0.4}><Vase stems /></At>
     </>
   )
