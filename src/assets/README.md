@@ -9,7 +9,7 @@ Leave it out and a built-in placeholder is used instead — so the app always ru
 | `models/house-collision.glb` | _optional_ low-poly physics proxy | Never rendered. Strongly recommended for heavy houses. Meshes named `NoCollide*` are ignored. |
 | `models/character.glb` | Rigged humanoid | Auto-scaled to 1.75 m and grounded at its feet, so export scale/origin don't matter. Should face +z. |
 | `models/animations.glb` | Animation clips on the **same rig** | If omitted, clips inside `character.glb` are used. |
-| `models/props/<id>.glb` | Replaces one placeholder prop | Fitted into the placeholder's collision box. Ids: `sofa coffee-table tv-console plant-living desk chair bookshelf plant-studio counter fridge island stool-a stool-b bed nightstand wardrobe`. |
+| `models/props/<id>.glb` | Replaces one placeholder prop | Fitted into the placeholder's collision box. Ids: `sofa armchair pouf coffee-table tv-console plant-living desk chair bookshelf plant-studio counter fridge island stool-a stool-b bed nightstand wardrobe accent-chair`. Collider-free decor placed with `GlbDecor` (shows nothing without its file): `teacup water-bottle`. |
 | `textures/<surface>/*.jpg` | Real PBR maps for a generated surface | Folder = `wood tile carpet plaster fabric grass veneer leather brushed stone paint`. Files by name: `*diff*`/`*color*`/`*albedo*`, `*nor*` (OpenGL), `*rough*` — Poly Haven / ambientCG downloads work as-is. Missing maps keep their generated version. |
 | `hdri/home.hdr` (or `.exr`) | Image-based lighting | Any single `.hdr`/`.exr` works; `home.*` wins. 1k–2k is plenty for lighting. Without one the scene lights itself from a generated daylight sky. |
 
@@ -22,12 +22,13 @@ Animation clips are matched **by name pattern** (`src/lib/clips.ts`): `Idle_Loop
 - **House** — a furnished apartment/house GLB (e.g. Sketchfab "Modern apartment interior" by Katydid, ~60k tris). Check the license is CC-BY and **not** NC, then credit it in `CREDITS.md` + `src/data/credits.ts`. Sketchfab downloads need a free account.
 - **Character + animations** — Quaternius [Universal Base Characters](https://quaternius.com/packs/universalbasecharacters.html) + [Universal Animation Library](https://quaternius.com/packs/universalanimationlibrary.html) (+ [2](https://quaternius.com/packs/universalanimationlibrary2.html)). CC0, shared humanoid rig.
 - **HDRI, props, textures** — [Poly Haven](https://polyhaven.com), CC0.
+- **Reachable from the cloud sandbox** — [Khronos glTF Sample Assets](https://github.com/KhronosGroup/glTF-Sample-Assets) (licence in each `Models/*/README.md`; still unused: `SheenWoodLeatherSofa` CC BY, `AnisotropyBarnLamp`/`IridescenceLamp` CC BY — their glass uses transmission, an extra render pass — and `Lantern`/`BoomBox`/`Avocado` CC0). Avoid repos without a per-file licence (three.js `examples/textures`, most Sketchfab mirrors).
 
 ## Getting better assets — what works from where
 
 | Route | Needs | What you get |
 |---|---|---|
-| `npm run assets:fetch` | any host the environment can reach (`raw.githubusercontent.com` works from the cloud sandbox) | Everything in `scripts/assets.manifest.json`: today a Poly Haven HDRI (CC0, via the three.js repo) and three Khronos sample props — a velvet sofa, a slipper chair, a plant. Add rows for more. |
+| `npm run assets:fetch` | any host the environment can reach (`raw.githubusercontent.com` works from the cloud sandbox) | Everything in `scripts/assets.manifest.json`: today a Poly Haven HDRI (CC0, via the three.js repo), a Poly Haven fabric normal map (CC0, via godot-demo-projects) and seven Khronos sample props — velvet sofa, slipper chair, plant, damask accent chair, silk pouf, teacup, water bottle. Add rows for more; a model row may set `textureSize` (px cap, 512–1024 for small props) and `simplify` / `simplifyError` (meshoptimizer) for `assets:optimize`. |
 | `npm run assets:hdri -- list/hdri/model/texture …` | `api.polyhaven.com` + `dl.polyhaven.org` | The full Poly Haven catalogue (CC0): HDRIs, ~700 PBR models, ~700 PBR textures. **Blocked in the default cloud environment** — see below. |
 | manual download | a browser | Sketchfab house (needs login), Quaternius character + animations (itch.io / quaternius.com), anything else. Drop into `models/raw/…`, then `npm run assets:optimize`. |
 
