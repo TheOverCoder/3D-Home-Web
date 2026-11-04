@@ -108,9 +108,12 @@ test.describe('physics & geometry guards', () => {
       // the detector itself: the middle of the kitchen island must count as inside, an open spot in the room must not
       const control = { solid: insideAt(3.4, 0.45, -2.4), open: insideAt(-3.5, 1.6, 1.3) }
       const STEP = 0.3
+      // the player's own body (visible in first person) stands somewhere on the grid: skip the spots it occupies
+      const me = h.playerState.position
       try {
         for (let x = -6.8; x <= 6.8; x += STEP) {
           for (let z = -5.8; z <= 5.8; z += STEP) {
+            if (Math.hypot(x - me.x, z - me.z) < 0.6) continue
             // ground: highest walkable surface below 1.0 m (the island top is 0.92 m)
             const hit = world.castRay(new rapier.Ray({ x, y: 1.0, z }, { x: 0, y: -1, z: 0 }), 1.5, false, nonDynamic)
             if (!hit || hit.timeOfImpact < 0.01) continue
