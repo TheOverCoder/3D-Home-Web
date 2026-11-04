@@ -79,7 +79,8 @@ export const useHome = create<HomeState>()((set, get) => ({
   closeScreen: () => set({ screen: null }),
   toggleLamp: (id) => set((s) => ({ lamps: { ...s.lamps, [id]: !s.lamps[id] } })),
   toggleDoor: (id) => set((s) => ({ doors: { ...s.doors, [id]: !s.doors[id] } })),
-  pickUp: (id) => set({ carrying: id }),
+  // the item leaves the registry with its body: forget it as the aimed thing right away, so E drops it next
+  pickUp: (id) => set({ carrying: id, nearby: null }),
   drop: (pos) => {
     const id = get().carrying
     if (!id) return
