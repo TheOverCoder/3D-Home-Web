@@ -30,7 +30,7 @@ export interface Card {
   kicker: string // small line above the title (category, client, price…)
   body: string
   meta?: string // small print under the body (year · role, duration…)
-  seed?: number // changes the generated artwork
+  seed?: number // picks the generated artwork: seed % 4 → orbits, waves, skyline, rays; the rest varies it
 }
 
 export interface Step {
@@ -158,10 +158,10 @@ export const SCREENS: ScreenDef[] = [
         heading: 'Selected projects',
         body: 'Placeholder. Four projects you are proud of, one line each. Swap the titles, clients and years for your own.',
         cards: [
-          { kicker: 'Product · Fintech', title: 'Northwind', body: 'A calm banking app for people who hate banking apps.', meta: '2025 · Lead design', seed: 3 },
-          { kicker: 'Spatial · Retail', title: 'Atlas Rooms', body: 'An interactive showroom that works in the browser.', meta: '2024 · Design + build', seed: 11 },
-          { kicker: 'Brand · Energy', title: 'Lumen', body: 'Identity and design system for a solar co-op.', meta: '2024 · Art direction', seed: 27 },
-          { kicker: 'Systems · Health', title: 'Harbor', body: 'Scheduling platform for a network of clinics.', meta: '2023 · Engineering', seed: 42 },
+          { kicker: 'Product · Fintech', title: 'Northwind', body: 'A calm banking app for people who hate banking apps.', meta: '2025 · Lead design', seed: 4 },
+          { kicker: 'Spatial · Retail', title: 'Atlas Rooms', body: 'An interactive showroom that works in the browser.', meta: '2024 · Design + build', seed: 9 },
+          { kicker: 'Brand · Energy', title: 'Lumen', body: 'Identity and design system for a solar co-op.', meta: '2024 · Art direction', seed: 14 },
+          { kicker: 'Systems · Health', title: 'Harbor', body: 'Scheduling platform for a network of clinics.', meta: '2023 · Engineering', seed: 3 },
         ],
       },
       {
@@ -211,9 +211,9 @@ export const SCREENS: ScreenDef[] = [
         heading: 'What is on the menu',
         body: 'Placeholder. Describe each service in a sentence and say who it is for.',
         cards: [
-          { kicker: 'Service 01', title: 'Design', body: 'Product strategy, UX and interface design.', meta: 'From 2 weeks', seed: 5 },
-          { kicker: 'Service 02', title: 'Build', body: 'Web apps and 3D experiences, end to end.', meta: 'From 4 weeks', seed: 17 },
-          { kicker: 'Service 03', title: 'Advise', body: 'Reviews, workshops and team coaching.', meta: 'From 1 day', seed: 33 },
+          { kicker: 'Service 01', title: 'Design', body: 'Product strategy, UX and interface design.', meta: 'From 2 weeks', seed: 8 },
+          { kicker: 'Service 02', title: 'Build', body: 'Web apps and 3D experiences, end to end.', meta: 'From 4 weeks', seed: 13 },
+          { kicker: 'Service 03', title: 'Advise', body: 'Reviews, workshops and team coaching.', meta: 'From 1 day', seed: 22 },
         ],
       },
       {
@@ -221,9 +221,9 @@ export const SCREENS: ScreenDef[] = [
         heading: 'Plans and prices',
         body: 'Placeholder. Indicative prices help people decide to get in touch.',
         cards: [
-          { kicker: 'From €4k', title: 'Sprint', body: 'Two weeks on one focused problem.', meta: 'Fixed scope', seed: 8 },
+          { kicker: 'From €4k', title: 'Sprint', body: 'Two weeks on one focused problem.', meta: 'Fixed scope', seed: 12 },
           { kicker: 'From €18k', title: 'Project', body: 'A full product, launched and handed over.', meta: '6–12 weeks', seed: 21 },
-          { kicker: 'From €3k / mo', title: 'Retainer', body: 'Ongoing design and engineering support.', meta: 'Cancel anytime', seed: 50 },
+          { kicker: 'From €3k / mo', title: 'Retainer', body: 'Ongoing design and engineering support.', meta: 'Cancel anytime', seed: 31 },
         ],
       },
       {
