@@ -1,4 +1,5 @@
 import { lazy, Suspense } from 'react'
+import { SoundDirector } from './audio/SoundDirector'
 import { ErrorBoundary } from './lib/ErrorBoundary'
 import { playerState } from './lib/playerState'
 import { useHome } from './store'
@@ -33,6 +34,7 @@ export function App() {
           <Experience />
         </Suspense>
       </ErrorBoundary>
+      <SoundDirector />
       <Hud />
       <TouchControls />
       <ScreenModal />

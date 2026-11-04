@@ -69,12 +69,21 @@ export function dropPosition(): [number, number, number] {
   return [p.x + f.x * 0.9, p.y + 0.2, p.z + f.z * 0.9]
 }
 
+/** Where the eye should rest on an interactable (its aim point), or null if it is not registered. */
+export function aimPointOf(id: string): Point3 | null {
+  const def = registry.get(id)
+  return def ? (def.aim ?? def.position) : null
+}
+
 /** Runs whatever the player is currently standing next to; otherwise drops what they carry. */
 export function triggerInteraction() {
   const { nearby, carrying, screen, settingsOpen, drop } = useHome.getState()
   if (screen || settingsOpen) return
-  if (nearby) {
-    registry.get(nearby.id)?.run()
+  // `nearby` is refreshed a few times a second: it can still name something that just went away
+  // (the item you picked up) or was switched off — then E falls through to dropping what you carry
+  const def = nearby ? registry.get(nearby.id) : undefined
+  if (def && (!def.enabled || def.enabled())) {
+    def.run()
     return
   }
   if (carrying) drop(dropPosition())

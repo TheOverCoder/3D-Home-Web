@@ -147,6 +147,16 @@ export function SettingsPanel() {
             </section>
 
             <section>
+              <h3>Sound</h3>
+              <Row label="Sound" hint="Footsteps, switches, doors and the room">
+                <Toggle id="set-sound" label="Sound" checked={settings.sound} onChange={(sound) => update({ sound })} />
+              </Row>
+              <Row label="Volume">
+                <Slider id="set-volume" label="Volume" value={Math.round(settings.volume * 100)} min={0} max={100} step={5} onChange={(v) => update({ volume: v / 100, sound: v > 0 ? true : settings.sound })} />
+              </Row>
+            </section>
+
+            <section>
               <h3>Picture</h3>
               <Row label="Quality" hint={qualityAuto ? `Follows the frame rate · now ${quality[0].toUpperCase()}${quality.slice(1)}` : 'Fixed'}>
                 <Segmented

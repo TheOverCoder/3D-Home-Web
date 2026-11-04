@@ -11,17 +11,24 @@ export interface Settings {
   filmGrain: boolean
   haze: boolean // atmospheric fog
   cinema: boolean // letterbox bars
+  sound: boolean
+  volume: number // 0..1
 }
+
+// People who ask their system for less motion get a still camera by default (they can still turn sway on)
+const reducedMotion = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
 
 export const DEFAULT_SETTINGS: Settings = {
   fov: 72,
   sensitivity: 1,
   invertY: false,
-  headBob: true,
+  headBob: !reducedMotion,
   depthOfField: true,
   filmGrain: true,
   haze: true,
   cinema: false,
+  sound: true,
+  volume: 0.7,
 }
 
 const KEY = '3d-home:settings:v1'
@@ -57,6 +64,8 @@ const pick = (s: Settings): Settings => ({
   filmGrain: s.filmGrain,
   haze: s.haze,
   cinema: s.cinema,
+  sound: s.sound,
+  volume: s.volume,
 })
 
 export const useSettings = create<SettingsStore>()((set, get) => ({
