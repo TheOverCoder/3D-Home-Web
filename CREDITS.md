@@ -9,13 +9,18 @@ Keep this file and `src/data/credits.ts` (shown in the app's intro) in sync. Any
 | Glam Velvet Sofa | Wayfair, LLC (Khronos glTF Sample Assets) | CC BY 4.0 — attribution required | https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/GlamVelvetSofa |
 | Diffuse Transmission Plant | Darmstadt Graphics Group GmbH (Khronos glTF Sample Assets) | CC BY 4.0 — attribution required | https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/DiffuseTransmissionPlant |
 | Sheen Chair | Wayfair, LLC (Khronos glTF Sample Assets) | CC0 | https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/SheenChair |
+| Chair Damask Purplegold (bedroom accent chair) | Wayfair, LLC — Eric Chadwick (Khronos glTF Sample Assets) | CC BY 4.0 — attribution required | https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/ChairDamaskPurplegold |
+| Specular Silk Pouf (living-room footstool) | Wayfair, LLC — Eric Chadwick (Khronos glTF Sample Assets) | CC BY 4.0 — attribution required | https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/SpecularSilkPouf |
+| Diffuse Transmission Teacup (coffee table) | Poly Haven and Eric Chadwick (Khronos glTF Sample Assets) | CC0 | https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/DiffuseTransmissionTeacup |
+| Water Bottle (studio desk) | Microsoft (Khronos glTF Sample Assets) | CC0 | https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/WaterBottle |
 | Blouberg Sunrise 2 (1k HDRI) | Poly Haven | CC0 | https://polyhaven.com/a/blouberg_sunrise_2 |
+| Fabric Pattern 07 — normal map only (1k, OpenGL), used for every woven fabric | Poly Haven (file mirrored in godotengine/godot-demo-projects) | CC0 | https://polyhaven.com/a/fabric_pattern_07 |
 
-The models were compressed (meshopt + WebP textures) with `npm run assets:optimize`; nothing else was changed.
+The models were compressed (meshopt + WebP textures, small props capped at 512–1024 px; the pouf and teacup meshes simplified with meshoptimizer) with `npm run assets:optimize`; nothing else was changed.
 
 ## Bundled today (placeholders)
 
-- Daylight and surface textures are generated in code (no third-party image files).
+- Daylight and most surface textures are generated in code; fabrics use the Poly Haven weave above as their normal map.
 - Inter typeface for 3D labels (packaged by [`@pmndrs/assets`](https://github.com/pmndrs/assets), declared CC0-1.0) — The Inter Project Authors, SIL Open Font License 1.1.
 - three.js, @react-three/fiber, @react-three/drei, @react-three/rapier, @react-three/postprocessing, ecctrl, zustand — MIT.
 

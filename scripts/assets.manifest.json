@@ -38,5 +38,63 @@
     "by": "Darmstadt Graphics Group GmbH (Khronos glTF Sample Assets)",
     "license": "CC-BY 4.0",
     "source": "https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/DiffuseTransmissionPlant"
+  },
+  {
+    "id": "accent-chair",
+    "kind": "model",
+    "url": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/ChairDamaskPurplegold/glTF-Binary/ChairDamaskPurplegold.glb",
+    "dest": "src/assets/models/raw/props/accent-chair.glb",
+    "what": "Chair Damask Purplegold (bedroom accent chair)",
+    "by": "Wayfair, LLC; Eric Chadwick (Khronos glTF Sample Assets)",
+    "license": "CC-BY 4.0",
+    "source": "https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/ChairDamaskPurplegold",
+    "textureSize": 1024
+  },
+  {
+    "id": "pouf",
+    "kind": "model",
+    "url": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/SpecularSilkPouf/glTF-Binary/SpecularSilkPouf.glb",
+    "dest": "src/assets/models/raw/props/pouf.glb",
+    "what": "Specular Silk Pouf (living-room footstool)",
+    "by": "Wayfair, LLC; Eric Chadwick (Khronos glTF Sample Assets)",
+    "license": "CC-BY 4.0",
+    "source": "https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/SpecularSilkPouf",
+    "textureSize": 1024,
+    "simplify": 0.12,
+    "simplifyError": 0.003
+  },
+  {
+    "id": "water-bottle",
+    "kind": "model",
+    "url": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/WaterBottle/glTF-Binary/WaterBottle.glb",
+    "dest": "src/assets/models/raw/props/water-bottle.glb",
+    "what": "Water Bottle (studio desk)",
+    "by": "Microsoft (Khronos glTF Sample Assets)",
+    "license": "CC0",
+    "source": "https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/WaterBottle",
+    "textureSize": 512
+  },
+  {
+    "id": "teacup",
+    "kind": "model",
+    "url": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/DiffuseTransmissionTeacup/glTF-Binary/DiffuseTransmissionTeacup.glb",
+    "dest": "src/assets/models/raw/props/teacup.glb",
+    "what": "Teacup and saucer (living-room coffee table)",
+    "by": "Poly Haven; Eric Chadwick (Khronos glTF Sample Assets)",
+    "license": "CC0",
+    "source": "https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/DiffuseTransmissionTeacup",
+    "textureSize": 512,
+    "simplify": 0.2,
+    "simplifyError": 0.003
+  },
+  {
+    "id": "fabric-normal",
+    "kind": "texture",
+    "url": "https://raw.githubusercontent.com/godotengine/godot-demo-projects/master/3d/soft_body_physics/textures/polyhaven/fabric_pattern_07_nor_gl_1k.jpg",
+    "dest": "src/assets/textures/fabric/fabric_pattern_07_nor_gl_1k.jpg",
+    "what": "Fabric Pattern 07 normal map (1k, OpenGL) — the photographed linen weave for every generated fabric; the gingham colour map is deliberately not used",
+    "by": "Poly Haven (mirrored in godotengine/godot-demo-projects)",
+    "license": "CC0",
+    "source": "https://polyhaven.com/a/fabric_pattern_07"
   }
 ]

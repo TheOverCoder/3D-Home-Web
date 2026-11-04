@@ -64,19 +64,20 @@ export function B({ size, position, rotation, color, roughness = 0.8, metalness 
   )
 }
 
-function GlbProp({ url, size }: { url: string; size: V3 }) {
+function GlbProp({ url, size, shadow = true }: { url: string; size: V3; shadow?: boolean }) {
   const { scene } = useGLTF(url, false)
+  const [sx, sy, sz] = size // by value: callers pass fresh array literals
   const object = useMemo(() => {
     const clone = scene.clone(true)
     const dim = new Box3().setFromObject(clone).getSize(new Vector3())
-    clone.scale.setScalar(Math.min(size[0] / dim.x, size[1] / dim.y, size[2] / dim.z))
+    clone.scale.setScalar(Math.min(sx / dim.x, sy / dim.y, sz / dim.z))
     const fitted = new Box3().setFromObject(clone)
     const centre = fitted.getCenter(new Vector3())
     clone.position.set(-centre.x, -fitted.min.y, -centre.z)
     const lights: Object3D[] = []
     clone.traverse((o) => {
       if ((o as Mesh).isMesh) {
-        o.castShadow = true
+        o.castShadow = shadow
         o.receiveShadow = true
       }
       // product shots ship their own studio lights; extra lights would change the shader of the whole scene
@@ -84,8 +85,28 @@ function GlbProp({ url, size }: { url: string; size: V3 }) {
     })
     lights.forEach((l) => l.removeFromParent())
     return clone
-  }, [scene, size])
+  }, [scene, sx, sy, sz, shadow])
   return <primitive object={object} />
+}
+
+/**
+ * A small real model with no collider (things on tables and shelves): `props/<id>.glb` fitted into `size`
+ * (width, height, depth in metres, standing on `position`). Shows `fallback` (or nothing) without the file.
+ * Tiny pieces skip the sun-shadow pass (`shadow={false}`): contact AO grounds them for free.
+ */
+export function GlbDecor({ id, position, rotationY = 0, size, shadow = true, fallback = null }: { id: string; position: V3; rotationY?: number; size: V3; shadow?: boolean; fallback?: ReactNode }) {
+  const url = assets.props[id]
+  return (
+    <group position={position} rotation={[0, rotationY, 0]} userData={{ noBatch: !!url }}>
+      {url ? (
+        <Suspense fallback={fallback}>
+          <GlbProp url={url} size={size} shadow={shadow} />
+        </Suspense>
+      ) : (
+        fallback
+      )}
+    </group>
+  )
 }
 
 interface SolidProps {
@@ -278,6 +299,16 @@ function Armchair() {
   )
 }
 
+/** Placeholder for `props/pouf.glb`: a low, round upholstered footstool. */
+function Pouf() {
+  return (
+    <mesh position={[0, 0.1, 0]} castShadow receiveShadow>
+      <cylinderGeometry args={[0.29, 0.3, 0.2, 28]} />
+      <meshStandardMaterial color="#6b3a4a" roughness={0.6} normalMap={weave()} normalScale={[0.6, 0.6]} />
+    </mesh>
+  )
+}
+
 function Bookshelf() {
   const books = useMemo(() => {
     const palette = ['#b4543a', '#3d6a8a', '#d7b25a', '#4d7a58', '#7a4d7a', '#c9c2b3', '#355c63']
@@ -432,6 +463,7 @@ export function Furnishings() {
       <Solid id="tv-console" position={[-3.5, 0, 5.65]} size={[1.8, 0.5, 0.45]}><TvConsole /></Solid>
       <Solid id="plant-living" position={[-6.35, 0, 5.35]} size={[0.7, 1.3, 0.7]}><Plant tall={1.3} /></Solid>
       <Solid id="armchair" position={[-5.85, 0, 3.4]} rotationY={Math.PI / 2} size={[0.85, 0.95, 0.85]}><Armchair /></Solid>
+      <Solid id="pouf" position={[-4.95, 0, 3.35]} size={[0.6, 0.2, 0.6]}><Pouf /></Solid>
       <Decor position={[-3.5, 0, 3.5]}><Rug size={[3.0, 2.2]} color="#8c6f5a" /></Decor>
       <Decor position={[-6.88, 1.65, 3.4]} rotationY={Math.PI / 2}><Frame size={[1.1, 0.75]} color="#c9b79c" accent="#3d6a8a" /></Decor>
       <Decor position={[-6.88, 1.6, 4.7]} rotationY={Math.PI / 2}><Frame size={[0.6, 0.8]} color="#d9d0c0" accent="#b4543a" /></Decor>
@@ -454,6 +486,8 @@ export function Furnishings() {
       <Solid id="bed" position={[4.6, 0, 4.85]} size={[1.7, 0.7, 2.1]}><Bed /></Solid>
       <Solid id="nightstand" position={[3.35, 0, 5.6]} size={[0.5, 0.58, 0.45]}><Nightstand /></Solid>
       <Solid id="wardrobe" position={[5.8, 0, 0.45]} size={[1.6, 2.2, 0.6]}><Wardrobe /></Solid>
+      {/* reading corner by the mirror, facing into the room */}
+      <Solid id="accent-chair" position={[0.62, 0, 1.25]} rotationY={Math.PI / 2} size={[0.83, 0.69, 0.57]}><Armchair /></Solid>
       <Decor position={[4.6, 0, 4.4]}><Rug size={[2.8, 3.0]} color="#7d8a96" /></Decor>
       <Decor position={[3.5, 1.7, 5.9]} rotationY={Math.PI}><Frame size={[0.8, 0.6]} color="#cfd6dc" accent="#4d7a58" /></Decor>
     </group>
