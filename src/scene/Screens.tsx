@@ -1,88 +1,58 @@
 import { Suspense, useEffect, useMemo, useRef } from 'react'
-import { useFrame, useThree } from '@react-three/fiber'
-import { RoundedBox, Text } from '@react-three/drei'
+import { useFrame } from '@react-three/fiber'
+import { RoundedBox } from '@react-three/drei'
 import { CuboidCollider, RigidBody } from '@react-three/rapier'
-import { CanvasTexture, Color, MathUtils, SRGBColorSpace, Vector3, type Group, type Mesh } from 'three'
-import interBold from '@pmndrs/assets/fonts/inter_bold.woff'
+import { CanvasTexture, Color, SRGBColorSpace } from 'three'
 import { SCREENS, type ScreenDef } from '../data/screens'
 import { useInteractable } from '../lib/interaction'
 import { playGesture } from '../lib/gestures'
 import { useHome } from '../store'
+import { loadScreenFonts } from './screens/fonts'
+import { Hologram } from './screens/Holograms'
+import { createWallScreen } from './screens/wallScreen'
 
-const W = 1024
-const H = 576
+// bumped once the bundled Inter is ready, so screens painted with the fallback font repaint once
+let fontEpoch = 0
+loadScreenFonts().then(() => {
+  fontEpoch++
+})
 
-function drawScreen(ctx: CanvasRenderingContext2D, def: ScreenDef, t: number, active: boolean) {
-  const bg = ctx.createLinearGradient(0, 0, W, H)
-  bg.addColorStop(0, '#080c14')
-  bg.addColorStop(1, '#131b2c')
-  ctx.fillStyle = bg
-  ctx.fillRect(0, 0, W, H)
-
-  // soft accent glow
-  const glow = ctx.createRadialGradient(W * 0.82, H * 0.2, 10, W * 0.82, H * 0.2, 420)
-  glow.addColorStop(0, def.accent + '55')
-  glow.addColorStop(1, 'transparent')
-  ctx.fillStyle = glow
-  ctx.fillRect(0, 0, W, H)
-
-  ctx.fillStyle = def.accent
-  ctx.fillRect(56, 60, 64, 6)
-
-  ctx.fillStyle = '#9aa7bd'
-  ctx.font = '600 28px Inter, system-ui, sans-serif'
-  ctx.fillText(def.subtitle.toUpperCase(), 56, 112)
-
-  ctx.fillStyle = '#ffffff'
-  ctx.font = '700 96px Inter, system-ui, sans-serif'
-  ctx.fillText(def.title, 52, 214)
-
-  // animated mini bars
-  const baseY = H - 120
-  const bw = 62
-  def.bars.forEach((b, i) => {
-    const wobble = active ? 0.06 * Math.sin(t * 2 + i * 1.3) : 0
-    const bh = Math.max(8, (b.value + wobble) * 190)
-    const x = 56 + i * (bw + 22)
-    ctx.fillStyle = def.accent
-    ctx.globalAlpha = 0.9
-    ctx.fillRect(x, baseY - bh, bw, bh)
-    ctx.globalAlpha = 1
-    ctx.fillStyle = '#8b97ab'
-    ctx.font = '500 22px Inter, system-ui, sans-serif'
-    ctx.fillText(b.label, x, baseY + 32)
-  })
-
-  ctx.fillStyle = active ? '#ffffff' : '#5d6a80'
-  ctx.font = '600 26px Inter, system-ui, sans-serif'
-  const hint = active ? 'Stand close and press E to open' : def.tabs.map((x) => x.label).join('  ·  ')
-  ctx.fillText(hint, W - 56 - ctx.measureText(hint).width, H - 44)
-}
+const ACTIVE_FPS = 12
+const WHITE = new Color('#ffffff')
 
 function ScreenPanel({ def, active }: { def: ScreenDef; active: boolean }) {
   const [w, h] = def.size
-  const { texture, ctx } = useMemo(() => {
-    const canvas = document.createElement('canvas')
-    canvas.width = W
-    canvas.height = H
-    const texture = new CanvasTexture(canvas)
-    texture.colorSpace = SRGBColorSpace
-    texture.anisotropy = 8
-    return { texture, ctx: canvas.getContext('2d')! }
-  }, [])
-  const clock = useRef(0)
-  const lastActive = useRef<boolean | null>(null)
+  const screen = useMemo(() => createWallScreen(def), [def])
+  const texture = useMemo(() => {
+    const t = new CanvasTexture(screen.canvas)
+    t.colorSpace = SRGBColorSpace
+    t.anisotropy = 8
+    return t
+  }, [screen])
+  const st = useRef({ clock: 0, last: -1, bootAt: -10, wasActive: null as boolean | null, epoch: -1, dirty: true })
 
   useEffect(() => () => texture.dispose(), [texture])
 
   useFrame((_, dt) => {
-    clock.current += dt
-    // idle screens are drawn once; the active one animates at ~12 fps
-    if (!active && lastActive.current === false) return
-    if (active && (clock.current % 0.08) > dt) return
-    drawScreen(ctx, def, clock.current, active)
+    const s = st.current
+    s.clock += dt
+    if (active !== s.wasActive) {
+      // entering the room powers the screen on: content fades up, the bars fill
+      if (active && s.wasActive !== null) s.bootAt = s.clock
+      s.wasActive = active
+      s.dirty = true
+    }
+    if (s.epoch !== fontEpoch) {
+      s.epoch = fontEpoch
+      screen.invalidate()
+      s.dirty = true
+    }
+    // idle screens repaint only when something changed (entering/leaving the room, fonts); the active one runs at ~12 fps
+    if (active ? s.clock - s.last < 1 / ACTIVE_FPS : !s.dirty) return
+    s.last = s.clock
+    s.dirty = false
+    screen.draw(s.clock, active ? s.clock - s.bootAt : 10, active)
     texture.needsUpdate = true
-    lastActive.current = active
   })
 
   return (
@@ -95,71 +65,14 @@ function ScreenPanel({ def, active }: { def: ScreenDef; active: boolean }) {
         <meshStandardMaterial
           map={texture}
           emissiveMap={texture}
-          emissive={new Color('#ffffff')}
-          emissiveIntensity={active ? 1.5 : 0.8}
+          emissive={WHITE}
+          emissiveIntensity={active ? 1.35 : 0.8}
           roughness={0.65}
           polygonOffset
           polygonOffsetFactor={-2}
           polygonOffsetUnits={-2}
         />
       </mesh>
-    </group>
-  )
-}
-
-const worldPos = new Vector3()
-
-function HoloChart({ def }: { def: ScreenDef }) {
-  const camera = useThree((s) => s.camera)
-  const bars = useRef<(Mesh | null)[]>([])
-  const heights = useRef(def.bars.map(() => 0.01))
-  const group = useRef<Group>(null)
-  const spacing = 0.2
-  const x0 = (-(def.bars.length - 1) * spacing) / 2
-
-  useFrame((state, dt) => {
-    def.bars.forEach((b, i) => {
-      heights.current[i] = MathUtils.damp(heights.current[i], b.value * 0.62, 3.2, dt)
-      const mesh = bars.current[i]
-      if (!mesh) return
-      mesh.scale.y = Math.max(heights.current[i], 0.001)
-      mesh.position.y = heights.current[i] / 2
-    })
-    const g = group.current
-    if (g) {
-      // yaw towards the camera so labels never read mirrored (pedestal is rotated by rotationY)
-      g.getWorldPosition(worldPos)
-      const want = Math.atan2(camera.position.x - worldPos.x, camera.position.z - worldPos.z) - def.rotationY
-      const diff = Math.atan2(Math.sin(want - g.rotation.y), Math.cos(want - g.rotation.y))
-      g.rotation.y += diff * (1 - Math.exp(-6 * dt))
-      g.position.y = 0.9 + Math.sin(state.clock.elapsedTime * 1.4) * 0.015
-    }
-  })
-
-  return (
-    <group ref={group} position={[0, 0.9, 0]}>
-      <mesh position={[0, -0.01, 0]}>
-        <cylinderGeometry args={[0.5, 0.5, 0.012, 48]} />
-        <meshStandardMaterial color={def.accent} emissive={def.accent} emissiveIntensity={0.9} transparent opacity={0.35} depthWrite={false} />
-      </mesh>
-      {def.bars.map((b, i) => (
-        <group key={b.label} position={[x0 + i * spacing, 0, 0]}>
-          <mesh
-            ref={(m) => {
-              bars.current[i] = m
-            }}
-          >
-            <boxGeometry args={[0.1, 1, 0.1]} />
-            <meshStandardMaterial color={def.accent} emissive={def.accent} emissiveIntensity={1.0} roughness={0.25} transparent opacity={0.92} />
-          </mesh>
-          <Text font={interBold} fontSize={0.055} color="#ffffff" position={[0, 0.03, 0.09]} anchorX="center" anchorY="bottom">
-            {b.label}
-          </Text>
-        </group>
-      ))}
-      <Text font={interBold} fontSize={0.11} color={def.accent} position={[0, 0.82, 0]} anchorX="center" anchorY="bottom">
-        {def.title}
-      </Text>
     </group>
   )
 }
@@ -180,7 +93,7 @@ function Pedestal({ def, active }: { def: ScreenDef; active: boolean }) {
       </mesh>
       {active && (
         <Suspense fallback={null}>
-          <HoloChart def={def} />
+          <Hologram def={def} />
         </Suspense>
       )}
     </group>
