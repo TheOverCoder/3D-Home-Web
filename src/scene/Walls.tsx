@@ -1,7 +1,7 @@
-import { useMemo, useRef } from 'react'
-import { useFrame, useThree } from '@react-three/fiber'
+import { forwardRef, useMemo, useRef, type Ref } from 'react'
+import { useFrame, useThree, type ThreeElements } from '@react-three/fiber'
 import { CuboidCollider, RigidBody } from '@react-three/rapier'
-import { Box3, BoxGeometry, DoubleSide, MathUtils, Ray, Vector3, type MeshStandardMaterial } from 'three'
+import { Box3, BoxGeometry, DoubleSide, MathUtils, Ray, Vector3, type MeshPhysicalMaterial, type MeshStandardMaterial } from 'three'
 import { DOORWAYS, HOUSE, ROOMS, WINDOWS, type Vec3, type WindowDef } from '../data/layout'
 import { boxProject } from '../lib/boxProject'
 import { surface } from '../lib/proceduralTextures'
@@ -21,6 +21,14 @@ interface Seg {
   bottom?: boolean // wall piece that touches the floor → baseboard
   top?: boolean // wall piece that touches the ceiling → crown moulding
 }
+
+type SurfaceProps = ThreeElements['meshStandardMaterial'] & { sheen: boolean }
+
+/** Plaster and trim stay standard; curtain cloth gets a soft sheen at grazing angles. */
+const SurfaceMaterial = forwardRef<MeshStandardMaterial, SurfaceProps>(function SurfaceMaterial({ sheen, ...props }, ref) {
+  if (!sheen) return <meshStandardMaterial ref={ref} {...props} />
+  return <meshPhysicalMaterial ref={ref as Ref<MeshPhysicalMaterial>} {...(props as ThreeElements['meshPhysicalMaterial'])} sheen={0.6} sheenRoughness={0.6} sheenColor="#efe7da" />
+})
 
 /** A curtain panel: a box whose faces ripple into soft vertical folds. */
 function pleatedBox(size: Vec3, axis: 'x' | 'z'): BoxGeometry {
@@ -279,7 +287,8 @@ export function Walls() {
                   side={DoubleSide}
                 />
               ) : (
-                <meshStandardMaterial
+                <SurfaceMaterial
+                  sheen={s.kind === 'fabric'}
                   ref={(m) => {
                     mats.current[i][0] = m
                   }}
