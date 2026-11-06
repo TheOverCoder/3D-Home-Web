@@ -42,3 +42,6 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          # GitHub Pages sometimes sits in "updating_pages" for longer than the 10-minute default
+          timeout: 1800000

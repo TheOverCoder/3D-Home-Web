@@ -32,6 +32,7 @@ interface HomeState {
   quality: Quality
   qualityAuto: boolean // true while the frame-rate monitor may move `quality` up or down
   toast: { text: string; id: number } | null
+  graphics: 'ok' | 'lost' | 'restored' // the browser can reset the GPU context (driver crash, sleep, too many tabs)
 
   setPhase: (phase: HomeState['phase']) => void
   markReady: (key: 'scene' | 'env') => void
@@ -55,6 +56,7 @@ let toastId = 0
 
 export const useHome = create<HomeState>()((set, get) => ({
   phase: 'intro',
+  graphics: 'ok',
   ready: { scene: false, env: false },
   progress: 0,
   failure: null,

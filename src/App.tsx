@@ -3,6 +3,7 @@ import { SoundDirector } from './audio/SoundDirector'
 import { ErrorBoundary } from './lib/ErrorBoundary'
 import { playerState } from './lib/playerState'
 import { useHome } from './store'
+import { GraphicsNotice } from './ui/GraphicsNotice'
 import { Hud } from './ui/Hud'
 import { Intro } from './ui/Intro'
 import { ScreenModal } from './ui/ScreenModal'
@@ -40,6 +41,7 @@ export function App() {
       <ScreenModal />
       <SettingsPanel />
       <Intro />
+      <GraphicsNotice />
     </>
   )
 }

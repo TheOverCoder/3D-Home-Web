@@ -1,4 +1,5 @@
-import { Vector3, type Camera, type WebGLRenderer } from 'three'
+// type-only: this module loads with the page shell, before (and without) the 3D engine
+import type { Camera, WebGLRenderer } from 'three'
 import { playerState } from './playerState'
 import { useSettings } from '../settings'
 import { useHome } from '../store'
@@ -42,8 +43,22 @@ export function installDiagnostics() {
 export function registerRenderer(gl: WebGLRenderer, cam: Camera) {
   renderer = gl
   camera = cam
-  gl.domElement.addEventListener('webglcontextlost', () => push('webglcontextlost'))
-  gl.domElement.addEventListener('webglcontextrestored', () => push('webglcontextrestored'))
+  gl.domElement.addEventListener('webglcontextlost', () => {
+    push('webglcontextlost')
+    useHome.setState({ graphics: 'lost' })
+  })
+  gl.domElement.addEventListener('webglcontextrestored', () => {
+    push('webglcontextrestored')
+    useHome.setState({ graphics: 'restored' })
+  })
+}
+
+/** The camera's forward axis (-Z of its world matrix), without needing three's Vector3 here. */
+function viewDirection(cam: Camera): number[] {
+  const e = cam.matrixWorld.elements
+  const d = [-e[8], -e[9], -e[10]]
+  const len = Math.hypot(d[0], d[1], d[2]) || 1
+  return d.map((n) => +(n / len).toFixed(2))
 }
 
 export function collectDiagnostics(): string {
@@ -71,7 +86,7 @@ export function collectDiagnostics(): string {
     where: {
       player: [p.x, p.y, p.z].map((n) => +n.toFixed(2)),
       camera: camera ? camera.position.toArray().map((n) => +n.toFixed(2)) : null,
-      lookingAt: camera ? camera.getWorldDirection(new Vector3()).toArray().map((n) => +n.toFixed(2)) : null,
+      lookingAt: camera ? viewDirection(camera) : null,
     },
     renderer: info ? { geometries: info.memory.geometries, textures: info.memory.textures, programs: info.programs?.length, calls: info.render.calls, triangles: info.render.triangles } : null,
     recent: log,

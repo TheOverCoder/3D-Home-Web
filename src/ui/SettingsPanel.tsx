@@ -27,8 +27,18 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
   )
 }
 
-function Toggle({ id, checked, onChange, label }: { id: string; checked: boolean; onChange: (v: boolean) => void; label: string }) {
-  return <button id={id} role="switch" aria-checked={checked} aria-label={label} className={checked ? 'switch on' : 'switch'} onClick={() => onChange(!checked)} />
+function Toggle({ id, checked, onChange, label, disabled = false }: { id: string; checked: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean }) {
+  return (
+    <button
+      id={id}
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      disabled={disabled}
+      className={checked ? 'switch on' : 'switch'}
+      onClick={() => onChange(!checked)}
+    />
+  )
 }
 
 function Slider({ id, value, min, max, step, onChange, label }: { id: string; value: number; min: number; max: number; step: number; onChange: (v: number) => void; label: string }) {
@@ -171,8 +181,9 @@ export function SettingsPanel() {
                   ]}
                 />
               </Row>
-              <Row label="Depth of field" hint="Soft focus, like a lens">
-                <Toggle id="set-dof" label="Depth of field" checked={settings.depthOfField} onChange={(depthOfField) => update({ depthOfField })} />
+              {/* the lens blur only exists on High: say so instead of offering a switch that does nothing */}
+              <Row label="Depth of field" hint={quality === 'high' ? 'Soft focus, like a lens' : 'Soft focus, like a lens · High quality only'}>
+                <Toggle id="set-dof" label="Depth of field" checked={settings.depthOfField} disabled={quality !== 'high'} onChange={(depthOfField) => update({ depthOfField })} />
               </Row>
               <Row label="Atmosphere" hint="Haze and light shafts">
                 <Toggle id="set-haze" label="Atmosphere" checked={settings.haze} onChange={(haze) => update({ haze })} />
