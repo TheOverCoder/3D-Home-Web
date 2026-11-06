@@ -122,3 +122,79 @@ test.describe('content panel', () => {
     }
   })
 })
+
+test.describe('bad pixels', () => {
+  // The one pixel check in the suite: a phone showed a large pure-black rectangle, which turned out to be a single
+  // non-finite pixel (NaN / overflow) smeared by the bloom's mip blur. A NaN- and an Inf-emitting speck in view
+  // must stay a speck. Measured from a screenshot, decoded in the page (no image library needed).
+  test('a NaN or infinite pixel never becomes a black block', async ({ game }) => {
+    await game.ready()
+    const { page } = game
+    await game.teleport(-2.6, 1.4, -3.0, 0.3, -0.05)
+    await page.waitForTimeout(2500)
+    for (const kind of ['nan', 'inf'] as const) {
+      const placed = await page.evaluate((kind) => {
+        const h = (window as any).__home
+        let Plane: any = null
+        let Shader: any = null
+        const meshClasses = new Set<any>()
+        h.scene.traverse((o: any) => {
+          if (o.isMesh && !o.isInstancedMesh && !o.isSkinnedMesh) meshClasses.add(o.constructor)
+          if (!Plane && o.geometry?.type === 'PlaneGeometry') Plane = o.geometry.constructor
+          if (!Shader && o.material?.type === 'ShaderMaterial') Shader = o.material.constructor
+        })
+        if (!Plane || !Shader) return false
+        const geometry = new Plane(0.03, 0.03)
+        // a plain Mesh: subclasses (3D text and the like) build their own geometry and ignore the arguments
+        const Mesh = [...meshClasses].find((C) => {
+          try {
+            return new C(geometry, Shader.prototype).geometry === geometry
+          } catch {
+            return false
+          }
+        })
+        if (!Mesh) return false
+        const material = new Shader({
+          uniforms: { zero: { value: 0 } },
+          vertexShader: 'void main(){ gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+          fragmentShader: `uniform float zero; void main(){ gl_FragColor = vec4(vec3(${kind === 'nan' ? 'zero / zero' : '1.0 / zero'}), 1.0); }`,
+        })
+        // a 3 cm square facing the camera, 1.2 m ahead and a little low-right: a handful of pixels
+        const speck = new Mesh(geometry, material)
+        speck.name = 'bad-pixel'
+        const cam = h.camera
+        const fwd = cam.getWorldDirection(cam.position.clone())
+        const right = fwd.clone().cross(cam.up).normalize()
+        speck.position.copy(cam.position).addScaledVector(fwd, 1.2).addScaledVector(right, 0.15).addScaledVector(cam.up, -0.2)
+        speck.quaternion.copy(cam.quaternion)
+        h.scene.add(speck)
+        return true
+      }, kind)
+      expect(placed, 'found the Mesh, PlaneGeometry and ShaderMaterial classes in the scene').toBe(true)
+      await page.waitForTimeout(3000)
+      const shot = (await page.screenshot()).toString('base64')
+      const black = await page.evaluate(async (b64) => {
+        const img = new Image()
+        img.src = `data:image/png;base64,${b64}`
+        await img.decode()
+        const c = document.createElement('canvas')
+        c.width = img.width
+        c.height = img.height
+        const ctx = c.getContext('2d')!
+        ctx.drawImage(img, 0, 0)
+        const d = ctx.getImageData(0, 0, c.width, c.height).data
+        let n = 0
+        for (let i = 0; i < d.length; i += 4) if (d[i] < 3 && d[i + 1] < 3 && d[i + 2] < 3) n++
+        return n / (d.length / 4)
+      }, shot)
+      await page.evaluate(() => {
+        const h = (window as any).__home
+        const speck = h.scene.getObjectByName('bad-pixel')
+        speck?.parent.remove(speck)
+        speck?.material.dispose()
+        speck?.geometry.dispose()
+      })
+      expect(black, `${kind}: share of pure-black pixels`).toBeLessThan(0.02)
+    }
+  })
+})

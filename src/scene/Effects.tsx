@@ -16,6 +16,7 @@ import { BlendFunction, ToneMappingMode, type DepthOfFieldEffect } from 'postpro
 import { Vector2 } from 'three'
 import { debugSet } from '../lib/debug'
 import { focus } from '../lib/focus'
+import { createHdrSanitizePass } from '../lib/hdrGuard'
 import { useSettings } from '../settings'
 import { useHome } from '../store'
 
@@ -41,6 +42,8 @@ export function Effects() {
   debugSet('settings', useSettings)
   debugSet('focus', focus)
   const fringe = useMemo(() => new Vector2(0.0005, 0.0007), [])
+  // cleans the frame right before anything blurs it (see lib/hdrGuard: one bad pixel became a black rectangle)
+  const sanitize = useMemo(() => createHdrSanitizePass(), [])
   // N8AO turns "transparency aware" on by itself as soon as it sees a transparent material (window glass,
   // fading walls). That costs two extra full-scene renders, two full-resolution copies and three walks over the
   // whole scene graph (with a fresh Map of every object — garbage-collector stutter) every frame, all to keep AO
@@ -74,6 +77,7 @@ export function Effects() {
       />,
     )
   }
+  fx.push(<primitive key="sanitize" object={sanitize} />)
   if (high && depthOfField) {
     fx.push(
       <DepthOfField

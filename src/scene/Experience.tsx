@@ -4,6 +4,7 @@ import { PerformanceMonitor, Preload, useProgress } from '@react-three/drei'
 import { Physics } from '@react-three/rapier'
 import { debugSet } from '../lib/debug'
 import { registerRenderer } from '../lib/diagnostics'
+import { installHdrGuard } from '../lib/hdrGuard'
 import { useHome, type Quality } from '../store'
 import { Effects } from './Effects'
 import { House } from './House'
@@ -14,6 +15,9 @@ import { Pickups } from './Pickups'
 import { RenderPause } from './RenderPause'
 import { Player } from './Player'
 import { Screens } from './Screens'
+
+// before any material compiles: no lit surface may write a value the half-float buffers cannot hold
+installHdrGuard()
 
 const TIERS: Quality[] = ['low', 'medium', 'high']
 const isQuality = (q: unknown): q is Quality => TIERS.includes(q as Quality)
