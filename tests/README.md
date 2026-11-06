@@ -34,7 +34,7 @@ lamps on, door shut), so tests are independent in effect. The files run in order
 | `03-settings` | Esc opens the settings drawer; a toggle is written to localStorage and survives a reload. |
 | `04-physics` | Jumping repeatedly on the kitchen island (looking up too) never puts the camera above 3.0 m; a grid of reachable standing spots (physics capsule fits) has no eye point inside a solid mesh (ray parity test with a self-check; ShaderMaterial / transparent meshes ignored). |
 | `05-budget-and-fallback` | Scene pass (one extra `gl.render`, shadow maps excluded) under 700 draw calls and 250k triangles in three rooms; a page without WebGL shows the failure message and a disabled intro button; the shared session had no console errors at the end. |
-| `06-quality-and-resilience` | Fresh boots on `quality=high` and `quality=medium` (full post chain: AO, depth of field, MSAA, bloom) walk without console errors; the depth-of-field switch is only enabled on High; *Copy diagnostics* yields a JSON report with GPU, app state and camera; a lost WebGL context shows the reset notice, and restoring it offers *Continue*. |
+| `06-quality-and-resilience` | Fresh boots on `quality=high` and `quality=medium` (full post chain: AO, depth of field, MSAA, bloom) walk without console errors; the depth-of-field switch is only enabled on High; *Copy diagnostics* yields a JSON report with GPU, app state and camera; a lost WebGL context shows the reset notice, and restoring it offers *Continue*; an open content panel stops the 3D rendering (0 frames), closing it resumes rendering and walking. |
 
 ## When the layout changes
 

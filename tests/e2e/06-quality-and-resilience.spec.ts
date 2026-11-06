@@ -83,3 +83,33 @@ test.describe('graphics reset', () => {
     await context.close()
   })
 })
+
+test.describe('content panel', () => {
+  test('rendering pauses behind an open panel, resumes when it closes, and walking works again', async ({ game }) => {
+    await game.ready()
+    const { page } = game
+    await game.teleport(-3.5, 1.4, 4.8, Math.PI, 0)
+    await page.evaluate(() => (window as any).__home.useHome.getState().openScreen('screen-living'))
+    await page.waitForTimeout(3_000) // the view eases onto the screen, then the house stops rendering
+    const f0 = await page.evaluate(() => (window as any).__home.gl.info.render.frame)
+    await page.waitForTimeout(3_000)
+    const f1 = await page.evaluate(() => (window as any).__home.gl.info.render.frame)
+    expect(f1 - f0, 'frames rendered while the panel was open').toBe(0)
+
+    await page.keyboard.press('Escape')
+    await page.waitForFunction(() => (window as any).__home.useHome.getState().screen === null, null, { timeout: 30_000 })
+    await page.waitForFunction((f) => (window as any).__home.gl.info.render.frame > f + 3, f1, { timeout: 60_000, polling: 250 })
+
+    const p0 = await page.evaluate(() => ({ ...(window as any).__home.playerState.position }))
+    await page.keyboard.down('KeyW')
+    try {
+      await page.waitForFunction(
+        (a) => Math.hypot((window as any).__home.playerState.position.x - a.x, (window as any).__home.playerState.position.z - a.z) > 0.4,
+        p0,
+        { timeout: 60_000, polling: 250 },
+      )
+    } finally {
+      await page.keyboard.up('KeyW')
+    }
+  })
+})
