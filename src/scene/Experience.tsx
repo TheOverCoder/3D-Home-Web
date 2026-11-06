@@ -11,6 +11,7 @@ import { LightDirector } from './LightDirector'
 import { LightShafts } from './LightShafts'
 import { Lighting } from './Lighting'
 import { Pickups } from './Pickups'
+import { RenderPause } from './RenderPause'
 import { Player } from './Player'
 import { Screens } from './Screens'
 
@@ -154,6 +155,7 @@ export default function Experience() {
         <Effects />
         {/* compile every shader and upload every texture up front, so turning round or entering a room never stalls */}
         <Preload all />
+        <RenderPause />
       </Suspense>
     </Canvas>
   )
