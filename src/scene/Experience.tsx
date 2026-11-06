@@ -142,7 +142,8 @@ export default function Experience() {
       dpr={[Math.min(1, dpr), dpr]}
       camera={{ fov: 50, near: 0.1, far: 1500, position: [0, 6, 9] }}
       gl={{ antialias: false, powerPreference: 'high-performance' }}
-      style={{ position: 'fixed', inset: 0, zIndex: 0 }}
+      // touch: every drag on the scene turns the view — no browser panning, zooming or pull-to-refresh
+      style={{ position: 'fixed', inset: 0, zIndex: 0, touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}
     >
       {!lockedQuality && qualityAuto && <QualityGovernor onLastResort={() => setSqueeze(true)} />}
       <Lighting />

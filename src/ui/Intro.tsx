@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useHome } from '../store'
 import { assetStatus, usingPlaceholders } from '../assets/registry'
 import { CREDITS } from '../data/credits'
+import { coarsePointer } from '../lib/device'
 
 export function Intro() {
   const phase = useHome((s) => s.phase)
@@ -38,9 +39,16 @@ export function Intro() {
             <span style={{ transform: `scaleX(${Math.max(0.04, Math.min(1, progress / 100))})` }} />
           </div>
         )}
-        <p className="tip">
-          Press <kbd>Esc</kbd> at any time for controls and settings. Sound on — the house has its own.
-        </p>
+        {coarsePointer ? (
+          <p className="tip">
+            Walk with the stick on the left, drag anywhere to look, tap a label to open it. Settings are behind the gear. Sound on — the
+            house has its own.
+          </p>
+        ) : (
+          <p className="tip">
+            Press <kbd>Esc</kbd> at any time for controls and settings. Sound on — the house has its own.
+          </p>
+        )}
         <details className="credits">
           <summary>Credits</summary>
           <ul>

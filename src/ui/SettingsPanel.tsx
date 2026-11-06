@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { coarsePointer } from '../lib/device'
 import { collectDiagnostics } from '../lib/diagnostics'
 import { DEFAULT_SETTINGS, useSettings, type Settings } from '../settings'
 import { useHome } from '../store'
@@ -60,6 +61,14 @@ const KEYS: { action: string; keys: string[] }[] = [
   { action: 'Settings', keys: ['Esc'] },
 ]
 
+const TOUCH: { action: string; how: string }[] = [
+  { action: 'Move', how: 'Left stick' },
+  { action: 'Run', how: 'Stick all the way' },
+  { action: 'Look', how: 'Drag the scene' },
+  { action: 'Open, switch, pick up', how: 'Tap the label' },
+  { action: 'Jump', how: 'Jump button' },
+]
+
 /** The gear in the corner and the panel behind it: every control, shortcut and visual option in one place. */
 export function SettingsPanel() {
   const open = useHome((s) => s.settingsOpen)
@@ -114,19 +123,32 @@ export function SettingsPanel() {
 
             <section>
               <h3>Controls</h3>
-              <ul className="keylist">
-                {KEYS.map((k) => (
-                  <li key={k.action}>
-                    <span>{k.action}</span>
-                    <span className="caps">
-                      {k.keys.map((key) => (
-                        <kbd key={key}>{key}</kbd>
-                      ))}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <p className="muted">On a touch screen, use the left joystick to walk and drag the scene to look.</p>
+              {coarsePointer ? (
+                <ul className="keylist">
+                  {TOUCH.map((k) => (
+                    <li key={k.action}>
+                      <span>{k.action}</span>
+                      <span className="how">{k.how}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <>
+                  <ul className="keylist">
+                    {KEYS.map((k) => (
+                      <li key={k.action}>
+                        <span>{k.action}</span>
+                        <span className="caps">
+                          {k.keys.map((key) => (
+                            <kbd key={key}>{key}</kbd>
+                          ))}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="muted">On a touch screen, use the left joystick to walk and drag the scene to look.</p>
+                </>
+              )}
             </section>
 
             <section>

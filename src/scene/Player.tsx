@@ -11,6 +11,7 @@ import { footstep, jumpSound, land } from '../audio/sound'
 import { HOUSE, ROOMS, SPAWN, roomAt, type FloorKind } from '../data/layout'
 import { screenById, type ScreenDef } from '../data/screens'
 import { debugSet } from '../lib/debug'
+import { coarsePointer } from '../lib/device'
 import { focus } from '../lib/focus'
 import { playGesture } from '../lib/gestures'
 import { findNearest, triggerInteraction, type ViewRay } from '../lib/interaction'
@@ -41,7 +42,6 @@ const ACC_60 = 0.18
 const DEC_60 = 0.26
 const GRIP = 0.5
 const perFrame = (base: number, fps: number) => Math.min(1, (1 - Math.pow(1 - base * GRIP, 60 / fps)) / GRIP)
-const coarsePointer = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches
 const reducedMotion = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
 
 /** Walking rhythm shared by the footsteps and the head bob: one step per π of phase; the foot strikes at the bottom of the bob. */
@@ -157,7 +157,9 @@ function useKeyboard() {
 function LookInput() {
   const dom = useThree((s) => s.gl.domElement)
   useEffect(() => {
-    let dragging = false
+    // the finger (or mouse) that is turning the view: a second finger landing on the scene must not make the
+    // view jump to it, and its own moves are ignored until the first one lifts
+    let dragging: number | null = null
     let lastX = 0
     let lastY = 0
     let wasLocked = false
@@ -172,7 +174,8 @@ function LookInput() {
     }
     const onDown = (e: PointerEvent) => {
       if (!active()) return
-      dragging = true
+      if (dragging !== null && e.pointerType === 'touch') return
+      dragging = e.pointerId
       lastX = e.clientX
       lastY = e.clientY
       if (e.pointerType === 'mouse' && document.pointerLockElement !== dom) {
@@ -188,14 +191,14 @@ function LookInput() {
       if (!active()) return
       if (document.pointerLockElement === dom) {
         look(e.movementX, e.movementY, 0.0022)
-      } else if (dragging) {
+      } else if (dragging === e.pointerId) {
         look(e.clientX - lastX, e.clientY - lastY, 0.0032)
         lastX = e.clientX
         lastY = e.clientY
       }
     }
     const onUp = (e: PointerEvent) => {
-      dragging = false
+      if (dragging === e.pointerId) dragging = null
       dom.releasePointerCapture?.(e.pointerId)
     }
     // Esc while the pointer is captured releases it; treat that as "pause" and show the settings

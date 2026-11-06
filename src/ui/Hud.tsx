@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { PICKUPS, ROOMS } from '../data/layout'
+import { coarsePointer } from '../lib/device'
 import { triggerInteraction } from '../lib/interaction'
 import { useSettings } from '../settings'
 import { useHome } from '../store'
@@ -39,11 +40,16 @@ function FirstHint() {
     const t = setTimeout(() => setVisible(false), 7000)
     return () => clearTimeout(t)
   }, [hintShown])
-  return visible ? (
+  if (!visible) return null
+  return coarsePointer ? (
+    <div className="first-hint touch" aria-hidden="true">
+      Walk with the stick · drag anywhere to look · tap a label to open it
+    </div>
+  ) : (
     <div className="first-hint" aria-hidden="true">
       Move with <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> · look with the mouse · <kbd>Esc</kbd> for settings
     </div>
-  ) : null
+  )
 }
 
 export function Hud() {
@@ -75,7 +81,11 @@ export function Hud() {
       <div className="hud-prompt" aria-live="polite">
         {prompt && (
           <button className="prompt" onClick={triggerInteraction}>
-            <kbd>E</kbd>
+            {coarsePointer ? (
+              <span className="tap" aria-hidden="true" />
+            ) : (
+              <kbd>E</kbd>
+            )}
             <span>{prompt}</span>
           </button>
         )}
