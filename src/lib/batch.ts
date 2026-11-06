@@ -1,4 +1,4 @@
-import { Float32BufferAttribute, Matrix4, Mesh, Vector3, type BufferGeometry, type Material, type MeshPhysicalMaterial, type MeshStandardMaterial, type Object3D } from 'three'
+import { Float32BufferAttribute, Matrix4, Mesh, Vector3, type BufferGeometry, type Material, type MeshStandardMaterial, type Object3D } from 'three'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 
 // Draw-call diet. The placeholder rooms are hundreds of small meshes; every one costs CPU time in the colour
@@ -24,16 +24,7 @@ function signature(m: MeshStandardMaterial): string {
     m.side,
     m.polygonOffset ? `${m.polygonOffsetFactor}/${m.polygonOffsetUnits}` : '',
     m.flatShading ? 'flat' : '',
-    m.type,
-    physical(m),
   ].join('|')
-}
-
-/** The extra lobes of a MeshPhysicalMaterial (sheen for cloth, clearcoat for lacquer); empty for standard ones. */
-function physical(m: MeshStandardMaterial): string {
-  if (m.type !== 'MeshPhysicalMaterial') return ''
-  const p = m as MeshPhysicalMaterial
-  return [p.sheen, p.sheenRoughness, p.sheenColor.getHexString(), p.clearcoat, p.clearcoatRoughness, p.ior, p.specularIntensity].join('/')
 }
 
 function underNoBatch(o: Object3D, root: Object3D): boolean {
@@ -55,7 +46,7 @@ export interface Batch {
 }
 
 /**
- * Merges every static, opaque `MeshStandardMaterial` / plain `MeshPhysicalMaterial` mesh under `root` into a handful of meshes. The originals
+ * Merges every static, opaque `MeshStandardMaterial` mesh under `root` into a handful of meshes. The originals
  * stay in the tree, so React keeps owning them; `setMerged(false)` swaps them back in (the walls need that for
  * the see-through dollhouse view). Merged meshes get their own material copies, so anything that animates the
  * originals' materials cannot leak into them.
@@ -71,14 +62,7 @@ export function batchStatic(root: Object3D): Batch {
     const mesh = o as Mesh
     if (!mesh.isMesh || !mesh.visible || underNoBatch(o, root)) return
     const material = mesh.material
-    if (Array.isArray(material)) return
-    const type = (material as MeshStandardMaterial).type
-    if (type !== 'MeshStandardMaterial' && type !== 'MeshPhysicalMaterial') return
-    if (type === 'MeshPhysicalMaterial') {
-      const p = material as MeshPhysicalMaterial
-      // transmission / iridescence etc. need per-object passes or maps the merge would not keep
-      if (p.transmission > 0 || p.iridescence > 0 || p.anisotropy > 0 || p.sheenColorMap || p.clearcoatNormalMap) return
-    }
+    if (Array.isArray(material) || (material as MeshStandardMaterial).type !== 'MeshStandardMaterial') return
     const m = material as MeshStandardMaterial
     if (m.transparent || m.opacity < 1 || m.alphaMap || m.vertexColors) return
     if ((mesh as unknown as { isSkinnedMesh?: boolean }).isSkinnedMesh || (mesh as unknown as { isInstancedMesh?: boolean }).isInstancedMesh) return

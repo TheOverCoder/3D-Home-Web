@@ -1,7 +1,7 @@
 import { Suspense, useMemo, type ReactNode } from 'react'
 import { useGLTF } from '@react-three/drei'
 import { CuboidCollider, RigidBody } from '@react-three/rapier'
-import { Box3, BoxGeometry, Color, DoubleSide, Mesh, PlaneGeometry, Vector3, type BufferGeometry, type Light, type Object3D, type Texture } from 'three'
+import { Box3, BoxGeometry, DoubleSide, Mesh, PlaneGeometry, Vector3, type BufferGeometry, type Light, type Object3D, type Texture } from 'three'
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
 import { boxProject } from '../lib/boxProject'
 import { material, surface, type MaterialKind } from '../lib/proceduralTextures'
@@ -47,53 +47,22 @@ export function B({ size, position, rotation, color, roughness = 0.8, metalness 
   // textured boxes share their map set and carry projected UVs
   const set = mat ? material(mat) : null
   const geometry = boxGeometry(size, radius, mat ? tile : undefined, (position?.[0] ?? 0) * 3.1 + (position?.[2] ?? 0) * 1.7)
-  const finish = finishOf(mat, fabric)
-  const common = {
-    color,
-    roughness,
-    metalness,
-    emissive,
-    emissiveIntensity,
-    map: set?.map ?? null,
-    normalMap: set ? set.normalMap : fabric ? weave() : null,
-    roughnessMap: set?.roughnessMap ?? null,
-    normalScale: (set ? [1, 1] : [0.8, 0.8]) as [number, number],
-  }
   return (
     <mesh geometry={geometry} position={position} rotation={rotation} castShadow receiveShadow>
-      {finish ? (
-        <meshPhysicalMaterial {...common} {...finish} sheenColor={finish.sheen ? sheenTint(color) : '#000000'} />
-      ) : (
-        <meshStandardMaterial {...common} />
-      )}
+      <meshStandardMaterial
+        color={color}
+        roughness={roughness}
+        metalness={metalness}
+        emissive={emissive}
+        emissiveIntensity={emissiveIntensity}
+        map={set?.map ?? null}
+        normalMap={set ? set.normalMap : fabric ? weave() : null}
+        roughnessMap={set?.roughnessMap ?? null}
+        normalScale={set ? [1, 1] : [0.8, 0.8]}
+      />
     </mesh>
   )
 }
-
-/**
- * The second lobe real surfaces have: cloth scatters a soft rim of light (sheen), lacquer and leather carry
- * a thin glossy coat (clearcoat). Values are restrained on purpose — the procedural maps carry the detail.
- */
-function finishOf(mat: MaterialKind | undefined, fabric: boolean | undefined) {
-  if (mat === 'fabric' || (!mat && fabric)) return { sheen: 0.7, sheenRoughness: 0.55, clearcoat: 0, clearcoatRoughness: 0 }
-  if (mat === 'leather') return { sheen: 0, sheenRoughness: 0, clearcoat: 0.35, clearcoatRoughness: 0.45 }
-  if (mat === 'paint') return { sheen: 0, sheenRoughness: 0, clearcoat: 0.4, clearcoatRoughness: 0.3 }
-  if (mat === 'veneer') return { sheen: 0, sheenRoughness: 0, clearcoat: 0.25, clearcoatRoughness: 0.35 }
-  return null
-}
-
-const sheenTints = new Map<string, string>()
-/** Sheen is the colour of light grazing the fibres: the cloth's own hue, lifted toward white. */
-function sheenTint(color: string): string {
-  let t = sheenTints.get(color)
-  if (!t) {
-    const c = new Color(color).lerp(WHITE, 0.55)
-    t = `#${c.getHexString()}`
-    sheenTints.set(color, t)
-  }
-  return t
-}
-const WHITE = new Color('#ffffff')
 
 function GlbProp({ url, size, shadow = true }: { url: string; size: V3; shadow?: boolean }) {
   const { scene } = useGLTF(url, false)
