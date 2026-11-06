@@ -100,6 +100,15 @@ test.describe('content panel', () => {
     await page.waitForFunction(() => (window as any).__home.useHome.getState().screen === null, null, { timeout: 30_000 })
     await page.waitForFunction((f) => (window as any).__home.gl.info.render.frame > f + 3, f1, { timeout: 60_000, polling: 250 })
 
+    // turn away from the TV console (it is right in front of the screen) towards open floor (west)
+    await page.evaluate(() => {
+      const h = (window as any).__home
+      if (typeof h.look === 'function') h.look({ yaw: Math.PI / 2, pitch: 0 })
+      else {
+        h.look.yaw = Math.PI / 2
+        h.look.pitch = 0
+      }
+    })
     const p0 = await page.evaluate(() => ({ ...(window as any).__home.playerState.position }))
     await page.keyboard.down('KeyW')
     try {
