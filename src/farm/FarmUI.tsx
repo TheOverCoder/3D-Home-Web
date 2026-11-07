@@ -1,31 +1,89 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { farmSound, placeSound, uiClick } from '../audio/sound'
 import { coarsePointer } from '../lib/device'
 import { playGesture } from '../lib/gestures'
 import { useHome } from '../store'
-import { BEDS, CROPS, MILL, MILLABLE, OVEN, PRODUCE, RECIPES, UPGRADES, count, produceById, type CropId, type MillInput, type ProduceId } from './data'
+import { BEDS, CROPS, MILL, MILLABLE, OVEN, PRODUCE, RECIPES, UPGRADES, arrivalEvery, count, produceById, queuePlaces, type CropId, type MillInput, type ProduceId } from './data'
 import { iconUrl } from './icons'
-import { acceptOffer, bake, buy, canBake, declineOffer, fairPrice, farm, millLoad, owned, plant, useFarm, visitorById, yieldOf } from './state'
+import {
+  acceptOffer,
+  arrivalSeconds,
+  bake,
+  buy,
+  canBake,
+  canSell,
+  clockText,
+  declineOffer,
+  fairPrice,
+  farm,
+  inLine,
+  millLoad,
+  owned,
+  placesInLine,
+  plant,
+  sellAll,
+  sellAllPreview,
+  upgradeLevel,
+  upgradePrice,
+  useFarm,
+  waiting,
+  yieldOf,
+  type Visitor,
+} from './state'
 
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1)
 
-/** Coins and what is in the basket, while you are in the garden. */
+/** How many chips fit across the top: fewer on an upright phone, more on its side or on a big screen. */
+function useChipRoom() {
+  const [room, setRoom] = useState(() => chipRoom())
+  useEffect(() => {
+    const update = () => setRoom(chipRoom())
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
+  return room
+}
+const chipRoom = () => Math.max(2, Math.min(9, Math.floor((window.innerWidth - 230) / 66)))
+
+const PersonGlyph = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden="true">
+    <circle cx="12" cy="7.5" r="3.5" />
+    <path d="M5 20.5c.8-4 3.6-6.5 7-6.5s6.2 2.5 7 6.5" />
+  </svg>
+)
+
+/** Coins, the line at the gate and what is in the basket, while you are in the garden. Tap it for the whole basket. */
 function FarmChip() {
   useFarm((s) => s.rev)
+  const room = useChipRoom()
+  const openPanel = useHome((s) => s.openPanel)
+  const panel = useHome((s) => s.panel)
   const stock = PRODUCE.filter((p) => farm.inv[p.id] > 0)
+  const shown = stock.length > room ? stock.slice(0, room - 1) : stock
+  const hidden = stock.length - shown.length
+  const line = inLine().length
   return (
-    <div className="farm-chip" aria-label="Your coins and harvest">
+    <button className="farm-chip" aria-label="Your coins and harvest — open the basket" onClick={() => !panel && openPanel({ kind: 'basket' })}>
       <span className="farm-chip-item coins" title="Coins">
         <img src={iconUrl('coin', 48)} alt="" />
         <b>{farm.coins}</b>
       </span>
-      {stock.map((p) => (
+      {farm.started && (
+        <span className={`farm-chip-item line${line >= placesInLine() ? ' full' : ''}`} title="Buyers in line at the gate">
+          <PersonGlyph />
+          <b>
+            {line}/{placesInLine()}
+          </b>
+        </span>
+      )}
+      {shown.map((p) => (
         <span key={p.id} className="farm-chip-item" title={cap(p.plural)}>
           <img src={iconUrl(p.id, 48)} alt="" />
           <b>{farm.inv[p.id]}</b>
         </span>
       ))}
-    </div>
+      {hidden > 0 && <span className="farm-chip-item more">+{hidden}</span>}
+    </button>
   )
 }
 
@@ -106,65 +164,123 @@ function SeedsPanel({ bed }: { bed: number }) {
   )
 }
 
-function OfferPanel({ visitor }: { visitor: number }) {
+/** A pale shirt colour wants a dark number on it. */
+const light = (hex: string) => {
+  const n = parseInt(hex.slice(1), 16)
+  return ((n >> 16) & 255) * 0.299 + ((n >> 8) & 255) * 0.587 + (n & 255) * 0.114 > 160
+}
+
+function Tag({ v }: { v: Visitor }) {
+  const ratio = v.offer / fairPrice(v.want, v.qty)
+  const tag = ratio >= 1.15 ? 'generous' : ratio >= 0.9 ? 'fair' : 'low'
+  return <span className={`farm-tag ${tag}`}>{tag === 'generous' ? 'Generous' : tag === 'fair' ? 'Fair' : 'Low'}</span>
+}
+
+/** The line at the gate: sell to one buyer, to everyone you have enough for, or send someone away. */
+function QueuePanel() {
   useFarm((s) => s.rev)
   const close = useHome((s) => s.closePanel)
-  const v = visitorById(visitor)
-  const gone = !v || v.phase !== 'waiting'
+  const line = waiting()
+  const coming = inLine().length - line.length
+  const all = sellAllPreview()
+  const places = placesInLine()
   useEffect(() => {
-    if (gone) close()
-  }, [gone, close])
-  useEffect(() => {
-    if (!v) return
     const onKey = (e: KeyboardEvent) => {
-      if ((e.key === 'Enter' || e.key.toLowerCase() === 'y') && farm.inv[v.want] >= v.qty) acceptOffer(v.id)
-      else if (e.key.toLowerCase() === 'n' || e.key === 'Backspace') declineOffer(v.id)
+      if (e.repeat) return
+      const k = e.key.toLowerCase()
+      const front = waiting()
+      // (not a letter of WASD: walking away from the panel must never sell anything)
+      if (e.key === 'Enter' && e.shiftKey) sellAll()
+      else if (e.key === 'Enter' || k === 'y') {
+        const v = front.find(canSell)
+        if (v) acceptOffer(v.id)
+      } else if (k === 'n' || e.key === 'Backspace') {
+        if (front[0]) declineOffer(front[0].id)
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [v])
-  if (!v || gone) return null
-  const have = farm.inv[v.want]
-  const fair = fairPrice(v.want, v.qty)
-  const ratio = v.offer / fair
-  const tag = ratio >= 1.15 ? 'generous' : ratio >= 0.9 ? 'fair' : 'low'
-  const p = produceById(v.want)
+  }, [])
+  const next = farm.started ? (line.length + coming >= places ? 'the line is full' : `next buyer in ${clockText(farm.nextVisitorIn)}`) : 'buyers come once you plant'
   return (
-    <Shell title={`${v.name} at the gate`} sub="would like to buy" onClose={close}>
-      <div className="farm-offer">
-        <span className="farm-avatar" style={{ background: v.look.shirt }} aria-hidden="true">
-          {v.name[0]}
-        </span>
-        <div className="farm-offer-want">
-          <img src={iconUrl(v.want, 96)} alt="" />
-          <strong>{count(v.want, v.qty)}</strong>
-        </div>
-        <div className="farm-offer-price">
-          <span>for</span>
-          <strong>
-            <Coins n={v.offer} />
-          </strong>
-          <span className={`farm-tag ${tag}`}>
-            {tag === 'generous' ? 'Generous' : tag === 'fair' ? 'Fair' : 'Low'} · market ≈ {fair}
-          </span>
-        </div>
+    <Shell title="Buyers at the gate" sub={`${line.length} of ${places} waiting${coming ? ` · ${coming} on the way` : ''} · ${next}`} onClose={close}>
+      <button className="primary farm-sell-all" disabled={!all.buyers} onClick={() => sellAll()}>
+        {all.buyers ? (
+          <>
+            Sell to everyone I can · {all.buyers} {all.buyers === 1 ? 'buyer' : 'buyers'} · + {all.coins} coins
+          </>
+        ) : (
+          'Nothing in the basket for anyone yet'
+        )}
+      </button>
+      <div className="farm-list farm-queue">
+        {line.map((v, i) => {
+          const have = farm.inv[v.want]
+          const ok = canSell(v)
+          return (
+            <div key={v.id} className={`farm-row farm-buyer${ok ? ' ok' : ''}`}>
+              <span className="farm-avatar small" style={{ background: v.look.shirt, color: light(v.look.shirt) ? '#1d232c' : '#fff' }} aria-hidden="true">
+                {i + 1}
+              </span>
+              <img className="farm-buyer-icon" src={iconUrl(v.want, 64)} alt="" />
+              <div className="farm-buyer-body">
+                <strong>
+                  {v.name} · {count(v.want, v.qty)}
+                </strong>
+                <span>
+                  for <Coins n={v.offer} /> <Tag v={v} /> {ok ? `you have ${have}` : have ? `you have only ${have}` : `you have none`}
+                </span>
+              </div>
+              <div className="farm-buyer-actions">
+                <button className="primary small" disabled={!ok} onClick={() => acceptOffer(v.id)}>
+                  Sell
+                </button>
+                <button className="farm-secondary small" onClick={() => declineOffer(v.id)} aria-label={`Send ${v.name} away`}>
+                  No
+                </button>
+              </div>
+            </div>
+          )
+        })}
+        {!line.length && <p className="farm-empty">Nobody is waiting right now{coming ? ' — someone is on the way.' : '.'}</p>}
       </div>
-      <p className={have >= v.qty ? 'farm-stock ok' : 'farm-stock short'}>
-        {have >= v.qty ? `You have ${count(v.want, have)}.` : have > 0 ? `You only have ${count(v.want, have)}.` : `You have no ${p.plural} yet.`}
+      <p className="farm-hint">
+        Buyers wait in line until you sell to them or send them away; someone new soon takes the place of anyone you turn down.
+        {!coarsePointer && (
+          <>
+            {' '}
+            <kbd>Enter</kbd> sell to the first you can · <kbd>Shift</kbd>+<kbd>Enter</kbd> sell to everyone · <kbd>N</kbd> send the first away
+          </>
+        )}
       </p>
-      <div className="farm-actions">
-        <button className="primary" disabled={have < v.qty} onClick={() => acceptOffer(v.id)}>
-          Sell for {v.offer} coins
-        </button>
-        <button className="farm-secondary" onClick={() => declineOffer(v.id)}>
-          No, thanks
-        </button>
-      </div>
-      {!coarsePointer && (
-        <p className="farm-hint">
-          <kbd>Enter</kbd> sell · <kbd>N</kbd> decline · <kbd>Esc</kbd> think about it ({v.name} waits a little while)
-        </p>
+    </Shell>
+  )
+}
+
+/** Everything in the basket, with what it fetches. */
+function BasketPanel() {
+  useFarm((s) => s.rev)
+  const close = useHome((s) => s.closePanel)
+  const stock = PRODUCE.filter((p) => farm.inv[p.id] > 0)
+  const worth = stock.reduce((sum, p) => sum + p.price * farm.inv[p.id], 0)
+  return (
+    <Shell title="Your basket" sub={<>You have <Coins n={farm.coins} /> · basket worth ≈ {worth}</>} onClose={close}>
+      {stock.length ? (
+        <div className="farm-basket">
+          {stock.map((p) => (
+            <div key={p.id} className="farm-basket-item" title={`${count(p.id, farm.inv[p.id])} · about ${p.price} coins each`}>
+              <img src={iconUrl(p.id, 64)} alt="" />
+              <b>{farm.inv[p.id]}</b>
+              <span>{cap(p.plural)}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="farm-empty">The basket is empty — harvest a bed, collect eggs, milk a cow or shear a sheep.</p>
       )}
+      <p className="farm-hint">
+        {farm.started ? `${inLine().length} of ${placesInLine()} places in the line at the gate taken · a new buyer about every ${clockText(arrivalSeconds())}.` : 'Plant something and buyers start coming to the gate.'}
+      </p>
     </Shell>
   )
 }
@@ -178,11 +294,31 @@ function ShopPanel() {
       <div className="farm-list">
         {UPGRADES.map((u) => {
           const has = owned(u.id)
-          const extra = u.id === 'hen' ? ` · ${farm.hens} now` : u.id === 'cow' ? ` · ${farm.cows} now` : ''
+          const price = upgradePrice(u.id)
+          const level = upgradeLevel(u.id)
+          const extra =
+            u.id === 'hen'
+              ? ` · ${farm.hens} now`
+              : u.id === 'cow'
+                ? ` · ${farm.cows} now`
+                : u.id === 'sheep'
+                  ? ` · ${farm.sheep} now`
+                  : u.id === 'queue'
+                    ? has
+                      ? ` · ${placesInLine()} places, the most there is`
+                      : ` · ${placesInLine()} → ${queuePlaces(level + 1)} places`
+                    : u.id === 'pace'
+                      ? has
+                        ? ` · one every ${clockText(arrivalSeconds())}, as often as it gets`
+                        : ` · one every ${clockText(arrivalSeconds())} → ${clockText(arrivalEvery(level + 1))}`
+                      : ''
           return (
             <div key={u.id} className="farm-row">
               <div>
-                <strong>{u.name}</strong>
+                <strong>
+                  {u.name}
+                  {u.levels ? <small className="farm-level"> {level}/{u.levels}</small> : null}
+                </strong>
                 <span>
                   {u.blurb}
                   {extra}
@@ -190,7 +326,7 @@ function ShopPanel() {
               </div>
               <button
                 className={has ? 'farm-secondary' : 'primary small'}
-                disabled={has || farm.coins < u.price}
+                disabled={has || farm.coins < price}
                 onClick={() => {
                   if (buy(u.id)) {
                     uiClick()
@@ -198,7 +334,7 @@ function ShopPanel() {
                   }
                 }}
               >
-                {has ? 'Done' : <>Buy · {u.price}</>}
+                {has ? (u.levels ? 'Max' : 'Done') : <>Buy · {price}</>}
               </button>
             </div>
           )
@@ -206,7 +342,7 @@ function ShopPanel() {
       </div>
       <p className="farm-hint">
         This season: {stats.harvested} picked · {stats.sold} sold · {stats.earned} coins earned
-        {stats.declined ? ` · ${stats.declined} offers turned down` : ''}
+        {stats.declined ? ` · ${stats.declined} buyers turned away` : ''}
       </p>
     </Shell>
   )
@@ -313,7 +449,8 @@ export function FarmUI() {
     <>
       {(outdoors || panel) && <FarmChip />}
       {panel?.kind === 'seeds' && <SeedsPanel bed={panel.bed} />}
-      {panel?.kind === 'offer' && <OfferPanel visitor={panel.visitor} />}
+      {panel?.kind === 'queue' && <QueuePanel />}
+      {panel?.kind === 'basket' && <BasketPanel />}
       {panel?.kind === 'shop' && <ShopPanel />}
       {panel?.kind === 'mill' && <MillPanel />}
       {panel?.kind === 'oven' && <OvenPanel />}

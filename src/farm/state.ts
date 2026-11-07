@@ -9,20 +9,27 @@ import {
   EXPANSIONS,
   GATE_SPOT,
   LANE_ENDS,
-  LANE_Z,
   LEMON_TREE,
+  LOOM,
   MILL,
   MILLABLE,
   NAMES,
+  PACE_LEVELS,
   PRODUCE,
+  QUEUE_LEVELS,
   RECIPES,
+  SHEEP,
   START_COINS,
   UPGRADES,
   VISITOR,
+  WALK_Z,
   WATER_SHARE,
+  arrivalEvery,
   count,
   cropById,
   produceById,
+  queuePlaces,
+  queueSpot,
   recipeById,
   type CakeId,
   type CropId,
@@ -61,16 +68,16 @@ export interface Visitor {
   want: ProduceId
   qty: number
   offer: number
-  phase: 'arriving' | 'waiting' | 'leaving'
-  path: { x: number; z: number }[]
+  phase: 'arriving' | 'queued' | 'leaving' // walking up the lane to their place, in the line, going home
+  path: { x: number; z: number }[] // the way home
   leg: number
   x: number
   z: number
   heading: number
   moving: boolean
-  waited: number
   mood: 'neutral' | 'happy' | 'sad'
   moodAt: number // farm clock when the mood changed (the scene plays a little reaction)
+  departAt: number // farm clock when they set off home (a moment to react first)
 }
 
 export interface MillState {
@@ -87,6 +94,12 @@ export interface OvenState {
   ready: CakeId | null
 }
 
+export interface LoomState {
+  count: number // fleeces on the loom
+  progress: number // seconds
+  ready: number // rolls of cloth waiting to be taken off
+}
+
 export interface FarmData {
   coins: number
   inv: Record<ProduceId, number>
@@ -99,17 +112,23 @@ export interface FarmData {
   cows: number
   milk: number[] // bottles waiting at each cow
   milkTimer: number[]
+  sheep: number
+  wool: number[] // fleeces grown on each sheep
+  woolTimer: number[]
   mill: MillState
   oven: OvenState
+  loom: LoomState
   sprinkler: boolean
   compost: boolean
   expansions: Record<Expansion, boolean>
+  queueLevel: number // places in the line beyond the first five
+  paceLevel: number // how much sooner the next buyer comes
   started: boolean // the player has planted something: from then on buyers come by
   planted: CropId[] // kinds ever planted: buyers ask for what you grow
   made: ProduceId[] // everything the farm has ever produced: buyers ask for that too
   stats: { harvested: number; sold: number; earned: number; declined: number; baked: number }
   visitors: Visitor[]
-  nextVisitorIn: number
+  nextVisitorIn: number // counts down to the next buyer (it holds at zero while the line is full)
   clock: number // seconds of farm time since the page opened
 }
 
@@ -118,6 +137,7 @@ const produceIds = PRODUCE.map((p) => p.id)
 const emptyInv = () => Object.fromEntries(produceIds.map((id) => [id, 0])) as Record<ProduceId, number>
 const freshMill = (): MillState => ({ input: null, count: 0, progress: 0, output: null, ready: 0 })
 const freshOven = (): OvenState => ({ baking: null, progress: 0, ready: null })
+const freshLoom = (): LoomState => ({ count: 0, progress: 0, ready: 0 })
 
 function fresh(): FarmData {
   return {
@@ -132,11 +152,17 @@ function fresh(): FarmData {
     cows: COW.startCows,
     milk: Array.from({ length: COW.startCows }, () => 1),
     milkTimer: Array.from({ length: COW.startCows }, () => 0),
+    sheep: SHEEP.startSheep,
+    wool: Array.from({ length: SHEEP.startSheep }, () => 1),
+    woolTimer: Array.from({ length: SHEEP.startSheep }, () => 0),
     mill: freshMill(),
     oven: freshOven(),
+    loom: freshLoom(),
     sprinkler: false,
     compost: false,
     expansions: { east: false, west: false },
+    queueLevel: 0,
+    paceLevel: 0,
     started: false,
     planted: [],
     made: [],
@@ -151,12 +177,45 @@ const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite
 const int = (v: unknown, d: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, Math.round(num(v, d))))
 const isProduce = (v: unknown): v is ProduceId => produceIds.includes(v as ProduceId)
 
+/** A buyer in the line, as saved: who they are and what they want. */
+interface SavedBuyer {
+  name: string
+  look: Look
+  want: ProduceId
+  qty: number
+  offer: number
+}
+
+const isColour = (v: unknown): v is string => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v)
+
+function savedBuyer(raw: unknown): SavedBuyer | null {
+  if (!raw || typeof raw !== 'object') return null
+  const b = raw as Partial<SavedBuyer>
+  const l = (b.look ?? {}) as Partial<Look>
+  if (!isProduce(b.want) || !l || !isColour(l.shirt) || !isColour(l.trousers) || !isColour(l.skin) || !isColour(l.hair)) return null
+  return {
+    name: typeof b.name === 'string' && b.name.length <= 24 ? b.name : NAMES[0],
+    look: {
+      shirt: l.shirt,
+      trousers: l.trousers,
+      skin: l.skin,
+      hair: l.hair,
+      hairStyle: l.hairStyle === 1 || l.hairStyle === 2 ? l.hairStyle : 0,
+      hat: !!l.hat,
+      height: Math.min(1.08, Math.max(0.9, num(l.height, 1))),
+    },
+    want: b.want,
+    qty: int(b.qty, 1, 1, 12),
+    offer: int(b.offer, 1, 1, 999),
+  }
+}
+
 /** The saved farm, made safe (a hand-edited or old save can never break the game), plus the time it was saved. */
-function load(): { data: FarmData; savedAt: number | null } {
+function load(): { data: FarmData; savedAt: number | null; queue: SavedBuyer[] } {
   const data = fresh()
   try {
-    const raw = JSON.parse(localStorage.getItem(KEY) ?? 'null') as Partial<FarmData> & { time?: number }
-    if (!raw || typeof raw !== 'object') return { data, savedAt: null }
+    const raw = JSON.parse(localStorage.getItem(KEY) ?? 'null') as Partial<FarmData> & { time?: number; queue?: unknown[] }
+    if (!raw || typeof raw !== 'object') return { data, savedAt: null, queue: [] }
     data.coins = Math.max(0, Math.round(num(raw.coins, START_COINS)))
     for (const id of produceIds) data.inv[id] = Math.max(0, Math.round(num(raw.inv?.[id], 0)))
     data.expansions = { east: !!raw.expansions?.east, west: !!raw.expansions?.west }
@@ -182,6 +241,17 @@ function load(): { data: FarmData; savedAt: number | null } {
     data.cows = int(raw.cows, COW.startCows, COW.startCows, COW.maxCows)
     data.milk = Array.from({ length: data.cows }, (_, i) => int(raw.milk?.[i], 1, 0, COW.max))
     data.milkTimer = Array.from({ length: data.cows }, (_, i) => Math.max(0, num(raw.milkTimer?.[i], 0)))
+    data.sheep = int(raw.sheep, SHEEP.startSheep, SHEEP.startSheep, SHEEP.maxSheep)
+    data.wool = Array.from({ length: data.sheep }, (_, i) => int(raw.wool?.[i], 1, 0, SHEEP.max))
+    data.woolTimer = Array.from({ length: data.sheep }, (_, i) => Math.max(0, num(raw.woolTimer?.[i], 0)))
+    const loom = raw.loom
+    if (loom && typeof loom === 'object') {
+      const n = int(loom.count, 0, 0, LOOM.capacity)
+      data.loom = { count: n, progress: n ? Math.max(0, num(loom.progress, 0)) : 0, ready: n ? 0 : int(loom.ready, 0, 0, LOOM.capacity) }
+    }
+    data.queueLevel = int(raw.queueLevel, 0, 0, QUEUE_LEVELS)
+    data.paceLevel = int(raw.paceLevel, 0, 0, PACE_LEVELS)
+    data.nextVisitorIn = Math.min(arrivalEvery(data.paceLevel), Math.max(0, num(raw.nextVisitorIn, VISITOR.firstAfter)))
     const mill = raw.mill
     if (mill && typeof mill === 'object') {
       const input = mill.input && mill.input in MILLABLE ? mill.input : null
@@ -205,9 +275,10 @@ function load(): { data: FarmData; savedAt: number | null } {
     data.planted = Array.isArray(raw.planted) ? raw.planted.filter((c): c is CropId => CROPS.some((d) => d.id === c)) : []
     data.made = Array.isArray(raw.made) ? raw.made.filter(isProduce) : []
     data.stats = { ...data.stats, ...(raw.stats ?? {}) }
-    return { data, savedAt: num(raw.time, 0) || null }
+    const queue = (Array.isArray(raw.queue) ? raw.queue : []).map(savedBuyer).filter((b): b is SavedBuyer => !!b)
+    return { data, savedAt: num(raw.time, 0) || null, queue: queue.slice(0, queuePlaces(data.queueLevel)) }
   } catch {
-    return { data, savedAt: null }
+    return { data, savedAt: null, queue: [] }
   }
 }
 
@@ -223,8 +294,10 @@ function saveNow() {
   window.clearTimeout(saveTimer)
   saveTimer = undefined
   try {
-    const { visitors: _v, nextVisitorIn: _n, clock: _c, ...rest } = farm
-    localStorage.setItem(KEY, JSON.stringify({ ...rest, time: Date.now() }))
+    const { visitors, clock: _c, ...rest } = farm
+    // the line at the gate is kept too: buyers wait for you while you are away
+    const queue: SavedBuyer[] = visitors.filter((v) => v.phase !== 'leaving').map(({ name, look, want, qty, offer }) => ({ name, look, want, qty, offer }))
+    localStorage.setItem(KEY, JSON.stringify({ ...rest, queue, time: Date.now() }))
   } catch {
     /* storage full or blocked: the farm still works for this visit */
   }
@@ -369,7 +442,28 @@ export function milkCow(i: number) {
   return n
 }
 
-// ───────────────────────────── mill and oven ─────────────────────────────
+export const sheepName = (i: number) => SHEEP.names[i % SHEEP.names.length]
+
+/** How woolly a sheep looks: 0 just shorn … 1 a full fleece twice over. */
+export const woolliness = (i: number) => {
+  const n = farm.wool[i] ?? 0
+  return Math.min(1, (n + (n < SHEEP.max ? (farm.woolTimer[i] ?? 0) / SHEEP.every : 0)) / SHEEP.max)
+}
+
+export function shear(i: number) {
+  const n = farm.wool[i] ?? 0
+  if (!n) return 0
+  farm.wool[i] = 0
+  farm.woolTimer[i] = 0
+  gain('wool', n)
+  farm.stats.harvested += n
+  toast(`+ ${count('wool', n)} from ${sheepName(i)}`)
+  bump()
+  save()
+  return n
+}
+
+// ───────────────────────────── mill, oven and loom ─────────────────────────────
 
 export type MillStage = 'idle' | 'working' | 'done'
 export const millStage = (): MillStage => (farm.mill.input ? 'working' : farm.mill.ready > 0 ? 'done' : 'idle')
@@ -425,8 +519,51 @@ export function takeOut() {
   return id
 }
 
+export type LoomStage = 'idle' | 'working' | 'done'
+export const loomStage = (): LoomStage => (farm.loom.count > 0 ? 'working' : farm.loom.ready > 0 ? 'done' : 'idle')
+export const loomSecondsLeft = () => (farm.loom.count ? farm.loom.count * LOOM.perItem - farm.loom.progress : 0)
+
+/** Puts as many fleeces on the loom as it takes. */
+export function loomLoad() {
+  if (loomStage() !== 'idle') return 0
+  const n = Math.min(LOOM.capacity, farm.inv.wool)
+  if (!n) return 0
+  farm.inv.wool -= n
+  farm.loom = { count: n, progress: 0, ready: 0 }
+  bump()
+  save()
+  return n
+}
+
+export function loomCollect() {
+  const n = farm.loom.ready
+  if (!n) return 0
+  gain('cloth', n)
+  farm.loom = freshLoom()
+  toast(`+ ${count('cloth', n)}, fresh off the loom`)
+  bump()
+  save()
+  return n
+}
+
 // ───────────────────────────── the shop ─────────────────────────────
 
+const mmss = (seconds: number) => {
+  const t = Math.max(0, Math.ceil(seconds))
+  return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`
+}
+export { mmss as clockText }
+
+/** Steps bought of an upgrade that comes one step at a time (0 for the others). */
+export const upgradeLevel = (u: UpgradeId) => (u === 'queue' ? farm.queueLevel : u === 'pace' ? farm.paceLevel : 0)
+
+/** What the next step of an upgrade costs. */
+export function upgradePrice(u: UpgradeId) {
+  const def = UPGRADES.find((x) => x.id === u)!
+  return def.price + (def.priceStep ?? 0) * upgradeLevel(u)
+}
+
+/** Bought (all of it, for an upgrade that comes in steps). */
 export function owned(u: UpgradeId) {
   switch (u) {
     case 'sprinkler':
@@ -437,15 +574,26 @@ export function owned(u: UpgradeId) {
       return farm.hens >= EGG.maxHens
     case 'cow':
       return farm.cows >= COW.maxCows
+    case 'sheep':
+      return farm.sheep >= SHEEP.maxSheep
+    case 'queue':
+      return farm.queueLevel >= QUEUE_LEVELS
+    case 'pace':
+      return farm.paceLevel >= PACE_LEVELS
     default:
       return farm.expansions[u]
   }
 }
 
+export const placesInLine = () => queuePlaces(farm.queueLevel)
+export const arrivalSeconds = () => arrivalEvery(farm.paceLevel)
+
 export function buy(id: UpgradeId) {
   const u = UPGRADES.find((x) => x.id === id)
-  if (!u || owned(id) || farm.coins < u.price) return false
-  farm.coins -= u.price
+  const price = upgradePrice(id)
+  if (!u || owned(id) || farm.coins < price) return false
+  farm.coins -= price
+  let note = `${u.name}: done`
   if (id === 'sprinkler') farm.sprinkler = true
   else if (id === 'compost') farm.compost = true
   else if (id === 'hen') farm.hens = Math.min(EGG.maxHens, farm.hens + 1)
@@ -453,13 +601,27 @@ export function buy(id: UpgradeId) {
     farm.cows = Math.min(COW.maxCows, farm.cows + 1)
     farm.milk.push(0)
     farm.milkTimer.push(0)
+    note = `${cowName(farm.cows - 1)} joins the herd`
+  } else if (id === 'sheep') {
+    farm.sheep = Math.min(SHEEP.maxSheep, farm.sheep + 1)
+    farm.wool.push(0)
+    farm.woolTimer.push(0)
+    note = `${sheepName(farm.sheep - 1)} joins the flock`
+  } else if (id === 'queue') {
+    farm.queueLevel = Math.min(QUEUE_LEVELS, farm.queueLevel + 1)
+    note = `The line at the gate has room for ${placesInLine()}`
+  } else if (id === 'pace') {
+    farm.paceLevel = Math.min(PACE_LEVELS, farm.paceLevel + 1)
+    farm.nextVisitorIn = Math.min(farm.nextVisitorIn, arrivalSeconds())
+    note = `A buyer every ${mmss(arrivalSeconds())}`
   } else {
     farm.expansions[id] = true
     BEDS.forEach((def, i) => {
       if (def.expansion === id) farm.beds[i].built = true
     })
+    note = `${EXPANSIONS[id].name}: the beds are in`
   }
-  toast(id === 'east' || id === 'west' ? `${EXPANSIONS[id].name}: the beds are in` : id === 'cow' ? `${cowName(farm.cows - 1)} joins the herd` : `${u.name}: done`)
+  toast(note)
   bump()
   save()
   return true
@@ -495,14 +657,19 @@ function priceFor(want: ProduceId, qty: number) {
 
 export const fairPrice = (want: ProduceId, qty: number) => produceById(want).price * qty
 
-export function spawnVisitor(opts: Partial<Pick<Visitor, 'want' | 'qty' | 'offer'>> & { from?: -1 | 1 } = {}) {
-  const from = opts.from ?? (Math.random() < 0.5 ? -1 : 1)
-  const request = opts.want ? { want: opts.want, qty: opts.qty ?? 2 } : chooseRequest()
+const wrapAngle = (a: number) => Math.atan2(Math.sin(a), Math.cos(a))
+
+/** Everyone in line or on their way to it, the front first. */
+export const inLine = () => farm.visitors.filter((v) => v.phase !== 'leaving')
+/** Everyone standing in line, the front first. */
+export const waiting = () => farm.visitors.filter((v) => v.phase === 'queued')
+
+function newVisitor(want: ProduceId, qty: number, offer: number, from: -1 | 1, look?: Look, name?: string): Visitor {
   const startX = LANE_ENDS[from < 0 ? 0 : 1]
-  const v: Visitor = {
+  return {
     id: ++visitorSeq,
-    name: pick(NAMES),
-    look: {
+    name: name ?? pick(NAMES),
+    look: look ?? {
       shirt: pick(SHIRTS),
       trousers: pick(TROUSERS),
       skin: pick(SKINS),
@@ -511,25 +678,39 @@ export function spawnVisitor(opts: Partial<Pick<Visitor, 'want' | 'qty' | 'offer
       hat: Math.random() < 0.3,
       height: rand(0.94, 1.05),
     },
-    want: request.want,
-    qty: request.qty,
-    offer: opts.offer ?? priceFor(request.want, request.qty),
+    want,
+    qty,
+    offer,
     phase: 'arriving',
-    path: [
-      { x: startX, z: LANE_Z + rand(-0.3, 0.3) },
-      { x: GATE_SPOT.x + from * 0.6, z: LANE_Z },
-      { x: GATE_SPOT.x, z: GATE_SPOT.z },
-    ],
-    leg: 1,
+    path: [],
+    leg: 0,
     x: startX,
-    z: LANE_Z,
+    z: WALK_Z + rand(-0.15, 0.15),
     heading: from < 0 ? Math.PI / 2 : -Math.PI / 2,
     moving: true,
-    waited: 0,
     mood: 'neutral',
     moodAt: farm.clock,
+    departAt: 0,
   }
+}
+
+/** Puts a buyer straight into their place in the line (a saved line, buyers who came while you were away). */
+function standInLine(v: Visitor) {
+  const spot = queueSpot(inLine().indexOf(v))
+  v.phase = 'queued'
+  v.x = spot.x
+  v.z = spot.z
+  v.heading = spot.heading
+  v.moving = false
+}
+
+/** A new buyer walks up the lane (`queued`: is already standing in line). */
+export function spawnVisitor(opts: Partial<Pick<Visitor, 'want' | 'qty' | 'offer'>> & { from?: -1 | 1; queued?: boolean } = {}) {
+  const from = opts.from ?? (Math.random() < 0.5 ? -1 : 1)
+  const request = opts.want ? { want: opts.want, qty: opts.qty ?? 2 } : chooseRequest()
+  const v = newVisitor(request.want, request.qty, opts.offer ?? priceFor(request.want, request.qty), from)
   farm.visitors.push(v)
+  if (opts.queued) standInLine(v)
   bump()
   return v
 }
@@ -538,41 +719,78 @@ function leave(v: Visitor, mood: Visitor['mood']) {
   v.phase = 'leaving'
   v.mood = mood
   v.moodAt = farm.clock
-  const exit = Math.random() < 0.5 ? -1 : 1
+  v.departAt = farm.clock + 1.1 // a moment to react before setting off
+  // home along the far side of the lane, past the line, whichever way is nearer the end they came from
+  const exit = v.x > GATE_SPOT.x + 2 || Math.random() < 0.5 ? 1 : -1
   v.path = [
     { x: v.x, z: v.z },
-    { x: GATE_SPOT.x + exit * 0.6, z: LANE_Z },
-    { x: LANE_ENDS[exit < 0 ? 0 : 1], z: LANE_Z + rand(-0.3, 0.3) },
+    { x: v.x + exit * 0.4, z: WALK_Z + 0.25 },
+    { x: LANE_ENDS[exit < 0 ? 0 : 1], z: WALK_Z + rand(0, 0.3) },
   ]
   v.leg = 1
-  v.moving = true
-  const panel = useHome.getState().panel
-  if (panel?.kind === 'offer' && panel.visitor === v.id) useHome.getState().closePanel()
   bump()
 }
 
 export const visitorById = (id: number) => farm.visitors.find((v) => v.id === id)
+export const canSell = (v: Visitor) => farm.inv[v.want] >= v.qty
 
-export function acceptOffer(id: number) {
-  const v = visitorById(id)
-  if (!v || v.phase !== 'waiting' || farm.inv[v.want] < v.qty) return false
+function sell(v: Visitor) {
   farm.inv[v.want] -= v.qty
   farm.coins += v.offer
   farm.stats.sold += v.qty
   farm.stats.earned += v.offer
-  toast(`Sold ${count(v.want, v.qty)} · + ${v.offer} coins`)
-  farmSound('coins')
   leave(v, 'happy')
+}
+
+export function acceptOffer(id: number) {
+  const v = visitorById(id)
+  if (!v || v.phase !== 'queued' || !canSell(v)) return false
+  sell(v)
+  toast(`Sold ${count(v.want, v.qty)} to ${v.name} · + ${v.offer} coins`)
+  farmSound('coins')
   save()
   return true
 }
 
+/** Who you could sell to, front to back, with what is in the basket now — and what it comes to. */
+export function sellAllPreview() {
+  const left = { ...farm.inv }
+  let buyers = 0
+  let coins = 0
+  for (const v of waiting()) {
+    if (left[v.want] < v.qty) continue
+    left[v.want] -= v.qty
+    buyers++
+    coins += v.offer
+  }
+  return { buyers, coins }
+}
+
+/** Sells to everyone in line you have enough for, front to back. */
+export function sellAll() {
+  let buyers = 0
+  let coins = 0
+  for (const v of waiting()) {
+    if (!canSell(v)) continue
+    sell(v)
+    buyers++
+    coins += v.offer
+  }
+  if (!buyers) return 0
+  toast(`Sold to ${buyers} ${buyers === 1 ? 'buyer' : 'buyers'} · + ${coins} coins`)
+  farmSound('coins')
+  save()
+  return buyers
+}
+
+/** "Sorry, none today": they go, and someone else comes along soon to take their place. */
 export function declineOffer(id: number) {
   const v = visitorById(id)
-  if (!v || v.phase !== 'waiting') return false
+  if (!v || v.phase !== 'queued') return false
   farm.stats.declined += 1
   farmSound('decline')
   leave(v, 'sad')
+  farm.nextVisitorIn = Math.min(farm.nextVisitorIn, 8)
   save()
   return true
 }
@@ -580,7 +798,8 @@ export function declineOffer(id: number) {
 // ───────────────────────────── time ─────────────────────────────
 
 const stageKey = () =>
-  farm.beds.map((_, i) => bedStage(i)).join() + `|${farm.lemons}|${farm.eggs}|${farm.milk.join(',')}|${millStage()}|${ovenStage()}`
+  farm.beds.map((_, i) => bedStage(i)).join() +
+  `|${farm.lemons}|${farm.eggs}|${farm.milk.join(',')}|${farm.wool.join(',')}|${millStage()}|${ovenStage()}|${loomStage()}`
 
 function grow(dt: number) {
   for (const b of farm.beds) {
@@ -619,6 +838,20 @@ function grow(dt: number) {
     o.progress += dt
     if (o.progress >= recipeById(o.baking).seconds) farm.oven = { baking: null, progress: 0, ready: o.baking }
   }
+  for (let i = 0; i < farm.sheep; i++) {
+    if ((farm.wool[i] ?? 0) >= SHEEP.max) continue // a full fleece stops growing until it is shorn
+    farm.woolTimer[i] = (farm.woolTimer[i] ?? 0) + dt
+    while (farm.woolTimer[i] >= SHEEP.every && (farm.wool[i] ?? 0) < SHEEP.max) {
+      farm.woolTimer[i] -= SHEEP.every
+      farm.wool[i] = (farm.wool[i] ?? 0) + 1
+    }
+    if ((farm.wool[i] ?? 0) >= SHEEP.max) farm.woolTimer[i] = 0
+  }
+  const l = farm.loom
+  if (l.count) {
+    l.progress += dt
+    if (l.progress >= l.count * LOOM.perItem) farm.loom = { count: 0, progress: 0, ready: l.count }
+  }
 }
 
 function walk(v: Visitor, dt: number) {
@@ -627,24 +860,31 @@ function walk(v: Visitor, dt: number) {
     v.moving = false
     return true
   }
-  const dx = target.x - v.x
-  const dz = target.z - v.z
-  const d = Math.hypot(dx, dz)
-  const step = VISITOR.speed * dt
-  v.moving = true
-  if (d > 1e-3) {
-    const want = Math.atan2(dx, dz)
-    const diff = Math.atan2(Math.sin(want - v.heading), Math.cos(want - v.heading))
-    v.heading += diff * Math.min(1, dt * 7)
-  }
-  if (d <= step) {
-    v.x = target.x
-    v.z = target.z
+  if (moveTo(v, target.x, target.z, dt)) {
     v.leg++
     if (v.leg >= v.path.length) {
       v.moving = false
       return true
     }
+  }
+  return false
+}
+
+/** One step towards (x, z); true once there. */
+function moveTo(v: Visitor, x: number, z: number, dt: number) {
+  const dx = x - v.x
+  const dz = z - v.z
+  const d = Math.hypot(dx, dz)
+  if (d < 0.02) {
+    v.moving = false
+    return true
+  }
+  v.moving = true
+  v.heading += wrapAngle(Math.atan2(dx, dz) - v.heading) * Math.min(1, dt * 7)
+  const step = VISITOR.speed * dt
+  if (d <= step) {
+    v.x = x
+    v.z = z
   } else {
     v.x += (dx / d) * step
     v.z += (dz / d) * step
@@ -654,37 +894,38 @@ function walk(v: Visitor, dt: number) {
 
 function people(dt: number) {
   const step = Math.min(dt, 0.25)
-  for (const v of [...farm.visitors]) {
+  const line = inLine()
+  line.forEach((v, k) => {
+    const spot = queueSpot(k)
     if (v.phase === 'arriving') {
-      if (walk(v, step)) {
-        v.phase = 'waiting'
-        v.heading = Math.PI // facing the garden (north)
+      // up the far side of the lane to your place, then a step across to it
+      const far = Math.abs(v.x - spot.x) > 0.35
+      if (moveTo(v, spot.x, far ? WALK_Z : spot.z, step) && !far) {
+        v.phase = 'queued'
         v.moodAt = farm.clock
-        toast(`${v.name} is at the garden gate`)
+        const n = line.filter((w) => w.phase === 'queued').length
+        toast(k === 0 ? `${v.name} is at the garden gate` : `${v.name} joined the line · ${n} waiting`)
         const { pan, near } = placeSound(GATE_SPOT.x, GATE_SPOT.z)
         farmSound('bell', pan, Math.max(0.5, near))
         bump()
       }
-    } else if (v.phase === 'waiting') {
-      const want = Math.PI
-      v.heading += Math.atan2(Math.sin(want - v.heading), Math.cos(want - v.heading)) * Math.min(1, step * 5)
-      v.waited += dt
-      if (v.waited > VISITOR.patience) {
-        toast(`${v.name} could not wait any longer`)
-        leave(v, 'sad')
-      }
-    } else if (walk(v, step)) {
+    } else if (moveTo(v, spot.x, spot.z, step)) {
+      // in line: they move up when a place ahead frees, then turn back to the gate
+      v.heading += wrapAngle(spot.heading - v.heading) * Math.min(1, step * 5)
+    }
+  })
+  for (const v of [...farm.visitors]) {
+    if (v.phase !== 'leaving' || farm.clock < v.departAt) continue
+    if (walk(v, step)) {
       farm.visitors.splice(farm.visitors.indexOf(v), 1)
       bump()
     }
   }
-  // the next one comes by once nobody is waiting at the gate
+  // the next buyer: the countdown runs once you have planted, and waits at zero while the line is full
   if (!farm.started) return
-  const busyGate = farm.visitors.some((v) => v.phase !== 'leaving')
-  if (busyGate) return
-  farm.nextVisitorIn -= dt
-  if (farm.nextVisitorIn <= 0) {
-    farm.nextVisitorIn = rand(VISITOR.every[0], VISITOR.every[1])
+  farm.nextVisitorIn = Math.max(0, farm.nextVisitorIn - dt)
+  if (farm.nextVisitorIn <= 0 && line.length < placesInLine()) {
+    farm.nextVisitorIn = arrivalSeconds()
     spawnVisitor()
   }
 }
@@ -717,10 +958,26 @@ export function tick(dt: number) {
   }
 }
 
-// growing on while the page was closed: up to three hours, with nobody at the gate in the meantime
+// the line at the gate as you left it; then, for the time the page was closed (up to three hours), the farm
+// grows on and buyers keep joining the line — as many as it has room for
+for (const b of loaded.queue) {
+  const v = newVisitor(b.want, b.qty, b.offer, 1, b.look, b.name)
+  farm.visitors.push(v)
+  standInLine(v)
+}
 if (loaded.savedAt) {
   const away = Math.min(3 * 3600, Math.max(0, (Date.now() - loaded.savedAt) / 1000))
   for (let left = away; left > 0; left -= 5) grow(Math.min(5, left))
+  if (farm.started) {
+    let t = away - farm.nextVisitorIn
+    let n = 0
+    if (t >= 0) {
+      n = 1 + Math.floor(t / arrivalSeconds())
+      t %= arrivalSeconds()
+      farm.nextVisitorIn = arrivalSeconds() - t
+    } else farm.nextVisitorIn -= away
+    for (let i = Math.min(n, placesInLine() - inLine().length); i > 0; i--) spawnVisitor({ queued: true })
+  }
 }
 
 /** Starts again from scratch (settings, tests). */

@@ -14,18 +14,23 @@ import { B } from '../scene/Furnishings'
 import { StaticBatch } from '../scene/House'
 import { SHRUB_SPOTS, CORNER_TREES } from '../scene/Exterior'
 import { useHome } from '../store'
-import { BED, BEDS, COOP, EXPANSIONS, LEMON_TREE, NEST, PASTURE, PATH_X, RUN, SHED, STAND, count, cropById } from './data'
+import { BED, BEDS, COOP, EXPANSIONS, FOLD, LEMON_TREE, NEST, PASTURE, PATH_X, RUN, SHED, STAND, count, cropById } from './data'
 import { Chickens } from './Chickens'
 import { Plants } from './Plants'
 import {
+  acceptOffer,
   bake,
   bedProgress,
   bedStage,
   buildBed,
   buy,
   collectEggs,
+  declineOffer,
   farm,
   harvest,
+  loomCollect,
+  loomLoad,
+  loomStage,
   milkCow,
   millCollect,
   millLoad,
@@ -35,13 +40,21 @@ import {
   pickLemons,
   plant,
   resetFarm,
+  sellAll,
+  arrivalSeconds,
+  inLine,
+  placesInLine,
+  saveFarm,
+  shear,
   spawnVisitor,
   tick,
   useFarm,
+  waiting,
   water,
   yieldOf,
 } from './state'
 import { Cows, herd } from './Cows'
+import { Sheep, flock } from './Sheep'
 import { Visitors } from './Visitors'
 import { Workshop } from './Workshop'
 
@@ -218,6 +231,15 @@ function Bed({ index }: { index: number }) {
       if (stage === 'ripe') return `Harvest ${count(crop.id, yieldOf(crop.id))}`
       return `${crop.plural[0].toUpperCase()}${crop.plural.slice(1)} · ready in ${mmss(crop.growSeconds - b.growth)}`
     },
+    icon: () => {
+      const stage = bedStage(index)
+      const crop = farm.beds[index].crop ?? undefined
+      if (stage === 'unbought' || stage === 'locked') return { verb: 'build' }
+      if (stage === 'empty') return { verb: 'plant' }
+      if (stage === 'thirsty') return { verb: 'water', item: crop }
+      if (stage === 'ripe') return { verb: 'pick', item: crop }
+      return { verb: 'wait', item: crop }
+    },
     run: () => {
       const stage = bedStage(index)
       const { pan, near } = placeSound(def.x, def.z)
@@ -309,6 +331,7 @@ function LemonTree() {
     radius: 2.3,
     enabled: () => farm.lemons > 0,
     label: () => `Pick ${count('lemon', farm.lemons)}`,
+    icon: { verb: 'pick', item: 'lemon' },
     run: () => {
       pickLemons()
       playGesture('interact')
@@ -343,6 +366,7 @@ function Nest() {
     radius: 1.9,
     enabled: () => farm.eggs > 0,
     label: () => `Collect ${count('egg', farm.eggs)}`,
+    icon: { verb: 'pick', item: 'egg' },
     run: () => {
       collectEggs()
       playGesture('interact')
@@ -361,6 +385,7 @@ function ShopDoor() {
     aim: [SHED.x + 0.92, 1.25, SHED.z],
     radius: 2.0,
     label: 'Farm shop',
+    icon: { verb: 'shop' },
     run: () => openPanel({ kind: 'shop' }),
   })
   return null
@@ -581,6 +606,66 @@ function Structures() {
         </mesh>
       </group>
 
+      {/* the sheep fold behind the house: a lower post-and-rail fence with an open gate facing the house, a lean-to
+          in the north-west corner, a hay rack and a trough */}
+      {(() => {
+        const { minX, maxX, minZ, maxZ, gateX, gateWidth } = FOLD
+        const out = []
+        const runs: [number, number, number, number][] = [
+          [minX, minZ, maxX, minZ],
+          [minX, minZ, minX, maxZ],
+          [maxX, minZ, maxX, maxZ],
+          [minX, maxZ, gateX - gateWidth / 2, maxZ],
+          [gateX + gateWidth / 2, maxZ, maxX, maxZ],
+        ]
+        for (const [x0, z0, x1, z1] of runs) {
+          const len = Math.hypot(x1 - x0, z1 - z0)
+          const n = Math.max(1, Math.round(len / 1.3))
+          for (let i = 0; i <= n; i++) {
+            const t = i / n
+            out.push(<B key={`fp${x0}${z0}${i}`} size={[0.08, 0.95, 0.08]} position={[x0 + (x1 - x0) * t, 0.475, z0 + (z1 - z0) * t]} color={WOOD_DARK} mat="veneer" tile={0.9} radius={0} />)
+          }
+          const alongX = Math.abs(x1 - x0) > 0.01
+          for (const y of [0.35, 0.75]) {
+            out.push(
+              <B key={`fr${x0}${z0}${y}`} size={alongX ? [len, 0.07, 0.035] : [0.035, 0.07, len]} position={[(x0 + x1) / 2, y, (z0 + z1) / 2]} color={WOOD} mat="veneer" tile={0.9} radius={0} />,
+            )
+          }
+        }
+        out.push(
+          <group key="fgate" position={[gateX - gateWidth / 2, 0, maxZ]} rotation={[0, 1.2, 0]}>
+            {[0.28, 0.68].map((y) => (
+              <B key={y} size={[gateWidth - 0.1, 0.08, 0.035]} position={[(gateWidth - 0.1) / 2, y, -0.02]} color={WOOD} radius={0} />
+            ))}
+            <B size={[0.06, 0.85, 0.035]} position={[gateWidth - 0.12, 0.45, -0.02]} color={WOOD} radius={0} />
+          </group>,
+        )
+        // the lean-to: three posts, a back wall of boards and a sloping roof
+        const sx = minX + 0.15
+        const sz = minZ + 0.12
+        out.push(
+          <group key="shelter" position={[sx, 0, sz]}>
+            {[0.05, 1.1, 2.15].map((x) => (
+              <B key={x} size={[0.09, 1.5, 0.09]} position={[x, 0.75, 1.25]} color={WOOD_DARK} mat="veneer" tile={0.9} radius={0} />
+            ))}
+            <B size={[2.25, 1.75, 0.06]} position={[1.1, 0.875, 0.04]} color="#7b5a3c" mat="veneer" tile={0.7} radius={0} />
+            <B size={[2.45, 0.06, 1.55]} position={[1.1, 1.62, 0.66]} rotation={[0.2, 0, 0]} color="#5d4a3a" mat="veneer" tile={0.6} radius={0} />
+            <mesh position={[0.9, 0.12, 0.6]} scale={[0.75, 0.16, 0.45]} receiveShadow>
+              <icosahedronGeometry args={[1, 1]} />
+              <meshStandardMaterial color="#d8bd6a" roughness={1} />
+            </mesh>
+          </group>,
+        )
+        return out
+      })()}
+      <group position={[FOLD.maxX - 0.75, 0, FOLD.minZ + 0.55]}>
+        <B size={[1.1, 0.34, 0.45]} position={[0, 0.17, 0]} color={WOOD_DARK} mat="veneer" tile={0.8} radius={0} />
+        <mesh position={[0, 0.315, 0]} rotation-x={-Math.PI / 2}>
+          <planeGeometry args={[1.0, 0.36]} />
+          <meshStandardMaterial color="#3d6f8a" roughness={0.08} metalness={0.1} envMapIntensity={1.4} />
+        </mesh>
+      </group>
+
       {/* the gate in the south fence: two posts and a slatted leaf */}
       <group position={[GATE.x, 0, GARDEN.maxZ]}>
         {[-1, 1].map((s) => (
@@ -630,6 +715,20 @@ function Colliders() {
         args={[0.06, 0.6, (PASTURE.maxZ - PASTURE.gateZ - PASTURE.gateWidth / 2) / 2]}
         position={[PASTURE.minX, 0.6, (PASTURE.maxZ + PASTURE.gateZ + PASTURE.gateWidth / 2) / 2]}
       />
+      {/* the sheep fold: fence (a gap at the gate), lean-to and trough */}
+      <CuboidCollider args={[(FOLD.maxX - FOLD.minX) / 2, 0.5, 0.05]} position={[(FOLD.minX + FOLD.maxX) / 2, 0.5, FOLD.minZ]} />
+      <CuboidCollider args={[0.05, 0.5, (FOLD.maxZ - FOLD.minZ) / 2]} position={[FOLD.minX, 0.5, (FOLD.minZ + FOLD.maxZ) / 2]} />
+      <CuboidCollider args={[0.05, 0.5, (FOLD.maxZ - FOLD.minZ) / 2]} position={[FOLD.maxX, 0.5, (FOLD.minZ + FOLD.maxZ) / 2]} />
+      <CuboidCollider
+        args={[(FOLD.gateX - FOLD.gateWidth / 2 - FOLD.minX) / 2, 0.5, 0.05]}
+        position={[(FOLD.minX + FOLD.gateX - FOLD.gateWidth / 2) / 2, 0.5, FOLD.maxZ]}
+      />
+      <CuboidCollider
+        args={[(FOLD.maxX - FOLD.gateX - FOLD.gateWidth / 2) / 2, 0.5, 0.05]}
+        position={[(FOLD.maxX + FOLD.gateX + FOLD.gateWidth / 2) / 2, 0.5, FOLD.maxZ]}
+      />
+      <CuboidCollider args={[1.15, 0.9, 0.08]} position={[FOLD.minX + 1.25, 0.9, FOLD.minZ + 0.16]} />
+      <CuboidCollider args={[0.6, 0.18, 0.25]} position={[FOLD.maxX - 0.75, 0.18, FOLD.minZ + 0.55]} />
       <CuboidCollider args={[0.3, 0.25, 0.86]} position={[13.0, 0.25, -2.0]} />
       <CuboidCollider args={[0.3, 0.5, 0.55]} position={[13.0, 0.5, 1.6]} />
       {/* the farm stand */}
@@ -668,6 +767,19 @@ function FarmClock() {
       takeOut,
       ovenStage,
       buy,
+      shear,
+      flock,
+      loomLoad,
+      loomCollect,
+      loomStage,
+      waiting,
+      inLine,
+      acceptOffer,
+      declineOffer,
+      sellAll,
+      placesInLine,
+      arrivalSeconds,
+      saveFarm,
     })
   }, [])
   useFrame(() => {
@@ -697,6 +809,7 @@ export function Garden() {
       <Plants />
       <Chickens />
       <Cows />
+      <Sheep />
       <Workshop />
       <Visitors />
     </group>

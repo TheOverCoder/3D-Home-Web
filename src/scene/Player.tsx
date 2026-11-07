@@ -14,11 +14,11 @@ import { debugSet } from '../lib/debug'
 import { coarsePointer } from '../lib/device'
 import { focus } from '../lib/focus'
 import { playGesture } from '../lib/gestures'
-import { findNearest, triggerInteraction, type ViewRay } from '../lib/interaction'
-import { addLook, look, look as lookState } from '../lib/look'
+import { findActions, triggerInteraction, type ViewRay } from '../lib/interaction'
+import { addLook, look, look as lookState, stepTurn, stopTurn } from '../lib/look'
 import { playerState } from '../lib/playerState'
 import { useSettings } from '../settings'
-import { busy, useHome } from '../store'
+import { busy, useHome, type Nearby } from '../store'
 import { AimMarker } from './AimMarker'
 import { gardenDoor } from './GardenDoor'
 import { Avatar, HeldItem } from './Avatar'
@@ -62,6 +62,8 @@ const DOOR_HALF = GARDEN_DOOR.width / 2 - 0.1 // the garden door's opening, less
  * Never let the eyes enter a wall or rise through the ceiling — inside, outside, and in between: the only way
  * through the outer walls is the garden door's opening while it is open.
  */
+const actionsKey = (list: Nearby[]) => list.map((a) => `${a.id}|${a.label}|${a.icon?.verb}|${a.icon?.item}|${a.reach}|${a.side}`).join('\n')
+
 function keepCameraInBounds(p: Vector3) {
   const inOpening = gardenDoor.open > 0.55 && Math.abs(p.x - GARDEN_DOOR.centre) < DOOR_HALF
   if (inOpening && Math.abs(p.z - GARDEN_DOOR.at) < CLEAR) {
@@ -411,6 +413,7 @@ function CameraRig({ ecctrl, feet }: { ecctrl: RefObject<EcctrlHandle | null>; f
     const walking = playerState.grounded && playerState.speed > 0.3 && !state.screen && settings.headBob
     b.amp = MathUtils.damp(b.amp, walking ? Math.min(playerState.speed / 2.3, 1.7) * 0.02 : 0, 8, dt)
     const t = gait.phase
+    stepTurn(dt) // a turn towards something you chose to use from where you stand
     const th = look.pitch
     // eye position relative to the body, in the view's yaw frame (camera forward is local −z)
     neck
@@ -418,6 +421,9 @@ function CameraRig({ ecctrl, feet }: { ecctrl: RefObject<EcctrlHandle | null>; f
       .applyAxisAngle(UP, look.yaw)
     camera.position.set(eye.x + neck.x, h.x + d.x + neck.y, eye.z + neck.z)
     camera.rotation.set(look.pitch, look.yaw, Math.sin(t) * b.amp * 0.35, 'YXZ')
+    playerState.eye.x = camera.position.x
+    playerState.eye.y = camera.position.y
+    playerState.eye.z = camera.position.z
 
     // an open screen draws the view towards it, and gives it back the same way when it closes
     const fb = focusBlend.current
@@ -512,6 +518,7 @@ export function Player() {
   // debug-only helpers (window.__home exists in dev or with ?debug): teleport and controller access
   useEffect(() => {
     debugSet('teleport', (x: number, y: number, z: number) => {
+      stopTurn()
       const body = ecctrl.current?.body
       body?.setTranslation({ x, y, z }, true)
       body?.setRotation({ x: 0, y: 0, z: 0, w: 1 }, true)
@@ -648,9 +655,9 @@ export function Player() {
       camera.getWorldDirection(aim)
       view = { origin: camera.position, dir: aim }
     }
-    const next = findNearest({ x: pos.x, y: pos.y + 0.1, z: pos.z }, view)
-    const cur = state.nearby
-    if (next?.id !== cur?.id || next?.label !== cur?.label) state.setNearby(next)
+    // what you look at first; then (touch buttons, or when you look at nothing) whatever is within reach
+    const next = findActions({ x: pos.x, y: pos.y + 0.1, z: pos.z }, view, { reach: !state.carrying })
+    if (actionsKey(next) !== actionsKey(state.actions)) state.setActions(next)
   })
 
   return (

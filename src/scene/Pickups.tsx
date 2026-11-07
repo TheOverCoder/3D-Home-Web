@@ -63,6 +63,7 @@ function Pickup({ def }: { def: PickupDef }) {
     return registerInteractable({
       id: def.id,
       label: `Pick up the ${def.name}`,
+      icon: { verb: 'pick' },
       position: position.current,
       radius: 1.25,
       enabled: () => useHome.getState().carrying === null,

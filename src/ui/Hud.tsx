@@ -3,7 +3,8 @@ import { PICKUPS, ROOMS } from '../data/layout'
 import { coarsePointer } from '../lib/device'
 import { triggerInteraction } from '../lib/interaction'
 import { useSettings } from '../settings'
-import { busy, useHome } from '../store'
+import { busy, useHome, type Nearby } from '../store'
+import { ActionBadge, TurnHint } from './ActionGlyph'
 
 /** Room name that fades in when you walk into a new room, like a film title. */
 function RoomTitle() {
@@ -45,7 +46,7 @@ function FirstHint() {
   if (!visible) return null
   return coarsePointer ? (
     <div className="first-hint touch" aria-hidden="true">
-      Walk with the stick · drag anywhere to look · tap a label to open it
+      Walk with the stick · drag anywhere to look · the round button does what is near you
     </div>
   ) : (
     <div className="first-hint" aria-hidden="true">
@@ -71,7 +72,8 @@ export function Hud() {
   if (phase !== 'playing') return null
 
   const carried = PICKUPS.find((p) => p.id === carrying)
-  const prompt = occupied ? null : nearby?.label ?? (carried ? `Put down the ${carried.name}` : null)
+  const prompt: Nearby | null = occupied ? null : (nearby ?? (carried ? { id: 'drop', label: `Put down the ${carried.name}`, icon: { verb: 'drop' } } : null))
+  const turn = prompt?.reach ? prompt.side : undefined
 
   return (
     <>
@@ -81,13 +83,13 @@ export function Hud() {
 
       <div className="hud-prompt" aria-live="polite">
         {prompt && (
-          <button className="prompt" onClick={triggerInteraction}>
-            {coarsePointer ? (
-              <span className="tap" aria-hidden="true" />
-            ) : (
-              <kbd>E</kbd>
-            )}
-            <span>{prompt}</span>
+          // on a touch screen the round action button carries the picture; the label is a second way to tap it
+          <button className={`prompt${turn && turn !== 'ahead' ? ` turn-${turn}` : ''}`} onClick={() => triggerInteraction()} data-verb={prompt.icon?.verb ?? 'pick'}>
+            {!coarsePointer && <kbd>E</kbd>}
+            {!coarsePointer && <ActionBadge icon={prompt.icon} className="small" />}
+            {turn === 'left' && <TurnHint side="left" className="prompt-turn" />}
+            <span className="prompt-text">{prompt.label}</span>
+            {(turn === 'right' || turn === 'back') && <TurnHint side={turn} className="prompt-turn" />}
           </button>
         )}
       </div>

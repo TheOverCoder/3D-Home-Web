@@ -189,6 +189,59 @@ export function drawProduce(c: Ctx, id: ProduceId | 'coin', x: number, y: number
       c.fillRect(x - r * 0.2, y - r * 0.95, r * 0.4, r * 0.14)
       c.restore()
       break
+    case 'wool': {
+      // a fleece: a cloud of soft cream curls
+      const puffs: [number, number, number][] = [
+        [-0.42, 0.12, 0.42],
+        [0.42, 0.12, 0.42],
+        [-0.2, -0.22, 0.44],
+        [0.22, -0.24, 0.42],
+        [0, 0.22, 0.5],
+        [-0.55, -0.12, 0.3],
+        [0.56, -0.1, 0.3],
+      ]
+      for (const [dx, dy, k] of puffs) blob(c, x + dx * r, y + dy * r, r * k, r * k * 0.92, '#f4eedf', 'rgba(120,100,70,0.3)')
+      c.save()
+      c.strokeStyle = 'rgba(150,130,100,0.45)'
+      c.lineWidth = Math.max(1, s * 0.025)
+      for (const [dx, dy] of [
+        [-0.3, 0.1],
+        [0.15, -0.15],
+        [0.3, 0.25],
+        [-0.05, 0.35],
+      ]) {
+        c.beginPath()
+        c.arc(x + dx * r, y + dy * r, r * 0.12, 0.3, Math.PI * 1.6)
+        c.stroke()
+      }
+      c.restore()
+      break
+    }
+    case 'cloth': {
+      // a roll of woven cloth, a length of it unrolled in front
+      c.save()
+      const w = r * 1.5
+      c.fillStyle = '#5b7fb8'
+      c.fillRect(x - w / 2, y - r * 0.15, w, r * 0.95)
+      c.fillStyle = 'rgba(255,255,255,0.35)'
+      for (let k = 0; k < 4; k++) c.fillRect(x - w / 2, y - r * 0.05 + k * r * 0.22, w, r * 0.06)
+      c.fillStyle = 'rgba(230,180,70,0.8)'
+      for (let k = 0; k < 5; k++) c.fillRect(x - w / 2 + (k + 0.4) * (w / 5), y - r * 0.15, r * 0.05, r * 0.95)
+      c.restore()
+      blob(c, x, y - r * 0.38, w / 2 + r * 0.02, r * 0.36, '#4a6ea6', 'rgba(10,20,40,0.35)')
+      c.save()
+      c.fillStyle = '#3a5786'
+      c.beginPath()
+      c.ellipse(x + w / 2, y - r * 0.38, r * 0.12, r * 0.36, 0, 0, Math.PI * 2)
+      c.fill()
+      c.strokeStyle = 'rgba(255,255,255,0.4)'
+      c.lineWidth = Math.max(1, s * 0.02)
+      c.beginPath()
+      c.ellipse(x + w / 2, y - r * 0.38, r * 0.06, r * 0.2, 0, 0, Math.PI * 2)
+      c.stroke()
+      c.restore()
+      break
+    }
     case 'sugar':
     case 'flour': {
       const sack = id === 'sugar' ? '#f2efe6' : '#e2d2b0'

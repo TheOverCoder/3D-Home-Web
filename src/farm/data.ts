@@ -4,7 +4,7 @@ import { GATE, GARDEN, GARDEN_DOOR, LANE } from '../data/layout'
 
 export type CropId = 'lettuce' | 'carrot' | 'strawberry' | 'tomato' | 'corn' | 'pumpkin' | 'wheat' | 'sugarcane'
 export type CakeId = 'lemon_cake' | 'strawberry_cake' | 'carrot_cake' | 'pumpkin_pie'
-export type ProduceId = CropId | 'lemon' | 'egg' | 'milk' | 'sugar' | 'flour' | CakeId
+export type ProduceId = CropId | 'lemon' | 'egg' | 'milk' | 'wool' | 'sugar' | 'flour' | 'cloth' | CakeId
 
 export interface CropDef {
   id: CropId
@@ -41,8 +41,10 @@ export const PRODUCE: ProduceDef[] = [
   { id: 'lemon', name: 'lemon', plural: 'lemons', price: 2, maxAsk: 6 },
   { id: 'egg', name: 'egg', plural: 'eggs', price: 2, maxAsk: 6 },
   { id: 'milk', name: 'bottle of milk', plural: 'bottles of milk', price: 4, maxAsk: 4 },
+  { id: 'wool', name: 'fleece', plural: 'fleeces', price: 5, maxAsk: 3 },
   { id: 'sugar', name: 'bag of sugar', plural: 'bags of sugar', price: 5, maxAsk: 4 },
   { id: 'flour', name: 'bag of flour', plural: 'bags of flour', price: 4, maxAsk: 4 },
+  { id: 'cloth', name: 'roll of cloth', plural: 'rolls of cloth', price: 15, maxAsk: 2 },
   { id: 'lemon_cake', name: 'lemon cake', plural: 'lemon cakes', price: 42, maxAsk: 1 },
   { id: 'strawberry_cake', name: 'strawberry cake', plural: 'strawberry cakes', price: 48, maxAsk: 1 },
   { id: 'carrot_cake', name: 'carrot cake', plural: 'carrot cakes', price: 40, maxAsk: 1 },
@@ -134,28 +136,51 @@ export const COW = { every: 45, max: 3, startCows: 1, maxCows: 3, names: ['Bella
 export const OVEN = { x: 9.9, z: 11.75 } as const
 export const MILL = { x: 12.3, z: 10.6, perItem: 4, capacity: 6 } as const
 
+/** The sheep fold in the north yard, behind the house (the office and kitchen windows look out on it); its gate faces the house. */
+export const FOLD = { minX: -6.4, maxX: 2.2, minZ: -12.3, maxZ: -8.6, gateX: -2.1, gateWidth: 1.3 } as const
+export const SHEEP = { every: 60, max: 2, startSheep: 2, maxSheep: 4, names: ['Dolly', 'Pnina', 'Lulu', 'Tzipi'] } as const
+/** The loom stands beside the fold, facing the house: fleeces go in, cloth comes out. */
+export const LOOM = { x: 4.9, z: -10.3, perItem: 6, capacity: 4 } as const
+
 export const SHED = { x: -9.0, z: 11.3 } as const
 export const STAND = { x: GATE.x + 1.7, z: GARDEN.maxZ - 0.75 } as const
 
-/** Buyers walk the lane, step up to the gate (outside it) and wait there. */
+/** Buyers walk the lane and queue along the fence outside the gate; the first in line stands at the gate. */
 export const GATE_SPOT = { x: GATE.x, z: GARDEN.maxZ + 0.85 } as const
 export const LANE_Z = LANE.z
+export const WALK_Z = LANE.z + 0.45 // the far side of the lane, where people walk past the queue
 export const LANE_ENDS = [-34, 34] as const
-export const VISITOR = { firstAfter: 20, every: [35, 70] as [number, number], patience: 75, speed: 1.25 } as const
+export const VISITOR = { firstAfter: 20, speed: 1.25 } as const
 
-export type UpgradeId = 'sprinkler' | 'compost' | 'hen' | 'cow' | Expansion
+/** The queue: five places and a new buyer every two minutes to begin with; up to fifteen places, and one every thirty seconds. */
+export const QUEUE = { places: 5, maxPlaces: 15, every: 120, fastest: 30, step: 15, spacing: 0.85 } as const
+export const QUEUE_LEVELS = QUEUE.maxPlaces - QUEUE.places
+export const PACE_LEVELS = (QUEUE.every - QUEUE.fastest) / QUEUE.step
+export const queuePlaces = (level: number) => QUEUE.places + level
+export const arrivalEvery = (level: number) => QUEUE.every - QUEUE.step * level
+/** Where the k-th in line stands, and which way they face (the first faces the gate, the rest look up the line). */
+export function queueSpot(k: number) {
+  return k === 0 ? { x: GATE_SPOT.x, z: GATE_SPOT.z, heading: Math.PI } : { x: GATE_SPOT.x + 0.25 + k * QUEUE.spacing, z: GATE_SPOT.z + 0.1, heading: -Math.PI / 2 - 0.35 }
+}
+
+export type UpgradeId = 'sprinkler' | 'compost' | 'hen' | 'cow' | 'sheep' | 'queue' | 'pace' | Expansion
 
 export interface Upgrade {
   id: UpgradeId
   name: string
   blurb: string
-  price: number
+  price: number // the first step, for upgrades bought one step at a time
+  levels?: number // bought one step at a time, this many steps
+  priceStep?: number // each step costs this much more than the one before
 }
 
 export const UPGRADES: Upgrade[] = [
   { id: 'east', name: EXPANSIONS.east.name, blurb: EXPANSIONS.east.blurb, price: EXPANSIONS.east.price },
   { id: 'west', name: EXPANSIONS.west.name, blurb: EXPANSIONS.west.blurb, price: EXPANSIONS.west.price },
+  { id: 'queue', name: 'A longer queue', blurb: 'One more place in the line at the gate.', price: 30, levels: QUEUE_LEVELS, priceStep: 12 },
+  { id: 'pace', name: 'A busier lane', blurb: 'Buyers come by more often.', price: 50, levels: PACE_LEVELS, priceStep: 25 },
   { id: 'cow', name: 'Another cow', blurb: 'More milk (up to three cows).', price: 70 },
+  { id: 'sheep', name: 'Another sheep', blurb: 'More wool (up to four sheep).', price: 55 },
   { id: 'hen', name: 'Another hen', blurb: 'More eggs (up to six hens).', price: 25 },
   { id: 'sprinkler', name: 'Sprinklers', blurb: 'Every bed waters itself.', price: 60 },
   { id: 'compost', name: 'Compost bin', blurb: 'Half as much again from every harvest.', price: 45 },

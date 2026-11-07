@@ -56,7 +56,7 @@ const KEYS: { action: string; keys: string[] }[] = [
   { action: 'Look', keys: ['Mouse'] },
   { action: 'Run', keys: ['Shift'] },
   { action: 'Jump', keys: ['Space'] },
-  { action: 'Interact', keys: ['E'] },
+  { action: 'Interact (or the nearest thing)', keys: ['E'] },
   { action: 'Change view', keys: ['V'] },
   { action: 'Settings', keys: ['Esc'] },
 ]
@@ -65,7 +65,8 @@ const TOUCH: { action: string; how: string }[] = [
   { action: 'Move', how: 'Left stick' },
   { action: 'Run', how: 'Stick all the way' },
   { action: 'Look', how: 'Drag the scene' },
-  { action: 'Open, switch, pick up', how: 'Tap the label' },
+  { action: 'Do what is near you', how: 'Round button (or its label)' },
+  { action: 'The next things near you', how: 'Small round buttons' },
   { action: 'Jump', how: 'Jump button' },
 ]
 

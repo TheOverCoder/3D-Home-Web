@@ -25,7 +25,8 @@ export function Intro() {
         <h1>3D Home</h1>
         <p className="lede">
           Walk through the house room by room — every room has a screen you can open and explore — then step out through the
-          glass door onto the farm: grow vegetables, milk the cows, bake cakes, and sell to the neighbours at the gate.
+          glass door onto the farm: grow vegetables, milk the cows, shear the sheep, bake cakes, and sell to the line of
+          neighbours at the gate.
         </p>
         {failure && (
           <p className="failure" role="alert">
@@ -42,7 +43,8 @@ export function Intro() {
         )}
         {coarsePointer ? (
           <p className="tip">
-            Walk with the stick on the left, drag anywhere to look, tap a label to open it. Settings are behind the gear. Sound on — the
+            Walk with the stick on the left, drag anywhere to look, and the round button on the right does what is near you — it
+            turns you to it, too. Upright or on its side, the controls fit the screen. Settings are behind the gear. Sound on — the
             house has its own.
           </p>
         ) : (

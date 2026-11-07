@@ -63,6 +63,7 @@ function Lamp({ def, fixture }: { def: LampDef; fixture: boolean }) {
   useInteractable({
     id: def.id,
     label: on ? 'Switch the light off' : 'Switch the light on',
+    icon: { verb: 'switch' },
     position: [def.position[0], Math.min(def.position[1], 1.1), def.position[2]],
     aim: def.position, // you look at the shade, not at the floor beneath it
     radius: 1.4,

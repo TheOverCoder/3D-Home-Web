@@ -57,49 +57,50 @@ test.describe('garden', () => {
     expect((await farm(game)).beds[0].crop).toBeNull()
   })
 
-  test('a buyer comes to the gate: Enter sells at their price, N sends the next one away', async ({ game }) => {
+  test('buyers queue at the gate: Enter sells to the first you can, N sends the first away and someone new comes', async ({ game }) => {
     await game.ready()
     const { page } = game
     await page.evaluate(() => {
       const f = (window as any).__home.farm
       f.reset()
+      f.state.started = true
+      f.state.nextVisitorIn = 600 // nobody else turns up on their own during the test
       f.state.inv.tomato = 5
       f.spawnVisitor({ want: 'tomato', qty: 3, offer: 12, from: 1 })
-      for (let i = 0; i < 200 && f.state.visitors[0].phase !== 'waiting'; i++) f.tick(0.25)
+      f.spawnVisitor({ want: 'tomato', qty: 2, offer: 3, from: -1 })
+      for (let i = 0; i < 600 && f.state.visitors.some((v: any) => v.phase !== 'queued'); i++) f.tick(0.25)
     })
-    const first = (await farm(game)).visitors[0]
-    expect(first.phase).toBe('waiting')
+    const [first, second] = (await farm(game)).visitors
+    expect([first.phase, second.phase]).toEqual(['queued', 'queued'])
     const coins0 = (await farm(game)).coins
-    // inside the gate, facing the lane
+    // inside the gate, facing the lane: one action for the whole line
     await game.teleport(5.6, 1.4, 12.3, Math.PI, -0.05)
-    await nearbyIs(game, `farm-visitor-${first.id}`)
-    expect(await label(game)).toContain('3 tomatoes for 12 coins')
+    await nearbyIs(game, 'farm-queue')
+    expect(await label(game)).toBe(`2 buyers waiting · ${first.name}: 3 tomatoes for 12 coins`)
     await page.keyboard.press('KeyE')
-    await until(game, () => (window as any).__home.useHome.getState().panel?.kind === 'offer')
+    await until(game, () => (window as any).__home.useHome.getState().panel?.kind === 'queue')
+    await expect(page.locator('.farm-buyer')).toHaveCount(2)
     await page.keyboard.press('Enter')
     await until(game, () => (window as any).__home.farm.state.inv.tomato === 2)
     let f = await farm(game)
     expect(f.coins).toBe(coins0 + 12)
-    expect(f.visitors.find((v: any) => v.id === first.id)?.phase ?? 'gone').not.toBe('waiting')
-    expect(await page.evaluate(() => (window as any).__home.useHome.getState().panel)).toBeNull()
+    expect(f.visitors.find((v: any) => v.id === first.id)?.phase ?? 'gone').toBe('leaving')
+    // the panel stays open for the rest of the line
+    await expect(page.locator('.farm-buyer')).toHaveCount(1)
 
-    // the next one is turned down: nothing changes hands and they walk off
-    await page.evaluate(() => {
-      const f = (window as any).__home.farm
-      f.state.visitors.length = 0
-      f.spawnVisitor({ want: 'tomato', qty: 2, offer: 3, from: -1 })
-      for (let i = 0; i < 200 && f.state.visitors[0].phase !== 'waiting'; i++) f.tick(0.25)
-    })
-    const second = (await farm(game)).visitors[0]
-    await nearbyIs(game, `farm-visitor-${second.id}`)
-    await page.keyboard.press('KeyE')
-    await until(game, () => (window as any).__home.useHome.getState().panel?.kind === 'offer')
+    // the next one is sent away: nothing changes hands, they walk off, and a new buyer is due soon
     await page.keyboard.press('KeyN')
     await until(game, () => (window as any).__home.farm.state.visitors.every((v: any) => v.phase === 'leaving'))
     f = await farm(game)
     expect(f.coins).toBe(coins0 + 12)
     expect(f.inv.tomato).toBe(2)
     expect(f.stats.declined).toBe(1)
+    expect(f.nextVisitorIn).toBeLessThanOrEqual(8)
+    await page.evaluate(() => (window as any).__home.farm.tick(8.5))
+    await until(game, () => (window as any).__home.farm.state.visitors.some((v: any) => v.phase === 'arriving'))
+    await page.keyboard.press('Escape')
+    await until(game, () => (window as any).__home.useHome.getState().panel === null)
+    expect(second.id).toBeGreaterThan(first.id)
   })
 
   test('a locked bed can be built once you have the coins, and the farm is saved', async ({ game }) => {

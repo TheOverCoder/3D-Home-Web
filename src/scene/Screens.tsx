@@ -109,6 +109,7 @@ function Screen({ def }: { def: ScreenDef }) {
   useInteractable({
     id: def.id,
     label: `Open “${def.title}”`,
+    icon: { verb: 'watch' },
     position: [def.position[0] + nx * 1.1, 1.0, def.position[2] + nz * 1.1],
     aim: def.position,
     radius: 1.5,

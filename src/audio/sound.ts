@@ -352,7 +352,7 @@ export function screenSound(open: boolean) {
 
 // ─────────────────────── the garden ───────────────────────
 
-export type FarmSound = 'plant' | 'water' | 'harvest' | 'coins' | 'cluck' | 'bell' | 'build' | 'decline' | 'moo' | 'milk' | 'creak' | 'oven' | 'ding' | 'crow'
+export type FarmSound = 'plant' | 'water' | 'harvest' | 'coins' | 'cluck' | 'bell' | 'build' | 'decline' | 'moo' | 'milk' | 'creak' | 'oven' | 'ding' | 'crow' | 'baa' | 'shear' | 'loom'
 
 /** A voiced, filtered tone whose pitch and brightness follow a short contour: animals. */
 function voice(e: Engine, t: number, notes: [number, number][], seconds: number, gain: number, cutoff: [number, number], pan?: number, type: OscillatorType = 'sawtooth') {
@@ -463,6 +463,25 @@ export function farmSound(kind: FarmSound, pan = 0, near = 1) {
       break
     case 'crow': // cock-a-doodle-doo
       voice(e, t, [[520, 0.5], [640, 1], [700, 0.9], [760, 1], [820, 1], [780, 0.9], [560, 0.4]], 1.25, 0.05 * v, [900, 2600], pan)
+      break
+    case 'baa': {
+      // a sheep: a bleating "baa-a-a", the voice wavering as it goes
+      const f = rnd(330, 420)
+      voice(e, t, [[f * 0.9, 0.5], [f, 1], [f * 1.04, 0.8], [f * 0.98, 0.9], [f * 1.03, 0.7], [f * 0.86, 0.3]], rnd(0.6, 0.85), 0.05 * v, [1100, 2600], pan, 'square')
+      break
+    }
+    case 'shear': // shears snipping through the fleece
+      for (let i = 0; i < 4; i++) {
+        burst(e, t + i * 0.14, { type: 'highpass', freq: 3800, q: 0.9, gain: 0.12 * v, attack: 0.002, decay: 0.04, pan })
+        tone(e, t + i * 0.14 + 0.01, { type: 'triangle', f0: 2400, f1: 1700, gain: 0.02 * v, attack: 0.002, decay: 0.05, pan })
+      }
+      burst(e, t + 0.05, { type: 'bandpass', freq: 900, q: 0.7, gain: 0.08 * v, attack: 0.08, decay: 0.5, pan })
+      break
+    case 'loom': // the shuttle clacks across and the beater knocks
+      for (let i = 0; i < 3; i++) {
+        burst(e, t + i * 0.32, { type: 'bandpass', freq: 1800, q: 1.4, gain: 0.12 * v, attack: 0.003, decay: 0.05, pan })
+        burst(e, t + i * 0.32 + 0.16, { type: 'lowpass', freq: 420, q: 0.8, gain: 0.3 * v, attack: 0.002, decay: 0.08, pan })
+      }
       break
   }
 }

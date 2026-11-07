@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { DOOR, LAMPS, PICKUPS, type RoomId, type Vec3 } from './data/layout'
+import type { ActionIcon } from './lib/interaction'
 
 /** Picture quality tier: high = full film look, medium = the look without the costliest passes, low = plain and fast. */
 export type Quality = 'high' | 'medium' | 'low'
@@ -9,13 +10,17 @@ export interface ItemState {
   rev: number // bumped on every drop so the physics body is re-created at the new spot
 }
 
+/** Something you can do right now: what you look at, or (touch, or looking at nothing) something within reach. */
 export interface Nearby {
   id: string
   label: string
+  icon?: ActionIcon
+  reach?: boolean // offered for being within reach, not for being looked at: using it turns you towards it
+  side?: 'ahead' | 'left' | 'right' | 'back' // where it is, seen from where you look (first person)
 }
 
 /** A small game panel over the scene (seed packets, a buyer's offer, the farm shop, the mill, the oven). */
-export type Panel = { kind: 'seeds'; bed: number } | { kind: 'offer'; visitor: number } | { kind: 'shop' } | { kind: 'mill' } | { kind: 'oven' }
+export type Panel = { kind: 'seeds'; bed: number } | { kind: 'queue' } | { kind: 'shop' } | { kind: 'mill' } | { kind: 'oven' } | { kind: 'basket' }
 
 interface HomeState {
   phase: 'intro' | 'playing'
@@ -27,7 +32,8 @@ interface HomeState {
   hintShown: boolean
   room: RoomId | null
   outdoors: boolean // in the garden
-  nearby: Nearby | null
+  nearby: Nearby | null // the action E (or the big touch button) runs
+  actions: Nearby[] // everything on offer, `nearby` first
   screen: string | null
   panel: Panel | null
   lamps: Record<string, boolean>
@@ -47,7 +53,7 @@ interface HomeState {
   markHintShown: () => void
   setRoom: (room: RoomId | null) => void
   setOutdoors: (outdoors: boolean) => void
-  setNearby: (nearby: Nearby | null) => void
+  setActions: (actions: Nearby[]) => void
   openScreen: (id: string) => void
   closeScreen: () => void
   openPanel: (panel: Panel) => void
@@ -74,6 +80,7 @@ export const useHome = create<HomeState>()((set, get) => ({
   room: null,
   outdoors: false,
   nearby: null,
+  actions: [],
   screen: null,
   panel: null,
   lamps: Object.fromEntries(LAMPS.map((l) => [l.id, true])),
@@ -88,19 +95,19 @@ export const useHome = create<HomeState>()((set, get) => ({
   markReady: (key) => set((s) => (s.ready[key] ? s : { ready: { ...s.ready, [key]: true } })),
   setFailure: (failure) => set({ failure }),
   setView: (view) => set({ view }),
-  setSettingsOpen: (settingsOpen) => set({ settingsOpen, nearby: settingsOpen ? null : get().nearby }),
+  setSettingsOpen: (settingsOpen) => set(settingsOpen ? { settingsOpen, nearby: null, actions: [] } : { settingsOpen }),
   markHintShown: () => set({ hintShown: true }),
   setRoom: (room) => set({ room }),
   setOutdoors: (outdoors) => set({ outdoors }),
-  setNearby: (nearby) => set({ nearby }),
-  openScreen: (screen) => set({ screen, nearby: null }),
+  setActions: (actions) => set({ actions, nearby: actions[0] ?? null }),
+  openScreen: (screen) => set({ screen, nearby: null, actions: [] }),
   closeScreen: () => set({ screen: null }),
-  openPanel: (panel) => set({ panel, nearby: null }),
+  openPanel: (panel) => set({ panel, nearby: null, actions: [] }),
   closePanel: () => set({ panel: null }),
   toggleLamp: (id) => set((s) => ({ lamps: { ...s.lamps, [id]: !s.lamps[id] } })),
   toggleDoor: (id) => set((s) => ({ doors: { ...s.doors, [id]: !s.doors[id] } })),
   // the item leaves the registry with its body: forget it as the aimed thing right away, so E drops it next
-  pickUp: (id) => set({ carrying: id, nearby: null }),
+  pickUp: (id) => set({ carrying: id, nearby: null, actions: [] }),
   drop: (pos) => {
     const id = get().carrying
     if (!id) return

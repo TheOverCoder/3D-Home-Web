@@ -10,6 +10,7 @@ export interface Point3 {
 export const playerState = {
   position: { x: 0, y: 0, z: 0 } as Point3,
   facing: { x: 0, y: 0, z: 1 } as Point3,
+  eye: { x: 0, y: 1.6, z: 0 } as Point3, // the camera, last frame
   speed: 0,
   grounded: true,
 }

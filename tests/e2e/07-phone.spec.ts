@@ -3,7 +3,7 @@ import { test, expect, bootApp, watchErrors } from './helpers'
 
 // A phone in portrait, then turned to landscape: its own page with touch emulation (coarse pointer).
 test.describe('phone', () => {
-  test('touch controls: stick walks, drag looks, a second finger does not jerk the view, the label opens a screen', async ({ browser }) => {
+  test('touch controls: stick walks, drag looks, a second finger does not jerk the view, the action button and label work', async ({ browser }) => {
     test.setTimeout(300_000)
     const context = await browser.newContext({
       viewport: { width: 390, height: 720 },
@@ -24,9 +24,10 @@ test.describe('phone', () => {
     })
     await page.waitForTimeout(1500)
 
-    // on-screen controls: the stick and a jump button; interacting is the label, not a permanent button
+    // on-screen controls: the stick and a jump button; the round action button only appears when there is something to do
     await expect(page.locator('#ecctrl-joystick')).toBeVisible()
     await expect(page.locator('#ecctrl-virtual-button')).toHaveCount(1)
+    await expect(page.locator('.act-btn')).toHaveCount(0)
     // the scene takes every drag itself (no browser panning, zooming or pull-to-refresh)
     expect(await page.evaluate(() => getComputedStyle(document.querySelector('canvas')!.parentElement!.parentElement!).touchAction)).toBe('none')
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
@@ -90,6 +91,16 @@ test.describe('phone', () => {
       a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height
     const ring = (await page.locator('#joystick-base').boundingBox())!
     expect(overlaps((await label.boundingBox())!, ring), 'label clear of the stick (portrait)').toBe(false)
+    // the round action button shows what it does (a screen to watch), under the right thumb, clear of everything else
+    const action = page.locator('.act-btn.main')
+    await expect(action).toBeVisible()
+    await expect(action).toHaveAttribute('data-verb', 'watch')
+    const actionP = (await action.boundingBox())!
+    const jumpP = (await page.locator('#ecctrl-virtual-button').boundingBox())!
+    for (const [name, box] of [['stick', ring], ['jump', jumpP], ['label', (await label.boundingBox())!]] as const) {
+      expect(overlaps(actionP, box), `action button clear of the ${name} (portrait)`).toBe(false)
+    }
+    expect(actionP.x + actionP.width <= 390 && actionP.y + actionP.height <= 720, 'action button on screen (portrait)').toBe(true)
     await label.tap()
     await page.waitForFunction(() => (window as any).__home.useHome.getState().screen === 'screen-living', null, { timeout: 30_000, polling: 250 })
     await page.evaluate(() => (window as any).__home.useHome.getState().closeScreen())
@@ -108,6 +119,47 @@ test.describe('phone', () => {
     }
     expect(overlaps(labelL, ringL), 'label clear of the stick (landscape)').toBe(false)
     expect(overlaps(labelL, jump), 'label clear of the jump button (landscape)').toBe(false)
+
+    // in the garden: a ripe bed behind you shows on the round button as a hand with a lettuce; one tap turns you
+    // round to it and harvests — and the smaller buttons beside it offer the next things within reach
+    await page.evaluate(() => {
+      const h = (window as any).__home
+      const f = h.farm
+      f.reset()
+      f.plant(0, 'lettuce')
+      for (let i = 0; i < 12; i++) {
+        f.water(0)
+        f.tick(5)
+      }
+      h.teleport(-1.2, 1.4, 9.0)
+      h.look.yaw = -Math.PI / 2 // looking east, away from the bed, up at the sky
+      h.look.pitch = 0.5
+    })
+    await page.waitForFunction(() => (window as any).__home.useHome.getState().nearby?.id === 'farm-bed-0', null, { timeout: 60_000, polling: 250 })
+    await expect(action).toHaveAttribute('data-verb', 'pick')
+    await expect(action.locator('img.act-item')).toHaveCount(1)
+    await expect(action.locator('.act-turn.back')).toHaveCount(1)
+    const buttons = await page.locator('.act-btn').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().toJSON()))
+    expect(buttons.length, 'more things within reach').toBeGreaterThan(1)
+    const jumpL = (await page.locator('#ecctrl-virtual-button').boundingBox())!
+    const labelG = (await label.boundingBox())!
+    for (const [i, box] of buttons.entries()) {
+      expect(box.x >= 0 && box.y >= 0 && box.x + box.width <= 800 && box.y + box.height <= 360, `action button ${i} on screen`).toBe(true)
+      for (const [name, other] of [['stick', ringL], ['jump', jumpL], ['label', labelG]] as const) {
+        expect(overlaps(box, other), `action button ${i} clear of the ${name} (landscape)`).toBe(false)
+      }
+      for (const [j, other] of buttons.entries()) if (j !== i) expect(overlaps(box, other), `action buttons ${i} and ${j} apart`).toBe(false)
+    }
+    await action.tap()
+    await page.waitForFunction(() => (window as any).__home.farm.state.inv.lettuce === 4, null, { timeout: 30_000, polling: 250 })
+    await page.waitForFunction(
+      () => {
+        const y = (window as any).__home.look.yaw - Math.PI / 2
+        return Math.abs(Math.atan2(Math.sin(y), Math.cos(y))) < 0.25
+      },
+      null,
+      { timeout: 30_000, polling: 250 },
+    )
 
     expect(errors, errors.join('\n')).toEqual([])
     await context.close()
