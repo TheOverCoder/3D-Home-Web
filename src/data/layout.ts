@@ -3,7 +3,7 @@
 // When a real `house.glb` is added, tune the coordinates here to match it.
 
 export type RoomId = 'living' | 'office' | 'kitchen' | 'bedroom'
-export type FloorKind = 'wood' | 'tile' | 'carpet'
+export type FloorKind = 'wood' | 'tile' | 'carpet' | 'grass'
 export type Vec3 = [number, number, number]
 
 export interface Mood {
@@ -94,12 +94,14 @@ export interface WindowDef {
   width: number
   sill: number
   top: number
+  door?: boolean // a glass door down to the floor (its leaves are <GardenDoor />)
 }
 
 // Windows sit in exterior walls only. The sun comes from the south-east, so the south and east walls
 // let direct light in; the others give soft daylight.
 export const WINDOWS: WindowDef[] = [
-  { id: 'win-living-south', axis: 'x', at: 6, centre: -1.2, width: 1.5, sill: 0.9, top: 2.2 },
+  // the living room's south window is a sliding glass door onto the garden
+  { id: 'garden-door', axis: 'x', at: 6, centre: -1.2, width: 1.5, sill: 0, top: 2.2, door: true },
   { id: 'win-living-west', axis: 'z', at: -7, centre: 1.9, width: 1.4, sill: 0.9, top: 2.2 },
   { id: 'win-bedroom-south', axis: 'x', at: 6, centre: 1.7, width: 1.4, sill: 0.9, top: 2.2 },
   { id: 'win-bedroom-east', axis: 'z', at: 7, centre: 5.0, width: 1.3, sill: 0.9, top: 2.2 },
@@ -108,6 +110,26 @@ export const WINDOWS: WindowDef[] = [
   { id: 'win-office-north', axis: 'x', at: -6, centre: -5.6, width: 1.2, sill: 1.0, top: 2.2 },
   { id: 'win-office-west', axis: 'z', at: -7, centre: -4.9, width: 1.3, sill: 0.9, top: 2.2 },
 ]
+
+export const GARDEN_DOOR = WINDOWS.find((w) => w.door)!
+
+/** The walkable garden around the house: hedge to the north and west, a timber fence to the south and east. */
+export const GARDEN = { minX: -14, maxX: 14, minZ: -13, maxZ: 13 } as const
+/** The paved apron around the walls. */
+export const APRON = 1.6
+/** The farm gate in the south fence, and the lane outside it where buyers walk. */
+export const GATE = { x: 5.6, width: 1.3 } as const
+export const LANE = { z: 15.0, width: 2.6 } as const
+
+/** Inside the house footprint (walls included). */
+export function insideHouse(x: number, z: number, margin = 0) {
+  return x > HOUSE.minX - margin && x < HOUSE.maxX + margin && z > HOUSE.minZ - margin && z < HOUSE.maxZ + margin
+}
+
+/** What is underfoot outdoors: the paved apron along the walls, grass beyond it. */
+export function groundAt(x: number, z: number): FloorKind {
+  return insideHouse(x, z, APRON) ? 'tile' : 'grass'
+}
 
 /** Direction of the sun (towards it). Drives both the light and the sky. */
 export const SUN: Vec3 = [12, 9, 10]

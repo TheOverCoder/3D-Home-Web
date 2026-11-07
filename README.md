@@ -1,7 +1,9 @@
 # 3D Home
 
 A walkable 3D house for the web. Move a character through the rooms, pick things up, open doors and
-switch lights — and walk up to a screen in each room to open its content. Static build, deployable on GitHub Pages.
+switch lights — and walk up to a screen in each room to open its content. Step out through the glass door into
+a kitchen garden: plant, water and harvest, collect eggs and lemons, and sell to the people who stop at the gate.
+Static build, deployable on GitHub Pages.
 
 **Stack:** Vite · React 19 · TypeScript · three.js · @react-three/fiber · drei · Rapier (physics) · ecctrl (character controller) ·
 postprocessing (N8AO, depth of field, bloom, AgX) · zustand.
@@ -16,7 +18,7 @@ npm run preview
 npm run test:e2e   # Playwright end-to-end suite (see tests/README.md); CI runs it on every push
 ```
 
-Add `?debug` to the URL to expose `window.__home` (store, player state, `teleport(x,y,z)`), and `?quality=high|medium|low` to pin graphics.
+Add `?debug` to the URL to expose `window.__home` (store, player state, `teleport(x,y,z)`, and `farm` with `tick(seconds)` to fast-forward the garden), and `?quality=high|medium|low` to pin graphics.
 
 ## Controls
 
@@ -32,6 +34,7 @@ Looking down in first person shows your own body and hands. If something looks w
 |---|---|
 | **Rooms** | Studio, kitchen, living room, bedroom — floor plan, doorways, lamps, pickups and spawn live in `src/data/layout.ts`. |
 | **Screens** | Each room has a dashboard-style wall screen that powers on as you enter, and a pedestal hologram of its own kind (orbit rings, fanned project cards, progress rings, a connection globe) revealed as you approach. `E` opens a glass two-column panel with tabs, stats, cards, timelines and a contact call to action (keyboard, swipe and mobile bottom-sheet friendly). While a panel is open the house stops rendering behind it (its last frame stays under the blur), so the panel gets the whole machine. Everything is edited in one file, `src/data/screens.ts` (guide at its top) — **current copy is placeholder**. |
+| **Garden** | The living room's south window is a sliding glass door that opens as you walk up to it. Outside is a kitchen garden (`src/farm/`): six raised beds (two still to be built, 30 coins each), six crops from 45-second lettuces to 3-minute pumpkins, each grown as its own procedural plant that fills out and ripens in colour. Plant from a seed panel (buy as you sow), water when a bed shows the droplet (growth stops on dry soil), harvest when it sparkles. A lemon tree that keeps fruiting, a coop whose hens wander their run and lay eggs in the nest box, and a farm shop in the shed (sprinklers, a compost bin for bigger harvests, more hens). Every so often someone walks up the lane to the gate with a speech bubble — what they want and what they offer; open it to accept or decline, and the panel tells you whether the price is generous, fair or low. Coins and the basket show at the top while you are outside; growth runs in real time and keeps going while you are away (up to three hours). Saved in the browser. Birds, wind, clucks, a gate bell and coins are synthesised like the rest of the sound. |
 | **Interactions** | Pick up / put down items (physics bodies you can also push), toggle lamps, open the hinged kitchen↔bedroom door. Add more with `useInteractable` (`src/lib/interaction.ts`). |
 | **Sound** | Procedural WebAudio, no files: footsteps by floor (wood, tile, carpet), jumps and landings, lamp switch, door, pickups and knocks, screen chime, UI clicks and a quiet room tone (`src/audio/`). Starts on the first click; mute/volume in the settings. |
 | **Character** | Physics capsule (ecctrl) with a frame-rate independent float and acceleration, so walking feels the same at 30 or 144 fps. Placeholder mannequin until `character.glb` + `animations.glb` are added. |
@@ -61,12 +64,13 @@ Credits: [`CREDITS.md`](CREDITS.md) — update it (and `src/data/credits.ts`) wh
 ```
 src/
   data/       layout.ts · screens.ts · credits.ts        ← the content you edit
+  farm/       data (crops, prices, where things stand) · state (simulation, save) · Garden · Plants · Chickens · Visitors · FarmUI · icons
   assets/     registry.ts + models/ hdri/                 ← drop real assets here
-  scene/      Experience · House · Walls · Ceilings · Floors · Furnishings · Dressing · Door · Lamps · Pickups · Screens · Player · Avatar · Hand · Lighting · LightShafts · LightDirector · Effects
+  scene/      Experience · House · Walls · GardenDoor · Ceilings · Floors · Furnishings · Dressing · Door · Lamps · Pickups · Screens · Player · Avatar · Hand · Lighting · LightShafts · LightDirector · Effects
   lib/        interaction · look · rig · focus · lightLevels · collision · clips · gestures · playerState · proceduralTextures · boxProject · debug
   ui/         Intro · Hud · SettingsPanel · ScreenModal · TouchControls
   settings.ts persisted player preferences
-  store.ts    zustand state (room, nearby, screen, lamps, doors, items, quality…)
+  store.ts    zustand state (room, outdoors, nearby, screen, panel, lamps, doors, items, quality…)
 scripts/      optimize-models.mjs · fetch-polyhaven.mjs
 ```
 

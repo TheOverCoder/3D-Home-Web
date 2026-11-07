@@ -134,6 +134,21 @@ function windowPieces(w: WindowDef): Seg[] {
   const hi = w.centre + w.width / 2
   const P = (k: string, along: number, y: number, off: number, len: number, height: number, d: number, kind: Kind, solid = false, color = TRIM) =>
     piece(w.axis, w.at, along, y, off, len, height, d, r(k, kind, solid, color))
+  const curtains = [
+    P('cl', lo - 0.2, 1.33, n * 0.15, 0.34, 2.4, 0.08, 'fabric', true, '#c9bfae'),
+    P('cr', hi + 0.2, 1.33, n * 0.15, 0.34, 2.4, 0.08, 'fabric', true, '#c9bfae'),
+    P('rod', w.centre, 2.58, n * 0.15, w.width + 0.95, 0.03, 0.03, 'dark', false, '#2b2d30'),
+  ]
+  if (w.door) {
+    // a garden door: jambs, a head and a flush threshold; its glass leaves slide into the wall (<GardenDoor />)
+    return [
+      P('fl', lo + bar / 2, w.top / 2, 0, bar, w.top, depth, 'trim'),
+      P('fr', hi - bar / 2, w.top / 2, 0, bar, w.top, depth, 'trim'),
+      P('ft', w.centre, w.top - bar / 2, 0, w.width, bar, depth, 'trim'),
+      P('sill', w.centre, 0.006, 0, w.width, 0.012, depth + 0.06, 'dark', false, '#6d6a66'),
+      ...curtains,
+    ]
+  }
   return [
     P('fl', lo + bar / 2, mid, 0, bar, h, depth, 'trim'),
     P('fr', hi - bar / 2, mid, 0, bar, h, depth, 'trim'),
@@ -145,9 +160,7 @@ function windowPieces(w: WindowDef): Seg[] {
     P('glass', w.centre, mid, 0, w.width - bar * 2, h - bar * 2, 0.012, 'glass', true, '#cfe3f2'),
     P('board', w.centre, w.sill - 0.016, n * 0.12, w.width + 0.16, 0.04, 0.26, 'trim'),
     // curtains: two panels and a rod
-    P('cl', lo - 0.2, 1.33, n * 0.15, 0.34, 2.4, 0.08, 'fabric', true, '#c9bfae'),
-    P('cr', hi + 0.2, 1.33, n * 0.15, 0.34, 2.4, 0.08, 'fabric', true, '#c9bfae'),
-    P('rod', w.centre, 2.58, n * 0.15, w.width + 0.95, 0.03, 0.03, 'dark', false, '#2b2d30'),
+    ...curtains,
   ]
 }
 

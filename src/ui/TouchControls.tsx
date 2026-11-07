@@ -1,7 +1,7 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { Joystick, VirtualButton } from 'ecctrl/input'
 import { coarsePointer } from '../lib/device'
-import { useHome } from '../store'
+import { busy, useHome } from '../store'
 
 const PAD = 14 // gap to the screen edge, on top of the safe area (notches, gesture bar)
 
@@ -20,8 +20,7 @@ function measure() {
  */
 export function TouchControls() {
   const phase = useHome((s) => s.phase)
-  const screen = useHome((s) => s.screen)
-  const settingsOpen = useHome((s) => s.settingsOpen)
+  const occupied = useHome(busy)
   const [size, setSize] = useState(measure)
 
   useEffect(() => {
@@ -42,7 +41,7 @@ export function TouchControls() {
     root.setProperty('--touch-pad', `${PAD}px`)
   }, [size])
 
-  if (!coarsePointer || phase !== 'playing' || screen || settingsOpen) return null
+  if (!coarsePointer || phase !== 'playing' || occupied) return null
 
   const ring = Math.round(size.stick * 0.62)
   const knob = Math.round(ring * 0.48)

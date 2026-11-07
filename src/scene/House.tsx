@@ -11,6 +11,7 @@ import { Dressing } from './Dressing'
 import { Exterior } from './Exterior'
 import { Floors } from './Floors'
 import { Furnishings } from './Furnishings'
+import { GardenDoor } from './GardenDoor'
 import { Lamps } from './Lamps'
 import { Walls } from './Walls'
 import { useHome } from '../store'
@@ -19,7 +20,7 @@ import { useHome } from '../store'
  * Merges the never-moving placeholder geometry into a few draws (see lib/batch). With `firstPersonOnly` the
  * original pieces come back in the third-person view, where walls must be able to fade individually.
  */
-function StaticBatch({ children, firstPersonOnly = false }: { children: ReactNode; firstPersonOnly?: boolean }) {
+export function StaticBatch({ children, firstPersonOnly = false }: { children: ReactNode; firstPersonOnly?: boolean }) {
   const group = useRef<Group>(null)
   const batch = useRef<Batch | null>(null)
   useEffect(() => {
@@ -101,6 +102,7 @@ export function House() {
         <Dressing />
       </StaticBatch>
       <Door />
+      <GardenDoor />
       <Lamps />
     </>
   )

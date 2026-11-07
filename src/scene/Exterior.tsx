@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { BoxGeometry, BufferGeometry, CylinderGeometry, IcosahedronGeometry, Vector3 } from 'three'
 import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js'
-import { HOUSE } from '../data/layout'
+import { GARDEN, GATE, HOUSE, LANE } from '../data/layout'
 import { boxProject } from '../lib/boxProject'
 import { surface } from '../lib/proceduralTextures'
 
@@ -17,9 +17,21 @@ function mulberry(seed: number) {
 }
 
 // The garden: a hedge along the north and west boundary, a slatted timber fence to the south and east (the
-// sunny side, so it throws no shade into the rooms), shrubs along the house, and broadleaf trees in front of a
-// far ring. All of it is static, so <House /> merges it into a handful of draws.
-const GARDEN = { minX: -14, maxX: 14, minZ: -13, maxZ: 13 }
+// sunny side, so it throws no shade into the rooms) with the farm gate in it, shrubs along the house, and
+// broadleaf trees in front of a far ring. All of it is static, so <House /> merges it into a handful of draws.
+// The farm itself (beds, tree, coop, shed) is src/farm; the spots it uses are kept free of shrubs here.
+
+/** Shrubs along the house and the boundary (the farm took over the old spots in front of the south fence). */
+export const SHRUB_SPOTS: [number, number][] = [
+  [-8.4, -3.2], [-8.5, 4.4], [8.6, 1.6], [8.5, 3.4], [-3.5, -7.6], [1.5, -7.6], [-5.2, 7.6], [4.6, 7.7],
+  [12.6, -9], [12.8, -4], [12.5, 2.5], [10.4, 11.8], [-12.4, 12.0], [-12.6, 5.2],
+]
+/** The three big trees in the garden's corners: x, z, height. */
+export const CORNER_TREES: [number, number, number][] = [
+  [-11.2, -10.2, 7.5],
+  [10.8, -10.6, 6.8],
+  [-11.6, 9.6, 6.4],
+]
 
 /** Lumpy, leafy mass: a box or sphere whose surface is pushed in and out by a few octaves of smooth noise. */
 function foliage(base: BufferGeometry, seed: number, amount: number, tile: number): BufferGeometry {
@@ -131,27 +143,35 @@ export function Exterior() {
   const grass = useMemo(() => surface('grass', 260, 260), [])
   const leaves = useMemo(() => surface('grass', 1, 1), [])
   const bark = useMemo(() => surface('veneer', 1, 1), [])
+  const gravel = useMemo(() => surface('stone', 64, 1), [])
   const garden = useMemo(() => {
     const { minX, maxX, minZ, maxZ } = GARDEN
     const hedge = mergeGeometries(
       [...hedgeRun('x', minZ, minX, maxX, 3), ...hedgeRun('z', minX, minZ + 0.5, maxZ - 2, 5)].map((g) => g.toNonIndexed()),
     )!
-    const fence = mergeGeometries([...fenceRun('x', maxZ, minX + 0.5, maxX), ...fenceRun('z', maxX, minZ + 0.5, maxZ)].map((g) => (g.index ? g.toNonIndexed() : g)))!
+    const gateL = GATE.x - GATE.width / 2
+    const gateR = GATE.x + GATE.width / 2
+    const fence = mergeGeometries(
+      [...fenceRun('x', maxZ, minX + 0.5, gateL), ...fenceRun('x', maxZ, gateR, maxX), ...fenceRun('z', maxX, minZ + 0.5, maxZ)].map((g) =>
+        g.index ? g.toNonIndexed() : g,
+      ),
+    )!
     // shrubs: a border along the walls, never right in front of a window sill, and a row in front of the fence
     const r = mulberry(9)
     const bushes: BufferGeometry[] = []
-    const spots: [number, number][] = [
-      [-8.4, -3.2], [-8.5, 4.4], [8.6, 1.6], [8.5, 3.4], [-3.5, -7.6], [1.5, -7.6], [-5.2, 7.6], [4.6, 7.7],
-      [12.6, -9], [12.8, -4], [12.5, 2.5], [12.7, 8.5], [9, 11.7], [3, 11.8], [-4, 11.6], [-10, 11.7],
-    ]
-    spots.forEach(([x, z], i) => bushes.push(shrub(x, z, 0.55 + r() * 0.35, 100 + i)))
+    SHRUB_SPOTS.forEach(([x, z], i) => bushes.push(shrub(x, z, 0.55 + r() * 0.35, 100 + i)))
     const shrubs = mergeGeometries(bushes.map((g) => (g.index ? g.toNonIndexed() : g)))!
     // trees: a few in the garden corners, the rest in a looser ring beyond the boundary
-    const trees: TreeParts[] = [tree(-11.2, -10.2, 7.5, 21), tree(10.8, -10.6, 6.8, 22), tree(-11.6, 9.6, 6.4, 23)]
+    const trees: TreeParts[] = CORNER_TREES.map(([x, z, h], i) => tree(x, z, h, 21 + i))
     for (let i = 0; i < 14; i++) {
       const angle = (i / 14) * Math.PI * 2 + (r() - 0.5) * 0.35
       const radius = 19 + r() * 9
-      trees.push(tree(Math.cos(angle) * radius, Math.sin(angle) * radius, 6 + r() * 4, 40 + i))
+      const height = 6 + r() * 4
+      const x = Math.cos(angle) * radius
+      const z = Math.sin(angle) * radius
+      // keep the lane outside the farm gate clear: those trees step back from it
+      const onLane = Math.abs(z - LANE.z) < 3.2
+      trees.push(tree(x, onLane ? LANE.z + 5.5 + (i % 3) : z, height, 40 + i))
     }
     const wood = mergeGeometries(trees.map((t) => t.wood))!
     const crowns = [0, 1, 2].map((k) => mergeGeometries(trees.filter((_, i) => i % 3 === k).map((t) => t.crown))!)
@@ -169,6 +189,11 @@ export function Exterior() {
       <mesh rotation-x={-Math.PI / 2} position={[0, -0.015, 0]} receiveShadow>
         <planeGeometry args={[w, d]} />
         <meshStandardMaterial color="#9a9c98" roughness={0.95} />
+      </mesh>
+      {/* the lane outside the farm gate, where buyers come and go */}
+      <mesh rotation-x={-Math.PI / 2} position={[0, -0.02, LANE.z]} receiveShadow>
+        <planeGeometry args={[160, LANE.width]} />
+        <meshStandardMaterial color="#b3a184" map={gravel.map} normalMap={gravel.normalMap} roughness={1} polygonOffset polygonOffsetFactor={-1} polygonOffsetUnits={-1} />
       </mesh>
       <mesh geometry={garden.hedge} castShadow receiveShadow>
         <meshStandardMaterial color="#5f7a4a" {...leafProps} />

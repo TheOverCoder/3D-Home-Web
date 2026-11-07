@@ -2,7 +2,7 @@ import { useMemo, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { MathUtils, MeshBasicMaterial, type Group } from 'three'
 import { aimPointOf } from '../lib/interaction'
-import { useHome } from '../store'
+import { busy, useHome } from '../store'
 
 const reducedMotion = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
 
@@ -40,7 +40,7 @@ export function AimMarker() {
     if (!g) return
     const s = useHome.getState()
     const m = state.current
-    const id = s.phase === 'playing' && !s.screen && !s.settingsOpen ? (s.nearby?.id ?? null) : null
+    const id = s.phase === 'playing' && !busy(s) ? (s.nearby?.id ?? null) : null
     const p = id ? aimPointOf(id) : null
     if (p) {
       if (id !== m.id || m.a < 0.02) {

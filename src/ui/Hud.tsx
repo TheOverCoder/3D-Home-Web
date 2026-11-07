@@ -3,25 +3,27 @@ import { PICKUPS, ROOMS } from '../data/layout'
 import { coarsePointer } from '../lib/device'
 import { triggerInteraction } from '../lib/interaction'
 import { useSettings } from '../settings'
-import { useHome } from '../store'
+import { busy, useHome } from '../store'
 
 /** Room name that fades in when you walk into a new room, like a film title. */
 function RoomTitle() {
   const room = useHome((s) => s.room)
+  const outdoors = useHome((s) => s.outdoors)
+  const place = outdoors ? 'garden' : room
   const [shown, setShown] = useState<{ name: string; key: number } | null>(null)
   const seq = useRef(0)
-  const last = useRef(room)
+  const last = useRef(place)
 
   useEffect(() => {
-    if (!room || room === last.current) {
-      last.current = room ?? last.current
+    if (!place || place === last.current) {
+      last.current = place ?? last.current
       return
     }
-    last.current = room
-    setShown({ name: ROOMS[room].name, key: ++seq.current })
+    last.current = place
+    setShown({ name: place === 'garden' ? 'Garden' : ROOMS[place].name, key: ++seq.current })
     const t = setTimeout(() => setShown(null), 3200)
     return () => clearTimeout(t)
-  }, [room])
+  }, [place])
 
   return shown ? (
     <div className="room-title" key={shown.key} aria-live="polite">
@@ -56,8 +58,7 @@ export function Hud() {
   const phase = useHome((s) => s.phase)
   const nearby = useHome((s) => s.nearby)
   const carrying = useHome((s) => s.carrying)
-  const screen = useHome((s) => s.screen)
-  const settingsOpen = useHome((s) => s.settingsOpen)
+  const occupied = useHome(busy)
   const toast = useHome((s) => s.toast)
   const cinema = useSettings((s) => s.cinema)
 
@@ -70,7 +71,7 @@ export function Hud() {
   if (phase !== 'playing') return null
 
   const carried = PICKUPS.find((p) => p.id === carrying)
-  const prompt = screen || settingsOpen ? null : nearby?.label ?? (carried ? `Put down the ${carried.name}` : null)
+  const prompt = occupied ? null : nearby?.label ?? (carried ? `Put down the ${carried.name}` : null)
 
   return (
     <>

@@ -12,6 +12,7 @@ import {
   pickupSound,
   placeSound as place,
   screenSound,
+  setOutdoors,
   setRoomTone,
   setSoundPrefs,
   suspendForHidden,
@@ -77,6 +78,7 @@ export function SoundDirector() {
       }
       if (s.screen !== p.screen) screenSound(!!s.screen)
       if (s.room !== p.room) setRoomTone(s.room)
+      if (s.outdoors !== p.outdoors) setOutdoors(s.outdoors)
       if (!!s.screen !== !!p.screen || s.settingsOpen !== p.settingsOpen) duckAmbient(!!s.screen || s.settingsOpen)
     })
     setRoomTone(useHome.getState().room)

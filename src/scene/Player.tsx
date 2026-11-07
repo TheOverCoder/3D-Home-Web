@@ -8,7 +8,7 @@ import { useButtonStore, useJoystickStore } from 'ecctrl/input'
 import { CameraControlsImpl } from '@react-three/drei'
 import { MathUtils, Matrix4, Quaternion, Vector3, type Group, type PerspectiveCamera } from 'three'
 import { footstep, jumpSound, land } from '../audio/sound'
-import { HOUSE, ROOMS, SPAWN, roomAt, type FloorKind } from '../data/layout'
+import { GARDEN, GARDEN_DOOR, HOUSE, ROOMS, SPAWN, groundAt, insideHouse, roomAt, type FloorKind } from '../data/layout'
 import { screenById, type ScreenDef } from '../data/screens'
 import { debugSet } from '../lib/debug'
 import { coarsePointer } from '../lib/device'
@@ -18,8 +18,9 @@ import { findNearest, triggerInteraction, type ViewRay } from '../lib/interactio
 import { addLook, look, look as lookState } from '../lib/look'
 import { playerState } from '../lib/playerState'
 import { useSettings } from '../settings'
-import { useHome } from '../store'
+import { busy, useHome } from '../store'
 import { AimMarker } from './AimMarker'
+import { gardenDoor } from './GardenDoor'
 import { Avatar, HeldItem } from './Avatar'
 
 const CAPSULE_HALF = 0.5
@@ -51,7 +52,46 @@ const landing = { kick: 0 }
 
 const floorAt = (x: number, z: number): FloorKind => {
   const room = roomAt(x, z)
-  return room ? ROOMS[room].floor : 'wood'
+  return room ? ROOMS[room].floor : groundAt(x, z)
+}
+
+const CLEAR = HOUSE.wallThickness / 2 + 0.1 // eyes stay this far from a wall's centre line
+const DOOR_HALF = GARDEN_DOOR.width / 2 - 0.1 // the garden door's opening, less the jambs
+
+/**
+ * Never let the eyes enter a wall or rise through the ceiling — inside, outside, and in between: the only way
+ * through the outer walls is the garden door's opening while it is open.
+ */
+function keepCameraInBounds(p: Vector3) {
+  const inOpening = gardenDoor.open > 0.55 && Math.abs(p.x - GARDEN_DOOR.centre) < DOOR_HALF
+  if (inOpening && Math.abs(p.z - GARDEN_DOOR.at) < CLEAR) {
+    // stepping through the door: keep to the opening
+    p.y = Math.min(p.y, GARDEN_DOOR.top - 0.12)
+    return
+  }
+  const body = playerState.position
+  if (insideHouse(body.x, body.z)) {
+    p.y = Math.min(p.y, HOUSE.wallHeight - 0.12)
+    p.x = MathUtils.clamp(p.x, HOUSE.minX + CLEAR, HOUSE.maxX - CLEAR)
+    p.z = MathUtils.clamp(p.z, HOUSE.minZ + CLEAR, inOpening ? HOUSE.maxZ + 3 : HOUSE.maxZ - CLEAR)
+    return
+  }
+  // outdoors: above the ground, around the garden, and out of the house's walls
+  p.y = Math.max(p.y, 0.2)
+  p.x = MathUtils.clamp(p.x, GARDEN.minX - 4, GARDEN.maxX + 4)
+  p.z = MathUtils.clamp(p.z, GARDEN.minZ - 4, GARDEN.maxZ + 4)
+  if (inOpening) {
+    if (insideHouse(p.x, p.z)) p.y = Math.min(p.y, HOUSE.wallHeight - 0.12)
+    return
+  }
+  if (insideHouse(p.x, p.z, CLEAR)) {
+    const d = [p.x - (HOUSE.minX - CLEAR), HOUSE.maxX + CLEAR - p.x, p.z - (HOUSE.minZ - CLEAR), HOUSE.maxZ + CLEAR - p.z]
+    const m = Math.min(...d)
+    if (m === d[0]) p.x = HOUSE.minX - CLEAR
+    else if (m === d[1]) p.x = HOUSE.maxX + CLEAR
+    else if (m === d[2]) p.z = HOUSE.minZ - CLEAR
+    else p.z = HOUSE.maxZ + CLEAR
+  }
 }
 
 /** Critically damped spring towards `to` (exact for any dt, so it never overshoots or explodes at low frame rates). */
@@ -108,6 +148,7 @@ function useKeyboard() {
       const state = useHome.getState()
       if (e.code === 'Escape') {
         if (state.screen) state.closeScreen()
+        else if (state.panel) state.closePanel()
         else if (state.phase === 'playing') {
           // some browsers also deliver this Esc after releasing the pointer lock, which already opened the panel
           if (!state.settingsOpen) state.setSettingsOpen(true)
@@ -115,7 +156,7 @@ function useKeyboard() {
         }
         return
       }
-      if (state.phase !== 'playing' || state.screen || state.settingsOpen) return
+      if (state.phase !== 'playing' || busy(state)) return
       if (e.code === 'KeyE') {
         if (!e.repeat) triggerInteraction()
         return
@@ -138,7 +179,7 @@ function useKeyboard() {
     window.addEventListener('blur', release)
     const unsub = useHome.subscribe((s, p) => {
       if (s.settingsOpen && !p.settingsOpen) lastOpened = performance.now()
-      if ((s.screen && !p.screen) || (s.settingsOpen && !p.settingsOpen) || (s.phase !== 'playing' && p.phase === 'playing')) release()
+      if ((busy(s) && !busy(p)) || (s.phase !== 'playing' && p.phase === 'playing')) release()
     })
     return () => {
       window.removeEventListener('keydown', onDown)
@@ -166,7 +207,7 @@ function LookInput() {
     let expectedUnlock = false
     const active = () => {
       const s = useHome.getState()
-      return s.view === 'first' && s.phase === 'playing' && !s.screen && !s.settingsOpen
+      return s.view === 'first' && s.phase === 'playing' && !busy(s)
     }
     const look = (dx: number, dy: number, base: number) => {
       const { sensitivity, invertY } = useSettings.getState()
@@ -210,7 +251,7 @@ function LookInput() {
       if (!wasLocked) return
       wasLocked = false
       const s = useHome.getState()
-      if (!expectedUnlock && s.phase === 'playing' && !s.screen && !s.settingsOpen) s.setSettingsOpen(true)
+      if (!expectedUnlock && s.phase === 'playing' && !busy(s)) s.setSettingsOpen(true)
       expectedUnlock = false
     }
     dom.addEventListener('pointerdown', onDown)
@@ -219,7 +260,7 @@ function LookInput() {
     dom.addEventListener('pointercancel', onUp)
     document.addEventListener('pointerlockchange', onLockChange)
     const unsub = useHome.subscribe((s) => {
-      if ((s.screen || s.settingsOpen || s.view !== 'first') && document.pointerLockElement === dom) {
+      if ((busy(s) || s.view !== 'first') && document.pointerLockElement === dom) {
         expectedUnlock = true
         document.exitPointerLock()
       }
@@ -256,8 +297,7 @@ function CameraRig({ ecctrl, feet }: { ecctrl: RefObject<EcctrlHandle | null>; f
   const controls = useRef<EcctrlCameraControlsHandle>(null)
   const phase = useHome((s) => s.phase)
   const view = useHome((s) => s.view)
-  const screen = useHome((s) => s.screen)
-  const settingsOpen = useHome((s) => s.settingsOpen)
+  const occupied = useHome(busy)
   const fovSetting = useSettings((s) => s.fov)
   const { ACTION } = CameraControlsImpl
   const size = useThree((s) => s.size)
@@ -402,12 +442,7 @@ function CameraRig({ ecctrl, feet }: { ecctrl: RefObject<EcctrlHandle | null>; f
       camera.quaternion.slerp(screenQ, k)
     }
 
-    // never let the eyes leave the shell: a ceiling lid stops the body, this catches everything else
-    camera.position.y = Math.min(camera.position.y, HOUSE.wallHeight - 0.12)
-    // walls are centred on HOUSE's edges: stay clear of their inner faces
-    const wall = HOUSE.wallThickness / 2 + 0.1
-    camera.position.x = MathUtils.clamp(camera.position.x, HOUSE.minX + wall, HOUSE.maxX - wall)
-    camera.position.z = MathUtils.clamp(camera.position.z, HOUSE.minZ + wall, HOUSE.maxZ - wall)
+    keepCameraInBounds(camera.position)
     camera.updateMatrixWorld()
     lastPose.pos.copy(camera.position)
     lastPose.quat.copy(camera.quaternion)
@@ -418,7 +453,7 @@ function CameraRig({ ecctrl, feet }: { ecctrl: RefObject<EcctrlHandle | null>; f
     <EcctrlCameraControls
       ref={controls}
       makeDefault
-      enabled={phase === 'playing' && view === 'third' && !screen && !settingsOpen}
+      enabled={phase === 'playing' && view === 'third' && !occupied}
       smoothTime={0.14}
       draggingSmoothTime={0.08}
       minDistance={2.5}
@@ -582,11 +617,11 @@ export function Player() {
     const wanted = state.view === 'first' ? (hit ? hit.timeOfImpact : 14) : camera.position.distanceTo(pos)
     focus.distance += (Math.max(0.4, wanted) - focus.distance) * (1 - Math.exp(-6 * dt))
 
-    if (!state.screen && !state.settingsOpen) handle.setMovement(keys)
+    if (!busy(state)) handle.setMovement(keys)
     else handle.setMovement({ forward: false, backward: false, leftward: false, rightward: false, jump: false, run: false })
 
     // on-screen controls (touch devices)
-    if (coarsePointer && !state.screen && !state.settingsOpen) {
+    if (coarsePointer && !busy(state)) {
       const joy = useJoystickStore.getState().joysticks.default
       const buttons = useButtonStore.getState().buttons
       handle.setMovement({
@@ -605,7 +640,9 @@ export function Player() {
     acc.current = 0
     const room = roomAt(pos.x, pos.z)
     if (room !== state.room) state.setRoom(room)
-    if (state.screen || state.settingsOpen) return
+    const outdoors = !insideHouse(pos.x, pos.z)
+    if (outdoors !== state.outdoors) state.setOutdoors(outdoors)
+    if (busy(state)) return
     let view: ViewRay | undefined
     if (state.view === 'first') {
       camera.getWorldDirection(aim)

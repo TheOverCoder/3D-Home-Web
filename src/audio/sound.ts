@@ -203,6 +203,10 @@ export function footstep(kind: FloorKind, strength = 1, run = false) {
     burst(e, t, { type: 'bandpass', freq: rnd(3100, 3900), q: 5, gain: 0.1 * v, attack: 0.001, decay: 0.07 })
     burst(e, t, { type: 'lowpass', freq: 520, q: 0.7, gain: 0.28 * v, attack: 0.003, decay: 0.05 })
     tone(e, t, { type: 'sine', f0: 150, f1: 85, gain: 0.12 * v, attack: 0.002, decay: 0.05 })
+  } else if (kind === 'grass') {
+    // grass: a soft thud into turf and the swish of blades
+    burst(e, t, { type: 'lowpass', freq: rnd(300, 380), q: 0.6, gain: 0.3 * v, attack: 0.012, decay: 0.1 })
+    burst(e, t + 0.01, { type: 'bandpass', freq: rnd(3200, 4200), q: 0.6, gain: 0.05 * v, attack: 0.02, decay: 0.12 })
   } else {
     // carpet: a soft muffled pad and a brush of fibre
     burst(e, t, { type: 'lowpass', freq: rnd(460, 600), q: 0.5, gain: 0.34 * v, attack: 0.014, decay: 0.12 })
@@ -346,6 +350,105 @@ export function screenSound(open: boolean) {
   burst(e, t, { type: 'bandpass', freq: open ? 600 : 2200, sweepTo: open ? 2400 : 500, q: 0.8, gain: 0.025, attack: 0.08, decay: 0.2 })
 }
 
+// ─────────────────────── the garden ───────────────────────
+
+export type FarmSound = 'plant' | 'water' | 'harvest' | 'coins' | 'cluck' | 'bell' | 'build' | 'decline'
+
+/** Garden work and the people and animals in it. */
+export function farmSound(kind: FarmSound, pan = 0, near = 1) {
+  const e = live()
+  if (!e) return
+  const t = e.ac.currentTime + 0.004
+  const v = Math.max(0.25, near)
+  switch (kind) {
+    case 'plant': // hands in the soil: two scrapes and a pat
+      burst(e, t, { type: 'lowpass', freq: 900, q: 0.6, gain: 0.25 * v, attack: 0.03, decay: 0.18, pan })
+      burst(e, t + 0.16, { type: 'bandpass', freq: 1400, q: 0.8, gain: 0.12 * v, attack: 0.02, decay: 0.14, pan })
+      burst(e, t + 0.32, { type: 'lowpass', freq: 260, q: 0.7, gain: 0.35 * v, attack: 0.005, decay: 0.09, pan })
+      break
+    case 'water': // a pour sweeping down, and a few drops
+      burst(e, t, { type: 'bandpass', freq: 2600, sweepTo: 1200, q: 1.1, gain: 0.2 * v, attack: 0.08, decay: 0.9, pan })
+      burst(e, t + 0.05, { type: 'highpass', freq: 5000, q: 0.7, gain: 0.05 * v, attack: 0.05, decay: 0.8, pan })
+      for (let i = 0; i < 4; i++)
+        tone(e, t + 0.2 + i * 0.13 + Math.random() * 0.05, { type: 'sine', f0: rnd(900, 1500), f1: rnd(1800, 2600), gain: 0.025 * v, attack: 0.004, decay: 0.05, pan })
+      break
+    case 'harvest': // leaves rustle, a stem snaps
+      burst(e, t, { type: 'bandpass', freq: 3200, q: 0.9, gain: 0.12 * v, attack: 0.02, decay: 0.22, pan })
+      burst(e, t + 0.12, { type: 'highpass', freq: 2500, q: 0.8, gain: 0.18 * v, attack: 0.002, decay: 0.03, pan })
+      tone(e, t + 0.12, { type: 'triangle', f0: 520, f1: 300, gain: 0.05 * v, attack: 0.003, decay: 0.08, pan })
+      break
+    case 'coins': // clink, clink, chime
+      tone(e, t, { type: 'sine', f0: 2093, gain: 0.05, attack: 0.002, decay: 0.25 })
+      tone(e, t + 0.07, { type: 'sine', f0: 2637, gain: 0.05, attack: 0.002, decay: 0.35 })
+      tone(e, t + 0.14, { type: 'sine', f0: 3136, gain: 0.04, attack: 0.002, decay: 0.5 })
+      burst(e, t, { type: 'highpass', freq: 6000, q: 0.7, gain: 0.03, attack: 0.001, decay: 0.05 })
+      break
+    case 'cluck': {
+      // a hen: two or three short nasal notes
+      const n = 2 + Math.floor(Math.random() * 2)
+      for (let i = 0; i < n; i++) {
+        const tt = t + i * rnd(0.09, 0.13)
+        tone(e, tt, { type: 'sawtooth', f0: rnd(520, 640), f1: rnd(380, 460), gain: 0.02 * v, attack: 0.008, decay: 0.06, pan })
+        burst(e, tt, { type: 'bandpass', freq: 1400, q: 3, gain: 0.03 * v, attack: 0.006, decay: 0.05, pan })
+      }
+      break
+    }
+    case 'bell': // the gate bell: someone is here
+      for (const [f, d, g] of [
+        [1318, 1.4, 0.05],
+        [1975, 1.0, 0.025],
+        [2637, 0.6, 0.015],
+      ])
+        tone(e, t, { type: 'sine', f0: f, gain: g * v, attack: 0.003, decay: d, pan })
+      tone(e, t + 0.28, { type: 'sine', f0: 1046, gain: 0.04 * v, attack: 0.003, decay: 1.2, pan })
+      break
+    case 'build': // hammer knocks into timber
+      for (let i = 0; i < 3; i++) {
+        burst(e, t + i * 0.18, { type: 'lowpass', freq: 700, q: 0.8, gain: 0.4 * v, attack: 0.002, decay: 0.07, pan })
+        tone(e, t + i * 0.18, { type: 'sine', f0: 180, f1: 120, gain: 0.15 * v, attack: 0.002, decay: 0.08, pan })
+      }
+      break
+    case 'decline': // a soft falling "oh well"
+      tone(e, t, { type: 'triangle', f0: 392, gain: 0.03, attack: 0.01, decay: 0.2 })
+      tone(e, t + 0.15, { type: 'triangle', f0: 311, gain: 0.03, attack: 0.01, decay: 0.3 })
+      break
+  }
+}
+
+let outdoors = false
+let birdTimer: number | undefined
+
+/** One bird somewhere in the garden: a songbird's quick phrase, now and then a dove. */
+function birdCall() {
+  const e = live()
+  if (e && outdoors) {
+    const t = e.ac.currentTime + 0.01
+    const pan = rnd(-0.9, 0.9)
+    const g = rnd(0.012, 0.03)
+    if (Math.random() < 0.18) {
+      // a laughing dove: soft, low, rising and falling
+      for (let i = 0; i < 4; i++) tone(e, t + i * 0.24, { type: 'sine', f0: rnd(430, 470), f1: rnd(380, 410), gain: g * 0.9, attack: 0.04, decay: 0.16, pan })
+    } else {
+      const notes = 2 + Math.floor(Math.random() * 5)
+      const base = rnd(2600, 3800)
+      for (let i = 0; i < notes; i++) {
+        const up = Math.random() < 0.6
+        tone(e, t + i * rnd(0.07, 0.12), { type: 'sine', f0: base * (up ? 0.85 : 1.2), f1: base * (up ? 1.25 : 0.8), gain: g, attack: 0.008, decay: rnd(0.03, 0.07), pan })
+      }
+    }
+  }
+  birdTimer = window.setTimeout(birdCall, rnd(900, 3800))
+}
+
+/** In the garden: open-air wind instead of a room's tone, and birds. */
+export function setOutdoors(on: boolean) {
+  if (on === outdoors) return
+  outdoors = on
+  window.clearTimeout(birdTimer)
+  if (on) birdTimer = window.setTimeout(birdCall, 500)
+  setRoomTone(wantedRoom)
+}
+
 // ─────────────────────── room tone ───────────────────────
 
 // Each room has its own quiet bed: air, a fridge in the kitchen, a computer fan in the studio.
@@ -407,7 +510,7 @@ export function setRoomTone(room: RoomId | null) {
   wantedRoom = room
   if (!engine || !ambient) return
   const now = engine.ac.currentTime
-  const tone = room ? ROOM_TONE[room] : { cutoff: 350, level: 0.04, hum: 0, fan: 0 }
+  const tone = outdoors ? { cutoff: 1100, level: 0.05, hum: 0, fan: 0 } : room ? ROOM_TONE[room] : { cutoff: 350, level: 0.04, hum: 0, fan: 0 }
   ambient.filter.frequency.setTargetAtTime(tone.cutoff, now, 0.8)
   ambient.gain.gain.setTargetAtTime(tone.level, now, 0.8)
   ambient.hum.gain.setTargetAtTime(tone.hum, now, 1.0)

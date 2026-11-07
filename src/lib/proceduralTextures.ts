@@ -292,6 +292,32 @@ function stone(): Surface {
   }, 0.9)
 }
 
+/** Garden soil: dark crumbly earth with clods, fine grit and the odd pale pebble. */
+function soil(): Surface {
+  const clods = fbm(14, 141, 4)
+  const grit = fbm(110, 143, 2)
+  const pebbles = fbm(40, 147, 2)
+  return make((u, v) => {
+    const c = clods(u, v)
+    const g = grit(u, v)
+    const p = Math.max(0, pebbles(u, v) - 0.72) * 3.2 // sparse light stones
+    const k = 0.72 + c * 0.42 + (g - 0.5) * 0.16
+    return { r: 96 * k + p * 90, g: 70 * k + p * 80, b: 52 * k + p * 70, h: c * 0.8 + g * 0.2 + p * 0.6, rough: 1 }
+  }, 3.2)
+}
+
+/** Garden path gravel: packed small stones in warm greys. */
+function gravel(): Surface {
+  const stones = fbm(70, 151, 3)
+  const tint = fbm(5, 153, 3)
+  return make((u, v) => {
+    const st = stones(u, v)
+    const k = 0.7 + st * 0.5
+    const t = tint(u, v)
+    return { r: (178 + t * 20) * k, g: (168 + t * 14) * k, b: (150 + t * 6) * k, h: st, rough: 0.95 }
+  }, 2.6)
+}
+
 /** Satin paint / lacquer: a faint orange-peel texture. */
 function paint(): Surface {
   const peel = fbm(70, 101, 3)
@@ -316,10 +342,10 @@ function leaf(): Surface {
 }
 
 const base: Record<string, Surface> = {}
-const builders = { wood, tile, carpet, plaster, fabric, grass, skin, veneer, leather, brushed, stone, paint, leaf }
+const builders = { wood, tile, carpet, plaster, fabric, grass, skin, veneer, leather, brushed, stone, paint, leaf, soil, gravel }
 
 export type MaterialKind = 'veneer' | 'leather' | 'fabric' | 'brushed' | 'stone' | 'paint'
-export type SurfaceKind = FloorKind | 'plaster' | 'fabric' | 'grass' | 'skin' | 'leaf' | MaterialKind
+export type SurfaceKind = FloorKind | 'plaster' | 'fabric' | 'grass' | 'skin' | 'leaf' | 'soil' | 'gravel' | MaterialKind
 
 /** A surface with its own UV repeat (textures share their canvases, so this is cheap). */
 export function surface(kind: SurfaceKind, repeatX: number, repeatY: number): Surface {

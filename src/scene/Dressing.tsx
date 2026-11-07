@@ -442,8 +442,7 @@ function House() {
       <Outlet position={[-6.915, 0.32, -1.4]} rotationY={Math.PI / 2} />
       <Outlet position={[6.915, 0.32, 3.0]} rotationY={-Math.PI / 2} />
       <Outlet position={[5.6, 1.0, -5.915]} rotationY={0} />
-      {/* radiators under the big south windows */}
-      <At position={[-1.2, 0, 5.875]}><Radiator width={1.1} /></At>
+      {/* a radiator under the bedroom's south window (the living room's became the garden door) */}
       <At position={[1.7, 0, 5.875]}><Radiator width={1.0} /></At>
       {/* smoke detectors */}
       {[[-3.5, -3.0], [3.5, -3.0], [-3.5, 3.0], [3.5, 3.0]].map(([x, z]) => (

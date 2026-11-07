@@ -4,8 +4,8 @@ import { HOUSE, ROOMS, type FloorKind } from '../data/layout'
 import { surface } from '../lib/proceduralTextures'
 
 // metres of floor covered by one texture tile
-const TILE: Record<FloorKind, number> = { wood: 2.4, tile: 1.4, carpet: 1.6 }
-const NORMAL: Record<FloorKind, number> = { wood: 0.7, tile: 1, carpet: 0.6 }
+const TILE: Record<FloorKind, number> = { wood: 2.4, tile: 1.4, carpet: 1.6, grass: 3 }
+const NORMAL: Record<FloorKind, number> = { wood: 0.7, tile: 1, carpet: 0.6, grass: 1 }
 
 function RoomFloor({ id }: { id: keyof typeof ROOMS }) {
   const room = ROOMS[id]

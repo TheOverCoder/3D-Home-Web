@@ -6,6 +6,7 @@ import { debugSet } from '../lib/debug'
 import { registerRenderer } from '../lib/diagnostics'
 import { installHdrGuard } from '../lib/hdrGuard'
 import { useHome, type Quality } from '../store'
+import { Garden } from '../farm/Garden'
 import { Effects } from './Effects'
 import { House } from './House'
 import { LightDirector } from './LightDirector'
@@ -150,6 +151,7 @@ export default function Experience() {
       <Suspense fallback={null}>
         <Physics gravity={[0, -9.81, 0]}>
           <House />
+          <Garden />
           <LightShafts />
           <LightDirector />
           <Screens />

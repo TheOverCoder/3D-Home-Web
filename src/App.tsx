@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { SoundDirector } from './audio/SoundDirector'
+import { FarmUI } from './farm/FarmUI'
 import { ErrorBoundary } from './lib/ErrorBoundary'
 import { playerState } from './lib/playerState'
 import { useHome } from './store'
@@ -37,6 +38,7 @@ export function App() {
       </ErrorBoundary>
       <SoundDirector />
       <Hud />
+      <FarmUI />
       <TouchControls />
       <ScreenModal />
       <SettingsPanel />

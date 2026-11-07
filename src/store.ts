@@ -14,6 +14,9 @@ export interface Nearby {
   label: string
 }
 
+/** A small game panel over the scene (the garden's seed packets, a buyer's offer, the farm shop). */
+export type Panel = { kind: 'seeds'; bed: number } | { kind: 'offer'; visitor: number } | { kind: 'shop' }
+
 interface HomeState {
   phase: 'intro' | 'playing'
   ready: { scene: boolean; env: boolean }
@@ -23,8 +26,10 @@ interface HomeState {
   settingsOpen: boolean
   hintShown: boolean
   room: RoomId | null
+  outdoors: boolean // in the garden
   nearby: Nearby | null
   screen: string | null
+  panel: Panel | null
   lamps: Record<string, boolean>
   doors: Record<string, boolean>
   items: Record<string, ItemState>
@@ -41,9 +46,12 @@ interface HomeState {
   setSettingsOpen: (open: boolean) => void
   markHintShown: () => void
   setRoom: (room: RoomId | null) => void
+  setOutdoors: (outdoors: boolean) => void
   setNearby: (nearby: Nearby | null) => void
   openScreen: (id: string) => void
   closeScreen: () => void
+  openPanel: (panel: Panel) => void
+  closePanel: () => void
   toggleLamp: (id: string) => void
   toggleDoor: (id: string) => void
   pickUp: (id: string) => void
@@ -64,8 +72,10 @@ export const useHome = create<HomeState>()((set, get) => ({
   settingsOpen: false,
   hintShown: false,
   room: null,
+  outdoors: false,
   nearby: null,
   screen: null,
+  panel: null,
   lamps: Object.fromEntries(LAMPS.map((l) => [l.id, true])),
   doors: { [DOOR.id]: false },
   items: Object.fromEntries(PICKUPS.map((p) => [p.id, { pos: p.position, rev: 0 }])),
@@ -81,9 +91,12 @@ export const useHome = create<HomeState>()((set, get) => ({
   setSettingsOpen: (settingsOpen) => set({ settingsOpen, nearby: settingsOpen ? null : get().nearby }),
   markHintShown: () => set({ hintShown: true }),
   setRoom: (room) => set({ room }),
+  setOutdoors: (outdoors) => set({ outdoors }),
   setNearby: (nearby) => set({ nearby }),
   openScreen: (screen) => set({ screen, nearby: null }),
   closeScreen: () => set({ screen: null }),
+  openPanel: (panel) => set({ panel, nearby: null }),
+  closePanel: () => set({ panel: null }),
   toggleLamp: (id) => set((s) => ({ lamps: { ...s.lamps, [id]: !s.lamps[id] } })),
   toggleDoor: (id) => set((s) => ({ doors: { ...s.doors, [id]: !s.doors[id] } })),
   // the item leaves the registry with its body: forget it as the aimed thing right away, so E drops it next
@@ -99,3 +112,6 @@ export const useHome = create<HomeState>()((set, get) => ({
   setQuality: (quality, auto = false) => set({ quality, qualityAuto: auto }),
   showToast: (text) => set({ toast: { text, id: ++toastId } }),
 }))
+
+/** Something has the player's attention (a screen, the settings, a garden panel): no walking, looking or interacting. */
+export const busy = (s: Pick<HomeState, 'screen' | 'settingsOpen' | 'panel'>) => !!(s.screen || s.settingsOpen || s.panel)

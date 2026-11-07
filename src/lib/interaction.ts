@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { useHome } from '../store'
+import { busy, useHome } from '../store'
 import { playerState, type Point3 } from './playerState'
 
 export interface InteractableDef {
@@ -77,8 +77,9 @@ export function aimPointOf(id: string): Point3 | null {
 
 /** Runs whatever the player is currently standing next to; otherwise drops what they carry. */
 export function triggerInteraction() {
-  const { nearby, carrying, screen, settingsOpen, drop } = useHome.getState()
-  if (screen || settingsOpen) return
+  const state = useHome.getState()
+  const { nearby, carrying, drop } = state
+  if (busy(state)) return
   // `nearby` is refreshed a few times a second: it can still name something that just went away
   // (the item you picked up) or was switched off — then E falls through to dropping what you carry
   const def = nearby ? registry.get(nearby.id) : undefined
