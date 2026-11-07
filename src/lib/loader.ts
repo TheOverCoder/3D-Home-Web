@@ -61,7 +61,9 @@ const abs = (url: string) => new URL(url, location.origin + BASE).href
 
 async function inDeviceCache(url: string) {
   try {
-    return typeof caches !== 'undefined' && !!(await caches.match(url))
+    // any stored copy will do: the files are content-hashed, and a "Vary" header (Accept-Encoding, Origin) would
+    // otherwise hide a copy stored by a request with other headers
+    return typeof caches !== 'undefined' && !!(await caches.match(url, { ignoreVary: true }))
   } catch {
     return false
   }

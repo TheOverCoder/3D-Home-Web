@@ -42,19 +42,23 @@ test.describe('starting up', () => {
       async () => {
         if (!navigator.serviceWorker.controller) return false
         const m = await (await fetch('/assets-manifest.json')).json()
-        for (const f of m.files) if (!(await caches.match(new URL(f.url, location.origin + '/').href))) return false
+        for (const f of m.files) if (!(await caches.match(new URL(f.url, location.origin + '/').href, { ignoreVary: true }))) return false
         return true
       },
       null,
       { timeout: 60_000, polling: 1000 },
     )
 
-    // the intro's music player and save list
+    // the intro's music player and save list: the music starts with the first click (it is on by default),
+    // the player pauses and plays it
     await page.locator('.intro-tabs button', { hasText: 'Music' }).click()
-    await page.locator('.music-btn.play').click()
     await page.waitForFunction(() => (window as any).__home.music.getState().playing === true, null, { timeout: 30_000 })
+    await expect(page.locator('.music-title strong')).not.toBeEmpty()
     await page.locator('.music-btn.play').click()
     await page.waitForFunction(() => (window as any).__home.music.getState().playing === false, null, { timeout: 30_000 })
+    await page.locator('.music-btn[aria-label="Next track"]').click()
+    await page.locator('.music-btn.play').click()
+    await page.waitForFunction(() => (window as any).__home.music.getState().playing === true && (window as any).__home.music.getState().track === 1, null, { timeout: 30_000 })
     await page.locator('.intro-tabs button', { hasText: 'Saves' }).click()
     await expect(page.locator('.slot')).toHaveCount(3)
     await expect(page.locator('.slot.current')).toContainText('Farm 1')

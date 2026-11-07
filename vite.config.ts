@@ -140,7 +140,8 @@ self.addEventListener('fetch', (event) => {
   }
   if (url.pathname.startsWith(BASE + 'assets/')) {
     // content-hashed files never change: the kept copy, or download once and keep
-    event.respondWith(caches.match(request).then((hit) => hit || fresh(request, event)))
+    // (ignoreVary: a copy stored by a plain fetch serves a module-script request too, whatever "Vary" says)
+    event.respondWith(caches.match(request, { ignoreVary: true }).then((hit) => hit || fresh(request, event)))
     return
   }
   // everything else (icons, preview image): the kept copy now, refreshed in the background

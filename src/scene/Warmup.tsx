@@ -12,6 +12,8 @@ import { useHome } from '../store'
 // the browser can (KHR_parallel_shader_compile, via compileAsync) and textures go up a few per frame.
 
 const frame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+// a pause for the page (the loading card redraws) without drawing the house: the frame loop is stopped meanwhile
+const breathe = () => new Promise<void>((resolve) => setTimeout(resolve, 0))
 const SLOTS = ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'emissiveMap', 'alphaMap', 'lightMap', 'envMap'] as const
 
 function texturesOf(root: Object3D): Texture[] {
@@ -49,39 +51,48 @@ export function Warmup() {
       if (cancelled) return
       setLoadPhase('compile')
       useLoader.setState({ compile: 0.05 })
-      // hidden things (garden icons, bubbles, the held item…) are compiled too; nothing is drawn meanwhile
+      // hidden things (garden icons, bubbles, the held item…) are compiled too. Nothing is drawn meanwhile: the
+      // frame loop stops until the textures are up as well (drawing the whole house between two uploads would
+      // cost far more than the uploads themselves)
       const hidden: Object3D[] = []
       setFrameloop('never')
-      scene.traverse((o) => {
-        if (!o.visible) {
-          hidden.push(o)
-          o.visible = true
-        }
-      })
       try {
-        // in parallel where the browser can; elsewhere compileAsync would only warn and do the same as compile
-        if (gl.extensions.has('KHR_parallel_shader_compile')) await gl.compileAsync(scene, camera)
-        else gl.compile(scene, camera)
-      } catch (e) {
-        console.warn('[warmup] could not precompile', e)
-      } finally {
-        for (const o of hidden) o.visible = false
-        if (!cancelled) setFrameloop('always')
-      }
-      if (cancelled) return
-      const textures = texturesOf(scene)
-      if (scene.environment) textures.push(scene.environment)
-      for (let i = 0; i < textures.length; i++) {
-        if (cancelled || gl.getContext().isContextLost()) return
+        scene.traverse((o) => {
+          if (!o.visible) {
+            hidden.push(o)
+            o.visible = true
+          }
+        })
         try {
-          gl.initTexture(textures[i])
-        } catch {
-          /* a texture still decoding uploads on first use instead */
+          // in parallel where the browser can; elsewhere compileAsync would only warn and do the same as compile
+          if (gl.extensions.has('KHR_parallel_shader_compile')) await gl.compileAsync(scene, camera)
+          else gl.compile(scene, camera)
+        } catch (e) {
+          console.warn('[warmup] could not precompile', e)
+        } finally {
+          for (const o of hidden) o.visible = false
         }
-        if (i % 3 === 2) {
-          useLoader.setState({ compile: 0.3 + (0.7 * i) / textures.length })
-          await frame()
+        if (cancelled) return
+        useLoader.setState({ compile: 0.3 })
+        const textures = texturesOf(scene)
+        if (scene.environment) textures.push(scene.environment)
+        // in slices of about 12 ms, so the loading card keeps moving
+        let slice = performance.now()
+        for (let i = 0; i < textures.length; i++) {
+          if (cancelled || gl.getContext().isContextLost()) return
+          try {
+            gl.initTexture(textures[i])
+          } catch {
+            /* a texture still decoding uploads on first use instead */
+          }
+          if (performance.now() - slice > 12) {
+            useLoader.setState({ compile: 0.3 + (0.7 * i) / textures.length })
+            await breathe()
+            slice = performance.now()
+          }
         }
+      } finally {
+        if (!cancelled) setFrameloop('always')
       }
       if (cancelled) return
       useLoader.setState({ compile: 1 })
