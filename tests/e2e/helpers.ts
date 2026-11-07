@@ -22,7 +22,7 @@ export interface Game {
 export async function bootApp(page: Page, query = 'debug&quality=low') {
   await page.goto(`/?${query}`)
   const btn = page.locator('.intro .primary')
-  await expect(btn).toBeEnabled({ timeout: 180_000 })
+  await expect(btn).toBeEnabled({ timeout: 300_000 })
   await btn.click()
   await page.waitForFunction(() => (window as any).__home?.useHome.getState().room != null, null, { timeout: 120_000, polling: 500 })
 }

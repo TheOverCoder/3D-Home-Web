@@ -81,6 +81,7 @@ const SHELL = __SHELL__ // the page and what it loads first: kept for offline st
 const FILES = __FILES__ // every file of this build: anything else in the cache is from an old version
 const CACHE = 'home-' + VERSION
 const at = (f) => new URL(BASE + f, self.location.origin).href
+const KNOWN = new Set([...SHELL, ...FILES, 'og.jpg', 'favicon.svg'].map(at))
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -138,6 +139,8 @@ self.addEventListener('fetch', (event) => {
     )
     return
   }
+  // only the game's own files: anything else on this origin (an API later on, a test's private path) is left alone
+  if (!KNOWN.has(url.origin + url.pathname)) return
   if (url.pathname.startsWith(BASE + 'assets/')) {
     // content-hashed files never change: the kept copy, or download once and keep
     // (ignoreVary: a copy stored by a plain fetch serves a module-script request too, whatever "Vary" says)

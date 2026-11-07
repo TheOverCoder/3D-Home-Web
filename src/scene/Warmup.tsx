@@ -41,22 +41,24 @@ export function Warmup() {
   useEffect(() => {
     let cancelled = false
     void (async () => {
-      // wait until the lighting and every model and texture the scene asked for have arrived (or 15 s)
-      for (let waited = 0; waited < 15_000; waited += 50) {
-        if (cancelled) return
-        if (useHome.getState().ready.env && !useProgress.getState().active) break
-        await frame()
-      }
+      // one frame so everything is in place, then the frame loop stops until the warm-up is done: nothing is drawn
+      // behind the loading card meanwhile (drawing the whole house between two steps costs far more than the
+      // steps themselves — on a slow GPU, minutes)
       await frame()
       if (cancelled) return
-      setLoadPhase('compile')
-      useLoader.setState({ compile: 0.05 })
-      // hidden things (garden icons, bubbles, the held item…) are compiled too. Nothing is drawn meanwhile: the
-      // frame loop stops until the textures are up as well (drawing the whole house between two uploads would
-      // cost far more than the uploads themselves)
-      const hidden: Object3D[] = []
       setFrameloop('never')
       try {
+        // wait until the lighting and every model and texture the scene asked for have arrived (or 15 s)
+        for (let waited = 0; waited < 15_000; waited += 50) {
+          if (cancelled) return
+          if (useHome.getState().ready.env && !useProgress.getState().active) break
+          await new Promise((r) => setTimeout(r, 50))
+        }
+        if (cancelled) return
+        setLoadPhase('compile')
+        useLoader.setState({ compile: 0.05 })
+        // hidden things (garden icons, bubbles, the held item…) are compiled too
+        const hidden: Object3D[] = []
         scene.traverse((o) => {
           if (!o.visible) {
             hidden.push(o)
