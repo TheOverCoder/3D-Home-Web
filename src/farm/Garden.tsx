@@ -14,16 +14,24 @@ import { B } from '../scene/Furnishings'
 import { StaticBatch } from '../scene/House'
 import { SHRUB_SPOTS, CORNER_TREES } from '../scene/Exterior'
 import { useHome } from '../store'
-import { BED, BEDS, COOP, LEMON_TREE, NEST, PATH_X, RUN, SHED, STAND, count, cropById } from './data'
+import { BED, BEDS, COOP, EXPANSIONS, LEMON_TREE, NEST, PASTURE, PATH_X, RUN, SHED, STAND, count, cropById } from './data'
 import { Chickens } from './Chickens'
 import { Plants } from './Plants'
 import {
+  bake,
   bedProgress,
   bedStage,
   buildBed,
+  buy,
   collectEggs,
   farm,
   harvest,
+  milkCow,
+  millCollect,
+  millLoad,
+  millStage,
+  ovenStage,
+  takeOut,
   pickLemons,
   plant,
   resetFarm,
@@ -33,7 +41,9 @@ import {
   water,
   yieldOf,
 } from './state'
+import { Cows, herd } from './Cows'
 import { Visitors } from './Visitors'
+import { Workshop } from './Workshop'
 
 const WOOD = '#8a6440'
 const WOOD_DARK = '#5e4630'
@@ -156,7 +166,12 @@ function Bed({ index }: { index: number }) {
   const soilTex = useMemo(() => surface('soil', BED.w / 0.55, BED.d / 0.55), [])
   const soil = useRef<MeshStandardMaterial>(null)
   const icon = useRef<Sprite>(null)
-  const sign = useMemo(() => (def.price ? signTexture(['NEW BED', `${def.price} coins`], 512, 256) : null), [def.price])
+  // a staked plot carries a price board; a piece of land to buy has one board, on its first plot
+  const lead = def.expansion ? BEDS.find((b) => b.expansion === def.expansion)!.index === index : true
+  const sign = useMemo(() => {
+    if (def.expansion) return lead ? signTexture(['EXPAND', `${EXPANSIONS[def.expansion].price} coins`], 512, 256, '#2f3a2c', '#f3ead8') : null
+    return def.price ? signTexture(['NEW BED', `${def.price} coins`], 512, 256) : null
+  }, [def.expansion, def.price, lead])
   const openPanel = useHome((s) => s.openPanel)
   const showToast = useHome((s) => s.showToast)
   const geo = bedGeometries()
@@ -195,6 +210,7 @@ function Bed({ index }: { index: number }) {
     label: () => {
       const b = farm.beds[index]
       const stage = bedStage(index)
+      if (stage === 'unbought') return `Expand the farm: ${EXPANSIONS[def.expansion!].name} · ${EXPANSIONS[def.expansion!].price} coins`
       if (stage === 'locked') return `Build a bed · ${def.price} coins`
       if (stage === 'empty') return 'Plant seeds'
       const crop = cropById(b.crop!)
@@ -205,7 +221,13 @@ function Bed({ index }: { index: number }) {
     run: () => {
       const stage = bedStage(index)
       const { pan, near } = placeSound(def.x, def.z)
-      if (stage === 'locked') {
+      if (stage === 'unbought') {
+        const e = EXPANSIONS[def.expansion!]
+        if (buy(def.expansion!)) {
+          playGesture('interact')
+          farmSound('build', pan, near)
+        } else showToast(`${e.name} cost ${e.price} coins — you have ${farm.coins}`)
+      } else if (stage === 'locked') {
         if (buildBed(index)) {
           playGesture('interact')
           farmSound('build', pan, near)
@@ -249,11 +271,15 @@ function Bed({ index }: { index: number }) {
           <mesh geometry={geo.plot} castShadow>
             <meshStandardMaterial color="#c9ad86" roughness={0.9} />
           </mesh>
-          <B size={[0.05, 0.8, 0.05]} position={[-def.side * (w / 2 - 0.25), 0.4, -d / 2 - 0.08]} color={WOOD_DARK} radius={0.006} />
-          <mesh position={[-def.side * (w / 2 - 0.25), 0.72, -d / 2 - 0.05]} rotation={[0, 0, 0]}>
-            <boxGeometry args={[0.5, 0.25, 0.02]} />
-            <meshStandardMaterial map={sign} roughness={0.85} />
-          </mesh>
+          {sign && (
+            <>
+              <B size={[0.05, 0.8, 0.05]} position={[-def.side * (w / 2 - 0.25), 0.4, -d / 2 - 0.08]} color={WOOD_DARK} radius={0.006} />
+              <mesh position={[-def.side * (w / 2 - 0.25), 0.72, -d / 2 - 0.05]} rotation={[0, 0, 0]}>
+                <boxGeometry args={[0.5, 0.25, 0.02]} />
+                <meshStandardMaterial map={sign} roughness={0.85} />
+              </mesh>
+            </>
+          )}
         </>
       )}
       <sprite ref={icon} position={[0, 1.05, 0]} scale={[0.26, 0.26, 1]} visible={false}>
@@ -503,6 +529,58 @@ function Structures() {
         </mesh>
       </group>
 
+      {/* the cows' pasture: post-and-rail fence (the garden fence closes its east side), an open gate on the house side,
+          a water trough and a hay rack */}
+      {(() => {
+        const { minX, maxX, minZ, maxZ, gateZ, gateWidth } = PASTURE
+        const out = []
+        const runs: [number, number, number, number][] = [
+          [minX, minZ, maxX, minZ],
+          [minX, maxZ, maxX, maxZ],
+          [minX, minZ, minX, gateZ - gateWidth / 2],
+          [minX, gateZ + gateWidth / 2, minX, maxZ],
+        ]
+        for (const [x0, z0, x1, z1] of runs) {
+          const len = Math.hypot(x1 - x0, z1 - z0)
+          const n = Math.max(1, Math.round(len / 1.4))
+          for (let i = 0; i <= n; i++) {
+            const t = i / n
+            out.push(<B key={`pp${x0}${z0}${i}`} size={[0.09, 1.1, 0.09]} position={[x0 + (x1 - x0) * t, 0.55, z0 + (z1 - z0) * t]} color={WOOD_DARK} mat="veneer" tile={0.9} radius={0.01} />)
+          }
+          const alongX = Math.abs(x1 - x0) > 0.01
+          for (const y of [0.45, 0.9]) {
+            out.push(
+              <B key={`pr${x0}${z0}${y}`} size={alongX ? [len, 0.08, 0.04] : [0.04, 0.08, len]} position={[(x0 + x1) / 2, y, (z0 + z1) / 2]} color={WOOD} mat="veneer" tile={0.9} radius={0.006} />,
+            )
+          }
+        }
+        // the gate stands open, swung into the pasture
+        out.push(
+          <group key="pgate" position={[minX, 0, gateZ + gateWidth / 2]} rotation={[0, -1.25, 0]}>
+            {[0.3, 0.75].map((y) => (
+              <B key={y} size={[0.04, 0.09, gateWidth - 0.1]} position={[0.03, y, -(gateWidth - 0.1) / 2]} color={WOOD} radius={0.006} />
+            ))}
+            <B size={[0.04, 0.95, 0.07]} position={[0.03, 0.5, -gateWidth + 0.12]} color={WOOD} radius={0.006} />
+          </group>,
+        )
+        return out
+      })()}
+      <group position={[13.0, 0, -2.0]}>
+        <B size={[0.55, 0.4, 1.7]} position={[0, 0.2, 0]} color={WOOD_DARK} mat="veneer" tile={0.8} radius={0.01} />
+        <mesh position={[0, 0.375, 0]} rotation-x={-Math.PI / 2}>
+          <planeGeometry args={[0.45, 1.6]} />
+          <meshStandardMaterial color="#3d6f8a" roughness={0.08} metalness={0.1} envMapIntensity={1.4} />
+        </mesh>
+      </group>
+      <group position={[13.0, 0, 1.6]}>
+        {[-1, 1].flatMap((sz) => [-1, 1].map((sx) => <B key={`${sx}${sz}`} size={[0.06, 1.0, 0.06]} position={[sx * 0.25, 0.5, sz * 0.5]} color={WOOD_DARK} radius={0.006} />))}
+        <B size={[0.56, 0.05, 1.06]} position={[0, 0.98, 0]} color={WOOD} radius={0.006} />
+        <mesh position={[0, 0.62, 0]} scale={[0.26, 0.3, 0.5]} castShadow receiveShadow>
+          <icosahedronGeometry args={[1, 1]} />
+          <meshStandardMaterial color="#d6b660" roughness={1} />
+        </mesh>
+      </group>
+
       {/* the gate in the south fence: two posts and a slatted leaf */}
       <group position={[GATE.x, 0, GARDEN.maxZ]}>
         {[-1, 1].map((s) => (
@@ -541,6 +619,19 @@ function Colliders() {
       <CuboidCollider args={[0.05, 0.55, (RUN.maxZ - RUN.minZ) / 2]} position={[RUN.minX, 0.55, (RUN.minZ + RUN.maxZ) / 2]} />
       <CuboidCollider args={[0.05, 0.55, (RUN.maxZ - RUN.minZ) / 2]} position={[RUN.maxX, 0.55, (RUN.minZ + RUN.maxZ) / 2]} />
       <CuboidCollider args={[0.22, 0.4, 0.24]} position={[NEST.x, 0.4, NEST.z]} />
+      {/* the pasture's fence (the open gate on the west side lets you in), trough and hay rack */}
+      <CuboidCollider args={[(PASTURE.maxX - PASTURE.minX) / 2, 0.6, 0.06]} position={[(PASTURE.minX + PASTURE.maxX) / 2, 0.6, PASTURE.minZ]} />
+      <CuboidCollider args={[(PASTURE.maxX - PASTURE.minX) / 2, 0.6, 0.06]} position={[(PASTURE.minX + PASTURE.maxX) / 2, 0.6, PASTURE.maxZ]} />
+      <CuboidCollider
+        args={[0.06, 0.6, (PASTURE.gateZ - PASTURE.gateWidth / 2 - PASTURE.minZ) / 2]}
+        position={[PASTURE.minX, 0.6, (PASTURE.minZ + PASTURE.gateZ - PASTURE.gateWidth / 2) / 2]}
+      />
+      <CuboidCollider
+        args={[0.06, 0.6, (PASTURE.maxZ - PASTURE.gateZ - PASTURE.gateWidth / 2) / 2]}
+        position={[PASTURE.minX, 0.6, (PASTURE.maxZ + PASTURE.gateZ + PASTURE.gateWidth / 2) / 2]}
+      />
+      <CuboidCollider args={[0.3, 0.25, 0.86]} position={[13.0, 0.25, -2.0]} />
+      <CuboidCollider args={[0.3, 0.5, 0.55]} position={[13.0, 0.5, 1.6]} />
       {/* the farm stand */}
       <CuboidCollider args={[0.68, 0.45, 0.32]} position={[STAND.x, 0.45, STAND.z]} />
       {/* the garden's own trees and shrubs */}
@@ -568,6 +659,15 @@ function FarmClock() {
       water,
       harvest,
       bedStage,
+      herd,
+      milkCow,
+      millLoad,
+      millCollect,
+      millStage,
+      bake,
+      takeOut,
+      ovenStage,
+      buy,
     })
   }, [])
   useFrame(() => {
@@ -596,6 +696,8 @@ export function Garden() {
       <ShopDoor />
       <Plants />
       <Chickens />
+      <Cows />
+      <Workshop />
       <Visitors />
     </group>
   )

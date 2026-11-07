@@ -575,3 +575,16 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-
   /* the room name sits under the coin chip on a touch screen */
   .room-title { top: calc(60px + env(safe-area-inset-top)); }
 }
+.farm-row-flow { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.farm-row-flow img { width: 34px; height: 34px; flex: none; }
+.farm-arrow { color: var(--muted); }
+.farm-recipe { align-items: center; }
+.farm-recipe-icon { width: 48px; height: 48px; flex: none; }
+.farm-recipe-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.farm-coins-inline { font-weight: 600; color: #f2cf6b; font-size: 12.5px; margin-left: 4px; }
+.farm-needs { display: flex; flex-wrap: wrap; gap: 4px; }
+.farm-need { display: inline-flex; align-items: center; gap: 2px; padding: 2px 7px 2px 3px; border-radius: 999px; font-size: 12.5px; font-weight: 700; background: rgba(255, 255, 255, 0.06); }
+.farm-need img { width: 20px; height: 20px; }
+.farm-need small { font-weight: 500; opacity: 0.6; }
+.farm-need.ok { color: #a8dd7c; }
+.farm-need.short { color: #f19a8f; background: rgba(216, 52, 42, 0.12); }

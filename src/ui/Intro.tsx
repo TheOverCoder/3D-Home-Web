@@ -25,7 +25,7 @@ export function Intro() {
         <h1>3D Home</h1>
         <p className="lede">
           Walk through the house room by room — every room has a screen you can open and explore — then step out through the
-          glass door into the garden: grow vegetables, collect eggs and lemons, and sell to the neighbours at the gate.
+          glass door onto the farm: grow vegetables, milk the cows, bake cakes, and sell to the neighbours at the gate.
         </p>
         {failure && (
           <p className="failure" role="alert">

@@ -130,6 +130,112 @@ export function drawProduce(c: Ctx, id: ProduceId | 'coin', x: number, y: number
     case 'egg':
       blob(c, x, y + r * 0.05, r * 0.62, r * 0.82, '#f1e3cc', 'rgba(90,60,30,0.22)')
       break
+    case 'wheat': {
+      c.save()
+      c.strokeStyle = '#c9a44a'
+      c.lineWidth = Math.max(1, s * 0.045)
+      for (let i = -2; i <= 2; i++) {
+        c.beginPath()
+        c.moveTo(x + i * r * 0.08, y + r * 0.95)
+        c.quadraticCurveTo(x + i * r * 0.12, y, x + i * r * 0.28, y - r * 0.35)
+        c.stroke()
+        c.fillStyle = '#e2bd5a'
+        for (let g = 0; g < 4; g++) {
+          c.beginPath()
+          c.ellipse(x + i * r * 0.28 + i * g * r * 0.02, y - r * 0.38 - g * r * 0.13, s * 0.035, s * 0.06, i * 0.25, 0, Math.PI * 2)
+          c.fill()
+        }
+      }
+      c.fillStyle = '#a77d36'
+      c.fillRect(x - r * 0.3, y + r * 0.25, r * 0.6, r * 0.14)
+      c.restore()
+      break
+    }
+    case 'sugarcane':
+      c.save()
+      for (const [dx, h, col] of [
+        [-0.3, 1.0, '#8fb04a'],
+        [0, 1.15, '#b7a24c'],
+        [0.3, 0.95, '#9fae46'],
+      ] as [number, number, string][]) {
+        c.fillStyle = col
+        c.fillRect(x + dx * r - s * 0.045, y + r * 0.95 - r * 1.8 * h, s * 0.09, r * 1.8 * h)
+        c.fillStyle = 'rgba(60,70,20,0.45)'
+        for (let k = 1; k < 4; k++) c.fillRect(x + dx * r - s * 0.05, y + r * 0.95 - r * 0.45 * k * h, s * 0.1, s * 0.02)
+      }
+      leaves(c, x, y - r * 0.8, r * 0.7, '#5f9035', 4)
+      c.restore()
+      break
+    case 'milk':
+      c.save()
+      c.fillStyle = '#f4f6f8'
+      c.beginPath()
+      c.moveTo(x - r * 0.18, y - r * 0.85)
+      c.lineTo(x + r * 0.18, y - r * 0.85)
+      c.lineTo(x + r * 0.2, y - r * 0.55)
+      c.quadraticCurveTo(x + r * 0.5, y - r * 0.35, x + r * 0.48, y)
+      c.lineTo(x + r * 0.48, y + r * 0.85)
+      c.lineTo(x - r * 0.48, y + r * 0.85)
+      c.lineTo(x - r * 0.48, y)
+      c.quadraticCurveTo(x - r * 0.5, y - r * 0.35, x - r * 0.2, y - r * 0.55)
+      c.closePath()
+      c.fill()
+      c.strokeStyle = 'rgba(80,100,120,0.35)'
+      c.lineWidth = Math.max(1, s * 0.03)
+      c.stroke()
+      c.fillStyle = '#3f7fbf'
+      c.fillRect(x - r * 0.48, y + r * 0.05, r * 0.96, r * 0.35)
+      c.fillStyle = '#c94f3d'
+      c.fillRect(x - r * 0.2, y - r * 0.95, r * 0.4, r * 0.14)
+      c.restore()
+      break
+    case 'sugar':
+    case 'flour': {
+      const sack = id === 'sugar' ? '#f2efe6' : '#e2d2b0'
+      blob(c, x, y + r * 0.15, r * 0.7, r * 0.75, sack, 'rgba(90,70,40,0.25)')
+      c.save()
+      c.fillStyle = '#b89a6a'
+      c.fillRect(x - r * 0.22, y - r * 0.72, r * 0.44, r * 0.18)
+      c.fillStyle = id === 'sugar' ? '#3f7fbf' : '#a77d36'
+      c.font = `800 ${Math.round(s * 0.26)}px Inter, system-ui, sans-serif`
+      c.textAlign = 'center'
+      c.textBaseline = 'middle'
+      c.fillText(id === 'sugar' ? 'S' : 'F', x, y + r * 0.2)
+      c.restore()
+      break
+    }
+    case 'lemon_cake':
+    case 'strawberry_cake':
+    case 'carrot_cake':
+    case 'pumpkin_pie': {
+      const top = { lemon_cake: '#f6e7a1', strawberry_cake: '#f4c6cf', carrot_cake: '#f3ede0', pumpkin_pie: '#d9782a' }[id]
+      const dots = { lemon_cake: '#f2d43a', strawberry_cake: '#d8213a', carrot_cake: '#e8792a', pumpkin_pie: '#f3e6cf' }[id]
+      const pie = id === 'pumpkin_pie'
+      c.save()
+      c.fillStyle = '#f4f1ea'
+      c.beginPath()
+      c.ellipse(x, y + r * 0.62, r * 0.95, r * 0.25, 0, 0, Math.PI * 2)
+      c.fill()
+      const h = pie ? r * 0.28 : r * 0.62
+      c.fillStyle = '#d9a35e'
+      c.fillRect(x - r * 0.75, y + r * 0.5 - h, r * 1.5, h)
+      c.beginPath()
+      c.ellipse(x, y + r * 0.5, r * 0.75, r * 0.2, 0, 0, Math.PI)
+      c.fill()
+      c.fillStyle = top
+      c.beginPath()
+      c.ellipse(x, y + r * 0.5 - h, r * 0.75, r * 0.22, 0, 0, Math.PI * 2)
+      c.fill()
+      c.fillStyle = dots
+      for (let k = 0; k < 6; k++) {
+        const a = (k / 6) * Math.PI * 2
+        c.beginPath()
+        c.arc(x + Math.cos(a) * r * 0.45, y + r * 0.5 - h + Math.sin(a) * r * 0.12, s * 0.045, 0, Math.PI * 2)
+        c.fill()
+      }
+      c.restore()
+      break
+    }
     case 'coin':
       blob(c, x, y, r * 0.88, r * 0.88, '#e9b93c', 'rgba(110,70,0,0.35)')
       c.save()

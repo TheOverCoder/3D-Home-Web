@@ -3,9 +3,9 @@ import { farmSound, placeSound, uiClick } from '../audio/sound'
 import { coarsePointer } from '../lib/device'
 import { playGesture } from '../lib/gestures'
 import { useHome } from '../store'
-import { BEDS, CROPS, PRODUCE, UPGRADES, count, produceById, type CropId } from './data'
+import { BEDS, CROPS, MILL, MILLABLE, OVEN, PRODUCE, RECIPES, UPGRADES, count, produceById, type CropId, type MillInput, type ProduceId } from './data'
 import { iconUrl } from './icons'
-import { acceptOffer, buy, declineOffer, fairPrice, farm, owned, plant, useFarm, visitorById, yieldOf } from './state'
+import { acceptOffer, bake, buy, canBake, declineOffer, fairPrice, farm, millLoad, owned, plant, useFarm, visitorById, yieldOf } from './state'
 
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1)
 
@@ -178,7 +178,7 @@ function ShopPanel() {
       <div className="farm-list">
         {UPGRADES.map((u) => {
           const has = owned(u.id)
-          const extra = u.id === 'hen' ? ` · ${farm.hens} now` : ''
+          const extra = u.id === 'hen' ? ` · ${farm.hens} now` : u.id === 'cow' ? ` · ${farm.cows} now` : ''
           return (
             <div key={u.id} className="farm-row">
               <div>
@@ -212,6 +212,97 @@ function ShopPanel() {
   )
 }
 
+const Need = ({ id, n }: { id: ProduceId; n: number }) => {
+  const have = farm.inv[id]
+  return (
+    <span className={have >= n ? 'farm-need ok' : 'farm-need short'} title={`${count(id, n)} (you have ${have})`}>
+      <img src={iconUrl(id, 40)} alt="" />
+      {n}
+      <small>/{have}</small>
+    </span>
+  )
+}
+
+function MillPanel() {
+  useFarm((s) => s.rev)
+  const close = useHome((s) => s.closePanel)
+  const run = (input: MillInput) => {
+    if (!millLoad(input)) return
+    const { pan, near } = placeSound(MILL.x, MILL.z)
+    farmSound('creak', pan, near)
+    playGesture('interact')
+    close()
+  }
+  return (
+    <Shell title="Mill" sub={`Up to ${MILL.capacity} at a time · ${MILL.perItem} s each`} onClose={close}>
+      <div className="farm-list">
+        {(Object.keys(MILLABLE) as MillInput[]).map((input) => {
+          const out = MILLABLE[input]
+          const have = farm.inv[input]
+          const n = Math.min(MILL.capacity, have)
+          return (
+            <div key={input} className="farm-row">
+              <div className="farm-row-flow">
+                <img src={iconUrl(input, 48)} alt="" />
+                <span className="farm-arrow">→</span>
+                <img src={iconUrl(out, 48)} alt="" />
+                <div>
+                  <strong>{input === 'sugarcane' ? 'Press sugar cane into sugar' : 'Grind wheat into flour'}</strong>
+                  <span>{have ? `You have ${count(input, have)}` : `Grow some ${produceById(input).plural} first`}</span>
+                </div>
+              </div>
+              <button className="primary small" disabled={!n} onClick={() => run(input)}>
+                {n ? `Mill ${n}` : 'Nothing to mill'}
+              </button>
+            </div>
+          )
+        })}
+      </div>
+      <p className="farm-hint">Sugar and flour go into cakes at the oven — and buyers take them too.</p>
+    </Shell>
+  )
+}
+
+function OvenPanel() {
+  useFarm((s) => s.rev)
+  const close = useHome((s) => s.closePanel)
+  const go = (id: (typeof RECIPES)[number]['id']) => {
+    if (!bake(id)) return
+    const { pan, near } = placeSound(OVEN.x, OVEN.z)
+    farmSound('oven', pan, near)
+    playGesture('interact')
+    close()
+  }
+  return (
+    <Shell title="Oven" sub="Bake with what the farm makes · cakes sell for the most" onClose={close}>
+      <div className="farm-list">
+        {RECIPES.map((r) => {
+          const ok = canBake(r.id)
+          return (
+            <div key={r.id} className="farm-row farm-recipe">
+              <img className="farm-recipe-icon" src={iconUrl(r.id, 64)} alt="" />
+              <div className="farm-recipe-body">
+                <strong>
+                  {r.name} <span className="farm-coins-inline">≈ {produceById(r.id).price} coins</span>
+                </strong>
+                <div className="farm-needs">
+                  {Object.entries(r.needs).map(([k, n]) => (
+                    <Need key={k} id={k as ProduceId} n={n ?? 0} />
+                  ))}
+                </div>
+              </div>
+              <button className="primary small" disabled={!ok} onClick={() => go(r.id)}>
+                Bake · {r.seconds} s
+              </button>
+            </div>
+          )
+        })}
+      </div>
+      <p className="farm-hint">Flour and sugar come from the mill, milk from the cows, eggs from the hens.</p>
+    </Shell>
+  )
+}
+
 /** The garden's interface: the coin/harvest chip outdoors and whichever farm panel is open. */
 export function FarmUI() {
   const phase = useHome((s) => s.phase)
@@ -224,6 +315,8 @@ export function FarmUI() {
       {panel?.kind === 'seeds' && <SeedsPanel bed={panel.bed} />}
       {panel?.kind === 'offer' && <OfferPanel visitor={panel.visitor} />}
       {panel?.kind === 'shop' && <ShopPanel />}
+      {panel?.kind === 'mill' && <MillPanel />}
+      {panel?.kind === 'oven' && <OvenPanel />}
     </>
   )
 }

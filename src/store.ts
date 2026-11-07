@@ -14,8 +14,8 @@ export interface Nearby {
   label: string
 }
 
-/** A small game panel over the scene (the garden's seed packets, a buyer's offer, the farm shop). */
-export type Panel = { kind: 'seeds'; bed: number } | { kind: 'offer'; visitor: number } | { kind: 'shop' }
+/** A small game panel over the scene (seed packets, a buyer's offer, the farm shop, the mill, the oven). */
+export type Panel = { kind: 'seeds'; bed: number } | { kind: 'offer'; visitor: number } | { kind: 'shop' } | { kind: 'mill' } | { kind: 'oven' }
 
 interface HomeState {
   phase: 'intro' | 'playing'

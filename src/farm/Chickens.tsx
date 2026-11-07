@@ -6,7 +6,7 @@ import { playerState } from '../lib/playerState'
 import { COOP, EGG, RUN } from './data'
 import { farm } from './state'
 
-// The hens: each wanders its run on its own — strolls to a spot, pecks at the ground, stands about — and the
+// The hens (and a rooster): each wanders the run on its own — strolls to a spot, pecks at the ground, stands about — and the
 // odd one clucks when you are near. All of them together are three instanced draws (bodies and heads, beaks
 // and tails, legs).
 
@@ -56,6 +56,8 @@ export function Chickens() {
     [],
   )
   const hens = useRef<Hen[]>([])
+  const rooster = useRef<Hen>(newHen())
+  const crow = useRef(8)
   const ball = useRef<InstancedMesh>(null)
   const cone = useRef<InstancedMesh>(null)
   const leg = useRef<InstancedMesh>(null)
@@ -66,19 +68,22 @@ export function Chickens() {
     while (hens.current.length < farm.hens) hens.current.push(newHen())
     hens.current.length = Math.min(hens.current.length, EGG.maxHens)
     const counts = { ball: 0, cone: 0, leg: 0 }
+    let k = 1 // the rooster is a size bigger
     const put = (mesh: InstancedMesh | null, key: keyof typeof counts, h: Hen, lx: number, ly: number, lz: number, rx: number, ry: number, sx: number, sy: number, sz: number, color: number) => {
       if (!mesh) return
       const i = counts[key]++
       const cos = Math.cos(h.heading)
       const sin = Math.sin(h.heading)
-      v3.set(h.x + lx * cos + lz * sin, ly, h.z - lx * sin + lz * cos)
+      v3.set(h.x + (lx * cos + lz * sin) * k, ly * k, h.z + (-lx * sin + lz * cos) * k)
       q.setFromEuler(e.set(rx, h.heading + ry, 0, 'YXZ'))
-      s3.set(sx, sy, sz)
+      s3.set(sx * k, sy * k, sz * k)
       mesh.setMatrixAt(i, m4.compose(v3, q, s3))
       mesh.setColorAt(i, c.setHex(color))
     }
 
-    hens.current.forEach((h, n) => {
+    ;[rooster.current, ...hens.current].forEach((h, n) => {
+      const isRooster = n === 0
+      k = isRooster ? 1.3 : 1
       // behaviour
       h.timer -= dt
       if (h.mode === 'walk') {
@@ -102,17 +107,21 @@ export function Chickens() {
       }
       h.peck = h.mode === 'peck' ? Math.max(0, Math.sin(h.timer * 9)) : Math.max(0, h.peck - dt * 4)
 
-      // body
-      const color = COLORS[n % COLORS.length]
+      // body: hens in their colours; the rooster red-brown with a golden neck, a tall comb and a dark green tail
+      const color = isRooster ? 0x8a3b1f : COLORS[(n - 1) % COLORS.length]
+      const neck = isRooster ? 0xd9902a : color
       const bob = h.mode === 'walk' ? Math.abs(Math.sin(h.phase)) * 0.012 : 0
       const lean = h.peck * 0.5
       put(ball.current, 'ball', h, 0, 0.2 + bob, 0, -lean * 0.3, 0, 0.11, 0.1, 0.15, color)
-      put(cone.current, 'cone', h, 0, 0.22 + bob, -0.1, -0.85, 0, 0.065, 0.13, 0.045, color) // tail
+      if (isRooster) {
+        put(cone.current, 'cone', h, 0, 0.24 + bob, -0.1, -0.55, 0, 0.05, 0.2, 0.04, 0x1f3a2c)
+        put(cone.current, 'cone', h, 0, 0.22 + bob, -0.12, -0.95, 0, 0.045, 0.18, 0.035, 0x18241c)
+      } else put(cone.current, 'cone', h, 0, 0.22 + bob, -0.1, -0.85, 0, 0.065, 0.13, 0.045, color) // tail
       // head: dips forward and down to peck
       const hy = 0.34 - h.peck * 0.2 + bob
       const hz = 0.11 + h.peck * 0.08
-      put(ball.current, 'ball', h, 0, hy, hz, 0, 0, 0.052, 0.055, 0.058, color)
-      put(ball.current, 'ball', h, 0, hy + 0.055, hz - 0.005, 0, 0, 0.012, 0.03, 0.04, 0xcf2f2a) // comb
+      put(ball.current, 'ball', h, 0, hy, hz, 0, 0, 0.052, 0.055, 0.058, neck)
+      put(ball.current, 'ball', h, 0, hy + 0.055, hz - 0.005, 0, 0, isRooster ? 0.016 : 0.012, isRooster ? 0.05 : 0.03, isRooster ? 0.06 : 0.04, 0xcf2f2a) // comb
       put(ball.current, 'ball', h, 0, hy - 0.035, hz + 0.04, 0, 0, 0.012, 0.022, 0.012, 0xcf2f2a) // wattle
       put(cone.current, 'cone', h, 0, hy - 0.005, hz + 0.045, Math.PI / 2, 0, 0.013, 0.035, 0.013, 0xe8b23a) // beak
       put(ball.current, 'ball', h, 0.036, hy + 0.012, hz + 0.03, 0, 0, 0.009, 0.009, 0.009, 0x151515)
@@ -121,6 +130,17 @@ export function Chickens() {
       put(leg.current, 'leg', h, 0.035, 0, 0, swing, 0, 0.007, 0.13, 0.007, 0xe0a030)
       put(leg.current, 'leg', h, -0.035, 0, 0, -swing, 0, 0.007, 0.13, 0.007, 0xe0a030)
     })
+    // the rooster crows now and then — loud enough to hear across the garden
+    crow.current -= dt
+    if (crow.current <= 0) {
+      crow.current = 25 + Math.random() * 30
+      const p = playerState.position
+      const r = rooster.current
+      if (Math.hypot(p.x - r.x, p.z - r.z) < 22) {
+        const { pan, near } = placeSound(r.x, r.z)
+        farmSound('crow', pan, Math.max(0.35, near))
+      }
+    }
     for (const [mesh, key] of [
       [ball.current, 'ball'],
       [cone.current, 'cone'],
@@ -153,9 +173,9 @@ export function Chickens() {
 
   return (
     <group name="farm-hens">
-      {mesh(ball, 'ball', EGG.maxHens * 6, 0.8)}
-      {mesh(cone, 'cone', EGG.maxHens * 2, 0.6)}
-      {mesh(leg, 'leg', EGG.maxHens * 2, 0.6)}
+      {mesh(ball, 'ball', (EGG.maxHens + 1) * 6, 0.8)}
+      {mesh(cone, 'cone', (EGG.maxHens + 1) * 2 + 1, 0.6)}
+      {mesh(leg, 'leg', (EGG.maxHens + 1) * 2, 0.6)}
     </group>
   )
 }

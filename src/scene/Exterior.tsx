@@ -21,10 +21,10 @@ function mulberry(seed: number) {
 // broadleaf trees in front of a far ring. All of it is static, so <House /> merges it into a handful of draws.
 // The farm itself (beds, tree, coop, shed) is src/farm; the spots it uses are kept free of shrubs here.
 
-/** Shrubs along the house and the boundary (the farm took over the old spots in front of the south fence). */
+/** Shrubs along the house and the boundary (the farm's beds, pasture and kitchen corner keep their ground clear). */
 export const SHRUB_SPOTS: [number, number][] = [
-  [-8.4, -3.2], [-8.5, 4.4], [8.6, 1.6], [8.5, 3.4], [-3.5, -7.6], [1.5, -7.6], [-5.2, 7.6], [4.6, 7.7],
-  [12.6, -9], [12.8, -4], [12.5, 2.5], [10.4, 11.8], [-12.4, 12.0], [-12.6, 5.2],
+  [-8.4, -3.2], [8.6, 1.6], [8.5, 3.4], [-3.5, -7.6], [1.5, -7.6], [-5.2, 7.6], [4.6, 7.7],
+  [-12.4, 12.0], [-12.5, -1.5], [-12.2, -8.6],
 ]
 /** The three big trees in the garden's corners: x, z, height. */
 export const CORNER_TREES: [number, number, number][] = [

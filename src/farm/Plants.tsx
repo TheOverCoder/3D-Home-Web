@@ -10,7 +10,7 @@ import { bedProgress, farm } from './state'
 // rebuilt a few times a second as things grow; nothing here casts a shadow, so the sun's shadow map never has
 // to be redrawn because a lettuce got bigger.
 
-const MAX = { leaf: 640, stem: 96, ball: 300, cone: 180, pumpkin: 8 } as const
+const MAX = { leaf: 900, stem: 640, ball: 360, cone: 680, pumpkin: 32 } as const
 type Kind = keyof typeof MAX
 
 export const SOIL_Y = BED.h - 0.045 // the soil surface in a bed
@@ -159,6 +159,39 @@ const growers: Record<CropId, Grower> = {
       w.put('ball', x + Math.cos(a) * 0.035, y + (0.62 + k * 0.14) * s, z + Math.sin(a) * 0.035, 0.35, a, 0, 0.03 * f, 0.085 * f, 0.03 * f, mix(0x9fbf5a, 0xf0cf4a, ripe))
     }
   },
+  sugarcane(w, x, y, z, g, seed) {
+    const s = 0.12 + 0.88 * easeOut(g)
+    const ripe = smooth(0.8, 1, g)
+    // a clump of tall jointed canes with a crown of long blades; they turn from green to gold as they ripen
+    for (let k = 0; k < 3; k++) {
+      const a = seed * 6 + k * 2.1
+      const ox = Math.cos(a) * 0.05
+      const oz = Math.sin(a) * 0.05
+      const h = (1.75 + hash(seed, k) * 0.35) * s
+      const lean = (hash(k, seed) - 0.5) * 0.12
+      w.put('stem', x + ox, y, z + oz, lean, a, 0, 0.02, h, 0.02, mix(0x7fae3e, 0xc2a04f, ripe * (0.8 + hash(seed, k + 3) * 0.2)))
+      for (let j = 0; j < 4; j++) {
+        const b = a + j * 1.6
+        w.put('leaf', x + ox, y + h * (0.86 + j * 0.03), z + oz, -0.45 + j * 0.12, b, 0, 0.025 * s, 0.005, 0.2 * s, j % 2 ? 0x6fa040 : 0x5f9035)
+      }
+    }
+  },
+  wheat(w, x, y, z, g, seed) {
+    const s = 0.15 + 0.85 * easeOut(g)
+    const ripe = smooth(0.75, 1, g)
+    const stalk = mix(0x8fb35a, 0xcfae5c, ripe)
+    const ear = mix(0x9fbf5a, 0xd9b45a, ripe)
+    for (let k = 0; k < 3; k++) {
+      const a = seed * 5 + k * 2.1
+      const ox = Math.cos(a) * 0.035
+      const oz = Math.sin(a) * 0.035
+      const h = (0.62 + hash(seed, k) * 0.14) * s
+      const lean = (hash(k, seed) - 0.5) * 0.18 + ripe * 0.12 // heavy ears nod a little
+      w.put('stem', x + ox, y, z + oz, lean, a, 0, 0.005, h, 0.005, stalk)
+      if (g > 0.35) w.put('cone', x + ox + Math.sin(lean) * h * Math.sin(a), y + h, z + oz + Math.sin(lean) * h * Math.cos(a), lean, a, 0, 0.012, 0.075 * s, 0.012, ear)
+    }
+    w.put('leaf', x, y, z, -1.15, seed * 9, 0, 0.012, 0.004, 0.14 * s, 0x7fa84a)
+  },
   pumpkin(w, x, y, z, g, seed) {
     const s = 0.2 + 0.8 * easeOut(g)
     for (let k = 0; k < 7; k++) {
@@ -182,6 +215,8 @@ const LAYOUT: Record<CropId, [number, number][]> = {
   tomato: grid(3, 1, 0.5, 0),
   corn: grid(3, 2, 0.5, 0.3),
   pumpkin: grid(2, 1, 0.78, 0),
+  wheat: grid(5, 3, 0.3, 0.24),
+  sugarcane: grid(3, 2, 0.5, 0.34),
 }
 
 function grid(cols: number, rows: number, dx: number, dz: number): [number, number][] {
@@ -202,7 +237,7 @@ export function Plants() {
   const geometries = useMemo(() => {
     const leaf = new SphereGeometry(1, 7, 5).translate(0, 0, 1) // base at the origin, reaching out along +z
     const stem = new CylinderGeometry(1, 1, 1, 6, 1).translate(0, 0.5, 0)
-    const ball = new SphereGeometry(1, 11, 8)
+    const ball = new SphereGeometry(1, 10, 7)
     const cone = new ConeGeometry(1, 1, 9).translate(0, 0.5, 0)
     return { leaf, stem, ball, cone, pumpkin: pumpkinGeometry() }
   }, [])

@@ -352,7 +352,36 @@ export function screenSound(open: boolean) {
 
 // ─────────────────────── the garden ───────────────────────
 
-export type FarmSound = 'plant' | 'water' | 'harvest' | 'coins' | 'cluck' | 'bell' | 'build' | 'decline'
+export type FarmSound = 'plant' | 'water' | 'harvest' | 'coins' | 'cluck' | 'bell' | 'build' | 'decline' | 'moo' | 'milk' | 'creak' | 'oven' | 'ding' | 'crow'
+
+/** A voiced, filtered tone whose pitch and brightness follow a short contour: animals. */
+function voice(e: Engine, t: number, notes: [number, number][], seconds: number, gain: number, cutoff: [number, number], pan?: number, type: OscillatorType = 'sawtooth') {
+  const { ac } = e
+  const osc = ac.createOscillator()
+  osc.type = type
+  const step = seconds / Math.max(1, notes.length - 1)
+  notes.forEach(([f], i) => (i === 0 ? osc.frequency.setValueAtTime(f, t) : osc.frequency.linearRampToValueAtTime(f, t + i * step)))
+  const vib = ac.createOscillator()
+  vib.frequency.value = 6
+  const depth = ac.createGain()
+  depth.gain.value = notes[0][0] * 0.012
+  vib.connect(depth).connect(osc.frequency)
+  const f = ac.createBiquadFilter()
+  f.type = 'lowpass'
+  f.Q.value = 2
+  f.frequency.setValueAtTime(cutoff[0], t)
+  f.frequency.linearRampToValueAtTime(cutoff[1], t + seconds * 0.6)
+  f.frequency.linearRampToValueAtTime(cutoff[0], t + seconds)
+  const g = ac.createGain()
+  g.gain.setValueAtTime(0.0001, t)
+  notes.forEach(([, level], i) => g.gain.linearRampToValueAtTime(Math.max(0.0002, gain * level), t + Math.max(0.03, i * step)))
+  g.gain.linearRampToValueAtTime(0.0001, t + seconds + 0.08)
+  osc.connect(f).connect(g).connect(out(e, pan))
+  osc.start(t)
+  vib.start(t)
+  osc.stop(t + seconds + 0.1)
+  vib.stop(t + seconds + 0.1)
+}
 
 /** Garden work and the people and animals in it. */
 export function farmSound(kind: FarmSound, pan = 0, near = 1) {
@@ -411,6 +440,29 @@ export function farmSound(kind: FarmSound, pan = 0, near = 1) {
     case 'decline': // a soft falling "oh well"
       tone(e, t, { type: 'triangle', f0: 392, gain: 0.03, attack: 0.01, decay: 0.2 })
       tone(e, t + 0.15, { type: 'triangle', f0: 311, gain: 0.03, attack: 0.01, decay: 0.3 })
+      break
+    case 'moo': // a low "mmm-ooo" that opens up and falls away
+      voice(e, t, [[rnd(105, 125), 0.6], [rnd(135, 150), 1], [rnd(140, 150), 1], [rnd(100, 112), 0.5]], rnd(1.1, 1.5), 0.09 * v, [380, 1100], pan)
+      break
+    case 'milk': // three quick squirts into the pail
+      for (let i = 0; i < 3; i++)
+        burst(e, t + i * 0.2, { type: 'bandpass', freq: rnd(2200, 2800), sweepTo: 1600, q: 2.2, gain: 0.12 * v, attack: 0.005, decay: 0.09, pan })
+      break
+    case 'creak': // the mill's wooden wheel turning
+      voice(e, t, [[rnd(170, 190), 0.6], [rnd(210, 240), 1], [rnd(160, 180), 0.4]], rnd(0.3, 0.45), 0.03 * v, [600, 1400], pan, 'triangle')
+      burst(e, t, { type: 'lowpass', freq: 500, q: 0.6, gain: 0.08 * v, attack: 0.05, decay: 0.3, pan })
+      break
+    case 'oven': // the fire takes: a whoosh and a low roar
+      burst(e, t, { type: 'bandpass', freq: 300, sweepTo: 1300, q: 0.7, gain: 0.22 * v, attack: 0.15, decay: 0.7, pan })
+      burst(e, t + 0.1, { type: 'lowpass', freq: 220, q: 0.6, gain: 0.25 * v, attack: 0.2, decay: 0.9, pan })
+      break
+    case 'ding': // the kitchen timer: it is ready
+      tone(e, t, { type: 'sine', f0: 1568, gain: 0.06, attack: 0.003, decay: 1.2 })
+      tone(e, t, { type: 'sine', f0: 3136, gain: 0.02, attack: 0.003, decay: 0.5 })
+      tone(e, t + 0.18, { type: 'sine', f0: 2093, gain: 0.05, attack: 0.003, decay: 1.4 })
+      break
+    case 'crow': // cock-a-doodle-doo
+      voice(e, t, [[520, 0.5], [640, 1], [700, 0.9], [760, 1], [820, 1], [780, 0.9], [560, 0.4]], 1.25, 0.05 * v, [900, 2600], pan)
       break
   }
 }
