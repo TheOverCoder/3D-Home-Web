@@ -58,20 +58,20 @@ const floorAt = (x: number, z: number): FloorKind => {
 const CLEAR = HOUSE.wallThickness / 2 + 0.1 // eyes stay this far from a wall's centre line
 const DOOR_HALF = GARDEN_DOOR.width / 2 - 0.1 // the garden door's opening, less the jambs
 
-/**
- * Never let the eyes enter a wall or rise through the ceiling — inside, outside, and in between: the only way
- * through the outer walls is the garden door's opening while it is open.
- */
 const actionsKey = (list: Nearby[]) => list.map((a) => `${a.id}|${a.label}|${a.icon?.verb}|${a.icon?.item}|${a.reach}|${a.side}`).join('\n')
 
-function keepCameraInBounds(p: Vector3) {
+/**
+ * Never let the eyes enter a wall or rise through the ceiling — inside, outside, and in between: the only way
+ * through the outer walls is the garden door's opening while it is open. `body` is where the body is drawn this
+ * frame (not last frame's position: right after a teleport out of the house that would hold the eyes indoors).
+ */
+function keepCameraInBounds(p: Vector3, body: Vector3) {
   const inOpening = gardenDoor.open > 0.55 && Math.abs(p.x - GARDEN_DOOR.centre) < DOOR_HALF
   if (inOpening && Math.abs(p.z - GARDEN_DOOR.at) < CLEAR) {
     // stepping through the door: keep to the opening
     p.y = Math.min(p.y, GARDEN_DOOR.top - 0.12)
     return
   }
-  const body = playerState.position
   if (insideHouse(body.x, body.z)) {
     p.y = Math.min(p.y, HOUSE.wallHeight - 0.12)
     p.x = MathUtils.clamp(p.x, HOUSE.minX + CLEAR, HOUSE.maxX - CLEAR)
@@ -448,7 +448,7 @@ function CameraRig({ ecctrl, feet }: { ecctrl: RefObject<EcctrlHandle | null>; f
       camera.quaternion.slerp(screenQ, k)
     }
 
-    keepCameraInBounds(camera.position)
+    keepCameraInBounds(camera.position, eye)
     camera.updateMatrixWorld()
     lastPose.pos.copy(camera.position)
     lastPose.quat.copy(camera.quaternion)
@@ -535,6 +535,15 @@ export function Player() {
     const handle = ecctrl.current
     if (!handle) return
     const pos = handle.currPos
+    // a safety net: should physics ever throw the body out of the world (through the floor, or knocked flying),
+    // it comes back to the start instead of falling or flying for ever
+    if (pos.y < -6 || pos.y > 30 || Math.abs(pos.x) > GARDEN.maxX + 8 || Math.abs(pos.z) > GARDEN.maxZ + 8) {
+      const body = handle.body
+      body?.setTranslation({ x: SPAWN[0], y: SPAWN[1], z: SPAWN[2] }, true)
+      body?.setLinvel({ x: 0, y: 0, z: 0 }, true)
+      body?.setAngvel({ x: 0, y: 0, z: 0 }, true)
+      return
+    }
     playerState.position.x = pos.x
     playerState.position.y = pos.y
     playerState.position.z = pos.z

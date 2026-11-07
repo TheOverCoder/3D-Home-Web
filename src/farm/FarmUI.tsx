@@ -196,7 +196,9 @@ function QueuePanel() {
         if (v) acceptOffer(v.id)
       } else if (k === 'n' || e.key === 'Backspace') {
         if (front[0]) declineOffer(front[0].id)
-      }
+      } else return
+      // the key did its job here: it must not also press whichever button has the focus (it would close the panel)
+      e.preventDefault()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)

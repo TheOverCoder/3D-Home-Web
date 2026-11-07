@@ -206,6 +206,10 @@ export function Sheep() {
       const body = bodies.current[i]
       if (body) {
         v3.set(a.x, 0.45, a.z)
+        // a sheep put somewhere else in one go (a test, a long pause) is placed there, not swept across the fold:
+        // a kinematic body that jumps metres in one step hits whatever is in the way at hundreds of metres a second
+        const at = body.translation()
+        if (Math.hypot(at.x - a.x, at.z - a.z) > 0.6) body.setTranslation(v3, true)
         body.setNextKinematicTranslation(v3)
         body.setNextKinematicRotation(q.setFromEuler(eul.set(0, a.heading, 0, 'YXZ')))
       }

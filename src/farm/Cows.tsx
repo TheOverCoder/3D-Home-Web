@@ -208,6 +208,9 @@ export function Cows() {
       const body = bodies.current[i]
       if (body) {
         v3.set(c.x, 0.95, c.z)
+        // a cow put somewhere else in one go (a test, a long pause) is placed there, not swept across the pasture
+        const at = body.translation()
+        if (Math.hypot(at.x - c.x, at.z - c.z) > 0.6) body.setTranslation(v3, true)
         body.setNextKinematicTranslation(v3)
         body.setNextKinematicRotation(q.setFromEuler(eul.set(0, c.heading, 0, 'YXZ')))
       }

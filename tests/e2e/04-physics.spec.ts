@@ -133,4 +133,29 @@ test.describe('physics & geometry guards', () => {
     expect(result.checked).toBeGreaterThan(200)
     expect(result.bad, `eyes inside a solid mesh at: ${result.bad.join(' ')}`).toEqual([])
   })
+
+  test('a body thrown out of the world comes back to the start', async ({ game }) => {
+    await game.ready()
+    const { page } = game
+    const body = () => page.evaluate(() => ({ ...(window as any).__home.ecctrl().body.translation() }))
+    // below the ground (as if it had fallen through the floor), and far off over the hedge — each time from the
+    // kitchen, so being back at the start (the living room) can only come from the safety net
+    for (const [x, y, z] of [
+      [0, -12, 0],
+      [-60, 8, -10],
+    ]) {
+      await game.teleport(3.5, 1.4, -3.0)
+      await page.waitForFunction(() => (window as any).__home.useHome.getState().room === 'kitchen', null, { timeout: 30_000, polling: 250 })
+      await page.evaluate(([x, y, z]) => (window as any).__home.teleport(x, y, z), [x, y, z])
+      await page.waitForFunction(
+        () => {
+          const p = (window as any).__home.ecctrl().body.translation()
+          return Math.hypot(p.x + 3.5, p.z - 1.3) < 0.5 && p.y > 0 && p.y < 3
+        },
+        null,
+        { timeout: 30_000, polling: 250 },
+      )
+      expect((await body()).y).toBeGreaterThan(0)
+    }
+  })
 })

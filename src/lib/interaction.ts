@@ -164,7 +164,8 @@ export function triggerInteraction(id?: string) {
   const offer = id === undefined ? nearby : actions.find((a) => a.id === id)
   const def = offer ? registry.get(offer.id) : undefined
   if (offer && def && (!def.enabled || def.enabled())) {
-    if (offer.reach && state.view === 'first') turnTowards(playerState.eye, def.aim ?? def.position)
+    // turn from where the body stands (the same place the offer was worked out from), at eye height
+    if (offer.reach && state.view === 'first') turnTowards({ x: playerState.position.x, y: playerState.eye.y, z: playerState.position.z }, def.aim ?? def.position)
     def.run()
     return
   }
