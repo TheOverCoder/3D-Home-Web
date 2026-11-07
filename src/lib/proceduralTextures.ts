@@ -1,10 +1,11 @@
 import { CanvasTexture, RepeatWrapping, SRGBColorSpace, type Texture } from 'three'
 import type { FloorKind } from '../data/layout'
+import { profile } from './profile'
 
 // Stand-in PBR surfaces generated on canvases (colour + normal + roughness). Real PBR sets from
 // Poly Haven etc. replace these later; until then rooms still get believable grain, grout and weave.
-
-const SIZE = 512
+// Their size comes from the device profile: 512² on a computer, 256² on a phone (a quarter of the memory and
+// of the time it takes to paint them, on a screen where the difference does not show).
 
 export interface Surface {
   map: Texture
@@ -59,6 +60,7 @@ type Painter = (u: number, v: number, i: number) => { r: number; g: number; b: n
 
 function make(paint: Painter, normalStrength: number, seedless = true): Surface {
   void seedless
+  const SIZE = profile.surfaceSize
   const color = document.createElement('canvas')
   const rough = document.createElement('canvas')
   const normal = document.createElement('canvas')
@@ -364,6 +366,17 @@ export type { Texture }
 /** The shared, un-cloned maps of a furniture material (UVs are in "tiles", so no per-use repeat is needed). */
 export function material(kind: MaterialKind | 'leaf'): Surface {
   return (base[kind] ??= builders[kind]())
+}
+
+/** Forgets every generated surface (the graphics restart lighter: the next scene paints them again at its size). */
+export function resetSurfaces() {
+  for (const k of Object.keys(base)) {
+    const s = base[k]
+    s.map.dispose()
+    s.normalMap.dispose()
+    s.roughnessMap.dispose()
+    delete base[k]
+  }
 }
 
 /**

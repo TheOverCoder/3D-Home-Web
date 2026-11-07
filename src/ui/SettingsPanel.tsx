@@ -3,6 +3,9 @@ import { coarsePointer } from '../lib/device'
 import { collectDiagnostics } from '../lib/diagnostics'
 import { DEFAULT_SETTINGS, useSettings, type Settings } from '../settings'
 import { useHome } from '../store'
+import { MusicPlayer } from './MusicPlayer'
+import { profile, setLightMode } from '../lib/profile'
+import { restartGraphics } from '../lib/startup'
 
 function Segmented<T extends string>({ value, options, onChange, label }: { value: T; options: { value: T; label: string }[]; onChange: (v: T) => void; label: string }) {
   return (
@@ -187,6 +190,10 @@ export function SettingsPanel() {
               <Row label="Volume">
                 <Slider id="set-volume" label="Volume" value={Math.round(settings.volume * 100)} min={0} max={100} step={5} onChange={(v) => update({ volume: v / 100, sound: v > 0 ? true : settings.sound })} />
               </Row>
+              <Row label="Music" hint="Composed as it plays · four moods">
+                <Toggle id="set-music" label="Music" checked={settings.music} onChange={(music) => update({ music })} />
+              </Row>
+              <MusicPlayer compact />
             </section>
 
             <section>
@@ -202,6 +209,18 @@ export function SettingsPanel() {
                     { value: 'medium', label: 'Medium' },
                     { value: 'low', label: 'Low' },
                   ]}
+                />
+              </Row>
+              <Row label="Light graphics" hint="For older phones: smaller textures, no extra effects · restarts the graphics where you stand">
+                <Toggle
+                  id="set-light"
+                  label="Light graphics"
+                  checked={profile.light}
+                  onChange={(on) => {
+                    setLightMode(on)
+                    if (on) restartGraphics(true)
+                    else location.reload() // back to full size: start clean
+                  }}
                 />
               </Row>
               {/* the lens blur only exists on High: say so instead of offering a switch that does nothing */}

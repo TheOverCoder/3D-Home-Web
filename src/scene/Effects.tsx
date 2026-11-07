@@ -17,6 +17,7 @@ import { Vector2 } from 'three'
 import { debugSet } from '../lib/debug'
 import { focus } from '../lib/focus'
 import { createHdrSanitizePass } from '../lib/hdrGuard'
+import { profile } from '../lib/profile'
 import { useSettings } from '../settings'
 import { useHome } from '../store'
 
@@ -62,8 +63,10 @@ export function Effects() {
   })
 
   const fx: JSX.Element[] = []
+  // what each tier costs on this device (src/lib/profile.ts): phones skip the AO buffers below the top tier
+  const ao = profile.ao[quality]
   // moderate intensity: strong AO turns the dark undersides of furniture into noisy black patches
-  if (high || medium) {
+  if (ao) {
     fx.push(
       <N8AO
         key="ao"
@@ -72,13 +75,13 @@ export function Effects() {
         intensity={1.15}
         color="#2a2018"
         distanceFalloff={1.0}
-        quality={high ? 'medium' : 'performance'}
+        quality={ao}
         halfRes
       />,
     )
   }
   fx.push(<primitive key="sanitize" object={sanitize} />)
-  if (high && depthOfField) {
+  if (high && depthOfField && profile.lensEffects) {
     fx.push(
       <DepthOfField
         key="dof"
@@ -90,12 +93,12 @@ export function Effects() {
       />,
     )
   }
-  fx.push(<Bloom key="bloom" intensity={high ? 0.6 : medium ? 0.5 : 0.35} luminanceThreshold={1} luminanceSmoothing={0.25} mipmapBlur levels={high ? 8 : 6} />)
-  if (high) fx.push(<ChromaticAberration key="ca" offset={fringe} radialModulation modulationOffset={0.25} />)
+  fx.push(<Bloom key="bloom" intensity={high ? 0.6 : medium ? 0.5 : 0.35} luminanceThreshold={1} luminanceSmoothing={0.25} mipmapBlur levels={profile.bloomLevels[quality]} />)
+  if (high && profile.lensEffects) fx.push(<ChromaticAberration key="ca" offset={fringe} radialModulation modulationOffset={0.25} />)
   fx.push(<ToneMapping key="tm" mode={ToneMappingMode.AGX} />)
   fx.push(<BrightnessContrast key="bc" brightness={-0.01} contrast={0.1} />)
   fx.push(<HueSaturation key="hs" saturation={0.1} />)
   fx.push(<Vignette key="vig" offset={0.22} darkness={0.72} />)
   if (filmGrain) fx.push(<Noise key="grain" blendFunction={BlendFunction.SOFT_LIGHT} opacity={0.1} />)
-  return <EffectComposer multisampling={high ? 4 : medium ? 2 : 0}>{fx}</EffectComposer>
+  return <EffectComposer multisampling={profile.msaa[quality]}>{fx}</EffectComposer>
 }

@@ -13,6 +13,9 @@ export interface Settings {
   cinema: boolean // letterbox bars
   sound: boolean
   volume: number // 0..1
+  music: boolean // background music (generated in the browser, nothing is downloaded)
+  musicVolume: number // 0..1, under the sound volume
+  musicTrack: number
 }
 
 // People who ask their system for less motion get a still camera by default (they can still turn sway on)
@@ -29,6 +32,9 @@ export const DEFAULT_SETTINGS: Settings = {
   cinema: false,
   sound: true,
   volume: 0.7,
+  music: true,
+  musicVolume: 0.5,
+  musicTrack: 0,
 }
 
 const KEY = '3d-home:settings:v1'
@@ -66,6 +72,9 @@ const pick = (s: Settings): Settings => ({
   cinema: s.cinema,
   sound: s.sound,
   volume: s.volume,
+  music: s.music,
+  musicVolume: s.musicVolume,
+  musicTrack: s.musicTrack,
 })
 
 export const useSettings = create<SettingsStore>()((set, get) => ({

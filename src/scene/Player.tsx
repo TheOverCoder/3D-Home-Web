@@ -16,6 +16,7 @@ import { focus } from '../lib/focus'
 import { playGesture } from '../lib/gestures'
 import { findActions, triggerInteraction, type ViewRay } from '../lib/interaction'
 import { addLook, look, look as lookState, stepTurn, stopTurn } from '../lib/look'
+import { resume } from '../lib/startup'
 import { playerState } from '../lib/playerState'
 import { useSettings } from '../settings'
 import { busy, useHome, type Nearby } from '../store'
@@ -474,6 +475,15 @@ function CameraRig({ ecctrl, feet }: { ecctrl: RefObject<EcctrlHandle | null>; f
 
 export function Player() {
   const ecctrl = useRef<EcctrlHandle>(null)
+  // a restart of the graphics mid-game puts you back where you stood, looking the same way
+  const [spawnAt] = useState<[number, number, number]>(() => {
+    if (!resume.at) return SPAWN
+    const at = resume.at
+    look.yaw = resume.yaw
+    look.pitch = resume.pitch
+    resume.at = null
+    return at
+  })
   const feet = useRef<Group>(null)
   const bodyYaw = useRef<Group>(null)
   const view = useHome((s) => s.view)
@@ -674,7 +684,7 @@ export function Player() {
       <EcctrlAnimationStateController ecctrl={ecctrl} />
       <Ecctrl
         ref={ecctrl}
-        position={SPAWN}
+        position={spawnAt}
         capsuleHalfHeight={CAPSULE_HALF}
         capsuleRadius={CAPSULE_RADIUS}
         floatHeight={FLOAT}

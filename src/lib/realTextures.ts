@@ -1,6 +1,8 @@
 import { RepeatWrapping, SRGBColorSpace, TextureLoader, type Texture } from 'three'
 import { textureSets } from '../assets/registry'
 import { overrideSurface, type SurfaceKind } from './proceduralTextures'
+import { profile } from './profile'
+import { fitTexture } from './textureBudget'
 
 /**
  * Loads any real texture sets dropped into src/assets/textures/<surface>/ and substitutes them for the generated
@@ -8,15 +10,17 @@ import { overrideSurface, type SurfaceKind } from './proceduralTextures'
  */
 export async function loadRealTextures(): Promise<void> {
   const names = Object.keys(textureSets)
-  if (names.length === 0) return
+  // light graphics keep the generated surfaces: no download, a fraction of the memory
+  if (names.length === 0 || profile.light) return
   const loader = new TextureLoader()
   const load = (url: string | undefined, colour: boolean): Promise<Texture | undefined> =>
     url
       ? loader.loadAsync(url).then(
           (t) => {
             t.wrapS = t.wrapT = RepeatWrapping
-            t.anisotropy = 8
+            t.anisotropy = profile.device === 'desktop' ? 8 : 4
             if (colour) t.colorSpace = SRGBColorSpace
+            fitTexture(t)
             return t
           },
           (e) => {

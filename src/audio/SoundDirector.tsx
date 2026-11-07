@@ -19,6 +19,7 @@ import {
   uiClick,
   unlockAudio,
 } from './sound'
+import { wireMusic } from './music'
 
 /**
  * Wires the procedural sound to the app: unlocks audio on the first gesture, follows the Sound settings,
@@ -26,6 +27,7 @@ import {
  * Footsteps and landings come from the player's own frame loop.
  */
 export function SoundDirector() {
+  useEffect(() => wireMusic(), [])
   useEffect(() => {
     debugSet('audio', audioStatus)
     const unlock = () => unlockAudio()

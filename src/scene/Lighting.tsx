@@ -6,6 +6,7 @@ import { assets } from '../assets/registry'
 import { useSettings } from '../settings'
 import { SUN } from '../data/layout'
 import { ErrorBoundary } from '../lib/ErrorBoundary'
+import { profile } from '../lib/profile'
 import { useHome } from '../store'
 
 const SUN_DIR = SUN
@@ -34,7 +35,7 @@ function Ibl() {
   // own boundary: while an HDRI decodes, only this subtree is hidden — never the physics world
   return (
     <Suspense fallback={null}>
-      {assets.hdri ? (
+      {assets.hdri && profile.hdri ? (
         <Environment files={assets.hdri} background={false} environmentIntensity={0.75} />
       ) : (
         <Environment frames={1} resolution={128} far={900} background={false} environmentIntensity={0.4}>
@@ -144,8 +145,8 @@ function ShadowDirector() {
   return null
 }
 
-// shadow map resolution per tier (low: half, and the cheaper filter comes from fewer texels to fetch)
-const SHADOW_SIZE = { high: 2048, medium: 2048, low: 1024 } as const
+// shadow map resolution per tier comes from the device profile (low: half, and the cheaper filter comes from
+// fewer texels to fetch; phones: 1k below the top tier)
 
 export function Lighting() {
   const markReady = useHome((s) => s.markReady)
@@ -153,7 +154,7 @@ export function Lighting() {
   const quality = useHome((s) => s.quality)
   const gl = useThree((s) => s.gl)
   const sun = useRef<DirectionalLight>(null)
-  const size = SHADOW_SIZE[quality]
+  const size = profile.shadowMap[quality]
   const applied = useRef(size)
   useEffect(() => {
     const light = sun.current

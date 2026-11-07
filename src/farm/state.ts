@@ -132,7 +132,22 @@ export interface FarmData {
   clock: number // seconds of farm time since the page opened
 }
 
-const KEY = '3d-home:farm:v1'
+// Three save slots ("farms"). The first keeps the original key, so saves from before slots load unchanged.
+export const SLOTS = [1, 2, 3] as const
+export type Slot = (typeof SLOTS)[number]
+const SLOT_KEY = '3d-home:slot:v1'
+const keyFor = (slot: number) => (slot === 1 ? '3d-home:farm:v1' : `3d-home:farm:v1:slot${slot}`)
+function savedSlot(): Slot {
+  try {
+    const n = Number(localStorage.getItem(SLOT_KEY))
+    return (SLOTS as readonly number[]).includes(n) ? (n as Slot) : 1
+  } catch {
+    return 1
+  }
+}
+let slot: Slot = savedSlot()
+let KEY = keyFor(slot)
+export const currentSlot = () => slot
 const produceIds = PRODUCE.map((p) => p.id)
 const emptyInv = () => Object.fromEntries(produceIds.map((id) => [id, 0])) as Record<ProduceId, number>
 const freshMill = (): MillState => ({ input: null, count: 0, progress: 0, output: null, ready: 0 })
@@ -211,10 +226,10 @@ function savedBuyer(raw: unknown): SavedBuyer | null {
 }
 
 /** The saved farm, made safe (a hand-edited or old save can never break the game), plus the time it was saved. */
-function load(): { data: FarmData; savedAt: number | null; queue: SavedBuyer[] } {
+function load(text: string | null = readRaw(KEY)): { data: FarmData; savedAt: number | null; queue: SavedBuyer[] } {
   const data = fresh()
   try {
-    const raw = JSON.parse(localStorage.getItem(KEY) ?? 'null') as Partial<FarmData> & { time?: number; queue?: unknown[] }
+    const raw = JSON.parse(text ?? 'null') as Partial<FarmData> & { time?: number; queue?: unknown[] }
     if (!raw || typeof raw !== 'object') return { data, savedAt: null, queue: [] }
     data.coins = Math.max(0, Math.round(num(raw.coins, START_COINS)))
     for (const id of produceIds) data.inv[id] = Math.max(0, Math.round(num(raw.inv?.[id], 0)))
@@ -279,6 +294,14 @@ function load(): { data: FarmData; savedAt: number | null; queue: SavedBuyer[] }
     return { data, savedAt: num(raw.time, 0) || null, queue: queue.slice(0, queuePlaces(data.queueLevel)) }
   } catch {
     return { data, savedAt: null, queue: [] }
+  }
+}
+
+function readRaw(key: string): string | null {
+  try {
+    return localStorage.getItem(key)
+  } catch {
+    return null
   }
 }
 
@@ -960,13 +983,14 @@ export function tick(dt: number) {
 
 // the line at the gate as you left it; then, for the time the page was closed (up to three hours), the farm
 // grows on and buyers keep joining the line — as many as it has room for
-for (const b of loaded.queue) {
-  const v = newVisitor(b.want, b.qty, b.offer, 1, b.look, b.name)
-  farm.visitors.push(v)
-  standInLine(v)
-}
-if (loaded.savedAt) {
-  const away = Math.min(3 * 3600, Math.max(0, (Date.now() - loaded.savedAt) / 1000))
+function resumeFrom(l: ReturnType<typeof load>) {
+  for (const b of l.queue) {
+    const v = newVisitor(b.want, b.qty, b.offer, 1, b.look, b.name)
+    farm.visitors.push(v)
+    standInLine(v)
+  }
+  if (!l.savedAt) return
+  const away = Math.min(3 * 3600, Math.max(0, (Date.now() - l.savedAt) / 1000))
   for (let left = away; left > 0; left -= 5) grow(Math.min(5, left))
   if (farm.started) {
     let t = away - farm.nextVisitorIn
@@ -979,6 +1003,7 @@ if (loaded.savedAt) {
     for (let i = Math.min(n, placesInLine() - inLine().length); i > 0; i--) spawnVisitor({ queued: true })
   }
 }
+resumeFrom(loaded)
 
 /** Starts again from scratch (settings, tests). */
 export function resetFarm() {
@@ -989,3 +1014,108 @@ export function resetFarm() {
 }
 
 export { saveNow as saveFarm }
+
+// ───────────────────────────── save slots, export and import ─────────────────────────────
+
+export interface SlotSummary {
+  slot: Slot
+  exists: boolean
+  played: boolean // anything planted or sold yet (a brand-new farm says "Enter", not "Continue")
+  coins: number
+  earned: number
+  sold: number
+  growing: number // beds with something in them
+  animals: number
+  savedAt: number | null
+}
+
+/** What a slot holds, read without loading it (for the save list). */
+export function slotSummary(n: Slot): SlotSummary {
+  if (n === slot) saveNow()
+  const text = readRaw(keyFor(n))
+  const empty: SlotSummary = { slot: n, exists: false, played: false, coins: START_COINS, earned: 0, sold: 0, growing: 0, animals: 0, savedAt: null }
+  if (!text) return empty
+  const l = load(text)
+  return {
+    slot: n,
+    exists: true,
+    played: l.data.started || l.data.stats.sold > 0 || l.data.stats.harvested > 0,
+    coins: l.data.coins,
+    earned: l.data.stats.earned,
+    sold: l.data.stats.sold,
+    growing: l.data.beds.filter((b) => b.crop).length,
+    animals: l.data.cows + l.data.hens + l.data.sheep,
+    savedAt: l.savedAt,
+  }
+}
+
+/** Plays on another slot: the current farm is saved, the other one loaded (it has grown on meanwhile). */
+export function switchSlot(n: Slot) {
+  if (n === slot) return
+  saveNow()
+  slot = n
+  KEY = keyFor(n)
+  try {
+    localStorage.setItem(SLOT_KEY, String(n))
+  } catch {
+    /* storage blocked */
+  }
+  const l = load()
+  Object.assign(farm, l.data)
+  farm.visitors = []
+  const panel = useHome.getState().panel
+  if (panel) useHome.getState().closePanel()
+  resumeFrom(l)
+  bump()
+}
+
+/** Empties a slot (the current one starts again from scratch). */
+export function deleteSlot(n: Slot) {
+  try {
+    localStorage.removeItem(keyFor(n))
+  } catch {
+    /* storage blocked */
+  }
+  if (n === slot) resetFarm()
+}
+
+const FILE_KIND = '3d-home-farm-save'
+
+/** A slot as a file to keep on the device (or move to another one). */
+export function exportSlot(n: Slot): { name: string; text: string } {
+  if (n === slot) saveNow()
+  const raw = readRaw(keyFor(n))
+  const save = raw ? (JSON.parse(raw) as unknown) : null
+  const date = new Date().toISOString().slice(0, 10)
+  return {
+    name: `3d-home-farm-${n}-${date}.json`,
+    text: JSON.stringify({ kind: FILE_KIND, version: 1, slot: n, exportedAt: new Date().toISOString(), save }, null, 1),
+  }
+}
+
+/** Loads a save file into a slot. Anything odd in it is made safe the same way a stored save is. */
+export function importSlot(n: Slot, text: string): { ok: true } | { ok: false; error: string } {
+  let file: { kind?: unknown; save?: unknown }
+  try {
+    file = JSON.parse(text) as typeof file
+  } catch {
+    return { ok: false, error: 'That file is not a save (it is not JSON).' }
+  }
+  if (!file || file.kind !== FILE_KIND || !file.save || typeof file.save !== 'object') return { ok: false, error: 'That file is not a 3D Home farm save.' }
+  const save = JSON.stringify(file.save)
+  const check = load(save)
+  if (!check.savedAt && !('coins' in (file.save as object))) return { ok: false, error: 'That save is empty.' }
+  try {
+    localStorage.setItem(keyFor(n), save)
+  } catch {
+    return { ok: false, error: 'The browser would not store it (storage full or blocked).' }
+  }
+  if (n === slot) {
+    const l = load()
+    Object.assign(farm, l.data)
+    farm.visitors = []
+    resumeFrom(l)
+    bump()
+  }
+  return { ok: true }
+}

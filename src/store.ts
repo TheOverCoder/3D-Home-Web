@@ -19,14 +19,22 @@ export interface Nearby {
   side?: 'ahead' | 'left' | 'right' | 'back' // where it is, seen from where you look (first person)
 }
 
+/** Why the 3D scene could not start: what to tell the player, and the technical detail for "Copy details". */
+export interface Failure {
+  kind: 'network' | 'graphics' | 'wasm' | 'other'
+  message: string
+  detail?: string
+}
+
 /** A small game panel over the scene (seed packets, a buyer's offer, the farm shop, the mill, the oven). */
 export type Panel = { kind: 'seeds'; bed: number } | { kind: 'queue' } | { kind: 'shop' } | { kind: 'mill' } | { kind: 'oven' } | { kind: 'basket' }
 
 interface HomeState {
   phase: 'intro' | 'playing'
-  ready: { scene: boolean; env: boolean }
+  ready: { scene: boolean; env: boolean; warm: boolean } // the world is built · its lighting is in · shaders and textures are on the GPU
   progress: number
-  failure: string | null
+  failure: Failure | null
+  attempt: number // bumped to start the 3D scene again (after the graphics were lost, or in light mode)
   view: 'first' | 'third'
   settingsOpen: boolean
   hintShown: boolean
@@ -43,11 +51,11 @@ interface HomeState {
   quality: Quality
   qualityAuto: boolean // true while the frame-rate monitor may move `quality` up or down
   toast: { text: string; id: number } | null
-  graphics: 'ok' | 'lost' | 'restored' // the browser can reset the GPU context (driver crash, sleep, too many tabs)
+  graphics: 'ok' | 'lost' | 'restored' | 'restarting' // the browser can reset the GPU context (driver crash, sleep, too many tabs)
 
   setPhase: (phase: HomeState['phase']) => void
-  markReady: (key: 'scene' | 'env') => void
-  setFailure: (failure: string | null) => void
+  markReady: (key: 'scene' | 'env' | 'warm') => void
+  setFailure: (failure: Failure | null) => void
   setView: (view: 'first' | 'third') => void
   setSettingsOpen: (open: boolean) => void
   markHintShown: () => void
@@ -71,9 +79,10 @@ let toastId = 0
 export const useHome = create<HomeState>()((set, get) => ({
   phase: 'intro',
   graphics: 'ok',
-  ready: { scene: false, env: false },
+  ready: { scene: false, env: false, warm: false },
   progress: 0,
   failure: null,
+  attempt: 0,
   view: 'first',
   settingsOpen: false,
   hintShown: false,

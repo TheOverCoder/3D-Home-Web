@@ -6,6 +6,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { boxProject } from '../lib/boxProject'
 import { material, surface, type MaterialKind } from '../lib/proceduralTextures'
 import { assets } from '../assets/registry'
+import { fitModelTextures } from '../lib/textureBudget'
 
 type V3 = [number, number, number]
 
@@ -84,6 +85,7 @@ function GlbProp({ url, size, shadow = true }: { url: string; size: V3; shadow?:
       if ((o as Light).isLight) lights.push(o)
     })
     lights.forEach((l) => l.removeFromParent())
+    fitModelTextures(clone) // phones: the model's textures within the device's budget
     return clone
   }, [scene, sx, sy, sz, shadow])
   return <primitive object={object} />

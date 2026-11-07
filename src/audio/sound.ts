@@ -110,6 +110,11 @@ export function suspendForHidden(hidden: boolean) {
   else if (enabled) void engine.ac.resume().catch(() => {})
 }
 
+/** The audio context and the user-volume bus, for the music (null until the first gesture unlocked audio). */
+export function audioGraph(): { ac: AudioContext; master: GainNode } | null {
+  return engine ? { ac: engine.ac, master: engine.master } : null
+}
+
 /** Debug: state of the audio engine. */
 export function audioStatus() {
   return engine ? { state: engine.ac.state, enabled, volume, room: wantedRoom } : null
