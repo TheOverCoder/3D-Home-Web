@@ -92,10 +92,12 @@ export class Parts<K extends string = string> {
   putMatrix(part: K, local: Matrix4, color?: Color) {
     const mesh = this.meshes[part]
     const i = this.n[part]
+    this.world.multiplyMatrices(this.root, local)
+    // the checks see every part put, drawn or not (more than `max` are not drawn)
+    this.record?.push({ name: part, matrix: this.world.clone() })
     if (i >= mesh.instanceMatrix.count) return this
     this.n[part] = i + 1
-    mesh.setMatrixAt(i, this.world.multiplyMatrices(this.root, local))
-    this.record?.push({ name: part, matrix: this.world.clone() })
+    mesh.setMatrixAt(i, this.world)
     if (color) mesh.setColorAt(i, color)
     else if (mesh.instanceColor) mesh.instanceColor.setXYZ(i, 1, 1, 1)
     return this

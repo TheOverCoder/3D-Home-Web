@@ -44,6 +44,7 @@ interface HomeState {
   actions: Nearby[] // everything on offer, `nearby` first
   screen: string | null
   panel: Panel | null
+  editing: boolean // the farm's edit mode: the view from above, moving things, buying land
   lamps: Record<string, boolean>
   doors: Record<string, boolean>
   items: Record<string, ItemState>
@@ -66,6 +67,7 @@ interface HomeState {
   closeScreen: () => void
   openPanel: (panel: Panel) => void
   closePanel: () => void
+  setEditing: (on: boolean) => void
   toggleLamp: (id: string) => void
   toggleDoor: (id: string) => void
   pickUp: (id: string) => void
@@ -92,6 +94,7 @@ export const useHome = create<HomeState>()((set, get) => ({
   actions: [],
   screen: null,
   panel: null,
+  editing: false,
   lamps: Object.fromEntries(LAMPS.map((l) => [l.id, true])),
   doors: { [DOOR.id]: false },
   items: Object.fromEntries(PICKUPS.map((p) => [p.id, { pos: p.position, rev: 0 }])),
@@ -113,6 +116,7 @@ export const useHome = create<HomeState>()((set, get) => ({
   closeScreen: () => set({ screen: null }),
   openPanel: (panel) => set({ panel, nearby: null, actions: [] }),
   closePanel: () => set({ panel: null }),
+  setEditing: (editing) => set(editing ? { editing, panel: null, nearby: null, actions: [] } : { editing }),
   toggleLamp: (id) => set((s) => ({ lamps: { ...s.lamps, [id]: !s.lamps[id] } })),
   toggleDoor: (id) => set((s) => ({ doors: { ...s.doors, [id]: !s.doors[id] } })),
   // the item leaves the registry with its body: forget it as the aimed thing right away, so E drops it next
@@ -129,5 +133,6 @@ export const useHome = create<HomeState>()((set, get) => ({
   showToast: (text) => set({ toast: { text, id: ++toastId } }),
 }))
 
-/** Something has the player's attention (a screen, the settings, a garden panel): no walking, looking or interacting. */
-export const busy = (s: Pick<HomeState, 'screen' | 'settingsOpen' | 'panel'>) => !!(s.screen || s.settingsOpen || s.panel)
+/** Something has the player's attention (a screen, the settings, a garden panel, the edit mode): no walking,
+ *  looking or interacting. */
+export const busy = (s: Pick<HomeState, 'screen' | 'settingsOpen' | 'panel' | 'editing'>) => !!(s.screen || s.settingsOpen || s.panel || s.editing)

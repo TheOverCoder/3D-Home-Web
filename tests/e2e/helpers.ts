@@ -93,6 +93,7 @@ export const test = base.extend<object, { game: Game }>({
             if (s.screen) s.closeScreen()
             if (s.panel) s.closePanel()
             if (s.settingsOpen) s.setSettingsOpen(false)
+            if (s.editing) s.setEditing(false)
             if (s.view !== 'first') s.setView('first')
             h.useHome.setState({
               carrying: null,

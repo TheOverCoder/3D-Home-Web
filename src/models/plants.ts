@@ -176,9 +176,13 @@ export const GROWERS: Record<CropId, Grower> = {
   },
 }
 
-/** A lemon hanging on the tree. */
+/** A lemon hanging on the tree from a twig at (x, y, z), up in the leaves (see lemonSpots in structures.ts). */
 export function putLemon(p: Parts<CropPart>, x: number, y: number, z: number, k: number) {
-  p.put('lemon', x, y, z, 0.3, k * 1.7, 1.3, 0.075, c(0xf2d43a))
+  // (x, y, z) is where its stalk holds on: the lemon hangs below, swinging a little off the vertical
+  const rx = 0.12 + (k % 3) * 0.07
+  const ry = k * 1.7
+  const [px, py, pz] = hang([x, y, z], STALK_END.lemon, rx, ry, 0.075)
+  p.put('lemon', px, py, pz, rx, ry, 0, 0.075, c(0xf2d43a))
 }
 
 /** How high an egg's middle sits above what it lies on (it lies on its side). */

@@ -120,24 +120,32 @@ export const EXPANSIONS: Record<Expansion, { name: string; blurb: string; price:
 
 export const START_COINS = 20
 
-export const LEMON_TREE = { x: -6.1, z: 10.3, every: 30, max: 8 } as const
+// The lemon tree, the hen run, the pasture and the sheep fold are movable (the edit mode): where each stands is
+// in the farm's layout (src/farm/layout.ts), and what is inside them is given here in their own frame, round
+// their middle (x across, z along; the frame turns with them). On a new farm they stand where they always have.
 
-/** The coop sits in a fenced run in the east yard; its nest box sticks out through the run's west fence. */
-export const RUN = { minX: 9.8, maxX: 13.4, minZ: 4.4, maxZ: 9.0 } as const
-export const COOP = { x: 10.6, z: 5.7 } as const
+export const LEMON_TREE = { every: 30, max: 8 } as const
+
+/** The coop sits in a fenced run (on a new farm, in the east yard); its nest box sticks out through the run's west fence. */
+export const RUN = { minX: -1.8, maxX: 1.8, minZ: -2.3, maxZ: 2.3 } as const
+export const COOP = { x: -1.0, z: -1.0 } as const
 export const NEST = { x: RUN.minX - 0.12, z: COOP.z } as const
 export const EGG = { every: 40, max: 6, startHens: 2, maxHens: 6 } as const
 
-/** The cows' pasture runs along the east side of the house, north of the coop; its gate is on the west side. */
-export const PASTURE = { minX: 9.2, maxX: 13.5, minZ: -9.4, maxZ: 3.6, gateZ: -0.4, gateWidth: 1.4 } as const
+/** The cows' pasture (on a new farm along the east side of the house, north of the coop); its gate is on the west side. */
+export const PASTURE = { minX: -2.15, maxX: 2.15, minZ: -6.5, maxZ: 6.5, gateZ: 2.5, gateWidth: 1.4 } as const
+/** The pasture's water trough and hay rack, along its east side. */
+export const TROUGH = { x: 1.65, z: 0.9 } as const
+export const HAY_RACK = { x: 1.65, z: 4.5 } as const
 export const COW = { every: 45, max: 3, startCows: 1, maxCows: 3, names: ['Bella', 'Mazal', 'Daisy'] } as const
 
 /** The farm kitchen in the south-east corner: an outdoor brick oven and the mill, both facing the yard. */
 export const OVEN = { x: 9.9, z: 11.75 } as const
 export const MILL = { x: 12.3, z: 10.6, perItem: 4, capacity: 6 } as const
 
-/** The sheep fold in the north yard, behind the house (the office and kitchen windows look out on it); its gate faces the house. */
-export const FOLD = { minX: -6.4, maxX: 2.2, minZ: -12.3, maxZ: -8.6, gateX: -2.1, gateWidth: 1.3 } as const
+/** The sheep fold (on a new farm in the north yard, behind the house, where the office and kitchen windows look out on
+ *  it); its gate is in the south fence, facing the house. */
+export const FOLD = { minX: -4.3, maxX: 4.3, minZ: -1.85, maxZ: 1.85, gateX: 0, gateWidth: 1.3 } as const
 export const SHEEP = { every: 60, max: 2, startSheep: 2, maxSheep: 4, names: ['Dolly', 'Pnina', 'Lulu', 'Tzipi'] } as const
 /** The loom stands beside the fold, facing the house: fleeces go in, cloth comes out. */
 export const LOOM = { x: 4.9, z: -10.3, perItem: 6, capacity: 4 } as const

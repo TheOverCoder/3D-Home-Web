@@ -162,6 +162,7 @@ export const STALK_END = {
   tomato: [0, 0.78, -0.62] as V3,
   strawberry: [0, 0.3, -1.7] as V3,
   cob: [0, -0.1, -0.22] as V3,
+  lemon: [0.04, 1.22, 0] as V3,
 }
 
 /** A tomato: round, a little flat, faintly ribbed, with a green star of a calyx on top and its stalk up to the
@@ -358,9 +359,10 @@ function pumpkin(): Shape {
   return merge(body, st)
 }
 
-/** A lemon: an oval with a nub at each end. */
+/** A lemon: an oval with a nub at each end, hanging from a short woody stalk (up to where it holds on to its
+ *  twig, in the tree's leaves). */
 function lemon(): Shape {
-  return lathe(
+  const fruit = lathe(
     [
       [0.02, -0.62],
       [0.12, -0.54],
@@ -374,6 +376,8 @@ function lemon(): Shape {
     ],
     { seg: 12, steps: 1 },
   ).paint(() => [1, 1, 1], 1)
+  const stalk = tube([[0, 0.5, 0], [0.012, 0.85, 0], STALK_END.lemon], [0.07, 0.05, 0.045], { seg: 5, steps: 2 }).fill(STEM_BROWN, 0)
+  return merge(fruit, stalk)
 }
 
 /** An egg, its pointed end up. */

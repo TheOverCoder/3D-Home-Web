@@ -39,6 +39,7 @@ import {
   type ProduceId,
   type UpgradeId,
 } from './data'
+import { PARCELS, PLACES, canBuyParcel, canPlace, defaultLayout, sanitizeLayout, snap, type FarmLayout, type Fit, type ParcelId, type PlaceId, type Placement } from './layout'
 
 // The farm runs on a plain object that the scene reads every frame (growth, water, people walking), so nothing
 // re-renders 60 times a second. Anything the interface shows changes in steps — planted, thirsty, ripe, sold —
@@ -128,6 +129,8 @@ export interface FarmData {
   made: ProduceId[] // everything the farm has ever produced: buyers ask for that too
   stats: { harvested: number; sold: number; earned: number; declined: number; baked: number }
   visitors: Visitor[]
+  /** where the movable places stand, and the fields bought (src/farm/layout.ts) */
+  layout: FarmLayout
   nextVisitorIn: number // counts down to the next buyer (it holds at zero while the line is full)
   clock: number // seconds of farm time since the page opened
 }
@@ -183,6 +186,7 @@ function fresh(): FarmData {
     made: [],
     stats: { harvested: 0, sold: 0, earned: 0, declined: 0, baked: 0 },
     visitors: [],
+    layout: defaultLayout(),
     nextVisitorIn: VISITOR.firstAfter,
     clock: 0,
   }
@@ -290,6 +294,8 @@ function load(text: string | null = readRaw(KEY)): { data: FarmData; savedAt: nu
     data.planted = Array.isArray(raw.planted) ? raw.planted.filter((c): c is CropId => CROPS.some((d) => d.id === c)) : []
     data.made = Array.isArray(raw.made) ? raw.made.filter(isProduce) : []
     data.stats = { ...data.stats, ...(raw.stats ?? {}) }
+    // a farm from before the layout keeps everything where it always stood
+    data.layout = sanitizeLayout(raw.layout)
     const queue = (Array.isArray(raw.queue) ? raw.queue : []).map(savedBuyer).filter((b): b is SavedBuyer => !!b)
     return { data, savedAt: num(raw.time, 0) || null, queue: queue.slice(0, queuePlaces(data.queueLevel)) }
   } catch {
@@ -649,6 +655,34 @@ export function buy(id: UpgradeId) {
   save()
   return true
 }
+
+// ───────────────────────────── land and layout ─────────────────────────────
+
+/** Buys a field next to your land: the hedge moves out round it, and there is room to move things onto. */
+export function buyLand(id: ParcelId) {
+  const p = PARCELS[id]
+  if (!p || !canBuyParcel(farm.layout, id) || farm.coins < p.price) return false
+  farm.coins -= p.price
+  farm.layout = { ...farm.layout, land: [...farm.layout.land, id] }
+  toast(`${p.name}: it is yours`)
+  bump()
+  save()
+  return true
+}
+
+/** Moves a whole place (the hen run, the pasture, the fold, a tree) to a free spot on your land, on the half-metre grid. */
+export function movePlace(id: PlaceId, to: Placement): Fit {
+  const p = { x: snap(to.x), z: snap(to.z), rot: ((Math.round(to.rot) % 4) + 4) % 4 }
+  const fit = canPlace(farm.layout, id, p)
+  if (!fit.ok) return fit
+  farm.layout = { ...farm.layout, places: { ...farm.layout.places, [id]: p } }
+  bump()
+  save()
+  return fit
+}
+
+/** Puts a place back where it stood on a new farm (if that spot is free). */
+export const sendHome = (id: PlaceId) => movePlace(id, PLACES[id].home)
 
 // ───────────────────────────── buyers ─────────────────────────────
 

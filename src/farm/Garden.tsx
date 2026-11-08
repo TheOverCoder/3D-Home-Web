@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { CuboidCollider, CylinderCollider, RigidBody } from '@react-three/rapier'
-import { BoxGeometry, CanvasTexture, Color, IcosahedronGeometry, SRGBColorSpace, Vector3, type BufferGeometry, type MeshStandardMaterial, type Sprite } from 'three'
-import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js'
+import { BoxGeometry, CanvasTexture, Color, SRGBColorSpace, type BufferGeometry, type MeshStandardMaterial, type Sprite } from 'three'
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import { farmSound, placeSound } from '../audio/sound'
 import { GARDEN, GATE } from '../data/layout'
 import { debugSet } from '../lib/debug'
@@ -12,9 +12,9 @@ import { boxProject } from '../lib/boxProject'
 import { material, surface } from '../lib/proceduralTextures'
 import { B } from '../scene/Furnishings'
 import { StaticBatch } from '../scene/House'
-import { SHRUB_SPOTS, CORNER_TREES } from '../scene/Exterior'
+import { SHRUB_SPOTS } from '../data/garden'
 import { useHome } from '../store'
-import { BED, BEDS, COOP, EXPANSIONS, FOLD, LEMON_TREE, NEST, PASTURE, PATH_X, RUN, SHED, STAND, count, cropById } from './data'
+import { BED, BEDS, EXPANSIONS, PATH_X, SHED, STAND, count, cropById } from './data'
 import { Chickens } from './Chickens'
 import { Plants } from './Plants'
 import {
@@ -24,7 +24,6 @@ import {
   bedStage,
   buildBed,
   buy,
-  collectEggs,
   declineOffer,
   farm,
   harvest,
@@ -37,7 +36,6 @@ import {
   millStage,
   ovenStage,
   takeOut,
-  pickLemons,
   plant,
   resetFarm,
   sellAll,
@@ -46,6 +44,9 @@ import {
   placesInLine,
   saveFarm,
   shear,
+  buyLand,
+  movePlace,
+  sendHome,
   spawnVisitor,
   tick,
   useFarm,
@@ -54,12 +55,15 @@ import {
   yieldOf,
 } from './state'
 import { Cows, herd } from './Cows'
+import { Land } from './Land'
+import { dragTo, drop, turn, useEdit } from './edit'
+import { editCamera } from './EditMode'
+import { PARCELS, PLACES, boundary, canPlace, footprint, type PlaceId, type Placement } from './layout'
+import { Places, WOOD, WOOD_DARK } from './Places'
 import { Sheep, flock } from './Sheep'
 import { Visitors } from './Visitors'
 import { Workshop } from './Workshop'
 
-const WOOD = '#8a6440'
-const WOOD_DARK = '#5e4630'
 const mmss = (seconds: number) => {
   const t = Math.max(0, Math.ceil(seconds))
   return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`
@@ -125,20 +129,6 @@ function iconTexture(kind: 'water' | 'ripe'): CanvasTexture {
 
 let icons: { water: CanvasTexture; ripe: CanvasTexture } | undefined
 const bedIcons = () => (icons ??= { water: iconTexture('water'), ripe: iconTexture('ripe') })
-
-function noisyBlob(radius: number, seed: number): BufferGeometry {
-  const g = mergeVertices(new IcosahedronGeometry(1, 2).deleteAttribute('uv').deleteAttribute('normal'))
-  const p = g.getAttribute('position')
-  const v = new Vector3()
-  for (let i = 0; i < p.count; i++) {
-    v.fromBufferAttribute(p, i)
-    const n = Math.sin(v.x * 4.1 + seed) * Math.sin(v.y * 3.7 + seed * 2) * Math.sin(v.z * 4.3 + seed * 3) * 0.12 + Math.sin(v.x * 9 + seed) * 0.04
-    v.multiplyScalar(radius * (1 + n))
-    p.setXYZ(i, v.x, v.y * 0.85, v.z)
-  }
-  g.computeVertexNormals()
-  return g
-}
 
 // ───────────────────────────── beds ─────────────────────────────
 
@@ -311,71 +301,7 @@ function Bed({ index }: { index: number }) {
   )
 }
 
-// ───────────────────────────── tree, nest, shop ─────────────────────────────
-
-function LemonTree() {
-  const crowns = useMemo(
-    () => [
-      { g: noisyBlob(0.85, 1), p: [0, 2.05, 0] as const },
-      { g: noisyBlob(0.62, 2), p: [0.45, 1.75, 0.25] as const },
-      { g: noisyBlob(0.58, 3), p: [-0.4, 1.8, -0.3] as const },
-      { g: noisyBlob(0.55, 4), p: [-0.2, 2.45, 0.35] as const },
-    ],
-    [],
-  )
-  const leaves = useMemo(() => surface('grass', 1.2, 1.2), [])
-  useInteractable({
-    id: 'farm-lemon-tree',
-    position: [LEMON_TREE.x, 1.0, LEMON_TREE.z],
-    aim: [LEMON_TREE.x, 1.75, LEMON_TREE.z],
-    radius: 2.3,
-    enabled: () => farm.lemons > 0,
-    label: () => `Pick ${count('lemon', farm.lemons)}`,
-    icon: { verb: 'pick', item: 'lemon' },
-    run: () => {
-      pickLemons()
-      playGesture('interact')
-      const { pan, near } = placeSound(LEMON_TREE.x, LEMON_TREE.z)
-      farmSound('harvest', pan, near)
-    },
-  })
-  return (
-    <group position={[LEMON_TREE.x, 0, LEMON_TREE.z]}>
-      <mesh position={[0, 0.7, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.085, 0.13, 1.4, 9]} />
-        <meshStandardMaterial color="#6a5440" roughness={0.95} />
-      </mesh>
-      <mesh position={[0.18, 1.35, 0.05]} rotation={[0.1, 0, -0.6]} castShadow>
-        <cylinderGeometry args={[0.04, 0.06, 0.6, 7]} />
-        <meshStandardMaterial color="#6a5440" roughness={0.95} />
-      </mesh>
-      {crowns.map((c, i) => (
-        <mesh key={i} geometry={c.g} position={c.p as unknown as [number, number, number]} castShadow receiveShadow>
-          <meshStandardMaterial color={i % 2 ? '#47703a' : '#3f6a35'} map={leaves.map} normalMap={leaves.normalMap} roughness={0.9} />
-        </mesh>
-      ))}
-    </group>
-  )
-}
-
-function Nest() {
-  useInteractable({
-    id: 'farm-nest',
-    position: [NEST.x - 0.45, 0.9, NEST.z],
-    aim: [NEST.x, 0.66, NEST.z],
-    radius: 1.9,
-    enabled: () => farm.eggs > 0,
-    label: () => `Collect ${count('egg', farm.eggs)}`,
-    icon: { verb: 'pick', item: 'egg' },
-    run: () => {
-      collectEggs()
-      playGesture('interact')
-      const { pan, near } = placeSound(NEST.x, NEST.z)
-      farmSound('cluck', pan, near)
-    },
-  })
-  return null
-}
+// ───────────────────────────── the shop ─────────────────────────────
 
 function ShopDoor() {
   const openPanel = useHome((s) => s.openPanel)
@@ -475,57 +401,6 @@ function Structures() {
         </group>
       </group>
 
-      {/* the coop: a raised hen house in a fenced run, its nest box poking out through the fence */}
-      <group position={[COOP.x, 0, COOP.z]}>
-        {[-1, 1].flatMap((sx) =>
-          [-1, 1].map((sz) => <B key={`${sx}${sz}`} size={[0.07, 0.5, 0.07]} position={[sx * 0.58, 0.25, sz * 0.43]} color={WOOD_DARK} radius={0.006} />),
-        )}
-        <B size={[1.3, 0.78, 1.0]} position={[0, 0.88, 0]} color="#b5523a" mat="paint" tile={0.8} radius={0.02} />
-        <B size={[1.45, 0.06, 0.66]} position={[0, 1.44, -0.27]} rotation={[-0.55, 0, 0]} color="#3b3f42" roughness={0.6} radius={0.01} />
-        <B size={[1.45, 0.06, 0.66]} position={[0, 1.44, 0.27]} rotation={[0.55, 0, 0]} color="#3b3f42" roughness={0.6} radius={0.01} />
-        <B size={[0.3, 0.36, 0.02]} position={[0.3, 0.8, 0.51]} color="#3b2a1c" radius={0.004} />
-        <B size={[0.34, 0.03, 0.8]} position={[0.3, 0.27, 0.86]} rotation={[0.62, 0, 0]} color={WOOD} radius={0.004} />
-      </group>
-      <group position={[NEST.x, 0, NEST.z]}>
-        <B size={[0.4, 0.03, 0.44]} position={[0, 0.615, 0]} color={WOOD} radius={0.004} />
-        <B size={[0.4, 0.2, 0.03]} position={[0, 0.7, -0.22]} color={WOOD} radius={0.004} />
-        <B size={[0.4, 0.2, 0.03]} position={[0, 0.7, 0.22]} color={WOOD} radius={0.004} />
-        <B size={[0.03, 0.12, 0.44]} position={[-0.2, 0.66, 0]} color={WOOD} radius={0.004} />
-        <B size={[0.36, 0.02, 0.4]} position={[0, 0.635, 0]} color="#d9c18a" roughness={1} radius={0} />
-        <B size={[0.06, 0.6, 0.06]} position={[-0.17, 0.3, 0]} color={WOOD_DARK} radius={0.006} />
-      </group>
-      {/* the run's fence: posts and three rails */}
-      {(() => {
-        const out = []
-        const sides: [number, number, number, number][] = [
-          [RUN.minX, RUN.minZ, RUN.maxX, RUN.minZ],
-          [RUN.maxX, RUN.minZ, RUN.maxX, RUN.maxZ],
-          [RUN.maxX, RUN.maxZ, RUN.minX, RUN.maxZ],
-          [RUN.minX, RUN.maxZ, RUN.minX, RUN.minZ],
-        ]
-        for (const [x0, z0, x1, z1] of sides) {
-          const len = Math.hypot(x1 - x0, z1 - z0)
-          const n = Math.ceil(len / 1.15)
-          for (let i = 0; i < n; i++) {
-            const t = i / n
-            out.push(<B key={`p${x0}${z0}${i}`} size={[0.07, 0.95, 0.07]} position={[x0 + (x1 - x0) * t, 0.475, z0 + (z1 - z0) * t]} color={WOOD_DARK} radius={0.006} />)
-          }
-          const alongX = Math.abs(x1 - x0) > 0.01
-          for (const y of [0.25, 0.55, 0.85]) {
-            out.push(
-              <B
-                key={`r${x0}${z0}${y}`}
-                size={alongX ? [len, 0.05, 0.025] : [0.025, 0.05, len]}
-                position={[(x0 + x1) / 2, y, (z0 + z1) / 2]}
-                color={WOOD}
-                radius={0.004}
-              />,
-            )
-          }
-        }
-        return out
-      })()}
-
       {/* the farm stand by the gate: a table of crates under a striped awning */}
       <group position={[STAND.x, 0, STAND.z]}>
         <B size={[1.3, 0.05, 0.55]} position={[0, 0.82, 0]} color={WOOD} mat="veneer" tile={0.9} radius={0.008} />
@@ -554,118 +429,6 @@ function Structures() {
         </mesh>
       </group>
 
-      {/* the cows' pasture: post-and-rail fence (the garden fence closes its east side), an open gate on the house side,
-          a water trough and a hay rack */}
-      {(() => {
-        const { minX, maxX, minZ, maxZ, gateZ, gateWidth } = PASTURE
-        const out = []
-        const runs: [number, number, number, number][] = [
-          [minX, minZ, maxX, minZ],
-          [minX, maxZ, maxX, maxZ],
-          [minX, minZ, minX, gateZ - gateWidth / 2],
-          [minX, gateZ + gateWidth / 2, minX, maxZ],
-        ]
-        for (const [x0, z0, x1, z1] of runs) {
-          const len = Math.hypot(x1 - x0, z1 - z0)
-          const n = Math.max(1, Math.round(len / 1.4))
-          for (let i = 0; i <= n; i++) {
-            const t = i / n
-            out.push(<B key={`pp${x0}${z0}${i}`} size={[0.09, 1.1, 0.09]} position={[x0 + (x1 - x0) * t, 0.55, z0 + (z1 - z0) * t]} color={WOOD_DARK} mat="veneer" tile={0.9} radius={0.01} />)
-          }
-          const alongX = Math.abs(x1 - x0) > 0.01
-          for (const y of [0.45, 0.9]) {
-            out.push(
-              <B key={`pr${x0}${z0}${y}`} size={alongX ? [len, 0.08, 0.04] : [0.04, 0.08, len]} position={[(x0 + x1) / 2, y, (z0 + z1) / 2]} color={WOOD} mat="veneer" tile={0.9} radius={0.006} />,
-            )
-          }
-        }
-        // the gate stands open, swung into the pasture
-        out.push(
-          <group key="pgate" position={[minX, 0, gateZ + gateWidth / 2]} rotation={[0, -1.25, 0]}>
-            {[0.3, 0.75].map((y) => (
-              <B key={y} size={[0.04, 0.09, gateWidth - 0.1]} position={[0.03, y, -(gateWidth - 0.1) / 2]} color={WOOD} radius={0.006} />
-            ))}
-            <B size={[0.04, 0.95, 0.07]} position={[0.03, 0.5, -gateWidth + 0.12]} color={WOOD} radius={0.006} />
-          </group>,
-        )
-        return out
-      })()}
-      <group position={[13.0, 0, -2.0]}>
-        <B size={[0.55, 0.4, 1.7]} position={[0, 0.2, 0]} color={WOOD_DARK} mat="veneer" tile={0.8} radius={0.01} />
-        <mesh position={[0, 0.375, 0]} rotation-x={-Math.PI / 2}>
-          <planeGeometry args={[0.45, 1.6]} />
-          <meshStandardMaterial color="#3d6f8a" roughness={0.08} metalness={0.1} envMapIntensity={1.4} />
-        </mesh>
-      </group>
-      <group position={[13.0, 0, 1.6]}>
-        {[-1, 1].flatMap((sz) => [-1, 1].map((sx) => <B key={`${sx}${sz}`} size={[0.06, 1.0, 0.06]} position={[sx * 0.25, 0.5, sz * 0.5]} color={WOOD_DARK} radius={0.006} />))}
-        <B size={[0.56, 0.05, 1.06]} position={[0, 0.98, 0]} color={WOOD} radius={0.006} />
-        <mesh position={[0, 0.62, 0]} scale={[0.26, 0.3, 0.5]} castShadow receiveShadow>
-          <icosahedronGeometry args={[1, 1]} />
-          <meshStandardMaterial color="#d6b660" roughness={1} />
-        </mesh>
-      </group>
-
-      {/* the sheep fold behind the house: a lower post-and-rail fence with an open gate facing the house, a lean-to
-          in the north-west corner, a hay rack and a trough */}
-      {(() => {
-        const { minX, maxX, minZ, maxZ, gateX, gateWidth } = FOLD
-        const out = []
-        const runs: [number, number, number, number][] = [
-          [minX, minZ, maxX, minZ],
-          [minX, minZ, minX, maxZ],
-          [maxX, minZ, maxX, maxZ],
-          [minX, maxZ, gateX - gateWidth / 2, maxZ],
-          [gateX + gateWidth / 2, maxZ, maxX, maxZ],
-        ]
-        for (const [x0, z0, x1, z1] of runs) {
-          const len = Math.hypot(x1 - x0, z1 - z0)
-          const n = Math.max(1, Math.round(len / 1.3))
-          for (let i = 0; i <= n; i++) {
-            const t = i / n
-            out.push(<B key={`fp${x0}${z0}${i}`} size={[0.08, 0.95, 0.08]} position={[x0 + (x1 - x0) * t, 0.475, z0 + (z1 - z0) * t]} color={WOOD_DARK} mat="veneer" tile={0.9} radius={0} />)
-          }
-          const alongX = Math.abs(x1 - x0) > 0.01
-          for (const y of [0.35, 0.75]) {
-            out.push(
-              <B key={`fr${x0}${z0}${y}`} size={alongX ? [len, 0.07, 0.035] : [0.035, 0.07, len]} position={[(x0 + x1) / 2, y, (z0 + z1) / 2]} color={WOOD} mat="veneer" tile={0.9} radius={0} />,
-            )
-          }
-        }
-        out.push(
-          <group key="fgate" position={[gateX - gateWidth / 2, 0, maxZ]} rotation={[0, 1.2, 0]}>
-            {[0.28, 0.68].map((y) => (
-              <B key={y} size={[gateWidth - 0.1, 0.08, 0.035]} position={[(gateWidth - 0.1) / 2, y, -0.02]} color={WOOD} radius={0} />
-            ))}
-            <B size={[0.06, 0.85, 0.035]} position={[gateWidth - 0.12, 0.45, -0.02]} color={WOOD} radius={0} />
-          </group>,
-        )
-        // the lean-to: three posts, a back wall of boards and a sloping roof
-        const sx = minX + 0.15
-        const sz = minZ + 0.12
-        out.push(
-          <group key="shelter" position={[sx, 0, sz]}>
-            {[0.05, 1.1, 2.15].map((x) => (
-              <B key={x} size={[0.09, 1.5, 0.09]} position={[x, 0.75, 1.25]} color={WOOD_DARK} mat="veneer" tile={0.9} radius={0} />
-            ))}
-            <B size={[2.25, 1.75, 0.06]} position={[1.1, 0.875, 0.04]} color="#7b5a3c" mat="veneer" tile={0.7} radius={0} />
-            <B size={[2.45, 0.06, 1.55]} position={[1.1, 1.62, 0.66]} rotation={[0.2, 0, 0]} color="#5d4a3a" mat="veneer" tile={0.6} radius={0} />
-            <mesh position={[0.9, 0.12, 0.6]} scale={[0.75, 0.16, 0.45]} receiveShadow>
-              <icosahedronGeometry args={[1, 1]} />
-              <meshStandardMaterial color="#d8bd6a" roughness={1} />
-            </mesh>
-          </group>,
-        )
-        return out
-      })()}
-      <group position={[FOLD.maxX - 0.75, 0, FOLD.minZ + 0.55]}>
-        <B size={[1.1, 0.34, 0.45]} position={[0, 0.17, 0]} color={WOOD_DARK} mat="veneer" tile={0.8} radius={0} />
-        <mesh position={[0, 0.315, 0]} rotation-x={-Math.PI / 2}>
-          <planeGeometry args={[1.0, 0.36]} />
-          <meshStandardMaterial color="#3d6f8a" roughness={0.08} metalness={0.1} envMapIntensity={1.4} />
-        </mesh>
-      </group>
-
       {/* the gate in the south fence: two posts and a slatted leaf */}
       <group position={[GATE.x, 0, GARDEN.maxZ]}>
         {[-1, 1].map((s) => (
@@ -682,61 +445,17 @@ function Structures() {
   )
 }
 
-/** Everything solid in the garden that is not a wall: the boundary, sheds, trees, shrubs and fences. */
+/** What is solid in the yard and never moves: the shed, the stand and the shrubs (the boundary is the land's, the
+ *  runs, pastures and trees are the places', see Land.tsx and Places.tsx). */
 function Colliders() {
-  const { minX, maxX, minZ, maxZ } = GARDEN
-  const midX = (minX + maxX) / 2
-  const midZ = (minZ + maxZ) / 2
   return (
     <RigidBody type="fixed" colliders={false}>
-      <CuboidCollider args={[(maxX - minX) / 2 + 1, 1.2, 0.5]} position={[midX, 1.2, minZ]} />
-      <CuboidCollider args={[(maxX - minX) / 2 + 1, 1.2, 0.1]} position={[midX, 1.2, maxZ + 0.05]} />
-      <CuboidCollider args={[0.5, 1.2, (maxZ - minZ) / 2 + 1]} position={[minX, 1.2, midZ]} />
-      <CuboidCollider args={[0.1, 1.2, (maxZ - minZ) / 2 + 1]} position={[maxX + 0.05, 1.2, midZ]} />
       {/* shed and rain barrel */}
       <CuboidCollider args={[0.95, 1.05, 0.75]} position={[SHED.x, 1.05, SHED.z]} />
       <CylinderCollider args={[0.45, 0.3]} position={[SHED.x + 0.95, 0.45, SHED.z - 1.05]} />
-      {/* lemon tree */}
-      <CylinderCollider args={[0.9, 0.17]} position={[LEMON_TREE.x, 0.9, LEMON_TREE.z]} />
-      {/* the hen run, the coop inside it and the nest box outside */}
-      <CuboidCollider args={[(RUN.maxX - RUN.minX) / 2, 0.55, 0.05]} position={[(RUN.minX + RUN.maxX) / 2, 0.55, RUN.minZ]} />
-      <CuboidCollider args={[(RUN.maxX - RUN.minX) / 2, 0.55, 0.05]} position={[(RUN.minX + RUN.maxX) / 2, 0.55, RUN.maxZ]} />
-      <CuboidCollider args={[0.05, 0.55, (RUN.maxZ - RUN.minZ) / 2]} position={[RUN.minX, 0.55, (RUN.minZ + RUN.maxZ) / 2]} />
-      <CuboidCollider args={[0.05, 0.55, (RUN.maxZ - RUN.minZ) / 2]} position={[RUN.maxX, 0.55, (RUN.minZ + RUN.maxZ) / 2]} />
-      <CuboidCollider args={[0.22, 0.4, 0.24]} position={[NEST.x, 0.4, NEST.z]} />
-      {/* the pasture's fence (the open gate on the west side lets you in), trough and hay rack */}
-      <CuboidCollider args={[(PASTURE.maxX - PASTURE.minX) / 2, 0.6, 0.06]} position={[(PASTURE.minX + PASTURE.maxX) / 2, 0.6, PASTURE.minZ]} />
-      <CuboidCollider args={[(PASTURE.maxX - PASTURE.minX) / 2, 0.6, 0.06]} position={[(PASTURE.minX + PASTURE.maxX) / 2, 0.6, PASTURE.maxZ]} />
-      <CuboidCollider
-        args={[0.06, 0.6, (PASTURE.gateZ - PASTURE.gateWidth / 2 - PASTURE.minZ) / 2]}
-        position={[PASTURE.minX, 0.6, (PASTURE.minZ + PASTURE.gateZ - PASTURE.gateWidth / 2) / 2]}
-      />
-      <CuboidCollider
-        args={[0.06, 0.6, (PASTURE.maxZ - PASTURE.gateZ - PASTURE.gateWidth / 2) / 2]}
-        position={[PASTURE.minX, 0.6, (PASTURE.maxZ + PASTURE.gateZ + PASTURE.gateWidth / 2) / 2]}
-      />
-      {/* the sheep fold: fence (a gap at the gate), lean-to and trough */}
-      <CuboidCollider args={[(FOLD.maxX - FOLD.minX) / 2, 0.5, 0.05]} position={[(FOLD.minX + FOLD.maxX) / 2, 0.5, FOLD.minZ]} />
-      <CuboidCollider args={[0.05, 0.5, (FOLD.maxZ - FOLD.minZ) / 2]} position={[FOLD.minX, 0.5, (FOLD.minZ + FOLD.maxZ) / 2]} />
-      <CuboidCollider args={[0.05, 0.5, (FOLD.maxZ - FOLD.minZ) / 2]} position={[FOLD.maxX, 0.5, (FOLD.minZ + FOLD.maxZ) / 2]} />
-      <CuboidCollider
-        args={[(FOLD.gateX - FOLD.gateWidth / 2 - FOLD.minX) / 2, 0.5, 0.05]}
-        position={[(FOLD.minX + FOLD.gateX - FOLD.gateWidth / 2) / 2, 0.5, FOLD.maxZ]}
-      />
-      <CuboidCollider
-        args={[(FOLD.maxX - FOLD.gateX - FOLD.gateWidth / 2) / 2, 0.5, 0.05]}
-        position={[(FOLD.maxX + FOLD.gateX + FOLD.gateWidth / 2) / 2, 0.5, FOLD.maxZ]}
-      />
-      <CuboidCollider args={[1.15, 0.9, 0.08]} position={[FOLD.minX + 1.25, 0.9, FOLD.minZ + 0.16]} />
-      <CuboidCollider args={[0.6, 0.18, 0.25]} position={[FOLD.maxX - 0.75, 0.18, FOLD.minZ + 0.55]} />
-      <CuboidCollider args={[0.3, 0.25, 0.86]} position={[13.0, 0.25, -2.0]} />
-      <CuboidCollider args={[0.3, 0.5, 0.55]} position={[13.0, 0.5, 1.6]} />
       {/* the farm stand */}
       <CuboidCollider args={[0.68, 0.45, 0.32]} position={[STAND.x, 0.45, STAND.z]} />
-      {/* the garden's own trees and shrubs */}
-      {CORNER_TREES.map(([x, z]) => (
-        <CylinderCollider key={`t${x}${z}`} args={[1.2, 0.32]} position={[x, 1.2, z]} />
-      ))}
+      {/* the shrubs */}
       {SHRUB_SPOTS.map(([x, z]) => (
         <CylinderCollider key={`s${x}${z}`} args={[0.6, 0.45]} position={[x, 0.6, z]} />
       ))}
@@ -780,6 +499,16 @@ function FarmClock() {
       placesInLine,
       arrivalSeconds,
       saveFarm,
+      // the layout: moving whole places, buying land (see layout.ts and the edit mode)
+      movePlace,
+      sendHome,
+      buyLand,
+      canPlace: (id: PlaceId, p: Placement) => canPlace(farm.layout, id, p),
+      footprint,
+      boundary: () => boundary(farm.layout),
+      places: PLACES,
+      parcels: PARCELS,
+      edit: { useEdit, dragTo, drop, turn, camera: editCamera },
     })
   }, [])
   useFrame(() => {
@@ -798,13 +527,13 @@ export function Garden() {
       <FarmClock />
       <StaticBatch>
         <Structures />
-        <LemonTree />
       </StaticBatch>
       <Colliders />
+      <Land />
+      <Places />
       {BEDS.map((b) => (
         <Bed key={b.index} index={b.index} />
       ))}
-      <Nest />
       <ShopDoor />
       <Plants />
       <Chickens />

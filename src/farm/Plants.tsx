@@ -2,7 +2,10 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { cropParts } from '../models/crops'
 import { GROWERS, hash, putEgg, putLemon } from '../models/plants'
+import { lemonSpots } from '../models/structures'
 import { BED, BEDS, LEMON_TREE, NEST, type CropId } from './data'
+import { shownPlacement } from './edit'
+import { toWorld, type Placement } from './layout'
 import { bedProgress, farm } from './state'
 
 // Every plant in every bed, the lemons on the tree and the eggs in the nest: sculpted parts (src/models/crops.ts)
@@ -32,23 +35,25 @@ function grid(cols: number, rows: number, dx: number, dz: number): [number, numb
   return out
 }
 
-/** Spots on the lemon tree's crown where fruit hangs, and the egg places in the nest box. */
-export const LEMON_SPOTS: [number, number, number][] = Array.from({ length: LEMON_TREE.max }, (_, k) => {
-  const a = (k / LEMON_TREE.max) * Math.PI * 2 + 0.4
-  const r = 0.78 + (k % 2) * 0.12
-  return [LEMON_TREE.x + Math.cos(a) * r, 1.72 + ((k * 7) % 3) * 0.16, LEMON_TREE.z + Math.sin(a) * r]
-})
+/** Where lemons hang on the tree (each stalk's end, up in the leaves; round the trunk), and the egg places in the nest box. */
+export const LEMON_SPOTS = lemonSpots(LEMON_TREE.max)
 const EGG_SPOTS: [number, number][] = grid(3, 2, 0.085, 0.085)
 
 export function Plants() {
   const parts = useMemo(() => cropParts(), [])
   useEffect(() => () => parts.dispose(), [parts])
   const last = useRef(-1)
+  const seen = useRef<{ lemon?: Placement; hens?: Placement }>({})
 
   useFrame((state) => {
     const t = state.clock.elapsedTime
-    if (Math.abs(t - last.current) < 0.2) return
+    // the lemons and the eggs move with their tree and their run (dragged in the edit mode: at once)
+    const lemon = shownPlacement('lemon')
+    const hens = shownPlacement('hens')
+    const moved = lemon !== seen.current.lemon || hens !== seen.current.hens
+    if (!moved && Math.abs(t - last.current) < 0.2) return
     last.current = t
+    seen.current = { lemon, hens }
     parts.begin()
     parts.at(0, 0, 0)
     BEDS.forEach((def, i) => {
@@ -61,12 +66,14 @@ export function Plants() {
       })
     })
     for (let k = 0; k < farm.lemons; k++) {
-      const [x, y, z] = LEMON_SPOTS[k]
+      const [lx, y, lz] = LEMON_SPOTS[k]
+      const [x, z] = toWorld(lemon, lx, lz)
       putLemon(parts, x, y, z, k)
     }
     for (let k = 0; k < farm.eggs; k++) {
       const [ex, ez] = EGG_SPOTS[k]
-      putEgg(parts, NEST.x + ez, NEST_FLOOR, NEST.z + ex, k)
+      const [x, z] = toWorld(hens, NEST.x + ez, NEST.z + ex)
+      putEgg(parts, x, NEST_FLOOR, z, k)
     }
     parts.end()
   })

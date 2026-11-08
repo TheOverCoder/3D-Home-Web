@@ -12,6 +12,7 @@ import { setSculptDetail } from '../lib/sculpt'
 import { onGraphicsRestart } from '../lib/startup'
 import { useHome, type Quality } from '../store'
 import { Garden } from '../farm/Garden'
+import { EditMode } from '../farm/EditMode'
 import { Effects } from './Effects'
 import { House } from './House'
 import { LightDirector } from './LightDirector'
@@ -173,6 +174,8 @@ export default function Experience() {
           <Screens />
           <Pickups />
           <Player />
+          {/* after the player: the edit mode's camera runs after the player's own */}
+          <EditMode />
           <Ready />
         </Physics>
         <Effects />

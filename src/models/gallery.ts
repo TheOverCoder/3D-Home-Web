@@ -6,6 +6,8 @@ import { PersonRig, personParts } from './person'
 import { cropParts } from './crops'
 import { GROWERS, putEgg, putLemon } from './plants'
 import type { CropId } from '../farm/data'
+import { Group, Mesh, MeshStandardMaterial, DoubleSide } from 'three'
+import { coopModel, lemonSpots, lemonTreeModel, mouthGlowShape, ovenModel, structureParts, troughModel } from './structures'
 
 // Every model the kit makes, posed and moving, for the gallery page (open the site with ?gallery). Add a new
 // model here as soon as it has a shape: it is the quickest way to see it from every side, in the game's light.
@@ -148,7 +150,7 @@ export const GALLERY: GalleryEntry[] = [
   {
     id: 'crops',
     label: 'Crops',
-    name: 'Crops: every crop half grown, nearly ripe and ripe (front to back); lemons and eggs',
+    name: 'Crops: every crop half grown, nearly ripe and ripe (front to back); eggs',
     make() {
       const parts = cropParts(0.3)
       const crops: CropId[] = ['lettuce', 'carrot', 'strawberry', 'tomato', 'corn', 'sugarcane', 'wheat', 'pumpkin']
@@ -163,9 +165,44 @@ export const GALLERY: GalleryEntry[] = [
           crops.forEach((crop, i) => {
             ;[1, 0.8, 0.45].forEach((g, j) => GROWERS[crop](parts, -2 + i * 0.55, 0, 0.6 - j * 0.6, g, 0.13 + i * 0.07 + j * 0.31))
           })
-          for (let k = 0; k < 3; k++) putLemon(parts, 2.25, 0.3 + k * 0.12, -0.3 + k * 0.1, k)
           for (let k = 0; k < 3; k++) putEgg(parts, 2.2 + k * 0.08, 0, 0.4, k)
           parts.end()
+        },
+      }
+    },
+  },
+  {
+    id: 'farm',
+    label: 'Farm',
+    name: 'The farm: the oven (fire lit), the hen house, a trough, the lemon tree',
+    make() {
+      const oven = structureParts(ovenModel(), 'oven')
+      const glow = new Mesh(mouthGlowShape().geometry(), new MeshStandardMaterial({ color: 0x2a120a, emissive: 0xff8a32, emissiveIntensity: 2.2, roughness: 1, side: DoubleSide }))
+      const coop = structureParts(coopModel(), 'coop')
+      const trough = structureParts(troughModel(1.7, 0.55, 0.4), 'trough')
+      const tree = structureParts(lemonTreeModel(), 'lemon-tree')
+      const lemons = cropParts(0.5)
+      lemons.begin()
+      lemons.at(0, 0, 0)
+      lemonSpots(8).forEach(([x, y, z], k) => putLemon(lemons, x, y, z, k))
+      lemons.end()
+      const treeAt = new Group()
+      treeAt.add(tree.group, lemons.group)
+      treeAt.position.x = 3.6
+      const ovenAt = new Group()
+      ovenAt.add(oven.group, glow)
+      ovenAt.position.x = -2.4
+      coop.group.position.x = -0.3
+      trough.group.position.set(1.3, 0, 0)
+      const object = new Group()
+      object.add(ovenAt, coop.group, trough.group, treeAt)
+      return {
+        object,
+        width: 6.6,
+        height: 2.9,
+        triangles: () => oven.triangles() + coop.triangles() + trough.triangles() + tree.triangles() + lemons.triangles(),
+        update(t) {
+          ;(glow.material as MeshStandardMaterial).emissiveIntensity = 2.2 * (0.75 + Math.sin(t * 13) * 0.12 + Math.sin(t * 29) * 0.08)
         },
       }
     },

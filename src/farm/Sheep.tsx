@@ -9,13 +9,16 @@ import { registerInteractable } from '../lib/interaction'
 import { putSheep, sheepParts } from '../models/sheep'
 import { playerState, type Point3 } from '../lib/playerState'
 import { FOLD, SHEEP, count } from './data'
+import { shownPlacement } from './edit'
+import { carry, rectToWorld, samePlacement, toWorld, turnOf, type Placement } from './layout'
 import { farm, shear, sheepName, useFarm, woolliness } from './state'
 
 // The flock: each sheep wanders the fold behind the house, nibbles the grass and now and then bleats when you are
 // near. Her fleece shows how much wool she has: round and woolly when there is wool to shear, slim and shorn
 // straight after shearing, filling out again as it grows back. The sheep are sculpted models
 // (src/models/sheep.ts), one instanced draw per part for the whole flock; each rides a kinematic body so you
-// bump into her, and carries her own "Shear …" interaction.
+// bump into her, and carries her own "Shear …" interaction. The flock lives in the world's coordinates; when the fold
+// is moved (the edit mode), the sheep are carried along with it.
 
 export interface SheepAgent {
   x: number
@@ -36,24 +39,27 @@ export interface SheepAgent {
 /** The flock, for the scene and the tests. */
 export const flock: SheepAgent[] = []
 
+/** Where the sheep roam: the fold, in its own frame, less a strip along the fence. */
 const INNER = { minX: FOLD.minX + 0.6, maxX: FOLD.maxX - 0.6, minZ: FOLD.minZ + 0.6, maxZ: FOLD.maxZ - 0.6 }
 const SHELTER = { maxX: FOLD.minX + 2.3, maxZ: FOLD.minZ + 1.4 } // the lean-to in the north-west corner
 
 const free = (x: number, z: number) => !(x < SHELTER.maxX && z < SHELTER.maxZ) && !(x > FOLD.maxX - 1.6 && z < FOLD.minZ + 1.1) // not into the lean-to or the trough
 
-function spot(i: number): [number, number] {
+function spot(i: number, fold: Placement): [number, number] {
   for (let k = 0; k < 24; k++) {
-    const x = INNER.minX + Math.random() * (INNER.maxX - INNER.minX)
-    const z = INNER.minZ + Math.random() * (INNER.maxZ - INNER.minZ)
-    if (free(x, z) && flock.every((s, j) => j === i || Math.hypot(s.tx - x, s.tz - z) > 1.4)) return [x, z]
+    const lx = INNER.minX + Math.random() * (INNER.maxX - INNER.minX)
+    const lz = INNER.minZ + Math.random() * (INNER.maxZ - INNER.minZ)
+    if (!free(lx, lz)) continue
+    const [x, z] = toWorld(fold, lx, lz)
+    if (flock.every((s, j) => j === i || Math.hypot(s.tx - x, s.tz - z) > 1.4)) return [x, z]
   }
-  return [(INNER.minX + INNER.maxX) / 2 + 1, (INNER.minZ + INNER.maxZ) / 2]
+  return toWorld(fold, (INNER.minX + INNER.maxX) / 2 + 1, (INNER.minZ + INNER.maxZ) / 2)
 }
 
-function newSheep(i: number): SheepAgent {
-  const x = INNER.maxX - 0.8 - i * 1.6
-  const z = (INNER.minZ + INNER.maxZ) / 2 + (i % 2 ? 0.6 : -0.4)
-  return { x, z, heading: -Math.PI / 2, tx: x, tz: z, mode: 'graze', timer: 1.5 + i, phase: 0, graze: 1, stride: 0, fluff: woolliness(i), pos: { x, y: 0.7, z }, aim: { x, y: 0.65, z } }
+function newSheep(i: number, fold: Placement): SheepAgent {
+  const [x, z] = toWorld(fold, INNER.maxX - 0.8 - i * 1.6, (INNER.minZ + INNER.maxZ) / 2 + (i % 2 ? 0.6 : -0.4))
+  const heading = -Math.PI / 2 + turnOf(fold)
+  return { x, z, heading, tx: x, tz: z, mode: 'graze', timer: 1.5 + i, phase: 0, graze: 1, stride: 0, fluff: woolliness(i), pos: { x, y: 0.7, z }, aim: { x, y: 0.65, z } }
 }
 
 const v3 = new Vector3()
@@ -66,11 +72,12 @@ export function Sheep() {
   useEffect(() => () => parts.dispose(), [parts])
   const bodies = useRef<(RapierRigidBody | null)[]>([])
   const baa = useRef(5)
+  const frame = useRef<Placement>(shownPlacement('sheep'))
   debugSet('flock', flock)
 
   // one "Shear …" interaction per sheep, standing where she stands
   useEffect(() => {
-    while (flock.length < sheep) flock.push(newSheep(flock.length))
+    while (flock.length < sheep) flock.push(newSheep(flock.length, frame.current))
     flock.length = sheep
     const offs = flock.map((a, i) =>
       registerInteractable({
@@ -97,6 +104,18 @@ export function Sheep() {
   useFrame((state, rawDt) => {
     const dt = Math.min(rawDt, 0.1)
     const t = state.clock.elapsedTime
+    const fold = shownPlacement('sheep')
+    // the fold was moved: the flock comes along, each sheep where she was in it
+    if (!samePlacement(fold, frame.current)) {
+      const turned = turnOf(fold) - turnOf(frame.current)
+      for (const a of flock) {
+        ;[a.x, a.z] = carry(frame.current, fold, a.x, a.z)
+        ;[a.tx, a.tz] = carry(frame.current, fold, a.tx, a.tz)
+        a.heading += turned
+      }
+    }
+    frame.current = fold
+    const inner = rectToWorld(fold, INNER)
     parts.begin()
     flock.forEach((a, i) => {
       // behaviour: amble, graze, stand about
@@ -118,11 +137,11 @@ export function Sheep() {
           a.phase += v * 9
         }
       } else if (a.timer <= 0) {
-        ;[a.tx, a.tz] = spot(i)
+        ;[a.tx, a.tz] = spot(i, fold)
         a.mode = 'walk'
       }
-      a.x = Math.min(INNER.maxX, Math.max(INNER.minX, a.x))
-      a.z = Math.min(INNER.maxZ, Math.max(INNER.minZ, a.z))
+      a.x = Math.min(inner.maxX, Math.max(inner.minX, a.x))
+      a.z = Math.min(inner.maxZ, Math.max(inner.minZ, a.z))
       a.graze += ((a.mode === 'graze' ? 1 : 0) - a.graze) * Math.min(1, dt * 2.5)
       a.fluff += (woolliness(i) - a.fluff) * Math.min(1, dt * 3)
       a.pos.x = a.aim.x = a.x
@@ -158,6 +177,7 @@ export function Sheep() {
     }
   })
 
+  const start = rectToWorld(frame.current, INNER)
   return (
     <group name="farm-sheep">
       <primitive object={parts.group} />
@@ -169,7 +189,7 @@ export function Sheep() {
           }}
           type="kinematicPosition"
           colliders={false}
-          position={[flock[i]?.x ?? (INNER.minX + INNER.maxX) / 2, 0.45, flock[i]?.z ?? (INNER.minZ + INNER.maxZ) / 2]}
+          position={[flock[i]?.x ?? (start.minX + start.maxX) / 2, 0.45, flock[i]?.z ?? (start.minZ + start.maxZ) / 2]}
         >
           <CuboidCollider args={[0.28, 0.4, 0.55]} />
         </RigidBody>

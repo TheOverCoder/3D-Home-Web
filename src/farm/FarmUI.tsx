@@ -4,6 +4,7 @@ import { coarsePointer } from '../lib/device'
 import { playGesture } from '../lib/gestures'
 import { useHome } from '../store'
 import { BEDS, CROPS, MILL, MILLABLE, OVEN, PRODUCE, RECIPES, UPGRADES, arrivalEvery, count, produceById, queuePlaces, type CropId, type MillInput, type ProduceId } from './data'
+import { EditButton, EditPanel } from './EditPanel'
 import { iconUrl } from './icons'
 import {
   acceptOffer,
@@ -446,10 +447,13 @@ export function FarmUI() {
   const phase = useHome((s) => s.phase)
   const outdoors = useHome((s) => s.outdoors)
   const panel = useHome((s) => s.panel)
+  const editing = useHome((s) => s.editing)
   if (phase !== 'playing') return null
   return (
     <>
-      {(outdoors || panel) && <FarmChip />}
+      {(outdoors || panel || editing) && <FarmChip />}
+      <EditButton />
+      <EditPanel />
       {panel?.kind === 'seeds' && <SeedsPanel bed={panel.bed} />}
       {panel?.kind === 'queue' && <QueuePanel />}
       {panel?.kind === 'basket' && <BasketPanel />}

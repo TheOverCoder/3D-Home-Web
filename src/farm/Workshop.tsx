@@ -1,18 +1,20 @@
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { CuboidCollider, RigidBody } from '@react-three/rapier'
 import { CanvasTexture, DoubleSide, SRGBColorSpace, type Group, type Mesh, type MeshStandardMaterial, type Sprite } from 'three'
 import { farmSound, placeSound } from '../audio/sound'
 import { playGesture } from '../lib/gestures'
 import { useInteractable } from '../lib/interaction'
+import { mouthGlowShape, ovenModel, structureParts } from '../models/structures'
 import { B } from '../scene/Furnishings'
 import { useHome } from '../store'
 import { LOOM, MILL, MILLABLE, OVEN, count, produceById, type CakeId } from './data'
 import { farm, loomCollect, loomLoad, loomSecondsLeft, loomStage, millCollect, millSecondsLeft, millStage, ovenSecondsLeft, ovenStage, takeOut, useFarm } from './state'
 
 // The farm's kitchen in the yard's south-east corner: a mill that presses sugar cane into sugar and grinds wheat
-// into flour (its wheel and rollers turn while it works), and a brick oven that bakes cakes from what the farm
-// makes (its mouth glows and its chimney smokes while it bakes; the cake waits on the table beside it). And in the
+// into flour (its wheel and rollers turn while it works), and a wood-fired clay oven (sculpted with the kit, see
+// src/models/structures.ts) that bakes cakes from what the farm makes (its mouth glows and its chimney smokes while
+// it bakes; the cake waits on the table beside it). And in the
 // north yard, beside the sheep, a loom that weaves the fleeces into cloth (its shuttle flies while it works).
 
 const WOOD = '#8a6440'
@@ -119,12 +121,21 @@ function Oven() {
   const openPanel = useHome((s) => s.openPanel)
   const showToast = useHome((s) => s.showToast)
   const tex = useMemo(() => smokeTexture(), [])
+  const model = useMemo(() => structureParts(ovenModel(), 'oven'), [])
+  const glowShape = useMemo(() => mouthGlowShape().geometry(), [])
+  useEffect(
+    () => () => {
+      model.dispose()
+      glowShape.dispose()
+    },
+    [model, glowShape],
+  )
   const ready = farm.oven.ready
 
   useInteractable({
     id: 'farm-oven',
     position: [OVEN.x - 1.15, 1.0, OVEN.z],
-    aim: [OVEN.x - 0.5, 0.95, OVEN.z],
+    aim: [OVEN.x - 0.72, 0.92, OVEN.z],
     radius: 2.1,
     label: () => {
       const s = ovenStage()
@@ -172,7 +183,7 @@ function Oven() {
       sp.visible = baking
       if (!baking) return
       const life = (t * 0.35 + k / smoke.current.length) % 1
-      sp.position.set(0.25 + Math.sin(t * 0.7 + k) * 0.08 * life, 1.62 + life * 1.3, Math.cos(t * 0.5 + k) * 0.08 * life)
+      sp.position.set(0.24 + Math.sin(t * 0.7 + k) * 0.08 * life, 1.56 + life * 1.3, Math.cos(t * 0.5 + k) * 0.08 * life)
       const size = 0.18 + life * 0.45
       sp.scale.set(size, size, 1)
       sp.material.opacity = (1 - life) * 0.5
@@ -181,24 +192,11 @@ function Oven() {
 
   return (
     <group position={[OVEN.x, 0, OVEN.z]}>
-      {/* stone base, clay dome, the mouth facing the yard, a chimney */}
-      <B size={[1.3, 0.72, 1.2]} position={[0, 0.36, 0]} color="#8f8a82" mat="stone" tile={0.7} radius={0.02} />
-      <mesh position={[0, 0.72, 0]} scale={[1, 0.86, 0.95]} castShadow receiveShadow>
-        <sphereGeometry args={[0.6, 22, 12, 0, Math.PI * 2, 0, Math.PI / 2]} />
-        <meshStandardMaterial color="#b5643e" roughness={0.9} />
-      </mesh>
-      <mesh position={[-0.47, 0.92, 0]}>
-        <boxGeometry args={[0.18, 0.34, 0.42]} />
-        <meshStandardMaterial color="#1c1310" roughness={1} />
-      </mesh>
-      <mesh position={[-0.565, 0.9, 0]} rotation-y={-Math.PI / 2}>
-        <planeGeometry args={[0.34, 0.26]} />
-        <meshStandardMaterial ref={glow} color="#2a120a" emissive="#ff7a2a" emissiveIntensity={0} roughness={1} />
-      </mesh>
-      <B size={[0.12, 0.05, 0.56]} position={[-0.58, 1.11, 0]} color="#8f5a3a" radius={0.01} />
-      <mesh position={[0.25, 1.38, 0]} castShadow>
-        <cylinderGeometry args={[0.07, 0.08, 0.5, 10]} />
-        <meshStandardMaterial color="#7a4a34" roughness={0.9} />
+      {/* stone plinth, clay dome, the mouth facing the yard, a chimney, firewood behind and the peel */}
+      <primitive object={model.group} />
+      {/* the fire, at the back of the mouth */}
+      <mesh geometry={glowShape}>
+        <meshStandardMaterial ref={glow} color="#2a120a" emissive="#ff8a32" emissiveIntensity={0} roughness={1} side={DoubleSide} />
       </mesh>
       {Array.from({ length: 6 }, (_, k) => (
         <sprite
@@ -224,6 +222,8 @@ function Oven() {
       <RigidBody type="fixed" colliders={false}>
         <CuboidCollider args={[0.68, 0.75, 0.62]} position={[0, 0.75, 0]} />
         <CuboidCollider args={[0.47, 0.42, 0.3]} position={[0, 0.42, -1.05]} />
+        {/* the firewood behind it */}
+        <CuboidCollider args={[0.24, 0.2, 0.42]} position={[0.915, 0.2, 0]} />
       </RigidBody>
     </group>
   )

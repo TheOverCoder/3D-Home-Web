@@ -1,11 +1,12 @@
-import { checkPieces, checkPose, ellipsoid, piecesOf, type Issue } from '../lib/sculpt'
-import type { CropId } from '../farm/data'
+import { checkPieces, checkPose, ellipsoid, piecesOf, posedPieces, type Issue } from '../lib/sculpt'
+import { LEMON_TREE, type CropId } from '../farm/data'
 import { COATS, cowParts, putCow, type CowPose } from './cow'
 import { FACES, putSheep, sheepParts, type SheepPose } from './sheep'
 import { chickenParts, putChicken, type ChickenPose } from './chicken'
 import { PersonRig, personParts, type PersonLook } from './person'
 import { cropParts } from './crops'
-import { GROWERS, putEgg } from './plants'
+import { GROWERS, putEgg, putLemon } from './plants'
+import { coopModel, lemonSpots, lemonTreeModel, ovenModel, structurePieces, troughModel } from './structures'
 
 // Every model, in every variant and in the poses it takes in the game, run through the kit's checks (see
 // src/lib/sculpt/check.ts): every piece holds on to the rest, and the model stands on its ground. The gallery shows
@@ -155,6 +156,30 @@ export const MODEL_CHECKS: ModelCheck[] = [
       // an egg rests on the floor of the nest
       for (let k = 0; k < 3; k++) issues.push(...checkPose(`egg ${k + 1}`, parts, (pp) => putEgg(pp, 0, 0, 0, k), { ground: 0, sink: 0.004 }))
       return issues
+    },
+  },
+  {
+    id: 'farm',
+    name: 'The farm: oven, hen house, troughs, lemon tree',
+    run() {
+      return [
+        checkPieces('oven', structurePieces(ovenModel()), { ground: 0 }),
+        checkPieces('hen house', structurePieces(coopModel()), { ground: 0 }),
+        checkPieces("the pasture's trough", structurePieces(troughModel(1.7, 0.55, 0.4)), { ground: 0 }),
+        checkPieces("the fold's trough", structurePieces(troughModel(1.1, 0.45, 0.34)), { ground: 0 }),
+        // every lemon holds on to the tree by its stalk
+        checkPieces(
+          'lemon tree with its lemons',
+          [
+            ...structurePieces(lemonTreeModel()),
+            ...posedPieces(cropParts(0.1), (pp) => {
+              pp.at(0, 0, 0)
+              lemonSpots(LEMON_TREE.max).forEach(([x, y, z], k) => putLemon(pp, x, y, z, k))
+            }),
+          ],
+          { ground: 0 },
+        ),
+      ].flat()
     },
   },
 ]

@@ -9,12 +9,15 @@ import { registerInteractable } from '../lib/interaction'
 import { cowParts, putCow } from '../models/cow'
 import { playerState, type Point3 } from '../lib/playerState'
 import { COW, PASTURE, count } from './data'
+import { shownPlacement } from './edit'
+import { carry, rectToWorld, samePlacement, toWorld, turnOf, type Placement } from './layout'
 import { cowName, farm, milkCow, useFarm } from './state'
 
 // The herd: each cow strolls the pasture, lowers her head to graze, swishes her tail and now and then moos
 // when you are near. The cows themselves are sculpted models (src/models/cow.ts), one instanced draw per part
 // and coat for the whole herd; each cow also rides a kinematic body, so you bump into her instead of walking
-// through, and carries her own "Milk …" interaction, which follows her around.
+// through, and carries her own "Milk …" interaction, which follows her around. The herd lives in the world's
+// coordinates; when the pasture is moved (the edit mode), the cows are carried along with it.
 
 export interface CowAgent {
   x: number
@@ -35,21 +38,21 @@ export interface CowAgent {
 /** The herd, for the scene and the tests. */
 export const herd: CowAgent[] = []
 
+/** Where the cows roam: the pasture, in its own frame, less a strip along the fence. */
 const INNER = { minX: PASTURE.minX + 0.8, maxX: PASTURE.maxX - 0.8, minZ: PASTURE.minZ + 1.1, maxZ: PASTURE.maxZ - 1.1 }
 
-function spot(i: number): [number, number] {
+function spot(i: number, pasture: Placement): [number, number] {
   for (let k = 0; k < 24; k++) {
-    const x = INNER.minX + Math.random() * (INNER.maxX - INNER.minX)
-    const z = INNER.minZ + Math.random() * (INNER.maxZ - INNER.minZ)
+    const [x, z] = toWorld(pasture, INNER.minX + Math.random() * (INNER.maxX - INNER.minX), INNER.minZ + Math.random() * (INNER.maxZ - INNER.minZ))
     if (herd.every((c, j) => j === i || Math.hypot(c.tx - x, c.tz - z) > 2.4)) return [x, z]
   }
-  return [(INNER.minX + INNER.maxX) / 2, INNER.minZ + Math.random() * (INNER.maxZ - INNER.minZ)]
+  return toWorld(pasture, (INNER.minX + INNER.maxX) / 2, INNER.minZ + Math.random() * (INNER.maxZ - INNER.minZ))
 }
 
-function newCow(i: number): CowAgent {
-  const x = (INNER.minX + INNER.maxX) / 2
-  const z = INNER.minZ + ((i + 0.5) / COW.maxCows) * (INNER.maxZ - INNER.minZ)
-  return { x, z, heading: Math.PI / 2, tx: x, tz: z, mode: 'graze', timer: 2 + i, phase: 0, graze: 1, stride: 0, tail: Math.random() * 6, pos: { x, y: 1, z }, aim: { x, y: 0.95, z } }
+function newCow(i: number, pasture: Placement): CowAgent {
+  const [x, z] = toWorld(pasture, (INNER.minX + INNER.maxX) / 2, INNER.minZ + ((i + 0.5) / COW.maxCows) * (INNER.maxZ - INNER.minZ))
+  const heading = Math.PI / 2 + turnOf(pasture)
+  return { x, z, heading, tx: x, tz: z, mode: 'graze', timer: 2 + i, phase: 0, graze: 1, stride: 0, tail: Math.random() * 6, pos: { x, y: 1, z }, aim: { x, y: 0.95, z } }
 }
 
 const v3 = new Vector3()
@@ -63,11 +66,12 @@ export function Cows() {
   useEffect(() => () => parts.dispose(), [parts])
   const bodies = useRef<(RapierRigidBody | null)[]>([])
   const moo = useRef(6)
+  const frame = useRef<Placement>(shownPlacement('cows'))
   debugSet('herd', herd)
 
   // one "Milk …" interaction per cow, standing where she stands
   useEffect(() => {
-    while (herd.length < cows) herd.push(newCow(herd.length))
+    while (herd.length < cows) herd.push(newCow(herd.length, frame.current))
     herd.length = cows
     const offs = herd.map((c, i) =>
       registerInteractable({
@@ -94,6 +98,18 @@ export function Cows() {
   useFrame((state, rawDt) => {
     const dt = Math.min(rawDt, 0.1)
     const t = state.clock.elapsedTime
+    const pasture = shownPlacement('cows')
+    // the pasture was moved: the herd comes along, each cow where she was in it
+    if (!samePlacement(pasture, frame.current)) {
+      const turned = turnOf(pasture) - turnOf(frame.current)
+      for (const c of herd) {
+        ;[c.x, c.z] = carry(frame.current, pasture, c.x, c.z)
+        ;[c.tx, c.tz] = carry(frame.current, pasture, c.tx, c.tz)
+        c.heading += turned
+      }
+    }
+    frame.current = pasture
+    const inner = rectToWorld(pasture, INNER)
     parts.begin()
     herd.forEach((c, i) => {
       // behaviour: stroll, graze, stand
@@ -117,11 +133,11 @@ export function Cows() {
           c.phase += v * 5.5
         }
       } else if (c.timer <= 0) {
-        ;[c.tx, c.tz] = spot(i)
+        ;[c.tx, c.tz] = spot(i, pasture)
         c.mode = 'walk'
       }
-      c.x = Math.min(INNER.maxX, Math.max(INNER.minX, c.x))
-      c.z = Math.min(INNER.maxZ, Math.max(INNER.minZ, c.z))
+      c.x = Math.min(inner.maxX, Math.max(inner.minX, c.x))
+      c.z = Math.min(inner.maxZ, Math.max(inner.minZ, c.z))
       c.graze += ((c.mode === 'graze' ? 1 : 0) - c.graze) * Math.min(1, dt * 2)
       c.tail += dt * (1.6 + Math.sin(t * 0.3 + i) * 0.6)
       c.pos.x = c.x
@@ -158,6 +174,7 @@ export function Cows() {
     }
   })
 
+  const start = rectToWorld(frame.current, INNER)
   return (
     <group name="farm-cows">
       <primitive object={parts.group} />
@@ -169,7 +186,7 @@ export function Cows() {
           }}
           type="kinematicPosition"
           colliders={false}
-          position={[herd[i]?.x ?? (INNER.minX + INNER.maxX) / 2, 0.95, herd[i]?.z ?? 0]}
+          position={[herd[i]?.x ?? (start.minX + start.maxX) / 2, 0.95, herd[i]?.z ?? (start.minZ + start.maxZ) / 2]}
         >
           <CuboidCollider args={[0.36, 0.55, 0.95]} />
         </RigidBody>

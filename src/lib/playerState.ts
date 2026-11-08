@@ -13,4 +13,6 @@ export const playerState = {
   eye: { x: 0, y: 1.6, z: 0 } as Point3, // the camera, last frame
   speed: 0,
   grounded: true,
+  /** asked for by the game (something was built where you stand): <Player /> puts you here on its next frame */
+  moveTo: null as Point3 | null,
 }

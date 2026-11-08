@@ -8,7 +8,7 @@ import { useButtonStore, useJoystickStore } from 'ecctrl/input'
 import { CameraControlsImpl } from '@react-three/drei'
 import { MathUtils, Matrix4, Quaternion, Vector3, type Group, type PerspectiveCamera } from 'three'
 import { footstep, jumpSound, land } from '../audio/sound'
-import { GARDEN, GARDEN_DOOR, HOUSE, ROOMS, SPAWN, groundAt, insideHouse, roomAt, type FloorKind } from '../data/layout'
+import { GARDEN_DOOR, HOUSE, ROOMS, SPAWN, groundAt, insideHouse, roomAt, type FloorKind } from '../data/layout'
 import { screenById, type ScreenDef } from '../data/screens'
 import { debugSet } from '../lib/debug'
 import { coarsePointer } from '../lib/device'
@@ -20,6 +20,8 @@ import { resume } from '../lib/startup'
 import { playerState } from '../lib/playerState'
 import { useSettings } from '../settings'
 import { busy, useHome, type Nearby } from '../store'
+import { landBounds } from '../farm/layout'
+import { farm } from '../farm/state'
 import { AimMarker } from './AimMarker'
 import { gardenDoor } from './GardenDoor'
 import { Avatar, HeldItem } from './Avatar'
@@ -79,10 +81,11 @@ function keepCameraInBounds(p: Vector3, body: Vector3) {
     p.z = MathUtils.clamp(p.z, HOUSE.minZ + CLEAR, inOpening ? HOUSE.maxZ + 3 : HOUSE.maxZ - CLEAR)
     return
   }
-  // outdoors: above the ground, around the garden, and out of the house's walls
+  // outdoors: above the ground, around the land the farm owns, and out of the house's walls
+  const ours = landBounds(farm.layout)
   p.y = Math.max(p.y, 0.2)
-  p.x = MathUtils.clamp(p.x, GARDEN.minX - 4, GARDEN.maxX + 4)
-  p.z = MathUtils.clamp(p.z, GARDEN.minZ - 4, GARDEN.maxZ + 4)
+  p.x = MathUtils.clamp(p.x, ours.minX - 4, ours.maxX + 4)
+  p.z = MathUtils.clamp(p.z, ours.minZ - 4, ours.maxZ + 4)
   if (inOpening) {
     if (insideHouse(p.x, p.z)) p.y = Math.min(p.y, HOUSE.wallHeight - 0.12)
     return
@@ -152,11 +155,17 @@ function useKeyboard() {
       if (e.code === 'Escape') {
         if (state.screen) state.closeScreen()
         else if (state.panel) state.closePanel()
+        else if (state.editing) state.setEditing(false)
         else if (state.phase === 'playing') {
           // some browsers also deliver this Esc after releasing the pointer lock, which already opened the panel
           if (!state.settingsOpen) state.setSettingsOpen(true)
           else if (performance.now() - lastOpened > 250) state.setSettingsOpen(false)
         }
+        return
+      }
+      // B: the farm's edit mode (the view from above), in and out
+      if (e.code === 'KeyB' && !e.repeat && state.phase === 'playing' && !state.screen && !state.settingsOpen && !state.panel) {
+        state.setEditing(!state.editing)
         return
       }
       if (state.phase !== 'playing' || busy(state)) return
@@ -553,9 +562,22 @@ export function Player() {
     const handle = ecctrl.current
     if (!handle) return
     const pos = handle.currPos
+    // the game asked for you to be somewhere else (something was just built where you stood)
+    const to = playerState.moveTo
+    if (to) {
+      playerState.moveTo = null
+      const body = handle.body
+      body?.setTranslation(to, true)
+      body?.setLinvel({ x: 0, y: 0, z: 0 }, true)
+      playerState.position.x = to.x
+      playerState.position.y = to.y
+      playerState.position.z = to.z
+      return
+    }
     // a safety net: should physics ever throw the body out of the world (through the floor, or knocked flying),
     // it comes back to the start instead of falling or flying for ever
-    if (pos.y < -6 || pos.y > 30 || Math.abs(pos.x) > GARDEN.maxX + 8 || Math.abs(pos.z) > GARDEN.maxZ + 8) {
+    const ours = landBounds(farm.layout)
+    if (pos.y < -6 || pos.y > 30 || pos.x < ours.minX - 8 || pos.x > ours.maxX + 8 || pos.z < ours.minZ - 8 || pos.z > ours.maxZ + 8) {
       const body = handle.body
       body?.setTranslation({ x: SPAWN[0], y: SPAWN[1], z: SPAWN[2] }, true)
       body?.setLinvel({ x: 0, y: 0, z: 0 }, true)
