@@ -18,6 +18,7 @@ function labelFor(file: string): { label: string; kind: 'code' | 'model' | 'hdr'
     'vendor-r3f': 'Scene tools & film effects',
     'vendor-react': 'Interface (React)',
     Experience: 'The house, the garden and the farm',
+    models: 'Animals, people and crops',
     realTextures: 'Texture loader',
     proceduralTextures: 'Surface painter',
   }
@@ -57,7 +58,8 @@ function offlineAndProgress(): Plugin {
       if (entry) walk(entry.fileName)
       const sizeOf = (o: (typeof entries)[number]) => (o.type === 'chunk' ? Buffer.byteLength(o.code) : typeof o.source === 'string' ? Buffer.byteLength(o.source) : o.source.byteLength)
       const files = entries
-        .filter((o) => !shell.has(o.fileName) && !/\.(map|json|txt)$/.test(o.fileName) && o.fileName !== 'sw.js')
+        // (the model gallery, ?gallery, is a page of its own: the game never needs it)
+        .filter((o) => !shell.has(o.fileName) && !/\.(map|json|txt)$/.test(o.fileName) && o.fileName !== 'sw.js' && !/[\\/]Gallery-/.test(o.fileName))
         .map((o) => ({ url: o.fileName, bytes: sizeOf(o), ...labelFor(o.fileName) }))
         .sort((a, b) => b.bytes - a.bytes)
       const all = entries.filter((o) => !/\.(map)$/.test(o.fileName)).map((o) => o.fileName)
@@ -178,6 +180,8 @@ export default defineConfig({
             { name: 'vendor-react', test: /node_modules[\\/](react|react-dom|scheduler|zustand|use-sync-external-store)[\\/]|vite[\\/]preload-helper/, priority: 40 },
             { name: 'vendor-physics', test: /node_modules[\\/]@dimforge[\\/]/, priority: 30 },
             { name: 'vendor-three', test: /node_modules[\\/]three[\\/]/, priority: 20 },
+            // the sculpted models and the kit they are made with: shared by the scene and the model gallery
+            { name: 'models', test: /src[\\/](models[\\/](cow|sheep|chicken|person|crops|plants)|lib[\\/]sculpt[\\/])/, priority: 5 },
             { name: 'vendor-r3f', test: /node_modules[\\/](@react-three|three-stdlib|troika-[^\\/]+|camera-controls|postprocessing|n8ao|maath|ecctrl|three-mesh-bvh|@monogrid|meshline|stats-gl|suspend-react|its-fine|hls\.js)[\\/]/, priority: 10 },
           ],
         },

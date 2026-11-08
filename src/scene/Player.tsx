@@ -534,6 +534,14 @@ export function Player() {
       body?.setRotation({ x: 0, y: 0, z: 0, w: 1 }, true)
       body?.setLinvel({ x: 0, y: 0, z: 0 }, true)
       body?.setAngvel({ x: 0, y: 0, z: 0 }, true)
+      // where you are, and what is within reach, start again from here at once: until the next frame has looked
+      // round, nothing from where you stood before (the offer, the place a turn is worked out from) can be acted
+      // on — a slow frame after a teleport used to turn you towards a bed from the spot you had just left
+      playerState.position.x = x
+      playerState.position.y = y
+      playerState.position.z = z
+      useHome.getState().setActions([])
+      acc.current = 1
     })
     debugSet('ecctrl', () => ecctrl.current)
     debugSet('camera', camera)

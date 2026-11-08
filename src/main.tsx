@@ -7,8 +7,14 @@ import './lib/sw' // registers the service worker that keeps the game on this de
 
 installDiagnostics()
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
+const root = createRoot(document.getElementById('root')!)
+if (new URLSearchParams(location.search).has('gallery')) {
+  // the model gallery (src/models/Gallery.tsx): its own small page, loaded only when asked for
+  import('./models/Gallery').then(({ Gallery }) => root.render(<Gallery />))
+} else {
+  root.render(
+    <StrictMode>
+      <App />
+    </StrictMode>,
+  )
+}
