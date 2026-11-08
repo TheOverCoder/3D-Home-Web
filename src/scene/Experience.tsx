@@ -8,6 +8,7 @@ import { installHdrGuard } from '../lib/hdrGuard'
 import { setLoadPhase } from '../lib/loader'
 import { resetSurfaces } from '../lib/proceduralTextures'
 import { profile } from '../lib/profile'
+import { setSculptDetail } from '../lib/sculpt'
 import { onGraphicsRestart } from '../lib/startup'
 import { useHome, type Quality } from '../store'
 import { Garden } from '../farm/Garden'
@@ -148,6 +149,8 @@ export default function Experience() {
   useEffect(() => {
     if (quality !== 'low') setSqueeze(false)
   }, [quality])
+  // the models' fine surface detail (wool, cloth, feathers) is drawn from Medium up: Low keeps every pixel cheap
+  useEffect(() => setSculptDetail(quality !== 'low'), [quality])
 
   return (
     <Canvas

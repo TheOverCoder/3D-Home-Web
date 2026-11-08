@@ -14,7 +14,8 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # the suite renders in software and boots the scene a dozen times (about 35 minutes); room for a retry
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
         with:

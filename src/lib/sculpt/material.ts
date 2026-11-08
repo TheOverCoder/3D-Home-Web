@@ -8,8 +8,17 @@ import { DoubleSide, FrontSide, MeshStandardMaterial, ShaderChunk, Vector3 } fro
 // Fine surface detail costs no triangles: `detail` adds bumps finer than any vertex (wool, bark, bread crust,
 // soil), from noise worked out per pixel on the part's own coordinates, so it moves with the part. Its settings
 // are uniforms, so every detailed material shares one shader: a new kind of surface costs no compile at start-up.
+// `setSculptDetail(false)` skips the noise everywhere at once (the lowest graphics tier, weak devices).
 
 const cache = new Map<string, MeshStandardMaterial>()
+
+/** One switch for every detailed material (a uniform they all share). */
+const detailOn = { value: 1 }
+
+/** Fine surface detail on or off, everywhere at once (no recompiling): off in the lowest graphics tier. */
+export function setSculptDetail(on: boolean) {
+  detailOn.value = on ? 1 : 0
+}
 
 // three's colour chunk, with the instance colour weighted by the tint mask, and the pattern layer passed on
 const COLOR_VERTEX =
@@ -31,21 +40,25 @@ const COLOR_FRAGMENT = `
 	diffuseColor *= vec4( mix( vColor.rgb, vColor2, smoothstep( 0.5 - sculptEdge, 0.5 + sculptEdge, vPattern ) ), vColor.a );
 #endif
 #ifdef SCULPT_DETAIL
-	// two octaves of value noise on the part's own coordinates: lighter on the bumps, darker in the hollows. Each
-	// octave fades out as it gets smaller than a pixel or two, so far away the surface is calm instead of sparkling.
-	vec3 sculptP = vSculptPos * sculptDetail.x;
-	float sculptPx = length( fwidth( sculptP ) );
-	float sculptF1 = 1.0 - smoothstep( 0.3, 0.8, sculptPx );
-	float sculptF2 = 1.0 - smoothstep( 0.3, 0.8, sculptPx * 2.17 );
-	float sculptH = 0.5 + ( sculptNoise( sculptP ) - 0.5 ) * 0.62 * sculptF1 + ( sculptNoise( sculptP * 2.17 + 3.1 ) - 0.5 ) * 0.38 * sculptF2;
-	diffuseColor.rgb *= mix( 1.0 - sculptDetail.z, 1.0 + sculptDetail.z * 0.3, sculptH );
+	float sculptH = 0.5;
+	// (a branch on a uniform: every pixel takes the same way, so it costs nothing when the detail is off)
+	if ( sculptDetailOn > 0.5 ) {
+		// two octaves of value noise on the part's own coordinates: lighter on the bumps, darker in the hollows. Each
+		// octave fades out as it gets smaller than a pixel or two, so far away the surface is calm instead of sparkling.
+		vec3 sculptP = vSculptPos * sculptDetail.x;
+		float sculptPx = length( fwidth( sculptP ) );
+		float sculptF1 = 1.0 - smoothstep( 0.3, 0.8, sculptPx );
+		float sculptF2 = 1.0 - smoothstep( 0.3, 0.8, sculptPx * 2.17 );
+		sculptH = 0.5 + ( sculptNoise( sculptP ) - 0.5 ) * 0.62 * sculptF1 + ( sculptNoise( sculptP * 2.17 + 3.1 ) - 0.5 ) * 0.38 * sculptF2;
+		diffuseColor.rgb *= mix( 1.0 - sculptDetail.z, 1.0 + sculptDetail.z * 0.3, sculptH );
+	}
 #endif
 `
 
 // the bumps tilt the normal along the slope of the noise on screen (as a bump map does)
 const DETAIL_NORMAL = `
 #ifdef SCULPT_DETAIL
-	{
+	if ( sculptDetailOn > 0.5 ) {
 		vec3 sigmaX = dFdx( - vViewPosition );
 		vec3 sigmaY = dFdy( - vViewPosition );
 		vec3 r1 = cross( sigmaY, normal );
@@ -62,6 +75,7 @@ const NOISE = `
 #ifdef SCULPT_DETAIL
 varying vec3 vSculptPos;
 uniform vec3 sculptDetail; // bumps to the metre, bump depth, shade in the hollows
+uniform float sculptDetailOn; // 1: drawn, 0: skipped (see setSculptDetail)
 float sculptHash( vec3 p ) {
 	p = fract( p * 0.3183099 + 0.1 );
 	p *= 17.0;
@@ -105,7 +119,10 @@ export function sculptMaterial(o: SculptMaterialOptions = {}): MeshStandardMater
   if (Object.keys(defines).length) m.defines = defines
   const detail = d ? new Vector3(d.scale, d.bump, d.shade) : null
   m.onBeforeCompile = (shader) => {
-    if (detail) shader.uniforms.sculptDetail = { value: detail }
+    if (detail) {
+      shader.uniforms.sculptDetail = { value: detail }
+      shader.uniforms.sculptDetailOn = detailOn
+    }
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nattribute float tint;\nattribute vec3 color2;\nattribute float pattern;\nvarying vec3 vColor2;\nvarying float vPattern;\n#ifdef SCULPT_DETAIL\nvarying vec3 vSculptPos;\n#endif')
       .replace('#include <color_vertex>', COLOR_VERTEX + '\n#ifdef SCULPT_DETAIL\nvSculptPos = position;\n#endif\n')
