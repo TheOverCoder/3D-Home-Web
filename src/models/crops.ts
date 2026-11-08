@@ -156,7 +156,16 @@ function pumpkinLeaf(): Shape {
   return merge(...parts)
 }
 
-/** A tomato: round, a little flat, faintly ribbed, with a green star of a calyx on top. */
+/** Where each fruit's own stalk ends, in the fruit's units: a grower hangs the fruit so this point is on the plant's
+ *  stem (see `hang` in plants.ts), so fruit always grows on the plant, never beside it in the air. */
+export const STALK_END = {
+  tomato: [0, 0.78, -0.62] as V3,
+  strawberry: [0, 0.3, -1.7] as V3,
+  cob: [0, -0.1, -0.22] as V3,
+}
+
+/** A tomato: round, a little flat, faintly ribbed, with a green star of a calyx on top and its stalk up to the
+ *  plant's stem. */
 function tomato(): Shape {
   const fruit = lathe(
     [
@@ -175,11 +184,12 @@ function tomato(): Shape {
   }, 1)
   const parts: Shape[] = [fruit]
   for (let k = 0; k < 5; k++) parts.push(around(leaflet(0.28, 0.11, -0.04).fill(CALYX, 0), 0.25, (k / 5) * Math.PI * 2, [0, 0.35, 0]))
-  parts.push(tube([[0, 0.33, 0], [0, 0.45, 0.02], [0.02, 0.5, 0.05]], [0.035, 0.03, 0.025], { seg: 4, steps: 1 }).fill(CALYX, 0))
+  parts.push(tube([[0, 0.33, 0], [0, 0.52, -0.06], [0, 0.7, -0.3], STALK_END.tomato], [0.04, 0.035, 0.03, 0.03], { seg: 4, steps: 2 }).fill(CALYX, 0))
   return merge(...parts)
 }
 
-/** A strawberry, hanging from the origin: a heart-shaped berry with seeds, under a ruff of green sepals. */
+/** A strawberry: a heart-shaped berry with seeds under a ruff of green sepals, on a long stalk arching back to the
+ *  plant's crown. */
 function strawberry(): Shape {
   const berry = loft(
     [
@@ -194,7 +204,7 @@ function strawberry(): Shape {
   berry.paint(() => [1, 1, 1], 1).pattern(checker(8), [1.4, 1.3, 0.6])
   const parts: Shape[] = [berry]
   for (let s = 0; s < 5; s++) parts.push(around(leaflet(0.42, 0.16, 0.05).fill(CALYX, 0), -0.2, (s / 5) * Math.PI * 2, [0, -0.02, 0]))
-  parts.push(tube([[0, -0.05, 0], [0, 0.2, 0]], 0.04, { seg: 3, steps: 1 }).fill(CALYX, 0))
+  parts.push(tube([[0, -0.05, 0], [0, 0.22, -0.2], [0, 0.36, -0.85], STALK_END.strawberry], 0.04, { seg: 3, steps: 2 }).fill(CALYX, 0))
   return merge(...parts)
 }
 
@@ -246,6 +256,8 @@ function cob(): Shape {
   // the tips of the husk leaves, opening a little round the kernels
   for (let h = 0; h < 3; h++) parts.push(around(leaflet(0.3, 0.16, -0.03).fill(rgb(0x86ad55), 0).place([0, 0, 0], [-Math.PI / 2 + 0.35, 0, 0]), 0, (h / 3) * Math.PI * 2 + 0.3, [0, 0.62, 0]).place([0, 0, 0]))
   for (let s = 0; s < 4; s++) parts.push(tube([[0, 0.9, 0], [Math.cos(s * 1.6) * 0.08, 1.02, Math.sin(s * 1.6) * 0.08], [Math.cos(s * 1.6) * 0.15, 1.06, Math.sin(s * 1.6) * 0.15]], [0.02, 0.015, 0.01], { seg: 3, steps: 1 }).fill(SILK, 0))
+  // the shank: the short stalk the cob grows on, from the stalk of the plant
+  parts.push(tube([[0, 0.04, 0], [0, -0.03, -0.1], STALK_END.cob], [0.06, 0.05, 0.05], { seg: 5, steps: 1 }).fill(rgb(0x7fa850), 0))
   return merge(...parts)
 }
 

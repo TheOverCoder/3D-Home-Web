@@ -79,7 +79,8 @@ function upperArm(): Shape {
       [-0.17, 0.054, 0.056],
       [-0.28, 0.054, 0.056],
     ],
-    { seg: 8, round: [0.035, 0] },
+    // closed at the elbow round the arm: the forearm comes out of it in every pose
+    { seg: 8, round: [0.035, 0.035] },
   ).shade((_x, y) => 0.9 + 0.1 * smoothstep(-0.25, 0, y))
 }
 
@@ -164,21 +165,24 @@ function shin(): Shape {
       [-0.12, 0.055, 0.064, -0.006],
       [-0.28, 0.047, 0.05],
       [-0.39, 0.05, 0.052],
+      [-0.425, 0.042, 0.044],
     ],
+    // (the last ring is inside the shoe: the leg goes into it)
     { seg: 9 },
   ).shade((_x, y) => 0.88 + 0.12 * smoothstep(-0.38, 0, y))
+  // the shoe: its flattened sole on the ground (0.465 under the knee, as the rig's legs are long)
   const shoe = loft(
     [
-      { c: [0, -0.428, -0.06], rx: 0.042, ry: 0.036 },
-      { c: [0, -0.43, 0.01], rx: 0.049, ry: 0.038 },
-      { c: [0, -0.437, 0.09], rx: 0.051, ry: 0.03 },
-      { c: [0, -0.443, 0.15], rx: 0.043, ry: 0.022 },
+      { c: [0, -0.438, -0.06], rx: 0.042, ry: 0.036 },
+      { c: [0, -0.44, 0.01], rx: 0.049, ry: 0.038 },
+      { c: [0, -0.446, 0.09], rx: 0.051, ry: 0.03 },
+      { c: [0, -0.451, 0.15], rx: 0.043, ry: 0.022 },
     ],
     // flat underneath (the sole)
     { seg: 10, steps: 1, round: [0.02, 0.025], shape: (a) => (Math.sin(a) < 0 ? 1 - 0.35 * Math.sin(a) ** 2 : 1) },
   )
     .paint(() => SHOE, 0)
-    .pattern((_x, y) => 0.5 + (-0.456 - y) * 60, SOLE)
+    .pattern((_x, y) => 0.5 + (-0.462 - y) * 60, SOLE)
   return merge(leg, shoe)
 }
 
@@ -219,50 +223,47 @@ function head(): Shape {
     [0.012, 0.016, 0.013],
     { seg: 6, steps: 2, caps: [false, true] },
   ).shade(() => 0.97)
+  // eyes, brows and lips sit on the face: where a ray from in front meets the skull, set a little into it — so
+  // they hold on to it whatever shape the head has
+  const onFace = (x: number, y: number, into: number): V3 => {
+    const hit = skull.raycast([x, y, 0.4], [0, 0, -1])
+    return [x, y, (hit ? hit.point[2] : 0.1) - into]
+  }
   const parts: Shape[] = [neck, skull, nose]
   for (const sx of [-1, 1]) {
-    // eyes: a white with a dark iris in front
-    parts.push(ellipsoid(0.016, 0.011, 0.008, 7, 3).place([sx * 0.036, 0.016, 0.097]).fill(WHITE, 0))
-    parts.push(ellipsoid(0.009, 0.0095, 0.006, 7, 3).place([sx * 0.036, 0.016, 0.104]).fill(EYE, 0))
-    parts.push(
-      tube(
-        [
-          [sx * 0.018, 0.04, 0.106],
-          [sx * 0.037, 0.046, 0.104],
-          [sx * 0.055, 0.042, 0.097],
-        ],
-        0.0045,
-        { seg: 5, steps: 1 },
-      ).fill(BROW, 0),
-    )
+    // eyes: a white half sunk into the face, a dark iris on it
+    parts.push(ellipsoid(0.016, 0.011, 0.008, 7, 3).place(onFace(sx * 0.036, 0.016, 0.004)).fill(WHITE, 0))
+    parts.push(ellipsoid(0.009, 0.0095, 0.006, 7, 3).place(onFace(sx * 0.036, 0.016, -0.0035)).fill(EYE, 0))
+    parts.push(tube([onFace(sx * 0.018, 0.04, 0.0015), onFace(sx * 0.037, 0.046, 0.0015), onFace(sx * 0.055, 0.042, 0.0015)], 0.0045, { seg: 5, steps: 1 }).fill(BROW, 0))
     // ears
     parts.push(ellipsoid(0.013, 0.03, 0.022, 6, 3).place([sx * 0.098, 0.0, -0.005], [0, sx * 0.25, 0]).shade(() => 0.93))
   }
-  parts.push(
-    tube(
-      [
-        [-0.024, -0.058, 0.098],
-        [0, -0.062, 0.104],
-        [0.024, -0.058, 0.098],
-      ],
-      0.0045,
-      { seg: 5, steps: 2 },
-    ).fill(LIPS, 0),
-  )
+  parts.push(tube([onFace(-0.024, -0.058, 0.002), onFace(0, -0.062, 0.002), onFace(0.024, -0.058, 0.002)], 0.005, { seg: 5, steps: 2 }).fill(LIPS, 0))
   return merge(...parts)
 }
 
-/** The hair over the top and back of the skull, down to a hair-line: higher at the brow, lower at the nape. */
+/** How far a point is above the hair-line (higher at the brow, lower at the nape): the hair covers where it is > 0. */
+const aboveHairline = (x: number, y: number, z: number) =>
+  Math.max(y - (0.05 + 0.28 * Math.max(0, z) - 0.6 * Math.max(0, -z) * (Math.abs(x) < 0.07 ? 1 : 0.3)), z < -0.02 ? y + 0.07 : -1)
+
+/** The hair over the top and back of the skull, close to the scalp, its edge tucked into it at the hair-line. */
 function hairCap(): Shape {
   return column(
     [
-      [-0.07, 0.093, 0.104, -0.002],
-      [-0.01, 0.105, 0.117, -0.002],
-      [0.055, 0.108, 0.121, -0.006],
-      [0.11, 0.092, 0.104, -0.012],
+      [-0.07, 0.088, 0.098, -0.002],
+      [-0.01, 0.1, 0.112, -0.002],
+      [0.055, 0.103, 0.116, -0.006],
+      [0.11, 0.087, 0.099, -0.012],
     ],
     { seg: 14, steps: 2, round: [0, 0.05] },
-  ).keep((x, y, z) => y > 0.05 + 0.28 * Math.max(0, z) - 0.6 * Math.max(0, -z) * (Math.abs(x) < 0.07 ? 1 : 0.3) || (z < -0.02 && y > -0.07))
+  )
+    .keep((x, y, z) => aboveHairline(x, y, z) > 0)
+    .warp((x, y, z) => {
+      // within 1.5 cm of the hair-line the hair dips towards the scalp, so its edge meets the skin
+      const tuck = 1 - Math.min(1, aboveHairline(x, y, z) / 0.015)
+      const k = 1 - 0.07 * Math.max(0, tuck)
+      return [x * k, y, (z + 0.004) * k - 0.004]
+    })
 }
 
 function hairShort(): Shape {
@@ -314,10 +315,11 @@ function hat(): Shape {
   const straw = merge(brim, crown)
     .paint(() => STRAW, 0)
     .pattern((x, y, z) => 0.5 + 0.5 * Math.sin(Math.hypot(x, z) * 300 + y * 200), STRAW_DARK)
+  // the band, tight round the crown
   const band = lathe(
     [
-      [0.118, 0.098],
-      [0.12, 0.125],
+      [0.1125, 0.098],
+      [0.1145, 0.125],
     ],
     { seg: 14, steps: 1 },
   ).fill(BAND, 0)

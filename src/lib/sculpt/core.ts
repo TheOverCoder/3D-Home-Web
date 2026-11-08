@@ -228,6 +228,57 @@ export class Shape {
     return this
   }
 
+  /** Where a ray first meets this shape (both faces): for putting features on a surface — eyes, brows and lips
+   *  on a face, buttons on a coat — so they sit on it, whatever shape it has. */
+  raycast(origin: V3, dir: V3): { point: V3; normal: V3; distance: number } | null {
+    const [ox, oy, oz] = origin
+    const l = Math.hypot(dir[0], dir[1], dir[2]) || 1
+    const dx = dir[0] / l
+    const dy = dir[1] / l
+    const dz = dir[2] / l
+    const p = this.p
+    let best = Infinity
+    let hit: { point: V3; normal: V3; distance: number } | null = null
+    for (let k = 0; k < this.i.length; k += 3) {
+      const ia = this.i[k] * 3
+      const ib = this.i[k + 1] * 3
+      const ic = this.i[k + 2] * 3
+      const e1x = p[ib] - p[ia]
+      const e1y = p[ib + 1] - p[ia + 1]
+      const e1z = p[ib + 2] - p[ia + 2]
+      const e2x = p[ic] - p[ia]
+      const e2y = p[ic + 1] - p[ia + 1]
+      const e2z = p[ic + 2] - p[ia + 2]
+      const hx = dy * e2z - dz * e2y
+      const hy = dz * e2x - dx * e2z
+      const hz = dx * e2y - dy * e2x
+      const a = e1x * hx + e1y * hy + e1z * hz
+      if (Math.abs(a) < 1e-14) continue
+      const f = 1 / a
+      const sx = ox - p[ia]
+      const sy = oy - p[ia + 1]
+      const sz = oz - p[ia + 2]
+      const u = f * (sx * hx + sy * hy + sz * hz)
+      if (u < 0 || u > 1) continue
+      const qx = sy * e1z - sz * e1y
+      const qy = sz * e1x - sx * e1z
+      const qz = sx * e1y - sy * e1x
+      const v = f * (dx * qx + dy * qy + dz * qz)
+      if (v < 0 || u + v > 1) continue
+      const t = f * (e2x * qx + e2y * qy + e2z * qz)
+      if (t <= 0 || t >= best) continue
+      best = t
+      const nx = e1y * e2z - e1z * e2y
+      const ny = e1z * e2x - e1x * e2z
+      const nzz = e1x * e2y - e1y * e2x
+      const nl = Math.hypot(nx, ny, nzz) || 1
+      // the normal facing back along the ray (towards whoever looks at the surface)
+      const s = nx * dx + ny * dy + nzz * dz > 0 ? -1 : 1
+      hit = { point: [ox + dx * t, oy + dy * t, oz + dz * t], normal: [(s * nx) / nl, (s * ny) / nl, (s * nzz) / nl], distance: t }
+    }
+    return hit
+  }
+
   /** Keeps only the triangles whose three corners pass `fn` (a hair-line, a cut-away, an open shell). */
   keep(fn: (x: number, y: number, z: number) => boolean) {
     const ok = (k: number) => fn(this.p[k * 3], this.p[k * 3 + 1], this.p[k * 3 + 2])

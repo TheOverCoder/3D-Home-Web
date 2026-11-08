@@ -17,4 +17,15 @@ if (new URLSearchParams(location.search).has('gallery')) {
       <App />
     </StrictMode>,
   )
+  // while developing: the models' checks run once the game has settled, and warn about any piece that has come
+  // apart from its model or anything floating (the gallery lists them too, and the e2e suite fails on them)
+  if (import.meta.env.DEV)
+    setTimeout(
+      () =>
+        import('./models/checks').then(async ({ MODEL_CHECKS }) => {
+          const { describeIssue } = await import('./lib/sculpt')
+          for (const c of MODEL_CHECKS) for (const i of c.run()) console.warn(`[model check] ${describeIssue(i)}`)
+        }),
+      8000,
+    )
 }

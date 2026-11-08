@@ -30,6 +30,8 @@ export interface GalleryModel {
 
 export interface GalleryEntry {
   id: string
+  /** a word or two for the strip of models at the top */
+  label: string
   name: string
   make(): GalleryModel
 }
@@ -37,6 +39,7 @@ export interface GalleryEntry {
 export const GALLERY: GalleryEntry[] = [
   {
     id: 'cow',
+    label: 'Cows',
     name: 'Cows: walking, grazing, standing (three coats)',
     make() {
       const parts = cowParts(1)
@@ -57,6 +60,7 @@ export const GALLERY: GalleryEntry[] = [
   },
   {
     id: 'sheep',
+    label: 'Sheep',
     name: 'Sheep: full fleece, half grown, just shorn (four faces)',
     make() {
       const parts = sheepParts(4)
@@ -78,6 +82,7 @@ export const GALLERY: GalleryEntry[] = [
   },
   {
     id: 'chickens',
+    label: 'Hens',
     name: 'Hens (four colours) and the rooster',
     make() {
       const parts = chickenParts(4)
@@ -100,6 +105,7 @@ export const GALLERY: GalleryEntry[] = [
   },
   {
     id: 'people',
+    label: 'People',
     name: 'People: walking, waving, standing (three hair styles, a hat)',
     make() {
       const parts = personParts(4)
@@ -141,6 +147,7 @@ export const GALLERY: GalleryEntry[] = [
   },
   {
     id: 'crops',
+    label: 'Crops',
     name: 'Crops: every crop half grown, nearly ripe and ripe (front to back); lemons and eggs',
     make() {
       const parts = cropParts(0.3)
@@ -157,7 +164,7 @@ export const GALLERY: GalleryEntry[] = [
             ;[1, 0.8, 0.45].forEach((g, j) => GROWERS[crop](parts, -2 + i * 0.55, 0, 0.6 - j * 0.6, g, 0.13 + i * 0.07 + j * 0.31))
           })
           for (let k = 0; k < 3; k++) putLemon(parts, 2.25, 0.3 + k * 0.12, -0.3 + k * 0.1, k)
-          for (let k = 0; k < 3; k++) putEgg(parts, 2.2 + k * 0.08, 0.03, 0.4, k)
+          for (let k = 0; k < 3; k++) putEgg(parts, 2.2 + k * 0.08, 0, 0.4, k)
           parts.end()
         },
       }

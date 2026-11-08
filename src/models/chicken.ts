@@ -108,9 +108,11 @@ function head(look: Look): Shape {
       { c: [0, -0.02, -0.03], rx: r ? 0.07 : 0.062, ry: r ? 0.075 : 0.066 },
       { c: [0, 0.05, 0.01], rx: 0.046, ry: 0.05 },
       { c: [0, 0.1, 0.035], rx: 0.038, ry: 0.04 },
+      // on up into the head (the skull closes round it): no gap at the throat or the nape
+      { c: [0, 0.128, 0.05], rx: 0.028, ry: 0.03 },
     ],
     // a little fuller at the back ("up" for these rings is forward)
-    { seg: 10, steps: 2, up: [0, 0, 1], shape: (a) => 1 + 0.14 * Math.max(0, -Math.sin(a)) },
+    { seg: 10, steps: 2, up: [0, 0, 1], round: [0, 0.015], shape: (a) => 1 + 0.14 * Math.max(0, -Math.sin(a)) },
   ).fill(look.neck, look.tint)
   const skull = loft(
     [

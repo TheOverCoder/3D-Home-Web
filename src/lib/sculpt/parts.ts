@@ -33,6 +33,8 @@ const isMaterial = (m: SculptMaterialOptions | Material | undefined): m is Mater
 export class Parts<K extends string = string> {
   readonly group = new Group()
   readonly meshes = {} as Record<K, InstancedMesh>
+  /** When set, every part put is also written down here (its name and matrix): the model checks use it. */
+  record?: { name: K; matrix: Matrix4 }[]
   private n = {} as Record<K, number>
   private keys: K[]
   private root = new Matrix4()
@@ -93,6 +95,7 @@ export class Parts<K extends string = string> {
     if (i >= mesh.instanceMatrix.count) return this
     this.n[part] = i + 1
     mesh.setMatrixAt(i, this.world.multiplyMatrices(this.root, local))
+    this.record?.push({ name: part, matrix: this.world.clone() })
     if (color) mesh.setColorAt(i, color)
     else if (mesh.instanceColor) mesh.instanceColor.setXYZ(i, 1, 1, 1)
     return this

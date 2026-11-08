@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { test, expect, watchErrors } from './helpers'
 
-// The sculpted models (src/models): the gallery page shows every one of them, and in the game the herd, the
-// flock, the hens, the queue and the garden are drawn with them — each a handful of instanced draws.
+// The sculpted models (src/models): the gallery page shows every one of them and runs the kit's checks on each (every
+// piece holds on to its model, every model stands on its ground, in every variant and pose); in the game the herd,
+// the flock, the hens, the queue and the garden are drawn with them — each a handful of instanced draws.
 
 test.describe('sculpted models', () => {
   test('the model gallery shows every model', async ({ browser }) => {
@@ -16,11 +17,12 @@ test.describe('sculpted models', () => {
     await page.waitForFunction(() => (window as any).__gallery.entries.every((e: any) => e.triangles > 1000), null, { timeout: 60_000, polling: 250 })
     const entries = await page.evaluate(() => (window as any).__gallery.entries.map((e: any) => e.id))
     expect(entries).toEqual(['cow', 'sheep', 'chickens', 'people', 'crops'])
-    // and the list names each with its triangle count
-    await page.waitForTimeout(1500)
-    const labels = await page.locator('button').allTextContents()
-    expect(labels).toHaveLength(5)
-    for (const l of labels) expect(Number(l.match(/([\d,]+) triangles/)?.[1].replace(/,/g, '') ?? 0), l).toBeGreaterThan(1000)
+    // the checks catch a piece a centimetre off its model, and a model two centimetres above the ground
+    expect(await page.evaluate(() => (window as any).__gallery.selfTest())).toEqual(['loose', 'floating'])
+    // the kit's checks, on every model in every variant and pose: no piece apart from its model, nothing floating
+    await page.waitForFunction(() => (window as any).__gallery.checks.done, null, { timeout: 120_000, polling: 500 })
+    const issues = await page.evaluate(() => (window as any).__gallery.checks.issues as string[])
+    expect(issues, issues.join('\n')).toEqual([])
     expect(errors).toEqual([])
     await context.close()
   })

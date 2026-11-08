@@ -1,7 +1,7 @@
 import { Color, Vector3 } from 'three'
 import type { Parts } from '../lib/sculpt'
 import type { CropId } from '../farm/data'
-import type { CropPart } from './crops'
+import { STALK_END, type CropPart } from './crops'
 
 // How each crop looks as it grows: a grower puts one plant's parts (see crops.ts) at a spot on the soil, for a
 // growth from 0 (just sown) to 1 (ripe), and a seed (0..1) that keeps each plant its own shape from frame to
@@ -33,6 +33,19 @@ export const hash = (a: number, b: number) => {
   return s - Math.floor(s)
 }
 
+/** Where to put a fruit so the end of its own stalk (`end`, in its units) is at `at` on the plant, the fruit
+ *  turned by rx and then ry (as Parts.put turns it) and scaled by `size`. */
+function hang(at: [number, number, number], end: readonly number[], rx: number, ry: number, size: number): [number, number, number] {
+  const vx = end[0] * size
+  const vy = end[1] * size
+  const vz = end[2] * size
+  const uy = vy * Math.cos(rx) - vz * Math.sin(rx)
+  const uz = vy * Math.sin(rx) + vz * Math.cos(rx)
+  const wx = vx * Math.cos(ry) + uz * Math.sin(ry)
+  const wz = -vx * Math.sin(ry) + uz * Math.cos(ry)
+  return [at[0] - wx, at[1] - uy, at[2] - wz]
+}
+
 const LEAF = 0x5f9a45
 const LEAF_DARK = 0x4a7d36
 const c = (hex: number) => color.setHex(hex)
@@ -47,7 +60,9 @@ export const GROWERS: Record<CropId, Grower> = {
       const len = (inner ? 0.085 : 0.12) * s * (0.9 + hash(seed, k) * 0.2)
       p.put('lettuceLeaf', x, y + 0.004, z, inner ? -0.75 : 0.12, a, 0, len, c(inner ? 0x9ccc65 : 0x6ea64a))
     }
-    if (g > 0.35) p.put('lettuceHeart', x, y + 0.035 * s, z, 0, seed * 6, 0, 0.1 * s * smooth(0.35, 0.8, g), c(0x9fcd66))
+    // the heart sits on the soil in the middle of the rosette (its squashed ball is 0.41 of its size high)
+    const heart = 0.1 * s * smooth(0.35, 0.8, g)
+    if (g > 0.35) p.put('lettuceHeart', x, y + 0.4 * heart, z, 0, seed * 6, 0, heart, c(0x9fcd66))
   },
   carrot(p, x, y, z, g, seed) {
     const s = 0.2 + 0.8 * easeOut(g)
@@ -63,15 +78,16 @@ export const GROWERS: Record<CropId, Grower> = {
     const s = 0.2 + 0.8 * easeOut(g)
     for (let k = 0; k < 5; k++) {
       const a = (k / 5) * Math.PI * 2 + seed * 4
-      p.put('trefoil', x, y + 0.004, z, -0.1 + hash(k, seed) * 0.2, a, 0, 0.13 * s, c(k % 2 ? LEAF : LEAF_DARK))
+      p.put('trefoil', x, y - 0.003, z, -0.1 + hash(k, seed) * 0.2, a, 0, 0.13 * s, c(k % 2 ? LEAF : LEAF_DARK))
     }
     const f = smooth(0.5, 1, g)
     if (f <= 0) return
-    // berries hang out over the leaves on their stalks: white, then blushing, then red
+    // berries hang out over the leaves on stalks from the crown: white, then blushing, then red
     for (let k = 0; k < 3; k++) {
       const a = (k / 3) * Math.PI * 2 + seed * 3 + 0.5
-      const r = 0.08 * s
-      p.put('strawberry', x + Math.sin(a) * r, y + 0.05, z + Math.cos(a) * r, 0.35, a, 0, 0.036 * f, c(mixHex(0xe8f0c8, 0xd8213a, smooth(0.8, 1, g))))
+      const d = 0.036 * f
+      const [bx, by, bz] = hang([x, y + 0.045, z], STALK_END.strawberry, 0, a, d)
+      p.put('strawberry', bx, by, bz, 0, a, 0, d, c(mixHex(0xe8f0c8, 0xd8213a, smooth(0.8, 1, g))))
     }
   },
   tomato(p, x, y, z, g, seed) {
@@ -85,12 +101,13 @@ export const GROWERS: Record<CropId, Grower> = {
     }
     const f = smooth(0.5, 1, g)
     if (f <= 0) return
+    // tomatoes hang in trusses from the stem, each on its own stalk
     for (let k = 0; k < 6; k++) {
       const h = (0.28 + hash(seed, k) * 0.36) * s
       const a = k * 2.1 + seed * 2
-      const r = 0.06 + hash(k, seed) * 0.03
       const d = 0.062 * f * (0.85 + hash(seed, k + 9) * 0.3)
-      p.put('tomato', x + Math.sin(a) * r, y + h, z + Math.cos(a) * r, 0, a, 0, d, c(mixHex(0x7fae3e, 0xd8342a, smooth(0.82, 1, g) * (0.75 + hash(k, 3) * 0.25))))
+      const [tx, ty, tz] = hang([x, y + h, z], STALK_END.tomato, 0, a, d)
+      p.put('tomato', tx, ty, tz, 0, a, 0, d, c(mixHex(0x7fae3e, 0xd8342a, smooth(0.82, 1, g) * (0.75 + hash(k, 3) * 0.25))))
     }
   },
   corn(p, x, y, z, g, seed) {
@@ -105,9 +122,12 @@ export const GROWERS: Record<CropId, Grower> = {
     if (g > 0.7) p.put('tassel', x, y + h - 0.02, z, 0, seed * 6, 0, 0.17 * smooth(0.7, 1, g), c(0xd8c27a))
     const f = smooth(0.55, 1, g)
     if (f <= 0) return
+    // cobs grow on their shanks from the stalk, leaning out
     for (let k = 0; k < 2; k++) {
       const a = seed * 5 + k * Math.PI
-      p.put('cob', x + Math.sin(a) * 0.03, y + (0.55 + k * 0.14) * s, z + Math.cos(a) * 0.03, 0.4, a, 0, 0.17 * f, c(mixHex(0xb8cf7a, 0xf3cf4a, smooth(0.85, 1, g))))
+      const size = 0.17 * f
+      const [cx, cy, cz] = hang([x, y + (0.55 + k * 0.14) * s, z], STALK_END.cob, 0.4, a, size)
+      p.put('cob', cx, cy, cz, 0.4, a, 0, size, c(mixHex(0xb8cf7a, 0xf3cf4a, smooth(0.85, 1, g))))
     }
   },
   sugarcane(p, x, y, z, g, seed) {
@@ -161,7 +181,10 @@ export function putLemon(p: Parts<CropPart>, x: number, y: number, z: number, k:
   p.put('lemon', x, y, z, 0.3, k * 1.7, 1.3, 0.075, c(0xf2d43a))
 }
 
-/** An egg lying in the nest. */
-export function putEgg(p: Parts<CropPart>, x: number, y: number, z: number, k: number) {
-  p.put('egg', x, y, z, 1.35, k * 1.3, 0.1, 0.058, c(k % 3 === 1 ? 0xc99a6b : 0xf1e6d0))
+/** How high an egg's middle sits above what it lies on (it lies on its side). */
+const EGG_REST = 0.5 * 0.058
+
+/** An egg lying on its side on the floor of the nest (`floor`: the height of the straw it rests on). */
+export function putEgg(p: Parts<CropPart>, x: number, floor: number, z: number, k: number) {
+  p.put('egg', x, floor + EGG_REST, z, Math.PI / 2, k * 1.3, 0, 0.058, c(k % 3 === 1 ? 0xc99a6b : 0xf1e6d0))
 }

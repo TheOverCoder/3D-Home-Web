@@ -1,0 +1,168 @@
+import { checkPieces, checkPose, ellipsoid, piecesOf, type Issue } from '../lib/sculpt'
+import type { CropId } from '../farm/data'
+import { COATS, cowParts, putCow, type CowPose } from './cow'
+import { FACES, putSheep, sheepParts, type SheepPose } from './sheep'
+import { chickenParts, putChicken, type ChickenPose } from './chicken'
+import { PersonRig, personParts, type PersonLook } from './person'
+import { cropParts } from './crops'
+import { GROWERS, putEgg } from './plants'
+
+// Every model, in every variant and in the poses it takes in the game, run through the kit's checks (see
+// src/lib/sculpt/check.ts): every piece holds on to the rest, and the model stands on its ground. The gallery shows
+// the findings, the e2e suite (12-models) fails on any, and new models belong here as soon as they exist.
+
+export interface ModelCheck {
+  id: string
+  name: string
+  run(): Issue[]
+}
+
+const cowPoses: [string, CowPose, boolean][] = [
+  ['standing', { phase: 0, stride: 0, graze: 0, tail: 0 }, true],
+  ['grazing', { phase: 0, stride: 0, graze: 1, tail: 1.2, chew: Math.PI / 2 }, true],
+  ['looking round', { phase: 0, stride: 0, graze: 0, tail: -1.4, look: 0.6 }, true],
+  ['mid-stride', { phase: Math.PI / 2, stride: 1, graze: 0, tail: 2 }, false],
+  ['other stride', { phase: (3 * Math.PI) / 2, stride: 1, graze: 0.3, tail: 4 }, false],
+]
+
+const sheepPoses: [string, Omit<SheepPose, 'wool'>, boolean][] = [
+  ['standing', { phase: 0, stride: 0, graze: 0 }, true],
+  ['grazing', { phase: 0, stride: 0, graze: 1, chew: Math.PI / 2 }, true],
+  ['looking round', { phase: 0, stride: 0, graze: 0.2, look: -0.5 }, true],
+  ['mid-stride', { phase: Math.PI / 2, stride: 1, graze: 0 }, false],
+]
+
+const chickenPoses: [string, ChickenPose, boolean][] = [
+  ['standing', { phase: 0, stride: 0, peck: 0 }, true],
+  ['pecking', { phase: 0, stride: 0, peck: 1 }, true],
+  ['half a peck', { phase: 0, stride: 0, peck: 0.5, look: 0.4 }, true],
+  ['looking round', { phase: 0, stride: 0, peck: 0, look: -0.7 }, true],
+  ['mid-stride', { phase: Math.PI / 2, stride: 1, peck: 0 }, false],
+]
+
+const LOOKS: PersonLook[] = [
+  { shirt: '#3f6fb0', trousers: '#2d3340', skin: '#e0b48f', hair: '#3a2a1e', hairStyle: 0, hat: false, height: 1 },
+  { shirt: '#c0504a', trousers: '#5a6b48', skin: '#8d5a3c', hair: '#1c1714', hairStyle: 1, hat: true, height: 0.95 },
+  { shirt: '#e8d9a8', trousers: '#6a4a3a', skin: '#f0cfb0', hair: '#c79a58', hairStyle: 2, hat: false, height: 1.05 },
+]
+
+type PersonPose = (r: PersonRig) => void
+const personPoses: [string, PersonPose, boolean][] = [
+  ['standing', () => {}, true],
+  [
+    'walking',
+    (r) => {
+      r.thighL.rotation.x = -0.5
+      r.thighR.rotation.x = 0.5
+      r.kneeL.rotation.x = 0.6
+      r.armL.rotation.x = 0.4
+      r.armR.rotation.x = -0.4
+    },
+    false,
+  ],
+  [
+    'waving',
+    (r) => {
+      r.armR.rotation.x = -2.7
+      r.armR.rotation.z = -0.6
+      r.elbowR.rotation.x = -0.5
+    },
+    true,
+  ],
+  [
+    'cheering',
+    (r) => {
+      r.armL.rotation.x = -2.6
+      r.armL.rotation.z = 0.25
+      r.elbowL.rotation.x = -0.3
+      r.armR.rotation.x = -2.7
+      r.armR.rotation.z = -0.25
+    },
+    true,
+  ],
+  [
+    'shaking the head',
+    (r) => {
+      r.head.rotation.y = 0.4
+      r.head.rotation.x = 0.25
+    },
+    true,
+  ],
+]
+
+const CROPS: CropId[] = ['lettuce', 'carrot', 'strawberry', 'tomato', 'corn', 'sugarcane', 'wheat', 'pumpkin']
+const STAGES = [0.2, 0.45, 0.7, 0.9, 1]
+
+export const MODEL_CHECKS: ModelCheck[] = [
+  {
+    id: 'cow',
+    name: 'Cows',
+    run() {
+      const parts = cowParts(1)
+      return COATS.flatMap((coat, k) =>
+        cowPoses.flatMap(([pose, p, grounded]) => checkPose(`cow (${coat.name}), ${pose}`, parts, (pp) => putCow(pp, k, 0, 0, 0, p), { ground: grounded ? 0 : undefined })),
+      )
+    },
+  },
+  {
+    id: 'sheep',
+    name: 'Sheep',
+    run() {
+      const parts = sheepParts(1)
+      return [0, 0.5, 1].flatMap((wool) =>
+        FACES.flatMap((_, k) =>
+          sheepPoses.flatMap(([pose, p, grounded]) =>
+            checkPose(`sheep (face ${k + 1}, wool ${wool}), ${pose}`, parts, (pp) => putSheep(pp, k, 0, 0, 0, { ...p, wool }), { ground: grounded ? 0 : undefined }),
+          ),
+        ),
+      )
+    },
+  },
+  {
+    id: 'chickens',
+    name: 'Hens and the rooster',
+    run() {
+      const parts = chickenParts(1)
+      return [false, true].flatMap((rooster) =>
+        chickenPoses.flatMap(([pose, p, grounded]) =>
+          checkPose(`${rooster ? 'rooster' : 'hen'}, ${pose}`, parts, (pp) => putChicken(pp, rooster, 0, 0, 0, 0, p), { ground: grounded ? 0 : undefined }),
+        ),
+      )
+    },
+  },
+  {
+    id: 'people',
+    name: 'People',
+    run() {
+      const parts = personParts(1)
+      return LOOKS.flatMap((look, k) =>
+        personPoses.flatMap(([pose, apply, grounded]) => {
+          const rig = new PersonRig(look)
+          apply(rig)
+          return checkPose(`person ${k + 1}, ${pose}`, parts, (pp) => rig.write(pp), { ground: grounded ? 0 : undefined })
+        }),
+      )
+    },
+  },
+  {
+    id: 'crops',
+    name: 'Crops, lemons and eggs',
+    run() {
+      const parts = cropParts(0.1)
+      const issues = CROPS.flatMap((crop) =>
+        STAGES.flatMap((g) => [0.17, 0.71].flatMap((seed) => checkPose(`${crop} at ${Math.round(g * 100)}% (seed ${seed})`, parts, (pp) => GROWERS[crop](pp, 0, 0, 0, g, seed), { ground: 0, sink: 0.06 }))),
+      )
+      // an egg rests on the floor of the nest
+      for (let k = 0; k < 3; k++) issues.push(...checkPose(`egg ${k + 1}`, parts, (pp) => putEgg(pp, 0, 0, 0, k), { ground: 0, sink: 0.004 }))
+      return issues
+    },
+  },
+]
+
+/** The checks must catch what they are for: a ball with a smaller one a centimetre off its side, the pair two
+ *  centimetres above the ground, has to come back loose and floating. */
+export function checkerSelfTest(): string[] {
+  const ball = ellipsoid(0.1, 0.1, 0.1, 12, 8).place([0, 0.12, 0]).geometry()
+  const loose = ellipsoid(0.03, 0.03, 0.03, 8, 4).place([0.14, 0.12, 0]).geometry()
+  return checkPieces('sample', [...piecesOf('ball', ball), ...piecesOf('loose', loose)], { ground: 0 }).map((i) => i.kind)
+}

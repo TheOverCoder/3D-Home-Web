@@ -11,6 +11,8 @@ import { bedProgress, farm } from './state'
 // the sun's shadow map never has to be redrawn because a lettuce got bigger.
 
 export const SOIL_Y = BED.h - 0.045 // the soil surface in a bed
+/** The top of the straw in the nest box (see the nest box in Garden.tsx): eggs lie on it. */
+const NEST_FLOOR = 0.645
 
 /** Where the plants of a crop stand in a bed (bed-local x along the bed, z across it). */
 const LAYOUT: Record<CropId, [number, number][]> = {
@@ -64,7 +66,7 @@ export function Plants() {
     }
     for (let k = 0; k < farm.eggs; k++) {
       const [ex, ez] = EGG_SPOTS[k]
-      putEgg(parts, NEST.x + ez, 0.655, NEST.z + ex, k)
+      putEgg(parts, NEST.x + ez, NEST_FLOOR, NEST.z + ex, k)
     }
     parts.end()
   })
