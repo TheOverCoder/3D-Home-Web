@@ -58,6 +58,7 @@ function FirstHint() {
 export function Hud() {
   const phase = useHome((s) => s.phase)
   const nearby = useHome((s) => s.nearby)
+  const status = useHome((s) => s.status)
   const carrying = useHome((s) => s.carrying)
   const occupied = useHome(busy)
   const toast = useHome((s) => s.toast)
@@ -89,8 +90,16 @@ export function Hud() {
             {!coarsePointer && <ActionBadge icon={prompt.icon} className="small" />}
             {turn === 'left' && <TurnHint side="left" className="prompt-turn" />}
             <span className="prompt-text">{prompt.label}</span>
+            {!coarsePointer && prompt.hint && <span className="prompt-hint">{prompt.hint}</span>}
             {(turn === 'right' || turn === 'back') && <TurnHint side={turn} className="prompt-turn" />}
           </button>
+        )}
+        {!occupied && status && (!prompt || prompt.icon?.verb === 'guide') && (
+          // nothing to do here: what is on its way, as a line of text (not a button: there is nothing to press)
+          <div className="prompt status" data-verb="wait">
+            <ActionBadge icon={status.icon} className="small" />
+            <span className="prompt-text">{status.label}</span>
+          </div>
         )}
       </div>
 

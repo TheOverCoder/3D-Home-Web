@@ -16,6 +16,7 @@ export interface Settings {
   music: boolean // background music (generated in the browser, nothing is downloaded)
   musicVolume: number // 0..1, under the sound volume
   musicTrack: number
+  vibration: boolean // a short buzz as an action is done (phones that can: Android)
 }
 
 // People who ask their system for less motion get a still camera by default (they can still turn sway on)
@@ -35,6 +36,7 @@ export const DEFAULT_SETTINGS: Settings = {
   music: true,
   musicVolume: 0.5,
   musicTrack: 0,
+  vibration: true,
 }
 
 const KEY = '3d-home:settings:v1'
@@ -75,6 +77,7 @@ const pick = (s: Settings): Settings => ({
   music: s.music,
   musicVolume: s.musicVolume,
   musicTrack: s.musicTrack,
+  vibration: s.vibration,
 })
 
 export const useSettings = create<SettingsStore>()((set, get) => ({

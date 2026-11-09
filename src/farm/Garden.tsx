@@ -8,13 +8,14 @@ import { GARDEN, GATE } from '../data/layout'
 import { debugSet } from '../lib/debug'
 import { playGesture } from '../lib/gestures'
 import { useInteractable } from '../lib/interaction'
+import { playerState } from '../lib/playerState'
 import { boxProject } from '../lib/boxProject'
 import { material, surface } from '../lib/proceduralTextures'
 import { B } from '../scene/Furnishings'
 import { StaticBatch } from '../scene/House'
 import { SHRUB_SPOTS } from '../data/garden'
-import { useHome } from '../store'
-import { BED, BEDS, EXPANSIONS, PATH_X, SHED, STAND, count, cropById } from './data'
+import { busy, useHome } from '../store'
+import { BED, BEDS, CROPS, EXPANSIONS, PATH_X, SHED, STAND, count, cropById, type CropDef } from './data'
 import { Chickens } from './Chickens'
 import { Plants } from './Plants'
 import {
@@ -22,11 +23,12 @@ import {
   bake,
   bedProgress,
   bedStage,
-  buildBed,
+  bedsNear,
   buy,
   declineOffer,
   farm,
   harvest,
+  harvestBeds,
   loomCollect,
   loomLoad,
   loomStage,
@@ -37,6 +39,7 @@ import {
   ovenStage,
   takeOut,
   plant,
+  plantBeds,
   resetFarm,
   sellAll,
   arrivalSeconds,
@@ -52,7 +55,9 @@ import {
   useFarm,
   waiting,
   water,
+  waterBeds,
   yieldOf,
+  type BedStage,
 } from './state'
 import { Cows, herd } from './Cows'
 import { Land } from './Land'
@@ -159,6 +164,18 @@ function plotGeometry(): BufferGeometry {
 let shared: { frame: BufferGeometry; plot: BufferGeometry } | undefined
 const bedGeometries = () => (shared ??= { frame: bedFrameGeometry(), plot: plotGeometry() })
 
+/** The beds near where you stand at `stage`, the one in front of you first: one press does them all. */
+const bedsInReach = (index: number, stage: BedStage) => bedsNear(index, stage, playerState.position.x, playerState.position.z)
+
+/** An empty bed's quick planting: the crop planted last, in as many empty beds within reach as the coins buy. */
+function replant(index: number): { crop: CropDef; beds: number[] } | null {
+  const id = farm.lastCrop
+  if (!id) return null
+  const crop = cropById(id)
+  const n = Math.min(bedsInReach(index, 'empty').length, Math.floor(farm.coins / Math.max(1, crop.seedCost)))
+  return n > 0 ? { crop, beds: bedsInReach(index, 'empty').slice(0, n) } : null
+}
+
 const DRY = new Color('#ffffff')
 const WET = new Color('#7d6e66')
 
@@ -210,22 +227,31 @@ function Bed({ index }: { index: number }) {
     position: [def.x, 0.5, def.z],
     aim: [def.x, 0.42, def.z],
     radius: 2.1,
+    hint: () => (bedStage(index) === 'empty' && replant(index) ? '1–9 other seeds' : undefined),
     label: () => {
       const b = farm.beds[index]
       const stage = bedStage(index)
       if (stage === 'unbought') return `Expand the farm: ${EXPANSIONS[def.expansion!].name} · ${EXPANSIONS[def.expansion!].price} coins`
       if (stage === 'locked') return `Build a bed · ${def.price} coins`
-      if (stage === 'empty') return 'Plant seeds'
+      if (stage === 'empty') {
+        const r = replant(index)
+        if (!r) return 'Plant seeds'
+        const cost = r.crop.seedCost * r.beds.length
+        return `Plant ${r.crop.plural}${r.beds.length > 1 ? ` in ${r.beds.length} beds` : ''} · ${cost} ${cost === 1 ? 'coin' : 'coins'}`
+      }
       const crop = cropById(b.crop!)
-      if (stage === 'thirsty') return `Water the ${crop.plural}`
-      if (stage === 'ripe') return `Harvest ${count(crop.id, yieldOf(crop.id))}`
+      if (stage === 'thirsty' || stage === 'ripe') {
+        const n = bedsInReach(index, stage).length
+        if (n > 1) return `${stage === 'ripe' ? 'Harvest' : 'Water'} ${n} beds`
+        return stage === 'ripe' ? `Harvest ${count(crop.id, yieldOf(crop.id))}` : `Water the ${crop.plural}`
+      }
       return `${crop.plural[0].toUpperCase()}${crop.plural.slice(1)} · ready in ${mmss(crop.growSeconds - b.growth)}`
     },
     icon: () => {
       const stage = bedStage(index)
       const crop = farm.beds[index].crop ?? undefined
       if (stage === 'unbought' || stage === 'locked') return { verb: 'build' }
-      if (stage === 'empty') return { verb: 'plant' }
+      if (stage === 'empty') return { verb: 'plant', item: replant(index)?.crop.id }
       if (stage === 'thirsty') return { verb: 'water', item: crop }
       if (stage === 'ripe') return { verb: 'pick', item: crop }
       return { verb: 'wait', item: crop }
@@ -233,24 +259,22 @@ function Bed({ index }: { index: number }) {
     run: () => {
       const stage = bedStage(index)
       const { pan, near } = placeSound(def.x, def.z)
-      if (stage === 'unbought') {
-        const e = EXPANSIONS[def.expansion!]
-        if (buy(def.expansion!)) {
+      // spending coins only ever asks first (a card with the price and a Build button)
+      if (stage === 'unbought' || stage === 'locked') openPanel({ kind: 'build', bed: index })
+      else if (stage === 'empty') {
+        // the last crop again, in every empty bed within reach; the seed packets (other crops) are the next button
+        const r = replant(index)
+        if (!r) openPanel({ kind: 'seeds', bed: index })
+        else if (plantBeds(r.beds, r.crop.id)) {
           playGesture('interact')
-          farmSound('build', pan, near)
-        } else showToast(`${e.name} cost ${e.price} coins — you have ${farm.coins}`)
-      } else if (stage === 'locked') {
-        if (buildBed(index)) {
-          playGesture('interact')
-          farmSound('build', pan, near)
-        } else showToast(`A new bed costs ${def.price} coins — you have ${farm.coins}`)
-      } else if (stage === 'empty') openPanel({ kind: 'seeds', bed: index })
-      else if (stage === 'thirsty') {
-        water(index)
+          farmSound('plant', pan, near)
+        }
+      } else if (stage === 'thirsty') {
+        waterBeds(bedsInReach(index, 'thirsty'))
         playGesture('interact')
         farmSound('water', pan, near)
       } else if (stage === 'ripe') {
-        harvest(index)
+        harvestBeds(bedsInReach(index, 'ripe'))
         playGesture('interact')
         farmSound('harvest', pan, near)
       } else {
@@ -259,6 +283,19 @@ function Bed({ index }: { index: number }) {
         showToast(`${Math.round(bedProgress(index) * 100)}% grown · ${mmss(crop.growSeconds - b.growth)} to go`)
       }
     },
+  })
+
+  // with the last crop offered in one press, the seed packets for something else are a second button (1–9 on a
+  // keyboard plant a crop straight away: see SeedKeys)
+  useInteractable({
+    id: `farm-bed-${index}-seeds`,
+    position: [def.x, 0.5, def.z],
+    aim: [def.x, 0.42, def.z],
+    radius: 2.1,
+    label: 'Other seeds',
+    icon: { verb: 'plant' },
+    enabled: () => bedStage(index) === 'empty' && replant(index) !== null,
+    run: () => openPanel({ kind: 'seeds', bed: index }),
   })
 
   const { w, d, h } = BED
@@ -521,10 +558,38 @@ function FarmClock() {
 }
 
 /** The kitchen garden in the south yard (see src/farm/data.ts for what grows and where things stand). */
+/** On a keyboard, with an empty bed in front of you: 1–9 plant that crop (the seed packets' order) in every empty
+ *  bed within reach, straight away — E plants the last crop again. */
+function SeedKeys() {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.repeat || !/^[1-9]$/.test(e.key) || e.ctrlKey || e.metaKey || e.altKey) return
+      const s = useHome.getState()
+      if (busy(s)) return
+      const m = /^farm-bed-(\d+)$/.exec(s.nearby?.id ?? '')
+      if (!m) return
+      const index = Number(m[1])
+      const crop = CROPS[Number(e.key) - 1]
+      if (!crop || bedStage(index) !== 'empty') return
+      const beds = bedsInReach(index, 'empty')
+      if (plantBeds(beds, crop.id)) {
+        const def = BEDS[index]
+        const { pan, near } = placeSound(def.x, def.z)
+        playGesture('interact')
+        farmSound('plant', pan, near)
+      } else useHome.getState().showToast(`${crop.plural[0].toUpperCase()}${crop.plural.slice(1)} seeds cost ${crop.seedCost} coins — you have ${farm.coins}`)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+  return null
+}
+
 export function Garden() {
   return (
     <group name="farm">
       <FarmClock />
+      <SeedKeys />
       <StaticBatch>
         <Structures />
       </StaticBatch>

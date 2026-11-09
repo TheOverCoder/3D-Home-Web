@@ -93,6 +93,11 @@ const GLYPHS: Record<Verb, ReactNode> = {
       <path d="M12 7.5V12l3 2" />
     </>
   ),
+  guide: (
+    <>
+      <path d="M12 2.8 19.5 20 12 16.2 4.5 20Z" />
+    </>
+  ),
   drop: (
     <>
       <path d="M12 3.5v11" />

@@ -1,11 +1,13 @@
 import { useEffect, useRef } from 'react'
 import { insideHouse, roomAt } from '../data/layout'
+import { useSettings } from '../settings'
 import { busy, useHome, type Nearby } from '../store'
+import { canVibrate, coarsePointer } from './device'
 import { look, turnTowards } from './look'
 import { playerState, type Point3 } from './playerState'
 
 /** What an action does — drawn as a glyph on the action button. */
-export type Verb = 'pick' | 'water' | 'plant' | 'shear' | 'sell' | 'build' | 'make' | 'shop' | 'switch' | 'door' | 'watch' | 'wait' | 'drop'
+export type Verb = 'pick' | 'water' | 'plant' | 'shear' | 'sell' | 'build' | 'make' | 'shop' | 'switch' | 'door' | 'watch' | 'wait' | 'drop' | 'guide'
 
 /** The action button's picture: a verb glyph, and (optionally) a small picture of the thing itself, by farm icon id. */
 export interface ActionIcon {
@@ -16,8 +18,11 @@ export interface ActionIcon {
 export interface InteractableDef {
   id: string
   label: string | (() => string)
-  /** 'wait' marks something that only tells you how long — never offered unless you look right at it */
+  /** 'wait' marks something that only tells you how long: never an action (it is shown as a status instead);
+   *  'build' spends coins: offered after anything else in reach, and its run only asks (a confirmation panel) */
   icon?: ActionIcon | (() => ActionIcon)
+  /** a keyboard shortcut that goes with it, shown beside the label on a computer ("1–9 other seeds") */
+  hint?: () => string | undefined
   position: Point3 // where you must stand near
   aim?: Point3 // what you look at in first person (defaults to `position`)
   radius: number
@@ -52,7 +57,12 @@ const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a))
  * Among the things within reach (not looked at), what you most likely came for: something ready to take first,
  * then what needs looking after, then the rest; spending coins (building, buying land) last.
  */
-const RANK: Record<Verb, number> = { pick: 0, shear: 0, water: 1, sell: 1, make: 2, plant: 2, watch: 3, switch: 3, door: 3, shop: 3, drop: 3, build: 4, wait: 5 }
+const RANK: Record<Verb, number> = { pick: 0, shear: 0, water: 1, sell: 1, make: 2, plant: 2, watch: 3, switch: 3, door: 3, shop: 3, drop: 3, build: 4, wait: 5, guide: 6 }
+
+/** Only tells you how long: shown, never pressed. */
+const isInfo = (c: Candidate) => c.icon?.verb === 'wait'
+/** Spends coins: never ahead of something you can do here. */
+const isSpend = (c: Candidate) => c.icon?.verb === 'build'
 
 /** Indoors only what is in the same room is within reach (not the lamp behind the wall); outdoors only what is outdoors. */
 function sameSpace(p: Point3, here: string) {
@@ -72,6 +82,8 @@ interface Candidate {
 function describe(c: Candidate, reach: boolean, view?: ViewRay): Nearby {
   const out: Nearby = { id: c.def.id, label: labelOf(c.def) }
   if (c.icon) out.icon = c.icon
+  const hint = c.def.hint?.()
+  if (hint) out.hint = hint
   if (reach) out.reach = true
   if (view) {
     const a = c.def.aim ?? c.def.position
@@ -88,6 +100,10 @@ function describe(c: Candidate, reach: boolean, view?: ViewRay): Nearby {
  * can do from where you stand (using it turns you towards it). The rest are other things within reach, for the
  * touch screen's smaller action buttons. Third person: the nearest first. `reach: false` (while carrying
  * something) keeps it to what you look at, so E with nothing in view still puts the thing down.
+ *
+ * Never on offer: what only tells you how long (a growing bed, a working mill — see findStatus). Never first
+ * while there is anything else to do here: spending coins (a bed to build, a field to buy), so the button you
+ * press to water is never the one that buys.
  */
 export function findActions(from: Point3, view?: ViewRay, opts: { reach?: boolean; max?: number } = {}): Nearby[] {
   const max = opts.max ?? 3
@@ -114,23 +130,102 @@ export function findActions(from: Point3, view?: ViewRay, opts: { reach?: boolea
       score = (1 - cos) * 10 + d * 0.1
     }
     const c = { def, d, icon }
+    if (isInfo(c)) continue
     if (inCone && score < aimedScore) {
       aimed = c
       aimedScore = score
     }
-    if (icon?.verb !== 'wait' && sameSpace(def.position, here)) near.push(c)
+    if (sameSpace(def.position, here)) near.push(c)
   }
   const rank = (c: Candidate) => RANK[c.icon?.verb ?? 'pick'] * 10 + c.d
   near.sort((a, b) => rank(a) - rank(b))
+  // a thing to buy in view gives way to something to do within reach
+  if (aimed && isSpend(aimed) && reach && near.some((c) => !isSpend(c))) aimed = null
   const out: Nearby[] = []
-  if (aimed) out.push(describe(aimed, false, view))
+  // one press can do several things at once (every ripe bed within reach): they all offer the same, once is enough
+  const seen = new Set<string>()
+  const key = (n: Nearby) => `${n.label}|${n.icon?.verb}|${n.icon?.item}`
+  if (aimed) {
+    const first = describe(aimed, false, view)
+    out.push(first)
+    seen.add(key(first))
+  }
   if (!reach) return out
   for (const c of near) {
     if (out.length >= max) break
     if (c.def === aimed?.def) continue
-    out.push(describe(c, !!view, view))
+    const n = describe(c, !!view, view)
+    if (seen.has(key(n))) continue
+    seen.add(key(n))
+    out.push(n)
   }
   return out
+}
+
+/**
+ * When there is nothing to do here, what is on its way: the thing you look at that only tells you how long (a
+ * growing bed, the oven baking), or else the nearest such thing within reach — shown as a status, not a button.
+ */
+export function findStatus(from: Point3, view?: ViewRay): Nearby | null {
+  const here = insideHouse(from.x, from.z) ? (roomAt(from.x, from.z) ?? 'house') : 'out'
+  let best: { def: InteractableDef; score: number } | null = null
+  for (const def of registry.values()) {
+    if (def.enabled && !def.enabled()) continue
+    const d = Math.hypot(def.position.x - from.x, def.position.y - from.y, def.position.z - from.z)
+    if (d > def.radius || !sameSpace(def.position, here) || iconOf(def)?.verb !== 'wait') continue
+    let score = d
+    if (view) {
+      const a = def.aim ?? def.position
+      const vx = a.x - view.origin.x
+      const vy = a.y - view.origin.y
+      const vz = a.z - view.origin.z
+      const cos = (vx * view.dir.x + vy * view.dir.y + vz * view.dir.z) / (Math.hypot(vx, vy, vz) || 1e-6)
+      if (cos >= AIM_COS) score -= 100 // looked at: that one
+    }
+    if (!best || score < best.score) best = { def, score }
+  }
+  return best ? { id: best.def.id, label: labelOf(best.def), icon: iconOf(best.def) } : null
+}
+
+/** A job on the farm: something that can be done right now, wherever it is. */
+export interface Job {
+  id: string
+  label: string
+  icon: ActionIcon
+  at: Point3
+  d: number
+}
+
+/** What counts as a job: ready to take, wanting water or shearing, buyers waiting, an empty bed to plant again. */
+const isJob = (icon: ActionIcon | undefined) => !!icon && (icon.verb === 'pick' || icon.verb === 'shear' || icon.verb === 'water' || icon.verb === 'sell' || (icon.verb === 'plant' && !!icon.item))
+
+/** Everything on the farm that can be done right now, nearest first (one per thing: several ripe beds side by side
+ *  are one job). */
+export function findJobs(from: Point3): Job[] {
+  const out: Job[] = []
+  const seen = new Set<string>()
+  for (const def of registry.values()) {
+    if (!def.id.startsWith('farm-') || (def.enabled && !def.enabled())) continue
+    const icon = iconOf(def)
+    if (!isJob(icon)) continue
+    const label = labelOf(def)
+    const key = `${label}|${icon!.verb}|${icon!.item}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    const at = def.aim ?? def.position
+    out.push({ id: def.id, label, icon: icon!, at, d: Math.hypot(def.position.x - from.x, def.position.z - from.z) })
+  }
+  return out.sort((a, b) => a.d - b.d)
+}
+
+/** The offer that stands in when there is nothing to do here: the nearest job elsewhere ("Next: …"); pressing it
+ *  turns you to face it and marks it until you get there. */
+export const GUIDE = 'guide:'
+export const guideOffer = (job: Job): Nearby => ({ id: GUIDE + job.id, label: `Next: ${job.label}`, icon: { verb: 'guide', item: job.icon.item } })
+
+/** A short buzz as something is done, where the phone can and the player has not turned it off. */
+function buzz() {
+  if (coarsePointer && canVibrate && useSettings.getState().vibration) navigator.vibrate(12)
 }
 
 /** The single thing to offer (kept for callers that only need one). */
@@ -162,11 +257,21 @@ export function triggerInteraction(id?: string) {
   // the offer is refreshed a few times a second: it can still name something that just went away
   // (the item you picked up) or was switched off — then E falls through to dropping what you carry
   const offer = id === undefined ? nearby : actions.find((a) => a.id === id)
+  if (offer?.id.startsWith(GUIDE)) {
+    const target = registry.get(offer.id.slice(GUIDE.length))
+    if (target) {
+      turnTowards({ x: playerState.position.x, y: playerState.eye.y, z: playerState.position.z }, target.aim ?? target.position)
+      useHome.getState().setGuide(target.id)
+    }
+    return
+  }
   const def = offer ? registry.get(offer.id) : undefined
   if (offer && def && (!def.enabled || def.enabled())) {
     // turn from where the body stands (the same place the offer was worked out from), at eye height
     if (offer.reach && state.view === 'first') turnTowards({ x: playerState.position.x, y: playerState.eye.y, z: playerState.position.z }, def.aim ?? def.position)
+    const job = isJob(iconOf(def)) // (asked before it runs: after watering, the bed only says how long)
     def.run()
+    if (job) buzz()
     return
   }
   if (id === undefined && carrying) drop(dropPosition())
@@ -200,6 +305,7 @@ export function useInteractable(
           }
         : undefined,
       enabled: () => latest.current.enabled?.() ?? true,
+      hint: () => latest.current.hint?.(),
       run: () => latest.current.run(),
     }
     return registerInteractable(entry)

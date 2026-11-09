@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { coarsePointer } from '../lib/device'
+import { canVibrate, coarsePointer } from '../lib/device'
 import { collectDiagnostics } from '../lib/diagnostics'
 import { DEFAULT_SETTINGS, useSettings, type Settings } from '../settings'
 import { useHome } from '../store'
@@ -195,6 +195,11 @@ export function SettingsPanel() {
                 <Toggle id="set-music" label="Music" checked={settings.music} onChange={(music) => update({ music })} />
               </Row>
               <MusicPlayer compact />
+              {coarsePointer && canVibrate && (
+                <Row label="Vibration" hint="A short buzz as you harvest, water or plant">
+                  <Toggle id="set-vibration" label="Vibration" checked={settings.vibration} onChange={(vibration) => update({ vibration })} />
+                </Row>
+              )}
             </section>
 
             <section>

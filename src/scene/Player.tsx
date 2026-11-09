@@ -14,7 +14,7 @@ import { debugSet } from '../lib/debug'
 import { coarsePointer } from '../lib/device'
 import { focus } from '../lib/focus'
 import { playGesture } from '../lib/gestures'
-import { findActions, triggerInteraction, type ViewRay } from '../lib/interaction'
+import { findActions, findJobs, findStatus, guideOffer, triggerInteraction, type ViewRay } from '../lib/interaction'
 import { addLook, look, look as lookState, stepTurn, stopTurn } from '../lib/look'
 import { resume } from '../lib/startup'
 import { playerState } from '../lib/playerState'
@@ -23,6 +23,7 @@ import { busy, useHome, type Nearby } from '../store'
 import { landBounds } from '../farm/layout'
 import { farm } from '../farm/state'
 import { AimMarker } from './AimMarker'
+import { GuideMarker } from './GuideMarker'
 import { gardenDoor } from './GardenDoor'
 import { Avatar, HeldItem } from './Avatar'
 
@@ -61,7 +62,7 @@ const floorAt = (x: number, z: number): FloorKind => {
 const CLEAR = HOUSE.wallThickness / 2 + 0.1 // eyes stay this far from a wall's centre line
 const DOOR_HALF = GARDEN_DOOR.width / 2 - 0.1 // the garden door's opening, less the jambs
 
-const actionsKey = (list: Nearby[]) => list.map((a) => `${a.id}|${a.label}|${a.icon?.verb}|${a.icon?.item}|${a.reach}|${a.side}`).join('\n')
+const actionsKey = (list: Nearby[]) => list.map((a) => `${a.id}|${a.label}|${a.icon?.verb}|${a.icon?.item}|${a.reach}|${a.side}|${a.hint}`).join('\n')
 
 /**
  * Never let the eyes enter a wall or rise through the ceiling — inside, outside, and in between: the only way
@@ -705,8 +706,18 @@ export function Player() {
       view = { origin: camera.position, dir: aim }
     }
     // what you look at first; then (touch buttons, or when you look at nothing) whatever is within reach
-    const next = findActions({ x: pos.x, y: pos.y + 0.1, z: pos.z }, view, { reach: !state.carrying })
-    if (actionsKey(next) !== actionsKey(state.actions)) state.setActions(next)
+    const from = { x: pos.x, y: pos.y + 0.1, z: pos.z }
+    let next = findActions(from, view, { reach: !state.carrying })
+    // with nothing to do here, what is on its way (shown, not pressed), and on the farm the nearest job elsewhere
+    // in the button's place ("Next: …": it turns you to it)
+    const status = next.length || state.carrying ? null : findStatus(from, view)
+    if (!next.length && !state.carrying && outdoors) {
+      const job = findJobs(from)[0]
+      if (job) next = [guideOffer(job)]
+    }
+    // the job pointed to is reached: its mark goes
+    if (state.guide && (next.some((a) => a.id === state.guide!.id) || performance.now() - state.guide.at > 12000)) state.setGuide(null)
+    if (actionsKey(next) !== actionsKey(state.actions) || actionsKey(status ? [status] : []) !== actionsKey(state.status ? [state.status] : [])) state.setActions(next, status)
   })
 
   return (
@@ -741,6 +752,7 @@ export function Player() {
       </Ecctrl>
       <HeldItem />
       <AimMarker />
+      <GuideMarker />
       <CameraRig ecctrl={ecctrl} feet={feet} />
       <LookInput />
     </>

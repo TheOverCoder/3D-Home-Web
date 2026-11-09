@@ -1,15 +1,18 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { farmSound, placeSound, uiClick } from '../audio/sound'
 import { coarsePointer } from '../lib/device'
 import { playGesture } from '../lib/gestures'
+import { playerState } from '../lib/playerState'
 import { useHome } from '../store'
-import { BEDS, CROPS, MILL, MILLABLE, OVEN, PRODUCE, RECIPES, UPGRADES, arrivalEvery, count, produceById, queuePlaces, type CropId, type MillInput, type ProduceId } from './data'
+import { BEDS, CROPS, EXPANSIONS, MILL, MILLABLE, OVEN, PRODUCE, RECIPES, UPGRADES, arrivalEvery, count, produceById, queuePlaces, type CropId, type MillInput, type ProduceId } from './data'
 import { EditButton, EditPanel } from './EditPanel'
 import { iconUrl } from './icons'
 import {
   acceptOffer,
   arrivalSeconds,
   bake,
+  bedsNear,
+  buildBed,
   buy,
   canBake,
   canSell,
@@ -21,7 +24,7 @@ import {
   millLoad,
   owned,
   placesInLine,
-  plant,
+  plantBeds,
   sellAll,
   sellAllPreview,
   upgradeLevel,
@@ -121,8 +124,10 @@ const Coins = ({ n }: { n: number }) => (
 function SeedsPanel({ bed }: { bed: number }) {
   useFarm((s) => s.rev)
   const close = useHome((s) => s.closePanel)
+  // every empty bed within reach gets the same seeds (as far as the coins go)
+  const beds = useMemo(() => bedsNear(bed, 'empty', playerState.position.x, playerState.position.z), [bed])
   const choose = (crop: CropId) => {
-    if (!plant(bed, crop)) return
+    if (!plantBeds(beds, crop)) return
     const def = BEDS[bed]
     const { pan, near } = placeSound(def.x, def.z)
     farmSound('plant', pan, near)
@@ -138,7 +143,7 @@ function SeedsPanel({ bed }: { bed: number }) {
     return () => window.removeEventListener('keydown', onKey)
   })
   return (
-    <Shell title="Plant seeds" sub={<>Seeds are bought as you plant · you have <Coins n={farm.coins} /></>} onClose={close}>
+    <Shell title={beds.length > 1 ? `Plant ${beds.length} beds` : 'Plant seeds'} sub={<>Seeds are bought as you plant{beds.length > 1 ? ', for each bed' : ''} · you have <Coins n={farm.coins} /></>} onClose={close}>
       <div className="farm-grid">
         {CROPS.map((c, i) => {
           const afford = farm.coins >= c.seedCost
@@ -161,6 +166,56 @@ function SeedsPanel({ bed }: { bed: number }) {
         })}
       </div>
       <p className="farm-hint">Water them when the bed asks for it. Buyers come to the gate for what you grow.</p>
+    </Shell>
+  )
+}
+
+/** How long a confirm button waits before it can be pressed: a second tap of the button that opened the card (a
+ *  double tap, a key held down) lands on nothing. */
+const ARM_MS = 450
+
+/** Spending coins on the farm itself (a bed, a field) always asks first: what it is, what it costs, what you have,
+ *  and a Build button that only arms after a moment — never on the button you press to water or harvest. */
+function BuildPanel({ bed }: { bed: number }) {
+  useFarm((s) => s.rev)
+  const close = useHome((s) => s.closePanel)
+  const [armed, setArmed] = useState(false)
+  useEffect(() => {
+    const t = setTimeout(() => setArmed(true), ARM_MS)
+    return () => clearTimeout(t)
+  }, [])
+  const def = BEDS[bed]
+  const field = def.expansion ? EXPANSIONS[def.expansion] : null
+  const title = field ? field.name : 'A new bed'
+  const blurb = field ? field.blurb : 'One more raised bed to plant in.'
+  const price = field ? field.price : (def.price ?? 0)
+  const afford = farm.coins >= price
+  const confirm = () => {
+    if (!armed || !afford) return
+    const ok = def.expansion ? buy(def.expansion) : buildBed(bed)
+    if (!ok) return
+    const { pan, near } = placeSound(def.x, def.z)
+    farmSound('build', pan, near)
+    playGesture('interact')
+    close()
+  }
+  return (
+    <Shell title={title} sub={<>You have <Coins n={farm.coins} /></>} onClose={close}>
+      <p className="farm-hint">{blurb}</p>
+      <div className="farm-confirm">
+        <button className="farm-secondary" onClick={close}>
+          Not now
+        </button>
+        <button className={`primary farm-buy${armed ? '' : ' arming'}`} disabled={!afford} aria-disabled={!armed} onClick={confirm}>
+          {afford ? (
+            <>
+              Build · <Coins n={price} />
+            </>
+          ) : (
+            <>{price - farm.coins} more coins needed</>
+          )}
+        </button>
+      </div>
     </Shell>
   )
 }
@@ -455,6 +510,7 @@ export function FarmUI() {
       <EditButton />
       <EditPanel />
       {panel?.kind === 'seeds' && <SeedsPanel bed={panel.bed} />}
+      {panel?.kind === 'build' && <BuildPanel bed={panel.bed} />}
       {panel?.kind === 'queue' && <QueuePanel />}
       {panel?.kind === 'basket' && <BasketPanel />}
       {panel?.kind === 'shop' && <ShopPanel />}

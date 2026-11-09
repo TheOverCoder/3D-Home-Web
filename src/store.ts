@@ -17,6 +17,7 @@ export interface Nearby {
   icon?: ActionIcon
   reach?: boolean // offered for being within reach, not for being looked at: using it turns you towards it
   side?: 'ahead' | 'left' | 'right' | 'back' // where it is, seen from where you look (first person)
+  hint?: string // a keyboard shortcut that goes with it (shown on a computer)
 }
 
 /** Why the 3D scene could not start: what to tell the player, and the technical detail for "Copy details". */
@@ -27,7 +28,7 @@ export interface Failure {
 }
 
 /** A small game panel over the scene (seed packets, a buyer's offer, the farm shop, the mill, the oven). */
-export type Panel = { kind: 'seeds'; bed: number } | { kind: 'queue' } | { kind: 'shop' } | { kind: 'mill' } | { kind: 'oven' } | { kind: 'basket' }
+export type Panel = { kind: 'seeds'; bed: number } | { kind: 'build'; bed: number } | { kind: 'queue' } | { kind: 'shop' } | { kind: 'mill' } | { kind: 'oven' } | { kind: 'basket' }
 
 interface HomeState {
   phase: 'intro' | 'playing'
@@ -42,6 +43,8 @@ interface HomeState {
   outdoors: boolean // in the garden
   nearby: Nearby | null // the action E (or the big touch button) runs
   actions: Nearby[] // everything on offer, `nearby` first
+  status: Nearby | null // nothing to do here: what is on its way (a growing bed, the oven baking) — shown, not pressed
+  guide: { id: string; at: number } | null // the job "Next: …" pointed to: marked in the world until you get there
   screen: string | null
   panel: Panel | null
   editing: boolean // the farm's edit mode: the view from above, moving things, buying land
@@ -62,7 +65,8 @@ interface HomeState {
   markHintShown: () => void
   setRoom: (room: RoomId | null) => void
   setOutdoors: (outdoors: boolean) => void
-  setActions: (actions: Nearby[]) => void
+  setActions: (actions: Nearby[], status?: Nearby | null) => void
+  setGuide: (id: string | null) => void
   openScreen: (id: string) => void
   closeScreen: () => void
   openPanel: (panel: Panel) => void
@@ -92,6 +96,8 @@ export const useHome = create<HomeState>()((set, get) => ({
   outdoors: false,
   nearby: null,
   actions: [],
+  status: null,
+  guide: null,
   screen: null,
   panel: null,
   editing: false,
@@ -107,20 +113,21 @@ export const useHome = create<HomeState>()((set, get) => ({
   markReady: (key) => set((s) => (s.ready[key] ? s : { ready: { ...s.ready, [key]: true } })),
   setFailure: (failure) => set({ failure }),
   setView: (view) => set({ view }),
-  setSettingsOpen: (settingsOpen) => set(settingsOpen ? { settingsOpen, nearby: null, actions: [] } : { settingsOpen }),
+  setSettingsOpen: (settingsOpen) => set(settingsOpen ? { settingsOpen, nearby: null, actions: [], status: null } : { settingsOpen }),
   markHintShown: () => set({ hintShown: true }),
   setRoom: (room) => set({ room }),
   setOutdoors: (outdoors) => set({ outdoors }),
-  setActions: (actions) => set({ actions, nearby: actions[0] ?? null }),
-  openScreen: (screen) => set({ screen, nearby: null, actions: [] }),
+  setActions: (actions, status = null) => set({ actions, nearby: actions[0] ?? null, status }),
+  setGuide: (id) => set({ guide: id ? { id, at: performance.now() } : null }),
+  openScreen: (screen) => set({ screen, nearby: null, actions: [], status: null }),
   closeScreen: () => set({ screen: null }),
-  openPanel: (panel) => set({ panel, nearby: null, actions: [] }),
+  openPanel: (panel) => set({ panel, nearby: null, actions: [], status: null }),
   closePanel: () => set({ panel: null }),
-  setEditing: (editing) => set(editing ? { editing, panel: null, nearby: null, actions: [] } : { editing }),
+  setEditing: (editing) => set(editing ? { editing, panel: null, nearby: null, actions: [], status: null } : { editing }),
   toggleLamp: (id) => set((s) => ({ lamps: { ...s.lamps, [id]: !s.lamps[id] } })),
   toggleDoor: (id) => set((s) => ({ doors: { ...s.doors, [id]: !s.doors[id] } })),
   // the item leaves the registry with its body: forget it as the aimed thing right away, so E drops it next
-  pickUp: (id) => set({ carrying: id, nearby: null, actions: [] }),
+  pickUp: (id) => set({ carrying: id, nearby: null, actions: [], status: null }),
   drop: (pos) => {
     const id = get().carrying
     if (!id) return

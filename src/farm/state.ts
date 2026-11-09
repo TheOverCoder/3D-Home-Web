@@ -126,6 +126,7 @@ export interface FarmData {
   paceLevel: number // how much sooner the next buyer comes
   started: boolean // the player has planted something: from then on buyers come by
   planted: CropId[] // kinds ever planted: buyers ask for what you grow
+  lastCrop: CropId | null // what was planted last: an empty bed offers it again in one press
   made: ProduceId[] // everything the farm has ever produced: buyers ask for that too
   stats: { harvested: number; sold: number; earned: number; declined: number; baked: number }
   visitors: Visitor[]
@@ -183,6 +184,7 @@ function fresh(): FarmData {
     paceLevel: 0,
     started: false,
     planted: [],
+    lastCrop: null,
     made: [],
     stats: { harvested: 0, sold: 0, earned: 0, declined: 0, baked: 0 },
     visitors: [],
@@ -292,6 +294,7 @@ function load(text: string | null = readRaw(KEY)): { data: FarmData; savedAt: nu
     data.compost = !!raw.compost
     data.started = !!raw.started
     data.planted = Array.isArray(raw.planted) ? raw.planted.filter((c): c is CropId => CROPS.some((d) => d.id === c)) : []
+    data.lastCrop = CROPS.some((d) => d.id === raw.lastCrop) ? (raw.lastCrop as CropId) : null
     data.made = Array.isArray(raw.made) ? raw.made.filter(isProduce) : []
     data.stats = { ...data.stats, ...(raw.stats ?? {}) }
     // a farm from before the layout keeps everything where it always stood
@@ -367,6 +370,18 @@ export function bedStage(i: number): BedStage {
   return 'growing'
 }
 
+/** How far a bed's middle may be from you to be done along with the one in front of you. */
+export const BATCH_REACH = 2.4
+
+/** The beds near (x, z) at `stage`, the given one first: one press harvests, waters or plants them all. */
+export function bedsNear(index: number, stage: BedStage, x: number, z: number): number[] {
+  const out = [index]
+  BEDS.forEach((b, i) => {
+    if (i !== index && bedStage(i) === stage && Math.hypot(b.x - x, b.z - z) <= BATCH_REACH) out.push(i)
+  })
+  return out
+}
+
 /** 0 … 1 */
 export const bedProgress = (i: number) => {
   const b = farm.beds[i]
@@ -386,10 +401,19 @@ export function plant(i: number, crop: CropId) {
   b.growth = 0
   b.water = fullWater(crop) // seeds go in with a good soak
   farm.started = true
+  farm.lastCrop = crop
   if (!farm.planted.includes(crop)) farm.planted.push(crop)
   bump()
   save()
   return true
+}
+
+/** Plants a crop in each of these beds that is empty, as far as the coins go (seeds are bought as they go in):
+ *  how many were planted. */
+export function plantBeds(beds: number[], crop: CropId) {
+  let n = 0
+  for (const i of beds) if (plant(i, crop)) n++
+  return n
 }
 
 export function water(i: number) {
@@ -402,18 +426,36 @@ export function water(i: number) {
 }
 
 export function harvest(i: number) {
-  const b = farm.beds[i]
-  if (!b?.crop || bedStage(i) !== 'ripe') return 0
-  const n = yieldOf(b.crop)
-  gain(b.crop, n)
-  farm.stats.harvested += n
-  const crop = b.crop
-  b.crop = null
-  b.growth = 0
-  b.water = 0
-  toast(`+ ${count(crop, n)}`)
+  return harvestBeds([i])
+}
+
+/** Harvests every ripe bed of these (what is within reach, in one go): one toast for all of it. */
+export function harvestBeds(beds: number[]) {
+  const got = new Map<CropId, number>()
+  let total = 0
+  for (const i of beds) {
+    const b = farm.beds[i]
+    if (!b?.crop || bedStage(i) !== 'ripe') continue
+    const n = yieldOf(b.crop)
+    gain(b.crop, n)
+    farm.stats.harvested += n
+    got.set(b.crop, (got.get(b.crop) ?? 0) + n)
+    total += n
+    b.crop = null
+    b.growth = 0
+    b.water = 0
+  }
+  if (!total) return 0
+  toast(`+ ${[...got].map(([crop, n]) => count(crop, n)).join(', ')}`)
   bump()
   save()
+  return total
+}
+
+/** Waters every bed of these that has something growing (what is within reach, in one go). */
+export function waterBeds(beds: number[]) {
+  let n = 0
+  for (const i of beds) if (water(i)) n++
   return n
 }
 

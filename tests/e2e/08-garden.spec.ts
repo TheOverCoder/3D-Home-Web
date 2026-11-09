@@ -28,10 +28,15 @@ test.describe('garden', () => {
     expect(await page.evaluate(() => (window as any).__home.camera.position.z)).toBeGreaterThan(6.5)
   })
 
-  test('a bed from seed to harvest: plant with E and a number key, water when it asks, harvest when ripe', async ({ game }) => {
+  test('beds from seed to harvest: what is in reach is done in one press; a growing bed is a status, not an action', async ({ game }) => {
     await game.ready()
     const { page } = game
-    await page.evaluate(() => (window as any).__home.farm.reset())
+    await page.evaluate(() => {
+      const f = (window as any).__home.farm
+      f.reset()
+      f.state.lemons = 0
+      f.state.eggs = 0
+    })
     const coins0 = (await farm(game)).coins
     // on the path, facing the first bed on the west side, looking down at the soil
     await game.teleport(-1.2, 1.4, 9.0, Math.PI / 2, -0.6)
@@ -39,22 +44,52 @@ test.describe('garden', () => {
     expect(await label(game)).toBe('Plant seeds')
     await page.keyboard.press('KeyE')
     await until(game, () => (window as any).__home.useHome.getState().panel?.kind === 'seeds')
-    await page.keyboard.press('Digit1') // lettuce
+    await page.keyboard.press('Digit1') // lettuce, in every empty bed within reach
     await until(game, () => (window as any).__home.useHome.getState().panel === null && (window as any).__home.farm.state.beds[0].crop === 'lettuce')
-    expect((await farm(game)).coins).toBe(coins0 - 2)
+    const planted = ((await farm(game)).beds as { crop: string | null }[]).flatMap((b, i) => (b.crop === 'lettuce' ? [i] : []))
+    expect(planted.length).toBeGreaterThan(1)
+    expect((await farm(game)).coins).toBe(coins0 - 2 * planted.length)
 
-    // the soil dries out before the lettuce is ready: the bed asks for water and growth stops
+    // growing: nothing to press here — the bed shows how long as a status; with eggs in the nest there is a job
+    // elsewhere, and the button offers the nearest one ("Next: …"): pressing it marks it and turns you to it
+    await page.evaluate(() => ((window as any).__home.farm.state.eggs = 2))
+    await until(game, () => {
+      const s = (window as any).__home.useHome.getState()
+      return /ready in/.test(s.status?.label ?? '') && s.nearby?.icon?.verb === 'guide'
+    })
+    expect(await page.evaluate(() => (window as any).__home.useHome.getState().actions.some((a: any) => a.id.startsWith('farm-bed-')))).toBe(false)
+    const next = await page.evaluate(() => (window as any).__home.useHome.getState().nearby.id.replace('guide:', '') as string)
+    await page.keyboard.press('KeyE')
+    await page.waitForFunction((id) => (window as any).__home.useHome.getState().guide?.id === id, next, { timeout: 30_000, polling: 200 })
+    await page.evaluate(() => ((window as any).__home.farm.state.eggs = 0))
+    await game.teleport(-1.2, 1.4, 9.0, Math.PI / 2, -0.6)
+
+    // the soil dries out before the lettuce is ready: the beds ask for water, all watered in one press
     await page.evaluate(() => (window as any).__home.farm.tick(30))
     await until(game, () => (window as any).__home.farm.bedStage(0) === 'thirsty')
-    await until(game, () => /^Water the lettuces/.test((window as any).__home.useHome.getState().nearby?.label ?? ''))
+    await until(game, () => /^Water/.test((window as any).__home.useHome.getState().nearby?.label ?? ''))
     await page.keyboard.press('KeyE')
-    await until(game, () => (window as any).__home.farm.bedStage(0) === 'growing')
+    await page.waitForFunction((beds) => beds.every((i: number) => (window as any).__home.farm.bedStage(i) === 'growing'), planted, { timeout: 30_000, polling: 200 })
 
+    // ripe: harvested together, then the empty beds offer the same seeds again in one press
     await page.evaluate(() => (window as any).__home.farm.tick(30))
-    await until(game, () => /^Harvest 4 lettuces/.test((window as any).__home.useHome.getState().nearby?.label ?? ''))
+    await until(game, () => /^Harvest/.test((window as any).__home.useHome.getState().nearby?.label ?? ''))
+    expect(await label(game)).toBe(`Harvest ${planted.length} beds`)
     await page.keyboard.press('KeyE')
-    await until(game, () => (window as any).__home.farm.state.inv.lettuce === 4)
+    await page.waitForFunction((n) => (window as any).__home.farm.state.inv.lettuce === 4 * n, planted.length, { timeout: 30_000, polling: 200 })
     expect((await farm(game)).beds[0].crop).toBeNull()
+    await until(game, () => /^Plant lettuces/.test((window as any).__home.useHome.getState().nearby?.label ?? ''))
+    const coins1 = (await farm(game)).coins
+    await page.keyboard.press('KeyE')
+    await until(game, () => (window as any).__home.farm.state.beds[0].crop === 'lettuce')
+    expect((await farm(game)).coins).toBe(coins1 - 2 * planted.length)
+    // a number key plants another crop straight away
+    await page.evaluate(() => (window as any).__home.farm.state.beds.forEach((b: any) => b.crop && (b.growth = 1e6)))
+    await until(game, () => /^Harvest/.test((window as any).__home.useHome.getState().nearby?.label ?? ''))
+    await page.keyboard.press('KeyE')
+    await until(game, () => (window as any).__home.farm.state.beds[0].crop === null)
+    await page.keyboard.press('Digit2')
+    await until(game, () => (window as any).__home.farm.state.beds[0].crop === 'carrot')
   })
 
   test('buyers queue at the gate: Enter sells to the first you can, N sends the first away and someone new comes', async ({ game }) => {
@@ -115,9 +150,15 @@ test.describe('garden', () => {
     await game.teleport(-1.2, 1.4, 11.6, -Math.PI / 2, -0.6)
     await nearbyIs(game, 'farm-bed-5')
     expect(await label(game)).toBe('Build a bed · 30 coins')
+    // E only asks: a card with the price; nothing is spent until its Build button is pressed
     await page.keyboard.press('KeyE')
+    await until(game, () => (window as any).__home.useHome.getState().panel?.kind === 'build')
+    await page.keyboard.press('KeyE')
+    expect((await farm(game)).coins).toBe(40)
+    await page.locator('.farm-buy:not(.arming)').click() // armed a moment after the card opens
     await until(game, () => (window as any).__home.farm.state.beds[5].built === true)
     expect((await farm(game)).coins).toBe(10)
+    expect(await page.evaluate(() => (window as any).__home.useHome.getState().panel)).toBeNull()
     // saved a moment later
     await until(game, () => {
       try {

@@ -198,7 +198,9 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-
   bottom: max(72px, env(safe-area-inset-bottom));
   z-index: 10;
   display: flex;
-  justify-content: center;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 6px;
   pointer-events: none;
 }
 .prompt {
@@ -215,6 +217,8 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-
   animation: rise 0.18s ease-out;
 }
 .prompt kbd { background: var(--accent); color: #1a1206; border-color: transparent; }
+.prompt-hint { font-size: 12px; font-weight: 500; color: var(--muted); padding-left: 4px; border-left: 1px solid var(--line); }
+.prompt.status { pointer-events: none; border-color: var(--line); color: var(--muted); font-weight: 500; }
 
 .toast {
   position: fixed;
@@ -672,6 +676,12 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-
 .farm-actions .primary { flex: 1; }
 .farm-secondary { padding: 12px 16px; border-radius: 12px; border: 1px solid var(--line); background: transparent; color: var(--text); font-weight: 600; }
 .farm-secondary:disabled { opacity: 0.55; cursor: default; }
+.farm-confirm { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+.farm-confirm button { min-height: 48px; }
+.farm-confirm .farm-buy { display: inline-flex; align-items: center; gap: 6px; transition: opacity 0.2s; }
+.farm-confirm .farm-buy.arming { opacity: 0.55; }
+.farm-confirm .farm-buy .farm-coins { color: inherit; }
+@media (max-width: 640px) { .farm-confirm > * { flex: 1; justify-content: center; } }
 .farm-list { display: grid; gap: 8px; }
 .farm-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--line); }
 .farm-row strong { display: block; font-size: 15px; }

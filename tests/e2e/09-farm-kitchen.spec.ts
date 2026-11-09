@@ -82,6 +82,8 @@ test.describe('farm kitchen and animals', () => {
     await nearbyIs(game, 'farm-bed-9')
     expect(await label(game)).toBe('Expand the farm: West field · 120 coins')
     await page.keyboard.press('KeyE')
+    await until(game, () => (window as any).__home.useHome.getState().panel?.kind === 'build')
+    await page.locator('.farm-buy:not(.arming)').click() // armed a moment after the card opens
     await until(game, () => [9, 10, 11, 12].every((i) => (window as any).__home.farm.state.beds[i].built))
     expect(await page.evaluate(() => (window as any).__home.farm.state.coins)).toBe(30)
     await until(game, () => (window as any).__home.useHome.getState().nearby?.label === 'Plant seeds')
