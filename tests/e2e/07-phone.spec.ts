@@ -4,7 +4,8 @@ import { test, expect, bootApp, watchErrors } from './helpers'
 // A phone in portrait, then turned to landscape: its own page with touch emulation (coarse pointer).
 test.describe('phone', () => {
   test('touch controls: stick walks, drag looks, a second finger does not jerk the view, the action button and label work', async ({ browser }) => {
-    test.setTimeout(300_000)
+    // a phone boot under software rendering (CI) takes four to five minutes on its own
+    test.setTimeout(480_000)
     const context = await browser.newContext({
       viewport: { width: 390, height: 720 },
       deviceScaleFactor: 2,

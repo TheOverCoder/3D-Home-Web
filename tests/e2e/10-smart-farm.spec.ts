@@ -76,17 +76,15 @@ test.describe('smart actions, sheep and the line at the gate', () => {
   test('the line: five places and a buyer every two minutes, upgrades to fifteen and every thirty seconds, sell to all', async ({ game }) => {
     await game.ready()
     const { page } = game
-    // buyers walk up the lane: tick in small steps so they get to their places
+    // buyers walk up the lane: tick in small steps so they get to their places. The line is read in the same step:
+    // the farm also runs on in real time between two calls from here (and a slow machine takes a while over them)
     const run = (seconds: number) =>
       page.evaluate((s) => {
         const f = (window as any).__home.farm
         for (let t = 0; t < s; t += 0.25) f.tick(0.25)
-      }, seconds)
-    const line = () =>
-      page.evaluate(() => {
-        const f = (window as any).__home.farm
         return { inLine: f.inLine().length, waiting: f.waiting().length, places: f.placesInLine(), every: f.arrivalSeconds(), next: f.state.nextVisitorIn }
-      })
+      }, seconds)
+    const line = () => run(0)
     await page.evaluate(() => {
       const f = (window as any).__home.farm
       f.reset()
@@ -95,9 +93,9 @@ test.describe('smart actions, sheep and the line at the gate', () => {
       f.state.coins = 5000
       for (const id of Object.keys(f.state.inv)) f.state.inv[id] = 100
     })
-    await run(1)
-    expect(await line()).toMatchObject({ inLine: 1, places: 5, every: 120 })
-    expect((await line()).next).toBeGreaterThan(118)
+    const first = await run(1)
+    expect(first).toMatchObject({ inLine: 1, places: 5, every: 120 })
+    expect(first.next).toBeGreaterThan(118)
     // one every two minutes, until the five places are taken; then nobody else joins, however long it waits
     await run(4 * 120)
     expect((await line()).inLine).toBe(5)
