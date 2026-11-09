@@ -105,7 +105,8 @@ function head(): Shape {
       [0, 0.21, 0.23],
     ],
     [0.105, 0.088, 0.072, 0.064],
-    { seg: 10, steps: 2 },
+    // its foot closed with a dome in the chest (it shows as she grazes)
+    { seg: 10, steps: 2, round: [0.06, 0] },
   ).fill(SKIN_SHORN, 0)
   // the skull, nose down at the end of the neck: a long face with a gently arched nose
   const skull = loft(
@@ -129,7 +130,7 @@ function head(): Shape {
         { c: [0, 0, 0], rx: 0.022, ry: 0.012 },
         { c: [0, 0, 0.06], rx: 0.036, ry: 0.01 },
         { c: [0, -0.004, 0.115], rx: 0.024, ry: 0.008 },
-        { c: [0, -0.008, 0.14], rx: 0.003, ry: 0.003 },
+        { c: [0, -0.008, 0.14], rx: 0, ry: 0 },
       ],
       { seg: 8, steps: 2 },
     )
@@ -154,7 +155,7 @@ function headwool(): Shape {
       { c: [0, 0.15, 0.16], rx: 0.12, ry: 0.12 },
       { c: [0, 0.2, 0.2], rx: 0.1, ry: 0.1 },
     ],
-    { seg: 14, steps: 2, round: [0, 0.06] },
+    { seg: 14, steps: 2, round: [0.06, 0.06] },
   )
   wool(neck, 0.045, 8)
   // the top-knot sits on the poll, between the ears
@@ -186,7 +187,8 @@ function leg(hind: boolean): Shape {
         { c: [0, -0.468, 0.018], rx: 0.03, ry: 0.034 },
         { c: [0, -0.5, 0.028], rx: 0.033, ry: 0.04 },
       ]
-  return loft(rings as { c: V3; rx: number; ry: number }[], { seg: 7, steps: 1, up: [0, 0, 1], caps: [false, true] })
+  // the top closed with a dome in the body (it shows on a shorn sheep), the sole flat
+  return loft(rings as { c: V3; rx: number; ry: number }[], { seg: 7, steps: 1, up: [0, 0, 1], caps: [false, true], round: [0.035, 0] })
     .fill([0.92, 0.92, 0.92], 1)
     .paint((_x, y) => (y < -0.462 ? HOOF : null), 0)
 }

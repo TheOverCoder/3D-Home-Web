@@ -1,4 +1,4 @@
-import { CanvasTexture, RepeatWrapping, SRGBColorSpace, type Texture } from 'three'
+import { CanvasTexture, DataTexture, LinearFilter, LinearMipmapLinearFilter, RepeatWrapping, RGBAFormat, SRGBColorSpace, UnsignedByteType, type Texture } from 'three'
 import type { FloorKind } from '../data/layout'
 import { profile } from './profile'
 
@@ -341,6 +341,199 @@ function leaf(): Surface {
     const vein = Math.max(rib, side)
     return { r: (60 + vein * 70) * k, g: (118 + vein * 55) * k, b: (62 + vein * 40) * k, h: -vein * 0.6 + mottle(u, v) * 0.1, rough: 0.55 }
   }, 3)
+}
+
+// ─────────────── the sculpt kit's surface patterns ───────────────
+// Patterns for the kit's material (src/lib/sculpt/material.ts: `surface`), laid over the vertex colours of a model:
+// not colours of their own but the pattern's relief, in one small tileable texture — red the tone (one stone, board
+// or shingle lighter than the next, the grain), green the height, blue the joints (mortar, the gaps). The model's
+// colours make it a red barn or a grey slate roof. A tile holds whole courses, starting with a joint at 0, so
+// courses meet the ground and the eaves where they should.
+
+export type SculptSurfaceKind = 'stone' | 'brick' | 'boards' | 'shingle' | 'bark' | 'clay'
+
+/** tone, height, joint (each 0..1) at (u, v) in the tile */
+type SculptPainter = (u: number, v: number) => [number, number, number]
+
+const wrap = (x: number) => ((x % 1) + 1) % 1
+/** Distance round a circle of length 1 (u wraps). */
+const around = (a: number, b: number) => {
+  const d = wrap(a - b)
+  return Math.min(d, 1 - d)
+}
+const sstep = (a: number, b: number, x: number) => {
+  const t = Math.max(0, Math.min(1, (x - a) / (b - a)))
+  return t * t * (3 - 2 * t)
+}
+/** Distance into a block from its nearest edge, with rounded corners (radius rc), in tile units. */
+const inBlock = (du: number, dv: number, rc: number) => (du < rc && dv < rc ? rc - Math.hypot(rc - du, rc - dv) : Math.min(du, dv))
+
+/** Courses of blocks (stone, brick, shingles): for each row, where its joints are and each block's own tone. */
+function courses(rows: number, seed: number, perRow: (r: () => number, row: number) => { n: number; off: number; jitter: number }) {
+  const r = rng(seed)
+  return Array.from({ length: rows }, (_, row) => {
+    const { n, off, jitter } = perRow(r, row)
+    const edges = Array.from({ length: n }, (_, i) => off + (i + (r() - 0.5) * jitter) / n)
+    const tones = Array.from({ length: n }, () => r())
+    // the block u falls in (the last edge before it), and how far u is from the nearest joint
+    const at = (u: number) => {
+      let best = 2
+      let k = 0
+      let du = 1
+      for (let i = 0; i < n; i++) {
+        const d = wrap(u - edges[i])
+        if (d < best) {
+          best = d
+          k = i
+        }
+        du = Math.min(du, around(u, edges[i]))
+      }
+      return { k, du, tone: tones[k] }
+    }
+    return at
+  })
+}
+
+/** Coursed stone: three courses a tile, two or three long stones each, mortar between, the faces a little proud. */
+function stonePattern(): SculptPainter {
+  const rows = 3
+  const row = courses(rows, 201, (r) => ({ n: 2 + Math.floor(r() * 2), off: r(), jitter: 0.5 }))
+  const grain = fbm(8, 203, 4)
+  const pits = fbm(40, 205, 2)
+  const w = 0.011
+  return (u, v) => {
+    const k = Math.min(rows - 1, Math.floor(v * rows))
+    const fv = v * rows - k
+    const g = grain(u, v)
+    const { du, tone } = row[k](u)
+    const d = inBlock(du, Math.min(fv, 1 - fv) / rows, 0.03) + (g - 0.5) * 0.012
+    const joint = 1 - sstep(w * 0.6, w * 1.3, d)
+    const h = sstep(w * 0.8, w * 4, d) * (0.82 + 0.18 * g) + (pits(u, v) - 0.5) * 0.12
+    return [0.5 + (tone - 0.5) * 0.55 + (g - 0.5) * 0.35, h, joint]
+  }
+}
+
+/** Brick in running bond: twelve courses a tile, four bricks a course, every other course half a brick along. */
+function brickPattern(): SculptPainter {
+  const rows = 12
+  const row = courses(rows, 211, (_r, k) => ({ n: 4, off: k % 2 ? 0.125 : 0, jitter: 0.04 }))
+  const speck = fbm(60, 213, 2)
+  const wash = fbm(4, 215, 3)
+  const w = 0.0055
+  return (u, v) => {
+    const k = Math.min(rows - 1, Math.floor(v * rows))
+    const fv = v * rows - k
+    const s = speck(u, v)
+    const { du, tone } = row[k](u)
+    const d = inBlock(du, Math.min(fv, 1 - fv) / rows, 0.006)
+    const joint = 1 - sstep(w * 0.6, w * 1.25, d)
+    const h = sstep(w * 0.8, w * 2.6, d) * 0.88 + s * 0.12
+    // now and then a brick fired darker
+    const t = tone > 0.86 ? tone - 0.55 : tone
+    return [0.5 + (t - 0.5) * 0.6 + (s - 0.5) * 0.18 + (wash(u, v) - 0.5) * 0.12, h, joint]
+  }
+}
+
+/** Boards: four a tile, one above the other (`turn` them on end for a board wall), with grooves between and the
+ *  grain along each board. */
+function boardsPattern(): SculptPainter {
+  const n = 4
+  const r = rng(221)
+  const tones = Array.from({ length: n }, () => r())
+  const shift = Array.from({ length: n }, () => r())
+  const grain = fbm(2, 223, 4, 30)
+  const fine = fbm(6, 225, 2, 60)
+  const w = 0.007
+  return (u, v) => {
+    const k = Math.min(n - 1, Math.floor(v * n))
+    const fv = v * n - k
+    const dv = Math.min(fv, 1 - fv) / n
+    const g = grain(wrap(u + shift[k]), v)
+    const f = fine(wrap(u + shift[k] * 3), v)
+    const joint = 1 - sstep(w * 0.6, w * 1.2, dv)
+    const h = sstep(w * 0.5, w * 3, dv) * 0.85 + g * 0.15
+    return [0.5 + (tones[k] - 0.5) * 0.45 + (g - 0.5) * 0.55 + (f - 0.5) * 0.2, h, joint]
+  }
+}
+
+/** Shingles (slates, shakes): six rows a tile, each row's butts at its lower edge (down the slope), the gaps
+ *  between them staggered from row to row, and a line of shadow under every butt. */
+function shinglePattern(): SculptPainter {
+  const rows = 6
+  const row = courses(rows, 231, (r) => ({ n: 5 + Math.floor(r() * 3), off: r(), jitter: 0.5 }))
+  const streak = fbm(10, 233, 3, 0.2)
+  const w = 0.004
+  return (u, v) => {
+    const k = Math.min(rows - 1, Math.floor(v * rows))
+    const f = v * rows - k // 0 just under the row above's butts … 1 at this row's butt
+    const { du, tone } = row[k](u)
+    const s = streak(u, v)
+    const gap = 1 - sstep(w * 0.6, w * 1.3, du)
+    const shadow = (1 - sstep(0.0, 0.14, f)) * 0.85
+    const h = (0.2 + 0.8 * f) * (1 - sstep(0.94, 1, f) * 0.25) * (1 - gap * 0.6)
+    return [0.5 + (tone - 0.5) * 0.6 + (s - 0.5) * 0.25, h, Math.max(gap, shadow)]
+  }
+}
+
+/** Bark: plates split by furrows that run up the trunk (`turn` it for a log lying down). */
+function barkPattern(): SculptPainter {
+  const furrows = fbm(9, 241, 4, 0.22)
+  const breaks = fbm(5, 243, 3, 0.6)
+  const tone = fbm(6, 245, 3)
+  const fine = fbm(40, 247, 2, 0.4)
+  return (u, v) => {
+    const n = furrows(u, v) + (breaks(u, v) - 0.5) * 0.3
+    const plate = sstep(0.4, 0.58, n)
+    const f = fine(u, v)
+    return [0.5 + (tone(u, v) - 0.5) * 0.5 + plate * 0.12 + (f - 0.5) * 0.15, plate * 0.85 + f * 0.15, (1 - sstep(0.3, 0.47, n)) * 0.9]
+  }
+}
+
+/** Hand-laid clay or daub: soft lumps, smears of the hand, fine grit; no joints. */
+function clayPattern(): SculptPainter {
+  const lumps = fbm(5, 251, 4)
+  const smear = fbm(3, 253, 3, 3)
+  const grit = fbm(90, 255, 2)
+  const tone = fbm(3, 257, 3)
+  return (u, v) => {
+    const g = grit(u, v)
+    return [0.5 + (tone(u, v) - 0.5) * 0.6 + (g - 0.5) * 0.12, lumps(u, v) * 0.6 + smear(u, v) * 0.25 + g * 0.15, 0]
+  }
+}
+
+const sculptPainters: Record<SculptSurfaceKind, () => SculptPainter> = { stone: stonePattern, brick: brickPattern, boards: boardsPattern, shingle: shinglePattern, bark: barkPattern, clay: clayPattern }
+const sculptCache = new Map<SculptSurfaceKind, DataTexture>()
+/** Texels to a side: a tile is half a metre or so, so on a computer (256) a texel every two or three millimetres,
+ *  on a phone (128) every four or five — a quarter of the time it takes to paint, on a screen where it does not
+ *  show. */
+const sculptSize = () => profile.surfaceSize / 2
+
+/** A sculpt surface pattern's texture (made the first time it is asked for, then shared). */
+export function sculptSurfaceTexture(kind: SculptSurfaceKind): DataTexture {
+  let t = sculptCache.get(kind)
+  if (t) return t
+  const paint = sculptPainters[kind]()
+  const n = sculptSize()
+  const data = new Uint8Array(n * n * 4)
+  const byte = (x: number) => Math.max(0, Math.min(255, Math.round(x * 255)))
+  for (let y = 0; y < n; y++)
+    for (let x = 0; x < n; x++) {
+      const [tone, h, joint] = paint(x / n, y / n)
+      const o = (y * n + x) * 4
+      data[o] = byte(tone)
+      data[o + 1] = byte(h)
+      data[o + 2] = byte(joint)
+      data[o + 3] = 255
+    }
+  t = new DataTexture(data, n, n, RGBAFormat, UnsignedByteType)
+  t.wrapS = t.wrapT = RepeatWrapping
+  t.magFilter = LinearFilter
+  t.minFilter = LinearMipmapLinearFilter
+  t.generateMipmaps = true
+  t.anisotropy = 4
+  t.needsUpdate = true
+  sculptCache.set(kind, t)
+  return t
 }
 
 const base: Record<string, Surface> = {}

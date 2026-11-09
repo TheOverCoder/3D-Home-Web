@@ -45,9 +45,9 @@ function feather(length: number, width: number, bend = 0): Shape {
       { c: [0, 0, 0], rx: width * 0.45, ry: 0.004 },
       { c: [0, bend * 0.3, length * 0.45], rx: width * 0.5, ry: 0.005 },
       { c: [0, bend, length * 0.92], rx: width * 0.28, ry: 0.004 },
-      { c: [0, bend * 1.15, length], rx: 0.002, ry: 0.002 },
+      { c: [0, bend * 1.15, length], rx: 0, ry: 0 },
     ],
-    { seg: 4, steps: 2 },
+    { seg: 4, steps: 2, round: [0.004, 0] },
   )
 }
 
@@ -73,9 +73,9 @@ function body(look: Look): Shape {
         { c: [0, 0.01, 0.08], rx: 0.012, ry: 0.035 },
         { c: [0, 0, 0.02], rx: 0.02, ry: 0.05 },
         { c: [0, -0.01, -0.06], rx: 0.016, ry: 0.04 },
-        { c: [0, -0.005, -0.12], rx: 0.006, ry: 0.012 },
+        { c: [0, -0.005, -0.12], rx: 0, ry: 0 },
       ],
-      { seg: 8, steps: 2 },
+      { seg: 8, steps: 2, round: [0.012, 0] },
     )
       .fill(look.rooster ? rgb(0x6e2a16) : [0.9, 0.9, 0.9], look.tint)
       .pattern((_x, _y, z) => 0.5 + (-0.045 - z) * 30, look.rooster ? rgb(0x1f2a24) : [0.68, 0.68, 0.68])
@@ -112,7 +112,7 @@ function head(look: Look): Shape {
       { c: [0, 0.128, 0.05], rx: 0.028, ry: 0.03 },
     ],
     // a little fuller at the back ("up" for these rings is forward)
-    { seg: 10, steps: 2, up: [0, 0, 1], round: [0, 0.015], shape: (a) => 1 + 0.14 * Math.max(0, -Math.sin(a)) },
+    { seg: 10, steps: 2, up: [0, 0, 1], round: [0.03, 0.015], shape: (a) => 1 + 0.14 * Math.max(0, -Math.sin(a)) },
   ).fill(look.neck, look.tint)
   const skull = loft(
     [
@@ -131,7 +131,7 @@ function head(look: Look): Shape {
         [0, 0.122, 0.106],
         [0, 0.113, 0.122],
       ],
-      [0.011, 0.007, 0.0015],
+      [0.011, 0.007, 0],
       { seg: 7, steps: 2 },
     ).fill(BEAK, 0),
   )
@@ -163,11 +163,11 @@ function leg(look: Look): Shape {
       [0, -0.124, 0.006],
     ],
     [0.011, 0.009, 0.0085],
-    { seg: 6, steps: 1 },
+    { seg: 6, steps: 1, round: [0.008, 0.006] },
   ).fill(LEG, 0)
   const toes: Shape[] = []
-  for (const a of [-0.45, 0, 0.45]) toes.push(tube([[0, -0.124, 0.006], [Math.sin(a) * 0.03, -0.128, 0.006 + Math.cos(a) * 0.03], [Math.sin(a) * 0.05, -0.129, 0.006 + Math.cos(a) * 0.05]], [0.006, 0.005, 0.003], { seg: 5, steps: 1 }).fill(LEG, 0))
-  toes.push(tube([[0, -0.124, 0.006], [0, -0.128, -0.025]], [0.005, 0.003], { seg: 5, steps: 1 }).fill(LEG, 0))
+  for (const a of [-0.45, 0, 0.45]) toes.push(tube([[0, -0.124, 0.006], [Math.sin(a) * 0.03, -0.128, 0.006 + Math.cos(a) * 0.03], [Math.sin(a) * 0.05, -0.129, 0.006 + Math.cos(a) * 0.05]], [0.006, 0.005, 0], { seg: 5, steps: 1, round: [0.005, 0] }).fill(LEG, 0))
+  toes.push(tube([[0, -0.124, 0.006], [0, -0.128, -0.025]], [0.005, 0], { seg: 5, steps: 1, round: [0.004, 0] }).fill(LEG, 0))
   return merge(thigh, shank, ...toes)
 }
 

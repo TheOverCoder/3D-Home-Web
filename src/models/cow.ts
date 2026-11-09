@@ -121,7 +121,8 @@ function body(coat: Coat): Shape {
   const udder = merge(
     lathe(
       [
-        [0.02, 0.0],
+        [0.0, 0.0],
+        [0.09, 0.01],
         [0.13, 0.03],
         [0.16, 0.1],
         [0.15, 0.17],
@@ -158,6 +159,8 @@ function head(coat: Coat): Shape {
     {
       seg: 12,
       steps: 2,
+      // closed at both ends: in the chest and in the skull, however far the head turns
+      round: [0.08, 0.05],
       // the dewlap: loose skin hanging under the throat
       shape: (a, t) => 1 + 0.2 * Math.max(0, -Math.sin(a)) ** 3 * Math.sin(Math.PI * Math.min(1, t * 1.15)),
     },
@@ -171,7 +174,7 @@ function head(coat: Coat): Shape {
       { c: [0, -0.02, 0.7], rx: 0.12, ry: 0.105 },
       { c: [0, -0.06, 0.765], rx: 0.145, ry: 0.105 },
       { c: [0, -0.08, 0.81], rx: 0.115, ry: 0.08 },
-      { c: [0, -0.085, 0.828], rx: 0.012, ry: 0.01 },
+      { c: [0, -0.085, 0.828], rx: 0, ry: 0 },
     ],
     {
       seg: 14,
@@ -200,7 +203,7 @@ function head(coat: Coat): Shape {
         { c: [0, 0, 0], rx: 0.035, ry: 0.02 },
         { c: [0, 0, 0.07], rx: 0.062, ry: 0.016 },
         { c: [0, -0.005, 0.15], rx: 0.042, ry: 0.012 },
-        { c: [0, -0.01, 0.19], rx: 0.004, ry: 0.004 },
+        { c: [0, -0.01, 0.19], rx: 0, ry: 0 },
       ],
       { seg: 8, steps: 1 },
     )
@@ -215,7 +218,7 @@ function head(coat: Coat): Shape {
         [sx * 0.08, 0.07, 0.04],
         [sx * 0.085, 0.1, 0.075],
       ],
-      [0.024, 0.019, 0.012, 0.003],
+      [0.024, 0.019, 0.012, 0],
       { seg: 6, steps: 1 },
     )
     horn.paint((x) => mixRgb(HORN, HORN_TIP, smoothstep(0.05, 0.085, Math.abs(x))), 0)
@@ -241,7 +244,7 @@ function leg(coat: Coat, hind: boolean): Shape {
         { c: [0, -0.875, 0.01], rx: 0.047, ry: 0.05 },
         { c: [0, -0.905, 0.02], rx: 0.058, ry: 0.066 },
         { c: [0, -0.98, 0.035], rx: 0.064, ry: 0.074 },
-        { c: [0, -0.985, 0.035], rx: 0.01, ry: 0.01 },
+        { c: [0, -0.985, 0.035], rx: 0, ry: 0 },
       ]
     : [
         { c: [0, 0.08, 0], rx: 0.11, ry: 0.15 },
@@ -253,9 +256,10 @@ function leg(coat: Coat, hind: boolean): Shape {
         { c: [0, -0.875, 0.035], rx: 0.047, ry: 0.05 },
         { c: [0, -0.905, 0.045], rx: 0.058, ry: 0.066 },
         { c: [0, -0.98, 0.06], rx: 0.064, ry: 0.074 },
-        { c: [0, -0.985, 0.06], rx: 0.01, ry: 0.01 },
+        { c: [0, -0.985, 0.06], rx: 0, ry: 0 },
       ]
-  const l = loft(rings as { c: V3; rx: number; ry: number }[], { seg: 8, steps: 1, up: [0, 0, 1] })
+  // the top closed with a dome in the body (it shows as the leg swings), the hoof's sole at a point
+  const l = loft(rings as { c: V3; rx: number; ry: number }[], { seg: 8, steps: 1, up: [0, 0, 1], round: [0.06, 0] })
   const top = hind ? COW_PIVOTS.legs[2] : COW_PIVOTS.legs[0]
   coatPart(l, coat, (x, y, z) => [x + top[0], y + top[1], z + top[2]])
   if (coat.socks) l.blend(rgb(coat.base), (_x, y) => smoothstep(-0.48, -0.56, y))
@@ -282,10 +286,10 @@ function tail(coat: Coat): Shape {
   // the switch: a long tuft of hair at the end
   const sw = loft(
     [
-      { c: [0, -0.6, -0.06], rx: 0.015, ry: 0.015 },
+      { c: [0, -0.6, -0.06], rx: 0, ry: 0 },
       { c: [0, -0.68, -0.06], rx: 0.05, ry: 0.045 },
       { c: [0, -0.78, -0.06], rx: 0.045, ry: 0.04 },
-      { c: [0, -0.87, -0.06], rx: 0.004, ry: 0.004 },
+      { c: [0, -0.87, -0.06], rx: 0, ry: 0 },
     ],
     { seg: 8, steps: 1, up: [0, 0, 1], shape: (a) => 1 + 0.15 * Math.sin(a * 5) },
   ).fill(rgb(coat.patches > 0.4 ? coat.patch : coat.jersey ? 0x2c211b : coat.base), 0)

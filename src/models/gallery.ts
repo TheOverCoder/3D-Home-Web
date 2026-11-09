@@ -6,8 +6,8 @@ import { PersonRig, personParts } from './person'
 import { cropParts } from './crops'
 import { GROWERS, putEgg, putLemon } from './plants'
 import type { CropId } from '../farm/data'
-import { Group, Mesh, MeshStandardMaterial, DoubleSide } from 'three'
-import { coopModel, lemonSpots, lemonTreeModel, mouthGlowShape, ovenModel, structureParts, troughModel } from './structures'
+import { Group, Mesh, MeshStandardMaterial } from 'three'
+import { coopModel, lemonSpots, lemonTreeModel, mouthGlowMaterial, mouthGlowShape, ovenModel, structureParts, troughModel } from './structures'
 
 // Every model the kit makes, posed and moving, for the gallery page (open the site with ?gallery). Add a new
 // model here as soon as it has a shape: it is the quickest way to see it from every side, in the game's light.
@@ -177,7 +177,7 @@ export const GALLERY: GalleryEntry[] = [
     name: 'The farm: the oven (fire lit), the hen house, a trough, the lemon tree',
     make() {
       const oven = structureParts(ovenModel(), 'oven')
-      const glow = new Mesh(mouthGlowShape().geometry(), new MeshStandardMaterial({ color: 0x2a120a, emissive: 0xff8a32, emissiveIntensity: 2.2, roughness: 1, side: DoubleSide }))
+      const glow = new Mesh(mouthGlowShape().geometry(), mouthGlowMaterial(2.2))
       const coop = structureParts(coopModel(), 'coop')
       const trough = structureParts(troughModel(1.7, 0.55, 0.4), 'trough')
       const tree = structureParts(lemonTreeModel(), 'lemon-tree')

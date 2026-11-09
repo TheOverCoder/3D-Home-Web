@@ -10,7 +10,8 @@ installDiagnostics()
 const root = createRoot(document.getElementById('root')!)
 if (new URLSearchParams(location.search).has('gallery')) {
   // the model gallery (src/models/Gallery.tsx): its own small page, loaded only when asked for
-  import('./models/Gallery').then(({ Gallery }) => root.render(<Gallery />))
+  // (its models are built at once, so the solid engine some of them are cut with loads first)
+  Promise.all([import('./models/Gallery'), import('./lib/sculpt').then((k) => k.loadSolids())]).then(([{ Gallery }]) => root.render(<Gallery />))
 } else {
   root.render(
     <StrictMode>
@@ -23,7 +24,8 @@ if (new URLSearchParams(location.search).has('gallery')) {
     setTimeout(
       () =>
         import('./models/checks').then(async ({ MODEL_CHECKS }) => {
-          const { describeIssue } = await import('./lib/sculpt')
+          const { describeIssue, loadSolids } = await import('./lib/sculpt')
+          await loadSolids()
           for (const c of MODEL_CHECKS) for (const i of c.run()) console.warn(`[model check] ${describeIssue(i)}`)
         }),
       8000,

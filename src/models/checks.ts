@@ -1,4 +1,5 @@
-import { checkPieces, checkPose, ellipsoid, piecesOf, posedPieces, type Issue } from '../lib/sculpt'
+import { DoubleSide } from 'three'
+import { checkPieces, checkPose, ellipsoid, lathe, piecesOf, posedPieces, type Issue, type Parts } from '../lib/sculpt'
 import { LEMON_TREE, type CropId } from '../farm/data'
 import { COATS, cowParts, putCow, type CowPose } from './cow'
 import { FACES, putSheep, sheepParts, type SheepPose } from './sheep'
@@ -6,11 +7,17 @@ import { chickenParts, putChicken, type ChickenPose } from './chicken'
 import { PersonRig, personParts, type PersonLook } from './person'
 import { cropParts } from './crops'
 import { GROWERS, putEgg, putLemon } from './plants'
-import { coopModel, lemonSpots, lemonTreeModel, ovenModel, structurePieces, troughModel } from './structures'
+import { coopModel, lemonSpots, lemonTreeModel, ovenModel, structurePieces, troughModel, type Structure } from './structures'
 
 // Every model, in every variant and in the poses it takes in the game, run through the kit's checks (see
 // src/lib/sculpt/check.ts): every piece holds on to the rest, and the model stands on its ground. The gallery shows
 // the findings, the e2e suite (12-models) fails on any, and new models belong here as soon as they exist.
+
+/** Parts drawn from both sides (leaves, a shell) are open surfaces by design: their edges are not holes. */
+const openParts = (parts: Parts) => Object.entries(parts.meshes).flatMap(([k, m]) => ((Array.isArray(m.material) ? m.material[0] : m.material).side === DoubleSide ? [k] : []))
+const openStructure = (s: Structure) => Object.entries(s).flatMap(([k, p]) => (p.material?.doubleSided ? [k] : []))
+/** A structure's pieces and its options for checkPieces. */
+const structure = (s: Structure) => [structurePieces(s), { ground: 0, open: openStructure(s) }] as const
 
 export interface ModelCheck {
   id: string
@@ -100,8 +107,9 @@ export const MODEL_CHECKS: ModelCheck[] = [
     name: 'Cows',
     run() {
       const parts = cowParts(1)
+      const open = openParts(parts)
       return COATS.flatMap((coat, k) =>
-        cowPoses.flatMap(([pose, p, grounded]) => checkPose(`cow (${coat.name}), ${pose}`, parts, (pp) => putCow(pp, k, 0, 0, 0, p), { ground: grounded ? 0 : undefined })),
+        cowPoses.flatMap(([pose, p, grounded]) => checkPose(`cow (${coat.name}), ${pose}`, parts, (pp) => putCow(pp, k, 0, 0, 0, p), { ground: grounded ? 0 : undefined, open })),
       )
     },
   },
@@ -110,10 +118,11 @@ export const MODEL_CHECKS: ModelCheck[] = [
     name: 'Sheep',
     run() {
       const parts = sheepParts(1)
+      const open = openParts(parts)
       return [0, 0.5, 1].flatMap((wool) =>
         FACES.flatMap((_, k) =>
           sheepPoses.flatMap(([pose, p, grounded]) =>
-            checkPose(`sheep (face ${k + 1}, wool ${wool}), ${pose}`, parts, (pp) => putSheep(pp, k, 0, 0, 0, { ...p, wool }), { ground: grounded ? 0 : undefined }),
+            checkPose(`sheep (face ${k + 1}, wool ${wool}), ${pose}`, parts, (pp) => putSheep(pp, k, 0, 0, 0, { ...p, wool }), { ground: grounded ? 0 : undefined, open }),
           ),
         ),
       )
@@ -124,9 +133,10 @@ export const MODEL_CHECKS: ModelCheck[] = [
     name: 'Hens and the rooster',
     run() {
       const parts = chickenParts(1)
+      const open = openParts(parts)
       return [false, true].flatMap((rooster) =>
         chickenPoses.flatMap(([pose, p, grounded]) =>
-          checkPose(`${rooster ? 'rooster' : 'hen'}, ${pose}`, parts, (pp) => putChicken(pp, rooster, 0, 0, 0, 0, p), { ground: grounded ? 0 : undefined }),
+          checkPose(`${rooster ? 'rooster' : 'hen'}, ${pose}`, parts, (pp) => putChicken(pp, rooster, 0, 0, 0, 0, p), { ground: grounded ? 0 : undefined, open }),
         ),
       )
     },
@@ -136,11 +146,12 @@ export const MODEL_CHECKS: ModelCheck[] = [
     name: 'People',
     run() {
       const parts = personParts(1)
+      const open = openParts(parts)
       return LOOKS.flatMap((look, k) =>
         personPoses.flatMap(([pose, apply, grounded]) => {
           const rig = new PersonRig(look)
           apply(rig)
-          return checkPose(`person ${k + 1}, ${pose}`, parts, (pp) => rig.write(pp), { ground: grounded ? 0 : undefined })
+          return checkPose(`person ${k + 1}, ${pose}`, parts, (pp) => rig.write(pp), { ground: grounded ? 0 : undefined, open })
         }),
       )
     },
@@ -150,11 +161,12 @@ export const MODEL_CHECKS: ModelCheck[] = [
     name: 'Crops, lemons and eggs',
     run() {
       const parts = cropParts(0.1)
+      const open = openParts(parts)
       const issues = CROPS.flatMap((crop) =>
-        STAGES.flatMap((g) => [0.17, 0.71].flatMap((seed) => checkPose(`${crop} at ${Math.round(g * 100)}% (seed ${seed})`, parts, (pp) => GROWERS[crop](pp, 0, 0, 0, g, seed), { ground: 0, sink: 0.06 }))),
+        STAGES.flatMap((g) => [0.17, 0.71].flatMap((seed) => checkPose(`${crop} at ${Math.round(g * 100)}% (seed ${seed})`, parts, (pp) => GROWERS[crop](pp, 0, 0, 0, g, seed), { ground: 0, sink: 0.06, open }))),
       )
       // an egg rests on the floor of the nest
-      for (let k = 0; k < 3; k++) issues.push(...checkPose(`egg ${k + 1}`, parts, (pp) => putEgg(pp, 0, 0, 0, k), { ground: 0, sink: 0.004 }))
+      for (let k = 0; k < 3; k++) issues.push(...checkPose(`egg ${k + 1}`, parts, (pp) => putEgg(pp, 0, 0, 0, k), { ground: 0, sink: 0.004, open }))
       return issues
     },
   },
@@ -162,22 +174,23 @@ export const MODEL_CHECKS: ModelCheck[] = [
     id: 'farm',
     name: 'The farm: oven, hen house, troughs, lemon tree',
     run() {
+      const lemons = cropParts(0.1)
       return [
-        checkPieces('oven', structurePieces(ovenModel()), { ground: 0 }),
-        checkPieces('hen house', structurePieces(coopModel()), { ground: 0 }),
-        checkPieces("the pasture's trough", structurePieces(troughModel(1.7, 0.55, 0.4)), { ground: 0 }),
-        checkPieces("the fold's trough", structurePieces(troughModel(1.1, 0.45, 0.34)), { ground: 0 }),
+        checkPieces('oven', ...structure(ovenModel())),
+        checkPieces('hen house', ...structure(coopModel())),
+        checkPieces("the pasture's trough", ...structure(troughModel(1.7, 0.55, 0.4))),
+        checkPieces("the fold's trough", ...structure(troughModel(1.1, 0.45, 0.34))),
         // every lemon holds on to the tree by its stalk
         checkPieces(
           'lemon tree with its lemons',
           [
             ...structurePieces(lemonTreeModel()),
-            ...posedPieces(cropParts(0.1), (pp) => {
+            ...posedPieces(lemons, (pp) => {
               pp.at(0, 0, 0)
               lemonSpots(LEMON_TREE.max).forEach(([x, y, z], k) => putLemon(pp, x, y, z, k))
             }),
           ],
-          { ground: 0 },
+          { ground: 0, open: openParts(lemons) },
         ),
       ].flat()
     },
@@ -185,9 +198,18 @@ export const MODEL_CHECKS: ModelCheck[] = [
 ]
 
 /** The checks must catch what they are for: a ball with a smaller one a centimetre off its side, the pair two
- *  centimetres above the ground, has to come back loose and floating. */
+ *  centimetres above the ground, has to come back loose and floating; a cup standing on the ball, open at the top,
+ *  shows a hole. */
 export function checkerSelfTest(): string[] {
   const ball = ellipsoid(0.1, 0.1, 0.1, 12, 8).place([0, 0.12, 0]).geometry()
   const loose = ellipsoid(0.03, 0.03, 0.03, 8, 4).place([0.14, 0.12, 0]).geometry()
-  return checkPieces('sample', [...piecesOf('ball', ball), ...piecesOf('loose', loose)], { ground: 0 }).map((i) => i.kind)
+  const cup = lathe(
+    [
+      [0, 0.2],
+      [0.04, 0.21],
+      [0.05, 0.27],
+    ],
+    { seg: 10, steps: 1 },
+  ).geometry()
+  return checkPieces('sample', [...piecesOf('ball', ball), ...piecesOf('loose', loose), ...piecesOf('cup', cup)], { ground: 0 }).map((i) => i.kind)
 }

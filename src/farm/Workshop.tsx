@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { CuboidCollider, RigidBody } from '@react-three/rapier'
-import { CanvasTexture, DoubleSide, SRGBColorSpace, type Group, type Mesh, type MeshStandardMaterial, type Sprite } from 'three'
+import { CanvasTexture, DoubleSide, SRGBColorSpace, type Group, type Mesh, type Sprite } from 'three'
 import { farmSound, placeSound } from '../audio/sound'
 import { playGesture } from '../lib/gestures'
 import { useInteractable } from '../lib/interaction'
-import { mouthGlowShape, ovenModel, structureParts } from '../models/structures'
+import { loadSolids, solidsReady } from '../lib/sculpt'
+import { mouthGlowMaterial, mouthGlowShape, ovenModel, structureParts } from '../models/structures'
 import { B } from '../scene/Furnishings'
 import { useHome } from '../store'
 import { LOOM, MILL, MILLABLE, OVEN, count, produceById, type CakeId } from './data'
@@ -113,22 +114,36 @@ export function Cake({ id }: { id: CakeId }) {
   )
 }
 
+// the oven's mouth is cut through its dome with the solid engine: it starts loading with the farm
+void loadSolids()
+
+/** False until the solid engine has loaded (or failed to: then the oven is built without its cut). */
+function useSolids() {
+  const [ready, setReady] = useState(solidsReady)
+  useEffect(() => {
+    if (!ready) void loadSolids().then(() => setReady(true))
+  }, [ready])
+  return ready
+}
+
 function Oven() {
   useFarm((s) => s.rev)
-  const glow = useRef<MeshStandardMaterial>(null)
+  const glow = useMemo(() => mouthGlowMaterial(0), [])
   const smoke = useRef<(Sprite | null)[]>([])
   const stage = useRef(ovenStage())
   const openPanel = useHome((s) => s.openPanel)
   const showToast = useHome((s) => s.showToast)
   const tex = useMemo(() => smokeTexture(), [])
-  const model = useMemo(() => structureParts(ovenModel(), 'oven'), [])
+  const solids = useSolids()
+  const model = useMemo(() => (solids ? structureParts(ovenModel(), 'oven') : null), [solids])
   const glowShape = useMemo(() => mouthGlowShape().geometry(), [])
+  useEffect(() => () => model?.dispose(), [model])
   useEffect(
     () => () => {
-      model.dispose()
       glowShape.dispose()
+      glow.dispose()
     },
-    [model, glowShape],
+    [glowShape, glow],
   )
   const ready = farm.oven.ready
 
@@ -174,10 +189,8 @@ function Oven() {
     stage.current = s
     const t = state.clock.elapsedTime
     const baking = s === 'baking'
-    if (glow.current) {
-      const flicker = 0.75 + Math.sin(t * 13) * 0.12 + Math.sin(t * 29) * 0.08
-      glow.current.emissiveIntensity = baking ? 2.6 * flicker : s === 'done' ? 0.5 : 0
-    }
+    const flicker = 0.75 + Math.sin(t * 13) * 0.12 + Math.sin(t * 29) * 0.08
+    glow.emissiveIntensity = baking ? 2.6 * flicker : s === 'done' ? 0.5 : 0
     smoke.current.forEach((sp, k) => {
       if (!sp) return
       sp.visible = baking
@@ -193,11 +206,9 @@ function Oven() {
   return (
     <group position={[OVEN.x, 0, OVEN.z]}>
       {/* stone plinth, clay dome, the mouth facing the yard, a chimney, firewood behind and the peel */}
-      <primitive object={model.group} />
+      {model && <primitive object={model.group} />}
       {/* the fire, at the back of the mouth */}
-      <mesh geometry={glowShape}>
-        <meshStandardMaterial ref={glow} color="#2a120a" emissive="#ff8a32" emissiveIntensity={0} roughness={1} side={DoubleSide} />
-      </mesh>
+      <mesh geometry={glowShape} material={glow} />
       {Array.from({ length: 6 }, (_, k) => (
         <sprite
           key={k}

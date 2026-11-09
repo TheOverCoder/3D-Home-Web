@@ -18,7 +18,7 @@ test.describe('sculpted models', () => {
     const entries = await page.evaluate(() => (window as any).__gallery.entries.map((e: any) => e.id))
     expect(entries).toEqual(['cow', 'sheep', 'chickens', 'people', 'crops', 'farm'])
     // the checks catch a piece a centimetre off its model, and a model two centimetres above the ground
-    expect(await page.evaluate(() => (window as any).__gallery.selfTest())).toEqual(['loose', 'floating'])
+    expect(await page.evaluate(() => (window as any).__gallery.selfTest())).toEqual(['loose', 'open', 'floating'])
     // the kit's checks, on every model in every variant and pose: no piece apart from its model, nothing floating
     await page.waitForFunction(() => (window as any).__gallery.checks.done, null, { timeout: 120_000, polling: 500 })
     const issues = await page.evaluate(() => (window as any).__gallery.checks.issues as string[])

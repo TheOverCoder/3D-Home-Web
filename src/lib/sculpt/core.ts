@@ -16,6 +16,10 @@ import { BufferAttribute, BufferGeometry, Color, Euler, Matrix4, Quaternion, Vec
 //   pattern  where the second colour shows, and what it is (a cow's patches)
 //   blend    a soft wash of a colour over both layers (a pink muzzle, white socks, a darker face)
 //   shade    darker or lighter by position (underneath, in creases)
+//
+// A surface pattern (stone courses, bricks, boards, shingles, bark, clay) comes from the material (material.ts:
+// `surface`), drawn per pixel without a vertex of its own; `surface` here says how much of it shows at each vertex
+// (1 everywhere unless told: 0 keeps a batten, the cut end of a log, a painted sign plain).
 
 export type V3 = [number, number, number]
 
@@ -36,7 +40,11 @@ export class Shape {
   c2: number[] = [] // pattern colour
   m: number[] = [] // pattern value: the pattern colour shows above 0.5
   t: number[] = [] // tint mask
+  s: number[] = [] // how much of the material's surface pattern shows
   i: number[] = [] // triangles
+  /** A fresh loft's flat end caps are its vertices from here on (to paint a log's cut ends apart from its bark);
+   *  gone once shapes are merged. */
+  ends?: number
 
   get count() {
     return this.p.length / 3
@@ -48,6 +56,7 @@ export class Shape {
     this.c2.push(color[0], color[1], color[2])
     this.m.push(0)
     this.t.push(tint)
+    this.s.push(1)
     return this.count - 1
   }
 
@@ -64,6 +73,7 @@ export class Shape {
       for (const v of o.c2) this.c2.push(v)
       for (const v of o.m) this.m.push(v)
       for (const v of o.t) this.t.push(v)
+      for (const v of o.s) this.s.push(v)
       for (const k of o.i) this.i.push(k + base)
     }
     return this
@@ -76,6 +86,7 @@ export class Shape {
     s.c2 = this.c2.slice()
     s.m = this.m.slice()
     s.t = this.t.slice()
+    s.s = this.s.slice()
     s.i = this.i.slice()
     return s
   }
@@ -161,6 +172,13 @@ export class Shape {
     return this
   }
 
+  /** How much of the material's surface pattern shows (0..1), for the whole shape or by position: 0 keeps a part of
+   *  it plain (a batten over a board wall, a painted sign on bricks). The vertex index comes last, as in `paint`. */
+  surface(amount: number | ((x: number, y: number, z: number, k: number) => number)) {
+    for (let k = 0; k < this.count; k++) this.s[k] = typeof amount === 'number' ? amount : Math.max(0, Math.min(1, amount(this.p[k * 3], this.p[k * 3 + 1], this.p[k * 3 + 2], k)))
+    return this
+  }
+
   /** Multiplies the colours by a factor from position (shading: darker underneath, in creases…). */
   shade(fn: (x: number, y: number, z: number) => number) {
     for (let k = 0; k < this.count; k++) {
@@ -205,9 +223,34 @@ export class Shape {
     return n
   }
 
-  /** Pushes every vertex along its normal by `fn` (bumps, wool, wrinkles). */
+  /** Pushes every vertex along its normal by `fn` (bumps, wool, wrinkles). Vertices at the same spot (a flat cap's
+   *  edge and the side it closes) move together, along their shared normal, so no crack opens between them. */
   displace(fn: (x: number, y: number, z: number, nx: number, ny: number, nz: number) => number) {
     const n = this.normals()
+    const twins = new Map<string, number[]>()
+    for (let k = 0; k < this.count; k++) {
+      const key = `${Math.round(this.p[k * 3] * 1e6)},${Math.round(this.p[k * 3 + 1] * 1e6)},${Math.round(this.p[k * 3 + 2] * 1e6)}`
+      const list = twins.get(key)
+      if (list) list.push(k)
+      else twins.set(key, [k])
+    }
+    for (const list of twins.values()) {
+      if (list.length < 2) continue
+      let x = 0
+      let y = 0
+      let z = 0
+      for (const k of list) {
+        x += n[k * 3]
+        y += n[k * 3 + 1]
+        z += n[k * 3 + 2]
+      }
+      const l = Math.hypot(x, y, z) || 1
+      for (const k of list) {
+        n[k * 3] = x / l
+        n[k * 3 + 1] = y / l
+        n[k * 3 + 2] = z / l
+      }
+    }
     for (let k = 0; k < this.p.length; k += 3) {
       const d = fn(this.p[k], this.p[k + 1], this.p[k + 2], n[k], n[k + 1], n[k + 2])
       this.p[k] += n[k] * d
@@ -292,7 +335,7 @@ export class Shape {
     return this.i.length / 3
   }
 
-  /** The finished geometry: position, normal, both colour layers, the pattern and the tint mask. */
+  /** The finished geometry: position, normal, both colour layers, the pattern, the tint mask and the surface amount. */
   geometry(): BufferGeometry {
     const g = new BufferGeometry()
     g.setAttribute('position', new BufferAttribute(new Float32Array(this.p), 3))
@@ -301,6 +344,7 @@ export class Shape {
     g.setAttribute('color2', new BufferAttribute(new Float32Array(this.c2), 3))
     g.setAttribute('pattern', new BufferAttribute(new Float32Array(this.m), 1))
     g.setAttribute('tint', new BufferAttribute(new Float32Array(this.t), 1))
+    g.setAttribute('surface', new BufferAttribute(new Float32Array(this.s), 1))
     g.setIndex(this.count > 65535 ? new BufferAttribute(new Uint32Array(this.i), 1) : new BufferAttribute(new Uint16Array(this.i), 1))
     g.computeBoundingSphere()
     g.computeBoundingBox()

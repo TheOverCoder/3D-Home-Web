@@ -28,7 +28,8 @@ export interface LoftOptions {
   up?: V3
   /** radius multiplier by angle around the ring (0 = sideways right, π/2 = up) and position along (0..1) */
   shape?: (angle: number, along: number) => number
-  /** close the open ends with a flat fan (otherwise end on a ring; give it radius 0 for a point) */
+  /** close the open ends with a flat cap (otherwise end on a ring: give it radius 0 to close it at a point, or
+   *  leave it open where it is buried in another part — the checks flag an open end that shows) */
   caps?: [boolean, boolean]
   /** round the ends off: a dome this deep (along the spine) beyond the first and the last ring — a rump, a
    *  fingertip, the end of a fruit. Smooth, unlike closing in with ever smaller rings. */
@@ -65,7 +66,8 @@ function sampleRings(rings: Ring[], steps: number): Ring[] {
   return out
 }
 
-/** Elliptical rings along a spine: bodies, heads, limbs, fruit. */
+/** Elliptical rings along a spine: bodies, heads, limbs, fruit. An end ring of no size (radius 0, a `round` dome's
+ *  tip) closes the shape at a single point there; `caps` close the other ends flat, with an edge of their own. */
 export function loft(rings: Ring[], o: LoftOptions = {}): Shape {
   const seg = o.seg ?? 12
   let all = sampleRings(rings, o.steps ?? 3)
@@ -83,7 +85,7 @@ export function loft(rings: Ring[], o: LoftOptions = {}): Shape {
     const out: Ring[] = []
     for (let j = 1; j <= k; j++) {
       const th = (j / k) * (Math.PI / 2)
-      const f = j === k ? 0.001 : Math.cos(th)
+      const f = j === k ? 0 : Math.cos(th)
       out.push({ c: [base.c[0] + dir.x * depth * Math.sin(th), base.c[1] + dir.y * depth * Math.sin(th), base.c[2] + dir.z * depth * Math.sin(th)], rx: base.rx * f, ry: base.ry * f })
     }
     return out
@@ -98,7 +100,16 @@ export function loft(rings: Ring[], o: LoftOptions = {}): Shape {
   const N = new Vector3()
   const S = new Vector3()
   const n = all.length
+  // an end ring of no size is a point: one vertex there closes the shape (no hole, no triangles without area)
+  const pole = (r: number) => (r === 0 || r === n - 1) && all[r].rx < 1e-7 && all[r].ry < 1e-7
+  const first: number[] = [] // each ring's first vertex
   for (let r = 0; r < n; r++) {
+    const ring = all[r]
+    first.push(shape.count)
+    if (pole(r)) {
+      shape.vertex(ring.c[0], ring.c[1], ring.c[2])
+      continue
+    }
     // dome rings share the frame of the ring they grow from, so the end stays round
     const own = Math.max(startCount, Math.min(startCount + bodyCount - 1, r))
     const prev = all[Math.max(startCount, own - 1)].c
@@ -109,7 +120,6 @@ export function loft(rings: Ring[], o: LoftOptions = {}): Shape {
     if (N.lengthSq() < 1e-8) N.set(0, 0, 1).addScaledVector(T, -T.z)
     N.normalize()
     S.crossVectors(N, T).normalize()
-    const ring = all[r]
     const along = bodyCount > 1 ? Math.max(0, Math.min(1, (r - startCount) / (bodyCount - 1))) : 0
     for (let k = 0; k < seg; k++) {
       const a = (k / seg) * Math.PI * 2
@@ -120,27 +130,42 @@ export function loft(rings: Ring[], o: LoftOptions = {}): Shape {
     }
   }
   for (let r = 0; r < n - 1; r++) {
+    const pa = pole(r)
+    const pb = pole(r + 1)
+    if (pa && pb) continue
     for (let k = 0; k < seg; k++) {
-      const a = r * seg + k
-      const b = r * seg + ((k + 1) % seg)
-      const c = (r + 1) * seg + k
-      const d = (r + 1) * seg + ((k + 1) % seg)
-      shape.tri(a, b, c)
-      shape.tri(b, d, c)
+      const k1 = (k + 1) % seg
+      if (pa) shape.tri(first[r], first[r + 1] + k1, first[r + 1] + k)
+      else if (pb) shape.tri(first[r] + k, first[r] + k1, first[r + 1])
+      else {
+        const a = first[r] + k
+        const b = first[r] + k1
+        const c = first[r + 1] + k
+        const d = first[r + 1] + k1
+        shape.tri(a, b, c)
+        shape.tri(b, d, c)
+      }
     }
   }
+  // flat caps: vertices of their own, so the edge round them stays sharp (a board's end, a log's cut face)
+  shape.ends = shape.count
   const [capStart, capEnd] = o.caps ?? [false, false]
-  if (capStart && !r0) {
-    const c0 = all[0].c
-    const centre = shape.vertex(c0[0], c0[1], c0[2])
-    for (let k = 0; k < seg; k++) shape.tri(centre, (k + 1) % seg, k)
+  const cap = (r: number, outward: boolean) => {
+    const base = shape.count
+    for (let k = 0; k < seg; k++) {
+      const q = (first[r] + k) * 3
+      shape.vertex(shape.p[q], shape.p[q + 1], shape.p[q + 2])
+    }
+    const c = all[r].c
+    const centre = shape.vertex(c[0], c[1], c[2])
+    for (let k = 0; k < seg; k++) {
+      const k1 = (k + 1) % seg
+      if (outward) shape.tri(centre, base + k, base + k1)
+      else shape.tri(centre, base + k1, base + k)
+    }
   }
-  if (capEnd && !r1) {
-    const cn = all[n - 1].c
-    const centre = shape.vertex(cn[0], cn[1], cn[2])
-    const base = (n - 1) * seg
-    for (let k = 0; k < seg; k++) shape.tri(centre, base + k, base + ((k + 1) % seg))
-  }
+  if (capStart && !r0 && !pole(0)) cap(0, false)
+  if (capEnd && !r1 && !pole(n - 1)) cap(n - 1, true)
   return shape
 }
 

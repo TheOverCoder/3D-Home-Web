@@ -106,7 +106,7 @@ function forearm(side: 1 | -1, basket: boolean): Shape {
       [-side * 0.032, -0.31, 0.03],
     ],
     [0.012, 0.01, 0.008],
-    { seg: 6, steps: 1, caps: [false, true] },
+    { seg: 6, steps: 1, caps: [false, true], round: [0.008, 0] },
   )
   const parts: Shape[] = [merge(arm, thumb).shade((_x, y) => 0.92 + 0.08 * smoothstep(-0.3, 0, y))]
   if (basket) {
@@ -118,6 +118,11 @@ function forearm(side: 1 | -1, basket: boolean): Shape {
         [0.115, -0.43],
         [0.122, -0.37],
         [0.13, -0.355],
+        // over the rim and down the inside to its floor
+        [0.118, -0.358],
+        [0.106, -0.43],
+        [0.09, -0.475],
+        [0.0, -0.475],
       ],
       { seg: 12, steps: 2, caps: [true, false] },
     )
@@ -129,7 +134,8 @@ function forearm(side: 1 | -1, basket: boolean): Shape {
         return [Math.cos(a) * 0.13, -0.355, 0.02 + Math.sin(a) * 0.13] as V3
       }),
       0.012,
-      { seg: 4, steps: 1 },
+      // round on itself: its two ends meet, each closed
+      { seg: 4, steps: 1, caps: [true, true] },
     ).fill(WICKER_DARK, 0)
     const handle = tube(
       Array.from({ length: 7 }, (_, k) => {
@@ -194,7 +200,7 @@ function head(): Shape {
       [-0.12, 0.058, 0.056, 0.0],
       [-0.06, 0.06, 0.056, -0.01],
     ],
-    { seg: 10 },
+    { seg: 10, round: [0.03, 0] },
   ).shade(() => 0.88)
   const skull = column(
     [
@@ -221,7 +227,7 @@ function head(): Shape {
       [0, -0.036, 0.122],
     ],
     [0.012, 0.016, 0.013],
-    { seg: 6, steps: 2, caps: [false, true] },
+    { seg: 6, steps: 2, caps: [false, true], round: [0.01, 0] },
   ).shade(() => 0.97)
   // eyes, brows and lips sit on the face: where a ray from in front meets the skull, set a little into it — so
   // they hold on to it whatever shape the head has
@@ -234,11 +240,11 @@ function head(): Shape {
     // eyes: a white half sunk into the face, a dark iris on it
     parts.push(ellipsoid(0.016, 0.011, 0.008, 7, 3).place(onFace(sx * 0.036, 0.016, 0.004)).fill(WHITE, 0))
     parts.push(ellipsoid(0.009, 0.0095, 0.006, 7, 3).place(onFace(sx * 0.036, 0.016, -0.0035)).fill(EYE, 0))
-    parts.push(tube([onFace(sx * 0.018, 0.04, 0.0015), onFace(sx * 0.037, 0.046, 0.0015), onFace(sx * 0.055, 0.042, 0.0015)], 0.0045, { seg: 5, steps: 1 }).fill(BROW, 0))
+    parts.push(tube([onFace(sx * 0.018, 0.04, 0.0015), onFace(sx * 0.037, 0.046, 0.0015), onFace(sx * 0.055, 0.042, 0.0015)], 0.0045, { seg: 5, steps: 1, round: [0.004, 0.004] }).fill(BROW, 0))
     // ears
     parts.push(ellipsoid(0.013, 0.03, 0.022, 6, 3).place([sx * 0.098, 0.0, -0.005], [0, sx * 0.25, 0]).shade(() => 0.93))
   }
-  parts.push(tube([onFace(-0.024, -0.058, 0.002), onFace(0, -0.062, 0.002), onFace(0.024, -0.058, 0.002)], 0.005, { seg: 5, steps: 2 }).fill(LIPS, 0))
+  parts.push(tube([onFace(-0.024, -0.058, 0.002), onFace(0, -0.062, 0.002), onFace(0.024, -0.058, 0.002)], 0.005, { seg: 5, steps: 2, round: [0.004, 0.004] }).fill(LIPS, 0))
   return merge(...parts)
 }
 

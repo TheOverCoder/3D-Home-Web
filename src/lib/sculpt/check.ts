@@ -10,6 +10,12 @@ import type { Parts } from './parts'
 // hovering in front of a face, a head floating off its neck, a tomato in mid-air). The model's lowest point must be
 // on the ground: above it, it is "floating"; deep under it, "sunk".
 //
+// An open end (a ring a loft stops on, a pot's rim) is fine where it is buried in another piece — a leg's top in
+// the body — and a hole where it is not: you would see into the shape, and through it. Every open end is closed
+// for the check with a flat cap of its own, so a piece counts as solid wherever it is, and that cap must lie inside
+// another piece (or on the ground): otherwise it is "open". Leaves and other thin, open surfaces are named in
+// `open` and left alone.
+//
 // Models are checked in several poses (grazing, walking, pecking…), so joints that open as the parts move are
 // caught too. The gallery (?gallery) runs every check and lists what it finds; the e2e suite fails on any finding.
 
@@ -23,10 +29,14 @@ export interface Piece {
   min: V3
   max: V3
   grid?: TriGrid
+  /** its open ends: loops of vertices (indices into p / 3), each with the centre of the cap that closes it */
+  loops?: { ring: number[]; centre: V3; size: number }[]
+  /** the piece closed with those caps (for telling inside from outside) */
+  solid?: { p: Float32Array; t: Uint32Array }
 }
 
 export interface Issue {
-  kind: 'loose' | 'floating' | 'sunk'
+  kind: 'loose' | 'floating' | 'sunk' | 'open'
   /** the model, its variant and pose, and the piece */
   where: string
   /** how far it is from what it should touch, metres */
@@ -42,6 +52,9 @@ export interface CheckOptions {
   tolerance?: number
   /** how far under the ground the lowest point may be (hooves in grass, roots in soil) */
   sink?: number
+  /** parts that are open surfaces by design (leaves, petals, a shell seen from both sides): their edges are not
+   *  holes */
+  open?: string[]
 }
 
 const v = new Vector3()
@@ -69,6 +82,14 @@ export function piecesOf(part: string, geometry: BufferGeometry, matrix?: Matrix
   for (let k = 0; k < tri.length; k += 3) {
     union(tri[k], tri[k + 1])
     union(tri[k], tri[k + 2])
+  }
+  // vertices at the same spot are one (a flat cap has vertices of its own along the edge it closes)
+  const at = new Map<string, number>()
+  for (let i = 0; i < n; i++) {
+    const key = `${Math.round(pos.getX(i) * 1e5)},${Math.round(pos.getY(i) * 1e5)},${Math.round(pos.getZ(i) * 1e5)}`
+    const j = at.get(key)
+    if (j === undefined) at.set(key, i)
+    else union(i, j)
   }
   const groups = new Map<number, { map: Map<number, number>; t: number[] }>()
   for (let k = 0; k < tri.length; k += 3) {
@@ -164,6 +185,73 @@ class TriGrid {
 }
 
 const grid = (piece: Piece) => (piece.grid ??= new TriGrid(piece))
+
+/** A piece's open ends: the edges only one triangle has (after joining vertices at the same spot), followed round
+ *  into loops. */
+function loopsOf(piece: Piece) {
+  if (piece.loops) return piece.loops
+  const { p, t } = piece
+  const id = new Int32Array(p.length / 3)
+  const at = new Map<string, number>()
+  for (let i = 0; i < id.length; i++) {
+    const key = `${Math.round(p[i * 3] * 1e5)},${Math.round(p[i * 3 + 1] * 1e5)},${Math.round(p[i * 3 + 2] * 1e5)}`
+    let j = at.get(key)
+    if (j === undefined) at.set(key, (j = i))
+    id[i] = j
+  }
+  const edges = new Set<string>()
+  for (let k = 0; k < t.length; k += 3) {
+    const a = id[t[k]]
+    const b = id[t[k + 1]]
+    const c = id[t[k + 2]]
+    if (a === b || b === c || a === c) continue
+    edges.add(`${a},${b}`).add(`${b},${c}`).add(`${c},${a}`)
+  }
+  const next = new Map<number, number[]>()
+  for (const e of edges) {
+    const [a, b] = e.split(',').map(Number)
+    if (edges.has(`${b},${a}`)) continue
+    const list = next.get(a)
+    if (list) list.push(b)
+    else next.set(a, [b])
+  }
+  const loops: NonNullable<Piece['loops']> = []
+  for (const start of next.keys()) {
+    while (next.get(start)?.length) {
+      const ring: number[] = []
+      let v_ = start
+      for (let guard = 0; guard <= edges.size; guard++) {
+        ring.push(v_)
+        const out = next.get(v_)
+        if (!out?.length) break
+        v_ = out.pop()!
+        if (v_ === start) break
+      }
+      const centre: V3 = [0, 0, 0]
+      for (const i of ring) for (let j = 0; j < 3; j++) centre[j] += p[i * 3 + j] / ring.length
+      let size = 0
+      for (const i of ring) size = Math.max(size, 2 * Math.hypot(p[i * 3] - centre[0], p[i * 3 + 1] - centre[1], p[i * 3 + 2] - centre[2]))
+      loops.push({ ring, centre, size })
+    }
+  }
+  return (piece.loops = loops)
+}
+
+/** The piece with its open ends capped: a closed surface, so a ray's crossings tell inside from outside. */
+function solidOf(piece: Piece) {
+  if (piece.solid) return piece.solid
+  const loops = loopsOf(piece)
+  if (!loops.length) return (piece.solid = { p: piece.p, t: piece.t })
+  const n = piece.p.length / 3
+  const p = new Float32Array(piece.p.length + loops.length * 3)
+  p.set(piece.p)
+  const t: number[] = Array.from(piece.t)
+  loops.forEach((l, k) => {
+    p.set(l.centre, (n + k) * 3)
+    for (let j = 0; j < l.ring.length; j++) t.push(n + k, l.ring[j], l.ring[(j + 1) % l.ring.length])
+  })
+  return (piece.solid = { p, t: Uint32Array.from(t) })
+}
 
 /** A divisor that is never zero (degenerate edges at the tips of shapes would give NaN). */
 const nz = (x: number) => (Math.abs(x) < 1e-30 ? (x < 0 ? -1e-30 : 1e-30) : x)
@@ -263,7 +351,7 @@ function triDist2(piece: Piece, k: number, px: number, py: number, pz: number) {
 }
 
 /** Does segment (x0..x1) cross triangle k of a piece? (Möller–Trumbore, both faces, t in [0, 1].) */
-function segHitsTri(piece: Piece, k: number, x0: number, y0: number, z0: number, x1: number, y1: number, z1: number) {
+function segHitsTri(piece: { p: Float32Array; t: Uint32Array }, k: number, x0: number, y0: number, z0: number, x1: number, y1: number, z1: number) {
   const p = piece.p
   const ia = piece.t[k] * 3
   const ib = piece.t[k + 1] * 3
@@ -297,12 +385,13 @@ function segHitsTri(piece: Piece, k: number, x0: number, y0: number, z0: number,
   return t >= 0 && t <= 1
 }
 
-/** Is a point inside a piece (a ray from it crosses the surface an odd number of times)? */
+/** Is a point inside a piece (a ray from it crosses the surface, its open ends capped, an odd number of times)? */
 function inside(piece: Piece, px: number, py: number, pz: number) {
+  const solid = solidOf(piece)
   // an awkward direction, so the ray does not run along an edge
   const far = 1e3
   let hits = 0
-  for (let k = 0; k < piece.t.length; k += 3) if (segHitsTri(piece, k, px, py, pz, px + far, py + far * 0.0137, pz + far * 0.0071)) hits++
+  for (let k = 0; k < solid.t.length; k += 3) if (segHitsTri(solid, k, px, py, pz, px + far, py + far * 0.0137, pz + far * 0.0071)) hits++
   return hits % 2 === 1
 }
 
@@ -432,6 +521,32 @@ export function checkPieces(name: string, pieces: Piece[], o: CheckOptions = {})
     }
     issues.push({ kind: 'loose', where: `${name}: ${piece.part} piece ${piece.index}`, gap, at: centre(piece) })
   })
+  // open ends must be buried: the cap that closes each one inside another piece, against one, or on the ground
+  const hidden = (self: Piece, x: number, y: number, z: number) => {
+    if (o.ground !== undefined && y <= o.ground + tol) return true
+    for (const other of pieces) {
+      if (other === self || x < other.min[0] - tol || x > other.max[0] + tol || y < other.min[1] - tol || y > other.max[1] + tol || z < other.min[2] - tol || z > other.max[2] + tol) continue
+      for (const k of grid(other).near(x - tol, y - tol, z - tol, x + tol, y + tol, z + tol, scratch)) if (triDist2(other, k, x, y, z) <= tol * tol) return true
+      if (inside(other, x, y, z)) return true
+    }
+    return false
+  }
+  for (const piece of pieces) {
+    if (o.open?.includes(piece.part)) continue
+    for (const l of loopsOf(piece)) {
+      if (l.size <= tol * 2) continue
+      // the cap's middle, and points most of the way out to its edge all round
+      const c = l.centre
+      const samples: V3[] = [c]
+      const step = Math.max(1, Math.floor(l.ring.length / 6))
+      for (let j = 0; j < l.ring.length; j += step) {
+        const q = l.ring[j] * 3
+        samples.push([c[0] + (piece.p[q] - c[0]) * 0.8, c[1] + (piece.p[q + 1] - c[1]) * 0.8, c[2] + (piece.p[q + 2] - c[2]) * 0.8])
+      }
+      if (samples.every(([x, y, z]) => hidden(piece, x, y, z))) continue
+      issues.push({ kind: 'open', where: `${name}: ${piece.part} piece ${piece.index}`, gap: l.size, at: c })
+    }
+  }
   if (o.ground !== undefined) {
     let low = Infinity
     let lowest: Piece | undefined
@@ -463,7 +578,13 @@ export function checkPose<K extends string>(name: string, parts: Parts<K>, pose:
 }
 
 export const describeIssue = (i: Issue) =>
-  i.kind === 'loose' ? `${i.where} is loose: ${(i.gap * 1000).toFixed(1)} mm from the rest` : i.kind === 'floating' ? `${i.where} — floating` : `${i.where} — sunk`
+  i.kind === 'loose'
+    ? `${i.where} is loose: ${(i.gap * 1000).toFixed(1)} mm from the rest`
+    : i.kind === 'open'
+      ? `${i.where} has an open end that shows: a hole ${(i.gap * 1000).toFixed(0)} mm across`
+      : i.kind === 'floating'
+        ? `${i.where} — floating`
+        : `${i.where} — sunk`
 
 // a matrix for callers that pose things by hand
 export const identity = new Matrix4()
