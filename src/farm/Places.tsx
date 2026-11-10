@@ -154,7 +154,7 @@ function Nest() {
     enabled: () => farm.eggs > 0,
     ready: () => (farm.eggs >= EGG.max ? { item: 'egg', count: farm.eggs } : null),
     label: () => `Collect ${count('egg', farm.eggs)}`,
-    icon: { verb: 'pick', item: 'egg' },
+    icon: () => ({ verb: 'pick', item: 'egg', count: farm.eggs }),
     run: () => {
       collectEggs()
       playGesture('interact')
@@ -354,7 +354,7 @@ function LemonTree() {
     enabled: () => farm.lemons > 0,
     ready: () => (farm.lemons >= LEMON_TREE.max ? { item: 'lemon', count: farm.lemons } : null),
     label: () => `Pick ${count('lemon', farm.lemons)}`,
-    icon: { verb: 'pick', item: 'lemon' },
+    icon: () => ({ verb: 'pick', item: 'lemon', count: farm.lemons }),
     run: () => {
       pickLemons()
       playGesture('interact')

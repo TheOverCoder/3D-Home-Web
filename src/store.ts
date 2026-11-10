@@ -105,6 +105,8 @@ interface HomeState {
   toggleDoor: (id: string) => void
   pickUp: (id: string) => void
   drop: (pos: Vec3) => void
+  /** Puts a thing to pick up somewhere else (it goes with the furniture it stands on). */
+  placeItem: (id: string, pos: Vec3) => void
   setQuality: (quality: Quality, auto?: boolean) => void // a pick without `auto` pins it
   showToast: (text: string, item?: string) => void
 }
@@ -169,6 +171,7 @@ export const useHome = create<HomeState>()((set, get) => ({
       items: { ...s.items, [id]: { pos, rev: s.items[id].rev + 1 } },
     }))
   },
+  placeItem: (id, pos) => set((s) => (s.items[id] ? { items: { ...s.items, [id]: { pos, rev: s.items[id].rev + 1 } } } : {})),
   setQuality: (quality, auto = false) => set({ quality, qualityAuto: auto }),
   showToast: (text, item) => set({ toast: { text, id: ++toastId, item } }),
 }))

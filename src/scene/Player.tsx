@@ -14,7 +14,7 @@ import { debugSet } from '../lib/debug'
 import { coarsePointer } from '../lib/device'
 import { focus } from '../lib/focus'
 import { playGesture } from '../lib/gestures'
-import { findActions, findFar, findStatus, triggerInteraction, type ViewRay } from '../lib/interaction'
+import { findActions, findFar, findStatus, triggerInteraction, type ActionIcon, type ViewRay } from '../lib/interaction'
 import { addLook, look, look as lookState, stepTurn, stopTurn } from '../lib/look'
 import { resume } from '../lib/startup'
 import { playerState } from '../lib/playerState'
@@ -62,8 +62,9 @@ const floorAt = (x: number, z: number): FloorKind => {
 const CLEAR = HOUSE.wallThickness / 2 + 0.1 // eyes stay this far from a wall's centre line
 const DOOR_HALF = GARDEN_DOOR.width / 2 - 0.1 // the garden door's opening, less the jambs
 
-const actionsKey = (list: Nearby[]) =>
-  list.map((a) => `${a.id}|${a.label}|${a.icon?.verb}|${a.icon?.item}|${a.reach}|${a.side}|${a.hint}|${a.needs?.map((n) => `${n.item}${n.count}`).join(',')}`).join('\n')
+// the prompt draws an action's numbers (how many, coins, how long), not only its label: a change in one is a change
+const iconKey = (i: ActionIcon | undefined) => (i ? `${i.verb}|${i.item}|${i.count}|${i.coins}|${i.seconds}|${i.also?.map((g) => `${g.item}${g.count}`).join(',')}` : '')
+const actionsKey = (list: Nearby[]) => list.map((a) => `${a.id}|${a.label}|${iconKey(a.icon)}|${a.reach}|${a.side}|${a.hint}|${a.needs?.map((n) => `${n.item}${n.count}`).join(',')}`).join('\n')
 const marksKey = (list: CompassMark[]) => list.map((m) => `${m.id}|${m.item}|${m.count}`).join('\n')
 
 /**

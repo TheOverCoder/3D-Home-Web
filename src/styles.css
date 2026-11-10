@@ -347,6 +347,24 @@ a:focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; border-rad
 .prompt kbd { opacity: 1; color: var(--sun); }
 .prompt-hint { font: 700 13px var(--font-text); color: rgba(255, 255, 255, 0.72); padding-inline-start: 8px; border-inline-start: 1.5px solid var(--night-line); }
 .prompt.status { pointer-events: none; min-height: 40px; background: rgba(48, 34, 24, 0.72); color: rgba(255, 255, 255, 0.86); font: 700 15px var(--font-text); }
+/* an action as pictures instead of a sentence (src/ui/Hud.tsx): the good with how many beside it (Nunito), a coin chip
+   where coins change hands; a status says how long. On a computer the picture carries the verb's coloured mark. */
+.prompt:has(.prompt-goods) { gap: 10px; padding: 4px 18px 4px 10px; }
+.prompt-goods { display: inline-flex; align-items: center; gap: 14px; }
+.prompt-good,
+.prompt-make { display: inline-flex; align-items: center; gap: 4px; }
+.prompt-pic { position: relative; display: grid; place-items: center; flex: none; width: 40px; height: 40px; }
+.prompt-pic img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.35)); }
+.prompt-pic .act-face-mark { left: -6px; top: -6px; width: 20px; height: 20px; padding: 3px; border-width: 1.5px; }
+.prompt-count { font: 800 22px/1 var(--font-text); font-variant-numeric: tabular-nums; }
+.prompt .tag { gap: 3px; padding: 3px 11px 3px 4px; font-size: 16px; }
+.prompt .tag img { width: 24px; height: 24px; }
+.prompt-time { display: inline-flex; align-items: center; gap: 4px; font: 800 17px/1 var(--font-text); font-variant-numeric: tabular-nums; }
+.prompt-time svg { width: 18px; height: 18px; }
+.prompt-arrow { flex: none; width: 18px; height: 18px; opacity: 0.75; }
+.prompt-make + .prompt-make { padding-inline-start: 14px; border-inline-start: 1.5px solid var(--night-line); }
+/* the label, kept for screen readers behind the pictures */
+.prompt-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 /* a few words and a picture of what came in ("+ 4 lettuces"), on paper, popping in under the coin chip */
 .toast {
@@ -875,8 +893,13 @@ a:focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; border-rad
 .farm-shop-item .art { width: 56px; height: 56px; }
 .farm-shop-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .farm-shop-text strong { font: 600 17px/1.15 var(--font-display); }
-.farm-shop-text > span { font-size: 14px; color: var(--ink-2); line-height: 1.3; }
-.farm-shop-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.farm-shop-blurb { font-size: 14px; color: var(--ink-2); line-height: 1.3; }
+/* which level the next one is, and what it changes: always shown, on a phone too */
+.farm-shop-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 2px; }
+.tag.level { background: var(--sun); color: var(--ink); }
+.tag.effect img { width: 22px; height: 22px; margin-block: -3px; }
+.tag.effect .effect-arrow { width: 14px; height: 14px; opacity: 0.55; }
+.tag.effect b { font-weight: 800; }
 .farm-shop-item .btn { min-width: 84px; }
 
 .farm-confirm { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
@@ -888,7 +911,7 @@ a:focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; border-rad
   .farm-panel { width: 100%; border-radius: var(--r-sheet) var(--r-sheet) 0 0; border-bottom: 0; max-height: 86dvh; padding-bottom: calc(18px + env(safe-area-inset-bottom)); }
   .farm-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .farm-confirm > * { flex: 1; }
-  .farm-shop-text > span { display: none; }
+  .farm-shop-blurb { display: none; }
 }
 /* a phone on its side: panels slide in from the right as a sheet, so the yard stays in view on the left */
 @media (orientation: landscape) and (max-height: 560px) {
@@ -908,7 +931,7 @@ a:focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; border-rad
   .farm-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
   .farm-card { padding: 8px 6px; }
   .farm-card > .art { width: 48px; height: 48px; }
-  .farm-shop-text > span { display: none; }
+  .farm-shop-blurb { display: none; }
 }
 @keyframes sheet-in { from { transform: translateX(36px); opacity: 0; } }
 @media (pointer: coarse) {
@@ -1005,63 +1028,6 @@ a:focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; border-rad
   backdrop-filter: blur(3px);
 }
 
-/* ── the quest compass: what is ready to take out of reach, where it lies from where you look (src/ui/Compass.tsx).
-   It sits under the chips (one row or two) and clear of the buttons in the top right corner. ── */
-.compass {
-  position: fixed;
-  z-index: 11;
-  top: max(calc(var(--chips-bottom, 50px) + 10px), calc(max(14px, env(safe-area-inset-top)) + 64px));
-  left: 0;
-  right: 0;
-  width: min(440px, calc(100vw - 32px));
-  height: 52px;
-  margin-inline: auto;
-  pointer-events: none;
-  animation: pop-in 0.25s var(--ease-pop);
-}
-.compass-strip {
-  position: absolute;
-  inset: 0;
-  overflow: visible;
-}
-.compass-strip::before {
-  content: '';
-  position: absolute;
-  inset: 12px 0;
-  border-radius: 999px;
-  background: linear-gradient(90deg, transparent, var(--night) 16%, var(--night) 84%, transparent);
-}
-.compass-tick,
-.compass-letter,
-.compass-mark { position: absolute; left: 50%; top: 50%; will-change: transform; }
-.compass-tick { width: 2px; height: 8px; margin: -4px 0 0 -1px; border-radius: 1px; background: rgba(255, 255, 255, 0.55); }
-.compass-letter { width: 20px; margin: -9px 0 0 -10px; text-align: center; font: 600 13px/18px var(--font-display); color: #fff; }
-/* where you look: a small sun-yellow notch in the middle */
-.compass-ahead { position: absolute; left: 50%; top: 3px; margin-left: -6px; border: 6px solid transparent; border-top-color: var(--sun); }
-.compass-mark {
-  width: 44px;
-  height: 44px;
-  margin: -22px 0 0 -22px;
-  padding: 0;
-  display: grid;
-  place-items: center;
-  border: 2px solid #fff;
-  border-radius: 50%;
-  background: var(--paper);
-  box-shadow: 0 3px 10px rgba(20, 12, 6, 0.35);
-  pointer-events: auto;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-.compass-mark:active { scale: 0.94; }
-.compass-mark .item-pic .art { width: 32px; height: 32px; filter: none; }
-.compass-mark .item-pic .qty { inset-inline-end: -12px; bottom: -10px; min-width: 20px; height: 20px; font-size: 12.5px; }
-/* behind you: held at the nearer edge, an arrow pointing round */
-.compass-mark[data-side='left']::before,
-.compass-mark[data-side='right']::before { content: ''; position: absolute; top: 50%; margin-top: -6px; border: 6px solid transparent; }
-.compass-mark[data-side='left']::before { left: -15px; border-right-color: #fff; }
-.compass-mark[data-side='right']::before { right: -15px; border-left-color: #fff; }
-
 /* ── a machine asking before it takes its ingredients: a small card over the action button (src/ui/ConfirmCard.tsx) ── */
 .confirm-card {
   position: fixed;
@@ -1094,10 +1060,8 @@ a:focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; border-rad
 .confirm-actions .btn.leaf { flex: 1; }
 .confirm-actions kbd { margin-inline-start: 6px; padding: 1px 6px; border-radius: 6px; background: rgba(255, 255, 255, 0.22); font: 700 12px/1.4 var(--font-text); }
 
-/* a status line's missing things (the oven: what a cake still needs), as pictures with how many */
-.status-needs { display: inline-flex; align-items: center; gap: 14px; margin-inline: 4px 6px; }
-/* with things missing the status takes two lines: what it is about, then the pictures */
-.prompt.status:has(.status-needs) { flex-wrap: wrap; justify-content: center; row-gap: 6px; max-width: min(92vw, 440px); padding: 8px 16px 12px; border-radius: 24px; }
-.prompt.status:has(.status-needs) .status-needs { flex-basis: 100%; justify-content: center; margin: 0; }
-.status-needs .item-pic .art { width: 28px; height: 28px; filter: none; }
-.status-needs .item-pic .qty { min-width: 18px; height: 18px; padding: 0 5px; font-size: 12px; inset-inline-end: -8px; bottom: -6px; }
+/* a status line's missing things (the oven: what a cake still needs), as pictures with how many, then → the cake */
+.status-needs { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.prompt.status:has(.status-needs) { max-width: min(92vw, 440px); }
+.status-needs .item-pic .art { width: 32px; height: 32px; filter: none; }
+.status-needs .item-pic .qty { min-width: 19px; height: 19px; padding: 0 5px; font-size: 13px; inset-inline-end: -8px; bottom: -6px; }

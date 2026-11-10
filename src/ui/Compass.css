@@ -1,0 +1,109 @@
+/* ── the compass (src/ui/Compass.tsx): a thin see-through strip with a fine scale, small marks on it, the heading
+   under its middle. Under the chips when everything shows; alone at the very top when it is the only thing there.
+   (Its numbers are a scale, not text to read: they may be smaller than the 13 px floor.) ── */
+.compass {
+  position: fixed;
+  z-index: 11;
+  left: 0;
+  right: 0;
+  width: min(320px, calc(100vw - 48px));
+  height: 44px;
+  margin-inline: auto;
+  top: max(calc(var(--chips-bottom, 50px) + 6px), calc(max(14px, env(safe-area-inset-top)) + 54px));
+  pointer-events: none;
+  animation: fade 0.3s ease-out;
+}
+:root[data-hud='compass'] .compass {
+  top: calc(max(12px, env(safe-area-inset-top)) + 8px);
+  width: min(320px, calc(100vw - 2 * (var(--top-pad) + var(--top-step))));
+}
+.compass-strip { position: absolute; left: 0; right: 0; top: 4px; height: 20px; }
+.compass-strip::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--night) 42%, transparent);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  -webkit-backdrop-filter: blur(10px) saturate(1.3);
+  backdrop-filter: blur(10px) saturate(1.3);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
+}
+.compass-tick,
+.compass-major,
+.compass-num,
+.compass-letter { position: absolute; left: 50%; top: 50%; pointer-events: none; will-change: transform, opacity; }
+.compass-tick { width: 1px; height: 5px; margin: -2.5px 0 0 -0.5px; background: rgba(255, 255, 255, 0.45); }
+.compass-major { width: 1px; height: 8px; margin: -4px 0 0 -0.5px; background: rgba(255, 255, 255, 0.75); }
+.compass-num { width: 26px; margin: -6px 0 0 -13px; text-align: center; font: 700 10px/12px var(--font-text); font-variant-numeric: tabular-nums; color: rgba(255, 255, 255, 0.72); }
+.compass-letter { width: 16px; margin: -7px 0 0 -8px; text-align: center; font: 600 12px/14px var(--font-display); color: #fff; }
+.compass-letter.north { color: var(--sun); }
+/* where you look: a small sun-yellow notch over the middle, and the heading under it */
+.compass-ahead { position: absolute; left: 50%; top: -5px; margin-left: -4px; border: 4px solid transparent; border-top-color: var(--sun); }
+.compass-heading {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 26px;
+  text-align: center;
+  font: 700 11px/14px var(--font-text);
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.86);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+/* a thing ready to take: a small round picture with how many, a 40 px target round it */
+.compass-mark {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 40px;
+  height: 40px;
+  margin: -20px 0 0 -20px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: none;
+  pointer-events: auto;
+  cursor: pointer;
+  will-change: transform;
+  -webkit-tap-highlight-color: transparent;
+}
+.compass-pin {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--paper);
+  box-shadow: 0 0 0 1.5px #fff, 0 2px 6px rgba(20, 12, 6, 0.35);
+  transition: scale 0.1s;
+}
+.compass-mark:active .compass-pin { scale: 0.9; }
+.compass-pin .item-pic .art { width: 18px; height: 18px; filter: none; }
+.compass-pin .item-pic .qty { min-width: 15px; height: 15px; padding: 0 4px; font-size: 10px; inset-inline-end: -11px; bottom: -9px; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.6); }
+/* behind you: held at the nearer edge, a small arrow pointing round */
+.compass-mark[data-side='left']::before,
+.compass-mark[data-side='right']::before { content: ''; position: absolute; top: 50%; margin-top: -4px; border: 4px solid transparent; }
+.compass-mark[data-side='left']::before { left: -1px; border-right-color: #fff; }
+.compass-mark[data-side='right']::before { right: -1px; border-left-color: #fff; }
+
+/* ── the top of the screen: everything, only the compass, or clear (src/ui/HudMode.tsx sets <html data-hud>).
+   Its button keeps the corner in every mode, so pressing it again and again never has to chase it. ── */
+:root { --top-pad: 14px; --top-step: 54px; }
+@media (pointer: coarse) {
+  :root { --top-pad: 10px; --top-step: 52px; }
+}
+.gear.hud-mode { right: calc(var(--top-pad) + env(safe-area-inset-right)); }
+.gear.hud-mode:hover { transform: none; }
+.gear.hud-mode:active { transform: scale(0.92); }
+/* with everything shown, the settings and edit buttons stand beside it, and the chips keep clear of the three */
+:root[data-hud='all'] .gear:not(.hud-mode):not(.edit-open) { right: calc(var(--top-pad) + var(--top-step) + env(safe-area-inset-right)); }
+:root[data-hud='all'] .gear.edit-open { right: calc(var(--top-pad) + 2 * var(--top-step) + env(safe-area-inset-right)); }
+:root[data-hud='all'] .farm-chip { max-width: calc(100vw - 2 * var(--top-pad) - 3 * var(--top-step) - env(safe-area-inset-right)); }
+/* only the compass, or nothing: everything else at the top goes */
+:root[data-hud='compass'] .farm-chip,
+:root[data-hud='clean'] .farm-chip,
+:root[data-hud='compass'] .gear:not(.hud-mode),
+:root[data-hud='clean'] .gear:not(.hud-mode) { display: none; }

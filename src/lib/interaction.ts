@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { insideHouse, roomAt } from '../data/layout'
 import { useSettings } from '../settings'
 import { busy, useHome, type Nearby } from '../store'
+import type { ArtId } from '../ui/art'
 import { canVibrate, coarsePointer } from './device'
 import { look, turnTowards } from './look'
 import { playerState, type Point3 } from './playerState'
@@ -9,12 +10,28 @@ import { playerState, type Point3 } from './playerState'
 /** What an action does — drawn as a glyph on the action button. */
 export type Verb = 'pick' | 'water' | 'plant' | 'shear' | 'sell' | 'build' | 'make' | 'shop' | 'switch' | 'door' | 'watch' | 'wait' | 'drop'
 
-/** The action button's picture: a verb glyph, and (optionally) a small picture of the thing itself, by farm icon id. */
+/** The action button's picture: a verb glyph, and (optionally) a small picture of the thing itself, by farm icon id.
+ *  Its numbers are what the prompt shows instead of a sentence (src/ui/Hud.tsx): the good and how many (the bottle
+ *  of milk ×3), a coin chip where coins change hands, and for a status how long. */
 export interface ActionIcon {
   verb: Verb
   item?: string
   /** the one word under the button, when the label's first word is not it ("Other seeds" → Seeds) */
   word?: string
+  /** how many of `item` one press takes, makes or sells (all that is ripe in reach together); to water or plant, how
+   *  many beds; for a status, how many are on their way */
+  count?: number
+  /** what else the same press takes, when it is more than one good (ripe beds of different crops) */
+  also?: { item: string; count: number }[]
+  /** the coins that change hands with one press: what it costs (seeds, a bed, a field) or what the buyer offers */
+  coins?: number
+  /** an action about no good: its picture from the interface's art (the hammer, to build) */
+  art?: ArtId
+  /** a status: whole seconds until it is ready (so it changes once a second, as the label does) */
+  seconds?: number
+  /** a status at a machine with nothing to work on: what it makes from what (the mill: flour from wheat, sugar from
+   *  sugar cane) */
+  makes?: { from: string; to: string }[]
 }
 
 export interface InteractableDef {

@@ -10,6 +10,7 @@ import { handleContextLost, handleSceneError } from './lib/startup'
 import { useHome } from './store'
 import { GraphicsNotice } from './ui/GraphicsNotice'
 import { Hud } from './ui/Hud'
+import { HudMode } from './ui/HudMode'
 import { Intro } from './ui/Intro'
 import { ScreenModal } from './ui/ScreenModal'
 import { SettingsPanel } from './ui/SettingsPanel'
@@ -63,6 +64,7 @@ export function App() {
       <SettingsPanel />
       <Intro />
       <GraphicsNotice />
+      <HudMode />
     </>
   )
 }

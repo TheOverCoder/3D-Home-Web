@@ -20,8 +20,10 @@ import { bake, canBake, farm, loomCollect, loomLoad, loomSecondsLeft, loomStage,
 
 const WOOD = '#8a6440'
 const WOOD_DARK = '#5e4630'
+/** Whole seconds to go, rounded as the clock in the labels is. */
+const whole = (seconds: number) => Math.max(0, Math.ceil(seconds))
 const mmss = (seconds: number) => {
-  const t = Math.max(0, Math.ceil(seconds))
+  const t = whole(seconds)
   return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`
 }
 
@@ -161,7 +163,7 @@ function CakeOffer({ id }: { id: CakeId }) {
     radius: 2.1,
     enabled: () => ovenStage() === 'idle' && canBake(id),
     label: `Bake a ${produceById(id).name}`,
-    icon: { verb: 'make', item: id, word: 'Bake' },
+    icon: { verb: 'make', item: id, word: 'Bake', count: 1 },
     run: () =>
       setConfirm({
         id: action,
@@ -195,7 +197,8 @@ function MillOffer({ input }: { input: MillInput }) {
     radius: 2.2,
     enabled: () => millStage() === 'idle' && farm.inv[input] > 0,
     label: () => `Mill ${count(input, load())}`,
-    icon: { verb: 'make', item: out, word: 'Mill' },
+    // what comes out, and how many (one bag for each sheaf or cane)
+    icon: () => ({ verb: 'make', item: out, word: 'Mill', count: load() }),
     run: () => {
       const n = load()
       setConfirm({
@@ -254,8 +257,8 @@ function Oven() {
     needs: () => (ovenStage() === 'idle' ? lacking(nearestCake().needs) : null),
     icon: () => {
       const s = ovenStage()
-      if (s === 'done') return { verb: 'pick', item: farm.oven.ready! }
-      if (s === 'baking') return { verb: 'wait', item: farm.oven.baking! }
+      if (s === 'done') return { verb: 'pick', item: farm.oven.ready!, count: 1 }
+      if (s === 'baking') return { verb: 'wait', item: farm.oven.baking!, count: 1, seconds: whole(ovenSecondsLeft()) }
       // nothing to bake with: a status that says what is missing, never a button
       return { verb: 'wait', item: nearestCake().id }
     },
@@ -361,9 +364,9 @@ function Mill() {
     },
     icon: () => {
       const s = millStage()
-      if (s === 'done') return { verb: 'pick', item: farm.mill.output! }
-      if (s === 'working') return { verb: 'wait', item: MILLABLE[farm.mill.input!] }
-      return { verb: 'wait', item: 'flour' }
+      if (s === 'done') return { verb: 'pick', item: farm.mill.output!, count: farm.mill.ready }
+      if (s === 'working') return { verb: 'wait', item: MILLABLE[farm.mill.input!], count: farm.mill.count, seconds: whole(millSecondsLeft()) }
+      return { verb: 'wait', item: 'flour', makes: MILL_INPUTS.map((i) => ({ from: i, to: MILLABLE[i] })) }
     },
     ready: () => (millStage() === 'done' ? { item: farm.mill.output!, count: farm.mill.ready } : null),
     run: () => {
@@ -516,9 +519,10 @@ function Loom() {
     },
     icon: () => {
       const s = loomStage()
-      if (s === 'done') return { verb: 'pick', item: 'cloth' }
-      if (s === 'working' || !farm.inv.wool) return { verb: 'wait', item: 'cloth' }
-      return { verb: 'make', item: 'cloth', word: 'Weave' }
+      if (s === 'done') return { verb: 'pick', item: 'cloth', count: farm.loom.ready }
+      if (s === 'working') return { verb: 'wait', item: 'cloth', count: farm.loom.count, seconds: whole(loomSecondsLeft()) }
+      if (!farm.inv.wool) return { verb: 'wait', item: 'cloth', makes: [{ from: 'wool', to: 'cloth' }] }
+      return { verb: 'make', item: 'cloth', word: 'Weave', count: Math.min(LOOM.capacity, farm.inv.wool) }
     },
     ready: () => (loomStage() === 'done' ? { item: 'cloth', count: farm.loom.ready } : null),
     run: () => {

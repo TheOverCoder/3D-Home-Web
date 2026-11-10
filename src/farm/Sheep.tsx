@@ -88,7 +88,7 @@ export function Sheep() {
         enabled: () => (farm.wool[i] ?? 0) > 0,
         ready: () => ((farm.wool[i] ?? 0) >= SHEEP.max ? { item: 'wool', count: farm.wool[i] } : null),
         label: () => `Shear ${sheepName(i)} · ${count('wool', farm.wool[i] ?? 0)}`,
-        icon: { verb: 'shear', item: 'wool' },
+        icon: () => ({ verb: 'shear', item: 'wool', count: farm.wool[i] ?? 0 }),
         run: () => {
           shear(i)
           playGesture('interact')

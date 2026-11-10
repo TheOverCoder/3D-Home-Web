@@ -4,12 +4,12 @@ import { coarsePointer } from '../lib/device'
 import { playGesture } from '../lib/gestures'
 import { playerState } from '../lib/playerState'
 import { useHome } from '../store'
-import { BEDS, CROPS, EXPANSIONS, PRODUCE, UPGRADES, arrivalEvery, count, queuePlaces, type CropId } from './data'
+import { BEDS, COW, CROPS, EGG, EXPANSIONS, PACE_LEVELS, PRODUCE, QUEUE_LEVELS, SHEEP, UPGRADES, arrivalEvery, count, queuePlaces, type CropId } from './data'
 import { EditButton, EditPanel } from './EditPanel'
 import { iconUrl } from './icons'
 import { ItemPic } from '../ui/ItemPic'
 import { art, type ArtId } from '../ui/art'
-import { Check, Clock, Users, X } from '../ui/glyphs'
+import { ArrowRight, Check, Clock, Users, X } from '../ui/glyphs'
 import {
   acceptOffer,
   arrivalSeconds,
@@ -409,8 +409,8 @@ function BasketPanel() {
 const UPGRADE_ART: Record<string, ArtId> = {
   east: 'seedling',
   west: 'sheaf-of-rice',
-  queue: 'ticket',
-  pace: 'running-shoe',
+  queue: 'people-queue',
+  pace: 'person-running',
   cow: 'cow',
   sheep: 'ewe',
   hen: 'chicken',
@@ -418,6 +418,39 @@ const UPGRADE_ART: Record<string, ArtId> = {
   compost: 'fallen-leaf',
 }
 
+const bedsIn = (e: 'east' | 'west') => BEDS.filter((b) => b.expansion === e).length
+
+/** Where an upgrade stands: how many times it has been bought, how many it can be, and what it changes — now and
+ *  after the next one ("5 → 6" places in the line), so a card says what it does in numbers, not words. */
+function upgradeStep(id: string): { level: number; levels: number; icon: ReactNode; now: string; next: string | null } {
+  const glyph = (a: ArtId) => <img src={art(a)} alt="" />
+  switch (id) {
+    case 'queue': {
+      const l = upgradeLevel('queue')
+      return { level: l, levels: QUEUE_LEVELS, icon: <Users weight="bold" />, now: String(placesInLine()), next: l < QUEUE_LEVELS ? String(queuePlaces(l + 1)) : null }
+    }
+    case 'pace': {
+      const l = upgradeLevel('pace')
+      return { level: l, levels: PACE_LEVELS, icon: <Clock weight="bold" />, now: clockText(arrivalSeconds()), next: l < PACE_LEVELS ? clockText(arrivalEvery(l + 1)) : null }
+    }
+    case 'cow':
+      return { level: farm.cows - COW.startCows, levels: COW.maxCows - COW.startCows, icon: glyph('cow'), now: String(farm.cows), next: farm.cows < COW.maxCows ? String(farm.cows + 1) : null }
+    case 'sheep':
+      return { level: farm.sheep - SHEEP.startSheep, levels: SHEEP.maxSheep - SHEEP.startSheep, icon: glyph('ewe'), now: String(farm.sheep), next: farm.sheep < SHEEP.maxSheep ? String(farm.sheep + 1) : null }
+    case 'hen':
+      return { level: farm.hens - EGG.startHens, levels: EGG.maxHens - EGG.startHens, icon: glyph('chicken'), now: String(farm.hens), next: farm.hens < EGG.maxHens ? String(farm.hens + 1) : null }
+    case 'east':
+    case 'west':
+      return { level: owned(id) ? 1 : 0, levels: 1, icon: glyph('seedling'), now: `+${bedsIn(id)} beds`, next: null }
+    case 'sprinkler':
+      return { level: owned(id) ? 1 : 0, levels: 1, icon: glyph('droplet'), now: 'Waters every bed', next: null }
+    default:
+      return { level: owned('compost') ? 1 : 0, levels: 1, icon: glyph('basket'), now: '×1.5 every harvest', next: null }
+  }
+}
+
+/** The farm shop: a card per upgrade — its picture, its name, which level the next one is ("Level 2", or Max once
+ *  there are no more) and what it changes ("👥 5 → 6"), and its price. */
 function ShopPanel() {
   useFarm((s) => s.rev)
   const close = useHome((s) => s.closePanel)
@@ -427,39 +460,33 @@ function ShopPanel() {
         {UPGRADES.map((u) => {
           const has = owned(u.id)
           const price = upgradePrice(u.id)
-          const level = upgradeLevel(u.id)
-          const now =
-            u.id === 'hen'
-              ? `${farm.hens} now`
-              : u.id === 'cow'
-                ? `${farm.cows} now`
-                : u.id === 'sheep'
-                  ? `${farm.sheep} now`
-                  : u.id === 'queue'
-                    ? has
-                      ? `${placesInLine()} places`
-                      : `${placesInLine()} → ${queuePlaces(level + 1)}`
-                    : u.id === 'pace'
-                      ? has
-                        ? `every ${clockText(arrivalSeconds())}`
-                        : `${clockText(arrivalSeconds())} → ${clockText(arrivalEvery(level + 1))}`
-                      : null
+          const step = upgradeStep(u.id)
+          const repeat = step.levels > 1
           return (
             <div key={u.id} className={`farm-shop-item${has ? ' owned' : ''}`}>
               <img className="art" src={art(UPGRADE_ART[u.id] ?? 'package')} alt="" />
               <div className="farm-shop-text">
                 <strong>{u.name}</strong>
-                <span>{u.blurb}</span>
-                {(now || u.levels) && (
-                  <span className="farm-shop-tags">
-                    {u.levels ? (
-                      <span className="tag">
-                        {level}/{u.levels}
-                      </span>
-                    ) : null}
-                    {now && <span className="tag">{now}</span>}
+                <div className="farm-shop-tags">
+                  {repeat && <span className={`tag ${has ? 'ok' : 'level'}`}>{has ? 'Max' : `Level ${step.level + 1}`}</span>}
+                  {!repeat && has && (
+                    <span className="tag ok">
+                      <Check weight="bold" />
+                      Yours
+                    </span>
+                  )}
+                  <span className="tag effect">
+                    {step.icon}
+                    {step.now}
+                    {step.next && !has && (
+                      <>
+                        <ArrowRight weight="bold" className="effect-arrow" />
+                        <b>{step.next}</b>
+                      </>
+                    )}
                   </span>
-                )}
+                </div>
+                <small className="farm-shop-blurb">{u.blurb}</small>
               </div>
               <button
                 className={`btn small${has ? ' soft' : ''}`}
@@ -470,17 +497,9 @@ function ShopPanel() {
                     farmSound('build')
                   }
                 }}
-                aria-label={has ? `${u.name}: done` : `Buy ${u.name} for ${price} coins`}
+                aria-label={has ? `${u.name}: done` : `Buy ${u.name}${repeat ? `, level ${step.level + 1}` : ''}, for ${price} coins`}
               >
-                {has ? (
-                  u.levels ? (
-                    'Max'
-                  ) : (
-                    <Check weight="bold" />
-                  )
-                ) : (
-                  <Coins n={price} />
-                )}
+                {has ? <Check weight="bold" /> : <Coins n={price} />}
               </button>
             </div>
           )

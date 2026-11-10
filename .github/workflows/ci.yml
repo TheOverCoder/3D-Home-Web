@@ -14,8 +14,13 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
-    # the suite renders in software and boots the scene a dozen times (about 35 minutes); room for a retry
-    timeout-minutes: 60
+    # the suite renders in software and boots the scene a dozen times (about 35 minutes in one go): it runs as four
+    # shards side by side, each a quarter of the spec files, so a push waits about a quarter of that
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -26,14 +31,13 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx tsc --noEmit
-      - run: npm run build
       - run: npx playwright install --with-deps chromium
       # the Playwright config builds and serves the app itself on port 4185
-      - run: npm run test:e2e
+      - run: npx playwright test --shard=${{ matrix.shard }}/4
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.shard }}
           path: |
             playwright-report/
             test-results/

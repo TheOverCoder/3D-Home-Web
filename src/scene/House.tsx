@@ -15,12 +15,15 @@ import { GardenDoor } from './GardenDoor'
 import { Lamps } from './Lamps'
 import { Walls } from './Walls'
 import { useHome } from '../store'
+import { farm, useFarm } from '../farm/state'
+import '../home/actions' // the decorating actions (and their test hook)
 
 /**
  * Merges the never-moving placeholder geometry into a few draws (see lib/batch). With `firstPersonOnly` the
- * original pieces come back in the third-person view, where walls must be able to fade individually.
+ * original pieces come back in the third-person view, where walls must be able to fade individually. When `rev`
+ * changes (a piece of furniture moved), the merge is made again from what is there now.
  */
-export function StaticBatch({ children, firstPersonOnly = false }: { children: ReactNode; firstPersonOnly?: boolean }) {
+export function StaticBatch({ children, firstPersonOnly = false, rev }: { children: ReactNode; firstPersonOnly?: boolean; rev?: string }) {
   const group = useRef<Group>(null)
   const batch = useRef<Batch | null>(null)
   useEffect(() => {
@@ -38,7 +41,7 @@ export function StaticBatch({ children, firstPersonOnly = false }: { children: R
       b?.dispose()
       batch.current = null
     }
-  }, [firstPersonOnly])
+  }, [firstPersonOnly, rev])
   return <group ref={group}>{children}</group>
 }
 
@@ -78,6 +81,9 @@ function GltfHouse({ url, collisionUrl }: { url: string; collisionUrl?: string }
 }
 
 export function House() {
+  // where the furniture stands: the merged furniture is made again when it moves
+  const home = useFarm(() => farm.home)
+  const homeRev = useMemo(() => home.pieces.map((p) => `${p.id}:${p.x}:${p.z}:${p.rot}`).join('|'), [home])
   if (assets.house) {
     return (
       <>
@@ -97,7 +103,7 @@ export function House() {
       <StaticBatch>
         <Exterior />
       </StaticBatch>
-      <StaticBatch>
+      <StaticBatch rev={homeRev}>
         <Furnishings />
         <Dressing />
       </StaticBatch>

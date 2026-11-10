@@ -27,9 +27,12 @@ test.describe('smart actions, sheep and the line at the gate', () => {
     await game.teleport(-1.2, 1.4, 9.0, -Math.PI / 2, 0.5)
     await nearbyIs(game, 'farm-bed-0')
     const offer = await nearby(game)
-    expect(offer).toMatchObject({ label: 'Harvest 4 lettuces', icon: { verb: 'pick', item: 'lettuce' }, reach: true, side: 'back' })
-    // the prompt says which way round it is
+    expect(offer).toMatchObject({ label: 'Harvest 4 lettuces', icon: { verb: 'pick', item: 'lettuce', count: 4 }, reach: true, side: 'back' })
+    // the prompt says which way round it is; it shows the lettuce (with the verb's mark: no round button on a
+    // computer) and ×4, not the sentence
     await expect(game.page.locator('.prompt.turn-back')).toBeVisible()
+    await expect(game.page.locator('.prompt .prompt-pic .act-face-mark')).toHaveCount(1)
+    await expect(game.page.locator('.prompt .prompt-count')).toHaveText('×4')
     await page.keyboard.press('KeyE')
     await until(game, () => (window as any).__home.farm.state.inv.lettuce === 4)
     // the view swings round to the bed (west)

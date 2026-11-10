@@ -142,6 +142,10 @@ test.describe('phone', () => {
     await expect(action.locator('img.act-face-item')).toHaveCount(1)
     await expect(action.locator('.act-word')).toHaveText('Harvest')
     await expect(action.locator('.act-turn.back')).toHaveCount(1)
+    // the label above it is no sentence: the lettuce and how many, ×4
+    await expect(label.locator('.prompt-pic img')).toHaveCount(1)
+    await expect(label.locator('.prompt-count')).toHaveText('×4')
+    await expect(label.locator('.prompt-text')).toHaveCount(0)
     const buttons = await page.locator('.act-btn').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().toJSON()))
     expect(buttons.length, 'more things within reach').toBeGreaterThan(1)
     const jumpL = (await page.locator('#ecctrl-virtual-button').boundingBox())!

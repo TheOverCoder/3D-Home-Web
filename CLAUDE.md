@@ -20,6 +20,9 @@ The README has the overview; `tests/README.md` what each test guards.
   to take out of reach goes on the compass at the top: give its interactable a `ready()`, null until full). It
   never spends without asking: coins open a confirmation card (`verb: 'build'`), a machine's ingredients a
   `setConfirm` card over the button (the button again only closes it). One press does every like thing in reach.
+- The prompt over the button is pictures, not a sentence (`src/ui/Hud.tsx`): an action about a good gives its icon
+  `count` (how many one press takes, makes or sells), `coins` where coins change hands, a status `seconds`. The
+  `label` stays the words: tests and screen readers read it.
 
 ## Interface (src/styles.css tokens, src/ui/art.ts, src/ui/glyphs.ts)
 
@@ -32,6 +35,8 @@ The README has the overview; `tests/README.md` what each test guards.
 - A panel: picture, a few-word title, chips, at most one line of text, at most two buttons (Cancel first, the
   action last with its price). 44 px targets, text ≥ 15 px (never < 13). A good's picture where goods change hands
   or go into a machine is an `ItemPic` with its count (the round badge, 1 included), never the picture repeated.
+- The top of the screen has three views (`HudMode`: everything / only the compass / clear, `<html data-hud>`):
+  anything new up there must hide in the views it does not belong to (see `src/ui/Compass.css`).
 
 ## Making models (src/lib/sculpt, examples in src/models)
 

@@ -179,19 +179,26 @@ export function actionWord(icon: ActionIcon | undefined, label: string): string 
   return LEADING.has(first) ? first : VERB_WORD[icon?.verb ?? 'pick']
 }
 
+/** The verb's coloured mark for the corner of a picture: what a press does with the thing (a basket to take it, a
+ *  can to water it), in the verb's colour. */
+export function VerbMark({ verb }: { verb: Verb }) {
+  return (
+    <span className="act-face-mark" style={{ ['--verb' as string]: VERB_COLOUR[verb] }}>
+      <Glyph verb={verb} className="act-glyph" />
+    </span>
+  )
+}
+
 /** A button's face: the thing itself, big, with the verb's coloured mark in its corner — or, for something with
  *  no picture (a door, a lamp, the shop), the verb's glyph on its own. */
 export function ActionFace({ icon, className }: { icon?: ActionIcon; className?: string }) {
   const verb = icon?.verb ?? 'pick'
-  const colour = VERB_COLOUR[verb]
   return (
-    <span className={`act-face${icon?.item ? ' has-item' : ''}${className ? ` ${className}` : ''}`} data-verb={verb} style={{ ['--verb' as string]: colour }}>
+    <span className={`act-face${icon?.item ? ' has-item' : ''}${className ? ` ${className}` : ''}`} data-verb={verb}>
       {icon?.item ? (
         <>
           <img className="act-face-item" src={iconUrl(icon.item as ProduceId)} alt="" draggable={false} />
-          <span className="act-face-mark">
-            <Glyph verb={verb} className="act-glyph" />
-          </span>
+          <VerbMark verb={verb} />
         </>
       ) : (
         <Glyph verb={verb} className="act-face-glyph" />

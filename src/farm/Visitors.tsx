@@ -95,7 +95,11 @@ function Gate() {
       const first = `${v.name}: ${count(v.want, v.qty)} for ${v.offer} coins`
       return line.length === 1 ? first : `${line.length} buyers waiting · ${first}`
     },
-    icon: () => ({ verb: 'sell', item: waiting()[0]?.want }),
+    // the first buyer's order, as their bubble shows it: the good, how many, and the coins they offer
+    icon: () => {
+      const v = waiting()[0]
+      return v ? { verb: 'sell', item: v.want, count: v.qty, coins: v.offer } : { verb: 'sell' }
+    },
     run: () => openPanel({ kind: 'queue' }),
   })
   return null

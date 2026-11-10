@@ -82,7 +82,7 @@ export function Cows() {
         enabled: () => (farm.milk[i] ?? 0) > 0,
         ready: () => ((farm.milk[i] ?? 0) >= COW.max ? { item: 'milk', count: farm.milk[i] } : null),
         label: () => `Milk ${cowName(i)} · ${count('milk', farm.milk[i] ?? 0)}`,
-        icon: { verb: 'pick', item: 'milk' },
+        icon: () => ({ verb: 'pick', item: 'milk', count: farm.milk[i] ?? 0 }),
         run: () => {
           milkCow(i)
           playGesture('interact')

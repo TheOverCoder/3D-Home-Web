@@ -7,11 +7,13 @@ import { useInteractable } from '../lib/interaction'
 import { levels } from '../lib/lightLevels'
 import { playGesture } from '../lib/gestures'
 import { useHome } from '../store'
+import { farm, useFarm } from '../farm/state'
+import { HOSTED, onHost } from '../home/layout'
 
 const WARM = '#ffcf94'
 
-function Fixture({ def, on }: { def: LampDef; on: boolean }) {
-  const [x, y, z] = def.position
+function Fixture({ def, at, on }: { def: LampDef; at: [number, number, number]; on: boolean }) {
+  const [x, y, z] = at
   const glow = on ? 2.2 : 0.05
   const shadeMaterial = <meshStandardMaterial color="#f3e7d3" emissive={WARM} emissiveIntensity={glow} roughness={0.9} side={DoubleSide} />
   const metal = <meshStandardMaterial color="#26282b" metalness={0.8} roughness={0.35} />
@@ -50,23 +52,35 @@ function Fixture({ def, on }: { def: LampDef; on: boolean }) {
   }
 }
 
+/** Where a lamp is: one standing on a piece of furniture goes where the piece goes (null: put away with it). */
+function useLampAt(def: LampDef): [number, number, number] | null {
+  const home = useFarm(() => farm.home)
+  const host = HOSTED[def.id]
+  if (!host) return def.position
+  const at = onHost(home, host, def.position[0], def.position[2])
+  return at ? [at[0], def.position[1], at[1]] : null
+}
+
 function Lamp({ def, fixture }: { def: LampDef; fixture: boolean }) {
   const on = useHome((s) => s.lamps[def.id])
+  const placed = useLampAt(def)
+  const at = placed ?? def.position
   const toggleLamp = useHome((s) => s.toggleLamp)
   const light = useRef<PointLight>(null)
   const current = useRef(on ? 1 : 0)
   // fades up and down instead of popping, and dims a little when you are elsewhere in the house
   useFrame((_, dt) => {
     current.current += ((useHome.getState().lamps[def.id] ? 1 : 0) - current.current) * (1 - Math.exp(-7 * dt))
-    if (light.current) light.current.intensity = 6.5 * current.current * (0.6 + 0.4 * levels[def.room])
+    if (light.current) light.current.intensity = placed ? 6.5 * current.current * (0.6 + 0.4 * levels[def.room]) : 0
   })
   useInteractable({
     id: def.id,
     label: on ? 'Switch the light off' : 'Switch the light on',
     icon: { verb: 'switch' },
-    position: [def.position[0], Math.min(def.position[1], 1.1), def.position[2]],
-    aim: def.position, // you look at the shade, not at the floor beneath it
+    position: [at[0], Math.min(at[1], 1.1), at[2]],
+    aim: at, // you look at the shade, not at the floor beneath it
     radius: 1.4,
+    enabled: () => placed !== null,
     run: () => {
       playGesture('interact')
       toggleLamp(def.id)
@@ -74,15 +88,15 @@ function Lamp({ def, fixture }: { def: LampDef; fixture: boolean }) {
   })
   return (
     <>
-      {fixture && <Fixture def={def} on={on} />}
+      {fixture && placed && <Fixture def={def} at={placed} on={on} />}
       {/* a standing lamp has its shade at head height: without a body you could walk into it and the whole view turns to glowing white */}
       {fixture && def.kind === 'floor' && (
-        <RigidBody type="fixed" colliders={false} position={[def.position[0], 0, def.position[2]]}>
+        <RigidBody type="fixed" colliders={false} position={[at[0], 0, at[2]]}>
           <CylinderCollider args={[0.9, 0.32]} position={[0, 0.9, 0]} />
         </RigidBody>
       )}
       {/* constant light count (intensity 0 when off) so toggling never recompiles shaders */}
-      <pointLight ref={light} position={def.position} color={WARM} intensity={on ? 6.5 : 0} distance={7} decay={1.7} />
+      <pointLight ref={light} position={at} color={WARM} intensity={on && placed ? 6.5 : 0} distance={7} decay={1.7} />
     </>
   )
 }

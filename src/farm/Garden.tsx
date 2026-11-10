@@ -176,6 +176,17 @@ function replant(index: number): { crop: CropDef; beds: number[] } | null {
   return n > 0 ? { crop, beds: bedsInReach(index, 'empty').slice(0, n) } : null
 }
 
+/** What harvesting these beds brings in: the first bed's crop and how many of it, then any other crop among them. */
+function harvestOf(beds: number[]) {
+  const got = new Map<string, number>()
+  for (const i of beds) {
+    const crop = farm.beds[i].crop
+    if (crop) got.set(crop, (got.get(crop) ?? 0) + yieldOf(crop))
+  }
+  const [first, ...rest] = [...got].map(([item, count]) => ({ item, count }))
+  return { ...first, ...(rest.length ? { also: rest } : {}) }
+}
+
 const DRY = new Color('#ffffff')
 const WET = new Color('#7d6e66')
 
@@ -248,14 +259,19 @@ function Bed({ index }: { index: number }) {
       }
       return `${crop.plural[0].toUpperCase()}${crop.plural.slice(1)} · ready in ${mmss(crop.growSeconds - b.growth)}`
     },
+    // the prompt's pictures and numbers: what the press does to every bed in reach, or (growing) how long
     icon: () => {
       const stage = bedStage(index)
-      const crop = farm.beds[index].crop ?? undefined
-      if (stage === 'unbought' || stage === 'locked') return { verb: 'build' }
-      if (stage === 'empty') return { verb: 'plant', item: replant(index)?.crop.id }
-      if (stage === 'thirsty') return { verb: 'water', item: crop }
-      if (stage === 'ripe') return { verb: 'pick', item: crop }
-      return { verb: 'wait', item: crop }
+      const crop = farm.beds[index].crop
+      if (stage === 'unbought') return { verb: 'build', art: 'hammer', coins: EXPANSIONS[def.expansion!].price }
+      if (stage === 'locked') return { verb: 'build', art: 'hammer', coins: def.price }
+      if (stage === 'empty') {
+        const r = replant(index)
+        return r ? { verb: 'plant', item: r.crop.id, count: r.beds.length, coins: r.crop.seedCost * r.beds.length } : { verb: 'plant' }
+      }
+      if (stage === 'thirsty') return { verb: 'water', item: crop!, count: bedsInReach(index, 'thirsty').length }
+      if (stage === 'ripe') return { verb: 'pick', ...harvestOf(bedsInReach(index, 'ripe')) }
+      return { verb: 'wait', item: crop!, count: yieldOf(crop!), seconds: Math.max(0, Math.ceil(cropById(crop!).growSeconds - farm.beds[index].growth)) }
     },
     run: () => {
       const stage = bedStage(index)

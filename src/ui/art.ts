@@ -21,6 +21,8 @@ export type ArtId =
   | 'house-with-garden'
   | 'musical-notes'
   | 'package'
+  | 'people-queue'
+  | 'person-running'
   | 'running-shoe'
   | 'seedling'
   | 'sheaf-of-rice'

@@ -17,6 +17,7 @@ export interface Settings {
   musicVolume: number // 0..1, under the sound volume
   musicTrack: number
   vibration: boolean // a short buzz as an action is done (phones that can: Android)
+  hudMode: 'all' | 'compass' | 'clean' // the top of the screen: everything, only the compass, or nothing (the button in the corner, or H)
 }
 
 // People who ask their system for less motion get a still camera by default (they can still turn sway on)
@@ -37,6 +38,7 @@ export const DEFAULT_SETTINGS: Settings = {
   musicVolume: 0.5,
   musicTrack: 0,
   vibration: true,
+  hudMode: 'all',
 }
 
 const KEY = '3d-home:settings:v1'
@@ -78,6 +80,7 @@ const pick = (s: Settings): Settings => ({
   musicVolume: s.musicVolume,
   musicTrack: s.musicTrack,
   vibration: s.vibration,
+  hudMode: s.hudMode === 'compass' || s.hudMode === 'clean' ? s.hudMode : 'all',
 })
 
 export const useSettings = create<SettingsStore>()((set, get) => ({

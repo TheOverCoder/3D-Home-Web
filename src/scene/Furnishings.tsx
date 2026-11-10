@@ -7,6 +7,9 @@ import { boxProject } from '../lib/boxProject'
 import { material, surface, type MaterialKind } from '../lib/proceduralTextures'
 import { assets } from '../assets/registry'
 import { fitModelTextures } from '../lib/textureBudget'
+import { farm, useFarm } from '../farm/state'
+import { PIECES, type PieceType } from '../home/catalogue'
+import { hostMove, type HomePiece } from '../home/layout'
 
 type V3 = [number, number, number]
 
@@ -120,7 +123,7 @@ interface SolidProps {
 }
 
 /** Static furniture: a collider plus either the placeholder meshes or a dropped-in GLB. */
-function Solid({ id, position, rotationY = 0, size, children }: SolidProps) {
+export function Solid({ id, position, rotationY = 0, size, children }: SolidProps) {
   const url = assets.props[id]
   return (
     <RigidBody type="fixed" colliders={false} position={position} rotation={[0, rotationY, 0]}>
@@ -140,7 +143,7 @@ function Solid({ id, position, rotationY = 0, size, children }: SolidProps) {
 }
 
 /** Decorative only (no collider). */
-function Decor({ position, rotationY = 0, children }: { position: V3; rotationY?: number; children: ReactNode }) {
+export function Decor({ position, rotationY = 0, children }: { position: V3; rotationY?: number; children: ReactNode }) {
   return (
     <group position={position} rotation={[0, rotationY, 0]}>
       {children}
@@ -455,42 +458,102 @@ function Frame({ size, color, accent }: { size: [number, number]; color: string;
   )
 }
 
-/** All room furniture. Every piece can be replaced by dropping `props/<id>.glb`. */
+// ───────────────────────────── the house's furniture, from the farm's save ─────────────────────────────
+
+/** The model of each kind of piece (built round its middle, its back towards −z). */
+export function PieceModel({ type }: { type: PieceType }) {
+  switch (type) {
+    case 'sofa':
+      return <Sofa />
+    case 'coffee-table':
+      return <CoffeeTable />
+    case 'tv-console':
+      return <TvConsole />
+    case 'plant-tall':
+      return <Plant tall={1.3} />
+    case 'plant':
+      return <Plant />
+    case 'armchair':
+    case 'accent-chair':
+      return <Armchair />
+    case 'pouf':
+      return <Pouf />
+    case 'desk':
+      return <Desk />
+    case 'chair':
+      return <Chair />
+    case 'bookshelf':
+      return <Bookshelf />
+    case 'counter':
+      return <Counter />
+    case 'fridge':
+      return <Fridge />
+    case 'island':
+      return <Island />
+    case 'stool':
+      return <Stool />
+    case 'bed':
+      return <Bed />
+    case 'nightstand':
+      return <Nightstand />
+    case 'wardrobe':
+      return <Wardrobe />
+    case 'rug-living':
+      return <Rug size={[3.0, 2.2]} color="#8c6f5a" />
+    case 'rug-studio':
+      return <Rug size={[2.4, 1.6]} color="#4f5f6b" />
+    case 'rug-bedroom':
+      return <Rug size={[2.8, 3.0]} color="#7d8a96" />
+  }
+}
+
+// a real model dropped in for a kind of piece, when the piece's own id has none (one bought later is "sofa-3")
+const MODEL_OF: Partial<Record<PieceType, string>> = { 'plant-tall': 'plant-living' }
+const modelId = (p: HomePiece) => (assets.props[p.id] ? p.id : (MODEL_OF[p.type] ?? p.type))
+
+/** One piece where the layout has it: furniture is solid, a rug lies under it. */
+export function Placed({ p }: { p: HomePiece }) {
+  const def = PIECES[p.type]
+  const rotationY = (p.rot * Math.PI) / 2
+  if (def.layer === 'rug')
+    return (
+      <Decor position={[p.x, 0, p.z]} rotationY={rotationY}>
+        <PieceModel type={p.type} />
+      </Decor>
+    )
+  return (
+    <Solid id={modelId(p)} position={[p.x, 0, p.z]} rotationY={rotationY} size={def.size}>
+      <PieceModel type={p.type} />
+    </Solid>
+  )
+}
+
+/** Small things that stand on a piece of today's house (books on the coffee table, the laptop on the desk), given
+ *  where they stand today: they go where the piece goes, and away with it. */
+export function OnPiece({ id, children }: { id: string; children: ReactNode }) {
+  const home = useFarm(() => farm.home)
+  const m = hostMove(home, id)
+  if (!m) return null
+  return (
+    <group position={[m.to.x, 0, m.to.z]} rotation-y={((m.to.rot - m.from.rot) * Math.PI) / 2}>
+      <group position={[-m.from.x, 0, -m.from.z]}>{children}</group>
+    </group>
+  )
+}
+
+/** All room furniture, where the farm's save has it (src/home/layout.ts), and the pictures on the walls. A moved
+ *  piece is drawn afresh (its collider is made where it stands). Every piece can be replaced by dropping
+ *  `props/<id>.glb` (or `props/<kind>.glb`). */
 export function Furnishings() {
+  const home = useFarm(() => farm.home)
   return (
     <group>
-      {/* living room */}
-      <Solid id="sofa" position={[-3.5, 0, 2.5]} size={[2.2, 0.95, 0.95]}><Sofa /></Solid>
-      <Solid id="coffee-table" position={[-3.5, 0, 3.95]} size={[1.1, 0.42, 0.6]}><CoffeeTable /></Solid>
-      <Solid id="tv-console" position={[-3.5, 0, 5.65]} size={[1.8, 0.5, 0.45]}><TvConsole /></Solid>
-      <Solid id="plant-living" position={[-6.35, 0, 5.35]} size={[0.7, 1.3, 0.7]}><Plant tall={1.3} /></Solid>
-      <Solid id="armchair" position={[-5.85, 0, 3.4]} rotationY={Math.PI / 2} size={[0.85, 0.95, 0.85]}><Armchair /></Solid>
-      <Solid id="pouf" position={[-4.95, 0, 3.35]} size={[0.6, 0.2, 0.6]}><Pouf /></Solid>
-      <Decor position={[-3.5, 0, 3.5]}><Rug size={[3.0, 2.2]} color="#8c6f5a" /></Decor>
+      {home.pieces.map((p) => (
+        <Placed key={`${p.id}|${p.x}|${p.z}|${p.rot}`} p={p} />
+      ))}
+      {/* pictures on the walls */}
       <Decor position={[-6.88, 1.65, 3.4]} rotationY={Math.PI / 2}><Frame size={[1.1, 0.75]} color="#c9b79c" accent="#3d6a8a" /></Decor>
       <Decor position={[-6.88, 1.6, 4.7]} rotationY={Math.PI / 2}><Frame size={[0.6, 0.8]} color="#d9d0c0" accent="#b4543a" /></Decor>
-
-      {/* studio */}
-      <Solid id="desk" position={[-3.5, 0, -5.45]} size={[1.8, 0.76, 0.8]}><Desk /></Solid>
-      <Solid id="chair" position={[-3.5, 0, -4.45]} rotationY={Math.PI} size={[0.5, 0.95, 0.5]}><Chair /></Solid>
-      <Solid id="bookshelf" position={[-6.7, 0, -3]} rotationY={Math.PI / 2} size={[1.4, 2.0, 0.4]}><Bookshelf /></Solid>
-      <Solid id="plant-studio" position={[-0.6, 0, -5.4]} size={[0.45, 1.0, 0.45]}><Plant /></Solid>
-      <Decor position={[-1.8, 0, -3.2]}><Rug size={[2.4, 1.6]} color="#4f5f6b" /></Decor>
-
-      {/* kitchen */}
-      <Solid id="counter" position={[3.3, 0, -5.58]} size={[4.6, 0.9, 0.62]}><Counter /></Solid>
-      <Solid id="fridge" position={[6.3, 0, -5.5]} size={[0.8, 1.9, 0.75]}><Fridge /></Solid>
-      <Solid id="island" position={[3.4, 0, -2.4]} size={[2.0, 0.92, 0.9]}><Island /></Solid>
-      <Solid id="stool-a" position={[2.9, 0, -1.55]} size={[0.38, 0.65, 0.38]}><Stool /></Solid>
-      <Solid id="stool-b" position={[3.9, 0, -1.55]} size={[0.38, 0.65, 0.38]}><Stool /></Solid>
-
-      {/* bedroom */}
-      <Solid id="bed" position={[4.6, 0, 4.85]} size={[1.7, 0.7, 2.1]}><Bed /></Solid>
-      <Solid id="nightstand" position={[3.35, 0, 5.6]} size={[0.5, 0.58, 0.45]}><Nightstand /></Solid>
-      <Solid id="wardrobe" position={[5.8, 0, 0.45]} size={[1.6, 2.2, 0.6]}><Wardrobe /></Solid>
-      {/* reading corner by the mirror, facing into the room */}
-      <Solid id="accent-chair" position={[0.62, 0, 1.25]} rotationY={Math.PI / 2} size={[0.83, 0.69, 0.57]}><Armchair /></Solid>
-      <Decor position={[4.6, 0, 4.4]}><Rug size={[2.8, 3.0]} color="#7d8a96" /></Decor>
       <Decor position={[3.5, 1.7, 5.9]} rotationY={Math.PI}><Frame size={[0.8, 0.6]} color="#cfd6dc" accent="#4d7a58" /></Decor>
     </group>
   )

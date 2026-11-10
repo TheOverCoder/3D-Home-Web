@@ -40,6 +40,8 @@ import {
   type UpgradeId,
 } from './data'
 import { PARCELS, PLACES, canBuyParcel, canPlace, defaultLayout, sanitizeLayout, snap, type FarmLayout, type Fit, type ParcelId, type PlaceId, type Placement } from './layout'
+import { PIECES, type PieceType } from '../home/catalogue'
+import { canPlacePiece, defaultHome, findFreeSpot, sanitizeHome, type HomeLayout, type HomePiece } from '../home/layout'
 
 // The farm runs on a plain object that the scene reads every frame (growth, water, people walking), so nothing
 // re-renders 60 times a second. Anything the interface shows changes in steps — planted, thirsty, ripe, sold —
@@ -50,6 +52,9 @@ export interface BedState {
   crop: CropId | null
   growth: number // seconds grown so far
   water: number // seconds of water left in the soil
+  /** set from the bed's gear: this bed always grows this crop (the action button buys the seeds and plants it);
+   *  null: you choose the seeds each time */
+  fixed: CropId | null
 }
 
 export interface Look {
@@ -132,6 +137,8 @@ export interface FarmData {
   visitors: Visitor[]
   /** where the movable places stand, and the fields bought (src/farm/layout.ts) */
   layout: FarmLayout
+  /** where the house's furniture stands, and what is in storage (src/home/layout.ts) */
+  home: HomeLayout
   nextVisitorIn: number // counts down to the next buyer (it holds at zero while the line is full)
   clock: number // seconds of farm time since the page opened
 }
@@ -162,7 +169,7 @@ function fresh(): FarmData {
   return {
     coins: START_COINS,
     inv: emptyInv(),
-    beds: BEDS.map((b) => ({ built: b.price === 0 && !b.expansion, crop: null, growth: 0, water: 0 })),
+    beds: BEDS.map((b) => ({ built: b.price === 0 && !b.expansion, crop: null, growth: 0, water: 0, fixed: null })),
     lemons: 3,
     lemonTimer: 0,
     eggs: 1,
@@ -189,6 +196,7 @@ function fresh(): FarmData {
     stats: { harvested: 0, sold: 0, earned: 0, declined: 0, baked: 0 },
     visitors: [],
     layout: defaultLayout(),
+    home: defaultHome(),
     nextVisitorIn: VISITOR.firstAfter,
     clock: 0,
   }
@@ -249,6 +257,7 @@ function load(text: string | null = readRaw(KEY)): { data: FarmData; savedAt: nu
         crop: present && CROPS.some((c) => c.id === b.crop) ? (b.crop as CropId) : null,
         growth: Math.max(0, num(b.growth, 0)),
         water: Math.max(0, num(b.water, 0)),
+        fixed: CROPS.some((c) => c.id === b.fixed) ? (b.fixed as CropId) : null,
       }
     })
     BEDS.forEach((def, i) => {
@@ -299,6 +308,8 @@ function load(text: string | null = readRaw(KEY)): { data: FarmData; savedAt: nu
     data.stats = { ...data.stats, ...(raw.stats ?? {}) }
     // a farm from before the layout keeps everything where it always stood
     data.layout = sanitizeLayout(raw.layout)
+    // a farm from before the house could be furnished keeps today's furniture where it always stood
+    data.home = sanitizeHome(raw.home)
     const queue = (Array.isArray(raw.queue) ? raw.queue : []).map(savedBuyer).filter((b): b is SavedBuyer => !!b)
     return { data, savedAt: num(raw.time, 0) || null, queue: queue.slice(0, queuePlaces(data.queueLevel)) }
   } catch {
@@ -466,6 +477,17 @@ export function buildBed(i: number) {
   farm.coins -= price
   b.built = true
   toast('A new bed, ready for seeds')
+  bump()
+  save()
+  return true
+}
+
+/** What a bed always grows, set from its gear: the action button then buys those seeds and plants them there
+ *  (null: you choose the seeds each time). */
+export function fixBed(i: number, crop: CropId | null) {
+  const b = farm.beds[i]
+  if (!b?.built) return false
+  b.fixed = crop
   bump()
   save()
   return true
@@ -725,6 +747,63 @@ export function movePlace(id: PlaceId, to: Placement): Fit {
 
 /** Puts a place back where it stood on a new farm (if that spot is free). */
 export const sendHome = (id: PlaceId) => movePlace(id, PLACES[id].home)
+
+// ───────────────────────────── the house's furniture ─────────────────────────────
+
+const quarter = (rot: number) => ((Math.round(rot) % 4) + 4) % 4
+
+/** Moves (or turns) a piece of furniture to where it fits; if it does not, nothing moves and the reason comes back. */
+export function movePiece(id: string, to: Placement): Fit {
+  const p = farm.home.pieces.find((q) => q.id === id)
+  if (!p) return { ok: false, reason: 'Not in the house' }
+  if (PIECES[p.type].fitted) return { ok: false, reason: 'Built in' }
+  const q: HomePiece = { ...p, x: to.x, z: to.z, rot: quarter(to.rot) }
+  const fit = canPlacePiece(farm.home, q)
+  if (!fit.ok) return fit
+  farm.home = { ...farm.home, pieces: farm.home.pieces.map((o) => (o.id === id ? q : o)) }
+  bump()
+  save()
+  return fit
+}
+
+/** Puts a piece away into storage (what is built in stays). */
+export function storePiece(id: string) {
+  const p = farm.home.pieces.find((q) => q.id === id)
+  if (!p || PIECES[p.type].fitted) return false
+  farm.home = { ...farm.home, pieces: farm.home.pieces.filter((o) => o.id !== id), stored: [...farm.home.stored, p.type] }
+  bump()
+  save()
+  return true
+}
+
+/** Takes a piece of this kind out of storage and stands it here, if it fits: its id, or the reason it does not. */
+export function placeStored(type: PieceType, to: Placement): Fit & { id?: string } {
+  const k = farm.home.stored.indexOf(type)
+  if (k < 0) return { ok: false, reason: 'None in storage' }
+  const id = `${type}-${farm.home.next}`
+  const q: HomePiece = { id, type, x: to.x, z: to.z, rot: quarter(to.rot) }
+  const fit = canPlacePiece(farm.home, q)
+  if (!fit.ok) return fit
+  const stored = farm.home.stored.filter((_, j) => j !== k)
+  farm.home = { pieces: [...farm.home.pieces, q], stored, next: farm.home.next + 1 }
+  bump()
+  save()
+  return { ok: true, id }
+}
+
+/** Buys a piece of furniture: it waits in storage until you stand it somewhere. */
+export function buyPiece(type: PieceType) {
+  const def = PIECES[type]
+  if (!def || !def.price || farm.coins < def.price) return false
+  farm.coins -= def.price
+  farm.home = { ...farm.home, stored: [...farm.home.stored, type] }
+  bump()
+  save()
+  return true
+}
+
+/** A free spot for a piece in a room, for placing one from storage without dragging it there. */
+export const freeSpotFor = (type: PieceType, room: Parameters<typeof findFreeSpot>[2]) => findFreeSpot(farm.home, type, room)
 
 // ───────────────────────────── buyers ─────────────────────────────
 
