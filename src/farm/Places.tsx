@@ -2,6 +2,7 @@ import { useEffect, useMemo, type ReactNode } from 'react'
 import { CuboidCollider, CylinderCollider, RigidBody } from '@react-three/rapier'
 import { farmSound, placeSound } from '../audio/sound'
 import { CORNER_TREES } from '../data/garden'
+import { farmFx } from '../fx/fx'
 import { playGesture } from '../lib/gestures'
 import { useInteractable } from '../lib/interaction'
 import { surface } from '../lib/proceduralTextures'
@@ -360,6 +361,7 @@ function LemonTree() {
       playGesture('interact')
       const { pan, near } = placeSound(p.x, p.z)
       farmSound('harvest', pan, near)
+      farmFx('harvest', ...world(p, 0, 1.6, 0), { good: 'lemon' })
     },
   })
   return (

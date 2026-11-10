@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { farmSound, placeSound, uiClick } from '../audio/sound'
 import { coarsePointer } from '../lib/device'
+import { farmFx } from '../fx/fx'
 import { playGesture } from '../lib/gestures'
 import { playerState } from '../lib/playerState'
 import { useHome } from '../store'
-import { BEDS, COW, CROPS, EGG, EXPANSIONS, PACE_LEVELS, PRODUCE, QUEUE_LEVELS, SHEEP, UPGRADES, arrivalEvery, count, queuePlaces, type CropId } from './data'
+import { BEDS, BED_BOX, COW, CROPS, EGG, EXPANSIONS, PACE_LEVELS, PRODUCE, QUEUE_LEVELS, SHEEP, UPGRADES, arrivalEvery, count, queuePlaces, type BedDef, type CropId } from './data'
 import { EditButton, EditPanel } from './EditPanel'
 import { DecoratePanel } from '../home/DecoratePanel'
 import { BuyPiece, FurnitureShop } from '../home/FurnitureShop'
@@ -201,6 +202,9 @@ function BedPanel({ bed }: { bed: number }) {
   )
 }
 
+/** A puff of dust round each bed just built (one bed, or every bed of a field). */
+const dustOver = (beds: BedDef[]) => beds.forEach((b) => farmFx('dust', b.x, 0.04, b.z, { half: BED_BOX }))
+
 /** Spending coins on the farm itself (a bed, a field) always asks first: what it is, what it costs, what you have,
  *  and a Build button that only arms after a moment — never on the button you press to water or harvest. */
 function BuildPanel({ bed }: { bed: number }) {
@@ -223,6 +227,7 @@ function BuildPanel({ bed }: { bed: number }) {
     if (!ok) return
     const { pan, near } = placeSound(def.x, def.z)
     farmSound('build', pan, near)
+    dustOver(def.expansion ? BEDS.filter((b) => b.expansion === def.expansion) : [def])
     playGesture('interact')
     close()
   }
@@ -492,6 +497,7 @@ function ShopPanel() {
                   if (buy(u.id)) {
                     uiClick()
                     farmSound('build')
+                    if (u.id === 'east' || u.id === 'west') dustOver(BEDS.filter((b) => b.expansion === u.id))
                   }
                 }}
                 aria-label={has ? `${u.name}: done` : `Buy ${u.name}${repeat ? `, level ${step.level + 1}` : ''}, for ${price} coins`}

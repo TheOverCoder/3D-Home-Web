@@ -50,5 +50,5 @@ export const CREDITS: Credit[] = [
   { what: 'Fluent Emoji 3D (interface art: coin, basket, shop and menu pictures; the app icon)', by: 'Microsoft Corporation', license: 'MIT', url: 'https://github.com/microsoft/fluentui-emoji' },
   { what: 'Phosphor Icons (interface glyphs)', by: 'Phosphor Icons', license: 'MIT', url: 'https://phosphoricons.com' },
   { what: 'Fredoka and Nunito typefaces', by: 'The Fredoka Project Authors; The Nunito Project Authors', license: 'SIL OFL 1.1', url: 'https://fonts.google.com/specimen/Fredoka' },
-  { what: 'three.js, react-three-fiber, drei, Rapier, ecctrl', by: 'their respective authors', license: 'MIT / Apache-2.0' },
+  { what: 'three.js, react-three-fiber, drei, Rapier, ecctrl, three.quarks', by: 'their respective authors', license: 'MIT / Apache-2.0' },
 ]

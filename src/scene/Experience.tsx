@@ -13,6 +13,7 @@ import { onGraphicsRestart } from '../lib/startup'
 import { useHome, type Quality } from '../store'
 import { Garden } from '../farm/Garden'
 import { EditMode } from '../farm/EditMode'
+import { FarmFx } from '../fx/FarmFx'
 import { Effects } from './Effects'
 import { House } from './House'
 import { LightDirector } from './LightDirector'
@@ -185,6 +186,8 @@ export default function Experience() {
           <DecorateMode />
           <Ready />
         </Physics>
+        {/* the farm's small effects: water, sparkles and dust (three.quarks, loaded once playing) and flying coins */}
+        <FarmFx />
         <Effects />
         {/* compile every shader and upload every texture up front, so turning round or entering a room never stalls */}
         <Warmup />

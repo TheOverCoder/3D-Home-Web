@@ -368,6 +368,9 @@ a:focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; border-rad
 /* the label, kept for screen readers behind the pictures */
 .prompt-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
+/* coins flying from a buyer to the coin chip when they pay (src/fx/coins.ts: placed and flown by script) */
+.coin-fly { position: fixed; z-index: 70; width: 30px; height: 30px; pointer-events: none; user-select: none; filter: drop-shadow(0 2px 3px rgba(40, 24, 10, 0.4)); will-change: transform, opacity; }
+
 /* a few words and a picture of what came in ("+ 4 lettuces"), on paper, popping in under the coin chip */
 .toast {
   position: fixed;

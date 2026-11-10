@@ -58,6 +58,10 @@ function rapierWasmAsFile(): Plugin {
  *  and the service worker does not keep them. */
 const devOnly = (fileName: string) => /(?:^|[\\/])(?:Gallery|dev-[a-z]+)-[\w-]{8}\.js$/.test(fileName)
 
+/** The farm's particle effects (three.quarks, the `effects` group below): the game imports them once it is playing, so
+ *  the loader does not download them up front; the service worker still keeps them once they are fetched. */
+const later = (fileName: string) => /(?:^|[\\/])effects-[\w-]{8}\.js$/.test(fileName)
+
 /**
  * Writes two files into the build:
  * - assets-manifest.json: every file the 3D scene downloads after the page shell (its code, models, sky, textures)
@@ -92,7 +96,7 @@ function offlineAndProgress(): Plugin {
       if (entry) walk(entry.fileName)
       const sizeOf = (o: (typeof entries)[number]) => (o.type === 'chunk' ? Buffer.byteLength(o.code) : typeof o.source === 'string' ? Buffer.byteLength(o.source) : o.source.byteLength)
       const files = entries
-        .filter((o) => !shell.has(o.fileName) && !/\.(map|json|txt)$/.test(o.fileName) && o.fileName !== 'sw.js' && !devOnly(o.fileName))
+        .filter((o) => !shell.has(o.fileName) && !/\.(map|json|txt)$/.test(o.fileName) && o.fileName !== 'sw.js' && !devOnly(o.fileName) && !later(o.fileName))
         .map((o) => ({ url: o.fileName, bytes: sizeOf(o), ...labelFor(o.fileName) }))
         .sort((a, b) => b.bytes - a.bytes)
       // the version goes by every file (a change to a developer page still makes a new one); the worker keeps the game's
@@ -218,6 +222,8 @@ export default defineConfig({
             { name: 'dev-console', test: /node_modules[\\/]eruda[\\/]|src[\\/]debug[\\/]console\./, priority: 51, includeDependenciesRecursively: false },
             { name: 'dev-tune', test: /node_modules[\\/]lil-gui[\\/]|src[\\/]debug[\\/]/, priority: 50, includeDependenciesRecursively: false },
             { name: 'dev-pages', test: /src[\\/](home[\\/]FurnitureArtPage|models[\\/](ItemArtPage|itemArt))\./, priority: 50, includeDependenciesRecursively: false },
+            // the particle engine and the effects made with it, imported once the game is playing (`later`)
+            { name: 'effects', test: /node_modules[\\/](three\.quarks|quarks\.core)[\\/]|src[\\/]fx[\\/]quarks\./, priority: 45, includeDependenciesRecursively: false },
             { name: 'vendor-react', test: /node_modules[\\/](react|react-dom|scheduler|zustand|use-sync-external-store)[\\/]|vite[\\/]preload-helper/, priority: 40 },
             { name: 'vendor-physics', test: /node_modules[\\/]@dimforge[\\/]/, priority: 30 },
             { name: 'vendor-three', test: /node_modules[\\/]three[\\/]/, priority: 20 },

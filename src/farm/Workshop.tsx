@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import { CuboidCollider, RigidBody } from '@react-three/rapier'
 import { CanvasTexture, DoubleSide, SRGBColorSpace, type Group, type Mesh, type Sprite } from 'three'
 import { farmSound, placeSound } from '../audio/sound'
+import { farmFx } from '../fx/fx'
 import { playGesture } from '../lib/gestures'
 import { useInteractable } from '../lib/interaction'
 import { loadSolids, solidsReady } from '../lib/sculpt'
@@ -271,9 +272,11 @@ function Oven() {
       const s = ovenStage()
       const { pan, near } = placeSound(OVEN.x, OVEN.z)
       if (s === 'done') {
+        const cake = farm.oven.ready ?? undefined
         takeOut()
         playGesture('interact')
         farmSound('harvest', pan, near)
+        farmFx('harvest', OVEN_AIM[0], OVEN_AIM[1] + 0.12, OVEN_AIM[2], { good: cake })
       } else if (s === 'baking') showToast(`The ${produceById(farm.oven.baking!).name} needs ${mmss(ovenSecondsLeft())} more`)
     },
   })
@@ -377,9 +380,11 @@ function Mill() {
       const s = millStage()
       const { pan, near } = placeSound(MILL.x, MILL.z)
       if (s === 'done') {
+        const out = farm.mill.output ?? undefined
         millCollect()
         playGesture('interact')
         farmSound('harvest', pan, near)
+        farmFx('harvest', MILL_AIM[0], MILL_AIM[1] + 0.12, MILL_AIM[2], { good: out })
       } else if (s === 'working') showToast(`${mmss(millSecondsLeft())} to go`)
     },
   })
@@ -536,6 +541,7 @@ function Loom() {
         loomCollect()
         playGesture('interact')
         farmSound('harvest', pan, near)
+        farmFx('harvest', LOOM.x, 1.05, LOOM.z + 0.2, { good: 'cloth' })
       } else if (s === 'working') showToast(`${mmss(loomSecondsLeft())} to go`)
       else if (farm.inv.wool) {
         // the fleeces go on the loom only once asked (a card over the button names them)

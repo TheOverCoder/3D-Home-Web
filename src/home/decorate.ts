@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { ROOMS, roomAt, type RoomId } from '../data/layout'
 import type { Fit } from '../farm/layout'
 import { buyPiece, farm, placeStored, restoreHome } from '../farm/state'
+import { farmFx } from '../fx/fx'
 import { playerState } from '../lib/playerState'
 import { useHome } from '../store'
 import { movePieceTo, putAway, turnPiece } from './actions'
@@ -52,6 +53,14 @@ export const decorateFocus = { x: 0, z: 0 }
 export const decorateEye = { x: 0, y: 0, z: 0 }
 
 const pieceById = (id: string) => farm.home.pieces.find((p) => p.id === id)
+
+/** A puff of dust round a piece just put down, from the edge of its footprint. */
+function dustUnder(id: string) {
+  const p = pieceById(id)
+  if (!p) return
+  const r = footprint(p)
+  farmFx('dust', (r.minX + r.maxX) / 2, 0.03, (r.minZ + r.maxZ) / 2, { half: { x: (r.maxX - r.minX) / 2, z: (r.maxZ - r.minZ) / 2 } })
+}
 const remember = (refund?: number) => useDecorate.setState((s) => ({ undo: [...s.undo.slice(-29), { home: farm.home, refund }] }))
 const forget = () => useDecorate.setState((s) => ({ undo: s.undo.slice(0, -1) }))
 
@@ -107,7 +116,10 @@ export function dropPiece(): Fit | null {
   if (!fit.ok) {
     forget()
     useDecorate.getState().setNote(`${fit.reason} — it went back`)
-  } else useDecorate.getState().setNote(null)
+  } else {
+    useDecorate.getState().setNote(null)
+    dustUnder(drag.id)
+  }
   return fit
 }
 
@@ -151,6 +163,7 @@ export function placeFromStorage(type: PieceType): boolean {
     return false
   }
   useDecorate.setState({ picked: r.id, note: null })
+  dustUnder(r.id)
   return true
 }
 

@@ -7,6 +7,7 @@ import { farmSound, placeSound } from '../audio/sound'
 import { GARDEN, GATE } from '../data/layout'
 import { debugSet } from '../lib/debug'
 import { playGesture } from '../lib/gestures'
+import { farmFx } from '../fx/fx'
 import { useInteractable } from '../lib/interaction'
 import { playerState } from '../lib/playerState'
 import { boxProject } from '../lib/boxProject'
@@ -342,13 +343,18 @@ function Bed({ index }: { index: number }) {
           farmSound('plant', pan, near)
         }
       } else if (stage === 'thirsty') {
-        waterBeds(bedsInReach(index, 'thirsty'))
+        const beds = bedsInReach(index, 'thirsty')
+        waterBeds(beds)
         playGesture('interact')
         farmSound('water', pan, near)
+        for (const i of beds) farmFx('water', BEDS[i].x, BED.h + 0.03, BEDS[i].z)
       } else if (stage === 'ripe') {
-        harvestBeds(bedsInReach(index, 'ripe'))
+        const beds = bedsInReach(index, 'ripe')
+        const crops = beds.map((i) => farm.beds[i].crop ?? undefined)
+        harvestBeds(beds)
         playGesture('interact')
         farmSound('harvest', pan, near)
+        beds.forEach((i, k) => farmFx('harvest', BEDS[i].x, BED.h + 0.12, BEDS[i].z, { good: crops[k] }))
       } else {
         const b = farm.beds[index]
         const crop = cropById(b.crop!)

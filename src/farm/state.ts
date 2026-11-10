@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { farmSound, placeSound } from '../audio/sound'
+import { coinsFx } from '../fx/fx'
 import { groundDistance } from '../lib/interaction'
 import { useHome } from '../store'
 import {
@@ -921,6 +922,7 @@ export const visitorById = (id: number) => farm.visitors.find((v) => v.id === id
 export const canSell = (v: Visitor) => farm.inv[v.want] >= v.qty
 
 function sell(v: Visitor) {
+  coinsFx(v.x, v.z, v.offer)
   farm.inv[v.want] -= v.qty
   farm.coins += v.offer
   farm.stats.sold += v.qty

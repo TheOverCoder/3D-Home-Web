@@ -8,6 +8,14 @@ const until = (game: Game, fn: () => boolean, timeout = 30_000) => game.page.wai
 const nearbyIs = (game: Game, id: string) => game.page.waitForFunction((want) => (window as any).__home.useHome.getState().nearby?.id === want, id, { timeout: 60_000, polling: 250 })
 const label = (game: Game) => game.page.evaluate(() => (window as any).__home.useHome.getState().nearby?.label as string | undefined)
 const farm = (game: Game) => game.page.evaluate(() => JSON.parse(JSON.stringify((window as any).__home.farm.state)))
+/** The effects' counts (src/fx): bursts started, bursts alive, coin flights; and whether their renderer is drawn. */
+const fx = (game: Game) =>
+  game.page.evaluate(() => {
+    const h = (window as any).__home
+    return { ...h.fx.stats, drawn: h.scene.getObjectByName('farm-fx')?.visible === true } as { loaded: boolean; started: number; alive: number; coins: number; drawn: boolean }
+  })
+/** Waits for the effects engine, which is loaded a moment after the game starts playing. */
+const fxReady = (game: Game) => until(game, () => (window as any).__home.fx?.stats.loaded === true, 60_000)
 
 test.describe('garden', () => {
   test('the glass door opens as you come, and you can walk out into the garden', async ({ game }) => {
@@ -66,19 +74,27 @@ test.describe('garden', () => {
     await page.evaluate(() => ((window as any).__home.farm.state.eggs = 0))
     await game.teleport(-1.2, 1.4, 9.0, Math.PI / 2, -0.6)
 
-    // the soil dries out before the lettuce is ready: the beds ask for water, all watered in one press
+    // the soil dries out before the lettuce is ready: the beds ask for water, all watered in one press — with a splash
+    // of water on each of them
     await page.evaluate(() => (window as any).__home.farm.tick(30))
     await until(game, () => (window as any).__home.farm.bedStage(0) === 'thirsty')
     await until(game, () => ((window as any).__home.useHome.getState().nearby?.label ?? '').startsWith('Water'))
+    await fxReady(game)
+    const watered = (await fx(game)).started
     await page.keyboard.press('KeyE')
     await page.waitForFunction((beds) => beds.every((i: number) => (window as any).__home.farm.bedStage(i) === 'growing'), planted, { timeout: 30_000, polling: 200 })
+    await page.waitForFunction(([from, n]) => (window as any).__home.fx.stats.started >= from + n, [watered, planted.length], { timeout: 30_000, polling: 100 })
 
     // ripe: harvested together; then an empty bed opens the seed packets again (nothing plants itself)
     await page.evaluate(() => (window as any).__home.farm.tick(30))
     await until(game, () => ((window as any).__home.useHome.getState().nearby?.label ?? '').startsWith('Harvest'))
     expect(await label(game)).toBe(`Harvest ${planted.length} beds`)
+    const harvested = (await fx(game)).started
     await page.keyboard.press('KeyE')
     await page.waitForFunction((n) => (window as any).__home.farm.state.inv.lettuce === 4 * n, planted.length, { timeout: 30_000, polling: 200 })
+    // a pop of sparkles on each bed harvested; over in a moment, and then nothing of the effects is drawn
+    await page.waitForFunction(([from, n]) => (window as any).__home.fx.stats.started >= from + n, [harvested, planted.length], { timeout: 30_000, polling: 100 })
+    await until(game, () => (window as any).__home.fx.stats.alive === 0 && (window as any).__home.scene.getObjectByName('farm-fx')?.visible === false)
     expect((await farm(game)).beds[0].crop).toBeNull()
     await until(game, () => (window as any).__home.useHome.getState().nearby?.label === 'Plant seeds')
     // unless it is set to grow one crop: the gear on the bed you look at opens what it grows
@@ -135,8 +151,12 @@ test.describe('garden', () => {
     await page.keyboard.press('KeyE')
     await until(game, () => (window as any).__home.useHome.getState().panel?.kind === 'queue')
     await expect(page.locator('.farm-buyer')).toHaveCount(2)
+    const flights = (await fx(game)).coins
     await page.keyboard.press('Enter')
     await until(game, () => (window as any).__home.farm.state.inv.tomato === 2)
+    // the coins fly from the buyer to the coin chip at the top (the count has already gone up), and are gone again
+    await page.waitForFunction((n) => (window as any).__home.fx.stats.coins > n, flights, { timeout: 30_000, polling: 100 })
+    await expect(page.locator('.coin-fly')).toHaveCount(0, { timeout: 30_000 })
     let f = await farm(game)
     expect(f.coins).toBe(coins0 + 12)
     expect(f.visitors.find((v: any) => v.id === first.id)?.phase ?? 'gone').toBe('leaving')
@@ -178,8 +198,12 @@ test.describe('garden', () => {
     await until(game, () => (window as any).__home.useHome.getState().panel?.kind === 'build')
     await page.keyboard.press('KeyE')
     expect((await farm(game)).coins).toBe(40)
+    await fxReady(game)
+    const built = (await fx(game)).started
     await page.locator('.farm-buy:not(.arming)').click() // armed a moment after the card opens
     await until(game, () => (window as any).__home.farm.state.beds[5].built === true)
+    // a puff of dust round the new bed
+    await page.waitForFunction((n) => (window as any).__home.fx.stats.started > n, built, { timeout: 30_000, polling: 100 })
     expect((await farm(game)).coins).toBe(10)
     expect(await page.evaluate(() => (window as any).__home.useHome.getState().panel)).toBeNull()
     // saved a moment later

@@ -88,10 +88,14 @@ test.describe('decorating the house', () => {
       return null
     })
     expect(spot).not.toBeNull()
+    await until(game, () => (window as any).__home.fx?.stats.loaded === true, 60_000)
+    const puffs = await page.evaluate(() => (window as any).__home.fx.stats.started as number)
     await dragFrom(game, [pouf.x, pouf.z], spot as [number, number])
     await until(game, () => (window as any).__home.home.decorate.useDecorate.getState().drag?.fit.ok === true)
     await expect(page.locator('.edit-card .fit-ok')).toBeVisible()
     await page.mouse.up()
+    // put down: a puff of dust round it (src/fx)
+    await page.waitForFunction((n) => (window as any).__home.fx.stats.started > n, puffs, { timeout: 30_000, polling: 100 })
     await until(game, () => {
       const p = (window as any).__home.home.layout.pieces.find((q: any) => q.id === 'pouf')
       return p.x !== -4.95 || p.z !== 3.35

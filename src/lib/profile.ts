@@ -33,6 +33,8 @@ export interface Profile {
   maxTexture: number
   /** image-based lighting from the HDR file (else a small generated sky probe, far less memory) */
   hdri: boolean
+  /** the farm's particle effects (src/fx): the share of each burst's particles drawn (1 all of them, 0 none) */
+  particles: number
   powerPreference: WebGLPowerPreference
 }
 
@@ -95,6 +97,7 @@ const DESKTOP: Omit<Profile, 'device' | 'lowMemory' | 'light' | 'startQuality'> 
   surfaceSize: 512,
   maxTexture: 2048,
   hdri: true,
+  particles: 1,
   powerPreference: 'high-performance',
 }
 
@@ -112,6 +115,7 @@ const MOBILE: typeof DESKTOP = {
   surfaceSize: 256,
   maxTexture: 1024,
   hdri: true,
+  particles: 1,
   powerPreference: 'default',
 }
 
@@ -131,6 +135,7 @@ export function makeProfile(device: DeviceClass, lowMemory: boolean, light: bool
     p.surfaceSize = 256
     p.maxTexture = 512
     p.hdri = false
+    p.particles = 0.5
     p.powerPreference = 'default'
   }
   return p
