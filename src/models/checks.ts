@@ -1,6 +1,6 @@
 import { DoubleSide } from 'three'
 import { checkPieces, checkPose, ellipsoid, lathe, piecesOf, posedPieces, type Issue, type Parts } from '../lib/sculpt'
-import { LEMON_TREE, type CropId } from '../farm/data'
+import { PRODUCERS, type CropId } from '../farm/data'
 import { COATS, cowParts, putCow, type CowPose } from './cow'
 import { FACES, putSheep, sheepParts, type SheepPose } from './sheep'
 import { chickenParts, putChicken, type ChickenPose } from './chicken'
@@ -190,7 +190,7 @@ export const MODEL_CHECKS: ModelCheck[] = [
             ...structurePieces(lemonTreeModel()),
             ...posedPieces(lemons, (pp) => {
               pp.at(0, 0, 0)
-              lemonSpots(LEMON_TREE.max).forEach(([x, y, z], k) => putLemon(pp, x, y, z, k))
+              lemonSpots(PRODUCERS.tree.max).forEach(([x, y, z], k) => putLemon(pp, x, y, z, k))
             }),
           ],
           { ground: 0, open: openParts(lemons) },

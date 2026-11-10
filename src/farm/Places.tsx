@@ -1,19 +1,16 @@
 import { useEffect, useMemo, type ReactNode } from 'react'
 import { CuboidCollider, CylinderCollider, RigidBody } from '@react-three/rapier'
-import { farmSound, placeSound } from '../audio/sound'
 import { CORNER_TREES } from '../data/garden'
-import { farmFx } from '../fx/fx'
-import { playGesture } from '../lib/gestures'
-import { useInteractable } from '../lib/interaction'
 import { surface } from '../lib/proceduralTextures'
 import { B } from '../scene/Furnishings'
 import { StaticBatch } from '../scene/House'
 import { tree } from '../scene/flora'
 import { coopModel, lemonTreeModel, structureParts, troughModel, type Structure } from '../models/structures'
-import { COOP, EGG, FOLD, HAY_RACK, LEMON_TREE, NEST, PASTURE, RUN, TROUGH, count } from './data'
+import { COOP, FOLD, HAY_RACK, NEST, PASTURE, RUN, TROUGH } from './data'
 import { usePlacement, useShownPlacement } from './edit'
-import { alongBoundary, toWorld, turnOf, type PlaceId, type Placement } from './layout'
-import { collectEggs, farm, pickLemons, useFarm } from './state'
+import { alongBoundary, toWorld, turnOf, type PlaceId } from './layout'
+import { farm, useFarm } from './state'
+import { useProducer } from './useProducer'
 
 // The farm's movable places — the hen run with its coop, the cows' pasture, the sheep fold, the lemon tree and the
 // three big trees — each drawn in its own frame inside a group that stands where the layout puts it (or where the
@@ -61,12 +58,6 @@ function Body({ id, boxes = [], posts = [] }: { id: PlaceId; boxes?: Box[]; post
       ))}
     </RigidBody>
   )
-}
-
-/** Where a point of a place's own frame is in the world, where the place stands. */
-const world = (p: Placement, x: number, y: number, z: number): V3 => {
-  const [wx, wz] = toWorld(p, x, z)
-  return [wx, y, wz]
 }
 
 /** A building or fitting sculpted with the kit (src/models/structures.ts), in its place's frame. */
@@ -143,26 +134,9 @@ function HenRunBody() {
   )
 }
 
+/** The nest box: the eggs are collected from outside the run (src/farm/useProducer.ts). */
 function Nest() {
-  const p = usePlacement('hens')
-  const stand = world(p, NEST.x - 0.45, 0.9, NEST.z)
-  const box = world(p, NEST.x, 0.66, NEST.z)
-  useInteractable({
-    id: 'farm-nest',
-    position: stand,
-    aim: box,
-    radius: 2.2,
-    enabled: () => farm.eggs > 0,
-    ready: () => (farm.eggs >= EGG.max ? { item: 'egg', count: farm.eggs } : null),
-    label: () => `Collect ${count('egg', farm.eggs)}`,
-    icon: () => ({ verb: 'pick', item: 'egg', count: farm.eggs }),
-    run: () => {
-      collectEggs()
-      playGesture('interact')
-      const { pan, near } = placeSound(box[0], box[2])
-      farmSound('cluck', pan, near)
-    },
-  })
+  useProducer('hens')
   return null
 }
 
@@ -346,24 +320,7 @@ function FoldBody() {
 // ───────────────────────────── trees ─────────────────────────────
 
 function LemonTree() {
-  const p = usePlacement('lemon')
-  useInteractable({
-    id: 'farm-lemon-tree',
-    position: world(p, 0, 1.0, 0),
-    aim: world(p, 0, 1.6, 0),
-    radius: 2.6,
-    enabled: () => farm.lemons > 0,
-    ready: () => (farm.lemons >= LEMON_TREE.max ? { item: 'lemon', count: farm.lemons } : null),
-    label: () => `Pick ${count('lemon', farm.lemons)}`,
-    icon: () => ({ verb: 'pick', item: 'lemon', count: farm.lemons }),
-    run: () => {
-      pickLemons()
-      playGesture('interact')
-      const { pan, near } = placeSound(p.x, p.z)
-      farmSound('harvest', pan, near)
-      farmFx('harvest', ...world(p, 0, 1.6, 0), { good: 'lemon' })
-    },
-  })
+  useProducer('tree')
   return (
     <>
       {/* sculpted with the kit (src/models/structures.ts); the lemons hang from it (Plants.tsx) */}

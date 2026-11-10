@@ -1,28 +1,25 @@
 import { create } from 'zustand'
 import { farmSound, placeSound } from '../audio/sound'
 import { coinsFx } from '../fx/fx'
+import { dampAngle } from '../lib/damp'
 import { groundDistance } from '../lib/interaction'
 import { useHome } from '../store'
 import {
   BEDS,
   BED_BOX,
   BED_REACH,
-  COW,
   CROPS,
-  EGG,
   EXPANSIONS,
   GATE_SPOT,
   LANE_ENDS,
-  LEMON_TREE,
-  LOOM,
-  MILL,
-  MILLABLE,
+  MACHINES,
+  MACHINE_IDS,
   NAMES,
   PACE_LEVELS,
   PRODUCE,
+  PRODUCERS,
+  PRODUCER_IDS,
   QUEUE_LEVELS,
-  RECIPES,
-  SHEEP,
   START_COINS,
   UPGRADES,
   VISITOR,
@@ -31,16 +28,16 @@ import {
   arrivalEvery,
   count,
   cropById,
+  mostAnimals,
   produceById,
   queuePlaces,
   queueSpot,
-  recipeById,
-  type CakeId,
   type CropId,
   type Expansion,
-  type MillInput,
-  type MillOutput,
+  type MachineId,
   type ProduceId,
+  type ProducerId,
+  type Recipe,
   type UpgradeId,
 } from './data'
 import { PARCELS, PLACES, canBuyParcel, canPlace, defaultLayout, sanitizeLayout, snap, type FarmLayout, type Fit, type ParcelId, type PlaceId, type Placement } from './layout'
@@ -90,44 +87,32 @@ export interface Visitor {
   departAt: number // farm clock when they set off home (a moment to react first)
 }
 
-export interface MillState {
-  input: MillInput | null // what is being milled right now
+/** A producer (PRODUCERS in src/farm/data.ts): what waits to be collected and the seconds towards the next one — one
+ *  of each for the tree and the nest, one for each animal of a herd where each gives her own (each cow's milk). */
+export interface ProducerState {
+  /** how many animals (none for the tree) */
+  animals: number
+  stock: number[]
+  timer: number[]
+}
+
+/** A machine (MACHINES in src/farm/data.ts): working on `count` batches of `recipe` (`progress` seconds in), or done
+ *  with `ready` of what it makes waiting to be taken out; idle, no recipe. */
+export interface MachineState {
+  recipe: string | null
   count: number
-  progress: number // seconds
-  output: MillOutput | null // what is waiting to be collected
+  progress: number
   ready: number
-}
-
-export interface OvenState {
-  baking: CakeId | null
-  progress: number // seconds
-  ready: CakeId | null
-}
-
-export interface LoomState {
-  count: number // fleeces on the loom
-  progress: number // seconds
-  ready: number // rolls of cloth waiting to be taken off
 }
 
 export interface FarmData {
   coins: number
   inv: Record<ProduceId, number>
   beds: BedState[]
-  lemons: number
-  lemonTimer: number
-  eggs: number
-  eggTimer: number
-  hens: number
-  cows: number
-  milk: number[] // bottles waiting at each cow
-  milkTimer: number[]
-  sheep: number
-  wool: number[] // fleeces grown on each sheep
-  woolTimer: number[]
-  mill: MillState
-  oven: OvenState
-  loom: LoomState
+  /** the lemon tree, the hens' nest, the cows, the sheep */
+  producers: Record<ProducerId, ProducerState>
+  /** the mill, the loom, the oven */
+  machines: Record<MachineId, MachineState>
   sprinkler: boolean
   compost: boolean
   expansions: Record<Expansion, boolean>
@@ -164,29 +149,27 @@ let KEY = keyFor(slot)
 export const currentSlot = () => slot
 const produceIds = PRODUCE.map((p) => p.id)
 const emptyInv = () => Object.fromEntries(produceIds.map((id) => [id, 0])) as Record<ProduceId, number>
-const freshMill = (): MillState => ({ input: null, count: 0, progress: 0, output: null, ready: 0 })
-const freshOven = (): OvenState => ({ baking: null, progress: 0, ready: null })
-const freshLoom = (): LoomState => ({ count: 0, progress: 0, ready: 0 })
+/** Each of a herd's animals gives her own (a count and a clock for each), or they share one (the hens' nest). */
+const ownEach = (id: ProducerId) => {
+  const herd = PRODUCERS[id].herd
+  return !!herd && !herd.shared
+}
+/** How many counts a producer keeps, with this many animals. */
+const stocksFor = (id: ProducerId, animals: number) => (ownEach(id) ? animals : 1)
+function freshProducer(id: ProducerId): ProducerState {
+  const animals = PRODUCERS[id].herd?.start ?? 0
+  const n = stocksFor(id, animals)
+  return { animals, stock: Array.from({ length: n }, () => PRODUCERS[id].fresh), timer: Array.from({ length: n }, () => 0) }
+}
+const freshMachine = (): MachineState => ({ recipe: null, count: 0, progress: 0, ready: 0 })
 
 function fresh(): FarmData {
   return {
     coins: START_COINS,
     inv: emptyInv(),
     beds: BEDS.map((b) => ({ built: b.price === 0 && !b.expansion, crop: null, growth: 0, water: 0, fixed: null })),
-    lemons: 3,
-    lemonTimer: 0,
-    eggs: 1,
-    eggTimer: 0,
-    hens: EGG.startHens,
-    cows: COW.startCows,
-    milk: Array.from({ length: COW.startCows }, () => 1),
-    milkTimer: Array.from({ length: COW.startCows }, () => 0),
-    sheep: SHEEP.startSheep,
-    wool: Array.from({ length: SHEEP.startSheep }, () => 1),
-    woolTimer: Array.from({ length: SHEEP.startSheep }, () => 0),
-    mill: freshMill(),
-    oven: freshOven(),
-    loom: freshLoom(),
+    producers: Object.fromEntries(PRODUCER_IDS.map((id) => [id, freshProducer(id)])) as Record<ProducerId, ProducerState>,
+    machines: Object.fromEntries(MACHINE_IDS.map((id) => [id, freshMachine()])) as Record<MachineId, MachineState>,
     sprinkler: false,
     compost: false,
     expansions: { east: false, west: false },
@@ -218,6 +201,61 @@ interface SavedBuyer {
 }
 
 const isColour = (v: unknown): v is string => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v)
+const isObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object'
+/** A field of a saved object, or an item of a saved list (anything else: nothing). */
+const field = (v: unknown, k: string | number) => (isObject(v) ? v[k] : undefined)
+
+/** Where a save from before the tables in src/farm/data.ts kept what each producer held: a field of its own for the
+ *  count and one for the clock (a list of each for the cows and the sheep), and one for how many animals. */
+const OLD_PRODUCERS: Record<ProducerId, { stock: string; timer: string; animals?: string }> = {
+  tree: { stock: 'lemons', timer: 'lemonTimer' },
+  hens: { stock: 'eggs', timer: 'eggTimer', animals: 'hens' },
+  cows: { stock: 'milk', timer: 'milkTimer', animals: 'cows' },
+  sheep: { stock: 'wool', timer: 'woolTimer', animals: 'sheep' },
+}
+
+/** A producer as saved (or as a save from before the tables kept it), made safe. */
+function savedProducer(id: ProducerId, raw: Record<string, unknown>): ProducerState {
+  const def = PRODUCERS[id]
+  const old = OLD_PRODUCERS[id]
+  const saved = field(raw.producers, id)
+  const p = isObject(saved)
+    ? saved
+    : { animals: old.animals ? raw[old.animals] : undefined, stock: ownEach(id) ? raw[old.stock] : [raw[old.stock]], timer: ownEach(id) ? raw[old.timer] : [raw[old.timer]] }
+  const animals = def.herd ? int(p.animals, def.herd.start, def.herd.start, def.herd.max) : 0
+  const n = stocksFor(id, animals)
+  return {
+    animals,
+    stock: Array.from({ length: n }, (_, i) => int(field(p.stock, i), def.fresh, 0, def.max)),
+    timer: Array.from({ length: n }, (_, i) => Math.max(0, num(field(p.timer, i), 0))),
+  }
+}
+
+/** A machine's job as a save from before the tables kept it: the mill by what goes in and what comes out, the oven by
+ *  the cake, the loom by its counts. One at work goes on (anything it also had waiting was not kept then either). */
+function oldMachine(id: MachineId, raw: Record<string, unknown>): Record<string, unknown> {
+  const m = raw[id]
+  if (!isObject(m)) return {}
+  const recipes = MACHINES[id].recipes
+  const recipe = (v: unknown) => recipes.find((r) => r.id === v)?.id
+  const making = (v: unknown) => recipes.find((r) => r.makes === v)?.id
+  if (id === 'mill') return recipe(m.input) ? { recipe: m.input, count: m.count, progress: m.progress } : { recipe: making(m.output), ready: m.ready }
+  if (id === 'oven') return recipe(m.baking) ? { recipe: m.baking, count: 1, progress: m.progress } : { recipe: recipe(m.ready), ready: 1 }
+  return { recipe: recipes[0].id, count: m.count, progress: m.progress, ready: m.ready }
+}
+
+/** A machine as saved (or as a save from before the tables kept it), made safe: at work, done, or idle. */
+function savedMachine(id: MachineId, raw: Record<string, unknown>): MachineState {
+  const def = MACHINES[id]
+  const saved = field(raw.machines, id)
+  const m = isObject(saved) ? saved : oldMachine(id, raw)
+  const recipe = def.recipes.find((r) => r.id === m.recipe)
+  if (!recipe) return freshMachine()
+  const n = int(m.count, 0, 0, def.capacity)
+  if (n) return { recipe: recipe.id, count: n, progress: Math.max(0, num(m.progress, 0)), ready: 0 }
+  const ready = int(m.ready, 0, 0, def.capacity)
+  return ready ? { recipe: recipe.id, count: 0, progress: 0, ready } : freshMachine()
+}
 
 function savedBuyer(raw: unknown): SavedBuyer | null {
   if (!raw || typeof raw !== 'object') return null
@@ -265,42 +303,12 @@ function load(text: string | null = readRaw(KEY)): { data: FarmData; savedAt: nu
     BEDS.forEach((def, i) => {
       if (def.expansion && data.expansions[def.expansion]) data.beds[i].built = true
     })
-    data.lemons = int(raw.lemons, 3, 0, LEMON_TREE.max)
-    data.lemonTimer = Math.max(0, num(raw.lemonTimer, 0))
-    data.eggs = int(raw.eggs, 1, 0, EGG.max)
-    data.eggTimer = Math.max(0, num(raw.eggTimer, 0))
-    data.hens = int(raw.hens, EGG.startHens, EGG.startHens, EGG.maxHens)
-    data.cows = int(raw.cows, COW.startCows, COW.startCows, COW.maxCows)
-    data.milk = Array.from({ length: data.cows }, (_, i) => int(raw.milk?.[i], 1, 0, COW.max))
-    data.milkTimer = Array.from({ length: data.cows }, (_, i) => Math.max(0, num(raw.milkTimer?.[i], 0)))
-    data.sheep = int(raw.sheep, SHEEP.startSheep, SHEEP.startSheep, SHEEP.maxSheep)
-    data.wool = Array.from({ length: data.sheep }, (_, i) => int(raw.wool?.[i], 1, 0, SHEEP.max))
-    data.woolTimer = Array.from({ length: data.sheep }, (_, i) => Math.max(0, num(raw.woolTimer?.[i], 0)))
-    const loom = raw.loom
-    if (loom && typeof loom === 'object') {
-      const n = int(loom.count, 0, 0, LOOM.capacity)
-      data.loom = { count: n, progress: n ? Math.max(0, num(loom.progress, 0)) : 0, ready: n ? 0 : int(loom.ready, 0, 0, LOOM.capacity) }
-    }
+    // the tree, the nest, the animals and the machines (a save from before the tables kept each in fields of its own)
+    for (const id of PRODUCER_IDS) data.producers[id] = savedProducer(id, raw)
+    for (const id of MACHINE_IDS) data.machines[id] = savedMachine(id, raw)
     data.queueLevel = int(raw.queueLevel, 0, 0, QUEUE_LEVELS)
     data.paceLevel = int(raw.paceLevel, 0, 0, PACE_LEVELS)
     data.nextVisitorIn = Math.min(arrivalEvery(data.paceLevel), Math.max(0, num(raw.nextVisitorIn, VISITOR.firstAfter)))
-    const mill = raw.mill
-    if (mill && typeof mill === 'object') {
-      const input = mill.input && mill.input in MILLABLE ? mill.input : null
-      const output = mill.output === 'sugar' || mill.output === 'flour' ? mill.output : null
-      data.mill = {
-        input,
-        count: input ? int(mill.count, 0, 0, MILL.capacity) : 0,
-        progress: input ? Math.max(0, num(mill.progress, 0)) : 0,
-        output,
-        ready: output ? int(mill.ready, 0, 0, MILL.capacity) : 0,
-      }
-    }
-    const oven = raw.oven
-    if (oven && typeof oven === 'object') {
-      const valid = (v: unknown) => (RECIPES.some((r) => r.id === v) ? (v as CakeId) : null)
-      data.oven = { baking: valid(oven.baking), progress: valid(oven.baking) ? Math.max(0, num(oven.progress, 0)) : 0, ready: valid(oven.ready) }
-    }
     data.sprinkler = !!raw.sprinkler
     data.compost = !!raw.compost
     data.started = !!raw.started
@@ -495,149 +503,127 @@ export function fixBed(i: number, crop: CropId | null) {
   return true
 }
 
-// ───────────────────────────── tree, hens, cows ─────────────────────────────
+// ───────────────────────────── the tree, the hens, the cows and the sheep ─────────────────────────────
 
-export function pickLemons() {
-  const n = farm.lemons
+/** How many animals a producer has (the hens, the cows, the sheep). */
+export const animals = (id: ProducerId) => farm.producers[id].animals
+
+/** What waits to be collected at a producer (`i`: which animal, where each gives her own). */
+export const stockOf = (id: ProducerId, i = 0) => farm.producers[id].stock[i] ?? 0
+
+/** An animal's name, where each has one ("Bella"); otherwise empty. */
+export function animalName(id: ProducerId, i: number) {
+  const names = PRODUCERS[id].herd?.names
+  return names?.length ? names[i % names.length] : ''
+}
+
+/** Takes what a producer holds into the basket — picks the lemons, collects the eggs, milks a cow, shears a sheep —
+ *  and starts the wait for the next one again (but the hens: they lay on). */
+export function collect(id: ProducerId, i = 0) {
+  const def = PRODUCERS[id]
+  const p = farm.producers[id]
+  const n = p.stock[i] ?? 0
   if (!n) return 0
-  farm.lemons = 0
-  farm.lemonTimer = 0
-  gain('lemon', n)
+  p.stock[i] = 0
+  if (!def.keepsClock) p.timer[i] = 0
+  gain(def.good, n)
   farm.stats.harvested += n
-  toast(`+ ${count('lemon', n)}`, 'lemon')
+  toast(`+ ${count(def.good, n)}`, def.good)
   bump()
   save()
   return n
 }
 
-export function collectEggs() {
-  const n = farm.eggs
-  if (!n) return 0
-  farm.eggs = 0
-  gain('egg', n)
-  farm.stats.harvested += n
-  toast(`+ ${count('egg', n)}`, 'egg')
-  bump()
-  save()
-  return n
+/** One more animal (from the shop): she has nothing to give yet. */
+function addAnimal(id: ProducerId) {
+  const p = farm.producers[id]
+  if (p.animals >= (PRODUCERS[id].herd?.max ?? 0)) return
+  p.animals++
+  if (!ownEach(id)) return
+  p.stock.push(0)
+  p.timer.push(0)
 }
-
-export const cowName = (i: number) => COW.names[i % COW.names.length]
-
-export function milkCow(i: number) {
-  const n = farm.milk[i] ?? 0
-  if (!n) return 0
-  farm.milk[i] = 0
-  farm.milkTimer[i] = 0
-  gain('milk', n)
-  farm.stats.harvested += n
-  toast(`+ ${count('milk', n)}`, 'milk')
-  bump()
-  save()
-  return n
-}
-
-export const sheepName = (i: number) => SHEEP.names[i % SHEEP.names.length]
 
 /** How woolly a sheep looks: 0 just shorn … 1 a full fleece twice over. */
 export const woolliness = (i: number) => {
-  const n = farm.wool[i] ?? 0
-  return Math.min(1, (n + (n < SHEEP.max ? (farm.woolTimer[i] ?? 0) / SHEEP.every : 0)) / SHEEP.max)
+  const { every, max } = PRODUCERS.sheep
+  const n = stockOf('sheep', i)
+  return Math.min(1, (n + (n < max ? (farm.producers.sheep.timer[i] ?? 0) / every : 0)) / max)
 }
 
-export function shear(i: number) {
-  const n = farm.wool[i] ?? 0
+/** The clock runs on (the hens' as many times as fast as there are of them): one more for every `every` seconds, up
+ *  to the most that waits; a fleece that is full stops there, its clock held at 0 until it is shorn. */
+function growProducer(id: ProducerId, dt: number) {
+  const def = PRODUCERS[id]
+  const p = farm.producers[id]
+  const rate = def.herd?.shared ? p.animals : 1
+  p.stock.forEach((_, i) => {
+    if (def.holdsFull && p.stock[i] >= def.max) return
+    p.timer[i] += dt * rate
+    while (p.timer[i] >= def.every && !(def.holdsFull && p.stock[i] >= def.max)) {
+      p.timer[i] -= def.every
+      if (p.stock[i] < def.max) p.stock[i]++
+    }
+    if (def.holdsFull && p.stock[i] >= def.max) p.timer[i] = 0
+  })
+}
+
+// ───────────────────────────── the mill, the loom and the oven ─────────────────────────────
+
+export type MachineStage = 'idle' | 'working' | 'done'
+
+export const machineStage = (id: MachineId): MachineStage => (farm.machines[id].count > 0 ? 'working' : farm.machines[id].ready > 0 ? 'done' : 'idle')
+
+/** What a machine is working on, or has ready to take out (null while it is idle). */
+export const machineRecipe = (id: MachineId): Recipe | null => MACHINES[id].recipes.find((r) => r.id === farm.machines[id].recipe) ?? null
+
+export function machineSecondsLeft(id: MachineId) {
+  const m = farm.machines[id]
+  const r = machineRecipe(id)
+  return m.count && r ? m.count * r.seconds - m.progress : 0
+}
+
+/** How many batches of a recipe a machine would take now: as many as it has room for and the basket gives. */
+export function batches(id: MachineId, r: Recipe) {
+  return Object.entries(r.needs).reduce((n, [k, per]) => (per ? Math.min(n, Math.floor(farm.inv[k as ProduceId] / per)) : n), MACHINES[id].capacity)
+}
+
+/** Loads an idle machine with as many batches of a recipe as it takes (the button asked first): how many. */
+export function loadMachine(id: MachineId, recipe: string) {
+  const r = MACHINES[id].recipes.find((x) => x.id === recipe)
+  if (!r || machineStage(id) !== 'idle') return 0
+  const n = batches(id, r)
   if (!n) return 0
-  farm.wool[i] = 0
-  farm.woolTimer[i] = 0
-  gain('wool', n)
-  farm.stats.harvested += n
-  toast(`+ ${count('wool', n)}`, 'wool')
+  for (const [k, per] of Object.entries(r.needs)) farm.inv[k as ProduceId] -= (per ?? 0) * n
+  farm.machines[id] = { recipe: r.id, count: n, progress: 0, ready: 0 }
   bump()
   save()
   return n
 }
 
-// ───────────────────────────── mill, oven and loom ─────────────────────────────
-
-export type MillStage = 'idle' | 'working' | 'done'
-export const millStage = (): MillStage => (farm.mill.input ? 'working' : farm.mill.ready > 0 ? 'done' : 'idle')
-export const millSecondsLeft = () => (farm.mill.input ? farm.mill.count * MILL.perItem - farm.mill.progress : 0)
-
-/** Loads the mill with as much of `input` as it takes. */
-export function millLoad(input: MillInput) {
-  if (millStage() !== 'idle') return 0
-  const n = Math.min(MILL.capacity, farm.inv[input])
-  if (!n) return 0
-  farm.inv[input] -= n
-  farm.mill = { input, count: n, progress: 0, output: null, ready: 0 }
+/** Takes out what a machine has made, into the basket: how many. */
+export function collectMachine(id: MachineId) {
+  const m = farm.machines[id]
+  const r = machineRecipe(id)
+  if (!r || !m.ready) return 0
+  const n = m.ready
+  gain(r.makes, n)
+  const counts = MACHINES[id].counts
+  if (counts) farm.stats[counts] += n
+  farm.machines[id] = freshMachine()
+  toast(`+ ${count(r.makes, n)}`, r.makes)
   bump()
   save()
   return n
 }
 
-export function millCollect() {
-  const { output, ready } = farm.mill
-  if (!output || !ready) return 0
-  gain(output, ready)
-  farm.mill = freshMill()
-  toast(`+ ${count(output, ready)}`, output)
-  bump()
-  save()
-  return ready
-}
-
-export type OvenStage = 'idle' | 'baking' | 'done'
-export const ovenStage = (): OvenStage => (farm.oven.baking ? 'baking' : farm.oven.ready ? 'done' : 'idle')
-export const ovenSecondsLeft = () => (farm.oven.baking ? recipeById(farm.oven.baking).seconds - farm.oven.progress : 0)
-export const canBake = (id: CakeId) => Object.entries(recipeById(id).needs).every(([k, n]) => farm.inv[k as ProduceId] >= (n ?? 0))
-
-export function bake(id: CakeId) {
-  if (ovenStage() !== 'idle' || !canBake(id)) return false
-  for (const [k, n] of Object.entries(recipeById(id).needs)) farm.inv[k as ProduceId] -= n ?? 0
-  farm.oven = { baking: id, progress: 0, ready: null }
-  bump()
-  save()
-  return true
-}
-
-export function takeOut() {
-  const id = farm.oven.ready
-  if (!id) return null
-  gain(id, 1)
-  farm.stats.baked += 1
-  farm.oven = freshOven()
-  toast(`+ 1 ${produceById(id).name}`, id)
-  bump()
-  save()
-  return id
-}
-
-export type LoomStage = 'idle' | 'working' | 'done'
-export const loomStage = (): LoomStage => (farm.loom.count > 0 ? 'working' : farm.loom.ready > 0 ? 'done' : 'idle')
-export const loomSecondsLeft = () => (farm.loom.count ? farm.loom.count * LOOM.perItem - farm.loom.progress : 0)
-
-/** Puts as many fleeces on the loom as it takes. */
-export function loomLoad() {
-  if (loomStage() !== 'idle') return 0
-  const n = Math.min(LOOM.capacity, farm.inv.wool)
-  if (!n) return 0
-  farm.inv.wool -= n
-  farm.loom = { count: n, progress: 0, ready: 0 }
-  bump()
-  save()
-  return n
-}
-
-export function loomCollect() {
-  const n = farm.loom.ready
-  if (!n) return 0
-  gain('cloth', n)
-  farm.loom = freshLoom()
-  toast(`+ ${count('cloth', n)}`, 'cloth')
-  bump()
-  save()
-  return n
+/** Works on: once the batches' time is up, what they make waits to be taken out. */
+function growMachine(id: MachineId, dt: number) {
+  const m = farm.machines[id]
+  const r = machineRecipe(id)
+  if (!m.count || !r) return
+  m.progress += dt
+  if (m.progress >= m.count * r.seconds) farm.machines[id] = { recipe: r.id, count: 0, progress: 0, ready: m.count }
 }
 
 // ───────────────────────────── the shop ─────────────────────────────
@@ -657,25 +643,27 @@ export function upgradePrice(u: UpgradeId) {
   return def.price + (def.priceStep ?? 0) * upgradeLevel(u)
 }
 
+/** The herd an upgrade adds an animal to (another hen, cow or sheep). */
+const herdOf = (u: UpgradeId) => UPGRADES.find((x) => x.id === u)?.herd
+
 /** Bought (all of it, for an upgrade that comes in steps). */
 export function owned(u: UpgradeId) {
+  const herd = herdOf(u)
+  if (herd) return animals(herd) >= mostAnimals(herd)
   switch (u) {
     case 'sprinkler':
       return farm.sprinkler
     case 'compost':
       return farm.compost
-    case 'hen':
-      return farm.hens >= EGG.maxHens
-    case 'cow':
-      return farm.cows >= COW.maxCows
-    case 'sheep':
-      return farm.sheep >= SHEEP.maxSheep
     case 'queue':
       return farm.queueLevel >= QUEUE_LEVELS
     case 'pace':
       return farm.paceLevel >= PACE_LEVELS
-    default:
+    case 'east':
+    case 'west':
       return farm.expansions[u]
+    default:
+      return false
   }
 }
 
@@ -688,27 +676,21 @@ export function buy(id: UpgradeId) {
   if (!u || owned(id) || farm.coins < price) return false
   farm.coins -= price
   let note = `${u.name}: done`
-  if (id === 'sprinkler') farm.sprinkler = true
+  if (u.herd) {
+    addAnimal(u.herd)
+    // a new cow or sheep comes with her name ("Bella joins the herd"); another hen is just that
+    const name = animalName(u.herd, animals(u.herd) - 1)
+    if (name) note = `${name} joins ${PRODUCERS[u.herd].herd?.joins}`
+  } else if (id === 'sprinkler') farm.sprinkler = true
   else if (id === 'compost') farm.compost = true
-  else if (id === 'hen') farm.hens = Math.min(EGG.maxHens, farm.hens + 1)
-  else if (id === 'cow') {
-    farm.cows = Math.min(COW.maxCows, farm.cows + 1)
-    farm.milk.push(0)
-    farm.milkTimer.push(0)
-    note = `${cowName(farm.cows - 1)} joins the herd`
-  } else if (id === 'sheep') {
-    farm.sheep = Math.min(SHEEP.maxSheep, farm.sheep + 1)
-    farm.wool.push(0)
-    farm.woolTimer.push(0)
-    note = `${sheepName(farm.sheep - 1)} joins the flock`
-  } else if (id === 'queue') {
+  else if (id === 'queue') {
     farm.queueLevel = Math.min(QUEUE_LEVELS, farm.queueLevel + 1)
     note = `The line at the gate has room for ${placesInLine()}`
   } else if (id === 'pace') {
     farm.paceLevel = Math.min(PACE_LEVELS, farm.paceLevel + 1)
     farm.nextVisitorIn = Math.min(farm.nextVisitorIn, arrivalSeconds())
     note = `A buyer every ${mmss(arrivalSeconds())}`
-  } else {
+  } else if (id === 'east' || id === 'west') {
     farm.expansions[id] = true
     BEDS.forEach((def, i) => {
       if (def.expansion === id) farm.beds[i].built = true
@@ -843,8 +825,6 @@ function priceFor(want: ProduceId, qty: number) {
 }
 
 export const fairPrice = (want: ProduceId, qty: number) => produceById(want).price * qty
-
-const wrapAngle = (a: number) => Math.atan2(Math.sin(a), Math.cos(a))
 
 /** Everyone in line or on their way to it, the front first. */
 export const inLine = () => farm.visitors.filter((v) => v.phase !== 'leaving')
@@ -996,7 +976,7 @@ export function declineOffer(id: number) {
 
 // ───────────────────────────── time ─────────────────────────────
 
-const stageKey = () => farm.beds.map((_, i) => bedStage(i)).join() + `|${farm.lemons}|${farm.eggs}|${farm.milk.join(',')}|${farm.wool.join(',')}|${millStage()}|${ovenStage()}|${loomStage()}`
+const stageKey = () => [...farm.beds.map((_, i) => bedStage(i)), ...PRODUCER_IDS.map((id) => farm.producers[id].stock.join(',')), ...MACHINE_IDS.map(machineStage)].join('|')
 
 function grow(dt: number) {
   for (const b of farm.beds) {
@@ -1008,47 +988,8 @@ function grow(dt: number) {
     b.growth = Math.min(def.growSeconds, b.growth + wet)
     if (!farm.sprinkler) b.water = Math.max(0, b.water - dt)
   }
-  farm.lemonTimer += dt
-  while (farm.lemonTimer >= LEMON_TREE.every) {
-    farm.lemonTimer -= LEMON_TREE.every
-    if (farm.lemons < LEMON_TREE.max) farm.lemons++
-  }
-  farm.eggTimer += dt * farm.hens
-  while (farm.eggTimer >= EGG.every) {
-    farm.eggTimer -= EGG.every
-    if (farm.eggs < EGG.max) farm.eggs++
-  }
-  for (let i = 0; i < farm.cows; i++) {
-    farm.milkTimer[i] = (farm.milkTimer[i] ?? 0) + dt
-    while (farm.milkTimer[i] >= COW.every) {
-      farm.milkTimer[i] -= COW.every
-      if ((farm.milk[i] ?? 0) < COW.max) farm.milk[i] = (farm.milk[i] ?? 0) + 1
-    }
-  }
-  const m = farm.mill
-  if (m.input) {
-    m.progress += dt
-    if (m.progress >= m.count * MILL.perItem) farm.mill = { input: null, count: 0, progress: 0, output: MILLABLE[m.input], ready: m.count }
-  }
-  const o = farm.oven
-  if (o.baking) {
-    o.progress += dt
-    if (o.progress >= recipeById(o.baking).seconds) farm.oven = { baking: null, progress: 0, ready: o.baking }
-  }
-  for (let i = 0; i < farm.sheep; i++) {
-    if ((farm.wool[i] ?? 0) >= SHEEP.max) continue // a full fleece stops growing until it is shorn
-    farm.woolTimer[i] = (farm.woolTimer[i] ?? 0) + dt
-    while (farm.woolTimer[i] >= SHEEP.every && (farm.wool[i] ?? 0) < SHEEP.max) {
-      farm.woolTimer[i] -= SHEEP.every
-      farm.wool[i] = (farm.wool[i] ?? 0) + 1
-    }
-    if ((farm.wool[i] ?? 0) >= SHEEP.max) farm.woolTimer[i] = 0
-  }
-  const l = farm.loom
-  if (l.count) {
-    l.progress += dt
-    if (l.progress >= l.count * LOOM.perItem) farm.loom = { count: 0, progress: 0, ready: l.count }
-  }
+  for (const id of PRODUCER_IDS) growProducer(id, dt)
+  for (const id of MACHINE_IDS) growMachine(id, dt)
 }
 
 function walk(v: Visitor, dt: number) {
@@ -1077,7 +1018,7 @@ function moveTo(v: Visitor, x: number, z: number, dt: number) {
     return true
   }
   v.moving = true
-  v.heading += wrapAngle(Math.atan2(dx, dz) - v.heading) * Math.min(1, dt * 7)
+  v.heading = dampAngle(v.heading, Math.atan2(dx, dz), 7, dt)
   const step = VISITOR.speed * dt
   if (d <= step) {
     v.x = x
@@ -1108,7 +1049,7 @@ function people(dt: number) {
       }
     } else if (moveTo(v, spot.x, spot.z, step)) {
       // in line: they move up when a place ahead frees, then turn back to the gate
-      v.heading += wrapAngle(spot.heading - v.heading) * Math.min(1, step * 5)
+      v.heading = dampAngle(v.heading, spot.heading, 5, step)
     }
   })
   // a copy: those who reach the end of the lane are taken out of the line as it is walked through
@@ -1131,7 +1072,8 @@ function people(dt: number) {
 let gifted = false
 function neverStuck() {
   const broke = farm.coins < Math.min(...CROPS.map((c) => c.seedCost))
-  const nothing = farm.beds.every((b) => !b.crop) && produceIds.every((id) => farm.inv[id] === 0) && millStage() === 'idle' && ovenStage() === 'idle'
+  // a machine at work or with something to take out is something on its way
+  const nothing = farm.beds.every((b) => !b.crop) && produceIds.every((id) => farm.inv[id] === 0) && MACHINE_IDS.every((id) => machineStage(id) === 'idle')
   if (broke && nothing && !gifted) {
     gifted = true
     farm.coins += 6
@@ -1219,7 +1161,7 @@ export function slotSummary(n: Slot): SlotSummary {
     earned: l.data.stats.earned,
     sold: l.data.stats.sold,
     growing: l.data.beds.filter((b) => b.crop).length,
-    animals: l.data.cows + l.data.hens + l.data.sheep,
+    animals: PRODUCER_IDS.reduce((n, id) => n + l.data.producers[id].animals, 0),
     savedAt: l.savedAt,
   }
 }

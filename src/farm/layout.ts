@@ -1,6 +1,6 @@
 import { APRON, GARDEN, GATE, HOUSE } from '../data/layout'
 import { SHRUB_SPOTS, CORNER_TREES } from '../data/garden'
-import { BED, BEDS, LOOM, MILL, OVEN, PATH_X, SHED, STAND } from './data'
+import { BED, BEDS, MACHINES, PATH_X, SHED, STAND } from './data'
 
 // Where the farm's movable things stand, and the land they may stand on. A "place" is a whole thing moved in one
 // go in the edit mode (the hen run with its coop, the cows' pasture, the sheep fold, the lemon tree, the big
@@ -178,9 +178,9 @@ export const BLOCKERS: Blocker[] = [
   { name: 'the shed', rect: rect(SHED.x - 1.2, SHED.x + 1.8, SHED.z - 1.45, SHED.z + 0.95) },
   { name: 'the farm stand', rect: around(STAND.x, STAND.z, 0.85, 0.55) },
   { name: 'the gate', rect: around(GATE.x, GARDEN.maxZ - 0.4, GATE.width / 2 + 0.6, 0.8), walkable: true },
-  { name: 'the oven', rect: rect(OVEN.x - 1.3, OVEN.x + 1.2, OVEN.z - 1.45, OVEN.z + 0.7) },
-  { name: 'the mill', rect: around(MILL.x, MILL.z, 0.95, 0.85) },
-  { name: 'the loom', rect: around(LOOM.x, LOOM.z, 1.0, 0.85) },
+  { name: 'the oven', rect: rect(MACHINES.oven.x - 1.3, MACHINES.oven.x + 1.2, MACHINES.oven.z - 1.45, MACHINES.oven.z + 0.7) },
+  { name: 'the mill', rect: around(MACHINES.mill.x, MACHINES.mill.z, 0.95, 0.85) },
+  { name: 'the loom', rect: around(MACHINES.loom.x, MACHINES.loom.z, 1.0, 0.85) },
   ...SHRUB_SPOTS.map(([x, z]) => ({ name: 'a shrub', rect: around(x, z, 0.45, 0.45) })),
 ]
 

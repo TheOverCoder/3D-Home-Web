@@ -47,7 +47,7 @@ test.describe('smart actions, sheep and the line at the gate', () => {
     await page.evaluate(() => {
       const f = (window as any).__home.farm
       f.reset()
-      f.state.lemons = 3 // the lemon tree nearby: something else in reach, to know the offer is fresh
+      f.state.producers.tree.stock[0] = 3 // the lemon tree nearby: something else in reach, to know the offer is fresh
       f.plant(0, 'lettuce')
       f.state.beds[0].water = 0 // dry: it asks for water
     })
@@ -78,10 +78,10 @@ test.describe('smart actions, sheep and the line at the gate', () => {
     expect(await nearby(game)).toMatchObject({ label: 'Shear Dolly · 1 fleece', icon: { verb: 'shear', item: 'wool' } })
     await page.keyboard.press('KeyE')
     await until(game, () => (window as any).__home.farm.state.inv.wool === 1)
-    expect(await page.evaluate(() => (window as any).__home.farm.state.wool[0])).toBe(0)
+    expect(await page.evaluate(() => (window as any).__home.farm.state.producers.sheep.stock[0])).toBe(0)
     // the fleece grows back
     await page.evaluate(() => (window as any).__home.farm.tick(61))
-    expect(await page.evaluate(() => (window as any).__home.farm.state.wool[0])).toBe(1)
+    expect(await page.evaluate(() => (window as any).__home.farm.state.producers.sheep.stock[0])).toBe(1)
 
     // the loom stands beside the fold: E puts the fleece on (once asked), and once woven E takes the cloth off
     await game.teleport(4.9, 1.4, -8.6, 0, -0.3)

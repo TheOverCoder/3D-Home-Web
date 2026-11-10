@@ -5,7 +5,7 @@ import { farmFx } from '../fx/fx'
 import { playGesture } from '../lib/gestures'
 import { playerState } from '../lib/playerState'
 import { useHome } from '../store'
-import { BEDS, BED_BOX, COW, CROPS, EGG, EXPANSIONS, PACE_LEVELS, PRODUCE, QUEUE_LEVELS, SHEEP, UPGRADES, arrivalEvery, count, queuePlaces, type BedDef, type CropId } from './data'
+import { BEDS, BED_BOX, CROPS, EXPANSIONS, PACE_LEVELS, PRODUCE, PRODUCERS, QUEUE_LEVELS, UPGRADES, arrivalEvery, count, queuePlaces, type BedDef, type CropId } from './data'
 import { EditButton, EditPanel } from './EditPanel'
 import { DecoratePanel } from '../home/DecoratePanel'
 import { BuyPiece, FurnitureShop } from '../home/FurnitureShop'
@@ -16,6 +16,7 @@ import { art, type ArtId } from '../ui/art'
 import { ArrowRight, Check, Clock, Users, X } from '../ui/glyphs'
 import {
   acceptOffer,
+  animals,
   arrivalSeconds,
   bedsForSeeds,
   bedsNear,
@@ -420,6 +421,13 @@ const bedsIn = (e: 'east' | 'west') => BEDS.filter((b) => b.expansion === e).len
  *  after the next one ("5 → 6" places in the line), so a card says what it does in numbers, not words. */
 function upgradeStep(id: string): { level: number; levels: number; icon: ReactNode; now: string; next: string | null } {
   const glyph = (a: ArtId) => <img src={art(a)} alt="" />
+  // another animal: how many there are, of how many there can be
+  const herd = UPGRADES.find((u) => u.id === id)?.herd
+  const range = herd && PRODUCERS[herd].herd
+  if (herd && range) {
+    const n = animals(herd)
+    return { level: n - range.start, levels: range.max - range.start, icon: glyph(UPGRADE_ART[id]), now: String(n), next: n < range.max ? String(n + 1) : null }
+  }
   switch (id) {
     case 'queue': {
       const l = upgradeLevel('queue')
@@ -429,18 +437,6 @@ function upgradeStep(id: string): { level: number; levels: number; icon: ReactNo
       const l = upgradeLevel('pace')
       return { level: l, levels: PACE_LEVELS, icon: <Clock weight="bold" />, now: clockText(arrivalSeconds()), next: l < PACE_LEVELS ? clockText(arrivalEvery(l + 1)) : null }
     }
-    case 'cow':
-      return { level: farm.cows - COW.startCows, levels: COW.maxCows - COW.startCows, icon: glyph('cow'), now: String(farm.cows), next: farm.cows < COW.maxCows ? String(farm.cows + 1) : null }
-    case 'sheep':
-      return {
-        level: farm.sheep - SHEEP.startSheep,
-        levels: SHEEP.maxSheep - SHEEP.startSheep,
-        icon: glyph('ewe'),
-        now: String(farm.sheep),
-        next: farm.sheep < SHEEP.maxSheep ? String(farm.sheep + 1) : null,
-      }
-    case 'hen':
-      return { level: farm.hens - EGG.startHens, levels: EGG.maxHens - EGG.startHens, icon: glyph('chicken'), now: String(farm.hens), next: farm.hens < EGG.maxHens ? String(farm.hens + 1) : null }
     case 'east':
     case 'west':
       return { level: owned(id) ? 1 : 0, levels: 1, icon: glyph('seedling'), now: `+${bedsIn(id)} beds`, next: null }

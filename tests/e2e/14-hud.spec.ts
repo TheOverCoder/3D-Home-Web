@@ -49,7 +49,7 @@ test.describe('the top of the screen', () => {
     await page.evaluate(() => {
       const f = (window as any).__home.farm
       f.reset()
-      Object.assign(f.state, { eggs: 0, lemons: 8, milk: f.state.milk.map(() => 0), wool: f.state.wool.map(() => 0) })
+      for (const [id, n] of Object.entries({ hens: 0, tree: 8, cows: 0, sheep: 0 })) f.state.producers[id].stock.fill(n)
       f.plant(2, 'tomato')
       f.state.beds[2].growth = 1e6
     })

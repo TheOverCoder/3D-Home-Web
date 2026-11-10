@@ -34,7 +34,7 @@ test.describe('farm kitchen and animals', () => {
     expect(await label(game)).toMatch(/^Milk Bella · 1 bottle of milk/)
     await page.keyboard.press('KeyE')
     await until(game, () => (window as any).__home.farm.state.inv.milk === 1)
-    expect(await page.evaluate(() => (window as any).__home.farm.state.milk[0])).toBe(0)
+    expect(await page.evaluate(() => (window as any).__home.farm.state.producers.cows.stock[0])).toBe(0)
   })
 
   test('the mill grinds wheat into flour, once asked: a second press by mistake uses nothing', async ({ game }) => {

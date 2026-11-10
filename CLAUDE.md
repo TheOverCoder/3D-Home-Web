@@ -39,6 +39,15 @@ The README has the overview; `tests/README.md` what each test guards.
   A bed set to one crop is the one place the button buys without a card: its seeds, with the price on the prompt.
   Nothing plants or spends by itself.
 
+## Animals and machines (src/farm/data.ts)
+
+- What fills up and is collected (the lemon tree, the nest, the cows, the sheep) is a row in `PRODUCERS`, a machine (the
+  mill, the loom, the oven) a row in `MACHINES`: its numbers, goods, words, sounds and place. `state.ts` runs every row
+  the same way and keeps it in the save (`producers`, `machines`; `load()` converts older saves): no new state.
+- A new animal: its row (and an `UPGRADES` row with `herd` to buy more), its model, and a thin `<Herd>` (`Herd.tsx`) with
+  its wander numbers (`wander.ts`), body and pose. A new machine: its row, its model, and its moving parts driven by
+  the work level `useMachine(id)` gives back.
+
 ## Interface (src/styles.css tokens, src/ui/art.ts, src/ui/glyphs.ts)
 
 - Use the tokens and classes, not new colours or fonts: `.paper` sheets, `.btn` (`.soft`, `.leaf`, `.berry`,

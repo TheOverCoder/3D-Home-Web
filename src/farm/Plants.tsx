@@ -3,10 +3,10 @@ import { useFrame } from '@react-three/fiber'
 import { cropParts } from '../models/crops'
 import { GROWERS, hash, putEgg, putLemon } from '../models/plants'
 import { lemonSpots } from '../models/structures'
-import { BED, BEDS, LEMON_TREE, NEST, type CropId } from './data'
+import { BED, BEDS, NEST, PRODUCERS, type CropId } from './data'
 import { shownPlacement } from './edit'
 import { toWorld, type Placement } from './layout'
-import { bedProgress, farm } from './state'
+import { bedProgress, farm, stockOf } from './state'
 
 // Every plant in every bed, the lemons on the tree and the eggs in the nest: sculpted parts (src/models/crops.ts)
 // put together by each crop's grower (src/models/plants.ts) for its stage of growth — one instanced draw per kind of
@@ -36,7 +36,7 @@ function grid(cols: number, rows: number, dx: number, dz: number): [number, numb
 }
 
 /** Where lemons hang on the tree (each stalk's end, up in the leaves; round the trunk), and the egg places in the nest box. */
-export const LEMON_SPOTS = lemonSpots(LEMON_TREE.max)
+export const LEMON_SPOTS = lemonSpots(PRODUCERS.tree.max)
 const EGG_SPOTS: [number, number][] = grid(3, 2, 0.085, 0.085)
 
 export function Plants() {
@@ -65,12 +65,12 @@ export function Plants() {
         GROWERS[bed.crop!](parts, def.x + lx + (hash(k, i) - 0.5) * 0.04, SOIL_Y, def.z + lz + (hash(i, k) - 0.5) * 0.04, g, seed)
       })
     })
-    for (let k = 0; k < farm.lemons; k++) {
+    for (let k = 0; k < stockOf('tree'); k++) {
       const [lx, y, lz] = LEMON_SPOTS[k]
       const [x, z] = toWorld(lemon, lx, lz)
       putLemon(parts, x, y, z, k)
     }
-    for (let k = 0; k < farm.eggs; k++) {
+    for (let k = 0; k < stockOf('hens'); k++) {
       const [ex, ez] = EGG_SPOTS[k]
       const [x, z] = toWorld(hens, NEST.x + ez, NEST.z + ex)
       putEgg(parts, x, NEST_FLOOR, z, k)

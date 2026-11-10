@@ -40,7 +40,7 @@ test.describe('farm layout and the edit mode', () => {
       const f = (window as any).__home.farm
       f.reset()
       f.state.coins = 1000
-      f.state.eggs = 2
+      f.state.producers.hens.stock[0] = 2
     })
     // up: the edit mode (B outdoors: indoors it decorates the house), the camera over the farm looking down
     await game.teleport(-1.2, 1.4, 9.0, Math.PI / 2, -0.1)

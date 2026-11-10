@@ -1,6 +1,8 @@
 // The farm around the house: what grows, what it makes, what it sells for, and where everything stands.
 // Units are metres and seconds (real time: crops keep growing while you are inside or away).
+import type { FarmSound } from '../audio/sound'
 import { GATE, GARDEN, GARDEN_DOOR, LANE } from '../data/layout'
+import type { PlaceId } from './layout'
 
 export type CropId = 'lettuce' | 'carrot' | 'strawberry' | 'tomato' | 'corn' | 'pumpkin' | 'wheat' | 'sugarcane'
 export type CakeId = 'lemon_cake' | 'strawberry_cake' | 'carrot_cake' | 'pumpkin_pie'
@@ -58,26 +60,140 @@ export const WATER_SHARE = 0.55
 
 // ───────────────────────────── the kitchen of the farm ─────────────────────────────
 
-/** The mill presses sugar cane into sugar and grinds wheat into flour, one batch at a time. */
-export const MILLABLE = { sugarcane: 'sugar', wheat: 'flour' } as const
-export type MillInput = keyof typeof MILLABLE
-export type MillOutput = (typeof MILLABLE)[MillInput]
-
+/** What a machine makes (MACHINES, below): one batch takes `needs` and makes one `makes`, in `seconds`. */
 export interface Recipe {
-  id: CakeId
-  name: string
+  /** its key: in the save, and in the id of its own offer on the button (farm-mill-wheat, farm-oven-lemon_cake) */
+  id: string
   needs: Partial<Record<ProduceId, number>>
+  makes: ProduceId
   seconds: number
 }
 
-/** What the oven bakes: worth about twice what goes into it. */
+/** What the oven bakes, one at a time: worth about twice what goes into it. */
 export const RECIPES: Recipe[] = [
-  { id: 'lemon_cake', name: 'Lemon cake', needs: { flour: 1, sugar: 1, egg: 2, milk: 1, lemon: 2 }, seconds: 30 },
-  { id: 'strawberry_cake', name: 'Strawberry cake', needs: { flour: 1, sugar: 1, egg: 2, milk: 1, strawberry: 4 }, seconds: 35 },
-  { id: 'carrot_cake', name: 'Carrot cake', needs: { flour: 1, sugar: 1, egg: 2, carrot: 3 }, seconds: 35 },
-  { id: 'pumpkin_pie', name: 'Pumpkin pie', needs: { flour: 1, sugar: 1, egg: 1, milk: 1, pumpkin: 1 }, seconds: 40 },
+  { id: 'lemon_cake', needs: { flour: 1, sugar: 1, egg: 2, milk: 1, lemon: 2 }, makes: 'lemon_cake', seconds: 30 },
+  { id: 'strawberry_cake', needs: { flour: 1, sugar: 1, egg: 2, milk: 1, strawberry: 4 }, makes: 'strawberry_cake', seconds: 35 },
+  { id: 'carrot_cake', needs: { flour: 1, sugar: 1, egg: 2, carrot: 3 }, makes: 'carrot_cake', seconds: 35 },
+  { id: 'pumpkin_pie', needs: { flour: 1, sugar: 1, egg: 1, milk: 1, pumpkin: 1 }, makes: 'pumpkin_pie', seconds: 40 },
 ]
-export const recipeById = (id: CakeId) => RECIPES.find((r) => r.id === id)!
+/** What a recipe takes, when it takes one good (the mill's wheat, the loom's fleece). */
+export const inputOf = (r: Recipe) => Object.keys(r.needs)[0] as ProduceId
+
+export type MachineId = 'mill' | 'loom' | 'oven'
+
+/** What a machine's button says, about `n` batches of a recipe (`left`: the time to go, as 1:05). */
+export interface MachineWords {
+  /** the word on the button, and on the card that asks before anything goes in (Bake, Mill, Weave) */
+  word: string
+  load: (r: Recipe, n: number) => string
+  working: (r: Recipe, n: number, left: string) => string
+  done: (r: Recipe, n: number) => string
+  /** with nothing to load (`nearest`: the recipe nearest to ready) */
+  idle: (nearest: Recipe) => string
+  /** pressed while it works */
+  busy: (r: Recipe, left: string) => string
+}
+
+/** Something that takes ingredients, works on them a while, then has what it made to take out: the mill, the loom and
+ *  the oven. src/farm/state.ts runs them all the same way and src/farm/useMachine.ts puts them on the action button;
+ *  everything that differs between them is here. */
+export interface MachineDef {
+  /** where it stands (it never moves) */
+  x: number
+  z: number
+  /** round where it stands: where you stand near to use it, what you look at, and where the sparkles pop as you take
+   *  out what it made; and how far off it is still in reach */
+  stand: [number, number, number]
+  aim: [number, number, number]
+  sparkle: [number, number, number]
+  reach: number
+  /** how many batches it takes at once: as many as it has room for and the basket gives */
+  capacity: number
+  /** with more than one, each has its own offer on the button (a cake, wheat or cane) */
+  recipes: Recipe[]
+  words: MachineWords
+  /** with nothing to load, its status shows this good and what it makes from what (the mill: flour from wheat, sugar
+   *  from cane); without one, the recipe nearest to ready and what it still needs (the oven) */
+  picture?: ProduceId
+  /** as it is loaded, and now and then while it works (every `every` seconds and up to `spread` more, the first one
+   *  that long after it is loaded) if you are near. Every machine dings as it is done, and rustles as you take out
+   *  what it made. */
+  sounds: { load: FarmSound; work?: { sound: FarmSound; every: number; spread: number } }
+  /** what the farm's stats count of it, one for each batch taken out (the cakes baked) */
+  counts?: 'baked'
+}
+
+export const MACHINES: Record<MachineId, MachineDef> = {
+  // the farm kitchen is in the yard's south-east corner, facing the yard: the mill presses sugar cane into sugar and
+  // grinds wheat into flour (each of the two is in reach on its own side: a little short of the 2.57 m between where
+  // you stand at the mill and at the oven)
+  mill: {
+    x: 12.3,
+    z: 10.6,
+    stand: [-1.25, 1.0, 0],
+    aim: [-0.15, 0.95, 0],
+    sparkle: [-0.15, 1.07, 0],
+    reach: 2.5,
+    capacity: 6,
+    recipes: [
+      { id: 'sugarcane', needs: { sugarcane: 1 }, makes: 'sugar', seconds: 4 },
+      { id: 'wheat', needs: { wheat: 1 }, makes: 'flour', seconds: 4 },
+    ],
+    picture: 'flour',
+    words: {
+      word: 'Mill',
+      load: (r, n) => `Mill ${count(inputOf(r), n)}`,
+      working: (r, n, left) => `Milling ${count(inputOf(r), n)} · ${left}`,
+      done: (r, n) => `Collect ${count(r.makes, n)}`,
+      idle: () => 'Mill · bring wheat for flour or sugar cane for sugar',
+      busy: (_r, left) => `${left} to go`,
+    },
+    sounds: { load: 'creak', work: { sound: 'creak', every: 1.1, spread: 0.6 } },
+  },
+  // the loom stands beside the sheep fold, facing the house: fleeces go in, cloth comes out
+  loom: {
+    x: 4.9,
+    z: -10.3,
+    stand: [0, 1.0, 1.25],
+    aim: [0, 0.95, 0.2],
+    sparkle: [0, 1.05, 0.2],
+    reach: 2.5,
+    capacity: 4,
+    recipes: [{ id: 'wool', needs: { wool: 1 }, makes: 'cloth', seconds: 6 }],
+    picture: 'cloth',
+    words: {
+      word: 'Weave',
+      load: (r, n) => `Weave ${count(inputOf(r), n)} into cloth`,
+      working: (r, n, left) => `Weaving ${count(r.makes, n)} · ${left}`,
+      done: (r, n) => `Take ${count(r.makes, n)} off the loom`,
+      idle: () => 'Loom · shear the sheep for fleeces to weave',
+      busy: (_r, left) => `${left} to go`,
+    },
+    sounds: { load: 'loom', work: { sound: 'loom', every: 1.4, spread: 0.5 } },
+  },
+  // beside the mill, the clay oven bakes one cake at a time from the farm's flour, sugar, eggs, milk and fruit
+  oven: {
+    x: 9.9,
+    z: 11.75,
+    stand: [-1.15, 1.0, 0],
+    aim: [-0.72, 0.92, 0],
+    sparkle: [-0.72, 1.04, 0],
+    reach: 2.4,
+    capacity: 1,
+    recipes: RECIPES,
+    words: {
+      word: 'Bake',
+      load: (r) => `Bake a ${produceById(r.makes).name}`,
+      working: (r, _n, left) => `Baking a ${produceById(r.makes).name} · ready in ${left}`,
+      done: (r) => `Take out the ${produceById(r.makes).name}`,
+      idle: (nearest) => `Oven · a ${produceById(nearest.makes).name} needs`,
+      busy: (r, left) => `The ${produceById(r.makes).name} needs ${left} more`,
+    },
+    sounds: { load: 'oven' },
+    counts: 'baked',
+  },
+}
+export const MACHINE_IDS = Object.keys(MACHINES) as MachineId[]
 
 // ───────────────────────────── the yard ─────────────────────────────
 
@@ -131,31 +247,135 @@ export const START_COINS = 20
 // in the farm's layout (src/farm/layout.ts), and what is inside them is given here in their own frame, round
 // their middle (x across, z along; the frame turns with them). On a new farm they stand where they always have.
 
-export const LEMON_TREE = { every: 30, max: 8 } as const
-
 /** The coop sits in a fenced run (on a new farm, in the east yard); its nest box sticks out through the run's west fence. */
 export const RUN = { minX: -1.8, maxX: 1.8, minZ: -2.3, maxZ: 2.3 } as const
 export const COOP = { x: -1.0, z: -1.0 } as const
 export const NEST = { x: RUN.minX - 0.12, z: COOP.z } as const
-export const EGG = { every: 40, max: 6, startHens: 2, maxHens: 6 } as const
 
 /** The cows' pasture (on a new farm along the east side of the house, north of the coop); its gate is on the west side. */
 export const PASTURE = { minX: -2.15, maxX: 2.15, minZ: -6.5, maxZ: 6.5, gateZ: 2.5, gateWidth: 1.4 } as const
 /** The pasture's water trough and hay rack, along its east side. */
 export const TROUGH = { x: 1.65, z: 0.9 } as const
 export const HAY_RACK = { x: 1.65, z: 4.5 } as const
-export const COW = { every: 45, max: 3, startCows: 1, maxCows: 3, names: ['Bella', 'Mazal', 'Daisy'] } as const
-
-/** The farm kitchen in the south-east corner: an outdoor brick oven and the mill, both facing the yard. */
-export const OVEN = { x: 9.9, z: 11.75 } as const
-export const MILL = { x: 12.3, z: 10.6, perItem: 4, capacity: 6 } as const
 
 /** The sheep fold (on a new farm in the north yard, behind the house, where the office and kitchen windows look out on
  *  it); its gate is in the south fence, facing the house. */
 export const FOLD = { minX: -4.3, maxX: 4.3, minZ: -1.85, maxZ: 1.85, gateX: 0, gateWidth: 1.3 } as const
-export const SHEEP = { every: 60, max: 2, startSheep: 2, maxSheep: 4, names: ['Dolly', 'Pnina', 'Lulu', 'Tzipi'] } as const
-/** The loom stands beside the fold, facing the house: fleeces go in, cloth comes out. */
-export const LOOM = { x: 4.9, z: -10.3, perItem: 6, capacity: 4 } as const
+
+// ───────────────────────────── what fills up, and is collected ─────────────────────────────
+
+export type ProducerId = 'tree' | 'hens' | 'cows' | 'sheep'
+
+/** Something that fills up over time and is collected: the lemon tree, the hens' nest, each cow, each sheep.
+ *  src/farm/state.ts runs them all the same way and src/farm/useProducer.ts puts them on the action button; everything
+ *  that differs between them is here. */
+export interface ProducerDef {
+  /** what it gives */
+  good: ProduceId
+  /** one more every this many seconds */
+  every: number
+  /** the most that waits to be collected (on the tree, in the nest, on each animal): no more come until it is */
+  max: number
+  /** how many wait on a new farm (on each animal) */
+  fresh: number
+  /** collecting it leaves the clock running (the hens lay on); picking the lemons, milking a cow or shearing a sheep
+   *  starts the wait for the next one again */
+  keepsClock?: boolean
+  /** a full one stops growing until it is taken: its clock holds at 0 (a full fleece) */
+  holdsFull?: boolean
+  /** its animals: how many on a new farm and at most. `shared`: they all lay into one nest, its clock running as many
+   *  times as fast as there are hens; otherwise each animal has her own, and her name (on the button, and in the
+   *  shop's note: "Bella joins the herd") */
+  herd?: { start: number; max: number; shared?: boolean; names?: readonly string[]; joins?: string }
+  /** the movable place it is in (src/farm/layout.ts) */
+  place: PlaceId
+  /** the button: its id (an animal's own ends in her number: farm-cow-0), its word and its verb's picture */
+  action: string
+  word: string
+  verb: 'pick' | 'shear'
+  /** where you stand near and what you look at, in its place's frame or round the animal; how far off it is in reach */
+  stand: [number, number, number]
+  aim: [number, number, number]
+  reach: number
+  /** the sound as it is taken, and how high its sparkles pop, over what you look at */
+  sound: FarmSound
+  sparkle: number
+}
+
+export const PRODUCERS: Record<ProducerId, ProducerDef> = {
+  // the lemon tree keeps fruiting (the lemons hang in its crown, src/farm/Plants.tsx)
+  tree: {
+    good: 'lemon',
+    every: 30,
+    max: 8,
+    fresh: 3,
+    place: 'lemon',
+    action: 'farm-lemon-tree',
+    word: 'Pick',
+    verb: 'pick',
+    stand: [0, 1.0, 0],
+    aim: [0, 1.6, 0],
+    reach: 2.6,
+    sound: 'harvest',
+    sparkle: 1.6,
+  },
+  // the hens lay into the nest box, collected from outside the run
+  hens: {
+    good: 'egg',
+    every: 40,
+    max: 6,
+    fresh: 1,
+    keepsClock: true,
+    herd: { start: 2, max: 6, shared: true },
+    place: 'hens',
+    action: 'farm-nest',
+    word: 'Collect',
+    verb: 'pick',
+    stand: [NEST.x - 0.45, 0.9, NEST.z],
+    aim: [NEST.x, 0.66, NEST.z],
+    reach: 2.2,
+    sound: 'cluck',
+    sparkle: 0.78,
+  },
+  // each cow gives her own milk, wherever she has wandered to in the pasture
+  cows: {
+    good: 'milk',
+    every: 45,
+    max: 3,
+    fresh: 1,
+    herd: { start: 1, max: 3, names: ['Bella', 'Mazal', 'Daisy'], joins: 'the herd' },
+    place: 'cows',
+    action: 'farm-cow',
+    word: 'Milk',
+    verb: 'pick',
+    stand: [0, 1, 0],
+    aim: [0, 0.95, 0],
+    reach: 2.7,
+    sound: 'milk',
+    sparkle: 1.55,
+  },
+  // and each sheep grows her own fleece, up to two before it stops
+  sheep: {
+    good: 'wool',
+    every: 60,
+    max: 2,
+    fresh: 1,
+    holdsFull: true,
+    herd: { start: 2, max: 4, names: ['Dolly', 'Pnina', 'Lulu', 'Tzipi'], joins: 'the flock' },
+    place: 'sheep',
+    action: 'farm-sheep',
+    word: 'Shear',
+    verb: 'shear',
+    stand: [0, 0.7, 0],
+    aim: [0, 0.65, 0],
+    reach: 2.4,
+    sound: 'shear',
+    sparkle: 1.0,
+  },
+}
+export const PRODUCER_IDS = Object.keys(PRODUCERS) as ProducerId[]
+/** The most animals a producer can have (none for the tree). */
+export const mostAnimals = (id: ProducerId) => PRODUCERS[id].herd?.max ?? 0
 
 export const SHED = { x: -9.0, z: 11.3 } as const
 export const STAND = { x: GATE.x + 1.7, z: GARDEN.maxZ - 0.75 } as const
@@ -187,6 +407,7 @@ export interface Upgrade {
   price: number // the first step, for upgrades bought one step at a time
   levels?: number // bought one step at a time, this many steps
   priceStep?: number // each step costs this much more than the one before
+  herd?: ProducerId // one more animal for this producer's herd, up to its most
 }
 
 export const UPGRADES: Upgrade[] = [
@@ -194,9 +415,9 @@ export const UPGRADES: Upgrade[] = [
   { id: 'west', name: EXPANSIONS.west.name, blurb: EXPANSIONS.west.blurb, price: EXPANSIONS.west.price },
   { id: 'queue', name: 'A longer queue', blurb: 'One more place in the line at the gate.', price: 30, levels: QUEUE_LEVELS, priceStep: 12 },
   { id: 'pace', name: 'A busier lane', blurb: 'Buyers come by more often.', price: 50, levels: PACE_LEVELS, priceStep: 25 },
-  { id: 'cow', name: 'Another cow', blurb: 'More milk (up to three cows).', price: 70 },
-  { id: 'sheep', name: 'Another sheep', blurb: 'More wool (up to four sheep).', price: 55 },
-  { id: 'hen', name: 'Another hen', blurb: 'More eggs (up to six hens).', price: 25 },
+  { id: 'cow', name: 'Another cow', blurb: 'More milk (up to three cows).', price: 70, herd: 'cows' },
+  { id: 'sheep', name: 'Another sheep', blurb: 'More wool (up to four sheep).', price: 55, herd: 'sheep' },
+  { id: 'hen', name: 'Another hen', blurb: 'More eggs (up to six hens).', price: 25, herd: 'hens' },
   { id: 'sprinkler', name: 'Sprinklers', blurb: 'Every bed waters itself.', price: 60 },
   { id: 'compost', name: 'Compost bin', blurb: 'Half as much again from every harvest.', price: 45 },
 ]

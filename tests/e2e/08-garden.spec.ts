@@ -41,8 +41,8 @@ test.describe('garden', () => {
     await page.evaluate(() => {
       const f = (window as any).__home.farm
       f.reset()
-      f.state.lemons = 0
-      f.state.eggs = 0
+      f.state.producers.tree.stock[0] = 0
+      f.state.producers.hens.stock[0] = 0
     })
     const coins0 = (await farm(game)).coins
     // on the path, facing the first bed on the west side, looking down at the soil
@@ -61,17 +61,17 @@ test.describe('garden', () => {
     // with no room for another egg is a job elsewhere: it goes on the compass at the top (its picture, how many),
     // never on the button; a nest with room for more is not worth the walk yet
     const eggMark = () => (window as any).__home.useHome.getState().compass.find((m: any) => m.item === 'egg')
-    await page.evaluate(() => ((window as any).__home.farm.state.eggs = 5))
+    await page.evaluate(() => ((window as any).__home.farm.state.producers.hens.stock[0] = 5))
     await until(game, () => /ready in/.test((window as any).__home.useHome.getState().status?.label ?? ''))
     expect(await page.evaluate(eggMark)).toBeUndefined()
-    await page.evaluate(() => ((window as any).__home.farm.state.eggs = 6))
+    await page.evaluate(() => ((window as any).__home.farm.state.producers.hens.stock[0] = 6))
     await page.waitForFunction(eggMark, null, { timeout: 30_000, polling: 200 })
     expect(await page.evaluate(eggMark)).toMatchObject({ id: 'farm-nest', count: 6 })
     expect(await page.evaluate(() => (window as any).__home.useHome.getState().actions)).toEqual([])
     // its mark, tapped, turns you to it and marks it in the world
     await page.getByRole('button', { name: /^6 eggs ready/ }).click()
     await page.waitForFunction(() => (window as any).__home.useHome.getState().guide?.id === 'farm-nest', null, { timeout: 30_000, polling: 200 })
-    await page.evaluate(() => ((window as any).__home.farm.state.eggs = 0))
+    await page.evaluate(() => ((window as any).__home.farm.state.producers.hens.stock[0] = 0))
     await game.teleport(-1.2, 1.4, 9.0, Math.PI / 2, -0.6)
 
     // the soil dries out before the lettuce is ready: the beds ask for water, all watered in one press — with a splash

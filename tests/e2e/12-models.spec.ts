@@ -42,8 +42,8 @@ test.describe('sculpted models', () => {
       ;['lettuce', 'carrot', 'strawberry', 'tomato', 'corn', 'pumpkin'].forEach((crop, i) => {
         if (f.plant(i, crop)) f.state.beds[i].growth = 1e6 // ripe
       })
-      f.state.lemons = 3
-      f.state.eggs = 2
+      f.state.producers.tree.stock[0] = 3
+      f.state.producers.hens.stock[0] = 2
       for (let i = 0; i < 3; i++) f.spawnVisitor({ queued: true })
     })
     // look at the garden from the path, so every group has been drawn

@@ -1,51 +1,52 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
+import { MathUtils } from 'three'
 import { farmSound, placeSound } from '../audio/sound'
 import { playerState } from '../lib/playerState'
 import { chickenParts, putChicken } from '../models/chicken'
-import { COOP, EGG, RUN } from './data'
+import { COOP, RUN, mostAnimals } from './data'
 import { shownPlacement } from './edit'
-import { carry, samePlacement, toWorld, turnOf, type Placement } from './layout'
-import { farm } from './state'
+import { samePlacement, type Placement } from './layout'
+import { animals } from './state'
+import { agentAt, carryAlong, freeSpot, penAt, wander, type Agent, type Wander } from './wander'
 
 // The hens (and a rooster): each wanders the run on its own — strolls to a spot, pecks at the ground, stands about — and the
 // odd one clucks when you are near. They are sculpted models (src/models/chicken.ts): one instanced draw per part
 // for all the hens, and the rooster's own. They live in the world's coordinates; when the run is moved (the edit
-// mode), they are carried along with it.
+// mode), they are carried along with it (src/farm/wander.ts).
 
-interface Hen {
-  x: number
-  z: number
-  heading: number
-  tx: number
-  tz: number
-  mode: 'walk' | 'peck' | 'idle'
-  timer: number
-  phase: number
+interface Hen extends Agent {
   peck: number
-  stride: number
   look: number
 }
 
 const COOP_HALF = { x: 0.8, z: 0.65 } // keep out from under the coop
 
-/** A spot in the run (where it stands), clear of the coop. */
-function randomSpot(run: Placement): [number, number] {
-  for (let i = 0; i < 20; i++) {
-    const x = RUN.minX + 0.35 + Math.random() * (RUN.maxX - RUN.minX - 0.7)
-    const z = RUN.minZ + 0.35 + Math.random() * (RUN.maxZ - RUN.minZ - 0.7)
-    if (Math.abs(x - COOP.x) > COOP_HALF.x || Math.abs(z - COOP.z) > COOP_HALF.z) return toWorld(run, x, z)
-  }
-  return toWorld(run, (RUN.minX + RUN.maxX) / 2, RUN.maxZ - 0.6)
+/** Quick little walks straight to a spot in the run (anywhere but under the coop), then pecking (the wander's grazing)
+ *  or a look about. */
+const HENS: Wander = {
+  speed: 0.32,
+  turn: 6,
+  arrive: 0,
+  legs: 11 / 0.32, // eleven steps a second
+  strideRate: 8,
+  graze: 0.6,
+  grazeFor: [1, 2.2],
+  idleFor: [1, 2.2],
+  area: { minX: RUN.minX + 0.35, maxX: RUN.maxX - 0.35, minZ: RUN.minZ + 0.35, maxZ: RUN.maxZ - 0.35 },
+  free: (x, z) => Math.abs(x - COOP.x) > COOP_HALF.x || Math.abs(z - COOP.z) > COOP_HALF.z,
+  spacing: 0,
+  tries: 20,
+  fallback: () => [(RUN.minX + RUN.maxX) / 2, RUN.maxZ - 0.6],
 }
 
 const newHen = (run: Placement): Hen => {
-  const [x, z] = randomSpot(run)
-  return { x, z, heading: Math.random() * Math.PI * 2, tx: x, tz: z, mode: 'idle', timer: Math.random() * 2, phase: 0, peck: 0, stride: 0, look: 0 }
+  const [x, z] = freeSpot(HENS, run, [], 0)
+  return { ...agentAt(x, z, Math.random() * Math.PI * 2, 'idle', Math.random() * 2), peck: 0, look: 0 }
 }
 
 export function Chickens() {
-  const parts = useMemo(() => chickenParts(EGG.maxHens), [])
+  const parts = useMemo(() => chickenParts(mostAnimals('hens')), [])
   useEffect(() => () => parts.dispose(), [parts])
   const hens = useRef<Hen[]>([])
   const rooster = useRef<Hen | null>(null)
@@ -58,48 +59,21 @@ export function Chickens() {
     const t = state.clock.elapsedTime
     const run = shownPlacement('hens')
     rooster.current ??= newHen(run)
-    while (hens.current.length < farm.hens) hens.current.push(newHen(run))
-    hens.current.length = Math.min(hens.current.length, EGG.maxHens)
+    // as many hens as the farm has: one bought joins the run, and a farm with fewer (a reset, another save) has fewer
+    while (hens.current.length < animals('hens')) hens.current.push(newHen(run))
+    hens.current.length = Math.min(animals('hens'), mostAnimals('hens'))
     const all = [rooster.current, ...hens.current]
     // the run was moved: everyone in it comes along, where they were in it
-    if (!samePlacement(run, frame.current)) {
-      const turned = turnOf(run) - turnOf(frame.current)
-      for (const h of all) {
-        ;[h.x, h.z] = carry(frame.current, run, h.x, h.z)
-        ;[h.tx, h.tz] = carry(frame.current, run, h.tx, h.tz)
-        h.heading += turned
-      }
-    }
+    if (!samePlacement(run, frame.current)) carryAlong(all, frame.current, run)
     frame.current = run
+    const pen = penAt(HENS, run)
     parts.begin()
     all.forEach((h, n) => {
       const isRooster = n === 0
-      // behaviour
-      h.timer -= dt
-      if (h.mode === 'walk') {
-        const dx = h.tx - h.x
-        const dz = h.tz - h.z
-        const d = Math.hypot(dx, dz)
-        const want = Math.atan2(dx, dz)
-        h.heading += Math.atan2(Math.sin(want - h.heading), Math.cos(want - h.heading)) * Math.min(1, dt * 6)
-        const step = 0.32 * dt
-        if (d <= step) {
-          h.mode = Math.random() < 0.6 ? 'peck' : 'idle'
-          h.timer = 1 + Math.random() * 2.2
-        } else {
-          h.x += (dx / d) * step
-          h.z += (dz / d) * step
-          h.phase += dt * 11
-        }
-      } else if (h.timer <= 0) {
-        ;[h.tx, h.tz] = randomSpot(run)
-        h.mode = 'walk'
-      }
-      h.peck = h.mode === 'peck' ? Math.max(0, Math.sin(h.timer * 9)) : Math.max(0, h.peck - dt * 4)
-
-      h.stride += ((h.mode === 'walk' ? 1 : 0) - h.stride) * Math.min(1, dt * 8)
+      wander(h, n, all, HENS, pen, dt)
+      h.peck = h.mode === 'graze' ? Math.max(0, Math.sin(h.timer * 9)) : Math.max(0, h.peck - dt * 4)
       // a glance about now and then while standing
-      h.look += ((h.mode === 'idle' ? Math.sin(t * 0.9 + n * 3) * 0.7 : 0) - h.look) * Math.min(1, dt * 6)
+      h.look = MathUtils.damp(h.look, h.mode === 'idle' ? Math.sin(t * 0.9 + n * 3) * 0.7 : 0, 6, dt)
       putChicken(parts, isRooster, n - 1, h.x, h.z, h.heading, { phase: h.phase, stride: h.stride, peck: h.peck, look: h.look })
     })
     parts.end()

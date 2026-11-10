@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import GUI, { type Controller } from 'lil-gui'
 import type { Color, DirectionalLight, FogExp2, HemisphereLight, Object3D } from 'three'
-import { COW, CROPS, EGG, LEMON_TREE, LOOM, MILL, PRODUCE, QUEUE, RECIPES, SHEEP, VISITOR } from '../farm/data'
+import { CROPS, MACHINES, MACHINE_IDS, PRODUCE, PRODUCERS, PRODUCER_IDS, QUEUE, VISITOR, produceById } from '../farm/data'
 import { tick } from '../farm/state'
 import { profile } from '../lib/profile'
 import { LOOK, useLook } from '../scene/Effects'
@@ -70,23 +70,17 @@ export default function Tune() {
     }
     const prices = farmF.addFolder('Prices (a fair price each)')
     for (const p of PRODUCE) bind(prices, p, 'price', `PRODUCE.${p.id}`, 1, 100, 1).name(p.plural)
-    const oven = farmF.addFolder('Oven (seconds)')
-    for (const r of RECIPES) bind(oven, r, 'seconds', `RECIPES.${r.id}`, 5, 300, 1).name(r.name)
+    // the tables (src/farm/data.ts): a producer's clock and the most that waits; a machine's room and each recipe's time
     const animals = farmF.addFolder('Animals and the lemon tree')
-    for (const [name, def] of [
-      ['COW', COW],
-      ['SHEEP', SHEEP],
-      ['EGG', EGG],
-      ['LEMON_TREE', LEMON_TREE],
-    ] as const) {
-      bind(animals, def, 'every', name, 5, 300, 1).name(`${name} every (s)`)
-      bind(animals, def, 'max', name, 1, 12, 1).name(`${name} max`)
+    for (const id of PRODUCER_IDS) {
+      bind(animals, PRODUCERS[id], 'every', `PRODUCERS.${id}`, 5, 300, 1).name(`${id} every (s)`)
+      bind(animals, PRODUCERS[id], 'max', `PRODUCERS.${id}`, 1, 12, 1).name(`${id} max`)
     }
-    const machines = farmF.addFolder('Mill and loom')
-    bind(machines, MILL, 'perItem', 'MILL', 1, 30, 1).name('mill s per item')
-    bind(machines, MILL, 'capacity', 'MILL', 1, 20, 1).name('mill capacity')
-    bind(machines, LOOM, 'perItem', 'LOOM', 1, 30, 1).name('loom s per item')
-    bind(machines, LOOM, 'capacity', 'LOOM', 1, 20, 1).name('loom capacity')
+    const machines = farmF.addFolder('Mill, loom and oven')
+    for (const id of MACHINE_IDS) {
+      bind(machines, MACHINES[id], 'capacity', `MACHINES.${id}`, 1, 20, 1).name(`${id} capacity`)
+      for (const r of MACHINES[id].recipes) bind(machines, r, 'seconds', `MACHINES.${id}.recipes.${r.id}`, 1, 300, 1).name(`${id}: ${produceById(r.makes).name} (s)`)
+    }
     const buyers = farmF.addFolder('Buyers')
     bind(buyers, QUEUE, 'every', 'QUEUE', 10, 600, 1).name('a new one every (s)')
     bind(buyers, QUEUE, 'step', 'QUEUE', 1, 60, 1).name('sooner per step (s)')
