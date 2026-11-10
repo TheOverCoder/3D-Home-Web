@@ -6,8 +6,7 @@ import { test, expect, type Game } from './helpers'
 // Time is fast-forwarded with __home.farm.tick.
 
 const until = (game: Game, fn: () => boolean, timeout = 30_000) => game.page.waitForFunction(fn, null, { timeout, polling: 200 })
-const nearbyIs = (game: Game, id: string) =>
-  game.page.waitForFunction((want) => (window as any).__home.useHome.getState().nearby?.id === want, id, { timeout: 60_000, polling: 250 })
+const nearbyIs = (game: Game, id: string) => game.page.waitForFunction((want) => (window as any).__home.useHome.getState().nearby?.id === want, id, { timeout: 60_000, polling: 250 })
 const nearby = (game: Game) => game.page.evaluate(() => (window as any).__home.useHome.getState().nearby)
 
 test.describe('smart actions, sheep and the line at the gate', () => {
@@ -40,6 +39,27 @@ test.describe('smart actions, sheep and the line at the gate', () => {
       const y = (window as any).__home.look.yaw - Math.PI / 2
       return Math.abs(Math.atan2(Math.sin(y), Math.cos(y))) < 0.2
     })
+  })
+
+  test('reach is measured on the ground from the edge of a bed: from its end as far as from its side', async ({ game }) => {
+    await game.ready()
+    const { page } = game
+    await page.evaluate(() => {
+      const f = (window as any).__home.farm
+      f.reset()
+      f.state.lemons = 3 // the lemon tree nearby: something else in reach, to know the offer is fresh
+      f.plant(0, 'lettuce')
+      f.state.beds[0].water = 0 // dry: it asks for water
+    })
+    // 1.3 m off the west end of the first bed (its middle 2.2 m away), looking along it: Water
+    await game.teleport(-5.0, 1.4, 9.0, -Math.PI / 2, -0.5)
+    await nearbyIs(game, 'farm-bed-0')
+    expect((await nearby(game)).label).toBe('Water the lettuces')
+    // 1.8 m off its end: out of reach (the lemon tree is still offered)
+    await game.teleport(-5.5, 1.4, 9.0, -Math.PI / 2, -0.5)
+    await until(game, () => (window as any).__home.useHome.getState().actions.some((a: any) => a.id === 'farm-lemon-tree') && (window as any).__home.playerState.position.x < -5.4)
+    await page.waitForTimeout(1000)
+    expect(await page.evaluate(() => (window as any).__home.useHome.getState().actions.map((a: any) => a.id))).not.toContain('farm-bed-0')
   })
 
   test('sheep: shear one for her fleece; the loom weaves fleeces into cloth', async ({ game }) => {
@@ -135,7 +155,7 @@ test.describe('smart actions, sheep and the line at the gate', () => {
     const offers = await page.evaluate(() => (window as any).__home.farm.waiting().reduce((s: number, v: any) => s + v.offer, 0))
     await game.teleport(5.6, 1.4, 12.3, Math.PI, -0.05)
     await nearbyIs(game, 'farm-queue')
-    expect((await nearby(game)).icon.verb).toBe('sell')
+    expect((await nearby(game)).icon).toMatchObject({ verb: 'sell', art: 'people-queue', count: 15, of: 15 })
     await page.keyboard.press('KeyE')
     await until(game, () => (window as any).__home.useHome.getState().panel?.kind === 'queue')
     await expect(page.locator('.farm-buyer')).toHaveCount(15)

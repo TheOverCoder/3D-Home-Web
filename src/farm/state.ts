@@ -1,8 +1,11 @@
 import { create } from 'zustand'
 import { farmSound, placeSound } from '../audio/sound'
+import { groundDistance } from '../lib/interaction'
 import { useHome } from '../store'
 import {
   BEDS,
+  BED_BOX,
+  BED_REACH,
   COW,
   CROPS,
   EGG,
@@ -353,7 +356,7 @@ if (typeof window !== 'undefined') {
 }
 
 const toast = (text: string, item?: string) => useHome.getState().showToast(text, item)
-const pick = <T,>(list: readonly T[]) => list[Math.floor(Math.random() * list.length)]
+const pick = <T>(list: readonly T[]) => list[Math.floor(Math.random() * list.length)]
 const rand = (a: number, b: number) => a + Math.random() * (b - a)
 const remember = (id: ProduceId) => {
   if (!farm.made.includes(id)) farm.made.push(id)
@@ -378,14 +381,12 @@ export function bedStage(i: number): BedStage {
   return 'growing'
 }
 
-/** How far a bed's middle may be from you to be done along with the one in front of you. */
-export const BATCH_REACH = 2.4
-
-/** The beds near (x, z) at `stage`, the given one first: one press harvests, waters or plants them all. */
+/** The beds within reach of (x, z) at `stage`, the given one first: one press harvests, waters or plants them all.
+ *  Within reach as the action button measures it: from the edge of each bed's frame (BED_REACH). */
 export function bedsNear(index: number, stage: BedStage, x: number, z: number): number[] {
   const out = [index]
   BEDS.forEach((b, i) => {
-    if (i !== index && bedStage(i) === stage && Math.hypot(b.x - x, b.z - z) <= BATCH_REACH) out.push(i)
+    if (i !== index && bedStage(i) === stage && groundDistance(x, z, b, BED_BOX) <= BED_REACH) out.push(i)
   })
   return out
 }
@@ -393,8 +394,7 @@ export function bedsNear(index: number, stage: BedStage, x: number, z: number): 
 /** 0 … 1 */
 /** The empty beds near (x, z) that seeds chosen by hand go into: this one, and those within reach not set to grow
  *  something else. */
-export const bedsForSeeds = (index: number, crop: CropId, x: number, z: number) =>
-  bedsNear(index, 'empty', x, z).filter((i) => i === index || !farm.beds[i].fixed || farm.beds[i].fixed === crop)
+export const bedsForSeeds = (index: number, crop: CropId, x: number, z: number) => bedsNear(index, 'empty', x, z).filter((i) => i === index || !farm.beds[i].fixed || farm.beds[i].fixed === crop)
 
 export const bedProgress = (i: number) => {
   const b = farm.beds[i]
@@ -589,8 +589,7 @@ export function millCollect() {
 export type OvenStage = 'idle' | 'baking' | 'done'
 export const ovenStage = (): OvenStage => (farm.oven.baking ? 'baking' : farm.oven.ready ? 'done' : 'idle')
 export const ovenSecondsLeft = () => (farm.oven.baking ? recipeById(farm.oven.baking).seconds - farm.oven.progress : 0)
-export const canBake = (id: CakeId) =>
-  Object.entries(recipeById(id).needs).every(([k, n]) => farm.inv[k as ProduceId] >= (n ?? 0))
+export const canBake = (id: CakeId) => Object.entries(recipeById(id).needs).every(([k, n]) => farm.inv[k as ProduceId] >= (n ?? 0))
 
 export function bake(id: CakeId) {
   if (ovenStage() !== 'idle' || !canBake(id)) return false
@@ -953,6 +952,17 @@ export function sellAllPreview() {
   return { buyers, coins }
 }
 
+/** What the line wants that the basket cannot give yet: each good asked for, and how many more of it would serve the
+ *  buyer who asks for the fewest of it — the fewest first (shown at the gate when nobody in line can be served). */
+export function lineShort(): { item: ProduceId; count: number }[] {
+  const short = new Map<ProduceId, number>()
+  for (const v of waiting()) {
+    const more = v.qty - farm.inv[v.want]
+    if (more > 0) short.set(v.want, Math.min(short.get(v.want) ?? Infinity, more))
+  }
+  return [...short].map(([item, count]) => ({ item, count })).sort((a, b) => a.count - b.count)
+}
+
 /** Sells to everyone in line you have enough for, front to back. */
 export function sellAll() {
   let buyers = 0
@@ -984,9 +994,7 @@ export function declineOffer(id: number) {
 
 // ───────────────────────────── time ─────────────────────────────
 
-const stageKey = () =>
-  farm.beds.map((_, i) => bedStage(i)).join() +
-  `|${farm.lemons}|${farm.eggs}|${farm.milk.join(',')}|${farm.wool.join(',')}|${millStage()}|${ovenStage()}|${loomStage()}`
+const stageKey = () => farm.beds.map((_, i) => bedStage(i)).join() + `|${farm.lemons}|${farm.eggs}|${farm.milk.join(',')}|${farm.wool.join(',')}|${millStage()}|${ovenStage()}|${loomStage()}`
 
 function grow(dt: number) {
   for (const b of farm.beds) {

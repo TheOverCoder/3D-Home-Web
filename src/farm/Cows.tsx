@@ -78,7 +78,7 @@ export function Cows() {
         id: `farm-cow-${i}`,
         position: c.pos,
         aim: c.aim,
-        radius: 2.4,
+        radius: 2.7,
         enabled: () => (farm.milk[i] ?? 0) > 0,
         ready: () => ((farm.milk[i] ?? 0) >= COW.max ? { item: 'milk', count: farm.milk[i] } : null),
         label: () => `Milk ${cowName(i)} · ${count('milk', farm.milk[i] ?? 0)}`,

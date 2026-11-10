@@ -40,10 +40,13 @@ export type Panel =
   | { kind: 'furniture' } // the furniture shop (decorating)
   | { kind: 'buy-piece'; type: string } // buying one piece: what it is and its price, Cancel or Buy
 
-/** The thing you look at has settings: a gear on it opens them (src/ui/Gear.tsx). */
-export interface Gear {
+/** The thing you look at carries a tag (src/ui/ThingTag.tsx): a gear for what can be set about it, or a price tag for
+ *  what it costs to build or buy; tapped (or G), it opens its card. */
+export interface ThingTag {
   id: string
+  kind: 'gear' | 'price'
   label: string
+  price?: number
 }
 
 /** A machine about to take ingredients — the oven a cake's, the mill a load of wheat: a small card over the action
@@ -86,7 +89,7 @@ interface HomeState {
   status: Nearby | null // nothing to do here: what is on its way (a growing bed, the oven baking) — shown, not pressed
   guide: { id: string; at: number } | null // a compass mark tapped: marked in the world until you get there
   compass: CompassMark[] // what is ready to take out of reach, nearest first (outdoors)
-  gear: Gear | null // the thing looked at has settings (a bed): its gear
+  tag: ThingTag | null // the thing looked at carries a gear (a bed) or a price tag (a plot to build, a field to buy)
   confirm: Confirm | null // a machine asking before it takes its ingredients
   screen: string | null
   panel: Panel | null
@@ -112,7 +115,7 @@ interface HomeState {
   setActions: (actions: Nearby[], status?: Nearby | null) => void
   setGuide: (id: string | null) => void
   setCompass: (marks: CompassMark[]) => void
-  setGear: (gear: Gear | null) => void
+  setTag: (tag: ThingTag | null) => void
   setConfirm: (confirm: Confirm | null) => void
   openScreen: (id: string) => void
   closeScreen: () => void
@@ -149,7 +152,7 @@ export const useHome = create<HomeState>()((set, get) => ({
   status: null,
   guide: null,
   compass: [],
-  gear: null,
+  tag: null,
   confirm: null,
   screen: null,
   panel: null,
@@ -174,15 +177,14 @@ export const useHome = create<HomeState>()((set, get) => ({
   setActions: (actions, status = null) => set({ actions, nearby: actions[0] ?? null, status }),
   setGuide: (id) => set({ guide: id ? { id, at: performance.now() } : null }),
   setCompass: (compass) => set({ compass }),
-  setGear: (gear) => set({ gear }),
+  setTag: (tag) => set({ tag }),
   setConfirm: (confirm) => set({ confirm }),
-  openScreen: (screen) => set({ screen, nearby: null, actions: [], status: null, confirm: null, gear: null }),
+  openScreen: (screen) => set({ screen, nearby: null, actions: [], status: null, confirm: null, tag: null }),
   closeScreen: () => set({ screen: null }),
-  openPanel: (panel) => set({ panel, nearby: null, actions: [], status: null, confirm: null, gear: null }),
+  openPanel: (panel) => set({ panel, nearby: null, actions: [], status: null, confirm: null, tag: null }),
   closePanel: () => set({ panel: null }),
-  setEditing: (editing) => set(editing ? { editing, decorating: false, panel: null, nearby: null, actions: [], status: null, confirm: null, compass: [], gear: null } : { editing }),
-  setDecorating: (decorating) =>
-    set(decorating ? { decorating, editing: false, panel: null, nearby: null, actions: [], status: null, confirm: null, compass: [], gear: null } : { decorating }),
+  setEditing: (editing) => set(editing ? { editing, decorating: false, panel: null, nearby: null, actions: [], status: null, confirm: null, compass: [], tag: null } : { editing }),
+  setDecorating: (decorating) => set(decorating ? { decorating, editing: false, panel: null, nearby: null, actions: [], status: null, confirm: null, compass: [], tag: null } : { decorating }),
   toggleLamp: (id) => set((s) => ({ lamps: { ...s.lamps, [id]: !s.lamps[id] } })),
   toggleDoor: (id) => set((s) => ({ doors: { ...s.doors, [id]: !s.doors[id] } })),
   // the item leaves the registry with its body: forget it as the aimed thing right away, so E drops it next

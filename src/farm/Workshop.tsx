@@ -133,6 +133,10 @@ const OVEN_STAND: [number, number, number] = [OVEN.x - 1.15, 1.0, OVEN.z]
 const OVEN_AIM: [number, number, number] = [OVEN.x - 0.72, 0.92, OVEN.z]
 const MILL_STAND: [number, number, number] = [MILL.x - 1.25, 1.0, MILL.z]
 const MILL_AIM: [number, number, number] = [MILL.x - 0.15, 0.95, MILL.z]
+// how far from where you stand at each you can reach it: a little short of the 2.57 m between the two, so each is
+// in reach on its own side
+const OVEN_REACH = 2.4
+const MILL_REACH = 2.5
 const MILL_INPUTS = Object.keys(MILLABLE) as MillInput[]
 
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1)
@@ -160,7 +164,7 @@ function CakeOffer({ id }: { id: CakeId }) {
     id: action,
     position: OVEN_STAND,
     aim: OVEN_AIM,
-    radius: 2.1,
+    radius: OVEN_REACH,
     enabled: () => ovenStage() === 'idle' && canBake(id),
     label: `Bake a ${produceById(id).name}`,
     icon: { verb: 'make', item: id, word: 'Bake', count: 1 },
@@ -194,7 +198,7 @@ function MillOffer({ input }: { input: MillInput }) {
     id: action,
     position: MILL_STAND,
     aim: MILL_AIM,
-    radius: 2.2,
+    radius: MILL_REACH,
     enabled: () => millStage() === 'idle' && farm.inv[input] > 0,
     label: () => `Mill ${count(input, load())}`,
     // what comes out, and how many (one bag for each sheaf or cane)
@@ -245,7 +249,7 @@ function Oven() {
     id: 'farm-oven',
     position: OVEN_STAND,
     aim: OVEN_AIM,
-    radius: 2.1,
+    radius: OVEN_REACH,
     // with everything for a cake, that cake's own action (CakeOffer) is on offer instead
     enabled: () => ovenStage() !== 'idle' || !RECIPES.some((r) => canBake(r.id)),
     label: () => {
@@ -353,7 +357,7 @@ function Mill() {
     id: 'farm-mill',
     position: MILL_STAND,
     aim: MILL_AIM,
-    radius: 2.2,
+    radius: MILL_REACH,
     // with wheat or cane to grind, their own actions (MillOffer) are on offer instead
     enabled: () => millStage() !== 'idle' || !MILL_INPUTS.some((i) => farm.inv[i] > 0),
     label: () => {
@@ -509,7 +513,7 @@ function Loom() {
     id: 'farm-loom',
     position: [LOOM.x, 1.0, LOOM.z + 1.25],
     aim: [LOOM.x, 0.95, LOOM.z + 0.2],
-    radius: 2.2,
+    radius: 2.5,
     label: () => {
       const s = loomStage()
       if (s === 'done') return `Take ${count('cloth', farm.loom.ready)} off the loom`
@@ -592,7 +596,9 @@ function Loom() {
     <group position={[LOOM.x, 0, LOOM.z]}>
       {/* the frame: four posts, side rails, a top bar that carries the heddles */}
       {[-1, 1].flatMap((sx) =>
-        [-1, 1].map((sz) => <B key={`${sx}${sz}`} size={[0.08, sz < 0 ? 1.55 : 0.95, 0.08]} position={[sx * 0.72, sz < 0 ? 0.775 : 0.475, sz * 0.42]} color={WOOD} mat="veneer" tile={0.9} radius={0} />),
+        [-1, 1].map((sz) => (
+          <B key={`${sx}${sz}`} size={[0.08, sz < 0 ? 1.55 : 0.95, 0.08]} position={[sx * 0.72, sz < 0 ? 0.775 : 0.475, sz * 0.42]} color={WOOD} mat="veneer" tile={0.9} radius={0} />
+        )),
       )}
       {[-1, 1].map((sx) => (
         <B key={sx} size={[0.07, 0.07, 0.92]} position={[sx * 0.72, 0.9, 0]} color={WOOD_DARK} mat="veneer" tile={0.9} radius={0} />
@@ -690,4 +696,3 @@ export function Workshop() {
     </group>
   )
 }
-

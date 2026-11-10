@@ -12,9 +12,10 @@ import './Compass.css'
 // 15°, small degree numbers, N E S W, the heading you face under the middle — and on it a small mark for each thing
 // ready to take that the action button cannot reach from here (a ripe bed, a nest with no room for another egg, a
 // cow full of milk, a batch out of the oven): its picture, how many, and where it lies from where you look. What is
-// behind you waits at the nearer edge, with an arrow. Tap a mark to turn to it (an arrow then hangs over it until
-// you get there). Within reach a thing leaves the compass — the button takes it — and if you walk off without it,
-// it comes back. Outdoors, unless the top of the screen is set clear (HudMode).
+// behind you waits at the nearer edge, with an arrow; two or more there fold into one "+N" mark (more than the strip
+// holds fold in too, the farthest off to the side first), which turns you to the nearest of them. Tap a mark to turn
+// to it (an arrow then hangs over it until you get there). Within reach a thing leaves the compass — the button takes
+// it — and if you walk off without it, it comes back. Outdoors, unless the top of the screen is set clear (HudMode).
 
 const SPAN = (75 * Math.PI) / 180 // the strip spans what lies within 75° either side of where you look
 const GAP = 30 // marks closer than this are spread apart
@@ -43,6 +44,44 @@ function place(yaw: number, half: number) {
   return { x: rel > 0 ? -half : half, behind: rel > 0 ? 'left' : 'right', rel }
 }
 
+/** One mark as laid out on the strip this frame. */
+interface Laid {
+  id: string
+  pin: HTMLButtonElement
+  x: number
+  rel: number
+  behind: string
+}
+
+/** The marks folded into one "+N" at an edge, nearest first. */
+type Fold = { left: Laid[]; right: Laid[] }
+
+/**
+ * Which marks show and which fold into an edge's "+N": two or more behind you at one edge fold there, and while there
+ * are more marks than the strip holds, the one farthest off to a side folds into that side's "+N" (with what was
+ * there). `laid` is in the store's order, nearest first, so each fold keeps that order.
+ */
+function fold(laid: Laid[], room: number): { shown: Laid[]; folded: Fold } {
+  const side: Fold = { left: laid.filter((l) => l.behind === 'left'), right: laid.filter((l) => l.behind === 'right') }
+  const ahead = laid.filter((l) => !l.behind)
+  const count = () => ahead.length + Math.min(side.left.length, 1) + Math.min(side.right.length, 1)
+  while (count() > room && ahead.length) {
+    const far = ahead.reduce((a, b) => (Math.abs(b.rel) > Math.abs(a.rel) ? b : a))
+    ahead.splice(ahead.indexOf(far), 1)
+    const into = far.rel > 0 ? side.left : side.right
+    into.push(far)
+    into.sort((a, b) => laid.indexOf(a) - laid.indexOf(b))
+  }
+  const shown = [...ahead]
+  const folded: Fold = { left: [], right: [] }
+  for (const s of ['left', 'right'] as const) {
+    // one alone shows as itself; two or more fold into the edge's "+N"
+    if (side[s].length === 1) shown.push(side[s][0])
+    else folded[s] = side[s]
+  }
+  return { shown, folded }
+}
+
 const name = (item: string, n: number) => {
   const p = produceById(item as ProduceId)
   return p ? `${n} ${n === 1 ? p.name : p.plural}` : item
@@ -58,6 +97,9 @@ export function Compass() {
   const scale = useRef<(HTMLSpanElement | null)[]>([])
   const heading = useRef<HTMLSpanElement>(null)
   const pins = useRef(new Map<string, HTMLButtonElement>())
+  // the "+N" marks at each edge, and the nearest of what each holds (what a tap turns you to)
+  const more = useRef<Record<'left' | 'right', HTMLButtonElement | null>>({ left: null, right: null })
+  const moreTo = useRef<Record<'left' | 'right', string | null>>({ left: null, right: null })
   const shown = phase === 'playing' && outdoors && !occupied && mode !== 'clean'
 
   // the scale, the heading and the marks follow the view every frame, without React: only transforms change
@@ -84,22 +126,42 @@ export function Compass() {
         heading.current.textContent = `${deg}°`
         lastDeg = deg
       }
-      // each mark where it lies, then spread so that none covers another (in the same order, within the strip)
+      // each mark where it lies; behind you (or beyond what the strip holds) folded into one "+N" at an edge; then
+      // spread so that none covers another (in the same order, within the strip)
       const from = playerState.position
-      const laid: { pin: HTMLButtonElement; x: number; behind: string }[] = []
-      for (const [id, pin] of pins.current) {
-        const at = aimPointOf(id)
-        if (!at) continue
+      const laid: Laid[] = []
+      for (const m of marks) {
+        const pin = pins.current.get(m.id)
+        const at = aimPointOf(m.id)
+        if (!pin || !at) continue
         const p = place(Math.atan2(-(at.x - from.x), -(at.z - from.z)), pinHalf)
-        laid.push({ pin, x: p.x, behind: p.behind })
+        laid.push({ id: m.id, pin, x: p.x, rel: p.rel, behind: p.behind })
       }
-      laid.sort((a, b) => a.x - b.x)
-      for (let k = 1; k < laid.length; k++) laid[k].x = Math.max(laid[k].x, laid[k - 1].x + GAP)
-      if (laid.length) laid[laid.length - 1].x = Math.min(laid[laid.length - 1].x, pinHalf)
-      for (let k = laid.length - 2; k >= 0; k--) laid[k].x = Math.min(laid[k].x, laid[k + 1].x - GAP)
-      for (const l of laid) {
-        l.pin.style.transform = `translateX(${l.x}px)`
-        if (l.pin.dataset.side !== l.behind) l.pin.dataset.side = l.behind
+      const { shown: visible, folded } = fold(laid, Math.floor((2 * pinHalf) / GAP) + 1)
+      const row: { el: HTMLButtonElement; x: number; behind: string }[] = visible.map((l) => ({ el: l.pin, x: l.x, behind: l.behind }))
+      for (const s of ['left', 'right'] as const) {
+        const chip = more.current[s]
+        const group = folded[s]
+        moreTo.current[s] = group[0]?.id ?? null
+        if (!chip) continue
+        chip.style.display = group.length ? '' : 'none'
+        if (!group.length) continue
+        const text = `+${group.length}`
+        if (chip.dataset.n !== text) {
+          chip.dataset.n = text
+          chip.firstElementChild!.textContent = text
+          chip.setAttribute('aria-label', `${group.length} more ready ${s === 'left' ? 'to your left' : 'to your right'} — turn to the nearest`)
+        }
+        row.push({ el: chip, x: s === 'left' ? -pinHalf : pinHalf, behind: s })
+      }
+      for (const l of laid) l.pin.style.display = visible.includes(l) ? '' : 'none'
+      row.sort((a, b) => a.x - b.x)
+      for (let k = 1; k < row.length; k++) row[k].x = Math.max(row[k].x, row[k - 1].x + GAP)
+      if (row.length) row[row.length - 1].x = Math.min(row[row.length - 1].x, pinHalf)
+      for (let k = row.length - 2; k >= 0; k--) row[k].x = Math.min(row[k].x, row[k + 1].x - GAP)
+      for (const l of row) {
+        l.el.style.transform = `translateX(${l.x}px)`
+        if (l.el.dataset.side !== l.behind) l.el.dataset.side = l.behind
       }
     }
     raf = requestAnimationFrame(frame)
@@ -130,6 +192,20 @@ export function Compass() {
             <span className="compass-pin">
               <ItemPic id={m.item} count={m.count} />
             </span>
+          </button>
+        ))}
+        {(['left', 'right'] as const).map((s) => (
+          <button
+            key={s}
+            className="compass-mark compass-more"
+            style={{ display: 'none' }}
+            ref={(el) => void (more.current[s] = el)}
+            onClick={() => {
+              const id = moreTo.current[s]
+              if (id) guideTo(id)
+            }}
+          >
+            <span className="compass-pin" />
           </button>
         ))}
       </div>

@@ -15,7 +15,7 @@ import { B } from '../scene/Furnishings'
 import { StaticBatch } from '../scene/House'
 import { SHRUB_SPOTS } from '../data/garden'
 import { busy, useHome } from '../store'
-import { BED, BEDS, CROPS, EXPANSIONS, PATH_X, SHED, STAND, count, cropById, type CropDef, type CropId } from './data'
+import { BED, BEDS, BED_BOX, BED_REACH, CROPS, EXPANSIONS, PATH_X, SHED, STAND, count, cropById, type CropDef, type CropId } from './data'
 import { iconUrl } from './icons'
 import { Chickens } from './Chickens'
 import { Plants } from './Plants'
@@ -167,6 +167,21 @@ function plotGeometry(): BufferGeometry {
 let shared: { frame: BufferGeometry; plot: BufferGeometry } | undefined
 const bedGeometries = () => (shared ??= { frame: bedFrameGeometry(), plot: plotGeometry() })
 
+/** A plot still to build or a field still to buy: nothing on the button, only its price tag. */
+const forSale = (index: number) => {
+  const stage = bedStage(index)
+  return stage === 'unbought' || stage === 'locked'
+}
+/** What building this plot (or buying the field it is part of) costs, and the words for its price tag. */
+const priceOf = (index: number) => {
+  const def = BEDS[index]
+  return def.expansion ? EXPANSIONS[def.expansion].price : def.price
+}
+const priceLabel = (index: number) => {
+  const def = BEDS[index]
+  return def.expansion ? `Expand the farm: ${EXPANSIONS[def.expansion].name} · ${priceOf(index)} coins` : `Build a bed · ${priceOf(index)} coins`
+}
+
 /** The beds near where you stand at `stage`, the one in front of you first: one press does them all. */
 const bedsInReach = (index: number, stage: BedStage) => bedsNear(index, stage, playerState.position.x, playerState.position.z)
 
@@ -269,14 +284,25 @@ function Bed({ index }: { index: number }) {
     id: `farm-bed-${index}`,
     position: [def.x, 0.5, def.z],
     aim: [def.x, 0.42, def.z],
-    radius: 2.1,
+    // reach is measured from the frame's edge: a long bed is as near from its end as from its side
+    box: BED_BOX,
+    radius: BED_REACH,
+    // a plot to build or a field to buy offers nothing on the button: only its price tag, on the plot you look at
+    enabled: () => !forSale(index),
     hint: () => (bedStage(index) === 'empty' ? '1–9 seeds' : undefined),
+    // watering or harvesting here does every like bed in reach: the same press from any of them (planting already
+    // reads the same from each: "Plant seeds", "Plant lettuces in 2 beds")
+    same: () => {
+      const stage = bedStage(index)
+      if (stage !== 'thirsty' && stage !== 'ripe') return undefined
+      const beds = bedsInReach(index, stage).sort((a, b) => a - b)
+      return `beds:${stage}:${beds.join(',')}`
+    },
     ready: () => (bedStage(index) === 'ripe' ? { item: farm.beds[index].crop!, count: yieldOf(farm.beds[index].crop!) } : null),
     label: () => {
       const b = farm.beds[index]
       const stage = bedStage(index)
-      if (stage === 'unbought') return `Expand the farm: ${EXPANSIONS[def.expansion!].name} · ${EXPANSIONS[def.expansion!].price} coins`
-      if (stage === 'locked') return `Build a bed · ${def.price} coins`
+      if (forSale(index)) return priceLabel(index)
       if (stage === 'empty') {
         const r = fixedPlanting(index)
         if (!r) return 'Plant seeds'
@@ -295,8 +321,6 @@ function Bed({ index }: { index: number }) {
     icon: () => {
       const stage = bedStage(index)
       const crop = farm.beds[index].crop
-      if (stage === 'unbought') return { verb: 'build', art: 'hammer', coins: EXPANSIONS[def.expansion!].price }
-      if (stage === 'locked') return { verb: 'build', art: 'hammer', coins: def.price }
       if (stage === 'empty') {
         const r = fixedPlanting(index)
         return r ? { verb: 'plant', item: r.crop.id, count: r.beds.length, coins: r.crop.seedCost * r.beds.length } : { verb: 'plant' }
@@ -308,9 +332,8 @@ function Bed({ index }: { index: number }) {
     run: () => {
       const stage = bedStage(index)
       const { pan, near } = placeSound(def.x, def.z)
-      // spending coins only ever asks first (a card with the price and a Build button)
-      if (stage === 'unbought' || stage === 'locked') openPanel({ kind: 'build', bed: index })
-      else if (stage === 'empty') {
+      if (forSale(index)) return // (never on offer: its price tag asks)
+      if (stage === 'empty') {
         // a bed set to grow one crop: its seeds, in every empty bed within reach set the same; otherwise the packets
         const r = fixedPlanting(index)
         if (!r) openPanel({ kind: 'seeds', bed: index })
@@ -332,8 +355,13 @@ function Bed({ index }: { index: number }) {
         showToast(`${Math.round(bedProgress(index) * 100)}% grown · ${mmss(crop.growSeconds - b.growth)} to go`)
       }
     },
-    // looked at, a built bed shows a gear: what it always grows
-    settings: () => (farm.beds[index].built ? { label: 'What this bed grows', at: { x: def.x, y: BED.h + 0.25, z: def.z }, open: () => openPanel({ kind: 'bed', bed: index }) } : null),
+    // looked at: a plot to build or a field to buy carries its price tag (it opens a card that asks, with the price
+    // and a Build button), a built bed a gear for what it always grows
+    tag: () => {
+      const at = { x: def.x, y: BED.h + 0.25, z: def.z }
+      const open = () => openPanel({ kind: forSale(index) ? 'build' : 'bed', bed: index })
+      return forSale(index) ? { kind: 'price', label: priceLabel(index), price: priceOf(index), at, open } : { kind: 'gear', label: 'What this bed grows', at, open }
+    },
   })
 
   const { w, d, h } = BED
@@ -392,7 +420,7 @@ function ShopDoor() {
     id: 'farm-shop',
     position: [SHED.x + 1.15, 1.0, SHED.z],
     aim: [SHED.x + 0.92, 1.25, SHED.z],
-    radius: 2.0,
+    radius: 2.3,
     label: 'Farm shop',
     icon: { verb: 'shop' },
     run: () => openPanel({ kind: 'shop' }),
@@ -487,10 +515,10 @@ function Structures() {
       {/* the farm stand by the gate: a table of crates under a striped awning */}
       <group position={[STAND.x, 0, STAND.z]}>
         <B size={[1.3, 0.05, 0.55]} position={[0, 0.82, 0]} color={WOOD} mat="veneer" tile={0.9} radius={0.008} />
-        {[-1, 1].flatMap((sx) =>
-          [-1, 1].map((sz) => <B key={`${sx}${sz}`} size={[0.05, 0.82, 0.05]} position={[sx * 0.6, 0.41, sz * 0.23]} color={WOOD_DARK} radius={0.006} />),
-        )}
-        {[-1, 1].map((sx) => <B key={`post${sx}`} size={[0.05, 1.9, 0.05]} position={[sx * 0.62, 0.95, -0.3]} color={WOOD_DARK} radius={0.006} />)}
+        {[-1, 1].flatMap((sx) => [-1, 1].map((sz) => <B key={`${sx}${sz}`} size={[0.05, 0.82, 0.05]} position={[sx * 0.6, 0.41, sz * 0.23]} color={WOOD_DARK} radius={0.006} />))}
+        {[-1, 1].map((sx) => (
+          <B key={`post${sx}`} size={[0.05, 1.9, 0.05]} position={[sx * 0.62, 0.95, -0.3]} color={WOOD_DARK} radius={0.006} />
+        ))}
         <B size={[1.45, 0.03, 0.75]} position={[0, 1.88, -0.02]} rotation={[-0.22, 0, 0]} color="#e9e2d2" mat="fabric" tile={0.5} radius={0.005} />
         {[-0.48, -0.16, 0.16, 0.48].map((x, i) => (
           <B key={`stripe${x}`} size={[0.16, 0.035, 0.76]} position={[x, 1.885, -0.02]} rotation={[-0.22, 0, 0]} color={i % 2 ? '#c94f3d' : '#e9e2d2'} radius={0.004} />
@@ -499,7 +527,7 @@ function Structures() {
           <group key={x} position={[x, 0.845, 0]}>
             <B size={[0.5, 0.16, 0.36]} position={[0, 0.08, 0]} color="#a87b4f" mat="veneer" tile={0.6} radius={0.006} />
             {Array.from({ length: 6 }, (_, k) => (
-              <mesh key={k} position={[(k % 3 - 1) * 0.13, 0.19, (Math.floor(k / 3) - 0.5) * 0.13]}>
+              <mesh key={k} position={[((k % 3) - 1) * 0.13, 0.19, (Math.floor(k / 3) - 0.5) * 0.13]}>
                 <sphereGeometry args={[0.055, 8, 6]} />
                 <meshStandardMaterial color={i ? '#d8342a' : '#f2d43a'} roughness={0.45} />
               </mesh>

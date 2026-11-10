@@ -1,0 +1,59 @@
+/* the tag on a thing you look at (src/ui/ThingTag.tsx): a gear, or a price tag (a coin and the price), a 44 px target
+   a little above and right of where you look (ThingTag places it, whole on the screen), popping in */
+.thing-tag-anchor { pointer-events: none; }
+.thing-tag {
+  position: relative;
+  height: 44px;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  color: var(--ink);
+  box-shadow: 0 0 0 2px #fff, 0 4px 12px rgba(20, 12, 6, 0.35);
+  pointer-events: auto;
+  cursor: pointer;
+  animation: thing-tag-in 0.4s var(--ease-pop) both;
+  -webkit-tap-highlight-color: transparent;
+}
+.thing-tag:active { scale: 0.9; }
+.thing-gear img { width: 30px; height: 30px; animation: thing-gear-spin 7s linear infinite; }
+/* a price tag: the coin and what it costs (Nunito), the coin rocking a little (the tag itself holds still, a steady
+   target); a price the coins do not reach yet shows in red */
+.thing-price { padding: 0 14px 0 7px; background: color-mix(in srgb, var(--paper) 94%, transparent); animation: thing-price-in 0.4s var(--ease-pop) both; }
+.thing-price img { width: 28px; height: 28px; filter: drop-shadow(0 1px 1px rgba(60, 35, 5, 0.3)); animation: thing-coin-rock 3.2s 0.4s ease-in-out infinite; }
+.thing-price b { font: 800 19px/1 var(--font-text); font-variant-numeric: tabular-nums; }
+.thing-price.short b { color: var(--berry); }
+.thing-tag kbd {
+  position: absolute;
+  inset-inline-end: -10px;
+  bottom: -8px;
+  min-width: 20px;
+  padding: 1px 5px;
+  border-radius: 6px;
+  background: var(--night);
+  color: #fff;
+  font: 700 13px/18px var(--font-text);
+  text-align: center;
+}
+@keyframes thing-tag-in {
+  from { opacity: 0; scale: 0.4; rotate: -140deg; }
+  to { opacity: 1; scale: 1; rotate: 0deg; }
+}
+@keyframes thing-gear-spin { to { rotate: 360deg; } }
+@keyframes thing-price-in {
+  from { opacity: 0; scale: 0.4; rotate: -24deg; }
+  to { opacity: 1; scale: 1; rotate: 0deg; }
+}
+@keyframes thing-coin-rock {
+  0%, 100% { rotate: 0deg; }
+  25% { rotate: -12deg; }
+  75% { rotate: 12deg; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .thing-tag, .thing-tag img { animation: none; }
+}

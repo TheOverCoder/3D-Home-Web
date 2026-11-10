@@ -84,6 +84,13 @@ export const recipeById = (id: CakeId) => RECIPES.find((r) => r.id === id)!
 /** The path runs straight out of the garden door; the beds line both sides of it. */
 export const PATH_X = GARDEN_DOOR.centre
 export const BED = { w: 1.7, d: 0.85, h: 0.36 } as const
+/** A bed's frame on the ground, half its size each way: reach to a bed is measured from its edge. */
+export const BED_BOX = { x: BED.w / 2 + 0.05, z: BED.d / 2 + 0.05 } as const
+/** How far from a bed's edge you can work it (and every like bed this near is done in the same press): about a step
+ *  and an arm. From its side as far as before (measured from its middle, its side was 1.57 m off); from its end
+ *  0.35 m farther, and from a corner 0.5 m, where a reach round its middle fell short; from the path still the two
+ *  rows either side of you. */
+export const BED_REACH = 1.5
 const COL_W = PATH_X - 0.75 - BED.w / 2 // west column
 const COL_E = PATH_X + 0.75 + BED.w / 2 // east column
 const COL_E2 = COL_E + BED.w + 0.9 // the east expansion, a narrow path further on

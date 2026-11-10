@@ -84,7 +84,7 @@ export function Sheep() {
         id: `farm-sheep-${i}`,
         position: a.pos,
         aim: a.aim,
-        radius: 2.1,
+        radius: 2.4,
         enabled: () => (farm.wool[i] ?? 0) > 0,
         ready: () => ((farm.wool[i] ?? 0) >= SHEEP.max ? { item: 'wool', count: farm.wool[i] } : null),
         label: () => `Shear ${sheepName(i)} · ${count('wool', farm.wool[i] ?? 0)}`,

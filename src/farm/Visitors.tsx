@@ -6,7 +6,7 @@ import { PersonRig, personParts } from '../models/person'
 import { useHome } from '../store'
 import { GATE_SPOT, count } from './data'
 import { iconImages } from './icons'
-import { farm, waiting, type Visitor } from './state'
+import { farm, lineShort, sellAllPreview, waiting, type Visitor } from './state'
 
 // People from the lane who queue at the garden gate to buy something. Built like the player's own body, in their
 // own clothes, they walk up, wave when they get to their place, move up the line as it shortens, hop when you sell
@@ -80,26 +80,35 @@ function disposeRig(rig: Rig) {
   rig.bubble.removeFromParent()
 }
 
-/** The line at the gate: one "Buyers at the gate" action, for whoever is waiting. */
+const buyers = (n: number) => `${n} ${n === 1 ? 'buyer' : 'buyers'}`
+
+/**
+ * The line at the gate: Sell, only while the basket has what at least one buyer in it asks for — the line's picture
+ * and how many of it you can serve, of how many wait (4/7); it opens the line's panel. With nothing they want, no
+ * button: a status shows what they ask for that the basket lacks, each with how many more it takes.
+ */
 function Gate() {
   const openPanel = useHome((s) => s.openPanel)
   useInteractable({
     id: 'farm-queue',
     position: [GATE_SPOT.x, 1.0, GATE_SPOT.z],
     aim: [GATE_SPOT.x, 1.45, GATE_SPOT.z],
-    radius: 2.9,
+    radius: 3.2,
     enabled: () => waiting().length > 0,
     label: () => {
-      const line = waiting()
-      const v = line[0]
-      const first = `${v.name}: ${count(v.want, v.qty)} for ${v.offer} coins`
-      return line.length === 1 ? first : `${line.length} buyers waiting · ${first}`
+      const line = waiting().length
+      const n = sellAllPreview().buyers
+      if (n) return `Sell to ${n} of ${buyers(line)}`
+      return `${buyers(line)} waiting · short of ${lineShort()
+        .map((s) => count(s.item, s.count))
+        .join(', ')}`
     },
-    // the first buyer's order, as their bubble shows it: the good, how many, and the coins they offer
     icon: () => {
-      const v = waiting()[0]
-      return v ? { verb: 'sell', item: v.want, count: v.qty, coins: v.offer } : { verb: 'sell' }
+      const n = sellAllPreview().buyers
+      return n ? { verb: 'sell', art: 'people-queue', count: n, of: waiting().length } : { verb: 'wait', art: 'people-queue' }
     },
+    // nobody can be served: what they ask for that the basket lacks (at most four, the nearest to hand first)
+    needs: () => (sellAllPreview().buyers ? null : lineShort().slice(0, 4)),
     run: () => openPanel({ kind: 'queue' }),
   })
   return null

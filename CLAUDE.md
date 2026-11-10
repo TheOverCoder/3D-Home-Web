@@ -18,14 +18,22 @@ The README has the overview; `tests/README.md` what each test guards.
 - One context button (E / the round touch button) offers only what one press does here: what only tells you how
   long, or what is missing, is a status (`verb: 'wait'`, `needs` for pictures); nothing far away (what is ready
   to take out of reach goes on the compass at the top: give its interactable a `ready()`, null until full). It
-  never spends without asking: coins open a confirmation card (`verb: 'build'`), a machine's ingredients a
-  `setConfirm` card over the button (the button again only closes it). One press does every like thing in reach.
+  never spends coins (building and buying are a price tag, below); a machine's ingredients ask first, with a
+  `setConfirm` card over the button (the button again only closes it). One press does every like thing in reach
+  (things whose press does the same share a `same()` key, and only one of them is offered).
+- Reach is measured on the ground, from the edge of a thing's footprint (`box`, half its size each way) or from its
+  `position`, within its `radius` (`groundDistance`): a bed is in reach 1.5 m from its frame (`BED_REACH`), and the
+  "every like bed" batch uses the same measure. Offered, a thing you look at wins over one only within reach.
 - The prompt over the button is pictures, not a sentence (`src/ui/Hud.tsx`): an action about a good gives its icon
-  `count` (how many one press takes, makes or sells), `coins` where coins change hands, a status `seconds`. The
-  `label` stays the words: tests and screen readers read it.
-- What can be set about a thing (what a bed always grows) is a gear on the thing you look at (`settings()` on its
-  interactable, `src/ui/Gear.tsx`, `G`), never the button. A bed set to one crop is the one place the button buys
-  without a card: its seeds, with the price on the prompt. Nothing plants or spends by itself.
+  `count` (how many one press takes, makes or sells), `coins` where coins change hands, a status `seconds`; one about
+  no good its `art` (the gate: the line's picture, `count` of `of` — the 4 of 7 waiting you can serve). The `label`
+  stays the words: tests and screen readers read it.
+- What can be set about a thing (what a bed always grows) is a gear on the thing you look at, and what it costs to
+  build or buy (a staked-out bed, a field) a price tag on it — a coin and the price (`tag()` on its interactable,
+  kind `gear` or `price`; `src/ui/ThingTag.tsx`, `G`) — never the button. A price tag opens a confirmation card
+  (picture, price, an armed *Build*); a thing for sale offers nothing else (`enabled` false; its tag still shows).
+  A bed set to one crop is the one place the button buys without a card: its seeds, with the price on the prompt.
+  Nothing plants or spends by itself.
 
 ## Interface (src/styles.css tokens, src/ui/art.ts, src/ui/glyphs.ts)
 
@@ -40,6 +48,10 @@ The README has the overview; `tests/README.md` what each test guards.
   or go into a machine is an `ItemPic` with its count (the round badge, 1 included), never the picture repeated.
 - The top of the screen has three views (`HudMode`: everything / only the compass / clear, `<html data-hud>`):
   anything new up there must hide in the views it does not belong to (see `src/ui/Compass.css`).
+- Touch controls (`src/ui/TouchControls.tsx`, `src/lib/stick.ts`): the stick comes to the thumb in the bottom-left
+  area, with three buttons over it (look where you walk, walk on, turn round); the action buttons and jump are
+  bottom right. Anything new there is placed by `measure`/`place`/`leftSide` in both orientations, clear of the
+  others, and whatever floats over the scene keeps clear of them (`touchLayout`).
 
 ## The house's furniture (src/home)
 

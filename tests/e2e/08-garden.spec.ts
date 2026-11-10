@@ -5,8 +5,7 @@ import { test, expect, type Game } from './helpers'
 // building a bed, and the save. Time is fast-forwarded through the debug hook (__home.farm.tick).
 
 const until = (game: Game, fn: () => boolean, timeout = 30_000) => game.page.waitForFunction(fn, null, { timeout, polling: 200 })
-const nearbyIs = (game: Game, id: string) =>
-  game.page.waitForFunction((want) => (window as any).__home.useHome.getState().nearby?.id === want, id, { timeout: 60_000, polling: 250 })
+const nearbyIs = (game: Game, id: string) => game.page.waitForFunction((want) => (window as any).__home.useHome.getState().nearby?.id === want, id, { timeout: 60_000, polling: 250 })
 const label = (game: Game) => game.page.evaluate(() => (window as any).__home.useHome.getState().nearby?.label as string | undefined)
 const farm = (game: Game) => game.page.evaluate(() => JSON.parse(JSON.stringify((window as any).__home.farm.state)))
 
@@ -104,7 +103,7 @@ test.describe('garden', () => {
     await until(game, () => (window as any).__home.farm.state.beds[0].crop === 'carrot')
   })
 
-  test('buyers queue at the gate: Enter sells to the first you can, N sends the first away and someone new comes', async ({ game }) => {
+  test('buyers queue at the gate: Sell only with something they want (2/2), Enter sells to the first you can, N sends the first away and someone new comes', async ({ game }) => {
     await game.ready()
     const { page } = game
     await page.evaluate(() => {
@@ -112,7 +111,7 @@ test.describe('garden', () => {
       f.reset()
       f.state.started = true
       f.state.nextVisitorIn = 600 // nobody else turns up on their own during the test
-      f.state.inv.tomato = 5
+      f.state.inv.tomato = 1
       f.spawnVisitor({ want: 'tomato', qty: 3, offer: 12, from: 1 })
       f.spawnVisitor({ want: 'tomato', qty: 2, offer: 3, from: -1 })
       for (let i = 0; i < 600 && f.state.visitors.some((v: any) => v.phase !== 'queued'); i++) f.tick(0.25)
@@ -120,10 +119,19 @@ test.describe('garden', () => {
     const [first, second] = (await farm(game)).visitors
     expect([first.phase, second.phase]).toEqual(['queued', 'queued'])
     const coins0 = (await farm(game)).coins
-    // inside the gate, facing the lane: one action for the whole line
+    // inside the gate, facing the lane, with one tomato: nobody can be served, so no Sell — a status shows what the
+    // line wants that the basket lacks (one more tomato serves the second buyer)
     await game.teleport(5.6, 1.4, 12.3, Math.PI, -0.05)
+    await until(game, () => (window as any).__home.useHome.getState().status?.id === 'farm-queue')
+    expect(await page.evaluate(() => (window as any).__home.useHome.getState().actions)).toEqual([])
+    expect(await page.evaluate(() => (window as any).__home.useHome.getState().status)).toMatchObject({ icon: { verb: 'wait' }, needs: [{ item: 'tomato', count: 1 }] })
+    await expect(page.locator('.prompt.status .item-pic .qty')).toHaveText(['1'])
+    // with five, both: one Sell for the line, its picture with how many of it you can serve of how many wait
+    await page.evaluate(() => ((window as any).__home.farm.state.inv.tomato = 5))
     await nearbyIs(game, 'farm-queue')
-    expect(await label(game)).toBe(`2 buyers waiting · ${first.name}: 3 tomatoes for 12 coins`)
+    expect(await label(game)).toBe('Sell to 2 of 2 buyers')
+    expect(await page.evaluate(() => (window as any).__home.useHome.getState().nearby.icon)).toMatchObject({ verb: 'sell', art: 'people-queue', count: 2, of: 2 })
+    await expect(page.locator('.prompt .prompt-count')).toHaveText('2/2')
     await page.keyboard.press('KeyE')
     await until(game, () => (window as any).__home.useHome.getState().panel?.kind === 'queue')
     await expect(page.locator('.farm-buyer')).toHaveCount(2)
@@ -150,7 +158,7 @@ test.describe('garden', () => {
     expect(second.id).toBeGreaterThan(first.id)
   })
 
-  test('a locked bed can be built once you have the coins, and the farm is saved', async ({ game }) => {
+  test('a staked-out bed carries a price tag, not an action; its card builds it, and the farm is saved', async ({ game }) => {
     await game.ready()
     const { page } = game
     await page.evaluate(() => {
@@ -158,12 +166,15 @@ test.describe('garden', () => {
       f.reset()
       f.state.coins = 40
     })
-    // the last bed on the east side starts as a staked-out plot
+    // the last bed on the east side starts as a staked-out plot: looked at, it carries a price tag with a coin and
+    // 30 on it, and the button never offers it (it does what is in reach instead: the empty bed beside it)
     await game.teleport(-1.2, 1.4, 11.6, -Math.PI / 2, -0.6)
-    await nearbyIs(game, 'farm-bed-5')
-    expect(await label(game)).toBe('Build a bed · 30 coins')
-    // E only asks: a card with the price; nothing is spent until its Build button is pressed
-    await page.keyboard.press('KeyE')
+    await until(game, () => (window as any).__home.useHome.getState().tag?.id === 'farm-bed-5')
+    expect(await page.evaluate(() => (window as any).__home.useHome.getState().tag)).toMatchObject({ kind: 'price', price: 30, label: 'Build a bed · 30 coins' })
+    await expect(page.locator('.thing-price')).toContainText('30')
+    expect(await page.evaluate(() => (window as any).__home.useHome.getState().actions.map((a: any) => a.id))).not.toContain('farm-bed-5')
+    // G (or a tap on the tag) only asks: a card with the price; nothing is spent until its Build button is pressed
+    await page.keyboard.press('KeyG')
     await until(game, () => (window as any).__home.useHome.getState().panel?.kind === 'build')
     await page.keyboard.press('KeyE')
     expect((await farm(game)).coins).toBe(40)

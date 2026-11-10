@@ -15,9 +15,10 @@ import { openEdit, stopDecorating, useDecorate } from '../home/decorate'
 import { coarsePointer } from '../lib/device'
 import { focus } from '../lib/focus'
 import { playGesture } from '../lib/gestures'
-import { findActions, findFar, findStatus, settingsOf, triggerInteraction, type ActionIcon, type ViewRay } from '../lib/interaction'
+import { findActions, findFar, findStatus, findTag, triggerInteraction, type ActionIcon, type ViewRay } from '../lib/interaction'
 import { addLook, look, look as lookState, stepTurn, stopTurn } from '../lib/look'
 import { resume } from '../lib/startup'
+import { RUN_AT, followTurn, orbit, useStick } from '../lib/stick'
 import { playerState } from '../lib/playerState'
 import { useSettings } from '../settings'
 import { busy, useHome, type CompassMark, type Nearby } from '../store'
@@ -60,11 +61,21 @@ const floorAt = (x: number, z: number): FloorKind => {
   return room ? ROOMS[room].floor : groundAt(x, z)
 }
 
+/** The touch stick as the player reads it: walking on by itself (the button beside the stick) is the stick pushed
+ *  straight ahead, at a walk. */
+function stickInput() {
+  if (useStick.getState().cruise) return { x: 0, y: 1, run: false }
+  const joy = useJoystickStore.getState().joysticks.default
+  const x = joy?.x ?? 0
+  const y = joy?.y ?? 0
+  return { x, y, run: Math.hypot(x, y) > RUN_AT }
+}
+
 const CLEAR = HOUSE.wallThickness / 2 + 0.1 // eyes stay this far from a wall's centre line
 const DOOR_HALF = GARDEN_DOOR.width / 2 - 0.1 // the garden door's opening, less the jambs
 
 // the prompt draws an action's numbers (how many, coins, how long), not only its label: a change in one is a change
-const iconKey = (i: ActionIcon | undefined) => (i ? `${i.verb}|${i.item}|${i.count}|${i.coins}|${i.seconds}|${i.also?.map((g) => `${g.item}${g.count}`).join(',')}` : '')
+const iconKey = (i: ActionIcon | undefined) => (i ? `${i.verb}|${i.item}|${i.art}|${i.count}|${i.of}|${i.coins}|${i.seconds}|${i.also?.map((g) => `${g.item}${g.count}`).join(',')}` : '')
 const actionsKey = (list: Nearby[]) => list.map((a) => `${a.id}|${a.label}|${iconKey(a.icon)}|${a.reach}|${a.side}|${a.hint}|${a.needs?.map((n) => `${n.item}${n.count}`).join(',')}`).join('\n')
 const marksKey = (list: CompassMark[]) => list.map((m) => `${m.id}|${m.item}|${m.count}`).join('\n')
 
@@ -128,8 +139,7 @@ const KEYS: Record<string, 'forward' | 'backward' | 'leftward' | 'rightward' | '
   ShiftRight: 'run',
 }
 
-const isTyping = (t: EventTarget | null) =>
-  t instanceof HTMLElement && (t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName))
+const isTyping = (t: EventTarget | null) => t instanceof HTMLElement && (t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName))
 
 // Current keyboard state. Events only mutate this; <Player /> applies it to the controller every
 // frame, so a key pressed while the scene is momentarily suspended is never lost.
@@ -170,8 +180,7 @@ function useKeyboard() {
         else if (state.decorating) {
           if (useDecorate.getState().picked) useDecorate.getState().pick(null)
           else stopDecorating()
-        }
-        else if (state.phase === 'playing') {
+        } else if (state.phase === 'playing') {
           // some browsers also deliver this Esc after releasing the pointer lock, which already opened the panel
           if (!state.settingsOpen) state.setSettingsOpen(true)
           else if (performance.now() - lastOpened > 250) state.setSettingsOpen(false)
@@ -352,6 +361,11 @@ function CameraRig({ ecctrl, feet }: { ecctrl: RefObject<EcctrlHandle | null>; f
     const c = controls.current
     if (!c) return
     c.setLookAt(SPAWN[0] + 2.6, SPAWN[1] + 4.2, SPAWN[2] + 4.0, SPAWN[0], SPAWN[1] - 0.4, SPAWN[2], false)
+    // turning round in third person swings the camera round you
+    orbit.turn = (yaw, smooth) => void controls.current?.rotate(yaw, 0, smooth)
+    return () => {
+      orbit.turn = null
+    }
   }, [])
 
   // hand-overs between the two camera modes
@@ -390,6 +404,12 @@ function CameraRig({ ecctrl, feet }: { ecctrl: RefObject<EcctrlHandle | null>; f
     if (state.view === 'third') {
       const p = ecctrl.current?.currPos
       if (c && p) c.moveTo(p.x, p.y + 0.5, p.z, true)
+      // the camera swings round behind where you walk with the stick, when chosen (the button beside it)
+      if (c && coarsePointer && !busy(state)) {
+        const s = stickInput()
+        const turn = followTurn(s.x, s.y, playerState.speed > 0.3, dt)
+        if (turn) void c.rotate(turn, 0, false)
+      }
       return
     }
     if (lastPose.valid) {
@@ -440,6 +460,11 @@ function CameraRig({ ecctrl, feet }: { ecctrl: RefObject<EcctrlHandle | null>; f
     const walking = playerState.grounded && playerState.speed > 0.3 && !state.screen && settings.headBob
     b.amp = MathUtils.damp(b.amp, walking ? Math.min(playerState.speed / 2.3, 1.7) * 0.02 : 0, 8, dt)
     const t = gait.phase
+    // the view turns towards where you walk with the stick, when chosen (touch: the button beside the stick)
+    if (coarsePointer && !busy(state)) {
+      const s = stickInput()
+      look.yaw += followTurn(s.x, s.y, playerState.speed > 0.3, dt)
+    }
     stepTurn(dt) // a turn towards something you chose to use from where you stand
     const th = look.pitch
     // eye position relative to the body, in the view's yaw frame (camera forward is local −z)
@@ -519,6 +544,7 @@ export function Player() {
   debugSet('physics', { world, rapier })
   const acc = useRef(0)
   const prevInteract = useRef(false)
+  const blocked = useRef(0) // how long walking on by itself has been held up
   const air = useRef({ airborne: false, minVy: 0 })
   // frame-rate meter for the acceleration rescaling: re-renders only when the rate really changes
   const [fps, setFps] = useState(60)
@@ -694,18 +720,18 @@ export function Player() {
     else handle.setMovement({ forward: false, backward: false, leftward: false, rightward: false, jump: false, run: false })
 
     // on-screen controls (touch devices)
+    const cruising = useStick.getState().cruise
     if (coarsePointer && !busy(state)) {
-      const joy = useJoystickStore.getState().joysticks.default
       const buttons = useButtonStore.getState().buttons
-      handle.setMovement({
-        joystick: { x: joy?.x ?? 0, y: joy?.y ?? 0 },
-        jump: !!buttons.jump,
-        run: Math.hypot(joy?.x ?? 0, joy?.y ?? 0) > 0.92,
-      })
+      const s = stickInput()
+      handle.setMovement({ joystick: { x: s.x, y: s.y }, jump: !!buttons.jump, run: s.run })
       const interact = !!buttons.interact
       if (interact && !prevInteract.current) triggerInteraction()
       prevInteract.current = interact
-    }
+      // walking on by itself stops at a wall (held up for a second)
+      blocked.current = cruising && handle.moveSpeed < 0.3 ? blocked.current + dt : 0
+      if (blocked.current > 1) useStick.getState().setCruise(false)
+    } else if (cruising) useStick.getState().setCruise(false) // something opened: you stop
 
     // detection runs at ~10 Hz — no need to do it every frame
     acc.current += dt
@@ -735,11 +761,10 @@ export function Player() {
     // a confirm card asks about an action that is still on offer (walked away, or the oven got busy: it goes)
     if (state.confirm && !next.some((a) => a.id === state.confirm!.id)) state.setConfirm(null)
     if (actionsKey(next) !== actionsKey(state.actions) || actionsKey(status ? [status] : []) !== actionsKey(state.status ? [state.status] : [])) state.setActions(next, status)
-    // the thing looked at (not one only within reach), when it has settings: a gear on it opens them
-    const aimed = next.find((a) => !a.reach) ?? (status && !status.reach ? status : undefined)
-    const set = aimed ? settingsOf(aimed.id) : null
-    const gear = set && aimed ? { id: aimed.id, label: set.label } : null
-    if (gear?.id !== state.gear?.id || gear?.label !== state.gear?.label) state.setGear(gear)
+    // the thing looked at, when it carries a tag: a gear on it for what can be set, a price tag when it is for sale
+    const found = findTag(from, view)
+    const tag = found ? { id: found.id, kind: found.tag.kind, label: found.tag.label, price: found.tag.price } : null
+    if (tag?.id !== state.tag?.id || tag?.kind !== state.tag?.kind || tag?.label !== state.tag?.label || tag?.price !== state.tag?.price) state.setTag(tag)
   })
 
   return (
@@ -766,9 +791,7 @@ export function Player() {
         <group ref={feet} position={[0, -FEET, 0]}>
           {/* in first person the body sits just behind the eyes so you look down onto your own arms, hands and feet */}
           <group ref={bodyYaw}>
-            <group position={[0, 0, view === 'first' ? -BODY_BACK : 0]}>
-              {avatar}
-            </group>
+            <group position={[0, 0, view === 'first' ? -BODY_BACK : 0]}>{avatar}</group>
           </group>
         </group>
       </Ecctrl>

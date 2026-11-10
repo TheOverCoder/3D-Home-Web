@@ -33,17 +33,7 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
 }
 
 function Toggle({ id, checked, onChange, label, disabled = false }: { id: string; checked: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean }) {
-  return (
-    <button
-      id={id}
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      disabled={disabled}
-      className={checked ? 'switch on' : 'switch'}
-      onClick={() => onChange(!checked)}
-    />
-  )
+  return <button id={id} role="switch" aria-checked={checked} aria-label={label} disabled={disabled} className={checked ? 'switch on' : 'switch'} onClick={() => onChange(!checked)} />
 }
 
 function Slider({ id, value, min, max, step, onChange, label }: { id: string; value: number; min: number; max: number; step: number; onChange: (v: number) => void; label: string }) {
@@ -66,9 +56,12 @@ const KEYS: { action: string; keys: string[] }[] = [
 ]
 
 const TOUCH: { action: string; how: string }[] = [
-  { action: 'Move', how: 'Left stick' },
-  { action: 'Run', how: 'Stick all the way' },
+  { action: 'Move', how: 'The stick (it comes to your thumb)' },
+  { action: 'Run', how: 'Stick past its ring' },
   { action: 'Look', how: 'Drag the scene' },
+  { action: 'Look where you walk', how: 'Arrow over the stick' },
+  { action: 'Walk on by yourself', how: 'Walker over the stick' },
+  { action: 'Turn round', how: 'U-turn over the stick' },
   { action: 'Do what is near you', how: 'Round button (or its label)' },
   { action: 'The next things near you', how: 'Small round buttons' },
   { action: 'Jump', how: 'Jump button' },
@@ -179,6 +172,11 @@ export function SettingsPanel() {
               <Row label="Walking sway">
                 <Toggle id="set-bob" label="Walking sway" checked={settings.headBob} onChange={(headBob) => update({ headBob })} />
               </Row>
+              {coarsePointer && (
+                <Row label="Look where you walk" hint="The view turns with the stick (the arrow over it)">
+                  <Toggle id="set-follow" label="Look where you walk" checked={settings.followMove} onChange={(followMove) => update({ followMove })} />
+                </Row>
+              )}
             </section>
 
             <section>
@@ -187,7 +185,15 @@ export function SettingsPanel() {
                 <Toggle id="set-sound" label="Sound" checked={settings.sound} onChange={(sound) => update({ sound })} />
               </Row>
               <Row label="Volume">
-                <Slider id="set-volume" label="Volume" value={Math.round(settings.volume * 100)} min={0} max={100} step={5} onChange={(v) => update({ volume: v / 100, sound: v > 0 ? true : settings.sound })} />
+                <Slider
+                  id="set-volume"
+                  label="Volume"
+                  value={Math.round(settings.volume * 100)}
+                  min={0}
+                  max={100}
+                  step={5}
+                  onChange={(v) => update({ volume: v / 100, sound: v > 0 ? true : settings.sound })}
+                />
               </Row>
               <Row label="Music" hint="Composed as it plays · four moods">
                 <Toggle id="set-music" label="Music" checked={settings.music} onChange={(music) => update({ music })} />

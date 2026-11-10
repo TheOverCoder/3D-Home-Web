@@ -8,8 +8,12 @@ const LIMIT = 1.45
 /** A turn the game makes for you — towards something you chose to use — eased over a moment. Your own look input cancels it. */
 let turn: { yaw: number; pitch: number } | null = null
 
+/** When you last turned the view yourself (performance.now()): the view that follows the stick waits for you. */
+export const lookedAt = { time: -Infinity }
+
 export function addLook(dx: number, dy: number, sensitivity = 0.0022) {
   if (Math.abs(dx) + Math.abs(dy) >= 3) turn = null // a real move of the mouse or finger, not a tremor
+  if (Math.abs(dx) + Math.abs(dy) >= 1) lookedAt.time = performance.now()
   look.yaw -= dx * sensitivity
   look.pitch = Math.max(-LIMIT, Math.min(LIMIT, look.pitch - dy * sensitivity))
 }
@@ -24,6 +28,12 @@ export function turnTowards(eye: Point3, target: Point3) {
   const yaw = Math.atan2(-dx, -dz)
   const pitch = Math.max(-1.0, Math.min(0.6, Math.atan2(target.y - eye.y, Math.hypot(dx, dz))))
   turn = { yaw: look.yaw + wrap(yaw - look.yaw), pitch }
+}
+
+/** Starts turning the view by `yaw` radians (positive to the left), eased like a turn towards something; on top of
+ *  a turn still under way (turning round twice faces you the way you were). */
+export function turnBy(yaw: number) {
+  turn = { yaw: (turn?.yaw ?? look.yaw) + yaw, pitch: turn?.pitch ?? look.pitch }
 }
 
 /** Advances a turn in progress; called by the camera every frame. */

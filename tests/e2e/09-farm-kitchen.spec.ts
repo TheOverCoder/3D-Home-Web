@@ -5,8 +5,7 @@ import { test, expect, type Game } from './helpers'
 // sugar cane from the seed panel and a buyer for a cake. Time is fast-forwarded with __home.farm.tick.
 
 const until = (game: Game, fn: () => boolean, timeout = 30_000) => game.page.waitForFunction(fn, null, { timeout, polling: 200 })
-const nearbyIs = (game: Game, id: string) =>
-  game.page.waitForFunction((want) => (window as any).__home.useHome.getState().nearby?.id === want, id, { timeout: 60_000, polling: 250 })
+const nearbyIs = (game: Game, id: string) => game.page.waitForFunction((want) => (window as any).__home.useHome.getState().nearby?.id === want, id, { timeout: 60_000, polling: 250 })
 const label = (game: Game) => game.page.evaluate(() => (window as any).__home.useHome.getState().nearby?.label as string | undefined)
 const inv = (game: Game) => game.page.evaluate(() => ({ ...(window as any).__home.farm.state.inv }))
 const reset = (game: Game, extra: Record<string, number> = {}, coins?: number) =>
@@ -100,15 +99,17 @@ test.describe('farm kitchen and animals', () => {
     await until(game, () => (window as any).__home.farm.state.inv.lemon_cake === 1)
   })
 
-  test('buying the west field at its plot, and planting sugar cane there with key 8', async ({ game }) => {
+  test('buying the west field from the price tag on its plot, and planting sugar cane there with key 8', async ({ game }) => {
     await game.ready()
     const { page } = game
     await reset(game, {}, 150)
-    // between the west field's two columns, facing the western plot
+    // between the west field's two columns, facing the western plot: a price tag on it, nothing on the button
     await game.teleport(-10.95, 1.4, 2.8, Math.PI / 2, -0.6)
-    await nearbyIs(game, 'farm-bed-9')
-    expect(await label(game)).toBe('Expand the farm: West field · 120 coins')
-    await page.keyboard.press('KeyE')
+    await until(game, () => (window as any).__home.useHome.getState().tag?.id === 'farm-bed-9')
+    expect(await page.evaluate(() => (window as any).__home.useHome.getState().tag)).toMatchObject({ kind: 'price', price: 120, label: 'Expand the farm: West field · 120 coins' })
+    expect(await page.evaluate(() => (window as any).__home.useHome.getState().actions)).toEqual([])
+    // a tap on the tag opens the card that asks
+    await page.locator('.thing-price').click()
     await until(game, () => (window as any).__home.useHome.getState().panel?.kind === 'build')
     await page.locator('.farm-buy:not(.arming)').click() // armed a moment after the card opens
     await until(game, () => [9, 10, 11, 12].every((i) => (window as any).__home.farm.state.beds[i].built))
@@ -132,7 +133,7 @@ test.describe('farm kitchen and animals', () => {
     const coins0 = await page.evaluate(() => (window as any).__home.farm.state.coins)
     await game.teleport(5.6, 1.4, 12.3, Math.PI, -0.05)
     await nearbyIs(game, 'farm-queue')
-    expect(await label(game)).toContain('1 lemon cake for 45 coins')
+    expect(await label(game)).toBe('Sell to 1 of 1 buyer')
     await page.keyboard.press('KeyE')
     await until(game, () => (window as any).__home.useHome.getState().panel?.kind === 'queue')
     await page.keyboard.press('Enter')

@@ -89,8 +89,9 @@ const CoinTag = ({ n }: { n: number }) => (
 
 /**
  * An action as pictures instead of a sentence: the good with how many beside it (the bottle of milk ×3), and a coin
- * chip where coins change hands (seeds, a buyer's offer) — or, to build, its picture and price. Null for what is
- * about no good (a door, a lamp, the shop, the seed packets): that keeps its few words.
+ * chip where coins change hands (seeds, a buyer's offer) — or, at the gate, the line's picture with how many of it
+ * you can serve of how many wait (4/7). Null for what is about no good (a door, a lamp, the shop, the seed packets):
+ * that keeps its few words.
  */
 function actionPictures(icon: ActionIcon | undefined, mark: Verb | undefined): ReactNode {
   if (icon?.item && icon.count !== undefined) {
@@ -107,11 +108,17 @@ function actionPictures(icon: ActionIcon | undefined, mark: Verb | undefined): R
       </span>
     )
   }
-  if (icon?.art && icon.coins !== undefined)
+  if (icon?.art && icon.count !== undefined)
     return (
       <span className="prompt-goods" aria-hidden="true">
-        <Pic src={art(icon.art)} />
-        <CoinTag n={icon.coins} />
+        <span className="prompt-good">
+          <Pic src={art(icon.art)} verb={mark} />
+          <b className="prompt-count">
+            {icon.count}
+            {icon.of !== undefined && <span className="prompt-of">/{icon.of}</span>}
+          </b>
+        </span>
+        {icon.coins !== undefined && <CoinTag n={icon.coins} />}
       </span>
     )
   return null
@@ -119,8 +126,9 @@ function actionPictures(icon: ActionIcon | undefined, mark: Verb | undefined): R
 
 /**
  * What is on its way, as pictures: the thing (how many) and how long; at the oven with something missing, what is
- * missing (each with how many) → the cake it is for; at a machine with nothing to work on, what it makes from what.
- * Null when there is nothing to draw it with (the label is shown instead).
+ * missing (each with how many) → the cake it is for, and at the gate with nothing the line wants, what it asks for
+ * (each with how many more) → the line; at a machine with nothing to work on, what it makes from what. Null when
+ * there is nothing to draw it with (the label is shown instead).
  */
 function statusPictures(status: Nearby): ReactNode {
   const icon = status.icon
@@ -133,10 +141,10 @@ function statusPictures(status: Nearby): ReactNode {
             <ItemPic key={n.item} id={n.item} count={n.count} />
           ))}
         </span>
-        {icon?.item && (
+        {(icon?.item || icon?.art) && (
           <>
             {arrow}
-            <Pic src={good(icon.item)} />
+            <Pic src={icon.item ? good(icon.item) : art(icon.art!)} />
           </>
         )}
       </span>

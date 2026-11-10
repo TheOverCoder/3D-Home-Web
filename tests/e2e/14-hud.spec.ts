@@ -41,4 +41,29 @@ test.describe('the top of the screen', () => {
     await expect(page.locator('.farm-chip')).toBeVisible()
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem('3d-home:settings:v1') ?? '{}').hudMode)).toBe('all')
   })
+
+  test('the compass folds what is behind you at one edge into one "+N" mark, which turns you to the nearest of them', async ({ game }) => {
+    await game.ready()
+    const { page } = game
+    // a ripe bed of tomatoes and a lemon tree full of fruit, both behind you on the left as you look north
+    await page.evaluate(() => {
+      const f = (window as any).__home.farm
+      f.reset()
+      Object.assign(f.state, { eggs: 0, lemons: 8, milk: f.state.milk.map(() => 0), wool: f.state.wool.map(() => 0) })
+      f.plant(2, 'tomato')
+      f.state.beds[2].growth = 1e6
+    })
+    await game.teleport(-1.2, 1.4, 7.5, 0, 0.1)
+    const more = page.locator('.compass-more').first()
+    await expect(more).toBeVisible()
+    await expect(more).toHaveText('+2')
+    await expect(more).toHaveAttribute('data-side', 'left')
+    // the two marks themselves are folded into it, not piled on the strip
+    await expect(page.getByRole('button', { name: /^8 tomatoes ready/ })).toBeHidden()
+    await expect(page.getByRole('button', { name: /^8 lemons ready/ })).toBeHidden()
+    // tapped, it turns you to the nearer of them (the bed) and marks it
+    await more.click()
+    await page.waitForFunction(() => (window as any).__home.useHome.getState().guide?.id === 'farm-bed-2', null, { timeout: 30_000, polling: 200 })
+    expect(game.errors, game.errors.join('\n')).toEqual([])
+  })
 })
