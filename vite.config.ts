@@ -50,6 +50,11 @@ function rapierWasmAsFile(): Plugin {
   }
 }
 
+/** The developer pages and tools (?gallery, ?furniture, ?items, ?tune, ?console: the model gallery's chunk and the
+ *  dev-* groups below): they load only when their flag is used, so the loader does not download them for every player
+ *  and the service worker does not keep them. */
+const devOnly = (fileName: string) => /(?:^|[\\/])(?:Gallery|dev-[a-z]+)-[\w-]{8}\.js$/.test(fileName)
+
 /**
  * Writes two files into the build:
  * - assets-manifest.json: every file the 3D scene downloads after the page shell (its code, models, sky, textures)
@@ -57,6 +62,7 @@ function rapierWasmAsFile(): Plugin {
  * - sw.js: a service worker that keeps the files on the device (src/sw-template.js), so the next visit loads
  *   from the phone or computer instead of the network. Hashed files never change and are served from the cache
  *   straight away; the page itself is fetched fresh when there is a connection (so new versions arrive).
+ * Neither lists the developer pages and tools (`devOnly`).
  */
 function offlineAndProgress(): Plugin {
   let base = '/'
@@ -83,18 +89,19 @@ function offlineAndProgress(): Plugin {
       if (entry) walk(entry.fileName)
       const sizeOf = (o: (typeof entries)[number]) => (o.type === 'chunk' ? Buffer.byteLength(o.code) : typeof o.source === 'string' ? Buffer.byteLength(o.source) : o.source.byteLength)
       const files = entries
-        // (the model gallery, ?gallery, is a page of its own: the game never needs it)
-        .filter((o) => !shell.has(o.fileName) && !/\.(map|json|txt)$/.test(o.fileName) && o.fileName !== 'sw.js' && !/[\\/]Gallery-/.test(o.fileName))
+        .filter((o) => !shell.has(o.fileName) && !/\.(map|json|txt)$/.test(o.fileName) && o.fileName !== 'sw.js' && !devOnly(o.fileName))
         .map((o) => ({ url: o.fileName, bytes: sizeOf(o), ...labelFor(o.fileName) }))
         .sort((a, b) => b.bytes - a.bytes)
-      const all = entries.filter((o) => !/\.(map)$/.test(o.fileName)).map((o) => o.fileName)
+      // the version goes by every file (a change to a developer page still makes a new one); the worker keeps the game's
+      const all = entries.filter((o) => !o.fileName.endsWith('.map')).map((o) => o.fileName)
       const version = createHash('sha256').update(all.sort().join('\n')).digest('hex').slice(0, 12)
       this.emitFile({ type: 'asset', fileName: 'assets-manifest.json', source: JSON.stringify({ version, files }, null, 1) })
       const shellFiles = ['', 'index.html', 'favicon.svg', ...[...shell].filter((f) => bundle[f])]
+      const kept = all.filter((f) => !devOnly(f))
       this.emitFile({
         type: 'asset',
         fileName: 'sw.js',
-        source: SW.replace('__VERSION__', version).replace('__BASE__', base).replace('__SHELL__', JSON.stringify(shellFiles)).replace('__FILES__', JSON.stringify(all)),
+        source: SW.replace('__VERSION__', version).replace('__BASE__', base).replace('__SHELL__', JSON.stringify(shellFiles)).replace('__FILES__', JSON.stringify(kept)),
       })
     },
   }
@@ -202,6 +209,12 @@ export default defineConfig({
         // whole 3D bundle before the intro could show.
         codeSplitting: {
           groups: [
+            // the developer tools and pages, each a chunk of its own (`devOnly`: not downloaded up front, not kept by
+            // the service worker). Only their own modules: what they share with the game stays in the game's chunks
+            // (the game reaches them only by a dynamic import behind their flag, so no import cycle can form)
+            { name: 'dev-console', test: /node_modules[\\/]eruda[\\/]|src[\\/]debug[\\/]console\./, priority: 51, includeDependenciesRecursively: false },
+            { name: 'dev-tune', test: /node_modules[\\/]lil-gui[\\/]|src[\\/]debug[\\/]/, priority: 50, includeDependenciesRecursively: false },
+            { name: 'dev-pages', test: /src[\\/](home[\\/]FurnitureArtPage|models[\\/](ItemArtPage|itemArt))\./, priority: 50, includeDependenciesRecursively: false },
             { name: 'vendor-react', test: /node_modules[\\/](react|react-dom|scheduler|zustand|use-sync-external-store)[\\/]|vite[\\/]preload-helper/, priority: 40 },
             { name: 'vendor-physics', test: /node_modules[\\/]@dimforge[\\/]/, priority: 30 },
             { name: 'vendor-three', test: /node_modules[\\/]three[\\/]/, priority: 20 },
