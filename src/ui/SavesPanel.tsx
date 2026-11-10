@@ -56,11 +56,7 @@ export function SavesPanel() {
                   Farm {n}
                   {isCurrent && <span className="slot-badge">playing</span>}
                 </strong>
-                <span>
-                  {s.exists
-                    ? `${s.coins} coins · ${s.sold} sold · ${s.growing} beds growing · ${s.animals} animals${s.savedAt ? ` · saved ${ago(s.savedAt)}` : ''}`
-                    : 'Empty — a new farm'}
-                </span>
+                <span>{s.exists ? `${s.coins} coins · ${s.sold} sold · ${s.growing} beds growing · ${s.animals} animals${s.savedAt ? ` · saved ${ago(s.savedAt)}` : ''}` : 'Empty — a new farm'}</span>
               </div>
               <div className="slot-actions">
                 {!isCurrent && (

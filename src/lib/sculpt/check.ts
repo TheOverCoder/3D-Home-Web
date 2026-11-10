@@ -437,8 +437,10 @@ export function touching(a: Piece, b: Piece, tol: number): boolean {
         const x1 = p[i1]
         const y1 = p[i1 + 1]
         const z1 = p[i1 + 2]
-        if (Math.max(x0, x1) < y.min[0] || Math.min(x0, x1) > y.max[0] || Math.max(y0, y1) < y.min[1] || Math.min(y0, y1) > y.max[1] || Math.max(z0, z1) < y.min[2] || Math.min(z0, z1) > y.max[2]) continue
-        for (const kk of g.near(Math.min(x0, x1), Math.min(y0, y1), Math.min(z0, z1), Math.max(x0, x1), Math.max(y0, y1), Math.max(z0, z1), scratch)) if (segHitsTri(y, kk, x0, y0, z0, x1, y1, z1)) return true
+        if (Math.max(x0, x1) < y.min[0] || Math.min(x0, x1) > y.max[0] || Math.max(y0, y1) < y.min[1] || Math.min(y0, y1) > y.max[1] || Math.max(z0, z1) < y.min[2] || Math.min(z0, z1) > y.max[2])
+          continue
+        for (const kk of g.near(Math.min(x0, x1), Math.min(y0, y1), Math.min(z0, z1), Math.max(x0, x1), Math.max(y0, y1), Math.max(z0, z1), scratch))
+          if (segHitsTri(y, kk, x0, y0, z0, x1, y1, z1)) return true
       }
     }
   }
@@ -462,7 +464,8 @@ export function gapBetween(a: Piece, b: Piece): number {
   return Math.sqrt(best)
 }
 
-const boxGap = (a: Piece, b: Piece) => Math.hypot(Math.max(0, a.min[0] - b.max[0], b.min[0] - a.max[0]), Math.max(0, a.min[1] - b.max[1], b.min[1] - a.max[1]), Math.max(0, a.min[2] - b.max[2], b.min[2] - a.max[2]))
+const boxGap = (a: Piece, b: Piece) =>
+  Math.hypot(Math.max(0, a.min[0] - b.max[0], b.min[0] - a.max[0]), Math.max(0, a.min[1] - b.max[1], b.min[1] - a.max[1]), Math.max(0, a.min[2] - b.max[2], b.min[2] - a.max[2]))
 
 const centre = (p: Piece): V3 => [(p.min[0] + p.max[0]) / 2, (p.min[1] + p.max[1]) / 2, (p.min[2] + p.max[2]) / 2]
 
@@ -555,8 +558,10 @@ export function checkPieces(name: string, pieces: Piece[], o: CheckOptions = {})
         low = piece.min[1]
         lowest = piece
       }
-    if (low > o.ground + tol) issues.push({ kind: 'floating', where: `${name}: lowest point ${(low - o.ground).toFixed(3)} m above the ground (${lowest!.part})`, gap: low - o.ground, at: centre(lowest!) })
-    else if (low < o.ground - (o.sink ?? 0.03)) issues.push({ kind: 'sunk', where: `${name}: lowest point ${(o.ground - low).toFixed(3)} m under the ground (${lowest!.part})`, gap: o.ground - low, at: centre(lowest!) })
+    if (low > o.ground + tol)
+      issues.push({ kind: 'floating', where: `${name}: lowest point ${(low - o.ground).toFixed(3)} m above the ground (${lowest!.part})`, gap: low - o.ground, at: centre(lowest!) })
+    else if (low < o.ground - (o.sink ?? 0.03))
+      issues.push({ kind: 'sunk', where: `${name}: lowest point ${(o.ground - low).toFixed(3)} m under the ground (${lowest!.part})`, gap: o.ground - low, at: centre(lowest!) })
   }
   return issues
 }

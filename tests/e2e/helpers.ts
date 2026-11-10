@@ -62,8 +62,7 @@ export const test = base.extend<object, { game: Game }>({
       const g: Game = {
         page,
         errors,
-        state: () =>
-          page.evaluate(() => JSON.parse(JSON.stringify((window as any).__home.useHome.getState(), (_k, v) => (typeof v === 'function' ? undefined : v)))),
+        state: () => page.evaluate(() => JSON.parse(JSON.stringify((window as any).__home.useHome.getState(), (_k, v) => (typeof v === 'function' ? undefined : v)))),
         teleport: async (x, y, z, yaw, pitch = 0) => {
           await page.evaluate(
             ([x, y, z, yaw, pitch]) => {

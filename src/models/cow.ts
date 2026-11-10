@@ -196,7 +196,11 @@ function head(coat: Coat): Shape {
   const parts: Shape[] = [face]
   for (const sx of [-1, 1]) {
     // eyes, set wide on the sides of the forehead
-    parts.push(ellipsoid(0.03, 0.026, 0.032, 8, 4).place([sx * 0.15, 0.16, 0.5]).fill(EYE, 0))
+    parts.push(
+      ellipsoid(0.03, 0.026, 0.032, 8, 4)
+        .place([sx * 0.15, 0.16, 0.5])
+        .fill(EYE, 0),
+    )
     // ears: flat, cupped, out to the side and a little down, pale inside
     const ear = loft(
       [
@@ -224,7 +228,11 @@ function head(coat: Coat): Shape {
     horn.paint((x) => mixRgb(HORN, HORN_TIP, smoothstep(0.05, 0.085, Math.abs(x))), 0)
     parts.push(horn.place([sx * 0.1, 0.25, 0.4]))
     // nostrils
-    parts.push(ellipsoid(0.024, 0.016, 0.01, 6, 3).place([sx * 0.05, -0.07, 0.817], [0, sx * 0.45, 0]).fill(NOSTRIL, 0))
+    parts.push(
+      ellipsoid(0.024, 0.016, 0.01, 6, 3)
+        .place([sx * 0.05, -0.07, 0.817], [0, sx * 0.45, 0])
+        .fill(NOSTRIL, 0),
+    )
   }
   // a tuft of hair on the poll
   parts.push(coatPart(ellipsoid(0.08, 0.04, 0.06, 8, 4).place([0, 0.25, 0.38]), coat, headFrame))

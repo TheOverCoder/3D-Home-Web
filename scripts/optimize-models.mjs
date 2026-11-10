@@ -49,9 +49,7 @@ for (const input of files) {
   const rel = relative(inDir, input).replace(/\.gltf$/i, '.glb')
   const output = join(outDir, rel)
   const entry = settings.get(input) ?? {}
-  const simplify = entry.simplify
-    ? ['--simplify', 'true', '--simplify-ratio', String(entry.simplify), '--simplify-error', String(entry.simplifyError ?? 0.001)]
-    : ['--simplify', 'false']
+  const simplify = entry.simplify ? ['--simplify', 'true', '--simplify-ratio', String(entry.simplify), '--simplify-error', String(entry.simplifyError ?? 0.001)] : ['--simplify', 'false']
   mkdirSync(dirname(output), { recursive: true })
   console.log(`\n→ ${rel}${entry.textureSize ? `  (textures ≤ ${entry.textureSize}px)` : ''}${entry.simplify ? `  (simplify to ${entry.simplify})` : ''}`)
   const r = spawnSync(

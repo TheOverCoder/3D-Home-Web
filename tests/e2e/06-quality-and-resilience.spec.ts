@@ -113,11 +113,10 @@ test.describe('content panel', () => {
     const p0 = await page.evaluate(() => ({ ...(window as any).__home.playerState.position }))
     await page.keyboard.down('KeyW')
     try {
-      await page.waitForFunction(
-        (a) => Math.hypot((window as any).__home.playerState.position.x - a.x, (window as any).__home.playerState.position.z - a.z) > 0.4,
-        p0,
-        { timeout: 60_000, polling: 250 },
-      )
+      await page.waitForFunction((a) => Math.hypot((window as any).__home.playerState.position.x - a.x, (window as any).__home.playerState.position.z - a.z) > 0.4, p0, {
+        timeout: 60_000,
+        polling: 250,
+      })
     } finally {
       await page.keyboard.up('KeyW')
     }

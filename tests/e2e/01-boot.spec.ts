@@ -40,11 +40,10 @@ test.describe('boot', () => {
     // hold W until the player has clearly moved (frame rate varies with machine load)
     await page.keyboard.down('KeyW')
     try {
-      await page.waitForFunction(
-        (a) => Math.hypot((window as any).__home.playerState.position.x - a.x, (window as any).__home.playerState.position.z - a.z) > 0.4,
-        p0,
-        { timeout: 60_000, polling: 250 },
-      )
+      await page.waitForFunction((a) => Math.hypot((window as any).__home.playerState.position.x - a.x, (window as any).__home.playerState.position.z - a.z) > 0.4, p0, {
+        timeout: 60_000,
+        polling: 250,
+      })
     } finally {
       await page.keyboard.up('KeyW')
     }

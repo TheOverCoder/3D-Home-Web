@@ -48,8 +48,7 @@ export const useLoader = create<LoaderState>(() => ({
   offline: typeof navigator !== 'undefined' && navigator.onLine === false,
 }))
 
-export const setLoadPhase = (phase: LoadPhase) =>
-  useLoader.setState((s) => (s.phase === phase ? s : { phase, readyAt: phase === 'ready' ? performance.now() : s.readyAt }))
+export const setLoadPhase = (phase: LoadPhase) => useLoader.setState((s) => (s.phase === phase ? s : { phase, readyAt: phase === 'ready' ? performance.now() : s.readyAt }))
 
 interface Manifest {
   version: string
@@ -85,8 +84,7 @@ function count(bytes: number) {
   }
 }
 
-const patch = (url: string, change: Partial<LoadFile>) =>
-  useLoader.setState((s) => ({ files: s.files.map((f) => (f.url === url ? { ...f, ...change } : f)) }))
+const patch = (url: string, change: Partial<LoadFile>) => useLoader.setState((s) => ({ files: s.files.map((f) => (f.url === url ? { ...f, ...change } : f)) }))
 
 async function download(file: LoadFile) {
   patch(file.url, { status: 'loading' })

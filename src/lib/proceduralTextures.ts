@@ -15,7 +15,7 @@ export interface Surface {
 
 function rng(seed: number) {
   let s = seed >>> 0
-  return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296)
+  return () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296
 }
 
 /** Tileable value noise with `cx` × `cy` lattice cells. */
@@ -99,9 +99,9 @@ function make(paint: Painter, normalStrength: number, seedless = true): Surface 
       const ny = (hAt(x, y + 1) - hAt(x, y - 1)) * normalStrength
       const len = Math.hypot(nx, ny, 1)
       const o = (y * SIZE + x) * 4
-      nimg.data[o] = (nx / len * 0.5 + 0.5) * 255
-      nimg.data[o + 1] = (ny / len * 0.5 + 0.5) * 255
-      nimg.data[o + 2] = (1 / len * 0.5 + 0.5) * 255
+      nimg.data[o] = ((nx / len) * 0.5 + 0.5) * 255
+      nimg.data[o + 1] = ((ny / len) * 0.5 + 0.5) * 255
+      nimg.data[o + 2] = ((1 / len) * 0.5 + 0.5) * 255
       nimg.data[o + 3] = 255
     }
   }
@@ -187,7 +187,7 @@ function fabric(): Surface {
   return make((u, v) => {
     const warp = Math.sin(u * Math.PI * 2 * 96) * 0.5 + 0.5
     const weft = Math.sin(v * Math.PI * 2 * 96) * 0.5 + 0.5
-    const weave = (warp * (u * 96 % 2 < 1 ? 1 : 0.4) + weft * (u * 96 % 2 < 1 ? 0.4 : 1)) * 0.5
+    const weave = (warp * ((u * 96) % 2 < 1 ? 1 : 0.4) + weft * ((u * 96) % 2 < 1 ? 0.4 : 1)) * 0.5
     const c = 235 * (0.92 + fuzz(u, v) * 0.08)
     return { r: c, g: c, b: c, h: weave + fuzz(u, v) * 0.3, rough: 0.95 }
   }, 1.8)
@@ -214,7 +214,6 @@ function skin(): Surface {
   }, 1.1)
 }
 
-
 // ─────────────── furniture materials ───────────────
 // Neutral, tint-able maps: the prop's `color` multiplies them, `roughness` scales the roughness map.
 // They are projected onto boxes in metres (see boxProject) so grain and weave keep a real-world size.
@@ -233,7 +232,7 @@ function worley(cells: number, seed: number) {
       for (let i = -1; i <= 1; i++) {
         const gx = cx + i
         const gy = cy + j
-        const p = pts[((gy % cells) + cells) % cells * cells + (((gx % cells) + cells) % cells)]
+        const p = pts[(((gy % cells) + cells) % cells) * cells + (((gx % cells) + cells) % cells)]
         const d = Math.hypot(gx + p[0] - x, gy + p[1] - y)
         if (d < best) best = d
       }
@@ -501,7 +500,14 @@ function clayPattern(): SculptPainter {
   }
 }
 
-const sculptPainters: Record<SculptSurfaceKind, () => SculptPainter> = { stone: stonePattern, brick: brickPattern, boards: boardsPattern, shingle: shinglePattern, bark: barkPattern, clay: clayPattern }
+const sculptPainters: Record<SculptSurfaceKind, () => SculptPainter> = {
+  stone: stonePattern,
+  brick: brickPattern,
+  boards: boardsPattern,
+  shingle: shinglePattern,
+  bark: barkPattern,
+  clay: clayPattern,
+}
 const sculptCache = new Map<SculptSurfaceKind, DataTexture>()
 /** Texels to a side: a tile is half a metre or so, so on a computer (256) a texel every two or three millimetres,
  *  on a phone (128) every four or five — a quarter of the time it takes to paint, on a screen where it does not

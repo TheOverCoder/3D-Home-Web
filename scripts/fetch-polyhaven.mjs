@@ -61,7 +61,11 @@ if (kind === 'hdri') {
   await save(entry.url, join('src/assets/hdri', `${as}.hdr`), entry.md5)
 } else if (kind === 'texture') {
   // Poly Haven names the PBR channels Diffuse / nor_gl (OpenGL normals, what three.js wants) / Rough
-  for (const [channel, short] of [['Diffuse', 'diff'], ['nor_gl', 'nor_gl'], ['Rough', 'rough']]) {
+  for (const [channel, short] of [
+    ['Diffuse', 'diff'],
+    ['nor_gl', 'nor_gl'],
+    ['Rough', 'rough'],
+  ]) {
     const e = files[channel]?.[res]?.jpg
     if (!e) throw new Error(`no ${channel} jpg at ${res}; available: ${Object.keys(files[channel] ?? {}).join(', ') || 'none'}`)
     await save(e.url, join('src/assets/textures', as, `${id}_${short}_${res}.jpg`), e.md5)

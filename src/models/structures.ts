@@ -1,5 +1,25 @@
 import { DoubleSide, MeshStandardMaterial } from 'three'
-import { blob, fbm3, lathe, loft, merge, noise3, Parts, piecesOf, random, rgb, Shape, smoothstep, squircle, subtract, tube, union, type SculptMaterialOptions, type SculptSurface, type V3 } from '../lib/sculpt'
+import {
+  blob,
+  fbm3,
+  lathe,
+  loft,
+  merge,
+  noise3,
+  Parts,
+  piecesOf,
+  random,
+  rgb,
+  Shape,
+  smoothstep,
+  squircle,
+  subtract,
+  tube,
+  union,
+  type SculptMaterialOptions,
+  type SculptSurface,
+  type V3,
+} from '../lib/sculpt'
 
 // The farm's buildings and fittings, sculpted with the kit: built once, in their own frame (the ground under their
 // middle at the origin), each drawn as a handful of parts — one per material. They are checked like the animals
@@ -372,7 +392,13 @@ export function coopModel(): Structure<CoopPart> {
     gables.tri(a, b, c)
     gables.tri(a, c, b)
   }
-  const walls = merge(box, merge(...battens).paint(() => BATTEN, 0).surface(0), gables)
+  const walls = merge(
+    box,
+    merge(...battens)
+      .paint(() => BATTEN, 0)
+      .surface(0),
+    gables,
+  )
 
   // the roof: two slopes meeting at the ridge, shingled (the material's shingles: rows of 10 cm from the ridge, so
   // the last row ends at the eaves), a cap along the ridge

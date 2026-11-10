@@ -305,7 +305,7 @@ function load(text: string | null = readRaw(KEY)): { data: FarmData; savedAt: nu
     data.started = !!raw.started
     data.planted = Array.isArray(raw.planted) ? raw.planted.filter((c): c is CropId => CROPS.some((d) => d.id === c)) : []
     data.made = Array.isArray(raw.made) ? raw.made.filter(isProduce) : []
-    data.stats = { ...data.stats, ...(raw.stats ?? {}) }
+    data.stats = { ...data.stats, ...raw.stats }
     // a farm from before the layout keeps everything where it always stood
     data.layout = sanitizeLayout(raw.layout)
     // a farm from before the house could be furnished keeps today's furniture where it always stood
@@ -1109,7 +1109,8 @@ function people(dt: number) {
       v.heading += wrapAngle(spot.heading - v.heading) * Math.min(1, step * 5)
     }
   })
-  for (const v of [...farm.visitors]) {
+  // a copy: those who reach the end of the lane are taken out of the line as it is walked through
+  for (const v of farm.visitors.slice()) {
     if (v.phase !== 'leaving' || farm.clock < v.departAt) continue
     if (walk(v, step)) {
       farm.visitors.splice(farm.visitors.indexOf(v), 1)

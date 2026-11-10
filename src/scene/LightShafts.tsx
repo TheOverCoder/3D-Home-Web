@@ -46,8 +46,7 @@ function buildShaft(w: WindowDef): BufferGeometry | null {
   const normal = w.axis === 'x' ? new Vector3(0, 0, n) : new Vector3(n, 0, 0)
   if (travel.dot(normal) <= 0.05) return null // this window faces away from the sun
 
-  const corner = (along: number, y: number) =>
-    w.axis === 'x' ? new Vector3(along, y, w.at + n * T_HALF) : new Vector3(w.at + n * T_HALF, y, along)
+  const corner = (along: number, y: number) => (w.axis === 'x' ? new Vector3(along, y, w.at + n * T_HALF) : new Vector3(w.at + n * T_HALF, y, along))
   const lo = w.centre - w.width / 2
   const hi = w.centre + w.width / 2
   const top = [corner(lo, w.sill), corner(hi, w.sill), corner(hi, w.top), corner(lo, w.top)]
@@ -58,7 +57,12 @@ function buildShaft(w: WindowDef): BufferGeometry | null {
   const positions: number[] = []
   const t: number[] = []
   const u: number[] = []
-  for (const [a, b] of [[0, 1], [1, 2], [2, 3], [3, 0]] as const) {
+  for (const [a, b] of [
+    [0, 1],
+    [1, 2],
+    [2, 3],
+    [3, 0],
+  ] as const) {
     for (const p of quad(a, b)) positions.push(p.x, p.y, p.z)
     t.push(...ts)
     u.push(...us)
@@ -82,16 +86,7 @@ export function LightShafts() {
     <group renderOrder={5}>
       {shafts.map((s) => (
         <mesh key={s.id} geometry={s.geometry!} frustumCulled={false}>
-          <shaderMaterial
-            vertexShader={vertex}
-            fragmentShader={fragment}
-            uniforms={uniforms}
-            transparent
-            depthWrite={false}
-            blending={AdditiveBlending}
-            side={DoubleSide}
-            toneMapped={false}
-          />
+          <shaderMaterial vertexShader={vertex} fragmentShader={fragment} uniforms={uniforms} transparent depthWrite={false} blending={AdditiveBlending} side={DoubleSide} toneMapped={false} />
         </mesh>
       ))}
     </group>

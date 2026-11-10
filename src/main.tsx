@@ -28,9 +28,7 @@ if (params.has('gallery')) {
     .catch(failed('gallery'))
 } else if (params.has('furniture')) {
   // the furniture's pictures drawn from the pieces (src/home/FurnitureArtPage.tsx), to look at and to save
-  import('./home/FurnitureArtPage')
-    .then(({ FurnitureArtPage }) => root.render(<FurnitureArtPage />))
-    .catch(failed('furniture pictures'))
+  import('./home/FurnitureArtPage').then(({ FurnitureArtPage }) => root.render(<FurnitureArtPage />)).catch(failed('furniture pictures'))
 } else if (import.meta.env.DEV && params.has('gainmap')) {
   // the sky light as a JPEG with a gain map (src/tools/hdrToGainmap.ts), for scripts/hdr-to-gainmap.mjs to save
   // (while developing only: the build leaves it, and the .hdr it reads, out)
@@ -41,9 +39,7 @@ if (params.has('gallery')) {
     .catch(failed('gain map'))
 } else if (params.has('items')) {
   // the item pictures drawn from the models (src/models/ItemArtPage.tsx), to look at and to save
-  import('./models/ItemArtPage')
-    .then(({ ItemArtPage }) => root.render(<ItemArtPage />))
-    .catch(failed('item pictures'))
+  import('./models/ItemArtPage').then(({ ItemArtPage }) => root.render(<ItemArtPage />)).catch(failed('item pictures'))
 } else {
   root.render(
     <StrictMode>

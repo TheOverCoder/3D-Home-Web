@@ -13,7 +13,15 @@
 //                                       *nor*, *rough* (Poly Haven / ambientCG names work as downloaded)
 
 const urls = (glob: Record<string, string>) =>
-  Object.fromEntries(Object.entries(glob).map(([path, url]) => [path.split('/').pop()!.replace(/\.[^.]+$/, ''), url]))
+  Object.fromEntries(
+    Object.entries(glob).map(([path, url]) => [
+      path
+        .split('/')
+        .pop()!
+        .replace(/\.[^.]+$/, ''),
+      url,
+    ]),
+  )
 
 const modelFiles = urls(import.meta.glob<string>('./models/*.glb', { eager: true, query: '?url', import: 'default' }))
 const propFiles = urls(import.meta.glob<string>('./models/props/*.glb', { eager: true, query: '?url', import: 'default' }))
@@ -35,7 +43,10 @@ export interface TextureSet {
 export const textureSets: Record<string, TextureSet> = {}
 for (const [path, url] of Object.entries(textureFiles)) {
   const [, , surfaceName, file] = path.split('/')
-  const tokens = file.toLowerCase().replace(/\.[^.]+$/, '').split(/[_\-\s]+/) // asset ids may contain "arm", "metal"…: match whole tokens only
+  const tokens = file
+    .toLowerCase()
+    .replace(/\.[^.]+$/, '')
+    .split(/[_\-\s]+/) // asset ids may contain "arm", "metal"…: match whole tokens only
   const has = (...names: string[]) => names.some((n) => tokens.includes(n))
   const set = (textureSets[surfaceName] ??= {})
   if (has('dx', 'disp', 'displacement', 'bump', 'ao', 'arm', 'metal', 'metallic', 'spec')) continue
@@ -45,7 +56,15 @@ for (const [path, url] of Object.entries(textureFiles)) {
 }
 
 const hdriNames = Object.keys(hdriFiles).sort()
-const hdriExt = Object.fromEntries(Object.keys(import.meta.glob(['./hdri/*.{hdr,exr}', './hdri/*.jpg'])).map((p) => [p.split('/').pop()!.replace(/\.[^.]+$/, ''), p.split('.').pop()!]))
+const hdriExt = Object.fromEntries(
+  Object.keys(import.meta.glob(['./hdri/*.{hdr,exr}', './hdri/*.jpg'])).map((p) => [
+    p
+      .split('/')
+      .pop()!
+      .replace(/\.[^.]+$/, ''),
+    p.split('.').pop()!,
+  ]),
+)
 
 // an inlined (data:) HDRI has no file extension for the loader to read: label it the way drei expects
 function tagHdr(name: string | undefined, url: string | undefined) {

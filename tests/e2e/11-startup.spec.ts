@@ -7,10 +7,14 @@ import { test, expect, watchErrors, type Game } from './helpers'
 
 const BASE = 'http://localhost:4185'
 const readyButton = (page: Game['page']) =>
-  page.waitForFunction(() => {
-    const b = document.querySelector('.intro .primary') as HTMLButtonElement | null
-    return !!b && !b.disabled
-  }, null, { timeout: 240_000, polling: 500 })
+  page.waitForFunction(
+    () => {
+      const b = document.querySelector('.intro .primary') as HTMLButtonElement | null
+      return !!b && !b.disabled
+    },
+    null,
+    { timeout: 240_000, polling: 500 },
+  )
 
 test.describe('starting up', () => {
   test('the loader lists what it downloads and keeps it on the device; a second visit loads from there', async ({ browser }) => {

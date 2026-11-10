@@ -90,17 +90,7 @@ function run(axis: 'x' | 'z', at: number, from: number, to: number, gaps: Gap[],
 }
 
 /** A box placed relative to a wall: `along` the wall, `off` out of it (towards +normal), world y. */
-function piece(
-  axis: 'x' | 'z',
-  at: number,
-  along: number,
-  y: number,
-  off: number,
-  len: number,
-  height: number,
-  depth: number,
-  rest: Pick<Seg, 'key' | 'color' | 'kind' | 'solid'>,
-): Seg {
+function piece(axis: 'x' | 'z', at: number, along: number, y: number, off: number, len: number, height: number, depth: number, rest: Pick<Seg, 'key' | 'color' | 'kind' | 'solid'>): Seg {
   return {
     ...rest,
     axis,
@@ -169,8 +159,7 @@ function buildSegments(): Seg[] {
   const { minX, maxX, minZ, maxZ } = HOUSE
   const e = T / 2
   const r = ROOMS
-  const gapsOn = (axis: 'x' | 'z', at: number): Gap[] =>
-    WINDOWS.filter((w) => w.axis === axis && w.at === at).map((w) => ({ centre: w.centre, width: w.width, y0: w.sill, y1: w.top }))
+  const gapsOn = (axis: 'x' | 'z', at: number): Gap[] => WINDOWS.filter((w) => w.axis === axis && w.at === at).map((w) => ({ centre: w.centre, width: w.width, y0: w.sill, y1: w.top }))
   const zGaps: Gap[] = [DOORWAYS.livingOffice, DOORWAYS.kitchenBedroom]
   const xGapsNorth: Gap[] = [DOORWAYS.officeKitchen]
   const xGapsSouth: Gap[] = [DOORWAYS.livingBedroom]
@@ -223,19 +212,12 @@ export function Walls() {
   const geometries = useMemo(
     () =>
       segs.map((s) =>
-        s.kind === 'fabric'
-          ? pleatedBox(s.size, s.axis)
-          : s.kind === 'wall'
-            ? boxProject(new BoxGeometry(s.size[0], s.size[1], s.size[2]), 2.2, s.center[0] * 0.73 + s.center[2] * 1.31)
-            : null,
+        s.kind === 'fabric' ? pleatedBox(s.size, s.axis) : s.kind === 'wall' ? boxProject(new BoxGeometry(s.size[0], s.size[1], s.size[2]), 2.2, s.center[0] * 0.73 + s.center[2] * 1.31) : null,
       ),
     [segs],
   )
   const mats = useRef<(MeshStandardMaterial | null)[][]>(segs.map(() => []))
-  const boxes = useMemo(
-    () => segs.map((s) => new Box3().setFromCenterAndSize(new Vector3(...s.center), new Vector3(...s.size)).expandByScalar(0.02)),
-    [segs],
-  )
+  const boxes = useMemo(() => segs.map((s) => new Box3().setFromCenterAndSize(new Vector3(...s.center), new Vector3(...s.size)).expandByScalar(0.02)), [segs])
   const fade = useRef<number[]>(segs.map(() => 1))
   const settled = useRef(false)
   const camera = useThree((s) => s.camera)

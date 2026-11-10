@@ -147,5 +147,4 @@ export function switchLightProfile(on: boolean, automatic = false) {
   profile = makeProfile(detected.device, detected.lowMemory, on)
 }
 
-export const deviceLabel = () =>
-  `${profile.device === 'phone' ? 'Phone' : profile.device === 'tablet' ? 'Tablet' : 'Computer'}${profile.light ? ' · light graphics' : ''}`
+export const deviceLabel = () => `${profile.device === 'phone' ? 'Phone' : profile.device === 'tablet' ? 'Tablet' : 'Computer'}${profile.light ? ' · light graphics' : ''}`

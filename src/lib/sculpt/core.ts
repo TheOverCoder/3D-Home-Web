@@ -378,11 +378,7 @@ export function noise3(x: number, y: number, z: number, seed = 1) {
   const sz = fz * fz * (3 - 2 * fz)
   const at = (a: number, b: number, c: number) => hash3(xi + a, yi + b, zi + c, seed)
   const lerp = (a: number, b: number, t: number) => a + (b - a) * t
-  return lerp(
-    lerp(lerp(at(0, 0, 0), at(1, 0, 0), sx), lerp(at(0, 1, 0), at(1, 1, 0), sx), sy),
-    lerp(lerp(at(0, 0, 1), at(1, 0, 1), sx), lerp(at(0, 1, 1), at(1, 1, 1), sx), sy),
-    sz,
-  )
+  return lerp(lerp(lerp(at(0, 0, 0), at(1, 0, 0), sx), lerp(at(0, 1, 0), at(1, 1, 0), sx), sy), lerp(lerp(at(0, 0, 1), at(1, 0, 1), sx), lerp(at(0, 1, 1), at(1, 1, 1), sx), sy), sz)
 }
 
 /** Layered noise (octaves halve in size and weight), 0..1. */
@@ -403,7 +399,7 @@ export function fbm3(x: number, y: number, z: number, seed = 1, octaves = 3) {
 /** A seeded 0..1 random sequence (plants, flocks: the same every time for the same seed). */
 export function random(seed: number) {
   let s = seed >>> 0 || 1
-  return () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296)
+  return () => (s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296
 }
 
 export const smoothstep = (a: number, b: number, x: number) => {

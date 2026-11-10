@@ -238,19 +238,30 @@ function head(): Shape {
   const parts: Shape[] = [neck, skull, nose]
   for (const sx of [-1, 1]) {
     // eyes: a white half sunk into the face, a dark iris on it
-    parts.push(ellipsoid(0.016, 0.011, 0.008, 7, 3).place(onFace(sx * 0.036, 0.016, 0.004)).fill(WHITE, 0))
-    parts.push(ellipsoid(0.009, 0.0095, 0.006, 7, 3).place(onFace(sx * 0.036, 0.016, -0.0035)).fill(EYE, 0))
+    parts.push(
+      ellipsoid(0.016, 0.011, 0.008, 7, 3)
+        .place(onFace(sx * 0.036, 0.016, 0.004))
+        .fill(WHITE, 0),
+    )
+    parts.push(
+      ellipsoid(0.009, 0.0095, 0.006, 7, 3)
+        .place(onFace(sx * 0.036, 0.016, -0.0035))
+        .fill(EYE, 0),
+    )
     parts.push(tube([onFace(sx * 0.018, 0.04, 0.0015), onFace(sx * 0.037, 0.046, 0.0015), onFace(sx * 0.055, 0.042, 0.0015)], 0.0045, { seg: 5, steps: 1, round: [0.004, 0.004] }).fill(BROW, 0))
     // ears
-    parts.push(ellipsoid(0.013, 0.03, 0.022, 6, 3).place([sx * 0.098, 0.0, -0.005], [0, sx * 0.25, 0]).shade(() => 0.93))
+    parts.push(
+      ellipsoid(0.013, 0.03, 0.022, 6, 3)
+        .place([sx * 0.098, 0.0, -0.005], [0, sx * 0.25, 0])
+        .shade(() => 0.93),
+    )
   }
   parts.push(tube([onFace(-0.024, -0.058, 0.002), onFace(0, -0.062, 0.002), onFace(0.024, -0.058, 0.002)], 0.005, { seg: 5, steps: 2, round: [0.004, 0.004] }).fill(LIPS, 0))
   return merge(...parts)
 }
 
 /** How far a point is above the hair-line (higher at the brow, lower at the nape): the hair covers where it is > 0. */
-const aboveHairline = (x: number, y: number, z: number) =>
-  Math.max(y - (0.05 + 0.28 * Math.max(0, z) - 0.6 * Math.max(0, -z) * (Math.abs(x) < 0.07 ? 1 : 0.3)), z < -0.02 ? y + 0.07 : -1)
+const aboveHairline = (x: number, y: number, z: number) => Math.max(y - (0.05 + 0.28 * Math.max(0, z) - 0.6 * Math.max(0, -z) * (Math.abs(x) < 0.07 ? 1 : 0.3)), z < -0.02 ? y + 0.07 : -1)
 
 /** The hair over the top and back of the skull, close to the scalp, its edge tucked into it at the hair-line. */
 function hairCap(): Shape {

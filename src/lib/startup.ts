@@ -41,10 +41,8 @@ const WASM = /webassembly|wasm|rapier/i
 
 export function classify(error: unknown): Failure {
   const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error)
-  if (NETWORK.test(detail) || navigator.onLine === false)
-    return { kind: 'network', message: 'Part of the game did not download. Check the connection and try again.', detail }
-  if (typeof WebAssembly === 'undefined' || WASM.test(detail))
-    return { kind: 'wasm', message: 'This browser blocks WebAssembly (strict or lockdown mode), which the physics needs.', detail }
+  if (NETWORK.test(detail) || navigator.onLine === false) return { kind: 'network', message: 'Part of the game did not download. Check the connection and try again.', detail }
+  if (typeof WebAssembly === 'undefined' || WASM.test(detail)) return { kind: 'wasm', message: 'This browser blocks WebAssembly (strict or lockdown mode), which the physics needs.', detail }
   if (GRAPHICS.test(detail) || !webglAvailable())
     return {
       kind: 'graphics',

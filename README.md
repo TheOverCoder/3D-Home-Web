@@ -16,10 +16,10 @@ npm install
 npm run dev        # http://localhost:5173
 npm run build      # typecheck + production build → dist/
 npm run preview
-npm run check      # types (tsc), lint (oxlint) and unit tests (Vitest): ~10 s; CI runs it beside the e2e suite
+npm run check      # types (tsc), lint (oxlint), unit tests (Vitest) and the format check: ~15 s; CI runs it beside the e2e suite
 npm test           # the unit tests alone (src/**/*.test.ts, Node, no browser); npm run test:watch reruns them on save
 npm run lint       # oxlint (.oxlintrc.json), with the type-aware rules
-npm run format     # Prettier (.prettierrc.json); format:check only reports (not part of check until the code is formatted once)
+npm run format     # Prettier (.prettierrc.json) on the TypeScript and scripts; the CSS keeps its compact one-line rules
 npm run test:e2e   # Playwright end-to-end suite (see tests/README.md); CI runs it on every push
 ```
 

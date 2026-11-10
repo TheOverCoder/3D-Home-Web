@@ -111,7 +111,7 @@ let timer: number | undefined
 let nextTime = 0
 let step = 0
 let seed = 1
-const rand = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296)
+const rand = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296
 
 function musicBus(ac: AudioContext, master: GainNode) {
   if (bus && bus.context === ac) return bus

@@ -13,7 +13,7 @@ import { createWallScreen } from './screens/wallScreen'
 
 // bumped once the bundled Inter is ready, so screens painted with the fallback font repaint once
 let fontEpoch = 0
-loadScreenFonts().then(() => {
+void loadScreenFonts().then(() => {
   fontEpoch++
 })
 

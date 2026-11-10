@@ -115,7 +115,11 @@ function ShadowDirector() {
         list.push(o)
         own.push(o)
         const skeleton = (o as SkinnedMesh).isSkinnedMesh ? (o as SkinnedMesh).skeleton : null
-        if (skeleton) for (const bone of skeleton.bones) (list.push(bone), own.push(o))
+        if (skeleton)
+          for (const bone of skeleton.bones) {
+            list.push(bone)
+            own.push(o)
+          }
       })
       if (list.length !== casters.current.length || list.some((o, i) => o !== casters.current[i])) {
         casters.current = list

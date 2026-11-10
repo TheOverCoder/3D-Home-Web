@@ -31,16 +31,7 @@ export function MusicPlayer({ compact = false }: { compact?: boolean }) {
         <button className="music-btn" onClick={() => nextTrack(1)} aria-label="Next track">
           <SkipForward weight="fill" />
         </button>
-        <input
-          className="music-volume"
-          type="range"
-          min={0}
-          max={1}
-          step={0.05}
-          value={volume}
-          aria-label="Music volume"
-          onChange={(e) => update({ musicVolume: Number(e.target.value) })}
-        />
+        <input className="music-volume" type="range" min={0} max={1} step={0.05} value={volume} aria-label="Music volume" onChange={(e) => update({ musicVolume: Number(e.target.value) })} />
       </div>
     </div>
   )

@@ -234,7 +234,10 @@ export function Gallery() {
           {mine ? (
             mine.issues.length ? (
               <>
-                <button onClick={() => setOpen((o) => !o)} style={{ marginTop: 4, padding: 0, border: 'none', background: 'none', color: '#b85f10', font: 'inherit', fontWeight: 700, cursor: 'pointer' }}>
+                <button
+                  onClick={() => setOpen((o) => !o)}
+                  style={{ marginTop: 4, padding: 0, border: 'none', background: 'none', color: '#b85f10', font: 'inherit', fontWeight: 700, cursor: 'pointer' }}
+                >
                   ⚠ {mine.issues.length} problem{mine.issues.length === 1 ? '' : 's'}: pieces apart from the model or off the ground {open ? '▴' : '▾'}
                 </button>
                 {open && (

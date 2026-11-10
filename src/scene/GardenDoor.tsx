@@ -70,12 +70,7 @@ export function GardenDoor() {
   })
 
   const leaf = (side: -1 | 1, ref: typeof left) => (
-    <RigidBody
-      ref={ref}
-      type="kinematicPosition"
-      colliders={false}
-      position={[D.centre + side * (LEAF_W / 2 - 0.015), LEAF_H / 2 + 0.012, D.at]}
-    >
+    <RigidBody ref={ref} type="kinematicPosition" colliders={false} position={[D.centre + side * (LEAF_W / 2 - 0.015), LEAF_H / 2 + 0.012, D.at]}>
       <CuboidCollider args={[LEAF_W / 2, LEAF_H / 2, LEAF_T / 2]} />
       <group rotation={[0, side < 0 ? 0 : Math.PI, 0]}>
         <mesh geometry={frame} castShadow receiveShadow>

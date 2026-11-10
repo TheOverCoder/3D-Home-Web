@@ -164,7 +164,9 @@ export const MODEL_CHECKS: ModelCheck[] = [
       const parts = cropParts(0.1)
       const open = openParts(parts)
       const issues = CROPS.flatMap((crop) =>
-        STAGES.flatMap((g) => [0.17, 0.71].flatMap((seed) => checkPose(`${crop} at ${Math.round(g * 100)}% (seed ${seed})`, parts, (pp) => GROWERS[crop](pp, 0, 0, 0, g, seed), { ground: 0, sink: 0.06, open }))),
+        STAGES.flatMap((g) =>
+          [0.17, 0.71].flatMap((seed) => checkPose(`${crop} at ${Math.round(g * 100)}% (seed ${seed})`, parts, (pp) => GROWERS[crop](pp, 0, 0, 0, g, seed), { ground: 0, sink: 0.06, open })),
+        ),
       )
       // an egg rests on the floor of the nest
       for (let k = 0; k < 3; k++) issues.push(...checkPose(`egg ${k + 1}`, parts, (pp) => putEgg(pp, 0, 0, 0, k), { ground: 0, sink: 0.004, open }))

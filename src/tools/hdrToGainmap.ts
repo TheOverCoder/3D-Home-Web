@@ -13,7 +13,7 @@ export async function hdrToGainmap(quality = 0.92): Promise<Record<string, strin
   const out: Record<string, string> = {}
   for (const [path, url] of Object.entries(hdrs)) {
     const image = await new HDRLoader().loadAsync(url)
-    const textureMax = await findTextureMinMax(image)
+    const textureMax = findTextureMinMax(image)
     const result = encode({ image, maxContentBoost: Math.max(...textureMax) })
     const pack = (b: { toArray: () => Uint8ClampedArray; width: number; height: number }) => new ImageData(b.toArray() as Uint8ClampedArray<ArrayBuffer>, b.width, b.height)
     const [sdr, gainMap] = await Promise.all([
@@ -25,7 +25,12 @@ export async function hdrToGainmap(quality = 0.92): Promise<Record<string, strin
     result.gainMap.dispose()
     let bin = ''
     for (let i = 0; i < jpeg.length; i += 0x8000) bin += String.fromCharCode(...jpeg.subarray(i, i + 0x8000))
-    out[path.split('/').pop()!.replace(/\.hdr$/, '')] = btoa(bin)
+    out[
+      path
+        .split('/')
+        .pop()!
+        .replace(/\.hdr$/, '')
+    ] = btoa(bin)
   }
   return out
 }

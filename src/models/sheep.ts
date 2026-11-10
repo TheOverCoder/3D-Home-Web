@@ -123,7 +123,11 @@ function head(): Shape {
   skull.shade((_x, _y, z) => 1 - 0.18 * smoothstep(0.17, 0.25, z))
   const parts: Shape[] = [skull]
   for (const sx of [-1, 1]) {
-    parts.push(ellipsoid(0.016, 0.014, 0.016, 8, 5).place([sx * 0.066, 0.03, 0.055]).fill(EYE, 0))
+    parts.push(
+      ellipsoid(0.016, 0.014, 0.016, 8, 5)
+        .place([sx * 0.066, 0.03, 0.055])
+        .fill(EYE, 0),
+    )
     // ears: flat and long, out to the side and drooping a little, pale pink inside
     const ear = loft(
       [
@@ -134,9 +138,21 @@ function head(): Shape {
       ],
       { seg: 8, steps: 2 },
     )
-    ear.paint((_x, y) => (y > 0.002 ? [0.95, 0.74, 0.7] : [0.92, 0.92, 0.92]), (_x, y) => (y > 0.002 ? 0.3 : 1))
-    parts.push(ear.place([0, 0, 0], [0, sx * (Math.PI / 2 + 0.3), 0]).place([0, 0, 0], [0, 0, -sx * 0.45]).place([sx * 0.06, 0.045, 0.0]))
-    parts.push(ellipsoid(0.012, 0.007, 0.006, 6, 4).place([sx * 0.019, -0.028, 0.232], [0, sx * 0.5, 0]).fill(rgb(0x2a201c), 0))
+    ear.paint(
+      (_x, y) => (y > 0.002 ? [0.95, 0.74, 0.7] : [0.92, 0.92, 0.92]),
+      (_x, y) => (y > 0.002 ? 0.3 : 1),
+    )
+    parts.push(
+      ear
+        .place([0, 0, 0], [0, sx * (Math.PI / 2 + 0.3), 0])
+        .place([0, 0, 0], [0, 0, -sx * 0.45])
+        .place([sx * 0.06, 0.045, 0.0]),
+    )
+    parts.push(
+      ellipsoid(0.012, 0.007, 0.006, 6, 4)
+        .place([sx * 0.019, -0.028, 0.232], [0, sx * 0.5, 0])
+        .fill(rgb(0x2a201c), 0),
+    )
   }
   return merge(neck, merge(...parts).place(HEAD_AT, [HEAD_PITCH, 0, 0]))
 }

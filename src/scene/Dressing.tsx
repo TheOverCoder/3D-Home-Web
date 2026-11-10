@@ -18,7 +18,19 @@ function At({ position, rotationY = 0, children }: { position: V3; rotationY?: n
   )
 }
 
-function Cyl({ r, h, position, color, rough = 0.6, metal = 0, rotation, top = r, segments = 20, emissive, glow }: {
+function Cyl({
+  r,
+  h,
+  position,
+  color,
+  rough = 0.6,
+  metal = 0,
+  rotation,
+  top = r,
+  segments = 20,
+  emissive,
+  glow,
+}: {
   r: number
   h: number
   position: V3
@@ -75,7 +87,14 @@ function Remote() {
 function Vase({ stems = true }: { stems?: boolean }) {
   const geometry = useMemo(() => {
     const profile = [
-      [0.0, 0.0], [0.05, 0.0], [0.065, 0.03], [0.07, 0.08], [0.055, 0.15], [0.03, 0.2], [0.032, 0.235], [0.04, 0.245],
+      [0.0, 0.0],
+      [0.05, 0.0],
+      [0.065, 0.03],
+      [0.07, 0.08],
+      [0.055, 0.15],
+      [0.03, 0.2],
+      [0.032, 0.235],
+      [0.04, 0.245],
     ].map(([x, y]) => new Vector2(x, y))
     return new LatheGeometry(profile, 28)
   }, [])
@@ -85,7 +104,12 @@ function Vase({ stems = true }: { stems?: boolean }) {
         <meshStandardMaterial color="#e8dfd0" roughness={0.18} metalness={0.05} side={DoubleSide} />
       </mesh>
       {stems &&
-        [[-0.03, 0.35, 0.2], [0.02, 0.5, -0.1], [0.05, 0.42, 0.28], [-0.05, 0.4, -0.25]].map(([x, h, tilt], i) => (
+        [
+          [-0.03, 0.35, 0.2],
+          [0.02, 0.5, -0.1],
+          [0.05, 0.42, 0.28],
+          [-0.05, 0.4, -0.25],
+        ].map(([x, h, tilt], i) => (
           <group key={i} position={[x * 0.5, 0.22, 0]} rotation={[tilt * 0.3, i, -x * 5]}>
             <Cyl r={0.003} h={h} position={[0, h / 2, 0]} color="#8a7a4e" rough={0.9} segments={5} />
             <Ball r={0.02} position={[0, h, 0]} scale={[0.7, 1.6, 0.7]} color={i % 2 ? '#c9ae7a' : '#d8c79a'} rough={0.9} />
@@ -150,16 +174,26 @@ function LivingRoom() {
   return (
     <>
       <OnPiece id="coffee-table">
-        <At position={[-3.78, 0.425, 3.95]} rotationY={0.15}><Magazines /></At>
-        <At position={[-3.18, 0.425, 4.08]}><Remote /></At>
-        <At position={[-3.1, 0.425, 3.84]}><Vase /></At>
+        <At position={[-3.78, 0.425, 3.95]} rotationY={0.15}>
+          <Magazines />
+        </At>
+        <At position={[-3.18, 0.425, 4.08]}>
+          <Remote />
+        </At>
+        <At position={[-3.1, 0.425, 3.84]}>
+          <Vase />
+        </At>
         <GlbDecor id="teacup" position={[-3.45, 0.425, 3.8]} rotationY={0.6} size={[0.15, 0.07, 0.155]} shadow={false} />
       </OnPiece>
       {/* a vase on the console, wall clock opposite the sofa */}
       <OnPiece id="tv-console">
-        <At position={[-2.85, 0.48, 5.7]}><Vase /></At>
+        <At position={[-2.85, 0.48, 5.7]}>
+          <Vase />
+        </At>
       </OnPiece>
-      <At position={[-0.1, 2.05, 1.15]} rotationY={-Math.PI / 2}><WallClock /></At>
+      <At position={[-0.1, 2.05, 1.15]} rotationY={-Math.PI / 2}>
+        <WallClock />
+      </At>
     </>
   )
 }
@@ -188,8 +222,21 @@ function PenCup() {
   return (
     <group>
       <Cyl r={0.04} h={0.1} position={[0, 0.05, 0]} color="#2f3338" rough={0.5} metal={0.6} />
-      {[[-0.012, 0.01, 0.12, '#b4543a'], [0.012, -0.01, 0.15, '#3d6a8a'], [0.0, 0.016, 0.17, '#d7b25a']].map(([x, z, h, c], i) => (
-        <Cyl key={i} r={0.004} h={h as number} position={[x as number, 0.1 + (h as number) / 2 - 0.04, z as number]} rotation={[(z as number) * 4, 0, -(x as number) * 5]} color={c as string} rough={0.4} segments={6} />
+      {[
+        [-0.012, 0.01, 0.12, '#b4543a'],
+        [0.012, -0.01, 0.15, '#3d6a8a'],
+        [0.0, 0.016, 0.17, '#d7b25a'],
+      ].map(([x, z, h, c], i) => (
+        <Cyl
+          key={i}
+          r={0.004}
+          h={h as number}
+          position={[x as number, 0.1 + (h as number) / 2 - 0.04, z as number]}
+          rotation={[(z as number) * 4, 0, -(x as number) * 5]}
+          color={c as string}
+          rough={0.4}
+          segments={6}
+        />
       ))}
     </group>
   )
@@ -201,12 +248,18 @@ function Studio() {
       <OnPiece id="desk">
         <At position={[-3.4, 0.76, -5.28]}>
           <B size={[0.72, 0.004, 0.36]} position={[0, 0.002, 0.02]} color="#25282d" roughness={0.9} radius={0.002} mat="fabric" tile={0.3} />
-          <group position={[0, 0.004, 0]}><Laptop /></group>
+          <group position={[0, 0.004, 0]}>
+            <Laptop />
+          </group>
           <B size={[0.06, 0.03, 0.1]} position={[0.28, 0.019, 0.04]} color="#1f2124" roughness={0.4} radius={0.02} />
         </At>
-        <At position={[-2.68, 0.76, -5.62]}><PenCup /></At>
+        <At position={[-2.68, 0.76, -5.62]}>
+          <PenCup />
+        </At>
         <GlbDecor id="water-bottle" position={[-2.72, 0.76, -5.42]} rotationY={2.2} size={[0.085, 0.205, 0.085]} shadow={false} />
-        <At position={[-4.0, 0.76, -5.68]} rotationY={0.4}><Vase stems /></At>
+        <At position={[-4.0, 0.76, -5.68]} rotationY={0.4}>
+          <Vase stems />
+        </At>
       </OnPiece>
     </>
   )
@@ -255,7 +308,13 @@ function FruitBowl() {
         <meshStandardMaterial color="#d9d3c6" roughness={0.25} side={DoubleSide} />
       </mesh>
       <Cyl r={0.06} h={0.01} position={[0, 0.0, 0]} color="#d9d3c6" rough={0.3} />
-      {[[-0.05, 0.05, 0, '#d33d2a', 0.045], [0.06, 0.05, 0.02, '#e87a1f', 0.05], [0, 0.065, -0.07, '#9bbf3a', 0.042], [0.0, 0.1, 0.03, '#f0cd3a', 0.04], [-0.09, 0.06, -0.04, '#d33d2a', 0.04]].map(([x, y, z, c, r], i) => (
+      {[
+        [-0.05, 0.05, 0, '#d33d2a', 0.045],
+        [0.06, 0.05, 0.02, '#e87a1f', 0.05],
+        [0, 0.065, -0.07, '#9bbf3a', 0.042],
+        [0.0, 0.1, 0.03, '#f0cd3a', 0.04],
+        [-0.09, 0.06, -0.04, '#d33d2a', 0.04],
+      ].map(([x, y, z, c, r], i) => (
         <Ball key={i} r={r as number} position={[x as number, (y as number) + 0.03, z as number]} color={c as string} rough={0.35} />
       ))}
     </group>
@@ -292,7 +351,17 @@ function TilePanel({ x0, x1, top }: { x0: number; x1: number; top: number }) {
   return (
     <mesh position={[(x0 + x1) / 2, 0.91 + h / 2, -5.915]}>
       <planeGeometry args={[w, h]} />
-      <meshStandardMaterial map={s.map} normalMap={s.normalMap} roughnessMap={s.roughnessMap} color="#f4f1ea" roughness={1} normalScale={[0.8, 0.8]} polygonOffset polygonOffsetFactor={-2} polygonOffsetUnits={-2} />
+      <meshStandardMaterial
+        map={s.map}
+        normalMap={s.normalMap}
+        roughnessMap={s.roughnessMap}
+        color="#f4f1ea"
+        roughness={1}
+        normalScale={[0.8, 0.8]}
+        polygonOffset
+        polygonOffsetFactor={-2}
+        polygonOffsetUnits={-2}
+      />
     </mesh>
   )
 }
@@ -312,11 +381,21 @@ function Kitchen() {
   return (
     <>
       <Backsplash />
-      <At position={[2.0, 0.91, -5.62]}><Kettle /></At>
-      <At position={[5.36, 0.91, -5.6]} rotationY={-0.1}><Toaster /></At>
-      <At position={[3.55, 0.91, -5.58]}><CuttingBoard /></At>
-      <At position={[2.75, 0.91, -5.78]}><Faucet /></At>
-      <At position={[2.75, 0.91, -2.15]}><FruitBowl /></At>
+      <At position={[2.0, 0.91, -5.62]}>
+        <Kettle />
+      </At>
+      <At position={[5.36, 0.91, -5.6]} rotationY={-0.1}>
+        <Toaster />
+      </At>
+      <At position={[3.55, 0.91, -5.58]}>
+        <CuttingBoard />
+      </At>
+      <At position={[2.75, 0.91, -5.78]}>
+        <Faucet />
+      </At>
+      <At position={[2.75, 0.91, -2.15]}>
+        <FruitBowl />
+      </At>
       <Pendant x={2.85} z={-2.4} />
       <Pendant x={3.95} z={-2.4} />
     </>
@@ -382,11 +461,17 @@ function Bedroom() {
   return (
     <>
       <OnPiece id="nightstand">
-        <At position={[3.52, 0.585, 5.45]}><BedsideClock /></At>
+        <At position={[3.52, 0.585, 5.45]}>
+          <BedsideClock />
+        </At>
       </OnPiece>
-      <At position={[0.1, 1.45, 1.3]} rotationY={Math.PI / 2}><Mirror /></At>
+      <At position={[0.1, 1.45, 1.3]} rotationY={Math.PI / 2}>
+        <Mirror />
+      </At>
       <OnPiece id="bed">
-        <At position={[3.25, 0.012, 3.55]} rotationY={0.3}><Slippers /></At>
+        <At position={[3.25, 0.012, 3.55]} rotationY={0.3}>
+          <Slippers />
+        </At>
       </OnPiece>
     </>
   )
@@ -452,10 +537,19 @@ function House() {
       <Outlet position={[6.915, 0.32, 3.0]} rotationY={-Math.PI / 2} />
       <Outlet position={[5.6, 1.0, -5.915]} rotationY={0} />
       {/* a radiator under the bedroom's south window (the living room's became the garden door) */}
-      <At position={[1.7, 0, 5.875]}><Radiator width={1.0} /></At>
+      <At position={[1.7, 0, 5.875]}>
+        <Radiator width={1.0} />
+      </At>
       {/* smoke detectors */}
-      {[[-3.5, -3.0], [3.5, -3.0], [-3.5, 3.0], [3.5, 3.0]].map(([x, z]) => (
-        <At key={`${x}${z}`} position={[x + 1.2, HOUSE.wallHeight - 0.02, z + 0.8]}><SmokeDetector /></At>
+      {[
+        [-3.5, -3.0],
+        [3.5, -3.0],
+        [-3.5, 3.0],
+        [3.5, 3.0],
+      ].map(([x, z]) => (
+        <At key={`${x}${z}`} position={[x + 1.2, HOUSE.wallHeight - 0.02, z + 0.8]}>
+          <SmokeDetector />
+        </At>
       ))}
     </>
   )

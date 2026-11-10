@@ -360,7 +360,7 @@ function CameraRig({ ecctrl, feet }: { ecctrl: RefObject<EcctrlHandle | null>; f
   useEffect(() => {
     const c = controls.current
     if (!c) return
-    c.setLookAt(SPAWN[0] + 2.6, SPAWN[1] + 4.2, SPAWN[2] + 4.0, SPAWN[0], SPAWN[1] - 0.4, SPAWN[2], false)
+    void c.setLookAt(SPAWN[0] + 2.6, SPAWN[1] + 4.2, SPAWN[2] + 4.0, SPAWN[0], SPAWN[1] - 0.4, SPAWN[2], false)
     // turning round in third person swings the camera round you
     orbit.turn = (yaw, smooth) => void controls.current?.rotate(yaw, 0, smooth)
     return () => {
@@ -388,7 +388,7 @@ function CameraRig({ ecctrl, feet }: { ecctrl: RefObject<EcctrlHandle | null>; f
       const p = playerState.position
       const fx = -Math.sin(look.yaw)
       const fz = -Math.cos(look.yaw)
-      c.setLookAt(p.x - fx * 4.2, p.y + 3.4, p.z - fz * 4.2, p.x, p.y + 0.5, p.z, false)
+      void c.setLookAt(p.x - fx * 4.2, p.y + 3.4, p.z - fz * 4.2, p.x, p.y + 0.5, p.z, false)
     }
   }, [view, phase, camera])
 
@@ -398,12 +398,12 @@ function CameraRig({ ecctrl, feet }: { ecctrl: RefObject<EcctrlHandle | null>; f
     const state = useHome.getState()
     const c = controls.current
     if (state.phase === 'intro') {
-      c?.rotate(dt * 0.18, 0, false)
+      void c?.rotate(dt * 0.18, 0, false)
       return
     }
     if (state.view === 'third') {
       const p = ecctrl.current?.currPos
-      if (c && p) c.moveTo(p.x, p.y + 0.5, p.z, true)
+      if (c && p) void c.moveTo(p.x, p.y + 0.5, p.z, true)
       // the camera swings round behind where you walk with the stick, when chosen (the button beside it)
       if (c && coarsePointer && !busy(state)) {
         const s = stickInput()

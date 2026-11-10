@@ -92,7 +92,12 @@ function body(look: Look): Shape {
   }
   if (look.rooster) {
     // saddle feathers, golden, down over the sides of the tail
-    for (const sx of [-1, 1]) parts.push(feather(0.1, 0.05, -0.02).fill(look.neck, 0).place([sx * 0.05, 0.27, -0.06], [-0.3, Math.PI + sx * 0.5, 0]))
+    for (const sx of [-1, 1])
+      parts.push(
+        feather(0.1, 0.05, -0.02)
+          .fill(look.neck, 0)
+          .place([sx * 0.05, 0.27, -0.06], [-0.3, Math.PI + sx * 0.5, 0]),
+      )
   }
   // built round the hips, which it tips about to peck
   const [tx, ty, tz] = CHICKEN_PIVOTS.tip
@@ -140,14 +145,30 @@ function head(look: Look): Shape {
   for (let k = 0; k < points; k++) {
     const u = k / (points - 1)
     const h = (r ? 0.032 : 0.016) * (0.6 + 0.4 * Math.sin(Math.PI * (0.25 + u * 0.6)))
-    parts.push(ellipsoid(r ? 0.006 : 0.005, h, r ? 0.011 : 0.009, 6, 3).place([0, 0.158 + h * 0.6, 0.03 + u * 0.06], [-0.3 + u * 0.5, 0, 0]).fill(RED, 0))
+    parts.push(
+      ellipsoid(r ? 0.006 : 0.005, h, r ? 0.011 : 0.009, 6, 3)
+        .place([0, 0.158 + h * 0.6, 0.03 + u * 0.06], [-0.3 + u * 0.5, 0, 0])
+        .fill(RED, 0),
+    )
   }
   for (const sx of [-1, 1]) {
     // wattles under the beak, and the eyes
-    parts.push(ellipsoid(r ? 0.01 : 0.008, r ? 0.026 : 0.015, r ? 0.013 : 0.01, 6, 3).place([sx * 0.008, r ? 0.088 : 0.098, 0.093], [0.2, 0, 0]).fill(RED, 0))
-    parts.push(ellipsoid(0.0075, 0.0075, 0.006, 6, 3).place([sx * 0.031, 0.137, 0.072], [0, sx * 0.4, 0]).fill(EYE, 0))
+    parts.push(
+      ellipsoid(r ? 0.01 : 0.008, r ? 0.026 : 0.015, r ? 0.013 : 0.01, 6, 3)
+        .place([sx * 0.008, r ? 0.088 : 0.098, 0.093], [0.2, 0, 0])
+        .fill(RED, 0),
+    )
+    parts.push(
+      ellipsoid(0.0075, 0.0075, 0.006, 6, 3)
+        .place([sx * 0.031, 0.137, 0.072], [0, sx * 0.4, 0])
+        .fill(EYE, 0),
+    )
     // a little red round the eye, and the ear lobe
-    parts.push(ellipsoid(0.012, 0.01, 0.006, 6, 3).place([sx * 0.03, 0.118, 0.058], [0, sx * 0.3, 0]).fill(r ? rgb(0xe8e0d0) : RED, 0))
+    parts.push(
+      ellipsoid(0.012, 0.01, 0.006, 6, 3)
+        .place([sx * 0.03, 0.118, 0.058], [0, sx * 0.3, 0])
+        .fill(r ? rgb(0xe8e0d0) : RED, 0),
+    )
   }
   return merge(...parts)
 }
@@ -166,8 +187,28 @@ function leg(look: Look): Shape {
     { seg: 6, steps: 1, round: [0.008, 0.006] },
   ).fill(LEG, 0)
   const toes: Shape[] = []
-  for (const a of [-0.45, 0, 0.45]) toes.push(tube([[0, -0.124, 0.006], [Math.sin(a) * 0.03, -0.128, 0.006 + Math.cos(a) * 0.03], [Math.sin(a) * 0.05, -0.129, 0.006 + Math.cos(a) * 0.05]], [0.006, 0.005, 0], { seg: 5, steps: 1, round: [0.005, 0] }).fill(LEG, 0))
-  toes.push(tube([[0, -0.124, 0.006], [0, -0.128, -0.025]], [0.005, 0], { seg: 5, steps: 1, round: [0.004, 0] }).fill(LEG, 0))
+  for (const a of [-0.45, 0, 0.45])
+    toes.push(
+      tube(
+        [
+          [0, -0.124, 0.006],
+          [Math.sin(a) * 0.03, -0.128, 0.006 + Math.cos(a) * 0.03],
+          [Math.sin(a) * 0.05, -0.129, 0.006 + Math.cos(a) * 0.05],
+        ],
+        [0.006, 0.005, 0],
+        { seg: 5, steps: 1, round: [0.005, 0] },
+      ).fill(LEG, 0),
+    )
+  toes.push(
+    tube(
+      [
+        [0, -0.124, 0.006],
+        [0, -0.128, -0.025],
+      ],
+      [0.005, 0],
+      { seg: 5, steps: 1, round: [0.004, 0] },
+    ).fill(LEG, 0),
+  )
   return merge(thigh, shank, ...toes)
 }
 

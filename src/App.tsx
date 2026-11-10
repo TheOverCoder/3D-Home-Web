@@ -32,7 +32,13 @@ const Experience = lazy(async () => {
 const TouchControls = lazy(() => import('./ui/TouchControls').then((m) => ({ default: m.TouchControls })))
 
 if (import.meta.env.DEV || new URLSearchParams(location.search).has('debug')) {
-  ;(window as unknown as Record<string, unknown>).__home = { useHome, playerState, loader: useLoader, music: useMusic, slots: { switchSlot, exportSlot, importSlot, slotSummary, deleteSlot, currentSlot } }
+  ;(window as unknown as Record<string, unknown>).__home = {
+    useHome,
+    playerState,
+    loader: useLoader,
+    music: useMusic,
+    slots: { switchSlot, exportSlot, importSlot, slotSummary, deleteSlot, currentSlot },
+  }
 }
 
 export function App() {

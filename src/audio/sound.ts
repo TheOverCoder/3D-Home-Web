@@ -403,8 +403,7 @@ export function farmSound(kind: FarmSound, pan = 0, near = 1) {
     case 'water': // a pour sweeping down, and a few drops
       burst(e, t, { type: 'bandpass', freq: 2600, sweepTo: 1200, q: 1.1, gain: 0.2 * v, attack: 0.08, decay: 0.9, pan })
       burst(e, t + 0.05, { type: 'highpass', freq: 5000, q: 0.7, gain: 0.05 * v, attack: 0.05, decay: 0.8, pan })
-      for (let i = 0; i < 4; i++)
-        tone(e, t + 0.2 + i * 0.13 + Math.random() * 0.05, { type: 'sine', f0: rnd(900, 1500), f1: rnd(1800, 2600), gain: 0.025 * v, attack: 0.004, decay: 0.05, pan })
+      for (let i = 0; i < 4; i++) tone(e, t + 0.2 + i * 0.13 + Math.random() * 0.05, { type: 'sine', f0: rnd(900, 1500), f1: rnd(1800, 2600), gain: 0.025 * v, attack: 0.004, decay: 0.05, pan })
       break
     case 'harvest': // leaves rustle, a stem snaps
       burst(e, t, { type: 'bandpass', freq: 3200, q: 0.9, gain: 0.12 * v, attack: 0.02, decay: 0.22, pan })
@@ -447,14 +446,39 @@ export function farmSound(kind: FarmSound, pan = 0, near = 1) {
       tone(e, t + 0.15, { type: 'triangle', f0: 311, gain: 0.03, attack: 0.01, decay: 0.3 })
       break
     case 'moo': // a low "mmm-ooo" that opens up and falls away
-      voice(e, t, [[rnd(105, 125), 0.6], [rnd(135, 150), 1], [rnd(140, 150), 1], [rnd(100, 112), 0.5]], rnd(1.1, 1.5), 0.09 * v, [380, 1100], pan)
+      voice(
+        e,
+        t,
+        [
+          [rnd(105, 125), 0.6],
+          [rnd(135, 150), 1],
+          [rnd(140, 150), 1],
+          [rnd(100, 112), 0.5],
+        ],
+        rnd(1.1, 1.5),
+        0.09 * v,
+        [380, 1100],
+        pan,
+      )
       break
     case 'milk': // three quick squirts into the pail
-      for (let i = 0; i < 3; i++)
-        burst(e, t + i * 0.2, { type: 'bandpass', freq: rnd(2200, 2800), sweepTo: 1600, q: 2.2, gain: 0.12 * v, attack: 0.005, decay: 0.09, pan })
+      for (let i = 0; i < 3; i++) burst(e, t + i * 0.2, { type: 'bandpass', freq: rnd(2200, 2800), sweepTo: 1600, q: 2.2, gain: 0.12 * v, attack: 0.005, decay: 0.09, pan })
       break
     case 'creak': // the mill's wooden wheel turning
-      voice(e, t, [[rnd(170, 190), 0.6], [rnd(210, 240), 1], [rnd(160, 180), 0.4]], rnd(0.3, 0.45), 0.03 * v, [600, 1400], pan, 'triangle')
+      voice(
+        e,
+        t,
+        [
+          [rnd(170, 190), 0.6],
+          [rnd(210, 240), 1],
+          [rnd(160, 180), 0.4],
+        ],
+        rnd(0.3, 0.45),
+        0.03 * v,
+        [600, 1400],
+        pan,
+        'triangle',
+      )
       burst(e, t, { type: 'lowpass', freq: 500, q: 0.6, gain: 0.08 * v, attack: 0.05, decay: 0.3, pan })
       break
     case 'oven': // the fire takes: a whoosh and a low roar
@@ -467,12 +491,44 @@ export function farmSound(kind: FarmSound, pan = 0, near = 1) {
       tone(e, t + 0.18, { type: 'sine', f0: 2093, gain: 0.05, attack: 0.003, decay: 1.4 })
       break
     case 'crow': // cock-a-doodle-doo
-      voice(e, t, [[520, 0.5], [640, 1], [700, 0.9], [760, 1], [820, 1], [780, 0.9], [560, 0.4]], 1.25, 0.05 * v, [900, 2600], pan)
+      voice(
+        e,
+        t,
+        [
+          [520, 0.5],
+          [640, 1],
+          [700, 0.9],
+          [760, 1],
+          [820, 1],
+          [780, 0.9],
+          [560, 0.4],
+        ],
+        1.25,
+        0.05 * v,
+        [900, 2600],
+        pan,
+      )
       break
     case 'baa': {
       // a sheep: a bleating "baa-a-a", the voice wavering as it goes
       const f = rnd(330, 420)
-      voice(e, t, [[f * 0.9, 0.5], [f, 1], [f * 1.04, 0.8], [f * 0.98, 0.9], [f * 1.03, 0.7], [f * 0.86, 0.3]], rnd(0.6, 0.85), 0.05 * v, [1100, 2600], pan, 'square')
+      voice(
+        e,
+        t,
+        [
+          [f * 0.9, 0.5],
+          [f, 1],
+          [f * 1.04, 0.8],
+          [f * 0.98, 0.9],
+          [f * 1.03, 0.7],
+          [f * 0.86, 0.3],
+        ],
+        rnd(0.6, 0.85),
+        0.05 * v,
+        [1100, 2600],
+        pan,
+        'square',
+      )
       break
     }
     case 'shear': // shears snipping through the fleece

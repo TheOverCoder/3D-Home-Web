@@ -29,8 +29,7 @@ export function LoadStatus() {
   const allCached = s.total > 0 && s.fromDevice >= s.total
   const downloading = s.phase === 'download'
   const fraction = s.total ? s.loaded / s.total : 0
-  const overall =
-    s.phase === 'download' ? fraction * 0.7 : s.phase === 'prepare' ? 0.7 + Math.min(1, sceneProgress / 100) * 0.15 : s.phase === 'compile' ? 0.85 + s.compile * 0.15 : 1
+  const overall = s.phase === 'download' ? fraction * 0.7 : s.phase === 'prepare' ? 0.7 + Math.min(1, sceneProgress / 100) * 0.15 : s.phase === 'compile' ? 0.85 + s.compile * 0.15 : 1
   const left = secondsLeft(s)
   const title =
     s.phase === 'download'
@@ -48,7 +47,8 @@ export function LoadStatus() {
     line = `${mb(s.loaded)} of ${mb(s.total)} MB`
     if (!allCached && s.speed > 0) line += ` · ${mb(s.speed)} MB/s`
     if (!allCached && left !== null) line += ` · ${time(left)} left`
-  } else if (s.phase === 'prepare') line = sceneProgress > 0 && sceneProgress < 100 ? `decoding models and textures · ${Math.round(sceneProgress)}%` : 'putting the rooms, the garden and the animals in place'
+  } else if (s.phase === 'prepare')
+    line = sceneProgress > 0 && sceneProgress < 100 ? `decoding models and textures · ${Math.round(sceneProgress)}%` : 'putting the rooms, the garden and the animals in place'
   else if (s.phase === 'compile') line = `shaders and textures onto the graphics card · ${Math.round(s.compile * 100)}%`
   else if (s.phase === 'ready')
     line = `loaded in ${took.toFixed(1)} s${s.fromDevice > 0 ? ` · ${mb(s.fromDevice)} MB from this device` : ''}${s.total - s.fromDevice > 0 && s.total ? ` · ${mb(s.total - s.fromDevice)} MB downloaded` : ''}`

@@ -133,10 +133,7 @@ export default function Tune() {
       const f = device.addFolder(t)
       bind(f, profile.dpr, t, 'profile.dpr', 0.5, 2, 0.05).name('pixel ratio').onFinishChange(reapplyTier)
       bind(f, profile.msaa, t, 'profile.msaa', 0, 8, 1).name('MSAA').onFinishChange(reapplyTier)
-      bind(f, profile.ao, t, 'profile.ao')
-        .options({ off: false, performance: 'performance', medium: 'medium' })
-        .name('AO')
-        .onFinishChange(reapplyTier)
+      bind(f, profile.ao, t, 'profile.ao').options({ off: false, performance: 'performance', medium: 'medium' }).name('AO').onFinishChange(reapplyTier)
       bind(f, profile.shadowMap, t, 'profile.shadowMap', 256, 4096, 256).name('shadow map').onFinishChange(reapplyTier)
       bind(f, profile.bloomLevels, t, 'profile.bloomLevels', 1, 9, 1).name('bloom levels').onFinishChange(reapplyTier)
     }

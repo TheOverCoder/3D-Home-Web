@@ -6,7 +6,10 @@ import { createHash } from 'node:crypto'
 
 /** A readable name for the loading screen's list of downloads. */
 function labelFor(file: string): { label: string; kind: 'code' | 'model' | 'hdr' | 'texture' | 'other' } {
-  const name = file.split('/').pop()!.replace(/-[\w-]{8}(?=\.)/, '') // drop the content hash
+  const name = file
+    .split('/')
+    .pop()!
+    .replace(/-[\w-]{8}(?=\.)/, '') // drop the content hash
   const base = name.replace(/\.[^.]+$/, '')
   if (name.endsWith('.glb')) return { label: `Model · ${base.replace(/-/g, ' ')}`, kind: 'model' }
   if (/\.(hdr|exr)$/.test(name)) return { label: 'Sky light (HDR)', kind: 'hdr' }
@@ -220,7 +223,11 @@ export default defineConfig({
             { name: 'vendor-three', test: /node_modules[\\/]three[\\/]/, priority: 20 },
             // the sculpted models and the kit they are made with: shared by the scene and the model gallery
             { name: 'models', test: /src[\\/](models[\\/](cow|sheep|chicken|person|crops|plants)|lib[\\/]sculpt[\\/])/, priority: 5 },
-            { name: 'vendor-r3f', test: /node_modules[\\/](@react-three|three-stdlib|troika-[^\\/]+|camera-controls|postprocessing|n8ao|maath|ecctrl|three-mesh-bvh|@monogrid|meshline|stats-gl|suspend-react|its-fine|hls\.js)[\\/]/, priority: 10 },
+            {
+              name: 'vendor-r3f',
+              test: /node_modules[\\/](@react-three|three-stdlib|troika-[^\\/]+|camera-controls|postprocessing|n8ao|maath|ecctrl|three-mesh-bvh|@monogrid|meshline|stats-gl|suspend-react|its-fine|hls\.js)[\\/]/,
+              priority: 10,
+            },
           ],
         },
       },

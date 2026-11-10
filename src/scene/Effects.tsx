@@ -1,17 +1,6 @@
 import { useCallback, useMemo, useRef, type JSX } from 'react'
 import { useFrame } from '@react-three/fiber'
-import {
-  Bloom,
-  BrightnessContrast,
-  ChromaticAberration,
-  DepthOfField,
-  EffectComposer,
-  HueSaturation,
-  N8AO,
-  Noise,
-  ToneMapping,
-  Vignette,
-} from '@react-three/postprocessing'
+import { Bloom, BrightnessContrast, ChromaticAberration, DepthOfField, EffectComposer, HueSaturation, N8AO, Noise, ToneMapping, Vignette } from '@react-three/postprocessing'
 import { BlendFunction, ToneMappingMode, type DepthOfFieldEffect } from 'postprocessing'
 import { Vector2 } from 'three'
 import { create } from 'zustand'
@@ -80,31 +69,11 @@ export function Effects() {
   const ao = profile.ao[quality]
   // moderate intensity: strong AO turns the dark undersides of furniture into noisy black patches
   if (ao) {
-    fx.push(
-      <N8AO
-        key="ao"
-        ref={aoRef as never}
-        aoRadius={LOOK.ao.radius}
-        intensity={LOOK.ao.intensity}
-        color="#2a2018"
-        distanceFalloff={LOOK.ao.falloff}
-        quality={ao}
-        halfRes
-      />,
-    )
+    fx.push(<N8AO key="ao" ref={aoRef as never} aoRadius={LOOK.ao.radius} intensity={LOOK.ao.intensity} color="#2a2018" distanceFalloff={LOOK.ao.falloff} quality={ao} halfRes />)
   }
   fx.push(<primitive key="sanitize" object={sanitize} />)
   if (high && depthOfField && profile.lensEffects) {
-    fx.push(
-      <DepthOfField
-        key="dof"
-        ref={dof}
-        worldFocusDistance={4}
-        worldFocusRange={view === 'first' ? 6 : 14}
-        bokehScale={view === 'first' ? 1.1 : 0.8}
-        resolutionScale={0.5}
-      />,
-    )
+    fx.push(<DepthOfField key="dof" ref={dof} worldFocusDistance={4} worldFocusRange={view === 'first' ? 6 : 14} bokehScale={view === 'first' ? 1.1 : 0.8} resolutionScale={0.5} />)
   }
   const { bloom, grade, vignette } = LOOK
   fx.push(

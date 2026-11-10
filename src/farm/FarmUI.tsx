@@ -201,7 +201,6 @@ function BedPanel({ bed }: { bed: number }) {
   )
 }
 
-
 /** Spending coins on the farm itself (a bed, a field) always asks first: what it is, what it costs, what you have,
  *  and a Build button that only arms after a moment — never on the button you press to water or harvest. */
 function BuildPanel({ bed }: { bed: number }) {
@@ -428,7 +427,13 @@ function upgradeStep(id: string): { level: number; levels: number; icon: ReactNo
     case 'cow':
       return { level: farm.cows - COW.startCows, levels: COW.maxCows - COW.startCows, icon: glyph('cow'), now: String(farm.cows), next: farm.cows < COW.maxCows ? String(farm.cows + 1) : null }
     case 'sheep':
-      return { level: farm.sheep - SHEEP.startSheep, levels: SHEEP.maxSheep - SHEEP.startSheep, icon: glyph('ewe'), now: String(farm.sheep), next: farm.sheep < SHEEP.maxSheep ? String(farm.sheep + 1) : null }
+      return {
+        level: farm.sheep - SHEEP.startSheep,
+        levels: SHEEP.maxSheep - SHEEP.startSheep,
+        icon: glyph('ewe'),
+        now: String(farm.sheep),
+        next: farm.sheep < SHEEP.maxSheep ? String(farm.sheep + 1) : null,
+      }
     case 'hen':
       return { level: farm.hens - EGG.startHens, levels: EGG.maxHens - EGG.startHens, icon: glyph('chicken'), now: String(farm.hens), next: farm.hens < EGG.maxHens ? String(farm.hens + 1) : null }
     case 'east':
@@ -525,4 +530,3 @@ export function FarmUI() {
     </>
   )
 }
-

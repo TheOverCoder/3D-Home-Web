@@ -13,7 +13,6 @@ import { openEdit } from '../home/decorate'
 // card along the bottom that says what to do, or about what is picked — turn a place, send it back to where it
 // started, buy a field — and a Done button where the settings were.
 
-
 /** Opens the edit mode for where you are (B): indoors the house's (its furniture), outdoors the farm's. */
 export function EditButton() {
   const phase = useHome((s) => s.phase)

@@ -44,7 +44,7 @@ export function hedgeRun(axis: 'x' | 'z', at: number, from: number, to: number, 
   const out: BufferGeometry[] = []
   const r = mulberry(seed)
   // in sections, so the top line wanders a little like a real clipped hedge
-  for (let a = from; a < to - 0.01; ) {
+  for (let a = from; a < to - 0.01;) {
     const len = Math.min(to - a, 2.4 + r() * 1.2)
     const h = 1.45 + r() * 0.2
     const depth = 0.95

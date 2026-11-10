@@ -21,32 +21,65 @@ function Fixture({ def, at, on }: { def: LampDef; at: [number, number, number]; 
     case 'floor':
       return (
         <group position={[x, 0, z]}>
-          <mesh position={[0, 0.02, 0]} castShadow><cylinderGeometry args={[0.2, 0.22, 0.04, 24]} />{metal}</mesh>
-          <mesh position={[0, 0.7, 0]} castShadow><cylinderGeometry args={[0.012, 0.012, 1.4, 10]} />{metal}</mesh>
-          <mesh position={[0, y, 0]}><cylinderGeometry args={[0.2, 0.28, 0.34, 28, 1, true]} />{shadeMaterial}</mesh>
+          <mesh position={[0, 0.02, 0]} castShadow>
+            <cylinderGeometry args={[0.2, 0.22, 0.04, 24]} />
+            {metal}
+          </mesh>
+          <mesh position={[0, 0.7, 0]} castShadow>
+            <cylinderGeometry args={[0.012, 0.012, 1.4, 10]} />
+            {metal}
+          </mesh>
+          <mesh position={[0, y, 0]}>
+            <cylinderGeometry args={[0.2, 0.28, 0.34, 28, 1, true]} />
+            {shadeMaterial}
+          </mesh>
         </group>
       )
     case 'desk':
       return (
         <group position={[x, 0.76, z]}>
-          <mesh position={[0, 0.015, 0]} castShadow><cylinderGeometry args={[0.1, 0.11, 0.03, 20]} />{metal}</mesh>
-          <mesh position={[0, 0.17, 0]} castShadow><cylinderGeometry args={[0.008, 0.008, 0.32, 8]} />{metal}</mesh>
-          <mesh position={[0, y - 0.76, 0]}><cylinderGeometry args={[0.07, 0.12, 0.14, 20, 1, true]} />{shadeMaterial}</mesh>
+          <mesh position={[0, 0.015, 0]} castShadow>
+            <cylinderGeometry args={[0.1, 0.11, 0.03, 20]} />
+            {metal}
+          </mesh>
+          <mesh position={[0, 0.17, 0]} castShadow>
+            <cylinderGeometry args={[0.008, 0.008, 0.32, 8]} />
+            {metal}
+          </mesh>
+          <mesh position={[0, y - 0.76, 0]}>
+            <cylinderGeometry args={[0.07, 0.12, 0.14, 20, 1, true]} />
+            {shadeMaterial}
+          </mesh>
         </group>
       )
     case 'counter':
       return (
         <group position={[x, 0.91, z]}>
-          <mesh position={[0, 0.02, 0]} castShadow><cylinderGeometry args={[0.09, 0.1, 0.04, 20]} />{metal}</mesh>
-          <mesh position={[0, 0.2, 0]} castShadow><cylinderGeometry args={[0.012, 0.012, 0.36, 8]} />{metal}</mesh>
-          <mesh position={[0, y - 0.91, 0]}><sphereGeometry args={[0.1, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.62]} />{shadeMaterial}</mesh>
+          <mesh position={[0, 0.02, 0]} castShadow>
+            <cylinderGeometry args={[0.09, 0.1, 0.04, 20]} />
+            {metal}
+          </mesh>
+          <mesh position={[0, 0.2, 0]} castShadow>
+            <cylinderGeometry args={[0.012, 0.012, 0.36, 8]} />
+            {metal}
+          </mesh>
+          <mesh position={[0, y - 0.91, 0]}>
+            <sphereGeometry args={[0.1, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.62]} />
+            {shadeMaterial}
+          </mesh>
         </group>
       )
     case 'bedside':
       return (
         <group position={[x, 0.585, z]}>
-          <mesh position={[0, 0.13, 0]} castShadow><cylinderGeometry args={[0.04, 0.08, 0.26, 16]} /><meshStandardMaterial color="#c9b79c" roughness={0.6} /></mesh>
-          <mesh position={[0, y - 0.585, 0]}><cylinderGeometry args={[0.1, 0.16, 0.2, 24, 1, true]} />{shadeMaterial}</mesh>
+          <mesh position={[0, 0.13, 0]} castShadow>
+            <cylinderGeometry args={[0.04, 0.08, 0.26, 16]} />
+            <meshStandardMaterial color="#c9b79c" roughness={0.6} />
+          </mesh>
+          <mesh position={[0, y - 0.585, 0]}>
+            <cylinderGeometry args={[0.1, 0.16, 0.2, 24, 1, true]} />
+            {shadeMaterial}
+          </mesh>
         </group>
       )
   }

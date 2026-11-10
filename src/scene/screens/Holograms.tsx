@@ -229,15 +229,7 @@ function Rings({ def, reveal }: { def: ScreenDef; reveal: Reveal }) {
               side={DoubleSide}
             />
           </mesh>
-          <Text
-            font={interBold}
-            fontSize={0.05}
-            color={i === 0 ? def.accent : '#ffffff'}
-            fillOpacity={1}
-            position={[0.36, 0.17 - i * 0.11, 0]}
-            anchorX="left"
-            anchorY="middle"
-          >
+          <Text font={interBold} fontSize={0.05} color={i === 0 ? def.accent : '#ffffff'} fillOpacity={1} position={[0.36, 0.17 - i * 0.11, 0]} anchorX="left" anchorY="middle">
             {`${b.label}  ${Math.round(b.value * 100)}%`}
           </Text>
         </group>
@@ -392,16 +384,7 @@ export function Hologram({ def }: { def: ScreenDef }) {
     <group ref={root} name="hologram" position={[0, 0.88, 0]} visible={false}>
       <mesh position={[0, -0.02 + 0.3, 0]}>
         <cylinderGeometry args={[0.36, 0.29, 0.6, 40, 1, true]} />
-        <meshBasicMaterial
-          ref={beamMat}
-          map={beam()}
-          color={def.accent}
-          transparent
-          opacity={0}
-          depthWrite={false}
-          blending={AdditiveBlending}
-          side={DoubleSide}
-        />
+        <meshBasicMaterial ref={beamMat} map={beam()} color={def.accent} transparent opacity={0} depthWrite={false} blending={AdditiveBlending} side={DoubleSide} />
       </mesh>
       <group ref={face}>
         <Kind def={def} reveal={reveal} />

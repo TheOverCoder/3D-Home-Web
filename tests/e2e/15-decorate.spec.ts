@@ -124,7 +124,7 @@ test.describe('decorating the house', () => {
     await page.waitForTimeout(600) // the Buy button arms a moment after the card opens
     await page.locator('.farm-panel .farm-buy').click()
     await until(game, () => (window as any).__home.farm.state.coins === 470)
-    await until(game, () => /^stool-/.test((window as any).__home.home.decorate.useDecorate.getState().picked ?? ''))
+    await until(game, () => ((window as any).__home.home.decorate.useDecorate.getState().picked ?? '').startsWith('stool-'))
     expect((await layout(game)).pieces.filter((p: any) => p.type === 'stool')).toHaveLength(3)
     await page.keyboard.press('Control+KeyZ')
     await page.keyboard.press('Control+KeyZ')

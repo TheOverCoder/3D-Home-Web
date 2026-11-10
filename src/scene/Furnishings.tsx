@@ -170,9 +170,7 @@ function Sofa() {
       {[-1.03, 1.03].map((x) => (
         <B key={x} size={[0.18, 0.56, 0.95]} position={[x, 0.37, 0]} color={fabric} roughness={1} radius={0.05} mat="fabric" tile={0.32} />
       ))}
-      {[-0.95, 0.95].flatMap((x) => [-0.38, 0.38].map((z) => (
-        <B key={`${x}${z}`} size={[0.06, 0.1, 0.06]} position={[x, 0.05, z]} color="#2a1d14" radius={0.01} />
-      )))}
+      {[-0.95, 0.95].flatMap((x) => [-0.38, 0.38].map((z) => <B key={`${x}${z}`} size={[0.06, 0.1, 0.06]} position={[x, 0.05, z]} color="#2a1d14" radius={0.01} />))}
     </group>
   )
 }
@@ -182,9 +180,7 @@ function CoffeeTable() {
     <group>
       <B size={[1.1, 0.05, 0.6]} position={[0, 0.4, 0]} color="#a07448" roughness={0.55} radius={0.02} mat="veneer" tile={0.9} />
       <B size={[1.0, 0.04, 0.5]} position={[0, 0.16, 0]} color="#8a6340" roughness={0.6} radius={0.015} mat="veneer" tile={0.9} />
-      {[-0.5, 0.5].flatMap((x) => [-0.25, 0.25].map((z) => (
-        <B key={`${x}${z}`} size={[0.05, 0.38, 0.05]} position={[x, 0.19, z]} color="#3d2a1b" radius={0.01} />
-      )))}
+      {[-0.5, 0.5].flatMap((x) => [-0.25, 0.25].map((z) => <B key={`${x}${z}`} size={[0.05, 0.38, 0.05]} position={[x, 0.19, z]} color="#3d2a1b" radius={0.01} />))}
     </group>
   )
 }
@@ -221,7 +217,7 @@ function leafGeometry() {
 function Plant({ tall = 1 }: { tall?: number }) {
   const leaves = useMemo(() => {
     let seed = Math.round(tall * 97)
-    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647
     return Array.from({ length: 16 }, (_, i) => {
       const a = i * 2.4 + rnd() * 0.4 // golden-angle spiral
       const lift = 0.32 + (i / 16) * 0.5 * tall
@@ -247,14 +243,7 @@ function Plant({ tall = 1 }: { tall?: number }) {
       {leaves.map((l) => (
         <group key={l.key} position={[0, l.y, 0]} rotation={[0, l.a, 0]}>
           <mesh geometry={leafGeometry()} rotation={[l.tilt, 0, 0]} scale={[l.len, l.len, l.len]} castShadow>
-            <meshStandardMaterial
-              color={l.key % 2 ? '#d6ffd0' : '#f0fff0'}
-              map={set.map}
-              normalMap={set.normalMap}
-              roughnessMap={set.roughnessMap}
-              roughness={1}
-              side={DoubleSide}
-            />
+            <meshStandardMaterial color={l.key % 2 ? '#d6ffd0' : '#f0fff0'} map={set.map} normalMap={set.normalMap} roughnessMap={set.roughnessMap} roughness={1} side={DoubleSide} />
           </mesh>
         </group>
       ))}
@@ -319,7 +308,7 @@ function Bookshelf() {
   const books = useMemo(() => {
     const palette = ['#b4543a', '#3d6a8a', '#d7b25a', '#4d7a58', '#7a4d7a', '#c9c2b3', '#355c63']
     let seed = 7
-    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647
     const out: { key: string; x: number; y: number; w: number; h: number; c: string }[] = []
     for (const y of [0.34, 0.74, 1.14, 1.54]) {
       let x = -0.58
@@ -578,9 +567,15 @@ export function Furnishings() {
         <Placed key={`${p.id}|${p.x}|${p.z}|${p.rot}`} p={p} />
       ))}
       {/* pictures on the walls */}
-      <Decor position={[-6.88, 1.65, 3.4]} rotationY={Math.PI / 2}><Frame size={[1.1, 0.75]} color="#c9b79c" accent="#3d6a8a" /></Decor>
-      <Decor position={[-6.88, 1.6, 4.7]} rotationY={Math.PI / 2}><Frame size={[0.6, 0.8]} color="#d9d0c0" accent="#b4543a" /></Decor>
-      <Decor position={[3.5, 1.7, 5.9]} rotationY={Math.PI}><Frame size={[0.8, 0.6]} color="#cfd6dc" accent="#4d7a58" /></Decor>
+      <Decor position={[-6.88, 1.65, 3.4]} rotationY={Math.PI / 2}>
+        <Frame size={[1.1, 0.75]} color="#c9b79c" accent="#3d6a8a" />
+      </Decor>
+      <Decor position={[-6.88, 1.6, 4.7]} rotationY={Math.PI / 2}>
+        <Frame size={[0.6, 0.8]} color="#d9d0c0" accent="#b4543a" />
+      </Decor>
+      <Decor position={[3.5, 1.7, 5.9]} rotationY={Math.PI}>
+        <Frame size={[0.8, 0.6]} color="#cfd6dc" accent="#4d7a58" />
+      </Decor>
     </group>
   )
 }

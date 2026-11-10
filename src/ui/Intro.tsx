@@ -52,7 +52,10 @@ function Failure() {
           className="chip-btn"
           onClick={() => {
             const text = `${failure.kind}: ${failure.detail ?? failure.message}\n\n${collectDiagnostics()}`
-            void navigator.clipboard?.writeText(text).then(() => setCopied(true), () => setCopied(false))
+            void navigator.clipboard?.writeText(text).then(
+              () => setCopied(true),
+              () => setCopied(false),
+            )
           }}
         >
           {copied ? 'Copied' : 'Copy details'}
@@ -134,9 +137,7 @@ function SettingsPanel() {
       <div className="row">
         <span className="row-label">
           Kept on this device
-          <small>
-            {storage ? `${mb(storage.usage)} MB — the game files and your farms${storage.persisted ? ' · protected from clean-ups' : ''}` : 'game files and your farms'}
-          </small>
+          <small>{storage ? `${mb(storage.usage)} MB — the game files and your farms${storage.persisted ? ' · protected from clean-ups' : ''}` : 'game files and your farms'}</small>
         </span>
         <div className="row-actions">
           {storage && !storage.persisted && (

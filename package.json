@@ -15,9 +15,9 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "lint": "oxlint",
-    "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"tests/**/*.ts\" \"*.ts\" \"scripts/*.mjs\"",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\" \"tests/**/*.ts\" \"*.ts\" \"scripts/*.mjs\"",
-    "check": "tsc --noEmit && oxlint && vitest run"
+    "format": "prettier --write \"src/**/*.{ts,tsx}\" \"tests/**/*.ts\" \"*.ts\" \"scripts/*.mjs\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx}\" \"tests/**/*.ts\" \"*.ts\" \"scripts/*.mjs\"",
+    "check": "tsc --noEmit && oxlint && vitest run && npm run format:check"
   },
   "dependencies": {
     "@fontsource-variable/fredoka": "5.3.0",

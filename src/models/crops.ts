@@ -255,8 +255,29 @@ function cob(): Shape {
     .pattern((x, _y, z) => 0.5 + 0.6 * Math.sin(Math.atan2(z, x) * 2.5 + 0.4), rgb(0x6e9a45))
   const parts: Shape[] = [ear, husk]
   // the tips of the husk leaves, opening a little round the kernels
-  for (let h = 0; h < 3; h++) parts.push(around(leaflet(0.3, 0.16, -0.03).fill(rgb(0x86ad55), 0).place([0, 0, 0], [-Math.PI / 2 + 0.35, 0, 0]), 0, (h / 3) * Math.PI * 2 + 0.3, [0, 0.62, 0]).place([0, 0, 0]))
-  for (let s = 0; s < 4; s++) parts.push(tube([[0, 0.9, 0], [Math.cos(s * 1.6) * 0.08, 1.02, Math.sin(s * 1.6) * 0.08], [Math.cos(s * 1.6) * 0.15, 1.06, Math.sin(s * 1.6) * 0.15]], [0.02, 0.015, 0], { seg: 3, steps: 1 }).fill(SILK, 0))
+  for (let h = 0; h < 3; h++)
+    parts.push(
+      around(
+        leaflet(0.3, 0.16, -0.03)
+          .fill(rgb(0x86ad55), 0)
+          .place([0, 0, 0], [-Math.PI / 2 + 0.35, 0, 0]),
+        0,
+        (h / 3) * Math.PI * 2 + 0.3,
+        [0, 0.62, 0],
+      ).place([0, 0, 0]),
+    )
+  for (let s = 0; s < 4; s++)
+    parts.push(
+      tube(
+        [
+          [0, 0.9, 0],
+          [Math.cos(s * 1.6) * 0.08, 1.02, Math.sin(s * 1.6) * 0.08],
+          [Math.cos(s * 1.6) * 0.15, 1.06, Math.sin(s * 1.6) * 0.15],
+        ],
+        [0.02, 0.015, 0],
+        { seg: 3, steps: 1 },
+      ).fill(SILK, 0),
+    )
   // the shank: the short stalk the cob grows on, from the stalk of the plant
   parts.push(tube([[0, 0.04, 0], [0, -0.03, -0.1], STALK_END.cob], [0.06, 0.05, 0.05], { seg: 5, steps: 1 }).fill(rgb(0x7fa850), 0))
   return merge(...parts)
@@ -269,9 +290,28 @@ function tassel(): Shape {
   for (let k = 0; k < 7; k++) {
     const a = (k / 7) * Math.PI * 2
     const out = 0.25 + r() * 0.2
-    parts.push(tube([[0, 0, 0], [Math.cos(a) * out * 0.5, 0.5, Math.sin(a) * out * 0.5], [Math.cos(a) * out, 0.85 + r() * 0.15, Math.sin(a) * out]], [0.035, 0.025, 0], { seg: 3, steps: 0 }))
+    parts.push(
+      tube(
+        [
+          [0, 0, 0],
+          [Math.cos(a) * out * 0.5, 0.5, Math.sin(a) * out * 0.5],
+          [Math.cos(a) * out, 0.85 + r() * 0.15, Math.sin(a) * out],
+        ],
+        [0.035, 0.025, 0],
+        { seg: 3, steps: 0 },
+      ),
+    )
   }
-  parts.push(tube([[0, 0, 0], [0, 1.1, 0]], [0.04, 0], { seg: 4, steps: 1 }))
+  parts.push(
+    tube(
+      [
+        [0, 0, 0],
+        [0, 1.1, 0],
+      ],
+      [0.04, 0],
+      { seg: 4, steps: 1 },
+    ),
+  )
   return merge(...parts).fill([1, 1, 1], 1)
 }
 
@@ -290,7 +330,16 @@ function wheatEar(): Shape {
   const parts: Shape[] = [ear]
   for (let k = 0; k < 4; k++) {
     const a = (k / 4) * Math.PI * 2 + 0.5
-    parts.push(tube([[Math.cos(a) * 0.05, 0.85, Math.sin(a) * 0.04], [Math.cos(a) * 0.12, 1.2, Math.sin(a) * 0.08]], [0.012, 0], { seg: 3, steps: 1 }))
+    parts.push(
+      tube(
+        [
+          [Math.cos(a) * 0.05, 0.85, Math.sin(a) * 0.04],
+          [Math.cos(a) * 0.12, 1.2, Math.sin(a) * 0.08],
+        ],
+        [0.012, 0],
+        { seg: 3, steps: 1 },
+      ),
+    )
   }
   return merge(...parts).paint((_x, y) => {
     const k = 0.9 + 0.15 * smoothstep(0, 0.6, y)

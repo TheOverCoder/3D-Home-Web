@@ -119,7 +119,11 @@ describe('what a room may draw', () => {
     const out = sanitizeHome(JSON.parse(JSON.stringify(old)))
     expect(roomWeight(out, 'living')).toBeLessThanOrEqual(ROOM_WEIGHT)
     // the living room keeps the furniture it always had; the plants that do not fit wait in storage
-    for (const d of defaultHome().pieces) expect(out.pieces.some((p) => p.id === d.id), d.id).toBe(true)
+    for (const d of defaultHome().pieces)
+      expect(
+        out.pieces.some((p) => p.id === d.id),
+        d.id,
+      ).toBe(true)
     expect(out.pieces.length + out.stored.length).toBe(old.pieces.length)
     expect(out.stored.length).toBeGreaterThan(0)
     expect(out.stored.every((t) => t === 'plant-tall')).toBe(true)

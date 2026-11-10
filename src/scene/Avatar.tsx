@@ -47,8 +47,25 @@ const HAIR = '#2b2017'
 type Limb = { current: Group | null }
 
 // radius / height pairs, swept around the vertical axis and then squashed front-to-back
-const TORSO_LOW = [[0.001, 0], [0.15, 0], [0.147, 0.05], [0.137, 0.12], [0.132, 0.2], [0.142, 0.28], [0.157, 0.35], [0.163, 0.42]].map(([r, y]) => new Vector2(r, y))
-const TORSO_HIGH = [[0.163, 0.42], [0.172, 0.47], [0.168, 0.52], [0.135, 0.555], [0.08, 0.575], [0.06, 0.585], [0.001, 0.585]].map(([r, y]) => new Vector2(r, y))
+const TORSO_LOW = [
+  [0.001, 0],
+  [0.15, 0],
+  [0.147, 0.05],
+  [0.137, 0.12],
+  [0.132, 0.2],
+  [0.142, 0.28],
+  [0.157, 0.35],
+  [0.163, 0.42],
+].map(([r, y]) => new Vector2(r, y))
+const TORSO_HIGH = [
+  [0.163, 0.42],
+  [0.172, 0.47],
+  [0.168, 0.52],
+  [0.135, 0.555],
+  [0.08, 0.575],
+  [0.06, 0.585],
+  [0.001, 0.585],
+].map(([r, y]) => new Vector2(r, y))
 const TORSO_CAP = 0.42 // height where the lower and upper parts meet
 
 /**

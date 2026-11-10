@@ -6,11 +6,12 @@ The README has the overview; `tests/README.md` what each test guards.
 
 ## Before pushing
 
-- `npm run check` (types, oxlint, the Vitest unit tests: ~10 s), then the e2e suite:
+- `npm run check` (types, oxlint, the Vitest unit tests, the format check: ~15 s), then the e2e suite:
   `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium npx playwright test --trace off` (software WebGL, ~25 min; run single
   spec files while iterating). It builds and serves on :4185. A rule or a save change gets a unit test beside its
   code (`src/**/*.test.ts`, `tests/README.md`).
-- Code style: Prettier (`.prettierrc.json`: width 200, no semicolons, single quotes; `npm run format`). Comments say
+- Code style: Prettier (`.prettierrc.json`: width 200, no semicolons, single quotes; `npm run format`; the CSS keeps
+  its compact one-line rules by hand). Comments say
   what and why, in plain words.
 - Budget: under 250,000 triangles and 700 draw calls per view (`05-budget`). Check it when adding geometry.
 - Tests must not read a value that runs on in real time across separate `page.evaluate` calls (the farm ticks
