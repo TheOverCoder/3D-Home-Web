@@ -16,6 +16,7 @@ function labelFor(file: string): { label: string; kind: 'code' | 'model' | 'hdr'
   if (/\.css$/.test(name)) return { label: 'Styles', kind: 'other' }
   const known: Record<string, string> = {
     'vendor-physics': 'Physics engine (Rapier)',
+    rapier_wasm3d_bg: 'Physics engine (Rapier)', // its WebAssembly, a file of its own (rapierWasmAsFile below)
     'vendor-three': '3D engine (three.js)',
     'vendor-r3f': 'Scene tools & film effects',
     'vendor-react': 'Interface (React)',
@@ -25,6 +26,28 @@ function labelFor(file: string): { label: string; kind: 'code' | 'model' | 'hdr'
     proceduralTextures: 'Surface painter',
   }
   return { label: known[base] ?? 'Game code', kind: 'code' }
+}
+
+/**
+ * Rapier's compat build carries its WebAssembly as base64 inside the JS (2.2 MB of script, 830 KB gzipped); the
+ * package also ships the same binary as a file: the build loads that instead (143 KB of script and the 1.57 MB file,
+ * 612 KB gzipped together; compiled while it streams in, kept by the service worker like any other file). The dev
+ * server keeps the package as it is. A changed pattern (another Rapier version) fails the build, not the game.
+ */
+function rapierWasmAsFile(): Plugin {
+  // init's only argument in 0.19.x: `(<decoder>.toByteArray("<base64 wasm>").buffer)` (without `.buffer` the
+  // replacement still builds but the game fails to start)
+  const inlined = /\([\w$]+\.toByteArray\("AGFzbQ[A-Za-z0-9+/=]+"\)\.buffer\)/g
+  return {
+    name: 'home-rapier-wasm-file',
+    apply: 'build',
+    enforce: 'pre',
+    transform(code, id) {
+      if (!/[\\/]@dimforge[\\/]rapier3d-compat[\\/]rapier\.mjs$/.test(id)) return
+      if (code.match(inlined)?.length !== 1) this.error('@dimforge/rapier3d-compat: its inlined WebAssembly is not where this plugin expects it')
+      return { code: `import rapierWasmUrl from './rapier_wasm3d_bg.wasm?url';\n${code.replace(inlined, '({ module_or_path: rapierWasmUrl })')}`, map: null }
+    },
+  }
 }
 
 /**
@@ -163,7 +186,7 @@ self.addEventListener('fetch', (event) => {
 
 export default defineConfig({
   base: process.env.BASE_PATH ?? '/',
-  plugins: [react(), offlineAndProgress()],
+  plugins: [react(), rapierWasmAsFile(), offlineAndProgress()],
   assetsInclude: ['**/*.glb', '**/*.gltf', '**/*.hdr', '**/*.exr', '**/*.ktx2'],
   build: {
     target: 'es2022',
