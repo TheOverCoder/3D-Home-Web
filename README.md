@@ -27,6 +27,10 @@ Node 22.12 or newer (Vitest 5 needs it).
 
 Add `?debug` to the URL to expose `window.__home` (store, player state, `teleport(x,y,z)`, `farm` with `tick(seconds)` to fast-forward the garden, the `loader`, `music` and save `slots`), `?quality=high|medium|low` to pin graphics, `?light` for light graphics, and `?nosw` to run without the service worker.
 
+Developer tools (`src/debug/`), loaded only when asked for:
+
+- `?tune`: a live tuning panel (lil-gui, `src/debug/Tune.tsx`) — the farm's timers and prices, the film look and the lights, this device's profile per tier, a line with frames per second, draw calls and triangles (counted as `05-budget` counts them), and *Copy changes*: what you changed, as JSON to write back into the code (also in the console). It works on a phone too; `?debug&tune` gives both.
+
 ## Controls
 
 `WASD`/arrows walk · `Shift` run · `Space` jump · mouse to look (click the scene to capture the pointer; dragging also works) · `E` interact with what is in the view — or, looking at nothing, with the nearest thing within reach (the view turns to it) · `V` first/third person · `B` the farm's edit mode (`R` turns what is picked) · `Esc` close a screen or the edit mode, or open the settings.

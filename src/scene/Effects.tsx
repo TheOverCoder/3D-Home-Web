@@ -14,6 +14,7 @@ import {
 } from '@react-three/postprocessing'
 import { BlendFunction, ToneMappingMode, type DepthOfFieldEffect } from 'postprocessing'
 import { Vector2 } from 'three'
+import { create } from 'zustand'
 import { debugSet } from '../lib/debug'
 import { focus } from '../lib/focus'
 import { createHdrSanitizePass } from '../lib/hdrGuard'
@@ -25,6 +26,17 @@ interface N8AOPass {
   autoDetectTransparency: boolean
   configuration: { transparencyAware: boolean }
 }
+
+/** The film look's numbers, in one place: `?tune` (src/debug/Tune.tsx) changes them while the game runs. */
+export const LOOK = {
+  bloom: { low: 0.35, medium: 0.5, high: 0.6, threshold: 1, smoothing: 0.25 },
+  ao: { radius: 0.6, intensity: 1.15, falloff: 1.0 },
+  grade: { brightness: -0.01, contrast: 0.1, saturation: 0.1 },
+  vignette: { offset: 0.22, darkness: 0.72 },
+  grain: 0.1,
+}
+/** Bumped after LOOK (or the device profile) changed: the effects are made again with the new numbers. */
+export const useLook = create(() => ({ rev: 0 }))
 
 /**
  * The film look, in order: contact shadows → lens focus → bloom on the bright things → a lens fringe →
@@ -39,6 +51,7 @@ export function Effects() {
   const view = useHome((s) => s.view)
   const depthOfField = useSettings((s) => s.depthOfField)
   const filmGrain = useSettings((s) => s.filmGrain)
+  useLook((s) => s.rev)
   const dof = useRef<DepthOfFieldEffect>(null)
   debugSet('settings', useSettings)
   debugSet('focus', focus)
@@ -71,10 +84,10 @@ export function Effects() {
       <N8AO
         key="ao"
         ref={aoRef as never}
-        aoRadius={0.6}
-        intensity={1.15}
+        aoRadius={LOOK.ao.radius}
+        intensity={LOOK.ao.intensity}
         color="#2a2018"
-        distanceFalloff={1.0}
+        distanceFalloff={LOOK.ao.falloff}
         quality={ao}
         halfRes
       />,
@@ -93,12 +106,22 @@ export function Effects() {
       />,
     )
   }
-  fx.push(<Bloom key="bloom" intensity={high ? 0.6 : medium ? 0.5 : 0.35} luminanceThreshold={1} luminanceSmoothing={0.25} mipmapBlur levels={profile.bloomLevels[quality]} />)
+  const { bloom, grade, vignette } = LOOK
+  fx.push(
+    <Bloom
+      key="bloom"
+      intensity={high ? bloom.high : medium ? bloom.medium : bloom.low}
+      luminanceThreshold={bloom.threshold}
+      luminanceSmoothing={bloom.smoothing}
+      mipmapBlur
+      levels={profile.bloomLevels[quality]}
+    />,
+  )
   if (high && profile.lensEffects) fx.push(<ChromaticAberration key="ca" offset={fringe} radialModulation modulationOffset={0.25} />)
   fx.push(<ToneMapping key="tm" mode={ToneMappingMode.AGX} />)
-  fx.push(<BrightnessContrast key="bc" brightness={-0.01} contrast={0.1} />)
-  fx.push(<HueSaturation key="hs" saturation={0.1} />)
-  fx.push(<Vignette key="vig" offset={0.22} darkness={0.72} />)
-  if (filmGrain) fx.push(<Noise key="grain" blendFunction={BlendFunction.SOFT_LIGHT} opacity={0.1} />)
+  fx.push(<BrightnessContrast key="bc" brightness={grade.brightness} contrast={grade.contrast} />)
+  fx.push(<HueSaturation key="hs" saturation={grade.saturation} />)
+  fx.push(<Vignette key="vig" offset={vignette.offset} darkness={vignette.darkness} />)
+  if (filmGrain) fx.push(<Noise key="grain" blendFunction={BlendFunction.SOFT_LIGHT} opacity={LOOK.grain} />)
   return <EffectComposer multisampling={profile.msaa[quality]}>{fx}</EffectComposer>
 }
