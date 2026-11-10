@@ -344,7 +344,7 @@ if (typeof window !== 'undefined') {
   })
 }
 
-const toast = (text: string) => useHome.getState().showToast(text)
+const toast = (text: string, item?: string) => useHome.getState().showToast(text, item)
 const pick = <T,>(list: readonly T[]) => list[Math.floor(Math.random() * list.length)]
 const rand = (a: number, b: number) => a + Math.random() * (b - a)
 const remember = (id: ProduceId) => {
@@ -446,7 +446,7 @@ export function harvestBeds(beds: number[]) {
     b.water = 0
   }
   if (!total) return 0
-  toast(`+ ${[...got].map(([crop, n]) => count(crop, n)).join(', ')}`)
+  toast(`+ ${[...got].map(([crop, n]) => count(crop, n)).join(', ')}`, [...got][0][0])
   bump()
   save()
   return total
@@ -480,7 +480,7 @@ export function pickLemons() {
   farm.lemonTimer = 0
   gain('lemon', n)
   farm.stats.harvested += n
-  toast(`+ ${count('lemon', n)}`)
+  toast(`+ ${count('lemon', n)}`, 'lemon')
   bump()
   save()
   return n
@@ -492,7 +492,7 @@ export function collectEggs() {
   farm.eggs = 0
   gain('egg', n)
   farm.stats.harvested += n
-  toast(`+ ${count('egg', n)}`)
+  toast(`+ ${count('egg', n)}`, 'egg')
   bump()
   save()
   return n
@@ -507,7 +507,7 @@ export function milkCow(i: number) {
   farm.milkTimer[i] = 0
   gain('milk', n)
   farm.stats.harvested += n
-  toast(`+ ${count('milk', n)} from ${cowName(i)}`)
+  toast(`+ ${count('milk', n)}`, 'milk')
   bump()
   save()
   return n
@@ -528,7 +528,7 @@ export function shear(i: number) {
   farm.woolTimer[i] = 0
   gain('wool', n)
   farm.stats.harvested += n
-  toast(`+ ${count('wool', n)} from ${sheepName(i)}`)
+  toast(`+ ${count('wool', n)}`, 'wool')
   bump()
   save()
   return n
@@ -557,7 +557,7 @@ export function millCollect() {
   if (!output || !ready) return 0
   gain(output, ready)
   farm.mill = freshMill()
-  toast(`+ ${count(output, ready)}`)
+  toast(`+ ${count(output, ready)}`, output)
   bump()
   save()
   return ready
@@ -584,7 +584,7 @@ export function takeOut() {
   gain(id, 1)
   farm.stats.baked += 1
   farm.oven = freshOven()
-  toast(`A ${produceById(id).name}, fresh from the oven`)
+  toast(`+ 1 ${produceById(id).name}`, id)
   bump()
   save()
   return id
@@ -611,7 +611,7 @@ export function loomCollect() {
   if (!n) return 0
   gain('cloth', n)
   farm.loom = freshLoom()
-  toast(`+ ${count('cloth', n)}, fresh off the loom`)
+  toast(`+ ${count('cloth', n)}`, 'cloth')
   bump()
   save()
   return n
@@ -845,7 +845,7 @@ export function acceptOffer(id: number) {
   const v = visitorById(id)
   if (!v || v.phase !== 'queued' || !canSell(v)) return false
   sell(v)
-  toast(`Sold ${count(v.want, v.qty)} to ${v.name} · + ${v.offer} coins`)
+  toast(`+ ${v.offer} coins · ${v.name}`, 'coin')
   farmSound('coins')
   save()
   return true
@@ -876,7 +876,7 @@ export function sellAll() {
     coins += v.offer
   }
   if (!buyers) return 0
-  toast(`Sold to ${buyers} ${buyers === 1 ? 'buyer' : 'buyers'} · + ${coins} coins`)
+  toast(`+ ${coins} coins · ${buyers} ${buyers === 1 ? 'buyer' : 'buyers'}`, 'coin')
   farmSound('coins')
   save()
   return buyers

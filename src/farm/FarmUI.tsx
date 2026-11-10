@@ -7,6 +7,8 @@ import { useHome } from '../store'
 import { BEDS, CROPS, EXPANSIONS, MILL, MILLABLE, OVEN, PRODUCE, RECIPES, UPGRADES, arrivalEvery, count, produceById, queuePlaces, type CropId, type MillInput, type ProduceId } from './data'
 import { EditButton, EditPanel } from './EditPanel'
 import { iconUrl } from './icons'
+import { art, type ArtId } from '../ui/art'
+import { Check, Clock, Users, X } from '../ui/glyphs'
 import {
   acceptOffer,
   arrivalSeconds,
@@ -31,7 +33,6 @@ import {
   upgradePrice,
   useFarm,
   waiting,
-  yieldOf,
   type Visitor,
 } from './state'
 
@@ -49,13 +50,6 @@ function useChipRoom() {
 }
 const chipRoom = () => Math.max(2, Math.min(9, Math.floor((window.innerWidth - 230) / 66)))
 
-const PersonGlyph = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden="true">
-    <circle cx="12" cy="7.5" r="3.5" />
-    <path d="M5 20.5c.8-4 3.6-6.5 7-6.5s6.2 2.5 7 6.5" />
-  </svg>
-)
-
 /** Coins, the line at the gate and what is in the basket, while you are in the garden. Tap it for the whole basket. */
 function FarmChip() {
   useFarm((s) => s.rev)
@@ -69,12 +63,12 @@ function FarmChip() {
   return (
     <button className="farm-chip" aria-label="Your coins and harvest — open the basket" onClick={() => !panel && openPanel({ kind: 'basket' })}>
       <span className="farm-chip-item coins" title="Coins">
-        <img src={iconUrl('coin', 48)} alt="" />
+        <img src={art('coin')} alt="" />
         <b>{farm.coins}</b>
       </span>
       {farm.started && (
         <span className={`farm-chip-item line${line >= placesInLine() ? ' full' : ''}`} title="Buyers in line at the gate">
-          <PersonGlyph />
+          <Users weight="bold" />
           <b>
             {line}/{placesInLine()}
           </b>
@@ -91,7 +85,8 @@ function FarmChip() {
   )
 }
 
-function Shell({ title, sub, children, onClose }: { title: string; sub?: ReactNode; children: ReactNode; onClose: () => void }) {
+/** A farm panel: its picture, a title of a few words, a row of chips, what it is for, and a close button. */
+function Shell({ title, art: pic, sub, children, onClose }: { title: string; art?: string; sub?: ReactNode; children: ReactNode; onClose: () => void }) {
   const first = useRef<HTMLDivElement>(null)
   useEffect(() => {
     first.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus({ preventScroll: true })
@@ -100,12 +95,13 @@ function Shell({ title, sub, children, onClose }: { title: string; sub?: ReactNo
     <div className="farm-backdrop" onClick={onClose}>
       <div className="farm-panel" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()} ref={first}>
         <header>
-          <div>
+          {pic && <img className="art farm-head-art" src={pic} alt="" />}
+          <div className="farm-head-text">
             <h2>{title}</h2>
-            {sub && <p className="farm-sub">{sub}</p>}
+            {sub && <div className="farm-sub">{sub}</div>}
           </div>
           <button className="close" onClick={onClose} aria-label="Close (Esc)">
-            ✕
+            <X weight="bold" />
           </button>
         </header>
         {children}
@@ -116,10 +112,20 @@ function Shell({ title, sub, children, onClose }: { title: string; sub?: ReactNo
 
 const Coins = ({ n }: { n: number }) => (
   <span className="farm-coins">
-    <img src={iconUrl('coin', 40)} alt="" />
+    <img src={art('coin')} alt="" />
     {n}
   </span>
 )
+
+/** What you have, as a chip. */
+const Purse = () => (
+  <span className="tag">
+    <img src={art('coin')} alt="" />
+    {farm.coins}
+  </span>
+)
+
+const seconds = (s: number) => (s < 60 ? `${s} s` : `${Math.round((s / 60) * 10) / 10} min`)
 
 function SeedsPanel({ bed }: { bed: number }) {
   useFarm((s) => s.rev)
@@ -143,29 +149,30 @@ function SeedsPanel({ bed }: { bed: number }) {
     return () => window.removeEventListener('keydown', onKey)
   })
   return (
-    <Shell title={beds.length > 1 ? `Plant ${beds.length} beds` : 'Plant seeds'} sub={<>Seeds are bought as you plant{beds.length > 1 ? ', for each bed' : ''} · you have <Coins n={farm.coins} /></>} onClose={close}>
+    <Shell title={beds.length > 1 ? `Plant ${beds.length} beds` : 'Plant seeds'} art={art('seedling')} sub={<Purse />} onClose={close}>
       <div className="farm-grid">
         {CROPS.map((c, i) => {
           const afford = farm.coins >= c.seedCost
           return (
             <button key={c.id} className="farm-card" disabled={!afford} onClick={() => choose(c.id)}>
               <kbd className="farm-key">{i + 1}</kbd>
-              <img src={iconUrl(c.id, 96)} alt="" />
+              <img className="art" src={iconUrl(c.id, 128)} alt="" />
               <span className="farm-card-name">{cap(c.plural)}</span>
-              <span className="farm-card-meta">
-                ready in {c.growSeconds < 60 ? `${c.growSeconds} s` : `${Math.round((c.growSeconds / 60) * 10) / 10} min`}
-              </span>
-              <span className="farm-card-meta">
-                {yieldOf(c.id)} × ~{c.price} coins
-              </span>
-              <span className="farm-card-price">
-                seeds <Coins n={c.seedCost} />
+              <span className="farm-card-tags">
+                <span className="tag">
+                  <Clock weight="bold" />
+                  {seconds(c.growSeconds)}
+                </span>
+                <span className="tag">
+                  <img src={art('coin')} alt="" />
+                  {c.seedCost}
+                  {beds.length > 1 ? '/bed' : ''}
+                </span>
               </span>
             </button>
           )
         })}
       </div>
-      <p className="farm-hint">Water them when the bed asks for it. Buyers come to the gate for what you grow.</p>
     </Shell>
   )
 }
@@ -200,19 +207,19 @@ function BuildPanel({ bed }: { bed: number }) {
     close()
   }
   return (
-    <Shell title={title} sub={<>You have <Coins n={farm.coins} /></>} onClose={close}>
-      <p className="farm-hint">{blurb}</p>
+    <Shell title={title} art={art(field ? 'sheaf-of-rice' : 'hammer')} sub={<Purse />} onClose={close}>
+      <p className="farm-line">{blurb}</p>
       <div className="farm-confirm">
-        <button className="farm-secondary" onClick={close}>
+        <button className="btn soft" onClick={close}>
           Not now
         </button>
-        <button className={`primary farm-buy${armed ? '' : ' arming'}`} disabled={!afford} aria-disabled={!armed} onClick={confirm}>
+        <button className={`btn farm-buy${armed ? '' : ' arming'}`} disabled={!afford} aria-disabled={!armed} onClick={confirm}>
           {afford ? (
             <>
               Build · <Coins n={price} />
             </>
           ) : (
-            <>{price - farm.coins} more coins needed</>
+            <>Needs {price - farm.coins} more</>
           )}
         </button>
       </div>
@@ -259,16 +266,34 @@ function QueuePanel() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
-  const next = farm.started ? (line.length + coming >= places ? 'the line is full' : `next buyer in ${clockText(farm.nextVisitorIn)}`) : 'buyers come once you plant'
+  const next = farm.started ? (line.length + coming >= places ? 'full' : clockText(farm.nextVisitorIn)) : null
   return (
-    <Shell title="Buyers at the gate" sub={`${line.length} of ${places} waiting${coming ? ` · ${coming} on the way` : ''} · ${next}`} onClose={close}>
+    <Shell
+      title="Buyers"
+      art={art('shopping-bags')}
+      sub={
+        <>
+          <span className="tag">
+            <Users weight="bold" />
+            {line.length}/{places}
+          </span>
+          {next && (
+            <span className="tag">
+              <Clock weight="bold" />
+              {next === 'full' ? 'line full' : `next ${next}`}
+            </span>
+          )}
+        </>
+      }
+      onClose={close}
+    >
       <button className="primary farm-sell-all" disabled={!all.buyers} onClick={() => sellAll()}>
         {all.buyers ? (
           <>
-            Sell to everyone I can · {all.buyers} {all.buyers === 1 ? 'buyer' : 'buyers'} · + {all.coins} coins
+            Sell to all · <Coins n={all.coins} />
           </>
         ) : (
-          'Nothing in the basket for anyone yet'
+          'Nothing to sell yet'
         )}
       </button>
       <div className="farm-list farm-queue">
@@ -276,41 +301,42 @@ function QueuePanel() {
           const have = farm.inv[v.want]
           const ok = canSell(v)
           return (
-            <div key={v.id} className={`farm-row farm-buyer${ok ? ' ok' : ''}`}>
+            <div key={v.id} className={`farm-buyer${ok ? ' ok' : ''}`}>
               <span className="farm-avatar small" style={{ background: v.look.shirt, color: light(v.look.shirt) ? '#1d232c' : '#fff' }} aria-hidden="true">
                 {i + 1}
               </span>
-              <img className="farm-buyer-icon" src={iconUrl(v.want, 64)} alt="" />
+              <span className="farm-want">
+                <img className="art" src={iconUrl(v.want, 128)} alt="" />
+                <b>×{v.qty}</b>
+              </span>
               <div className="farm-buyer-body">
-                <strong>
-                  {v.name} · {count(v.want, v.qty)}
-                </strong>
+                <strong>{v.name}</strong>
                 <span>
-                  for <Coins n={v.offer} /> <Tag v={v} /> {ok ? `you have ${have}` : have ? `you have only ${have}` : `you have none`}
+                  <span className={`tag ${ok ? 'ok' : 'short'}`} title={`You have ${have}`}>
+                    {ok && <Check weight="bold" />}
+                    {Math.min(have, v.qty)}/{v.qty}
+                  </span>
+                  <Tag v={v} />
                 </span>
               </div>
               <div className="farm-buyer-actions">
-                <button className="primary small" disabled={!ok} onClick={() => acceptOffer(v.id)}>
-                  Sell
+                <button className="btn leaf small" disabled={!ok} onClick={() => acceptOffer(v.id)} aria-label={`Sell to ${v.name} for ${v.offer} coins`}>
+                  Sell <Coins n={v.offer} />
                 </button>
-                <button className="farm-secondary small" onClick={() => declineOffer(v.id)} aria-label={`Send ${v.name} away`}>
-                  No
+                <button className="btn soft round small" onClick={() => declineOffer(v.id)} aria-label={`Send ${v.name} away`}>
+                  <X weight="bold" />
                 </button>
               </div>
             </div>
           )
         })}
-        {!line.length && <p className="farm-empty">Nobody is waiting right now{coming ? ' — someone is on the way.' : '.'}</p>}
+        {!line.length && <p className="farm-empty">{coming ? 'Someone is on the way.' : 'Nobody waiting.'}</p>}
       </div>
-      <p className="farm-hint">
-        Buyers wait in line until you sell to them or send them away; someone new soon takes the place of anyone you turn down.
-        {!coarsePointer && (
-          <>
-            {' '}
-            <kbd>Enter</kbd> sell to the first you can · <kbd>Shift</kbd>+<kbd>Enter</kbd> sell to everyone · <kbd>N</kbd> send the first away
-          </>
-        )}
-      </p>
+      {!coarsePointer && (
+        <p className="farm-keys">
+          <kbd>Enter</kbd> sell · <kbd>Shift</kbd>+<kbd>Enter</kbd> sell to all · <kbd>N</kbd> send away
+        </p>
+      )}
     </Shell>
   )
 }
@@ -322,68 +348,96 @@ function BasketPanel() {
   const stock = PRODUCE.filter((p) => farm.inv[p.id] > 0)
   const worth = stock.reduce((sum, p) => sum + p.price * farm.inv[p.id], 0)
   return (
-    <Shell title="Your basket" sub={<>You have <Coins n={farm.coins} /> · basket worth ≈ {worth}</>} onClose={close}>
+    <Shell
+      title="Basket"
+      art={art('basket')}
+      sub={
+        <>
+          <Purse />
+          {worth > 0 && (
+            <span className="tag" title="What the basket would fetch">
+              <img src={art('sparkles')} alt="" />≈ {worth}
+            </span>
+          )}
+        </>
+      }
+      onClose={close}
+    >
       {stock.length ? (
         <div className="farm-basket">
           {stock.map((p) => (
             <div key={p.id} className="farm-basket-item" title={`${count(p.id, farm.inv[p.id])} · about ${p.price} coins each`}>
-              <img src={iconUrl(p.id, 64)} alt="" />
+              <img className="art" src={iconUrl(p.id, 128)} alt="" />
               <b>{farm.inv[p.id]}</b>
               <span>{cap(p.plural)}</span>
             </div>
           ))}
         </div>
       ) : (
-        <p className="farm-empty">The basket is empty — harvest a bed, collect eggs, milk a cow or shear a sheep.</p>
+        <p className="farm-empty">Nothing yet — harvest, collect, milk or shear.</p>
       )}
-      <p className="farm-hint">
-        {farm.started ? `${inLine().length} of ${placesInLine()} places in the line at the gate taken · a new buyer about every ${clockText(arrivalSeconds())}.` : 'Plant something and buyers start coming to the gate.'}
-      </p>
     </Shell>
   )
+}
+
+/** Each upgrade's picture in the shop. */
+const UPGRADE_ART: Record<string, ArtId> = {
+  east: 'seedling',
+  west: 'sheaf-of-rice',
+  queue: 'ticket',
+  pace: 'running-shoe',
+  cow: 'cow',
+  sheep: 'ewe',
+  hen: 'chicken',
+  sprinkler: 'droplet',
+  compost: 'fallen-leaf',
 }
 
 function ShopPanel() {
   useFarm((s) => s.rev)
   const close = useHome((s) => s.closePanel)
-  const { stats } = farm
   return (
-    <Shell title="Farm shop" sub={<>You have <Coins n={farm.coins} /></>} onClose={close}>
-      <div className="farm-list">
+    <Shell title="Shop" art={art('shopping-bags')} sub={<Purse />} onClose={close}>
+      <div className="farm-shop">
         {UPGRADES.map((u) => {
           const has = owned(u.id)
           const price = upgradePrice(u.id)
           const level = upgradeLevel(u.id)
-          const extra =
+          const now =
             u.id === 'hen'
-              ? ` · ${farm.hens} now`
+              ? `${farm.hens} now`
               : u.id === 'cow'
-                ? ` · ${farm.cows} now`
+                ? `${farm.cows} now`
                 : u.id === 'sheep'
-                  ? ` · ${farm.sheep} now`
+                  ? `${farm.sheep} now`
                   : u.id === 'queue'
                     ? has
-                      ? ` · ${placesInLine()} places, the most there is`
-                      : ` · ${placesInLine()} → ${queuePlaces(level + 1)} places`
+                      ? `${placesInLine()} places`
+                      : `${placesInLine()} → ${queuePlaces(level + 1)}`
                     : u.id === 'pace'
                       ? has
-                        ? ` · one every ${clockText(arrivalSeconds())}, as often as it gets`
-                        : ` · one every ${clockText(arrivalSeconds())} → ${clockText(arrivalEvery(level + 1))}`
-                      : ''
+                        ? `every ${clockText(arrivalSeconds())}`
+                        : `${clockText(arrivalSeconds())} → ${clockText(arrivalEvery(level + 1))}`
+                      : null
           return (
-            <div key={u.id} className="farm-row">
-              <div>
-                <strong>
-                  {u.name}
-                  {u.levels ? <small className="farm-level"> {level}/{u.levels}</small> : null}
-                </strong>
-                <span>
-                  {u.blurb}
-                  {extra}
-                </span>
+            <div key={u.id} className={`farm-shop-item${has ? ' owned' : ''}`}>
+              <img className="art" src={art(UPGRADE_ART[u.id] ?? 'package')} alt="" />
+              <div className="farm-shop-text">
+                <strong>{u.name}</strong>
+                <span>{u.blurb}</span>
+                {(now || u.levels) && (
+                  <span className="farm-shop-tags">
+                    {u.levels ? (
+                      <span className="tag">
+                        {level}/{u.levels}
+                      </span>
+                    ) : null}
+                    {now && <span className="tag">{now}</span>}
+                  </span>
+                )}
               </div>
               <button
-                className={has ? 'farm-secondary' : 'primary small'}
+                className={`btn small${has ? ' soft' : ''}`}
                 disabled={has || farm.coins < price}
                 onClick={() => {
                   if (buy(u.id)) {
@@ -391,17 +445,22 @@ function ShopPanel() {
                     farmSound('build')
                   }
                 }}
+                aria-label={has ? `${u.name}: done` : `Buy ${u.name} for ${price} coins`}
               >
-                {has ? (u.levels ? 'Max' : 'Done') : <>Buy · {price}</>}
+                {has ? (
+                  u.levels ? (
+                    'Max'
+                  ) : (
+                    <Check weight="bold" />
+                  )
+                ) : (
+                  <Coins n={price} />
+                )}
               </button>
             </div>
           )
         })}
       </div>
-      <p className="farm-hint">
-        This season: {stats.harvested} picked · {stats.sold} sold · {stats.earned} coins earned
-        {stats.declined ? ` · ${stats.declined} buyers turned away` : ''}
-      </p>
     </Shell>
   )
 }
@@ -409,10 +468,17 @@ function ShopPanel() {
 const Need = ({ id, n }: { id: ProduceId; n: number }) => {
   const have = farm.inv[id]
   return (
+    // enough: how many it takes, ticked; short: what you have of what it takes, in red
     <span className={have >= n ? 'farm-need ok' : 'farm-need short'} title={`${count(id, n)} (you have ${have})`}>
       <img src={iconUrl(id, 40)} alt="" />
-      {n}
-      <small>/{have}</small>
+      {have >= n ? (
+        <>
+          ×{n}
+          <Check weight="bold" />
+        </>
+      ) : (
+        `${have}/${n}`
+      )}
     </span>
   )
 }
@@ -428,31 +494,43 @@ function MillPanel() {
     close()
   }
   return (
-    <Shell title="Mill" sub={`Up to ${MILL.capacity} at a time · ${MILL.perItem} s each`} onClose={close}>
+    <Shell
+      title="Mill"
+      art={art('sheaf-of-rice')}
+      sub={
+        <span className="tag">
+          <Clock weight="bold" />
+          {MILL.perItem} s each · up to {MILL.capacity}
+        </span>
+      }
+      onClose={close}
+    >
       <div className="farm-list">
         {(Object.keys(MILLABLE) as MillInput[]).map((input) => {
           const out = MILLABLE[input]
           const have = farm.inv[input]
           const n = Math.min(MILL.capacity, have)
           return (
-            <div key={input} className="farm-row">
+            <div key={input} className="farm-row farm-recipe">
               <div className="farm-row-flow">
-                <img src={iconUrl(input, 48)} alt="" />
+                <img className="art" src={iconUrl(input, 128)} alt="" />
                 <span className="farm-arrow">→</span>
-                <img src={iconUrl(out, 48)} alt="" />
-                <div>
-                  <strong>{input === 'sugarcane' ? 'Press sugar cane into sugar' : 'Grind wheat into flour'}</strong>
-                  <span>{have ? `You have ${count(input, have)}` : `Grow some ${produceById(input).plural} first`}</span>
-                </div>
+                <img className="art" src={iconUrl(out, 128)} alt="" />
               </div>
-              <button className="primary small" disabled={!n} onClick={() => run(input)}>
-                {n ? `Mill ${n}` : 'Nothing to mill'}
+              <div className="farm-recipe-body">
+                <strong>{cap(produceById(out).plural)}</strong>
+                <span className={`tag ${have ? '' : 'short'}`}>
+                  <img src={iconUrl(input, 40)} alt="" />
+                  {have}
+                </span>
+              </div>
+              <button className="btn small" disabled={!n} onClick={() => run(input)}>
+                {n ? `Mill ${n}` : 'None'}
               </button>
             </div>
           )
         })}
       </div>
-      <p className="farm-hint">Sugar and flour go into cakes at the oven — and buyers take them too.</p>
     </Shell>
   )
 }
@@ -468,16 +546,19 @@ function OvenPanel() {
     close()
   }
   return (
-    <Shell title="Oven" sub="Bake with what the farm makes · cakes sell for the most" onClose={close}>
+    <Shell title="Oven" art={art('shortcake')} sub={<Purse />} onClose={close}>
       <div className="farm-list">
         {RECIPES.map((r) => {
           const ok = canBake(r.id)
           return (
             <div key={r.id} className="farm-row farm-recipe">
-              <img className="farm-recipe-icon" src={iconUrl(r.id, 64)} alt="" />
+              <img className="art farm-recipe-icon" src={iconUrl(r.id, 128)} alt="" />
               <div className="farm-recipe-body">
                 <strong>
-                  {r.name} <span className="farm-coins-inline">≈ {produceById(r.id).price} coins</span>
+                  {r.name}{' '}
+                  <span className="tag">
+                    <img src={art('coin')} alt="" />≈ {produceById(r.id).price}
+                  </span>
                 </strong>
                 <div className="farm-needs">
                   {Object.entries(r.needs).map(([k, n]) => (
@@ -485,14 +566,13 @@ function OvenPanel() {
                   ))}
                 </div>
               </div>
-              <button className="primary small" disabled={!ok} onClick={() => go(r.id)}>
+              <button className="btn small" disabled={!ok} onClick={() => go(r.id)}>
                 Bake · {r.seconds} s
               </button>
             </div>
           )
         })}
       </div>
-      <p className="farm-hint">Flour and sugar come from the mill, milk from the cows, eggs from the hens.</p>
     </Shell>
   )
 }

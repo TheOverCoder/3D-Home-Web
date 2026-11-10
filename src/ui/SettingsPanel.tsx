@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { canVibrate, coarsePointer } from '../lib/device'
+import { GearSix, X } from './glyphs'
 import { collectDiagnostics } from '../lib/diagnostics'
 import { DEFAULT_SETTINGS, useSettings, type Settings } from '../settings'
 import { useHome } from '../store'
@@ -110,10 +111,7 @@ export function SettingsPanel() {
   return (
     <>
       <button className={open || editing ? 'gear hidden' : 'gear'} onClick={() => setOpen(true)} aria-label="Settings and controls (Esc)" title="Settings (Esc)">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <circle cx="12" cy="12" r="3" />
-          <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
-        </svg>
+        <GearSix weight="fill" />
       </button>
 
       {open && (
@@ -122,7 +120,7 @@ export function SettingsPanel() {
             <header>
               <h2>Settings</h2>
               <button ref={closeRef} className="close" onClick={() => setOpen(false)} aria-label="Close (Esc)">
-                ✕
+                <X weight="bold" />
               </button>
             </header>
 

@@ -19,6 +19,15 @@ The README has the overview; `tests/README.md` what each test guards.
   (`verb: 'wait'`), and with nothing to do here it offers the next job elsewhere. It never spends: anything that
   costs coins on the farm opens a confirmation card (`verb: 'build'`). One press does every like thing in reach.
 
+## Interface (src/styles.css tokens, src/ui/art.ts, src/ui/glyphs.ts)
+
+- Use the tokens and classes, not new colours or fonts: `.paper` sheets, `.btn` (`.soft`, `.leaf`, `.berry`,
+  `.small`, `.round`) or `.primary`, `.tag` chips, `.art` pictures. Fredoka for titles/buttons, Nunito for text
+  and numbers. Glyphs from `glyphs.ts` (Phosphor, bold/fill), pictures from `art.ts` (Fluent 3D) — add a file
+  there rather than drawing one; credit anything new in `src/data/credits.ts`.
+- A panel: picture, a few-word title, chips, at most one line of text, at most two buttons (Cancel first, the
+  action last with its price). 44 px targets, text ≥ 15 px (never < 13).
+
 ## Making models (src/lib/sculpt, examples in src/models)
 
 - Build from the kit's shapes; close every end that is not buried in another piece (radius 0 at tips, `round`,

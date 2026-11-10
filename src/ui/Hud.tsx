@@ -4,6 +4,8 @@ import { coarsePointer } from '../lib/device'
 import { triggerInteraction } from '../lib/interaction'
 import { useSettings } from '../settings'
 import { busy, useHome, type Nearby } from '../store'
+import { iconUrl } from '../farm/icons'
+import type { ProduceId } from '../farm/data'
 import { ActionFace, TurnHint } from './ActionGlyph'
 
 /** Room name that fades in when you walk into a new room, like a film title. */
@@ -105,7 +107,8 @@ export function Hud() {
 
       {toast && (
         <div className="toast" role="status" key={toast.id}>
-          {toast.text}
+          {toast.item && <img className="toast-item" src={iconUrl(toast.item as ProduceId, 96)} alt="" draggable={false} />}
+          <span>{toast.text}</span>
         </div>
       )}
     </>

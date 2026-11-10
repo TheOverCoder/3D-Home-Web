@@ -54,7 +54,7 @@ interface HomeState {
   carrying: string | null
   quality: Quality
   qualityAuto: boolean // true while the frame-rate monitor may move `quality` up or down
-  toast: { text: string; id: number } | null
+  toast: { text: string; id: number; item?: string } | null // a few words, with a picture of the thing (farm icon id)
   graphics: 'ok' | 'lost' | 'restored' | 'restarting' // the browser can reset the GPU context (driver crash, sleep, too many tabs)
 
   setPhase: (phase: HomeState['phase']) => void
@@ -77,7 +77,7 @@ interface HomeState {
   pickUp: (id: string) => void
   drop: (pos: Vec3) => void
   setQuality: (quality: Quality, auto?: boolean) => void // a pick without `auto` pins it
-  showToast: (text: string) => void
+  showToast: (text: string, item?: string) => void
 }
 
 let toastId = 0
@@ -137,7 +137,7 @@ export const useHome = create<HomeState>()((set, get) => ({
     }))
   },
   setQuality: (quality, auto = false) => set({ quality, qualityAuto: auto }),
-  showToast: (text) => set({ toast: { text, id: ++toastId } }),
+  showToast: (text, item) => set({ toast: { text, id: ++toastId, item } }),
 }))
 
 /** Something has the player's attention (a screen, the settings, a garden panel, the edit mode): no walking,

@@ -10,13 +10,15 @@ import { restartGraphics } from '../lib/startup'
 import { clearGameFiles, persistStorage, storageInfo, type StorageInfo } from '../lib/sw'
 import { useSettings } from '../settings'
 import { useHome, type Quality } from '../store'
+import { art } from './art'
 import { LoadStatus } from './LoadStatus'
 import { MusicPlayer } from './MusicPlayer'
 import { SavesPanel } from './SavesPanel'
 
-// The way in: what the game is, how far the loading has got (and what it is loading), which farm you are on,
-// the music, and the settings that matter before you start — all on one card, each part folded away until
-// asked for. When the house cannot start it says why, with the things that can be tried.
+// The way in, as a game's title screen: the logo over the farm, one big button (it fills while the house loads,
+// then plays or continues your farm), your farm in three chips, and three pictures — saves, settings, music —
+// each opening its part on the card. Hardly any words. When the house cannot start it says why, with the things
+// that can be tried.
 
 type Tab = 'saves' | 'settings' | 'music' | null
 
@@ -180,61 +182,62 @@ export function Intro() {
     void persistStorage(true)
     setPhase('playing')
   }
-  const label = failure
-    ? 'Unavailable here'
-    : loading
-      ? loadPhase === 'download'
-        ? 'Downloading…'
-        : loadPhase === 'compile'
-          ? 'Preparing the graphics…'
-          : 'Building the house…'
-      : summary.played
-        ? `Continue · Farm ${slot}`
-        : 'Enter the house'
+  // the big button says one thing: what it is waiting for, or Play / Continue
+  const label = failure ? 'Unavailable here' : loading ? (loadPhase === 'download' ? 'Loading…' : 'Almost ready…') : summary.played ? `Continue · Farm ${slot}` : 'Play'
   const toggle = (t: Exclude<Tab, null>) => setTab((cur) => (cur === t ? null : t))
 
   return (
     <div className="intro">
-      <div className="intro-card">
-        <p className="eyebrow">Interactive 3D tour</p>
+      <div className="intro-logo">
+        <img className="art" src={art('house-with-garden')} alt="" width={116} height={116} />
         <h1>3D Home</h1>
-        <p className="lede">
-          Walk through the house room by room, then step out through the glass door onto the farm: grow vegetables, milk the
-          cows, shear the sheep, bake cakes and sell to the line of neighbours at the gate.
-        </p>
+        <p>A cosy house and farm</p>
+      </div>
+      <div className="intro-card">
         {failure ? <Failure /> : <LoadStatus />}
         <button ref={enter} className="primary" disabled={loading || !!failure} onClick={go}>
           {label}
         </button>
         {summary.played && !failure && (
-          <p className="intro-farm">
-            Farm {slot}: {summary.coins} coins · {summary.sold} sold · {summary.growing} beds growing
-          </p>
+          <div className="intro-farm" aria-label={`Farm ${slot}`}>
+            <span className="tag">
+              <img src={art('coin')} alt="" />
+              {summary.coins}
+            </span>
+            <span className="tag">
+              <img src={art('shopping-bags')} alt="" />
+              {summary.sold} sold
+            </span>
+            <span className="tag">
+              <img src={art('seedling')} alt="" />
+              {summary.growing} growing
+            </span>
+          </div>
         )}
         <div className="intro-tabs" role="tablist">
           <button role="tab" aria-selected={tab === 'saves'} className={tab === 'saves' ? 'on' : ''} onClick={() => toggle('saves')}>
+            <img src={art('floppy-disk')} alt="" />
             Saves
           </button>
           <button role="tab" aria-selected={tab === 'settings'} className={tab === 'settings' ? 'on' : ''} onClick={() => toggle('settings')}>
+            <img src={art('gear')} alt="" />
             Settings
           </button>
           <button role="tab" aria-selected={tab === 'music'} className={tab === 'music' ? 'on' : ''} onClick={() => toggle('music')}>
+            <img src={art('musical-notes')} alt="" />
             Music
           </button>
         </div>
         {tab === 'saves' && <SavesPanel />}
         {tab === 'settings' && <SettingsPanel />}
         {tab === 'music' && <MusicPlayer />}
-        {coarsePointer ? (
-          <p className="tip">
-            Walk with the stick on the left, drag anywhere to look, and the round button on the right does what is near you — it
-            turns you to it, too. Upright or on its side, the controls fit the screen.
-          </p>
-        ) : (
-          <p className="tip">
-            Press <kbd>Esc</kbd> at any time for controls and settings. Sound on — the house has its own, and music.
+        {!coarsePointer && (
+          <p className="intro-tip">
+            <kbd>Esc</kbd> for settings and keys
           </p>
         )}
+      </div>
+      <footer className="intro-foot">
         <p className="intro-device">
           {deviceLabel()} · graphics {qualityAuto ? 'auto' : quality}
           {profile.device !== 'desktop' && !profile.light ? ' · tuned for phones' : ''}
@@ -244,7 +247,14 @@ export function Intro() {
           <ul>
             {CREDITS.map((c) => (
               <li key={c.what}>
-                {c.url ? <a href={c.url} target="_blank" rel="noreferrer">{c.what}</a> : c.what} — {c.by} ({c.license})
+                {c.url ? (
+                  <a href={c.url} target="_blank" rel="noreferrer">
+                    {c.what}
+                  </a>
+                ) : (
+                  c.what
+                )}{' '}
+                — {c.by} ({c.license})
               </li>
             ))}
           </ul>
@@ -257,7 +267,7 @@ export function Intro() {
             {!assetStatus.hdri && ' · HDRI'}
           </p>
         )}
-      </div>
+      </footer>
     </div>
   )
 }

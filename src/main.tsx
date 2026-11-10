@@ -1,6 +1,10 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './App'
+// the game's type: Fredoka for titles, buttons and words on the buttons, Nunito for text and every number (its
+// digits are all one width); Fredoka also carries Hebrew (only fetched when Hebrew shows)
+import '@fontsource-variable/fredoka'
+import '@fontsource-variable/nunito'
 import './styles.css'
 import { installDiagnostics } from './lib/diagnostics'
 import './lib/sw' // registers the service worker that keeps the game on this device

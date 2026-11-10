@@ -60,6 +60,10 @@ Real assets come from anything reachable from the build machine: `npm run assets
 
 Credits: [`CREDITS.md`](CREDITS.md) — update it (and `src/data/credits.ts`) whenever an asset is added; CC-BY needs attribution.
 
+## The look (interface)
+
+A casual game's look, in plain CSS (`src/styles.css`, tokens at the top): cream paper sheets for anything you read, chunky pill buttons that sink onto their lip when pressed, one sun-yellow button for the main action of a view (green to confirm a sale, red only to destroy), dark chips over the 3D scene (coins, prompts). **Fredoka** for titles, buttons and the words on the action buttons; **Nunito** for text and every number (its digits are all one width); both self-hosted (`@fontsource-variable`, SIL OFL), Fredoka also carrying Hebrew. **Phosphor** glyphs for the interface (`src/ui/glyphs.ts`, bold or fill), **Fluent Emoji 3D** art for what is not one of the farm's goods — the coin, the basket, the start screen's buttons, the shop's animals and upgrades, panel headers (`src/ui/art.ts`, 128 px WebP, about 4 KB each); the farm's produce keeps its own pictures. Rules: a panel is a picture, a title of a few words, a row of chips and at most one line of text; at most two buttons, Cancel first and the action last with its price on it; buttons 44 px or more; text 15 px or more, never under 13; contrast checked against WCAG (ink on paper 12.8:1, ink on sun 8.9:1, white on green 4.6:1).
+
 ## Making models (the sculpt kit)
 
 Models are built in code from a few shapes, painted per vertex and drawn instanced (`src/lib/sculpt`, examples in `src/models`):

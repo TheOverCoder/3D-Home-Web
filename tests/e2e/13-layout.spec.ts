@@ -51,7 +51,7 @@ test.describe('farm layout and the edit mode', () => {
     // the east meadow: its label, then Buy; the boundary moves out round it
     await page.locator('.edit-sale', { hasText: /^East meadow/ }).click()
     await expect(page.locator('.edit-card')).toContainText('East meadow')
-    await page.locator('.edit-card .primary').click()
+    await page.locator('.edit-card .edit-buy').click()
     await until(game, () => (window as any).__home.farm.state.layout.land.includes('east'))
     expect(await page.evaluate(() => (window as any).__home.farm.state.coins)).toBe(850)
     const edges = await page.evaluate(() => (window as any).__home.farm.boundary())

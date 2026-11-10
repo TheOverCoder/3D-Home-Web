@@ -44,7 +44,7 @@ export function SavesPanel() {
 
   return (
     <div className="saves">
-      <p className="panel-note">Saved in this browser on this device — no account needed. Save a farm as a file to keep a copy or to move it to another device.</p>
+      <p className="panel-note">Kept on this device. Save a file to keep a copy or move a farm.</p>
       <ul className="slots">
         {SLOTS.map((n) => {
           const s = slotSummary(n)

@@ -2,7 +2,8 @@ import { useEffect } from 'react'
 import { farmSound, uiClick } from '../audio/sound'
 import { coarsePointer } from '../lib/device'
 import { busy, useHome } from '../store'
-import { iconUrl } from './icons'
+import { art } from '../ui/art'
+import { ArrowsOutCardinal } from '../ui/glyphs'
 import { turn, useEdit } from './edit'
 import { PARCELS, PLACES, canBuyParcel, samePlacement, type ParcelId, type PlaceId } from './layout'
 import { buyLand, farm, sendHome, useFarm } from './state'
@@ -11,12 +12,6 @@ import { buyLand, farm, sendHome, useFarm } from './state'
 // card along the bottom that says what to do, or about what is picked — turn a place, send it back to where it
 // started, buy a field — and a Done button where the settings were.
 
-const MoveGlyph = () => (
-  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M12 3v18M3 12h18" />
-    <path d="M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3" />
-  </svg>
-)
 
 /** Opens the edit mode (B). */
 export function EditButton() {
@@ -25,12 +20,12 @@ export function EditButton() {
   if (phase !== 'playing' || occupied) return null
   return (
     <button className="gear edit-open" onClick={() => useHome.getState().setEditing(true)} aria-label="Edit the farm: move things, buy land (B)" title="Edit the farm (B)">
-      <MoveGlyph />
+      <ArrowsOutCardinal weight="bold" />
     </button>
   )
 }
 
-const Coin = () => <img className="edit-coin" src={iconUrl('coin', 40)} alt="" />
+const Coin = () => <img className="edit-coin" src={art('coin')} alt="" />
 
 function PlaceCard({ id }: { id: PlaceId }) {
   useFarm(() => farm.layout.places[id])
@@ -47,7 +42,7 @@ function PlaceCard({ id }: { id: PlaceId }) {
       {status}
       <div className="edit-actions">
         <button
-          className="farm-secondary"
+          className="btn soft small"
           onClick={() => {
             uiClick()
             turn(id)
@@ -57,7 +52,7 @@ function PlaceCard({ id }: { id: PlaceId }) {
         </button>
         {!atHome && (
           <button
-            className="farm-secondary"
+            className="btn soft small"
             onClick={() => {
               uiClick()
               const fit = sendHome(id)
@@ -92,7 +87,7 @@ function ParcelCard({ id }: { id: ParcelId }) {
       {!owned && open && (
         <div className="edit-actions">
           <button
-            className="primary"
+            className="btn small edit-buy"
             disabled={!afford}
             onClick={() => {
               if (buyLand(id)) {

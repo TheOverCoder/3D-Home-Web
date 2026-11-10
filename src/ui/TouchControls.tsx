@@ -157,9 +157,9 @@ export function TouchControls() {
           boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)',
           color: '#fff',
           fontSize: 11,
-          fontWeight: 700,
           letterSpacing: '0.1em',
-          fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+          fontFamily: "'Fredoka Variable', ui-rounded, system-ui, sans-serif",
+          fontWeight: 600,
         }}
       />
       {first && <ActionButton key="main" action={first} main size={size.main} at={{ right: PAD, bottom: PAD }} />}

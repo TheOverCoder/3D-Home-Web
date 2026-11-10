@@ -46,7 +46,7 @@ test.describe('farm kitchen and animals', () => {
     await nearbyIs(game, 'farm-mill')
     await page.keyboard.press('KeyE')
     await until(game, () => (window as any).__home.useHome.getState().panel?.kind === 'mill')
-    await page.locator('.farm-panel button.primary', { hasText: 'Mill 3' }).click()
+    await page.locator('.farm-panel .farm-recipe button', { hasText: 'Mill 3' }).click()
     await until(game, () => (window as any).__home.farm.millStage() === 'working')
     expect((await inv(game)).wheat).toBe(0)
     await page.evaluate(() => (window as any).__home.farm.tick(15))
