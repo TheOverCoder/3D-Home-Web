@@ -162,7 +162,7 @@ function Oven() {
       const s = ovenStage()
       if (s === 'done') return { verb: 'pick', item: farm.oven.ready! }
       if (s === 'baking') return { verb: 'wait', item: farm.oven.baking! }
-      return { verb: 'make', item: 'lemon_cake' }
+      return { verb: 'make', item: 'lemon_cake', word: 'Bake' }
     },
     run: () => {
       const s = ovenStage()
@@ -267,7 +267,7 @@ function Mill() {
       const s = millStage()
       if (s === 'done') return { verb: 'pick', item: farm.mill.output! }
       if (s === 'working') return { verb: 'wait', item: MILLABLE[farm.mill.input!] }
-      return { verb: 'make', item: 'flour' }
+      return { verb: 'make', item: 'flour', word: 'Mill' }
     },
     run: () => {
       const s = millStage()

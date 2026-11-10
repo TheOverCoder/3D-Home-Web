@@ -4,16 +4,18 @@ import type { ProduceId } from '../farm/data'
 import type { ActionIcon, Verb } from '../lib/interaction'
 import type { Nearby } from '../store'
 
-// Line glyphs for what an action does (24 × 24, drawn with the current colour), and the action badge: the verb
-// with a small picture of the thing itself — a hand with a lettuce, a can with a tomato, scissors with wool.
+// Line glyphs for what an action does (24 × 24, drawn with the current colour), and the faces of the action
+// buttons: the thing itself, big (a lettuce, an egg, a bottle of milk), with the verb as a coloured mark in its
+// corner (a basket, a can, scissors) and one word under the button — Harvest, Water, Collect, Milk — so what a
+// press does reads at a glance, before any sentence.
 
 const GLYPHS: Record<Verb, ReactNode> = {
+  // a basket: what is ready goes in it
   pick: (
     <>
-      <path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V11" />
-      <path d="M11 11V4a1.5 1.5 0 0 1 3 0v7" />
-      <path d="M14 11V5.5a1.5 1.5 0 0 1 3 0V12" />
-      <path d="M17 12V8.5a1.5 1.5 0 0 1 3 0V15a7 7 0 0 1-7 7h-1a6.5 6.5 0 0 1-5-2.4L3.6 16a1.5 1.5 0 0 1 2.3-2L8 16" />
+      <path d="M7.5 10a4.5 4.5 0 0 1 9 0" />
+      <path d="M3.5 10.5h17l-1.6 8.3a1.5 1.5 0 0 1-1.5 1.2H6.6a1.5 1.5 0 0 1-1.5-1.2z" />
+      <path d="M9 13.5v3.5M12 13.5v3.5M15 13.5v3.5" />
     </>
   ),
   water: (
@@ -136,13 +138,71 @@ export function TurnHint({ side, className }: { side: Nearby['side']; className?
   )
 }
 
-/** The verb, with a small picture of what it is about. */
-export function ActionBadge({ icon, className }: { icon?: ActionIcon; className?: string }) {
+/** Each verb's colour: the mark in a button's corner, so the kind of job reads before the word (green to take,
+ *  blue to water, gold to sell, orange to build). */
+const VERB_COLOUR: Record<Verb, string> = {
+  pick: '#3c9a4b',
+  water: '#2f86d6',
+  plant: '#6f9a2a',
+  shear: '#8a63c9',
+  sell: '#d99a1e',
+  build: '#e0662c',
+  make: '#c4553a',
+  shop: '#23978a',
+  switch: '#d8a92e',
+  door: '#8d6e63',
+  watch: '#5c6bc0',
+  wait: '#8a94a6',
+  drop: '#607d8b',
+  guide: '#f08c1a',
+}
+
+/** The word under a button when the label does not start with a better one. */
+const VERB_WORD: Record<Verb, string> = {
+  pick: 'Take',
+  water: 'Water',
+  plant: 'Plant',
+  shear: 'Shear',
+  sell: 'Sell',
+  build: 'Build',
+  make: 'Make',
+  shop: 'Shop',
+  switch: 'Switch',
+  door: 'Door',
+  watch: 'Open',
+  wait: 'Wait',
+  drop: 'Put down',
+  guide: 'Next',
+}
+
+/** Labels that start with one of these say the job in their first word ("Collect 2 eggs", "Milk Bella"). */
+const LEADING = new Set(['Harvest', 'Water', 'Plant', 'Collect', 'Milk', 'Shear', 'Pick', 'Take', 'Weave', 'Bake', 'Build', 'Expand', 'Sell', 'Open', 'Close', 'Next', 'Switch'])
+
+/** One word for what a press does: the icon's own, else the label's first word when it is a job, else the verb's. */
+export function actionWord(icon: ActionIcon | undefined, label: string): string {
+  if (icon?.word) return icon.word
+  if (/^Pick up\b/.test(label)) return 'Pick up'
+  const first = label.split(/[\s:·]/)[0]
+  return LEADING.has(first) ? first : VERB_WORD[icon?.verb ?? 'pick']
+}
+
+/** A button's face: the thing itself, big, with the verb's coloured mark in its corner — or, for something with
+ *  no picture (a door, a lamp, the shop), the verb's glyph on its own. */
+export function ActionFace({ icon, className }: { icon?: ActionIcon; className?: string }) {
   const verb = icon?.verb ?? 'pick'
+  const colour = VERB_COLOUR[verb]
   return (
-    <span className={`act-badge${className ? ` ${className}` : ''}`} data-verb={verb}>
-      <Glyph verb={verb} className="act-glyph" />
-      {icon?.item && <img className="act-item" src={iconUrl(icon.item as ProduceId, 64)} alt="" draggable={false} />}
+    <span className={`act-face${icon?.item ? ' has-item' : ''}${className ? ` ${className}` : ''}`} data-verb={verb} style={{ ['--verb' as string]: colour }}>
+      {icon?.item ? (
+        <>
+          <img className="act-face-item" src={iconUrl(icon.item as ProduceId, 128)} alt="" draggable={false} />
+          <span className="act-face-mark">
+            <Glyph verb={verb} className="act-glyph" />
+          </span>
+        </>
+      ) : (
+        <Glyph verb={verb} className="act-face-glyph" />
+      )}
     </span>
   )
 }

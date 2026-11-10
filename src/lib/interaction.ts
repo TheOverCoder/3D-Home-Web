@@ -13,6 +13,8 @@ export type Verb = 'pick' | 'water' | 'plant' | 'shear' | 'sell' | 'build' | 'ma
 export interface ActionIcon {
   verb: Verb
   item?: string
+  /** the one word under the button, when the label's first word is not it ("Other seeds" → Seeds) */
+  word?: string
 }
 
 export interface InteractableDef {

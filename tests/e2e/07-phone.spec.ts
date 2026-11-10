@@ -138,7 +138,9 @@ test.describe('phone', () => {
     })
     await page.waitForFunction(() => (window as any).__home.useHome.getState().nearby?.id === 'farm-bed-0', null, { timeout: 60_000, polling: 250 })
     await expect(action).toHaveAttribute('data-verb', 'pick')
-    await expect(action.locator('img.act-item')).toHaveCount(1)
+    // the lettuce itself, big, with the verb's mark, and the word for what a press does
+    await expect(action.locator('img.act-face-item')).toHaveCount(1)
+    await expect(action.locator('.act-word')).toHaveText('Harvest')
     await expect(action.locator('.act-turn.back')).toHaveCount(1)
     const buttons = await page.locator('.act-btn').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().toJSON()))
     expect(buttons.length, 'more things within reach').toBeGreaterThan(1)

@@ -293,7 +293,7 @@ function Bed({ index }: { index: number }) {
     aim: [def.x, 0.42, def.z],
     radius: 2.1,
     label: 'Other seeds',
-    icon: { verb: 'plant' },
+    icon: { verb: 'plant', word: 'Seeds' },
     enabled: () => bedStage(index) === 'empty' && replant(index) !== null,
     run: () => openPanel({ kind: 'seeds', bed: index }),
   })

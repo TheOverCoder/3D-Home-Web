@@ -4,7 +4,7 @@ import { PICKUPS } from '../data/layout'
 import { coarsePointer } from '../lib/device'
 import { triggerInteraction } from '../lib/interaction'
 import { busy, useHome, type Nearby } from '../store'
-import { ActionBadge, TurnHint } from './ActionGlyph'
+import { ActionFace, TurnHint, actionWord } from './ActionGlyph'
 
 const PAD = 14 // gap to the screen edge, on top of the safe area (notches, gesture bar)
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
@@ -55,7 +55,8 @@ function ActionButton({ action, main, size, at }: { action: Nearby; main?: boole
       onClick={() => (main ? triggerInteraction() : triggerInteraction(action.id))}
       onContextMenu={(e) => e.preventDefault()}
     >
-      <ActionBadge icon={action.icon} />
+      <ActionFace icon={action.icon} />
+      <span className="act-word">{actionWord(action.icon, action.label)}</span>
       {action.reach && <TurnHint side={action.side} className={`act-turn ${action.side}`} />}
     </button>
   )

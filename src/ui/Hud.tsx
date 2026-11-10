@@ -4,7 +4,7 @@ import { coarsePointer } from '../lib/device'
 import { triggerInteraction } from '../lib/interaction'
 import { useSettings } from '../settings'
 import { busy, useHome, type Nearby } from '../store'
-import { ActionBadge, TurnHint } from './ActionGlyph'
+import { ActionFace, TurnHint } from './ActionGlyph'
 
 /** Room name that fades in when you walk into a new room, like a film title. */
 function RoomTitle() {
@@ -87,7 +87,7 @@ export function Hud() {
           // on a touch screen the round action button carries the picture; the label is a second way to tap it
           <button className={`prompt${turn && turn !== 'ahead' ? ` turn-${turn}` : ''}`} onClick={() => triggerInteraction()} data-verb={prompt.icon?.verb ?? 'pick'}>
             {!coarsePointer && <kbd>E</kbd>}
-            {!coarsePointer && <ActionBadge icon={prompt.icon} className="small" />}
+            {!coarsePointer && <ActionFace icon={prompt.icon} className="small" />}
             {turn === 'left' && <TurnHint side="left" className="prompt-turn" />}
             <span className="prompt-text">{prompt.label}</span>
             {!coarsePointer && prompt.hint && <span className="prompt-hint">{prompt.hint}</span>}
@@ -97,7 +97,7 @@ export function Hud() {
         {!occupied && status && (!prompt || prompt.icon?.verb === 'guide') && (
           // nothing to do here: what is on its way, as a line of text (not a button: there is nothing to press)
           <div className="prompt status" data-verb="wait">
-            <ActionBadge icon={status.icon} className="small" />
+            <ActionFace icon={status.icon} className="small" />
             <span className="prompt-text">{status.label}</span>
           </div>
         )}
