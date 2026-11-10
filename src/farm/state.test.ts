@@ -21,6 +21,7 @@ import {
   waiting,
   woolliness,
 } from './state'
+import { OLD_SAVE, OLD_SAVE_2, justSaved } from './testSaves'
 
 // the save files a player downloads and loads again (src/ui/SavesPanel.tsx)
 describe('farm saves', () => {
@@ -65,100 +66,6 @@ describe('farm saves', () => {
     expect(farm.home.stored.length).toBeGreaterThan(0)
   })
 })
-
-/** A farm as the code before the tables (PRODUCERS and MACHINES in src/farm/data.ts) saved it: the lemon tree, the nest,
- *  the cows and the sheep in fields of their own, the mill at work, the loom and the oven done. Written by that code;
- *  all of it but the house's furniture, which this does not touch. */
-const OLD_SAVE = {
-  coins: 321,
-  inv: {
-    lettuce: 0,
-    carrot: 0,
-    strawberry: 0,
-    tomato: 0,
-    corn: 0,
-    pumpkin: 0,
-    wheat: 2,
-    sugarcane: 0,
-    lemon: 4,
-    egg: 3,
-    milk: 2,
-    wool: 1,
-    sugar: 1,
-    flour: 1,
-    cloth: 0,
-    lemon_cake: 0,
-    strawberry_cake: 0,
-    carrot_cake: 0,
-    pumpkin_pie: 0,
-  },
-  beds: [
-    { built: true, crop: 'lettuce', growth: 20, water: 4.5, fixed: null },
-    { built: true, crop: null, growth: 0, water: 0, fixed: null },
-    { built: true, crop: null, growth: 0, water: 0, fixed: null },
-    { built: true, crop: null, growth: 0, water: 0, fixed: null },
-    ...Array.from({ length: 9 }, () => ({ built: false, crop: null, growth: 0, water: 0, fixed: null })),
-  ],
-  lemons: 5,
-  lemonTimer: 12.5,
-  eggs: 4,
-  eggTimer: 17.25,
-  hens: 4,
-  cows: 3,
-  milk: [2, 0, 3],
-  milkTimer: [10.5, 44, 0.75],
-  sheep: 3,
-  wool: [1, 2, 0],
-  woolTimer: [30.5, 0, 59],
-  mill: { input: 'wheat', count: 5, progress: 7.5, output: null, ready: 0 },
-  oven: { baking: null, progress: 0, ready: 'strawberry_cake' },
-  loom: { count: 0, progress: 0, ready: 3 },
-  sprinkler: false,
-  compost: false,
-  expansions: { east: false, west: false },
-  queueLevel: 0,
-  paceLevel: 0,
-  started: true,
-  planted: ['lettuce'],
-  made: ['lettuce', 'egg', 'milk', 'flour'],
-  stats: { harvested: 40, sold: 12, earned: 99, declined: 1, baked: 2 },
-  layout: {
-    places: {
-      hens: { x: 11.6, z: 6.7, rot: 0 },
-      cows: { x: 11.35, z: -2.9, rot: 0 },
-      sheep: { x: -2.1, z: -10.45, rot: 0 },
-      lemon: { x: -6.1, z: 10.3, rot: 0 },
-      tree0: { x: -11.2, z: -10.2, rot: 0 },
-      tree1: { x: 10.8, z: -10.6, rot: 0 },
-      tree2: { x: -11.6, z: 9.6, rot: 0 },
-    },
-    land: [],
-  },
-  nextVisitorIn: 20,
-  queue: [{ name: 'Omer', look: { shirt: '#5c8a4a', trousers: '#5a4636', skin: '#f1c7a5', hair: '#b9b2a8', hairStyle: 0, hat: false, height: 1.027828637076638 }, want: 'egg', qty: 2, offer: 5 }],
-  time: 1794336190566,
-}
-/** The same code's save of a farm where everything else is the other way: the mill done, the oven baking, the loom at
- *  work, the tree and the nest full, two of four sheep with a full fleece. */
-const OLD_SAVE_2 = {
-  ...OLD_SAVE,
-  lemons: 8,
-  lemonTimer: 29.5,
-  eggs: 6,
-  eggTimer: 39.5,
-  hens: 6,
-  cows: 1,
-  milk: [0],
-  milkTimer: [3],
-  sheep: 4,
-  wool: [2, 2, 1, 0],
-  woolTimer: [0, 0, 12, 1.5],
-  mill: { input: null, count: 0, progress: 0, output: 'sugar', ready: 4 },
-  oven: { baking: 'carrot_cake', progress: 12.25, ready: null },
-  loom: { count: 2, progress: 5.5, ready: 0 },
-}
-/** Saved just now: nothing grows on while it was away. */
-const justSaved = (save: object) => ({ ...save, time: Date.now() })
 
 describe('a save from before the tables', () => {
   beforeEach(() => {

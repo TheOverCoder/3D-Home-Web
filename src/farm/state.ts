@@ -189,7 +189,21 @@ function fresh(): FarmData {
 
 const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : d)
 const int = (v: unknown, d: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, Math.round(num(v, d))))
+/** A count as saved (coins, goods, stats): a whole number from 0, up to the last one that still counts (past 2^53, one
+ *  more is the same number). */
+const amount = (v: unknown, d: number) => int(v, d, 0, Number.MAX_SAFE_INTEGER)
+/** Seconds as saved, from 0 up to `most`: what a crop has grown, the water in its soil, a machine's job done. */
+const span = (v: unknown, most: number) => Math.min(most, Math.max(0, num(v, 0)))
+/** A clock as saved, counting towards the next one: from 0 to under its period, as the game leaves it; anything else
+ *  starts again. (Growing takes the period off until the clock is under it: from 1e20, minus 40 is 1e20, never.) */
+const clock = (v: unknown, every: number) => {
+  const t = num(v, 0)
+  return t > 0 && t < every ? t : 0
+}
 const isProduce = (v: unknown): v is ProduceId => produceIds.includes(v as ProduceId)
+const isCrop = (v: unknown): v is CropId => CROPS.some((c) => c.id === v)
+/** The water a crop's seeds go in with, and a watering gives: this share of its growing time. */
+const fullWater = (crop: CropId) => cropById(crop).growSeconds * WATER_SHARE
 
 /** A buyer in the line, as saved: who they are and what they want. */
 interface SavedBuyer {
@@ -227,7 +241,7 @@ function savedProducer(id: ProducerId, raw: Record<string, unknown>): ProducerSt
   return {
     animals,
     stock: Array.from({ length: n }, (_, i) => int(field(p.stock, i), def.fresh, 0, def.max)),
-    timer: Array.from({ length: n }, (_, i) => Math.max(0, num(field(p.timer, i), 0))),
+    timer: Array.from({ length: n }, (_, i) => clock(field(p.timer, i), def.every)),
   }
 }
 
@@ -252,7 +266,7 @@ function savedMachine(id: MachineId, raw: Record<string, unknown>): MachineState
   const recipe = def.recipes.find((r) => r.id === m.recipe)
   if (!recipe) return freshMachine()
   const n = int(m.count, 0, 0, def.capacity)
-  if (n) return { recipe: recipe.id, count: n, progress: Math.max(0, num(m.progress, 0)), ready: 0 }
+  if (n) return { recipe: recipe.id, count: n, progress: span(m.progress, n * recipe.seconds), ready: 0 }
   const ready = int(m.ready, 0, 0, def.capacity)
   return ready ? { recipe: recipe.id, count: 0, progress: 0, ready } : freshMachine()
 }
@@ -285,19 +299,25 @@ function load(text: string | null = readRaw(KEY)): { data: FarmData; savedAt: nu
   try {
     const raw = JSON.parse(text ?? 'null') as Partial<FarmData> & { time?: number; queue?: unknown[] }
     if (!raw || typeof raw !== 'object') return { data, savedAt: null, queue: [] }
-    data.coins = Math.max(0, Math.round(num(raw.coins, START_COINS)))
-    for (const id of produceIds) data.inv[id] = Math.max(0, Math.round(num(raw.inv?.[id], 0)))
+    data.coins = amount(raw.coins, START_COINS)
+    for (const id of produceIds) data.inv[id] = amount(field(raw.inv, id), 0)
     data.expansions = { east: !!raw.expansions?.east, west: !!raw.expansions?.west }
-    raw.beds?.forEach((b, i) => {
-      const def = BEDS[i]
-      if (!data.beds[i] || !b || !def) return
+    // the beds, read only from a list: on anything else a list method threw half-way, and everything read after the
+    // beds came back as on a new farm (and was saved over the farm)
+    const beds: unknown[] = Array.isArray(raw.beds) ? raw.beds : []
+    BEDS.forEach((def, i) => {
+      const b = beds[i]
+      if (!isObject(b)) return
       const present = !def.expansion || data.expansions[def.expansion]
+      const built = present && (data.beds[i].built || !!b.built || !!def.expansion)
+      // a bed not built grows nothing; what grows is never past ripe, nor wetter than a soak
+      const crop = built && isCrop(b.crop) ? b.crop : null
       data.beds[i] = {
-        built: present && (data.beds[i].built || !!b.built || !!def.expansion),
-        crop: present && CROPS.some((c) => c.id === b.crop) ? (b.crop as CropId) : null,
-        growth: Math.max(0, num(b.growth, 0)),
-        water: Math.max(0, num(b.water, 0)),
-        fixed: CROPS.some((c) => c.id === b.fixed) ? (b.fixed as CropId) : null,
+        built,
+        crop,
+        growth: crop ? span(b.growth, cropById(crop).growSeconds) : 0,
+        water: crop ? span(b.water, fullWater(crop)) : 0,
+        fixed: isCrop(b.fixed) ? b.fixed : null,
       }
     })
     BEDS.forEach((def, i) => {
@@ -312,9 +332,10 @@ function load(text: string | null = readRaw(KEY)): { data: FarmData; savedAt: nu
     data.sprinkler = !!raw.sprinkler
     data.compost = !!raw.compost
     data.started = !!raw.started
-    data.planted = Array.isArray(raw.planted) ? raw.planted.filter((c): c is CropId => CROPS.some((d) => d.id === c)) : []
-    data.made = Array.isArray(raw.made) ? raw.made.filter(isProduce) : []
-    data.stats = { ...data.stats, ...raw.stats }
+    data.planted = Array.isArray(raw.planted) ? [...new Set(raw.planted.filter(isCrop))] : []
+    data.made = Array.isArray(raw.made) ? [...new Set(raw.made.filter(isProduce))] : []
+    // each stat a count, and no others (spread in as saved, a count saved as text made a harvest add "7" + 3 = "73")
+    for (const k of Object.keys(data.stats) as (keyof FarmData['stats'])[]) data.stats[k] = amount(field(raw.stats, k), 0)
     // a farm from before the layout keeps everything where it always stood
     data.layout = sanitizeLayout(raw.layout)
     // a farm from before the house could be furnished keeps today's furniture where it always stood
@@ -411,8 +432,6 @@ export const bedProgress = (i: number) => {
 }
 
 export const yieldOf = (crop: CropId) => Math.round(cropById(crop).yield * (farm.compost ? 1.5 : 1))
-
-const fullWater = (crop: CropId) => cropById(crop).growSeconds * WATER_SHARE
 
 export function plant(i: number, crop: CropId) {
   const b = farm.beds[i]

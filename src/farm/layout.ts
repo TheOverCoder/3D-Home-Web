@@ -269,6 +269,9 @@ export function alongBoundary(layout: FarmLayout, a: [number, number], b: [numbe
 /** Snaps a point to the half-metre grid the edit mode moves things on. */
 export const snap = (v: number) => Math.round(v * 2) / 2
 
+/** All the land there is, bought or for sale, as one box. */
+const ALL_LAND = landBounds({ ...defaultLayout(), land: PARCEL_IDS })
+
 /** A layout read from a save: anything missing, misplaced or unknown goes back to where it starts. */
 export function sanitizeLayout(raw: unknown): FarmLayout {
   const out = defaultLayout()
@@ -281,7 +284,10 @@ export function sanitizeLayout(raw: unknown): FarmLayout {
   for (const id of PLACE_IDS) {
     const p = saved[id] as Partial<Placement> | undefined
     if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.z) || !Number.isFinite(p.rot)) continue
-    out.places[id] = { x: p.x!, z: p.z!, rot: ((Math.round(p.rot!) % 4) + 4) % 4 }
+    // on the land there is: one saved far off goes home below, and no huge number reaches the checks
+    const x = Math.min(ALL_LAND.maxX, Math.max(ALL_LAND.minX, p.x!))
+    const z = Math.min(ALL_LAND.maxZ, Math.max(ALL_LAND.minZ, p.z!))
+    out.places[id] = { x, z, rot: ((Math.round(p.rot!) % 4) + 4) % 4 }
   }
   // each must still fit (a bad save, or a farm from before a change): otherwise it goes home; and should one sent
   // home now clash with another, the whole farm goes back to how it started

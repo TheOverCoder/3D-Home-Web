@@ -8,7 +8,8 @@ The README has the overview; `tests/README.md` what each test guards.
 
 - `npm run check` (types, oxlint, the Vitest unit tests, the format check: ~15 s), then the e2e suite:
   `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium npx playwright test --trace off` (software WebGL, ~25 min; run single
-  spec files while iterating). It builds and serves on :4185. A rule or a save change gets a unit test beside its
+  spec files while iterating, or `npm run test:e2e:quick`, ~7 min: all but the six `@boot` tests that start a page
+  of their own). It builds and serves on :4185. A rule or a save change gets a unit test beside its
   code (`src/**/*.test.ts`, `tests/README.md`).
 - Code style: Prettier (`.prettierrc.json`: width 200, no semicolons, single quotes; `npm run format`; the CSS keeps
   its compact one-line rules by hand). Comments say

@@ -227,8 +227,10 @@ export default defineConfig({
             { name: 'vendor-react', test: /node_modules[\\/](react|react-dom|scheduler|zustand|use-sync-external-store)[\\/]|vite[\\/]preload-helper/, priority: 40 },
             { name: 'vendor-physics', test: /node_modules[\\/]@dimforge[\\/]/, priority: 30 },
             { name: 'vendor-three', test: /node_modules[\\/]three[\\/]/, priority: 20 },
-            // the sculpted models and the kit they are made with: shared by the scene and the model gallery
-            { name: 'models', test: /src[\\/](models[\\/](cow|sheep|chicken|person|crops|plants)|lib[\\/]sculpt[\\/])/, priority: 5 },
+            // the sculpted models and the kit they are made with: shared by the scene and the model gallery. Only their own
+            // modules: pulled in with what they import, it took the device profile, which the page shell reads, and so put
+            // three.js and the models in front of the intro (362 KB instead of 151 KB before it shows; 11-startup)
+            { name: 'models', test: /src[\\/](models[\\/](cow|sheep|chicken|person|crops|plants)|lib[\\/]sculpt[\\/])/, priority: 5, includeDependenciesRecursively: false },
             {
               name: 'vendor-r3f',
               test: /node_modules[\\/](@react-three|three-stdlib|troika-[^\\/]+|camera-controls|postprocessing|n8ao|maath|ecctrl|three-mesh-bvh|@monogrid|meshline|stats-gl|suspend-react|its-fine|hls\.js)[\\/]/,

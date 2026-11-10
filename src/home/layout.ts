@@ -152,6 +152,11 @@ export function roomWeight(layout: HomeLayout, room: RoomId, except?: string): n
   return sum
 }
 
+/** More pieces than any house holds: a room's pieces draw up to ROOM_WEIGHT (288 stools, the lightest; rugs may not lie
+ *  on each other). A save with more stands this many and puts the rest into storage, so checking it stays quick (every
+ *  piece is weighed against the others: thirty thousand took over a minute, at every start). */
+const MOST_PIECES = 1500
+
 /** Whether one more piece of this kind would put a room over ROOM_WEIGHT. */
 export const roomFull = (layout: HomeLayout, room: RoomId, type: PieceType) => roomWeight(layout, room) + PIECES[type].weight > ROOM_WEIGHT
 
@@ -159,12 +164,18 @@ export const roomFull = (layout: HomeLayout, room: RoomId, type: PieceType) => r
 
 const lowerName = (t: PieceType) => PIECES[t].name[0].toLowerCase() + PIECES[t].name.slice(1)
 
+/** The room whose floor a piece stands on, all of it (null: it is through a wall). */
+function roomOf(p: HomePiece) {
+  const room = roomAt(p.x, p.z)
+  return room && inside(footprint(p), roomFloor(room)) ? room : null
+}
+
 /** Whether a piece fits where it is put (the rest of the layout as it stands), and if not, why in a few words. */
 export function canPlacePiece(layout: HomeLayout, p: HomePiece): Fit {
   const def = PIECES[p.type]
   const fp = footprint(p)
-  const room = roomAt(p.x, p.z)
-  if (!room || !inside(fp, roomFloor(room))) return { ok: false, reason: 'Through the wall' }
+  const room = roomOf(p)
+  if (!room) return { ok: false, reason: 'Through the wall' }
   if (roomWeight(layout, room, p.id) + def.weight > ROOM_WEIGHT) return { ok: false, reason: 'This room is full' }
   for (const other of layout.pieces) {
     if (other.id === p.id || PIECES[other.type].layer !== def.layer) continue
@@ -277,9 +288,11 @@ export function unreachable(layout: HomeLayout): string | null {
     const r = Math.ceil(g.within / CELL)
     const [gx, gz] = cellOf(g.x, g.z)
     let ok = false
-    for (let z = gz - r; z <= gz + r && !ok; z++)
-      for (let x = gx - r; x <= gx + r && !ok; x++) {
-        if (x < 0 || z < 0 || x >= GX || z >= GZ || !seen[z * GX + x]) continue
+    // only the house's cells round it: counting from the cell of a lamp carried far off with its piece never ended
+    // (from −∞, or past 2^53, one more is the same number)
+    for (let z = Math.max(0, gz - r); z <= Math.min(GZ - 1, gz + r) && !ok; z++)
+      for (let x = Math.max(0, gx - r); x <= Math.min(GX - 1, gx + r) && !ok; x++) {
+        if (!seen[z * GX + x]) continue
         const cx = HOUSE.minX + (x + 0.5) * CELL
         const cz = HOUSE.minZ + (z + 0.5) * CELL
         if (Math.hypot(cx - g.x, cz - g.z) <= g.within) ok = true
@@ -334,24 +347,43 @@ export function sanitizeHome(raw: unknown): HomeLayout {
   const base = defaultHome()
   if (!raw || typeof raw !== 'object') return base
   const r = raw as Partial<HomeLayout>
-  const out: HomeLayout = { pieces: [], stored: Array.isArray(r.stored) ? r.stored.filter(isPieceType) : [], next: typeof r.next === 'number' && r.next > 0 ? Math.floor(r.next) : 1 }
-  if (!Array.isArray(r.pieces)) return base
+  // `next` numbers the pieces taken out of storage from now on: a whole number from 1 that still counts up
+  const next = typeof r.next === 'number' && Number.isFinite(r.next) && r.next >= 1 ? Math.min(Math.floor(r.next), Number.MAX_SAFE_INTEGER) : 1
+  const out: HomeLayout = { pieces: [], stored: Array.isArray(r.stored) ? r.stored.filter(isPieceType) : [], next }
+  // with no list of pieces, today's furniture stands; what waits in storage is kept
+  if (!Array.isArray(r.pieces)) return { ...base, stored: out.stored, next }
   const seen = new Set<string>()
   for (const p of r.pieces as Partial<HomePiece>[]) {
     if (!p || typeof p.id !== 'string' || seen.has(p.id) || !isPieceType(p.type)) continue
     if (![p.x, p.z, p.rot].every((v) => typeof v === 'number' && Number.isFinite(v))) continue
-    const q = { id: p.id, type: p.type, x: p.x!, z: p.z!, rot: ((Math.round(p.rot!) % 4) + 4) % 4 }
+    // within the house: a piece saved far off goes into storage below, and no huge number reaches the checks
+    const x = Math.min(HOUSE.maxX, Math.max(HOUSE.minX, p.x!))
+    const z = Math.min(HOUSE.maxZ, Math.max(HOUSE.minZ, p.z!))
+    const q = { id: p.id, type: p.type, x, z, rot: ((Math.round(p.rot!) % 4) + 4) % 4 }
     seen.add(q.id)
-    // fitted pieces always stand where they were built
+    // fitted pieces always stand where they were built, known by their id whatever kind they were saved as (saved as a
+    // wardrobe, the counter stood as one and never came back, and it cannot be bought)
     const home = base.pieces.find((d) => d.id === q.id)
-    if (PIECES[q.type].fitted) {
+    if (PIECES[q.type].fitted || (home && PIECES[home.type].fitted)) {
       if (home) out.pieces.push(home)
       continue
     }
-    out.pieces.push(q)
+    if (out.pieces.length < MOST_PIECES) out.pieces.push(q)
+    else out.stored.push(q.type)
   }
   // a fitted piece missing from the save comes back
   for (const d of base.pieces) if (PIECES[d.type].fitted && !out.pieces.some((p) => p.id === d.id)) out.pieces.push(d)
+  // the next piece taken out of storage is numbered past every id there is (`stool-1`): with `next` lost or edited, a
+  // second stool-1 came, and putting one away put both away
+  for (const p of out.pieces) {
+    const n = /-(\d+)$/.exec(p.id)
+    if (n) out.next = Math.min(Number.MAX_SAFE_INTEGER, Math.max(out.next, Number(n[1]) + 1))
+  }
+  // what stands through a wall (saved far off) is put away first: it can never stay, and while the rest are checked it
+  // would stand in their way (a desk at the wall before the screen made the sofa block the way to it)
+  const through = new Set(out.pieces.filter((p) => !PIECES[p.type].fitted && !roomOf(p)))
+  out.pieces = out.pieces.filter((p) => !through.has(p))
+  for (const p of through) out.stored.push(p.type)
   // a room over what it may draw (a save from before the limit) puts away its newest pieces first (bought pieces come
   // last in the list), so the furniture it always had stays
   for (const p of [...out.pieces].reverse()) {

@@ -68,4 +68,5 @@ export const PIECES: Record<PieceType, PieceDef> = {
 }
 
 export const PIECE_TYPES = Object.keys(PIECES) as PieceType[]
-export const isPieceType = (t: unknown): t is PieceType => typeof t === 'string' && t in PIECES
+/** A kind of the catalogue's own (`in` also finds what every object has: "valueOf", "constructor", "__proto__"). */
+export const isPieceType = (t: unknown): t is PieceType => typeof t === 'string' && Object.hasOwn(PIECES, t)

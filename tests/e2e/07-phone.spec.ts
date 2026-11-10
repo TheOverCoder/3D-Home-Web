@@ -2,7 +2,7 @@
 import { test, expect, bootApp, watchErrors } from './helpers'
 
 // A phone in portrait, then turned to landscape: its own page with touch emulation (coarse pointer).
-test.describe('phone', () => {
+test.describe('phone', { tag: '@boot' }, () => {
   test('touch controls: the stick comes to the thumb and walks, drag looks, a second finger does not jerk the view, the action button and label work, and the buttons over the stick', async ({
     browser,
   }) => {

@@ -17,7 +17,7 @@ const readyButton = (page: Game['page']) =>
   )
 
 test.describe('starting up', () => {
-  test('the loader lists what it downloads and keeps it on the device; a second visit loads from there', async ({ browser }) => {
+  test('the loader lists what it downloads and keeps it on the device; a second visit loads from there', { tag: '@boot' }, async ({ browser }) => {
     test.setTimeout(600_000)
     const context = await browser.newContext({ viewport: { width: 640, height: 360 }, baseURL: BASE })
     const page = await context.newPage()
@@ -46,6 +46,11 @@ test.describe('starting up', () => {
     const listed: string[] = await page.evaluate(async () => (await (await fetch('/assets-manifest.json')).json()).files.map((f: any) => f.url))
     expect(listed.filter((u) => /rapier_wasm3d_bg-[\w-]{8}\.wasm$/.test(u))).toHaveLength(1)
     expect(listed.filter((u) => /(^|\/)(dev-[a-z]+|Gallery)-/.test(u))).toEqual([])
+    // the page shell (the intro, the saves, the settings) comes before any of it: index.html loads neither three.js
+    // nor the models, which the loader brings once you choose to play
+    const shell = await page.evaluate(async () => await (await fetch('/index.html')).text())
+    expect(shell).not.toMatch(/vendor-three|vendor-r3f|vendor-physics|\/models-|Experience-/)
+    expect(listed.some((u) => /vendor-three-/.test(u))).toBe(true)
 
     // the service worker controls the page and has kept every file of the manifest
     await page.waitForFunction(
@@ -87,7 +92,7 @@ test.describe('starting up', () => {
     await context.close()
   })
 
-  test('graphics lost while starting: the house starts again in light graphics, and says so', async ({ browser }) => {
+  test('graphics lost while starting: the house starts again in light graphics, and says so', { tag: '@boot' }, async ({ browser }) => {
     test.setTimeout(600_000)
     const context = await browser.newContext({ viewport: { width: 640, height: 360 }, baseURL: BASE })
     const page = await context.newPage()
