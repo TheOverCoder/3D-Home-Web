@@ -15,3 +15,5 @@ export { ArrowCounterClockwise } from '@phosphor-icons/react/dist/csr/ArrowCount
 export { Compass as CompassRose } from '@phosphor-icons/react/dist/csr/Compass'
 export { EyeSlash } from '@phosphor-icons/react/dist/csr/EyeSlash'
 export { SquaresFour } from '@phosphor-icons/react/dist/csr/SquaresFour'
+export { ArrowClockwise } from '@phosphor-icons/react/dist/csr/ArrowClockwise'
+export { ArrowUUpLeft } from '@phosphor-icons/react/dist/csr/ArrowUUpLeft'

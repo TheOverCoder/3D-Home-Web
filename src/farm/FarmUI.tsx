@@ -6,13 +6,17 @@ import { playerState } from '../lib/playerState'
 import { useHome } from '../store'
 import { BEDS, COW, CROPS, EGG, EXPANSIONS, PACE_LEVELS, PRODUCE, QUEUE_LEVELS, SHEEP, UPGRADES, arrivalEvery, count, queuePlaces, type CropId } from './data'
 import { EditButton, EditPanel } from './EditPanel'
+import { DecoratePanel } from '../home/DecoratePanel'
+import { BuyPiece, FurnitureShop } from '../home/FurnitureShop'
 import { iconUrl } from './icons'
 import { ItemPic } from '../ui/ItemPic'
+import { ARM_MS, Coins, Purse, Shell } from '../ui/Sheet'
 import { art, type ArtId } from '../ui/art'
 import { ArrowRight, Check, Clock, Users, X } from '../ui/glyphs'
 import {
   acceptOffer,
   arrivalSeconds,
+  bedsForSeeds,
   bedsNear,
   buildBed,
   buy,
@@ -21,6 +25,7 @@ import {
   declineOffer,
   fairPrice,
   farm,
+  fixBed,
   inLine,
   owned,
   placesInLine,
@@ -114,55 +119,15 @@ function ChipItem({ value, className = '', title, children }: { value: number; c
   )
 }
 
-/** A farm panel: its picture, a title of a few words, a row of chips, what it is for, and a close button. */
-function Shell({ title, art: pic, sub, children, onClose }: { title: string; art?: string; sub?: ReactNode; children: ReactNode; onClose: () => void }) {
-  const first = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    first.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus({ preventScroll: true })
-  }, [])
-  return (
-    <div className="farm-backdrop" onClick={onClose}>
-      <div className="farm-panel" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()} ref={first}>
-        <header>
-          {pic && <img className="art farm-head-art" src={pic} alt="" />}
-          <div className="farm-head-text">
-            <h2>{title}</h2>
-            {sub && <div className="farm-sub">{sub}</div>}
-          </div>
-          <button className="close" onClick={onClose} aria-label="Close (Esc)">
-            <X weight="bold" />
-          </button>
-        </header>
-        {children}
-      </div>
-    </div>
-  )
-}
-
-const Coins = ({ n }: { n: number }) => (
-  <span className="farm-coins">
-    <img src={art('coin')} alt="" />
-    {n}
-  </span>
-)
-
-/** What you have, as a chip. */
-const Purse = () => (
-  <span className="tag">
-    <img src={art('coin')} alt="" />
-    {farm.coins}
-  </span>
-)
-
 const seconds = (s: number) => (s < 60 ? `${s} s` : `${Math.round((s / 60) * 10) / 10} min`)
 
 function SeedsPanel({ bed }: { bed: number }) {
   useFarm((s) => s.rev)
   const close = useHome((s) => s.closePanel)
-  // every empty bed within reach gets the same seeds (as far as the coins go)
-  const beds = useMemo(() => bedsNear(bed, 'empty', playerState.position.x, playerState.position.z), [bed])
+  // every empty bed within reach gets the same seeds (as far as the coins go), but one set to grow something else
+  const beds = useMemo(() => bedsNear(bed, 'empty', playerState.position.x, playerState.position.z).filter((i) => i === bed || !farm.beds[i].fixed), [bed])
   const choose = (crop: CropId) => {
-    if (!plantBeds(beds, crop)) return
+    if (!plantBeds(bedsForSeeds(bed, crop, playerState.position.x, playerState.position.z), crop)) return
     const def = BEDS[bed]
     const { pan, near } = placeSound(def.x, def.z)
     farmSound('plant', pan, near)
@@ -206,9 +171,36 @@ function SeedsPanel({ bed }: { bed: number }) {
   )
 }
 
-/** How long a confirm button waits before it can be pressed: a second tap of the button that opened the card (a
- *  double tap, a key held down) lands on nothing. */
-const ARM_MS = 450
+/** What a bed always grows (its gear): one crop — the action button then buys those seeds and plants them there —
+ *  or nothing set, and the seed packets open each time. Choosing is all there is: it closes. */
+function BedPanel({ bed }: { bed: number }) {
+  useFarm((s) => s.rev)
+  const close = useHome((s) => s.closePanel)
+  const fixed = farm.beds[bed]?.fixed ?? null
+  const choose = (crop: CropId | null) => {
+    fixBed(bed, crop)
+    uiClick()
+    close()
+  }
+  return (
+    <Shell title="This bed grows" art={art('gear')} onClose={close}>
+      <p className="farm-line">Set a crop and the button buys its seeds and plants it.</p>
+      <div className="farm-grid compact">
+        <button className="farm-card" aria-pressed={fixed === null} onClick={() => choose(null)}>
+          <img className="art" src={art('seedling')} alt="" />
+          <span className="farm-card-name">I choose</span>
+        </button>
+        {CROPS.map((c) => (
+          <button key={c.id} className="farm-card" aria-pressed={fixed === c.id} onClick={() => choose(c.id)}>
+            <img className="art" src={iconUrl(c.id)} alt="" />
+            <span className="farm-card-name">{cap(c.plural)}</span>
+          </button>
+        ))}
+      </div>
+    </Shell>
+  )
+}
+
 
 /** Spending coins on the farm itself (a bed, a field) always asks first: what it is, what it costs, what you have,
  *  and a Build button that only arms after a moment — never on the button you press to water or harvest. */
@@ -521,8 +513,12 @@ export function FarmUI() {
       {(outdoors || panel || editing) && <FarmChip />}
       <EditButton />
       <EditPanel />
+      <DecoratePanel />
       {panel?.kind === 'seeds' && <SeedsPanel bed={panel.bed} />}
       {panel?.kind === 'build' && <BuildPanel bed={panel.bed} />}
+      {panel?.kind === 'bed' && <BedPanel bed={panel.bed} />}
+      {panel?.kind === 'furniture' && <FurnitureShop />}
+      {panel?.kind === 'buy-piece' && <BuyPiece type={panel.type} />}
       {panel?.kind === 'queue' && <QueuePanel />}
       {panel?.kind === 'basket' && <BasketPanel />}
       {panel?.kind === 'shop' && <ShopPanel />}

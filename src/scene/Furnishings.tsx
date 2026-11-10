@@ -10,6 +10,7 @@ import { fitModelTextures } from '../lib/textureBudget'
 import { farm, useFarm } from '../farm/state'
 import { PIECES, type PieceType } from '../home/catalogue'
 import { hostMove, type HomePiece } from '../home/layout'
+import { useDecorate } from '../home/decorate'
 
 type V3 = [number, number, number]
 
@@ -509,22 +510,43 @@ export function PieceModel({ type }: { type: PieceType }) {
 
 // a real model dropped in for a kind of piece, when the piece's own id has none (one bought later is "sofa-3")
 const MODEL_OF: Partial<Record<PieceType, string>> = { 'plant-tall': 'plant-living' }
-const modelId = (p: HomePiece) => (assets.props[p.id] ? p.id : (MODEL_OF[p.type] ?? p.type))
+const modelId = (p: Pick<HomePiece, 'id' | 'type'>) => (assets.props[p.id] ? p.id : (MODEL_OF[p.type] ?? p.type))
 
-/** One piece where the layout has it: furniture is solid, a rug lies under it. */
+/** The real model dropped in for a piece, if there is one (its URL). */
+export const pieceModelUrl = (p: Pick<HomePiece, 'id' | 'type'>) => (PIECES[p.type].layer === 'rug' ? undefined : assets.props[modelId(p)])
+
+/** How a piece looks, with nothing solid about it (the one being dragged in the decorate mode). */
+export function PieceLook({ p }: { p: Pick<HomePiece, 'id' | 'type'> }) {
+  const def = PIECES[p.type]
+  const url = pieceModelUrl(p)
+  if (!url) return <PieceModel type={p.type} />
+  return (
+    <Suspense fallback={<PieceModel type={p.type} />}>
+      <GlbProp url={url} size={[...def.size]} />
+    </Suspense>
+  )
+}
+
+/** One piece where the layout has it: furniture is solid, a rug lies under it. While it is dragged in the decorate
+ *  mode it is drawn where the finger is instead (src/home/DecorateMode.tsx), so here it hides. */
 export function Placed({ p }: { p: HomePiece }) {
   const def = PIECES[p.type]
+  const dragged = useDecorate((s) => s.drag?.id === p.id)
   const rotationY = (p.rot * Math.PI) / 2
   if (def.layer === 'rug')
     return (
-      <Decor position={[p.x, 0, p.z]} rotationY={rotationY}>
-        <PieceModel type={p.type} />
-      </Decor>
+      <group visible={!dragged}>
+        <Decor position={[p.x, 0, p.z]} rotationY={rotationY}>
+          <PieceModel type={p.type} />
+        </Decor>
+      </group>
     )
   return (
-    <Solid id={modelId(p)} position={[p.x, 0, p.z]} rotationY={rotationY} size={def.size}>
-      <PieceModel type={p.type} />
-    </Solid>
+    <group visible={!dragged}>
+      <Solid id={modelId(p)} position={[p.x, 0, p.z]} rotationY={rotationY} size={def.size}>
+        <PieceModel type={p.type} />
+      </Solid>
+    </group>
   )
 }
 
@@ -532,10 +554,13 @@ export function Placed({ p }: { p: HomePiece }) {
  *  where they stand today: they go where the piece goes, and away with it. */
 export function OnPiece({ id, children }: { id: string; children: ReactNode }) {
   const home = useFarm(() => farm.home)
+  // while the piece is dragged, they go along with it
+  const dragged = useDecorate((s) => (s.drag?.id === id ? s.drag.at : null))
   const m = hostMove(home, id)
   if (!m) return null
+  const to = dragged ?? m.to
   return (
-    <group position={[m.to.x, 0, m.to.z]} rotation-y={((m.to.rot - m.from.rot) * Math.PI) / 2}>
+    <group position={[to.x, 0, to.z]} rotation-y={((to.rot - m.from.rot) * Math.PI) / 2}>
       <group position={[-m.from.x, 0, -m.from.z]}>{children}</group>
     </group>
   )

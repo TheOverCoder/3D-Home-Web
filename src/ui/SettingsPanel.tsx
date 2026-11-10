@@ -79,7 +79,7 @@ export function SettingsPanel() {
   const open = useHome((s) => s.settingsOpen)
   const setOpen = useHome((s) => s.setSettingsOpen)
   const phase = useHome((s) => s.phase)
-  const editing = useHome((s) => s.editing)
+  const editing = useHome((s) => s.editing || s.decorating)
   const view = useHome((s) => s.view)
   const setView = useHome((s) => s.setView)
   const quality = useHome((s) => s.quality)

@@ -1,0 +1,42 @@
+/* the gear on a thing you look at (src/ui/Gear.tsx): a round 44 px button a little above and right of where you
+   look, popping in with a turn and then spinning slowly */
+.thing-gear-anchor { pointer-events: none; }
+.thing-gear {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  translate: 40px -34px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  box-shadow: 0 0 0 2px #fff, 0 4px 12px rgba(20, 12, 6, 0.35);
+  pointer-events: auto;
+  cursor: pointer;
+  animation: thing-gear-in 0.4s var(--ease-pop) both;
+  -webkit-tap-highlight-color: transparent;
+}
+.thing-gear img { width: 30px; height: 30px; animation: thing-gear-spin 7s linear infinite; }
+.thing-gear:active { scale: 0.9; }
+.thing-gear kbd {
+  position: absolute;
+  inset-inline-end: -10px;
+  bottom: -8px;
+  min-width: 20px;
+  padding: 1px 5px;
+  border-radius: 6px;
+  background: var(--night);
+  color: #fff;
+  font: 700 13px/18px var(--font-text);
+  text-align: center;
+}
+@keyframes thing-gear-in {
+  from { opacity: 0; scale: 0.4; rotate: -140deg; }
+  to { opacity: 1; scale: 1; rotate: 0deg; }
+}
+@keyframes thing-gear-spin { to { rotate: 360deg; } }
+@media (prefers-reduced-motion: reduce) {
+  .thing-gear, .thing-gear img { animation: none; }
+}

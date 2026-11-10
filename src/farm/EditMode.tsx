@@ -311,7 +311,7 @@ function EditInput({ view }: { view: React.RefObject<View> }) {
 const COLOURS = { idle: '#ffffff', picked: '#ffb454', fits: '#5fd068', bad: '#ff5a4e', sale: '#f2cf6b', locked: '#9aa5b8', door: '#ffffff' }
 
 /** A rectangle drawn flat on the ground over everything: a soft fill and a crisp edge. */
-function Outline({ r, color, fill = 0.16, edge = 0.14, y = 0.06 }: { r: Rect; color: string; fill?: number; edge?: number; y?: number }) {
+export function Outline({ r, color, fill = 0.16, edge = 0.14, y = 0.06 }: { r: Rect; color: string; fill?: number; edge?: number; y?: number }) {
   const w = r.maxX - r.minX
   const d = r.maxZ - r.minZ
   const cx = (r.minX + r.maxX) / 2

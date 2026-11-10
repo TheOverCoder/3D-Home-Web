@@ -42,7 +42,9 @@ test.describe('farm layout and the edit mode', () => {
       f.state.coins = 1000
       f.state.eggs = 2
     })
-    // up: the edit mode, the camera over the farm looking down
+    // up: the edit mode (B outdoors: indoors it decorates the house), the camera over the farm looking down
+    await game.teleport(-1.2, 1.4, 9.0, Math.PI / 2, -0.1)
+    await until(game, () => (window as any).__home.useHome.getState().outdoors)
     await page.keyboard.press('KeyB')
     await until(game, () => (window as any).__home.useHome.getState().editing && (window as any).__home.farm.edit.camera.blend >= 1)
     expect(await page.evaluate(() => (window as any).__home.camera.position.y)).toBeGreaterThan(15)

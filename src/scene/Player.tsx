@@ -11,10 +11,11 @@ import { footstep, jumpSound, land } from '../audio/sound'
 import { GARDEN_DOOR, HOUSE, ROOMS, SPAWN, groundAt, insideHouse, roomAt, type FloorKind } from '../data/layout'
 import { screenById, type ScreenDef } from '../data/screens'
 import { debugSet } from '../lib/debug'
+import { openEdit, stopDecorating, useDecorate } from '../home/decorate'
 import { coarsePointer } from '../lib/device'
 import { focus } from '../lib/focus'
 import { playGesture } from '../lib/gestures'
-import { findActions, findFar, findStatus, triggerInteraction, type ActionIcon, type ViewRay } from '../lib/interaction'
+import { findActions, findFar, findStatus, settingsOf, triggerInteraction, type ActionIcon, type ViewRay } from '../lib/interaction'
 import { addLook, look, look as lookState, stepTurn, stopTurn } from '../lib/look'
 import { resume } from '../lib/startup'
 import { playerState } from '../lib/playerState'
@@ -166,6 +167,10 @@ function useKeyboard() {
         if (state.screen) state.closeScreen()
         else if (state.panel) state.closePanel()
         else if (state.editing) state.setEditing(false)
+        else if (state.decorating) {
+          if (useDecorate.getState().picked) useDecorate.getState().pick(null)
+          else stopDecorating()
+        }
         else if (state.phase === 'playing') {
           // some browsers also deliver this Esc after releasing the pointer lock, which already opened the panel
           if (!state.settingsOpen) state.setSettingsOpen(true)
@@ -173,9 +178,11 @@ function useKeyboard() {
         }
         return
       }
-      // B: the farm's edit mode (the view from above), in and out
+      // B: the edit mode for where you are (the farm's view from above outdoors, decorating indoors), in and out
       if (e.code === 'KeyB' && !e.repeat && state.phase === 'playing' && !state.screen && !state.settingsOpen && !state.panel) {
-        state.setEditing(!state.editing)
+        if (state.editing) state.setEditing(false)
+        else if (state.decorating) stopDecorating()
+        else openEdit()
         return
       }
       if (state.phase !== 'playing' || busy(state)) return
@@ -728,6 +735,11 @@ export function Player() {
     // a confirm card asks about an action that is still on offer (walked away, or the oven got busy: it goes)
     if (state.confirm && !next.some((a) => a.id === state.confirm!.id)) state.setConfirm(null)
     if (actionsKey(next) !== actionsKey(state.actions) || actionsKey(status ? [status] : []) !== actionsKey(state.status ? [state.status] : [])) state.setActions(next, status)
+    // the thing looked at (not one only within reach), when it has settings: a gear on it opens them
+    const aimed = next.find((a) => !a.reach) ?? (status && !status.reach ? status : undefined)
+    const set = aimed ? settingsOf(aimed.id) : null
+    const gear = set && aimed ? { id: aimed.id, label: set.label } : null
+    if (gear?.id !== state.gear?.id || gear?.label !== state.gear?.label) state.setGear(gear)
   })
 
   return (

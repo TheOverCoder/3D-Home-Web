@@ -28,8 +28,23 @@ export interface Failure {
   detail?: string
 }
 
-/** A small game panel over the scene (seed packets, a bed to build, the buyers, the farm shop, the basket). */
-export type Panel = { kind: 'seeds'; bed: number } | { kind: 'build'; bed: number } | { kind: 'queue' } | { kind: 'shop' } | { kind: 'basket' }
+/** A small game panel over the scene (seed packets, a bed to build, what a bed always grows, the buyers, the farm
+ *  shop, the basket, the furniture shop and buying a piece). */
+export type Panel =
+  | { kind: 'seeds'; bed: number }
+  | { kind: 'build'; bed: number }
+  | { kind: 'bed'; bed: number }
+  | { kind: 'queue' }
+  | { kind: 'shop' }
+  | { kind: 'basket' }
+  | { kind: 'furniture' } // the furniture shop (decorating)
+  | { kind: 'buy-piece'; type: string } // buying one piece: what it is and its price, Cancel or Buy
+
+/** The thing you look at has settings: a gear on it opens them (src/ui/Gear.tsx). */
+export interface Gear {
+  id: string
+  label: string
+}
 
 /** A machine about to take ingredients — the oven a cake's, the mill a load of wheat: a small card over the action
  *  button names them and asks first (a second press by mistake never uses them up). */
@@ -71,10 +86,12 @@ interface HomeState {
   status: Nearby | null // nothing to do here: what is on its way (a growing bed, the oven baking) — shown, not pressed
   guide: { id: string; at: number } | null // a compass mark tapped: marked in the world until you get there
   compass: CompassMark[] // what is ready to take out of reach, nearest first (outdoors)
+  gear: Gear | null // the thing looked at has settings (a bed): its gear
   confirm: Confirm | null // a machine asking before it takes its ingredients
   screen: string | null
   panel: Panel | null
   editing: boolean // the farm's edit mode: the view from above, moving things, buying land
+  decorating: boolean // the house's: the view over a room, moving, turning and putting away its furniture (src/home/)
   lamps: Record<string, boolean>
   doors: Record<string, boolean>
   items: Record<string, ItemState>
@@ -95,12 +112,14 @@ interface HomeState {
   setActions: (actions: Nearby[], status?: Nearby | null) => void
   setGuide: (id: string | null) => void
   setCompass: (marks: CompassMark[]) => void
+  setGear: (gear: Gear | null) => void
   setConfirm: (confirm: Confirm | null) => void
   openScreen: (id: string) => void
   closeScreen: () => void
   openPanel: (panel: Panel) => void
   closePanel: () => void
   setEditing: (on: boolean) => void
+  setDecorating: (on: boolean) => void
   toggleLamp: (id: string) => void
   toggleDoor: (id: string) => void
   pickUp: (id: string) => void
@@ -130,10 +149,12 @@ export const useHome = create<HomeState>()((set, get) => ({
   status: null,
   guide: null,
   compass: [],
+  gear: null,
   confirm: null,
   screen: null,
   panel: null,
   editing: false,
+  decorating: false,
   lamps: Object.fromEntries(LAMPS.map((l) => [l.id, true])),
   doors: { [DOOR.id]: false },
   items: Object.fromEntries(PICKUPS.map((p) => [p.id, { pos: p.position, rev: 0 }])),
@@ -153,12 +174,15 @@ export const useHome = create<HomeState>()((set, get) => ({
   setActions: (actions, status = null) => set({ actions, nearby: actions[0] ?? null, status }),
   setGuide: (id) => set({ guide: id ? { id, at: performance.now() } : null }),
   setCompass: (compass) => set({ compass }),
+  setGear: (gear) => set({ gear }),
   setConfirm: (confirm) => set({ confirm }),
-  openScreen: (screen) => set({ screen, nearby: null, actions: [], status: null, confirm: null }),
+  openScreen: (screen) => set({ screen, nearby: null, actions: [], status: null, confirm: null, gear: null }),
   closeScreen: () => set({ screen: null }),
-  openPanel: (panel) => set({ panel, nearby: null, actions: [], status: null, confirm: null }),
+  openPanel: (panel) => set({ panel, nearby: null, actions: [], status: null, confirm: null, gear: null }),
   closePanel: () => set({ panel: null }),
-  setEditing: (editing) => set(editing ? { editing, panel: null, nearby: null, actions: [], status: null, confirm: null, compass: [] } : { editing }),
+  setEditing: (editing) => set(editing ? { editing, decorating: false, panel: null, nearby: null, actions: [], status: null, confirm: null, compass: [], gear: null } : { editing }),
+  setDecorating: (decorating) =>
+    set(decorating ? { decorating, editing: false, panel: null, nearby: null, actions: [], status: null, confirm: null, compass: [], gear: null } : { decorating }),
   toggleLamp: (id) => set((s) => ({ lamps: { ...s.lamps, [id]: !s.lamps[id] } })),
   toggleDoor: (id) => set((s) => ({ doors: { ...s.doors, [id]: !s.doors[id] } })),
   // the item leaves the registry with its body: forget it as the aimed thing right away, so E drops it next
@@ -178,4 +202,4 @@ export const useHome = create<HomeState>()((set, get) => ({
 
 /** Something has the player's attention (a screen, the settings, a garden panel, the edit mode): no walking,
  *  looking or interacting. */
-export const busy = (s: Pick<HomeState, 'screen' | 'settingsOpen' | 'panel' | 'editing'>) => !!(s.screen || s.settingsOpen || s.panel || s.editing)
+export const busy = (s: Pick<HomeState, 'screen' | 'settingsOpen' | 'panel' | 'editing' | 'decorating'>) => !!(s.screen || s.settingsOpen || s.panel || s.editing || s.decorating)

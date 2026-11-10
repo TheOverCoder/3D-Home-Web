@@ -16,6 +16,9 @@ if (new URLSearchParams(location.search).has('gallery')) {
   // the model gallery (src/models/Gallery.tsx): its own small page, loaded only when asked for
   // (its models are built at once, so the solid engine some of them are cut with loads first)
   Promise.all([import('./models/Gallery'), import('./lib/sculpt').then((k) => k.loadSolids())]).then(([{ Gallery }]) => root.render(<Gallery />))
+} else if (new URLSearchParams(location.search).has('furniture')) {
+  // the furniture's pictures drawn from the pieces (src/home/FurnitureArtPage.tsx), to look at and to save
+  import('./home/FurnitureArtPage').then(({ FurnitureArtPage }) => root.render(<FurnitureArtPage />))
 } else if (new URLSearchParams(location.search).has('items')) {
   // the item pictures drawn from the models (src/models/ItemArtPage.tsx), to look at and to save
   import('./models/ItemArtPage').then(({ ItemArtPage }) => root.render(<ItemArtPage />))

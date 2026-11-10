@@ -84,12 +84,17 @@ export function renderItemArt(id: ProduceId, size = 256): string {
   renderer.render(scene, camera)
   scene.remove(item.group)
   item.dispose()
+  return cropArt(renderer.domElement, S, size)
+}
 
+/** A picture rendered `S` pixels square on a clear background, cropped to the thing itself and scaled into a square
+ *  of `size` pixels with a little room round it, as a WebP data URL (the furniture's pictures are made the same way). */
+export function cropArt(source: HTMLCanvasElement, S: number, size: number): string {
   // the thing's own bounds in the picture
   const full = document.createElement('canvas')
   full.width = full.height = S
   const f = full.getContext('2d', { willReadFrequently: true })!
-  f.drawImage(renderer.domElement, 0, 0)
+  f.drawImage(source, 0, 0)
   const { data } = f.getImageData(0, 0, S, S)
   let x0 = S
   let y0 = S

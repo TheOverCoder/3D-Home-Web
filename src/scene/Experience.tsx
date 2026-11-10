@@ -19,6 +19,8 @@ import { LightDirector } from './LightDirector'
 import { LightShafts } from './LightShafts'
 import { Lighting } from './Lighting'
 import { Pickups } from './Pickups'
+import { Gear } from '../ui/Gear'
+import { DecorateMode } from '../home/DecorateMode'
 import { RenderPause } from './RenderPause'
 import { Player } from './Player'
 import { Screens } from './Screens'
@@ -173,9 +175,11 @@ export default function Experience() {
           <LightDirector />
           <Screens />
           <Pickups />
+          <Gear />
           <Player />
           {/* after the player: the edit mode's camera runs after the player's own */}
           <EditMode />
+          <DecorateMode />
           <Ready />
         </Physics>
         <Effects />

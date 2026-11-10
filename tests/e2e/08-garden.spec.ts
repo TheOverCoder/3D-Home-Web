@@ -74,19 +74,28 @@ test.describe('garden', () => {
     await page.keyboard.press('KeyE')
     await page.waitForFunction((beds) => beds.every((i: number) => (window as any).__home.farm.bedStage(i) === 'growing'), planted, { timeout: 30_000, polling: 200 })
 
-    // ripe: harvested together, then the empty beds offer the same seeds again in one press
+    // ripe: harvested together; then an empty bed opens the seed packets again (nothing plants itself)
     await page.evaluate(() => (window as any).__home.farm.tick(30))
     await until(game, () => /^Harvest/.test((window as any).__home.useHome.getState().nearby?.label ?? ''))
     expect(await label(game)).toBe(`Harvest ${planted.length} beds`)
     await page.keyboard.press('KeyE')
     await page.waitForFunction((n) => (window as any).__home.farm.state.inv.lettuce === 4 * n, planted.length, { timeout: 30_000, polling: 200 })
     expect((await farm(game)).beds[0].crop).toBeNull()
+    await until(game, () => (window as any).__home.useHome.getState().nearby?.label === 'Plant seeds')
+    // unless it is set to grow one crop: the gear on the bed you look at opens what it grows
+    await page.locator('.thing-gear').click()
+    await expect(page.locator('.farm-panel')).toContainText('This bed grows')
+    await page.locator('.farm-panel .farm-card', { hasText: 'Lettuces' }).click()
+    await expect(page.locator('.farm-panel')).toHaveCount(0)
+    expect((await farm(game)).beds[0].fixed).toBe('lettuce')
+    // the other beds here the same: then one press buys the seeds and plants every one of them
+    await page.evaluate((beds) => beds.forEach((i: number) => (window as any).__home.farm.fixBed(i, 'lettuce')), planted)
     await until(game, () => /^Plant lettuces/.test((window as any).__home.useHome.getState().nearby?.label ?? ''))
     const coins1 = (await farm(game)).coins
     await page.keyboard.press('KeyE')
     await until(game, () => (window as any).__home.farm.state.beds[0].crop === 'lettuce')
     expect((await farm(game)).coins).toBe(coins1 - 2 * planted.length)
-    // a number key plants another crop straight away
+    // a number key plants another crop straight away (in the bed you look at: the others keep to lettuces)
     await page.evaluate(() => (window as any).__home.farm.state.beds.forEach((b: any) => b.crop && (b.growth = 1e6)))
     await until(game, () => /^Harvest/.test((window as any).__home.useHome.getState().nearby?.label ?? ''))
     await page.keyboard.press('KeyE')

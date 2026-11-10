@@ -23,6 +23,9 @@ The README has the overview; `tests/README.md` what each test guards.
 - The prompt over the button is pictures, not a sentence (`src/ui/Hud.tsx`): an action about a good gives its icon
   `count` (how many one press takes, makes or sells), `coins` where coins change hands, a status `seconds`. The
   `label` stays the words: tests and screen readers read it.
+- What can be set about a thing (what a bed always grows) is a gear on the thing you look at (`settings()` on its
+  interactable, `src/ui/Gear.tsx`, `G`), never the button. A bed set to one crop is the one place the button buys
+  without a card: its seeds, with the price on the prompt. Nothing plants or spends by itself.
 
 ## Interface (src/styles.css tokens, src/ui/art.ts, src/ui/glyphs.ts)
 
@@ -37,6 +40,13 @@ The README has the overview; `tests/README.md` what each test guards.
   or go into a machine is an `ItemPic` with its count (the round badge, 1 included), never the picture repeated.
 - The top of the screen has three views (`HudMode`: everything / only the compass / clear, `<html data-hud>`):
   anything new up there must hide in the views it does not belong to (see `src/ui/Compass.css`).
+
+## The house's furniture (src/home)
+
+- Where each piece stands is data in the farm's save (`layout.ts`: the rules for where a piece may go, `catalogue.ts`:
+  each kind's size, layer and price). A new kind gets a catalogue entry, a model in `PieceModel`
+  (`src/scene/Furnishings.tsx`) and its picture: `node scripts/render-furniture-art.mjs` (dev server up).
+- Things that stand on a piece follow it: `OnPiece` for the small ones, `HOSTED` for lamps and pickups.
 
 ## Making models (src/lib/sculpt, examples in src/models)
 

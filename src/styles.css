@@ -848,6 +848,13 @@ a:focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; border-rad
 .farm-card:hover:not(:disabled), .farm-card:focus-visible { background: #fff1c9; }
 .farm-card:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 var(--paper-3); }
 .farm-card:disabled { opacity: 0.45; cursor: not-allowed; }
+/* the one chosen (what a bed always grows): a sun-yellow ring */
+.farm-card[aria-pressed='true'] { background: #fff1c9; box-shadow: 0 0 0 3px var(--sun), 0 4px 0 var(--sun-lip); }
+/* a choice of many small pictures (what a bed grows): four across, three on a phone, so all fit without scrolling */
+.farm-grid.compact { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.farm-grid.compact .farm-card { padding: 8px 4px; }
+.farm-grid.compact .farm-card > .art { width: 48px; height: 48px; }
+.farm-grid.compact .farm-card-name { font-size: 15px; }
 .farm-card > .art { width: 64px; height: 64px; }
 .farm-card-name { font: 600 17px/1.15 var(--font-display); }
 .farm-card-tags { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
@@ -910,6 +917,7 @@ a:focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; border-rad
   .farm-backdrop { place-items: end center; padding: 0; }
   .farm-panel { width: 100%; border-radius: var(--r-sheet) var(--r-sheet) 0 0; border-bottom: 0; max-height: 86dvh; padding-bottom: calc(18px + env(safe-area-inset-bottom)); }
   .farm-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .farm-grid.compact { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .farm-confirm > * { flex: 1; }
   .farm-shop-blurb { display: none; }
 }
@@ -929,6 +937,7 @@ a:focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; border-rad
   .farm-panel h2 { font-size: 21px; }
   .farm-head-art { width: 46px; height: 46px; }
   .farm-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .farm-grid.compact { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .farm-card { padding: 8px 6px; }
   .farm-card > .art { width: 48px; height: 48px; }
   .farm-shop-blurb { display: none; }
@@ -1065,3 +1074,36 @@ a:focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; border-rad
 .prompt.status:has(.status-needs) { max-width: min(92vw, 440px); }
 .status-needs .item-pic .art { width: 32px; height: 32px; filter: none; }
 .status-needs .item-pic .qty { min-width: 19px; height: 19px; padding: 0 5px; font-size: 13px; inset-inline-end: -8px; bottom: -6px; }
+
+/* ───────── the house's decorate mode (src/home/DecoratePanel.tsx; the card and Done are the edit mode's) ───────── */
+.deco-undo {
+  position: fixed;
+  top: max(12px, env(safe-area-inset-top));
+  left: max(12px, env(safe-area-inset-left));
+  z-index: 30;
+}
+.deco-rooms .btn { min-height: 44px; }
+.deco-stored { margin-top: 8px; }
+.edit-actions .btn svg { width: 18px; height: 18px; }
+.deco-head { display: flex; align-items: center; gap: 12px; }
+.deco-head > div { flex: 1; min-width: 0; }
+.deco-head .item-pic .art { width: 56px; height: 56px; }
+.deco-shop { flex: none; min-height: 44px; }
+.deco-stored { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; }
+.deco-box { width: 28px; height: 28px; margin-inline-end: 2px; }
+.deco-stored-piece { width: 56px; height: 56px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 14px; background: var(--paper-2); box-shadow: 0 3px 0 var(--paper-3); cursor: pointer; }
+.deco-stored-piece:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--paper-3); }
+.deco-stored-piece .item-pic .art { width: 44px; height: 44px; filter: none; }
+.deco-stored-piece .item-pic .qty { min-width: 20px; height: 20px; font-size: 13px; inset-inline-end: -10px; bottom: -8px; }
+.deco-shop-group h3 { margin: 12px 0 8px; font: 600 18px/1.2 var(--font-display); color: var(--ink-2); }
+.deco-shop-group:first-of-type h3 { margin-top: 2px; }
+/* the four rooms on one row */
+.deco-rooms { flex-wrap: nowrap; gap: 6px; }
+.deco-rooms .btn { flex: 1 1 0; min-width: 0; padding-inline: 6px; }
+@media (orientation: landscape) and (max-height: 560px) {
+  .deco-head .item-pic .art { width: 44px; height: 44px; }
+  .deco-shop { padding-inline: 12px; }
+  .deco-rooms .btn { font-size: 14px; }
+  .deco-stored-piece { width: 48px; height: 48px; }
+  .deco-stored-piece .item-pic .art { width: 38px; height: 38px; }
+}

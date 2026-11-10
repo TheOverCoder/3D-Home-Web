@@ -23,13 +23,14 @@ import '../home/actions' // the decorating actions (and their test hook)
  * original pieces come back in the third-person view, where walls must be able to fade individually. When `rev`
  * changes (a piece of furniture moved), the merge is made again from what is there now.
  */
-export function StaticBatch({ children, firstPersonOnly = false, rev }: { children: ReactNode; firstPersonOnly?: boolean; rev?: string }) {
+export function StaticBatch({ children, firstPersonOnly = false, rev, off = false }: { children: ReactNode; firstPersonOnly?: boolean; rev?: string; off?: boolean }) {
   const group = useRef<Group>(null)
   const batch = useRef<Batch | null>(null)
   useEffect(() => {
-    const b = group.current ? batchStatic(group.current) : null
+    // `off`: nothing merged (decorating: each piece is drawn on its own, so one can be picked up and moved)
+    const b = group.current && !off ? batchStatic(group.current) : null
     batch.current = b
-    const merged = (s: { view: string; phase: string }) => s.view === 'first' && s.phase === 'playing'
+    const merged = (s: { view: string; phase: string; decorating: boolean }) => s.view === 'first' && s.phase === 'playing' && !s.decorating
     if (b && firstPersonOnly) b.setMerged(merged(useHome.getState()))
     const unsub = firstPersonOnly
       ? useHome.subscribe((s, prev) => {
@@ -41,7 +42,7 @@ export function StaticBatch({ children, firstPersonOnly = false, rev }: { childr
       b?.dispose()
       batch.current = null
     }
-  }, [firstPersonOnly, rev])
+  }, [firstPersonOnly, rev, off])
   return <group ref={group}>{children}</group>
 }
 
@@ -84,6 +85,7 @@ export function House() {
   // where the furniture stands: the merged furniture is made again when it moves
   const home = useFarm(() => farm.home)
   const homeRev = useMemo(() => home.pieces.map((p) => `${p.id}:${p.x}:${p.z}:${p.rot}`).join('|'), [home])
+  const decorating = useHome((s) => s.decorating)
   if (assets.house) {
     return (
       <>
@@ -103,7 +105,7 @@ export function House() {
       <StaticBatch>
         <Exterior />
       </StaticBatch>
-      <StaticBatch rev={homeRev}>
+      <StaticBatch rev={homeRev} off={decorating}>
         <Furnishings />
         <Dressing />
       </StaticBatch>

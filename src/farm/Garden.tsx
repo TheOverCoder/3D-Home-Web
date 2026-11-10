@@ -15,7 +15,8 @@ import { B } from '../scene/Furnishings'
 import { StaticBatch } from '../scene/House'
 import { SHRUB_SPOTS } from '../data/garden'
 import { busy, useHome } from '../store'
-import { BED, BEDS, CROPS, EXPANSIONS, PATH_X, SHED, STAND, count, cropById, type CropDef } from './data'
+import { BED, BEDS, CROPS, EXPANSIONS, PATH_X, SHED, STAND, count, cropById, type CropDef, type CropId } from './data'
+import { iconUrl } from './icons'
 import { Chickens } from './Chickens'
 import { Plants } from './Plants'
 import {
@@ -23,6 +24,7 @@ import {
   bake,
   bedProgress,
   bedStage,
+  bedsForSeeds,
   bedsNear,
   buy,
   declineOffer,
@@ -52,6 +54,7 @@ import {
   sendHome,
   spawnVisitor,
   tick,
+  fixBed,
   useFarm,
   waiting,
   water,
@@ -167,13 +170,42 @@ const bedGeometries = () => (shared ??= { frame: bedFrameGeometry(), plot: plotG
 /** The beds near where you stand at `stage`, the one in front of you first: one press does them all. */
 const bedsInReach = (index: number, stage: BedStage) => bedsNear(index, stage, playerState.position.x, playerState.position.z)
 
-/** An empty bed's quick planting: the crop planted last, in as many empty beds within reach as the coins buy. */
-function replant(index: number): { crop: CropDef; beds: number[] } | null {
-  const id = farm.lastCrop
+/** An empty bed set to always grow one crop (its gear): the action button buys those seeds and plants them, in every
+ *  empty bed within reach set to the same crop, as far as the coins go. Null for a bed where you choose each time. */
+function fixedPlanting(index: number): { crop: CropDef; beds: number[] } | null {
+  const id = farm.beds[index].fixed
   if (!id) return null
   const crop = cropById(id)
-  const n = Math.min(bedsInReach(index, 'empty').length, Math.floor(farm.coins / Math.max(1, crop.seedCost)))
-  return n > 0 ? { crop, beds: bedsInReach(index, 'empty').slice(0, n) } : null
+  const beds = bedsInReach(index, 'empty').filter((i) => farm.beds[i].fixed === id)
+  const n = Math.min(beds.length, Math.floor(farm.coins / Math.max(1, crop.seedCost)))
+  return n > 0 ? { crop, beds: beds.slice(0, n) } : null
+}
+
+// a bed set to grow one crop carries a marker with its picture (a stake by the corner the price board used)
+const markers = new Map<CropId, CanvasTexture>()
+function markerTexture(crop: CropId): CanvasTexture {
+  let tex = markers.get(crop)
+  if (tex) return tex
+  const c = document.createElement('canvas')
+  c.width = c.height = 128
+  const g = c.getContext('2d')!
+  g.fillStyle = '#f3ead8'
+  g.strokeStyle = '#3b2a1c'
+  g.lineWidth = 8
+  g.beginPath()
+  g.roundRect(6, 6, 116, 116, 22)
+  g.fill()
+  g.stroke()
+  tex = new CanvasTexture(c)
+  tex.colorSpace = SRGBColorSpace
+  const img = new Image()
+  img.onload = () => {
+    g.drawImage(img, 18, 18, 92, 92)
+    tex!.needsUpdate = true
+  }
+  img.src = iconUrl(crop)
+  markers.set(crop, tex)
+  return tex
 }
 
 /** What harvesting these beds brings in: the first bed's crop and how many of it, then any other crop among them. */
@@ -238,7 +270,7 @@ function Bed({ index }: { index: number }) {
     position: [def.x, 0.5, def.z],
     aim: [def.x, 0.42, def.z],
     radius: 2.1,
-    hint: () => (bedStage(index) === 'empty' && replant(index) ? '1–9 other seeds' : undefined),
+    hint: () => (bedStage(index) === 'empty' ? '1–9 seeds' : undefined),
     ready: () => (bedStage(index) === 'ripe' ? { item: farm.beds[index].crop!, count: yieldOf(farm.beds[index].crop!) } : null),
     label: () => {
       const b = farm.beds[index]
@@ -246,7 +278,7 @@ function Bed({ index }: { index: number }) {
       if (stage === 'unbought') return `Expand the farm: ${EXPANSIONS[def.expansion!].name} · ${EXPANSIONS[def.expansion!].price} coins`
       if (stage === 'locked') return `Build a bed · ${def.price} coins`
       if (stage === 'empty') {
-        const r = replant(index)
+        const r = fixedPlanting(index)
         if (!r) return 'Plant seeds'
         const cost = r.crop.seedCost * r.beds.length
         return `Plant ${r.crop.plural}${r.beds.length > 1 ? ` in ${r.beds.length} beds` : ''} · ${cost} ${cost === 1 ? 'coin' : 'coins'}`
@@ -266,7 +298,7 @@ function Bed({ index }: { index: number }) {
       if (stage === 'unbought') return { verb: 'build', art: 'hammer', coins: EXPANSIONS[def.expansion!].price }
       if (stage === 'locked') return { verb: 'build', art: 'hammer', coins: def.price }
       if (stage === 'empty') {
-        const r = replant(index)
+        const r = fixedPlanting(index)
         return r ? { verb: 'plant', item: r.crop.id, count: r.beds.length, coins: r.crop.seedCost * r.beds.length } : { verb: 'plant' }
       }
       if (stage === 'thirsty') return { verb: 'water', item: crop!, count: bedsInReach(index, 'thirsty').length }
@@ -279,8 +311,8 @@ function Bed({ index }: { index: number }) {
       // spending coins only ever asks first (a card with the price and a Build button)
       if (stage === 'unbought' || stage === 'locked') openPanel({ kind: 'build', bed: index })
       else if (stage === 'empty') {
-        // the last crop again, in every empty bed within reach; the seed packets (other crops) are the next button
-        const r = replant(index)
+        // a bed set to grow one crop: its seeds, in every empty bed within reach set the same; otherwise the packets
+        const r = fixedPlanting(index)
         if (!r) openPanel({ kind: 'seeds', bed: index })
         else if (plantBeds(r.beds, r.crop.id)) {
           playGesture('interact')
@@ -300,19 +332,8 @@ function Bed({ index }: { index: number }) {
         showToast(`${Math.round(bedProgress(index) * 100)}% grown · ${mmss(crop.growSeconds - b.growth)} to go`)
       }
     },
-  })
-
-  // with the last crop offered in one press, the seed packets for something else are a second button (1–9 on a
-  // keyboard plant a crop straight away: see SeedKeys)
-  useInteractable({
-    id: `farm-bed-${index}-seeds`,
-    position: [def.x, 0.5, def.z],
-    aim: [def.x, 0.42, def.z],
-    radius: 2.1,
-    label: 'Other seeds',
-    icon: { verb: 'plant', word: 'Seeds' },
-    enabled: () => bedStage(index) === 'empty' && replant(index) !== null,
-    run: () => openPanel({ kind: 'seeds', bed: index }),
+    // looked at, a built bed shows a gear: what it always grows
+    settings: () => (farm.beds[index].built ? { label: 'What this bed grows', at: { x: def.x, y: BED.h + 0.25, z: def.z }, open: () => openPanel({ kind: 'bed', bed: index }) } : null),
   })
 
   const { w, d, h } = BED
@@ -351,6 +372,14 @@ function Bed({ index }: { index: number }) {
       <sprite ref={icon} position={[0, 1.05, 0]} scale={[0.26, 0.26, 1]} visible={false}>
         <spriteMaterial transparent depthWrite={false} />
       </sprite>
+      {bed.built && bed.fixed && (
+        <group position={[-def.side * (w / 2 - 0.25), 0, -d / 2 - 0.08]}>
+          <B size={[0.035, 0.5, 0.035]} position={[0, 0.25, 0]} color={WOOD_DARK} radius={0.005} />
+          <sprite position={[0, 0.6, 0]} scale={[0.24, 0.24, 1]}>
+            <spriteMaterial map={markerTexture(bed.fixed)} transparent={false} alphaTest={0.5} />
+          </sprite>
+        </group>
+      )}
     </group>
   )
 }
@@ -531,6 +560,7 @@ function FarmClock() {
       water,
       harvest,
       bedStage,
+      fixBed,
       herd,
       milkCow,
       millLoad,
@@ -576,7 +606,7 @@ function FarmClock() {
 
 /** The kitchen garden in the south yard (see src/farm/data.ts for what grows and where things stand). */
 /** On a keyboard, with an empty bed in front of you: 1–9 plant that crop (the seed packets' order) in every empty
- *  bed within reach, straight away — E plants the last crop again. */
+ *  bed within reach (but those set to grow something else), straight away. */
 function SeedKeys() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -588,7 +618,7 @@ function SeedKeys() {
       const index = Number(m[1])
       const crop = CROPS[Number(e.key) - 1]
       if (!crop || bedStage(index) !== 'empty') return
-      const beds = bedsInReach(index, 'empty')
+      const beds = bedsForSeeds(index, crop.id, playerState.position.x, playerState.position.z)
       if (plantBeds(beds, crop.id)) {
         const def = BEDS[index]
         const { pan, near } = placeSound(def.x, def.z)

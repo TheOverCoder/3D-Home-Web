@@ -52,7 +52,17 @@ export interface InteractableDef {
   ready?: () => { item: string; count: number } | null
   /** for a status: what is still missing, shown as pictures with how many (the oven's ingredients for a cake) */
   needs?: () => { item: string; count: number }[] | null
+  /** what can be set about it (a bed: what it always grows): looked at, a gear on it opens them (src/ui/Gear.tsx),
+   *  `at` being where the gear sits; null when there is nothing to set right now */
+  settings?: () => Settings | null
   run: () => void
+}
+
+/** What can be set about a thing: the gear's words (for screen readers and the key hint), where it sits, what it opens. */
+export interface Settings {
+  label: string
+  at: Point3
+  open: () => void
 }
 
 const registry = new Map<string, InteractableDef>()
@@ -65,6 +75,9 @@ export function registerInteractable(def: InteractableDef) {
 }
 
 const labelOf = (def: InteractableDef) => (typeof def.label === 'function' ? def.label() : def.label)
+
+/** What can be set about a thing (its gear), or null. */
+export const settingsOf = (id: string): Settings | null => registry.get(id)?.settings?.() ?? null
 const iconOf = (def: InteractableDef) => (typeof def.icon === 'function' ? def.icon() : def.icon)
 
 /** Where the viewer's eyes are and which way they point (first person only). */
@@ -324,6 +337,7 @@ export function useInteractable(
   const az = def.aim?.[2]
   const hasIcon = def.icon !== undefined
   const hasReady = def.ready !== undefined
+  const hasSettings = def.settings !== undefined
   useEffect(() => {
     const entry: InteractableDef = {
       id: def.id,
@@ -344,8 +358,9 @@ export function useInteractable(
       hint: () => latest.current.hint?.(),
       ready: hasReady ? () => latest.current.ready?.() ?? null : undefined,
       needs: () => latest.current.needs?.() ?? null,
+      settings: hasSettings ? () => latest.current.settings?.() ?? null : undefined,
       run: () => latest.current.run(),
     }
     return registerInteractable(entry)
-  }, [def.id, def.radius, x, y, z, ax, ay, az, hasIcon, hasReady])
+  }, [def.id, def.radius, x, y, z, ax, ay, az, hasIcon, hasReady, hasSettings])
 }

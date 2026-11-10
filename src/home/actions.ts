@@ -1,10 +1,8 @@
 import { carry, type Fit, type Placement } from '../farm/layout'
 import { buyPiece, farm, movePiece, placeStored, storePiece } from '../farm/state'
 import { aimPointOf } from '../lib/interaction'
-import { debugSet } from '../lib/debug'
 import { useHome } from '../store'
-import { PIECES, type PieceType } from './catalogue'
-import { canPlacePiece, findFreeSpot, footprint, snapPiece, unreachable, type HomePiece } from './layout'
+import { footprint, type HomePiece } from './layout'
 
 // What decorating does to the house, with what goes along with it: a thing to pick up that stands on a piece (the
 // notebook on the desk, the gift on the bed) goes where the piece goes, and comes down to the floor when the piece is
@@ -50,20 +48,3 @@ export function putAway(id: string) {
 }
 
 export { buyPiece, placeStored }
-
-// tests and the console: window.__home.home
-debugSet('home', {
-  get layout() {
-    return farm.home
-  },
-  pieces: PIECES,
-  canPlace: (p: HomePiece) => canPlacePiece(farm.home, p),
-  unreachable: () => unreachable(farm.home),
-  snap: snapPiece,
-  freeSpot: (type: PieceType, room: Parameters<typeof findFreeSpot>[2]) => findFreeSpot(farm.home, type, room),
-  move: movePieceTo,
-  turn: turnPiece,
-  putAway,
-  placeStored,
-  buy: buyPiece,
-})

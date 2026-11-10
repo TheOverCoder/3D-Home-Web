@@ -7,6 +7,7 @@ import { boxProject } from '../lib/boxProject'
 import { surface } from '../lib/proceduralTextures'
 import { playerState } from '../lib/playerState'
 import { useHome } from '../store'
+import { decorateEye, decorateFocus } from '../home/decorate'
 
 type Kind = 'wall' | 'trim' | 'glass' | 'fabric' | 'dark'
 
@@ -197,9 +198,18 @@ function buildSegments(): Seg[] {
 const ray = new Ray()
 const tmp = new Vector3()
 const point = new Vector3()
+const eyePoint = new Vector3()
 // feet, hips, head — a wall that hides any of them fades
 const SAMPLE_HEIGHTS = [-0.7, 0, 0.7]
-const NONE: number[] = []
+const NONE: [number, number, number][] = []
+const bodySamples = () => SAMPLE_HEIGHTS.map((dy): [number, number, number] => [playerState.position.x, playerState.position.y + dy, playerState.position.z])
+/** Decorating: the floor round the middle of the view, a little above it (a wall that hides any of it fades). */
+const floorSamples = (x: number, z: number) => {
+  const out: [number, number, number][] = []
+  for (const dx of [-2.2, 0, 2.2])
+    for (const dz of [-2, 0, 2]) out.push([Math.min(HOUSE.maxX - 0.3, Math.max(HOUSE.minX + 0.3, x + dx)), 0.6, Math.min(HOUSE.maxZ - 0.3, Math.max(HOUSE.minZ + 0.3, z + dz))])
+  return out
+}
 
 const BASE_OPACITY: Partial<Record<Kind, number>> = { glass: 0.16 }
 
@@ -232,20 +242,25 @@ export function Walls() {
 
   useFrame((_, dt) => {
     const state = useHome.getState()
-    const inside = state.view === 'first' && state.phase === 'playing'
+    const decorating = state.decorating
+    const inside = state.view === 'first' && state.phase === 'playing' && !decorating
     // in first person nothing ever fades, so once every wall is fully back there is nothing left to do
     if (inside && settled.current) return
     settled.current = false
     let allBack = true
-    ray.origin.copy(camera.position)
+    // decorating, the camera that matters is the decorate view's (it moves after this runs)
+    const eyeAt = decorating ? eyePoint.set(decorateEye.x, decorateEye.y, decorateEye.z) : camera.position
+    ray.origin.copy(eyeAt)
+    // what must stay in view: you (feet, hips, head), or, decorating, the floor round the middle of the view
+    const samples = inside ? NONE : decorating ? floorSamples(decorateFocus.x, decorateFocus.z) : bodySamples()
     for (let i = 0; i < segs.length; i++) {
       let blocked = false
-      for (const dy of inside ? NONE : SAMPLE_HEIGHTS) {
-        point.set(playerState.position.x, playerState.position.y + dy, playerState.position.z)
-        const length = camera.position.distanceTo(point)
-        ray.direction.copy(point).sub(camera.position).normalize()
+      for (const s of samples) {
+        point.set(s[0], s[1], s[2])
+        const length = eyeAt.distanceTo(point)
+        ray.direction.copy(point).sub(eyeAt).normalize()
         const hit = ray.intersectBox(boxes[i], tmp)
-        if (hit !== null && tmp.distanceTo(camera.position) < length - 0.05) {
+        if (hit !== null && tmp.distanceTo(eyeAt) < length - 0.05) {
           blocked = true
           break
         }

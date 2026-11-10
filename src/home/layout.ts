@@ -116,10 +116,12 @@ const DOOR_STRIPS: { rect: Rect; to: string }[] = [
 /** The quarter the hinged door sweeps as it opens into the bedroom. */
 const DOOR_SWING = rect(DOOR.hinge[0], DOOR.hinge[0] + DOOR.width, DOOR.hinge[2], DOOR.hinge[2] + DOOR.width)
 
-/** The hologram stands in front of the screens, and the radiator under the bedroom's south window. */
+/** The hologram stands in front of the screens, the radiator under the bedroom's south window, and the standing lamp
+ *  (a lamp on a piece of furniture goes where the piece goes). */
 const FIXED: { rect: Rect; name: string }[] = [
   ...SCREENS.map((s) => ({ rect: rect(s.holo[0] - 0.35, s.holo[0] + 0.35, s.holo[2] - 0.35, s.holo[2] + 0.35), name: 'the hologram stand' })),
   { rect: rect(1.18, 2.22, 5.83, 5.92), name: 'the radiator' },
+  ...LAMPS.filter((l) => l.kind === 'floor').map((l) => ({ rect: rect(l.position[0] - 0.32, l.position[0] + 0.32, l.position[2] - 0.32, l.position[2] + 0.32), name: 'the lamp' })),
 ]
 
 /** Within this far of a window, nothing taller than its sill. */

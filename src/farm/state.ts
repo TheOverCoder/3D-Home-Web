@@ -131,7 +131,6 @@ export interface FarmData {
   paceLevel: number // how much sooner the next buyer comes
   started: boolean // the player has planted something: from then on buyers come by
   planted: CropId[] // kinds ever planted: buyers ask for what you grow
-  lastCrop: CropId | null // what was planted last: an empty bed offers it again in one press
   made: ProduceId[] // everything the farm has ever produced: buyers ask for that too
   stats: { harvested: number; sold: number; earned: number; declined: number; baked: number }
   visitors: Visitor[]
@@ -191,7 +190,6 @@ function fresh(): FarmData {
     paceLevel: 0,
     started: false,
     planted: [],
-    lastCrop: null,
     made: [],
     stats: { harvested: 0, sold: 0, earned: 0, declined: 0, baked: 0 },
     visitors: [],
@@ -303,7 +301,6 @@ function load(text: string | null = readRaw(KEY)): { data: FarmData; savedAt: nu
     data.compost = !!raw.compost
     data.started = !!raw.started
     data.planted = Array.isArray(raw.planted) ? raw.planted.filter((c): c is CropId => CROPS.some((d) => d.id === c)) : []
-    data.lastCrop = CROPS.some((d) => d.id === raw.lastCrop) ? (raw.lastCrop as CropId) : null
     data.made = Array.isArray(raw.made) ? raw.made.filter(isProduce) : []
     data.stats = { ...data.stats, ...(raw.stats ?? {}) }
     // a farm from before the layout keeps everything where it always stood
@@ -394,6 +391,11 @@ export function bedsNear(index: number, stage: BedStage, x: number, z: number): 
 }
 
 /** 0 … 1 */
+/** The empty beds near (x, z) that seeds chosen by hand go into: this one, and those within reach not set to grow
+ *  something else. */
+export const bedsForSeeds = (index: number, crop: CropId, x: number, z: number) =>
+  bedsNear(index, 'empty', x, z).filter((i) => i === index || !farm.beds[i].fixed || farm.beds[i].fixed === crop)
+
 export const bedProgress = (i: number) => {
   const b = farm.beds[i]
   return b.crop ? Math.min(1, b.growth / cropById(b.crop).growSeconds) : 0
@@ -412,7 +414,6 @@ export function plant(i: number, crop: CropId) {
   b.growth = 0
   b.water = fullWater(crop) // seeds go in with a good soak
   farm.started = true
-  farm.lastCrop = crop
   if (!farm.planted.includes(crop)) farm.planted.push(crop)
   bump()
   save()
@@ -800,6 +801,14 @@ export function buyPiece(type: PieceType) {
   bump()
   save()
   return true
+}
+
+/** Puts the house back as it was a moment ago (the decorate mode's undo), with the coins of a purchase it undoes. */
+export function restoreHome(layout: HomeLayout, refund = 0) {
+  farm.home = layout
+  farm.coins += refund
+  bump()
+  save()
 }
 
 /** A free spot for a piece in a room, for placing one from storage without dragging it there. */

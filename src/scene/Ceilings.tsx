@@ -37,7 +37,9 @@ function Ceiling({ id }: { id: RoomId }) {
     const state = useHome.getState()
     const c = camera.position
     const inFootprint = c.x > HOUSE.minX && c.x < HOUSE.maxX && c.z > HOUSE.minZ && c.z < HOUSE.maxZ
-    if (state.view === 'first' && state.phase === 'playing') {
+    // decorating, the view is over the room (its camera moves after this runs: going by it would be a frame late)
+    if (state.decorating) shown.current = false
+    else if (state.view === 'first' && state.phase === 'playing') {
       shown.current = true
     } else if (shown.current) {
       if (!inFootprint || c.y > H + 0.06) shown.current = false // hysteresis: no flicker around the roof line
