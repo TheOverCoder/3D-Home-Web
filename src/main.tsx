@@ -9,25 +9,41 @@ import './styles.css'
 import { installDiagnostics } from './lib/diagnostics'
 import './lib/sw' // registers the service worker that keeps the game on this device
 
+const params = new URLSearchParams(location.search)
+/** A page loaded on demand that did not arrive: say so in the console rather than leave a blank page unexplained. */
+const failed = (what: string) => (e: unknown) => console.error(`[${what}] did not load`, e)
+
+// ?console: a console, storage and network view on the page itself, for phones (src/debug/console.ts), started
+// before anything else so it sees all that follows
+if (params.has('console')) import('./debug/console').catch(failed('console'))
+
 installDiagnostics()
 
 const root = createRoot(document.getElementById('root')!)
-if (new URLSearchParams(location.search).has('gallery')) {
+if (params.has('gallery')) {
   // the model gallery (src/models/Gallery.tsx): its own small page, loaded only when asked for
   // (its models are built at once, so the solid engine some of them are cut with loads first)
-  Promise.all([import('./models/Gallery'), import('./lib/sculpt').then((k) => k.loadSolids())]).then(([{ Gallery }]) => root.render(<Gallery />))
-} else if (new URLSearchParams(location.search).has('furniture')) {
+  Promise.all([import('./models/Gallery'), import('./lib/sculpt').then((k) => k.loadSolids())])
+    .then(([{ Gallery }]) => root.render(<Gallery />))
+    .catch(failed('gallery'))
+} else if (params.has('furniture')) {
   // the furniture's pictures drawn from the pieces (src/home/FurnitureArtPage.tsx), to look at and to save
-  import('./home/FurnitureArtPage').then(({ FurnitureArtPage }) => root.render(<FurnitureArtPage />))
-} else if (import.meta.env.DEV && new URLSearchParams(location.search).has('gainmap')) {
+  import('./home/FurnitureArtPage')
+    .then(({ FurnitureArtPage }) => root.render(<FurnitureArtPage />))
+    .catch(failed('furniture pictures'))
+} else if (import.meta.env.DEV && params.has('gainmap')) {
   // the sky light as a JPEG with a gain map (src/tools/hdrToGainmap.ts), for scripts/hdr-to-gainmap.mjs to save
   // (while developing only: the build leaves it, and the .hdr it reads, out)
-  import('./tools/hdrToGainmap').then(async ({ hdrToGainmap }) => {
-    ;(window as unknown as { __gainmap: Record<string, string> }).__gainmap = await hdrToGainmap()
-  })
-} else if (new URLSearchParams(location.search).has('items')) {
+  import('./tools/hdrToGainmap')
+    .then(async ({ hdrToGainmap }) => {
+      ;(window as unknown as { __gainmap: Record<string, string> }).__gainmap = await hdrToGainmap()
+    })
+    .catch(failed('gain map'))
+} else if (params.has('items')) {
   // the item pictures drawn from the models (src/models/ItemArtPage.tsx), to look at and to save
-  import('./models/ItemArtPage').then(({ ItemArtPage }) => root.render(<ItemArtPage />))
+  import('./models/ItemArtPage')
+    .then(({ ItemArtPage }) => root.render(<ItemArtPage />))
+    .catch(failed('item pictures'))
 } else {
   root.render(
     <StrictMode>

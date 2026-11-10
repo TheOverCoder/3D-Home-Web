@@ -30,6 +30,7 @@ Add `?debug` to the URL to expose `window.__home` (store, player state, `telepor
 Developer tools (`src/debug/`), loaded only when asked for:
 
 - `?tune`: a live tuning panel (lil-gui, `src/debug/Tune.tsx`) — the farm's timers and prices, the film look and the lights, this device's profile per tier, a line with frames per second, draw calls and triangles (counted as `05-budget` counts them), and *Copy changes*: what you changed, as JSON to write back into the code (also in the console). It works on a phone too; `?debug&tune` gives both.
+- `?console`: a console, storage, network and elements view on the page itself (eruda, `src/debug/console.ts`), for a phone with no developer tools at hand.
 
 ## Controls
 
