@@ -13,7 +13,7 @@ import { debugSet } from '../lib/debug'
 import { buyPiece, movePieceTo, placeStored, putAway, turnPiece } from './actions'
 import { type PieceType } from './catalogue'
 import { decorateEye, decorateFocus, dragPiece, dropPiece, movable, startDecorating, stopDecorating, undo, useDecorate } from './decorate'
-import { canPlacePiece, findFreeSpot, footprint, snapPiece, unreachable, type HomePiece } from './layout'
+import { ROOM_WEIGHT, canPlacePiece, findFreeSpot, footprint, roomWeight, snapPiece, unreachable, type HomePiece } from './layout'
 
 // The house's decorate mode, in the scene: the view over a room, and the hand that moves its furniture. The camera
 // flies up from your eyes to look down on the room you are in (north at the top; the ceiling goes, and the walls on
@@ -440,6 +440,8 @@ export function DecorateMode() {
       pieces: PIECES,
       canPlace: (p: HomePiece) => canPlacePiece(farm.home, p),
       unreachable: () => unreachable(farm.home),
+      roomWeight: (room: RoomId) => roomWeight(farm.home, room),
+      roomLimit: ROOM_WEIGHT,
       snap: snapPiece,
       freeSpot: (type: PieceType, room: RoomId) => findFreeSpot(farm.home, type, room),
       move: movePieceTo,

@@ -528,21 +528,22 @@ export function PieceLook({ p }: { p: Pick<HomePiece, 'id' | 'type'> }) {
 }
 
 /** One piece where the layout has it: furniture is solid, a rug lies under it. While it is dragged in the decorate
- *  mode it is drawn where the finger is instead (src/home/DecorateMode.tsx), so here it hides. */
+ *  mode it is drawn where the finger is instead (src/home/DecorateMode.tsx), so here it hides. Its group is named
+ *  `piece-<id>` (tests count what each piece draws against its weight in the catalogue). */
 export function Placed({ p }: { p: HomePiece }) {
   const def = PIECES[p.type]
   const dragged = useDecorate((s) => s.drag?.id === p.id)
   const rotationY = (p.rot * Math.PI) / 2
   if (def.layer === 'rug')
     return (
-      <group visible={!dragged}>
+      <group name={`piece-${p.id}`} visible={!dragged}>
         <Decor position={[p.x, 0, p.z]} rotationY={rotationY}>
           <PieceModel type={p.type} />
         </Decor>
       </group>
     )
   return (
-    <group visible={!dragged}>
+    <group name={`piece-${p.id}`} visible={!dragged}>
       <Solid id={modelId(p)} position={[p.x, 0, p.z]} rotationY={rotationY} size={def.size}>
         <PieceModel type={p.type} />
       </Solid>

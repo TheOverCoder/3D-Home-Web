@@ -4,10 +4,11 @@ import { carry, rectToWorld, type Fit, type Placement, type Rect } from '../farm
 import { PIECES, isPieceType, type PieceType } from './catalogue'
 
 // Where the house's furniture stands, and the rules for moving it (pure, like src/farm/layout.ts): every piece is a
-// rectangle on the floor in quarter turns; a spot is fine when the piece is inside one room clear of its walls, on
-// nothing of its own layer (rugs lie under furniture), off the doorways, the door's swing and the hologram stands,
-// not over a window's sill if taller, and when every doorway, screen and lamp can still be walked to from where you
-// come in. The default is exactly where the house has always had it, so old saves and every test keep their house.
+// rectangle on the floor in quarter turns; a spot is fine when the piece is inside one room clear of its walls, the
+// room is not full (what its pieces draw stays within ROOM_WEIGHT), on nothing of its own layer (rugs lie under
+// furniture), off the doorways, the door's swing and the hologram stands, not over a window's sill if taller, and when
+// every doorway, screen and lamp can still be walked to from where you come in. The default is exactly where the house
+// has always had it, so old saves and every test keep their house.
 
 export interface HomePiece extends Placement {
   id: string
@@ -133,6 +134,27 @@ const windowZones = WINDOWS.filter((w) => !w.door).map((w) => {
   return { rect: r, sill: w.sill }
 })
 
+// ───────────────────────────── what a room may draw ─────────────────────────────
+
+/**
+ * The most a room's furniture may draw: the sum of its pieces' weights (their triangles, src/home/catalogue.ts).
+ * Walls hide nothing from the renderer, so a view also draws the rooms it looks towards: measured with the heaviest
+ * piece (the easy chair) filling a room to this, the worst room view (the kitchen's, towards the bedroom) drew 194k
+ * triangles, and 204k with all four rooms full: under the 250k a view may draw (tests/e2e/05-budget) with room to
+ * spare for the farm outside. Today's house: living room 34.2k, bedroom 12.7k, studio 6.3k, kitchen 2.6k.
+ */
+export const ROOM_WEIGHT = 60_000
+
+/** What a room's pieces draw (their weights), leaving one piece out (the one being moved). */
+export function roomWeight(layout: HomeLayout, room: RoomId, except?: string): number {
+  let sum = 0
+  for (const p of layout.pieces) if (p.id !== except && roomAt(p.x, p.z) === room) sum += PIECES[p.type].weight
+  return sum
+}
+
+/** Whether one more piece of this kind would put a room over ROOM_WEIGHT. */
+export const roomFull = (layout: HomeLayout, room: RoomId, type: PieceType) => roomWeight(layout, room) + PIECES[type].weight > ROOM_WEIGHT
+
 // ───────────────────────────── can it go there ─────────────────────────────
 
 const lowerName = (t: PieceType) => PIECES[t].name[0].toLowerCase() + PIECES[t].name.slice(1)
@@ -143,6 +165,7 @@ export function canPlacePiece(layout: HomeLayout, p: HomePiece): Fit {
   const fp = footprint(p)
   const room = roomAt(p.x, p.z)
   if (!room || !inside(fp, roomFloor(room))) return { ok: false, reason: 'Through the wall' }
+  if (roomWeight(layout, room, p.id) + def.weight > ROOM_WEIGHT) return { ok: false, reason: 'This room is full' }
   for (const other of layout.pieces) {
     if (other.id === p.id || PIECES[other.type].layer !== def.layer) continue
     if (overlaps(fp, footprint(other), -0.005)) return { ok: false, reason: `On the ${lowerName(other.type)}` }
@@ -288,8 +311,10 @@ export function snapPiece(p: HomePiece, x: number, z: number): HomePiece {
   return q
 }
 
-/** A free spot for a new piece in a room (nearest the room's middle first), or null when there is none. */
+/** A free spot for a new piece in a room (nearest the room's middle first), or null when there is none (or the room
+ *  is full: `roomFull`). */
 export function findFreeSpot(layout: HomeLayout, type: PieceType, room: RoomId, id = 'new'): HomePiece | null {
+  if (roomFull(layout, room, type)) return null
   const b = roomFloor(room)
   const cx = (b.minX + b.maxX) / 2
   const cz = (b.minZ + b.maxZ) / 2
@@ -327,6 +352,14 @@ export function sanitizeHome(raw: unknown): HomeLayout {
   }
   // a fitted piece missing from the save comes back
   for (const d of base.pieces) if (PIECES[d.type].fitted && !out.pieces.some((p) => p.id === d.id)) out.pieces.push(d)
+  // a room over what it may draw (a save from before the limit) puts away its newest pieces first (bought pieces come
+  // last in the list), so the furniture it always had stays
+  for (const p of [...out.pieces].reverse()) {
+    const room = roomAt(p.x, p.z)
+    if (PIECES[p.type].fitted || !room || roomWeight(out, room) <= ROOM_WEIGHT) continue
+    out.pieces = out.pieces.filter((o) => o.id !== p.id)
+    out.stored.push(p.type)
+  }
   // whatever does not fit any more goes into storage, one by one
   for (const p of [...out.pieces]) {
     if (PIECES[p.type].fitted) continue
