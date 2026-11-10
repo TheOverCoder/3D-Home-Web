@@ -50,17 +50,20 @@ test.describe('garden', () => {
     expect(planted.length).toBeGreaterThan(1)
     expect((await farm(game)).coins).toBe(coins0 - 2 * planted.length)
 
-    // growing: nothing to press here — the bed shows how long as a status; with eggs in the nest there is a job
-    // elsewhere, and the button offers the nearest one ("Next: …"): pressing it marks it and turns you to it
-    await page.evaluate(() => ((window as any).__home.farm.state.eggs = 2))
-    await until(game, () => {
-      const s = (window as any).__home.useHome.getState()
-      return /ready in/.test(s.status?.label ?? '') && s.nearby?.icon?.verb === 'guide'
-    })
-    expect(await page.evaluate(() => (window as any).__home.useHome.getState().actions.some((a: any) => a.id.startsWith('farm-bed-')))).toBe(false)
-    const next = await page.evaluate(() => (window as any).__home.useHome.getState().nearby.id.replace('guide:', '') as string)
-    await page.keyboard.press('KeyE')
-    await page.waitForFunction((id) => (window as any).__home.useHome.getState().guide?.id === id, next, { timeout: 30_000, polling: 200 })
+    // growing: nothing to press here — the bed shows how long as a status, and the button offers nothing. A nest
+    // with no room for another egg is a job elsewhere: it goes on the compass at the top (its picture, how many),
+    // never on the button; a nest with room for more is not worth the walk yet
+    const eggMark = () => (window as any).__home.useHome.getState().compass.find((m: any) => m.item === 'egg')
+    await page.evaluate(() => ((window as any).__home.farm.state.eggs = 5))
+    await until(game, () => /ready in/.test((window as any).__home.useHome.getState().status?.label ?? ''))
+    expect(await page.evaluate(eggMark)).toBeUndefined()
+    await page.evaluate(() => ((window as any).__home.farm.state.eggs = 6))
+    await page.waitForFunction(eggMark, null, { timeout: 30_000, polling: 200 })
+    expect(await page.evaluate(eggMark)).toMatchObject({ id: 'farm-nest', count: 6 })
+    expect(await page.evaluate(() => (window as any).__home.useHome.getState().actions)).toEqual([])
+    // its mark, tapped, turns you to it and marks it in the world
+    await page.getByRole('button', { name: /^6 eggs ready/ }).click()
+    await page.waitForFunction(() => (window as any).__home.useHome.getState().guide?.id === 'farm-nest', null, { timeout: 30_000, polling: 200 })
     await page.evaluate(() => ((window as any).__home.farm.state.eggs = 0))
     await game.teleport(-1.2, 1.4, 9.0, Math.PI / 2, -0.6)
 

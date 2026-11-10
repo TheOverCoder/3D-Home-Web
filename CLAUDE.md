@@ -15,9 +15,11 @@ The README has the overview; `tests/README.md` what each test guards.
 
 ## Farm actions (src/lib/interaction.ts)
 
-- One context button (E / the round touch button). It never stalls: what only tells you how long is a status
-  (`verb: 'wait'`), and with nothing to do here it offers the next job elsewhere. It never spends: anything that
-  costs coins on the farm opens a confirmation card (`verb: 'build'`). One press does every like thing in reach.
+- One context button (E / the round touch button) offers only what one press does here: what only tells you how
+  long, or what is missing, is a status (`verb: 'wait'`, `needs` for pictures); nothing far away (what is ready
+  to take out of reach goes on the compass at the top: give its interactable a `ready()`, null until full). It
+  never spends without asking: coins open a confirmation card (`verb: 'build'`), a machine's ingredients a
+  `setConfirm` card over the button (the button again only closes it). One press does every like thing in reach.
 
 ## Interface (src/styles.css tokens, src/ui/art.ts, src/ui/glyphs.ts)
 
@@ -28,7 +30,8 @@ The README has the overview; `tests/README.md` what each test guards.
   its model (`src/models/goods.ts`, `iconUrl` in `src/farm/icons.ts`): a new good gets a model there, and after
   changing one, save the pictures again with `node scripts/render-item-art.mjs` (dev server up).
 - A panel: picture, a few-word title, chips, at most one line of text, at most two buttons (Cancel first, the
-  action last with its price). 44 px targets, text ≥ 15 px (never < 13).
+  action last with its price). 44 px targets, text ≥ 15 px (never < 13). A good's picture where goods change hands
+  or go into a machine is an `ItemPic` with its count (the round badge, 1 included), never the picture repeated.
 
 ## Making models (src/lib/sculpt, examples in src/models)
 

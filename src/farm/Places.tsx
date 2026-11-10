@@ -9,7 +9,7 @@ import { B } from '../scene/Furnishings'
 import { StaticBatch } from '../scene/House'
 import { tree } from '../scene/flora'
 import { coopModel, lemonTreeModel, structureParts, troughModel, type Structure } from '../models/structures'
-import { COOP, FOLD, HAY_RACK, NEST, PASTURE, RUN, TROUGH, count } from './data'
+import { COOP, EGG, FOLD, HAY_RACK, LEMON_TREE, NEST, PASTURE, RUN, TROUGH, count } from './data'
 import { usePlacement, useShownPlacement } from './edit'
 import { alongBoundary, toWorld, turnOf, type PlaceId, type Placement } from './layout'
 import { collectEggs, farm, pickLemons, useFarm } from './state'
@@ -152,6 +152,7 @@ function Nest() {
     aim: box,
     radius: 1.9,
     enabled: () => farm.eggs > 0,
+    ready: () => (farm.eggs >= EGG.max ? { item: 'egg', count: farm.eggs } : null),
     label: () => `Collect ${count('egg', farm.eggs)}`,
     icon: { verb: 'pick', item: 'egg' },
     run: () => {
@@ -351,6 +352,7 @@ function LemonTree() {
     aim: world(p, 0, 1.6, 0),
     radius: 2.3,
     enabled: () => farm.lemons > 0,
+    ready: () => (farm.lemons >= LEMON_TREE.max ? { item: 'lemon', count: farm.lemons } : null),
     label: () => `Pick ${count('lemon', farm.lemons)}`,
     icon: { verb: 'pick', item: 'lemon' },
     run: () => {

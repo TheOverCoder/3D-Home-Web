@@ -9,8 +9,8 @@ import { loadSolids, solidsReady } from '../lib/sculpt'
 import { mouthGlowMaterial, mouthGlowShape, ovenModel, structureParts } from '../models/structures'
 import { B } from '../scene/Furnishings'
 import { useHome } from '../store'
-import { LOOM, MILL, MILLABLE, OVEN, count, produceById, type CakeId } from './data'
-import { farm, loomCollect, loomLoad, loomSecondsLeft, loomStage, millCollect, millSecondsLeft, millStage, ovenSecondsLeft, ovenStage, takeOut, useFarm } from './state'
+import { LOOM, MILL, MILLABLE, OVEN, RECIPES, count, produceById, recipeById, type CakeId, type MillInput, type ProduceId } from './data'
+import { bake, canBake, farm, loomCollect, loomLoad, loomSecondsLeft, loomStage, millCollect, millLoad, millSecondsLeft, millStage, ovenSecondsLeft, ovenStage, takeOut, useFarm } from './state'
 
 // The farm's kitchen in the yard's south-east corner: a mill that presses sugar cane into sugar and grinds wheat
 // into flour (its wheel and rollers turn while it works), and a wood-fired clay oven (sculpted with the kit, see
@@ -126,12 +126,103 @@ function useSolids() {
   return ready
 }
 
+// where you stand to use the oven and the mill, and what you look at
+const OVEN_STAND: [number, number, number] = [OVEN.x - 1.15, 1.0, OVEN.z]
+const OVEN_AIM: [number, number, number] = [OVEN.x - 0.72, 0.92, OVEN.z]
+const MILL_STAND: [number, number, number] = [MILL.x - 1.25, 1.0, MILL.z]
+const MILL_AIM: [number, number, number] = [MILL.x - 0.15, 0.95, MILL.z]
+const MILL_INPUTS = Object.keys(MILLABLE) as MillInput[]
+
+const cap = (s: string) => s[0].toUpperCase() + s.slice(1)
+
+/** What a recipe still lacks, and how many of each (shown as pictures on the oven's status line). */
+const lacking = (needs: Partial<Record<ProduceId, number>>) =>
+  Object.entries(needs).flatMap(([item, n]) => {
+    const more = (n ?? 0) - farm.inv[item as ProduceId]
+    return more > 0 ? [{ item, count: more }] : []
+  })
+
+/** The cake you are closest to having everything for (fewest things still to get). */
+function nearestCake() {
+  const short = (r: (typeof RECIPES)[number]) => Object.entries(r.needs).reduce((t, [k, n]) => t + Math.max(0, (n ?? 0) - farm.inv[k as ProduceId]), 0)
+  return RECIPES.reduce((best, r) => (short(r) < short(best) ? r : best))
+}
+
+/** A cake the oven can bake now, from what is in the basket: one press asks first — a card over the button with
+ *  what goes in — and only then bakes. */
+function CakeOffer({ id }: { id: CakeId }) {
+  const setConfirm = useHome((s) => s.setConfirm)
+  const r = recipeById(id)
+  const action = `farm-oven-${id}`
+  useInteractable({
+    id: action,
+    position: OVEN_STAND,
+    aim: OVEN_AIM,
+    radius: 2.1,
+    enabled: () => ovenStage() === 'idle' && canBake(id),
+    label: `Bake a ${produceById(id).name}`,
+    icon: { verb: 'make', item: id, word: 'Bake' },
+    run: () =>
+      setConfirm({
+        id: action,
+        item: id,
+        count: 1,
+        title: r.name,
+        seconds: r.seconds,
+        inputs: Object.entries(r.needs).map(([item, n]) => ({ item, count: n ?? 0 })),
+        word: 'Bake',
+        go: () => {
+          if (!bake(id)) return
+          const { pan, near } = placeSound(OVEN.x, OVEN.z)
+          farmSound('oven', pan, near)
+          playGesture('interact')
+        },
+      }),
+  })
+  return null
+}
+
+/** A load for the mill, from what is in the basket (wheat for flour, cane for sugar): it asks first, as the oven does. */
+function MillOffer({ input }: { input: MillInput }) {
+  const setConfirm = useHome((s) => s.setConfirm)
+  const out = MILLABLE[input]
+  const action = `farm-mill-${input}`
+  const load = () => Math.min(MILL.capacity, farm.inv[input])
+  useInteractable({
+    id: action,
+    position: MILL_STAND,
+    aim: MILL_AIM,
+    radius: 2.2,
+    enabled: () => millStage() === 'idle' && farm.inv[input] > 0,
+    label: () => `Mill ${count(input, load())}`,
+    icon: { verb: 'make', item: out, word: 'Mill' },
+    run: () => {
+      const n = load()
+      setConfirm({
+        id: action,
+        item: out,
+        count: n,
+        title: cap(produceById(out).plural),
+        seconds: n * MILL.perItem,
+        inputs: [{ item: input, count: n }],
+        word: 'Mill',
+        go: () => {
+          if (!millLoad(input)) return
+          const { pan, near } = placeSound(MILL.x, MILL.z)
+          farmSound('creak', pan, near)
+          playGesture('interact')
+        },
+      })
+    },
+  })
+  return null
+}
+
 function Oven() {
   useFarm((s) => s.rev)
   const glow = useMemo(() => mouthGlowMaterial(0), [])
   const smoke = useRef<(Sprite | null)[]>([])
   const stage = useRef(ovenStage())
-  const openPanel = useHome((s) => s.openPanel)
   const showToast = useHome((s) => s.showToast)
   const tex = useMemo(() => smokeTexture(), [])
   const solids = useSolids()
@@ -149,21 +240,26 @@ function Oven() {
 
   useInteractable({
     id: 'farm-oven',
-    position: [OVEN.x - 1.15, 1.0, OVEN.z],
-    aim: [OVEN.x - 0.72, 0.92, OVEN.z],
+    position: OVEN_STAND,
+    aim: OVEN_AIM,
     radius: 2.1,
+    // with everything for a cake, that cake's own action (CakeOffer) is on offer instead
+    enabled: () => ovenStage() !== 'idle' || !RECIPES.some((r) => canBake(r.id)),
     label: () => {
       const s = ovenStage()
       if (s === 'done') return `Take out the ${produceById(farm.oven.ready!).name}`
       if (s === 'baking') return `Baking a ${produceById(farm.oven.baking!).name} · ready in ${mmss(ovenSecondsLeft())}`
-      return 'Oven · bake a cake'
+      return `Oven · a ${produceById(nearestCake().id).name} needs`
     },
+    needs: () => (ovenStage() === 'idle' ? lacking(nearestCake().needs) : null),
     icon: () => {
       const s = ovenStage()
       if (s === 'done') return { verb: 'pick', item: farm.oven.ready! }
       if (s === 'baking') return { verb: 'wait', item: farm.oven.baking! }
-      return { verb: 'make', item: 'lemon_cake', word: 'Bake' }
+      // nothing to bake with: a status that says what is missing, never a button
+      return { verb: 'wait', item: nearestCake().id }
     },
+    ready: () => (ovenStage() === 'done' ? { item: farm.oven.ready!, count: 1 } : null),
     run: () => {
       const s = ovenStage()
       const { pan, near } = placeSound(OVEN.x, OVEN.z)
@@ -172,7 +268,6 @@ function Oven() {
         playGesture('interact')
         farmSound('harvest', pan, near)
       } else if (s === 'baking') showToast(`The ${produceById(farm.oven.baking!).name} needs ${mmss(ovenSecondsLeft())} more`)
-      else openPanel({ kind: 'oven' })
     },
   })
 
@@ -247,28 +342,30 @@ function Mill() {
   const stage = useRef(millStage())
   const creak = useRef(0)
   const spin = useRef(0)
-  const openPanel = useHome((s) => s.openPanel)
   const showToast = useHome((s) => s.showToast)
   const sign = useMemo(() => signTexture('MILL'), [])
   const output = farm.mill.output
 
   useInteractable({
     id: 'farm-mill',
-    position: [MILL.x - 1.25, 1.0, MILL.z],
-    aim: [MILL.x - 0.15, 0.95, MILL.z],
+    position: MILL_STAND,
+    aim: MILL_AIM,
     radius: 2.2,
+    // with wheat or cane to grind, their own actions (MillOffer) are on offer instead
+    enabled: () => millStage() !== 'idle' || !MILL_INPUTS.some((i) => farm.inv[i] > 0),
     label: () => {
       const s = millStage()
       if (s === 'done') return `Collect ${count(farm.mill.output!, farm.mill.ready)}`
       if (s === 'working') return `Milling ${count(farm.mill.input!, farm.mill.count)} · ${mmss(millSecondsLeft())}`
-      return 'Mill · sugar from cane, flour from wheat'
+      return 'Mill · bring wheat for flour or sugar cane for sugar'
     },
     icon: () => {
       const s = millStage()
       if (s === 'done') return { verb: 'pick', item: farm.mill.output! }
       if (s === 'working') return { verb: 'wait', item: MILLABLE[farm.mill.input!] }
-      return { verb: 'make', item: 'flour', word: 'Mill' }
+      return { verb: 'wait', item: 'flour' }
     },
+    ready: () => (millStage() === 'done' ? { item: farm.mill.output!, count: farm.mill.ready } : null),
     run: () => {
       const s = millStage()
       const { pan, near } = placeSound(MILL.x, MILL.z)
@@ -277,7 +374,6 @@ function Mill() {
         playGesture('interact')
         farmSound('harvest', pan, near)
       } else if (s === 'working') showToast(`${mmss(millSecondsLeft())} to go`)
-      else openPanel({ kind: 'mill' })
     },
   })
 
@@ -389,6 +485,7 @@ function Loom() {
   const work = useRef(0)
   const t0 = useRef(0)
   const showToast = useHome((s) => s.showToast)
+  const setConfirm = useHome((s) => s.setConfirm)
   const sign = useMemo(() => signTexture('LOOM'), [])
   const warp = useMemo(() => {
     const c = document.createElement('canvas')
@@ -415,14 +512,15 @@ function Loom() {
       if (s === 'done') return `Take ${count('cloth', farm.loom.ready)} off the loom`
       if (s === 'working') return `Weaving ${count('cloth', farm.loom.count)} · ${mmss(loomSecondsLeft())}`
       const n = Math.min(LOOM.capacity, farm.inv.wool)
-      return n ? `Weave ${count('wool', n)} into cloth` : 'Loom · weaves fleeces into cloth'
+      return n ? `Weave ${count('wool', n)} into cloth` : 'Loom · shear the sheep for fleeces to weave'
     },
     icon: () => {
       const s = loomStage()
       if (s === 'done') return { verb: 'pick', item: 'cloth' }
       if (s === 'working' || !farm.inv.wool) return { verb: 'wait', item: 'cloth' }
-      return { verb: 'make', item: 'wool' }
+      return { verb: 'make', item: 'cloth', word: 'Weave' }
     },
+    ready: () => (loomStage() === 'done' ? { item: 'cloth', count: farm.loom.ready } : null),
     run: () => {
       const s = loomStage()
       const { pan, near } = placeSound(LOOM.x, LOOM.z)
@@ -431,10 +529,24 @@ function Loom() {
         playGesture('interact')
         farmSound('harvest', pan, near)
       } else if (s === 'working') showToast(`${mmss(loomSecondsLeft())} to go`)
-      else if (loomLoad()) {
-        playGesture('interact')
-        farmSound('loom', pan, near)
-      } else showToast('Shear the sheep first: the loom weaves their fleeces into cloth')
+      else if (farm.inv.wool) {
+        // the fleeces go on the loom only once asked (a card over the button names them)
+        const n = Math.min(LOOM.capacity, farm.inv.wool)
+        setConfirm({
+          id: 'farm-loom',
+          item: 'cloth',
+          count: n,
+          title: produceById('cloth').plural[0].toUpperCase() + produceById('cloth').plural.slice(1),
+          seconds: n * LOOM.perItem,
+          inputs: [{ item: 'wool', count: n }],
+          word: 'Weave',
+          go: () => {
+            if (!loomLoad()) return
+            playGesture('interact')
+            farmSound('loom', pan, near)
+          },
+        })
+      }
     },
   })
 
@@ -563,7 +675,13 @@ export function Workshop() {
   return (
     <group name="farm-workshop">
       <Oven />
+      {RECIPES.map((r) => (
+        <CakeOffer key={r.id} id={r.id} />
+      ))}
       <Mill />
+      {MILL_INPUTS.map((input) => (
+        <MillOffer key={input} input={input} />
+      ))}
       <Loom />
     </group>
   )

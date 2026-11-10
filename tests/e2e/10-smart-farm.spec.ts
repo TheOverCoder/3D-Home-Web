@@ -60,11 +60,14 @@ test.describe('smart actions, sheep and the line at the gate', () => {
     await page.evaluate(() => (window as any).__home.farm.tick(61))
     expect(await page.evaluate(() => (window as any).__home.farm.state.wool[0])).toBe(1)
 
-    // the loom stands beside the fold: E puts the fleece on, and once woven E takes the cloth off
+    // the loom stands beside the fold: E puts the fleece on (once asked), and once woven E takes the cloth off
     await game.teleport(4.9, 1.4, -8.6, 0, -0.3)
     await nearbyIs(game, 'farm-loom')
     expect((await nearby(game)).label).toBe('Weave 1 fleece into cloth')
+    // the fleece goes on only once asked (a card over the button), Enter goes ahead
     await page.keyboard.press('KeyE')
+    await until(game, () => (window as any).__home.useHome.getState().confirm?.id === 'farm-loom')
+    await page.keyboard.press('Enter')
     await until(game, () => (window as any).__home.farm.loomStage() === 'working')
     expect(await page.evaluate(() => (window as any).__home.farm.state.inv.wool)).toBe(0)
     await page.evaluate(() => (window as any).__home.farm.tick(7))

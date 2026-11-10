@@ -4,26 +4,24 @@ import { coarsePointer } from '../lib/device'
 import { playGesture } from '../lib/gestures'
 import { playerState } from '../lib/playerState'
 import { useHome } from '../store'
-import { BEDS, CROPS, EXPANSIONS, MILL, MILLABLE, OVEN, PRODUCE, RECIPES, UPGRADES, arrivalEvery, count, produceById, queuePlaces, type CropId, type MillInput, type ProduceId } from './data'
+import { BEDS, CROPS, EXPANSIONS, PRODUCE, UPGRADES, arrivalEvery, count, queuePlaces, type CropId } from './data'
 import { EditButton, EditPanel } from './EditPanel'
 import { iconUrl } from './icons'
+import { ItemPic } from '../ui/ItemPic'
 import { art, type ArtId } from '../ui/art'
 import { Check, Clock, Users, X } from '../ui/glyphs'
 import {
   acceptOffer,
   arrivalSeconds,
-  bake,
   bedsNear,
   buildBed,
   buy,
-  canBake,
   canSell,
   clockText,
   declineOffer,
   fairPrice,
   farm,
   inLine,
-  millLoad,
   owned,
   placesInLine,
   plantBeds,
@@ -54,6 +52,21 @@ const chipRoom = () => Math.max(2, Math.min(9, Math.floor((window.innerWidth - 2
 function FarmChip() {
   useFarm((s) => s.rev)
   const room = useChipRoom()
+  const row = useRef<HTMLButtonElement>(null)
+  // how far down the chips reach (one row or two), for the compass under them (styles.css: .compass)
+  useEffect(() => {
+    const el = row.current
+    if (!el) return
+    const css = document.documentElement.style
+    const measure = () => css.setProperty('--chips-bottom', `${Math.round(el.getBoundingClientRect().bottom)}px`)
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => {
+      ro.disconnect()
+      css.removeProperty('--chips-bottom')
+    }
+  }, [])
   const openPanel = useHome((s) => s.openPanel)
   const panel = useHome((s) => s.panel)
   const stock = PRODUCE.filter((p) => farm.inv[p.id] > 0)
@@ -61,7 +74,7 @@ function FarmChip() {
   const hidden = stock.length - shown.length
   const line = inLine().length
   return (
-    <button className="farm-chip" aria-label="Your coins and harvest — open the basket" onClick={() => !panel && openPanel({ kind: 'basket' })}>
+    <button className="farm-chip" ref={row} aria-label="Your coins and harvest — open the basket" onClick={() => !panel && openPanel({ kind: 'basket' })}>
       <ChipItem value={farm.coins} className="coins" title="Coins">
         <img src={art('coin')} alt="" />
         <b>{farm.coins}</b>
@@ -321,10 +334,7 @@ function QueuePanel() {
               <span className="farm-avatar small" style={{ background: v.look.shirt, color: light(v.look.shirt) ? '#1d232c' : '#fff' }} aria-hidden="true">
                 {i + 1}
               </span>
-              <span className="farm-want">
-                <img className="art" src={iconUrl(v.want)} alt="" />
-                <b>×{v.qty}</b>
-              </span>
+              <ItemPic id={v.want} count={v.qty} className="farm-want" />
               <div className="farm-buyer-body">
                 <strong>{v.name}</strong>
                 <span>
@@ -383,8 +393,7 @@ function BasketPanel() {
         <div className="farm-basket">
           {stock.map((p) => (
             <div key={p.id} className="farm-basket-item" title={`${count(p.id, farm.inv[p.id])} · about ${p.price} coins each`}>
-              <img className="art" src={iconUrl(p.id)} alt="" />
-              <b>{farm.inv[p.id]}</b>
+              <ItemPic id={p.id} count={farm.inv[p.id]} />
               <span>{cap(p.plural)}</span>
             </div>
           ))}
@@ -481,118 +490,6 @@ function ShopPanel() {
   )
 }
 
-const Need = ({ id, n }: { id: ProduceId; n: number }) => {
-  const have = farm.inv[id]
-  return (
-    // enough: how many it takes, ticked; short: what you have of what it takes, in red
-    <span className={have >= n ? 'farm-need ok' : 'farm-need short'} title={`${count(id, n)} (you have ${have})`}>
-      <img src={iconUrl(id)} alt="" />
-      {have >= n ? (
-        <>
-          ×{n}
-          <Check weight="bold" />
-        </>
-      ) : (
-        `${have}/${n}`
-      )}
-    </span>
-  )
-}
-
-function MillPanel() {
-  useFarm((s) => s.rev)
-  const close = useHome((s) => s.closePanel)
-  const run = (input: MillInput) => {
-    if (!millLoad(input)) return
-    const { pan, near } = placeSound(MILL.x, MILL.z)
-    farmSound('creak', pan, near)
-    playGesture('interact')
-    close()
-  }
-  return (
-    <Shell
-      title="Mill"
-      art={iconUrl('flour')}
-      sub={
-        <span className="tag">
-          <Clock weight="bold" />
-          {MILL.perItem} s each · up to {MILL.capacity}
-        </span>
-      }
-      onClose={close}
-    >
-      <div className="farm-list">
-        {(Object.keys(MILLABLE) as MillInput[]).map((input) => {
-          const out = MILLABLE[input]
-          const have = farm.inv[input]
-          const n = Math.min(MILL.capacity, have)
-          return (
-            <div key={input} className="farm-row farm-recipe">
-              <div className="farm-row-flow">
-                <img className="art" src={iconUrl(input)} alt="" />
-                <span className="farm-arrow">→</span>
-                <img className="art" src={iconUrl(out)} alt="" />
-              </div>
-              <div className="farm-recipe-body">
-                <strong>{cap(produceById(out).plural)}</strong>
-                <span className={`tag ${have ? '' : 'short'}`}>
-                  <img src={iconUrl(input)} alt="" />
-                  {have}
-                </span>
-              </div>
-              <button className="btn small" disabled={!n} onClick={() => run(input)}>
-                {n ? `Mill ${n}` : 'None'}
-              </button>
-            </div>
-          )
-        })}
-      </div>
-    </Shell>
-  )
-}
-
-function OvenPanel() {
-  useFarm((s) => s.rev)
-  const close = useHome((s) => s.closePanel)
-  const go = (id: (typeof RECIPES)[number]['id']) => {
-    if (!bake(id)) return
-    const { pan, near } = placeSound(OVEN.x, OVEN.z)
-    farmSound('oven', pan, near)
-    playGesture('interact')
-    close()
-  }
-  return (
-    <Shell title="Oven" art={iconUrl('lemon_cake')} sub={<Purse />} onClose={close}>
-      <div className="farm-list">
-        {RECIPES.map((r) => {
-          const ok = canBake(r.id)
-          return (
-            <div key={r.id} className="farm-row farm-recipe">
-              <img className="art farm-recipe-icon" src={iconUrl(r.id)} alt="" />
-              <div className="farm-recipe-body">
-                <strong>
-                  {r.name}{' '}
-                  <span className="tag">
-                    <img src={art('coin')} alt="" />≈ {produceById(r.id).price}
-                  </span>
-                </strong>
-                <div className="farm-needs">
-                  {Object.entries(r.needs).map(([k, n]) => (
-                    <Need key={k} id={k as ProduceId} n={n ?? 0} />
-                  ))}
-                </div>
-              </div>
-              <button className="btn small" disabled={!ok} onClick={() => go(r.id)}>
-                Bake · {r.seconds} s
-              </button>
-            </div>
-          )
-        })}
-      </div>
-    </Shell>
-  )
-}
-
 /** The garden's interface: the coin/harvest chip outdoors and whichever farm panel is open. */
 export function FarmUI() {
   const phase = useHome((s) => s.phase)
@@ -610,8 +507,6 @@ export function FarmUI() {
       {panel?.kind === 'queue' && <QueuePanel />}
       {panel?.kind === 'basket' && <BasketPanel />}
       {panel?.kind === 'shop' && <ShopPanel />}
-      {panel?.kind === 'mill' && <MillPanel />}
-      {panel?.kind === 'oven' && <OvenPanel />}
     </>
   )
 }

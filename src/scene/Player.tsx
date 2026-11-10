@@ -14,12 +14,12 @@ import { debugSet } from '../lib/debug'
 import { coarsePointer } from '../lib/device'
 import { focus } from '../lib/focus'
 import { playGesture } from '../lib/gestures'
-import { findActions, findJobs, findStatus, guideOffer, triggerInteraction, type ViewRay } from '../lib/interaction'
+import { findActions, findFar, findStatus, triggerInteraction, type ViewRay } from '../lib/interaction'
 import { addLook, look, look as lookState, stepTurn, stopTurn } from '../lib/look'
 import { resume } from '../lib/startup'
 import { playerState } from '../lib/playerState'
 import { useSettings } from '../settings'
-import { busy, useHome, type Nearby } from '../store'
+import { busy, useHome, type CompassMark, type Nearby } from '../store'
 import { landBounds } from '../farm/layout'
 import { farm } from '../farm/state'
 import { AimMarker } from './AimMarker'
@@ -62,7 +62,9 @@ const floorAt = (x: number, z: number): FloorKind => {
 const CLEAR = HOUSE.wallThickness / 2 + 0.1 // eyes stay this far from a wall's centre line
 const DOOR_HALF = GARDEN_DOOR.width / 2 - 0.1 // the garden door's opening, less the jambs
 
-const actionsKey = (list: Nearby[]) => list.map((a) => `${a.id}|${a.label}|${a.icon?.verb}|${a.icon?.item}|${a.reach}|${a.side}|${a.hint}`).join('\n')
+const actionsKey = (list: Nearby[]) =>
+  list.map((a) => `${a.id}|${a.label}|${a.icon?.verb}|${a.icon?.item}|${a.reach}|${a.side}|${a.hint}|${a.needs?.map((n) => `${n.item}${n.count}`).join(',')}`).join('\n')
+const marksKey = (list: CompassMark[]) => list.map((m) => `${m.id}|${m.item}|${m.count}`).join('\n')
 
 /**
  * Never let the eyes enter a wall or rise through the ceiling — inside, outside, and in between: the only way
@@ -153,6 +155,12 @@ function useKeyboard() {
     const onDown = (e: KeyboardEvent) => {
       if (isTyping(e.target)) return
       const state = useHome.getState()
+      if (state.confirm && (e.code === 'Escape' || e.code === 'Enter' || e.code === 'NumpadEnter')) {
+        // a machine asking first: Enter goes ahead, Esc says no (E again also says no: see triggerInteraction)
+        if (e.code !== 'Escape' && !e.repeat) state.confirm.go()
+        state.setConfirm(null)
+        return
+      }
       if (e.code === 'Escape') {
         if (state.screen) state.closeScreen()
         else if (state.panel) state.closePanel()
@@ -707,16 +715,17 @@ export function Player() {
     }
     // what you look at first; then (touch buttons, or when you look at nothing) whatever is within reach
     const from = { x: pos.x, y: pos.y + 0.1, z: pos.z }
-    let next = findActions(from, view, { reach: !state.carrying })
-    // with nothing to do here, what is on its way (shown, not pressed), and on the farm the nearest job elsewhere
-    // in the button's place ("Next: …": it turns you to it)
+    const next = findActions(from, view, { reach: !state.carrying })
+    // with nothing to do here, what is on its way (shown, not pressed)
     const status = next.length || state.carrying ? null : findStatus(from, view)
-    if (!next.length && !state.carrying && outdoors) {
-      const job = findJobs(from)[0]
-      if (job) next = [guideOffer(job)]
-    }
-    // the job pointed to is reached: its mark goes
+    // what is ready to take farther off is on the compass at the top, not on the button (in reach, it is the
+    // button's, and it leaves the compass)
+    const marks = outdoors ? findFar(from) : []
+    if (marksKey(marks) !== marksKey(state.compass)) state.setCompass(marks)
+    // a mark tapped is reached: its arrow in the world goes
     if (state.guide && (next.some((a) => a.id === state.guide!.id) || performance.now() - state.guide.at > 12000)) state.setGuide(null)
+    // a confirm card asks about an action that is still on offer (walked away, or the oven got busy: it goes)
+    if (state.confirm && !next.some((a) => a.id === state.confirm!.id)) state.setConfirm(null)
     if (actionsKey(next) !== actionsKey(state.actions) || actionsKey(status ? [status] : []) !== actionsKey(state.status ? [state.status] : [])) state.setActions(next, status)
   })
 

@@ -80,6 +80,7 @@ export function Cows() {
         aim: c.aim,
         radius: 2.4,
         enabled: () => (farm.milk[i] ?? 0) > 0,
+        ready: () => ((farm.milk[i] ?? 0) >= COW.max ? { item: 'milk', count: farm.milk[i] } : null),
         label: () => `Milk ${cowName(i)} · ${count('milk', farm.milk[i] ?? 0)}`,
         icon: { verb: 'pick', item: 'milk' },
         run: () => {

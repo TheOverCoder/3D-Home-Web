@@ -7,6 +7,9 @@ import { busy, useHome, type Nearby } from '../store'
 import { iconUrl } from '../farm/icons'
 import type { ProduceId } from '../farm/data'
 import { ActionFace, TurnHint } from './ActionGlyph'
+import { Compass } from './Compass'
+import { ConfirmCard } from './ConfirmCard'
+import { ItemPic } from './ItemPic'
 
 /** Room name that fades in when you walk into a new room, like a film title. */
 function RoomTitle() {
@@ -96,14 +99,24 @@ export function Hud() {
             {(turn === 'right' || turn === 'back') && <TurnHint side={turn} className="prompt-turn" />}
           </button>
         )}
-        {!occupied && status && (!prompt || prompt.icon?.verb === 'guide') && (
+        {!occupied && status && !prompt && (
           // nothing to do here: what is on its way, as a line of text (not a button: there is nothing to press)
           <div className="prompt status" data-verb="wait">
             <ActionFace icon={status.icon} className="small" />
             <span className="prompt-text">{status.label}</span>
+            {status.needs && (
+              <span className="status-needs">
+                {status.needs.map((n) => (
+                  <ItemPic key={n.item} id={n.item} count={n.count} />
+                ))}
+              </span>
+            )}
           </div>
         )}
       </div>
+
+      <Compass />
+      <ConfirmCard />
 
       {toast && (
         <div className="toast" role="status" key={toast.id}>

@@ -228,6 +228,7 @@ function Bed({ index }: { index: number }) {
     aim: [def.x, 0.42, def.z],
     radius: 2.1,
     hint: () => (bedStage(index) === 'empty' && replant(index) ? '1–9 other seeds' : undefined),
+    ready: () => (bedStage(index) === 'ripe' ? { item: farm.beds[index].crop!, count: yieldOf(farm.beds[index].crop!) } : null),
     label: () => {
       const b = farm.beds[index]
       const stage = bedStage(index)

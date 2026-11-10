@@ -7,9 +7,9 @@ import { useHome } from '../store'
 const reducedMotion = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
 
 /**
- * Where the next job is ("Next: …" on the action button): a warm arrow pointing down at it from above, the same
- * size on screen near or far and drawn over everything (it is often behind a hedge or the coop), bobbing gently.
- * It goes once you are there (the job is on offer) or after a while.
+ * Where a mark tapped on the compass is: a warm arrow pointing down at it from above, the same size on screen near
+ * or far and drawn over everything (it is often behind a hedge or the coop), bobbing gently. It goes once you are
+ * there (the button offers it) or after a while.
  */
 export function GuideMarker() {
   const group = useRef<Group>(null)

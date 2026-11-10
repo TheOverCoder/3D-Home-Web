@@ -38,15 +38,27 @@ test.describe('farm kitchen and animals', () => {
     expect(await page.evaluate(() => (window as any).__home.farm.state.milk[0])).toBe(0)
   })
 
-  test('the mill grinds wheat into flour', async ({ game }) => {
+  test('the mill grinds wheat into flour, once asked: a second press by mistake uses nothing', async ({ game }) => {
     await game.ready()
     const { page } = game
     await reset(game, { wheat: 3 })
     await game.teleport(10.9, 1.4, 10.6, -Math.PI / 2, -0.45)
-    await nearbyIs(game, 'farm-mill')
+    await nearbyIs(game, 'farm-mill-wheat')
+    expect(await label(game)).toMatch(/^Mill 3 /)
+    // one press asks first: a card names what goes in, and how many
     await page.keyboard.press('KeyE')
-    await until(game, () => (window as any).__home.useHome.getState().panel?.kind === 'mill')
-    await page.locator('.farm-panel .farm-recipe button', { hasText: 'Mill 3' }).click()
+    await until(game, () => (window as any).__home.useHome.getState().confirm?.id === 'farm-mill-wheat')
+    expect(await page.evaluate(() => (window as any).__home.useHome.getState().confirm.inputs)).toEqual([{ item: 'wheat', count: 3 }])
+    await expect(page.locator('.confirm-card .confirm-inputs .qty')).toHaveText(['3'])
+    // the button again only closes it
+    await page.keyboard.press('KeyE')
+    await until(game, () => (window as any).__home.useHome.getState().confirm === null)
+    expect((await inv(game)).wheat).toBe(3)
+    expect(await page.evaluate(() => (window as any).__home.farm.millStage())).toBe('idle')
+    // asked again, Enter goes ahead
+    await page.keyboard.press('KeyE')
+    await until(game, () => (window as any).__home.useHome.getState().confirm !== null)
+    await page.keyboard.press('Enter')
     await until(game, () => (window as any).__home.farm.millStage() === 'working')
     expect((await inv(game)).wheat).toBe(0)
     await page.evaluate(() => (window as any).__home.farm.tick(15))
@@ -55,15 +67,30 @@ test.describe('farm kitchen and animals', () => {
     await until(game, () => (window as any).__home.farm.state.inv.flour === 3)
   })
 
-  test('the oven bakes a lemon cake from the farm’s own ingredients', async ({ game }) => {
+  test('the oven offers a cake only with everything for it, says what is missing, and asks before it bakes', async ({ game }) => {
     await game.ready()
     const { page } = game
-    await reset(game, { flour: 1, sugar: 1, egg: 2, milk: 1, lemon: 2 })
+    // short of a pumpkin for the pie (the cake nearest to ready): nothing to press, a status that shows what is missing
+    await reset(game, { flour: 1, sugar: 1, egg: 2, milk: 1 })
     await game.teleport(8.7, 1.4, 11.75, -Math.PI / 2, -0.7)
-    await nearbyIs(game, 'farm-oven')
+    await until(game, () => (window as any).__home.useHome.getState().status?.id === 'farm-oven')
+    const state = await page.evaluate(() => {
+      const s = (window as any).__home.useHome.getState()
+      return { actions: s.actions, status: s.status }
+    })
+    expect(state.actions).toEqual([])
+    expect(state.status).toMatchObject({ label: 'Oven · a pumpkin pie needs', needs: [{ item: 'pumpkin', count: 1 }] })
+    // with two lemons, the lemon cake is on offer: one press shows the card with all five things it takes
+    await page.evaluate(() => {
+      const f = (window as any).__home.farm
+      f.state.inv.lemon = 2
+    })
+    await nearbyIs(game, 'farm-oven-lemon_cake')
+    expect(await label(game)).toBe('Bake a lemon cake')
     await page.keyboard.press('KeyE')
-    await until(game, () => (window as any).__home.useHome.getState().panel?.kind === 'oven')
-    await page.locator('.farm-recipe', { hasText: 'Lemon cake' }).locator('button').click()
+    await until(game, () => (window as any).__home.useHome.getState().confirm?.item === 'lemon_cake')
+    await expect(page.locator('.confirm-card .confirm-inputs .item-pic')).toHaveCount(5)
+    await page.locator('.confirm-card .btn.leaf').click()
     await until(game, () => (window as any).__home.farm.ovenStage() === 'baking')
     const used = await inv(game)
     expect([used.flour, used.sugar, used.egg, used.milk, used.lemon]).toEqual([0, 0, 0, 0, 0])

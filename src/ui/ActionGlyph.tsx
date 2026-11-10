@@ -95,11 +95,6 @@ const GLYPHS: Record<Verb, ReactNode> = {
       <path d="M12 7.5V12l3 2" />
     </>
   ),
-  guide: (
-    <>
-      <path d="M12 2.8 19.5 20 12 16.2 4.5 20Z" />
-    </>
-  ),
   drop: (
     <>
       <path d="M12 3.5v11" />
@@ -154,7 +149,6 @@ const VERB_COLOUR: Record<Verb, string> = {
   watch: '#5c6bc0',
   wait: '#8a94a6',
   drop: '#607d8b',
-  guide: '#f08c1a',
 }
 
 /** The word under a button when the label does not start with a better one. */
@@ -172,11 +166,10 @@ const VERB_WORD: Record<Verb, string> = {
   watch: 'Open',
   wait: 'Wait',
   drop: 'Put down',
-  guide: 'Next',
 }
 
 /** Labels that start with one of these say the job in their first word ("Collect 2 eggs", "Milk Bella"). */
-const LEADING = new Set(['Harvest', 'Water', 'Plant', 'Collect', 'Milk', 'Shear', 'Pick', 'Take', 'Weave', 'Bake', 'Build', 'Expand', 'Sell', 'Open', 'Close', 'Next', 'Switch'])
+const LEADING = new Set(['Harvest', 'Water', 'Plant', 'Collect', 'Milk', 'Shear', 'Pick', 'Take', 'Weave', 'Bake', 'Mill', 'Build', 'Expand', 'Sell', 'Open', 'Close', 'Switch'])
 
 /** One word for what a press does: the icon's own, else the label's first word when it is a job, else the verb's. */
 export function actionWord(icon: ActionIcon | undefined, label: string): string {

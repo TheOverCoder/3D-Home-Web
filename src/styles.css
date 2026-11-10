@@ -351,7 +351,8 @@ a:focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; border-rad
 /* a few words and a picture of what came in ("+ 4 lettuces"), on paper, popping in under the coin chip */
 .toast {
   position: fixed;
-  top: calc(64px + env(safe-area-inset-top));
+  /* under the chips and the compass (when it shows), so what came in never covers where to go next */
+  top: max(calc(64px + env(safe-area-inset-top)), calc(var(--chips-bottom, 50px) + 72px));
   left: 50%;
   transform: translateX(-50%);
   z-index: 12;
@@ -849,9 +850,7 @@ a:focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; border-rad
 .farm-buyer.ok { border-color: #8fd18a; background: #f1fae9; }
 .farm-avatar { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; font: 700 16px var(--font-display); color: #fff; }
 .farm-avatar.small { width: 30px; height: 30px; flex: none; font-size: 14px; box-shadow: 0 2px 0 rgba(0, 0, 0, 0.12); }
-.farm-want { position: relative; flex: none; display: grid; place-items: center; }
 .farm-want .art { width: 52px; height: 52px; }
-.farm-want b { position: absolute; inset-inline-end: -6px; bottom: -4px; padding: 0 6px; border-radius: 999px; background: var(--ink); color: #fff; font: 800 13px/1.5 var(--font-text); }
 .farm-buyer-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .farm-buyer-body strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 17px/1.15 var(--font-display); }
 .farm-buyer-body > span { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
@@ -865,9 +864,9 @@ a:focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; border-rad
 /* the basket: each thing big, with how many */
 .farm-basket { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
 .farm-basket-item { display: flex; flex-direction: column; align-items: center; gap: 0; padding: 10px 6px 8px; border-radius: var(--r-card); background: var(--paper-2); text-align: center; }
+.farm-basket-item { gap: 4px; }
 .farm-basket-item .art { width: 52px; height: 52px; }
-.farm-basket-item b { font: 800 22px/1.2 var(--font-text); font-variant-numeric: tabular-nums; }
-.farm-basket-item span { color: var(--ink-2); font-size: 13px; }
+.farm-basket-item > span { color: var(--ink-2); font-size: 13px; }
 
 /* the shop: a picture, the name and one line, its price on the button */
 .farm-shop { display: grid; gap: 8px; }
@@ -879,22 +878,6 @@ a:focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; border-rad
 .farm-shop-text > span { font-size: 14px; color: var(--ink-2); line-height: 1.3; }
 .farm-shop-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
 .farm-shop-item .btn { min-width: 84px; }
-
-/* the mill and the oven: what goes in, what comes out, one button */
-.farm-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 10px; border-radius: var(--r-card); background: var(--paper-2); }
-.farm-row strong { display: block; font: 600 17px/1.2 var(--font-display); }
-.farm-row-flow { display: flex; align-items: center; gap: 4px; flex: none; }
-.farm-row-flow .art { width: 44px; height: 44px; }
-.farm-arrow { color: var(--ink-2); font-weight: 800; }
-.farm-recipe-icon { width: 56px; height: 56px; }
-.farm-recipe-body { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
-.farm-needs { display: flex; flex-wrap: wrap; gap: 4px; }
-.farm-need { display: inline-flex; align-items: center; gap: 2px; padding: 2px 8px 2px 3px; border-radius: 999px; font: 800 13.5px/1.5 var(--font-text); background: #fff; }
-.farm-need img { width: 22px; height: 22px; }
-.farm-need svg { width: 14px; height: 14px; }
-.farm-need small { font-weight: 600; opacity: 0.6; }
-.farm-need.ok { color: #24622f; }
-.farm-need.short { color: #9a2c1c; background: #fde1da; }
 
 .farm-confirm { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
 .farm-confirm .farm-buy { min-width: 150px; transition: opacity 0.2s, transform 0.1s, box-shadow 0.1s; }
@@ -1000,3 +983,121 @@ a:focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; border-rad
   .edit-card p { font-size: 12.5px; }
 }
 .edit-open:hover { transform: none; }
+
+/* ── a good's picture with how many: a small see-through round badge on its lower corner (src/ui/ItemPic.tsx) ── */
+.item-pic { position: relative; display: inline-grid; place-items: center; flex: none; }
+.item-pic .qty {
+  position: absolute;
+  inset-inline-end: -5px;
+  bottom: -4px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(59, 42, 30, 0.72);
+  color: #fff;
+  font: 800 13px/1 var(--font-text);
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.55);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+
+/* ── the quest compass: what is ready to take out of reach, where it lies from where you look (src/ui/Compass.tsx).
+   It sits under the chips (one row or two) and clear of the buttons in the top right corner. ── */
+.compass {
+  position: fixed;
+  z-index: 11;
+  top: max(calc(var(--chips-bottom, 50px) + 10px), calc(max(14px, env(safe-area-inset-top)) + 64px));
+  left: 0;
+  right: 0;
+  width: min(440px, calc(100vw - 32px));
+  height: 52px;
+  margin-inline: auto;
+  pointer-events: none;
+  animation: pop-in 0.25s var(--ease-pop);
+}
+.compass-strip {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+.compass-strip::before {
+  content: '';
+  position: absolute;
+  inset: 12px 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, var(--night) 16%, var(--night) 84%, transparent);
+}
+.compass-tick,
+.compass-letter,
+.compass-mark { position: absolute; left: 50%; top: 50%; will-change: transform; }
+.compass-tick { width: 2px; height: 8px; margin: -4px 0 0 -1px; border-radius: 1px; background: rgba(255, 255, 255, 0.55); }
+.compass-letter { width: 20px; margin: -9px 0 0 -10px; text-align: center; font: 600 13px/18px var(--font-display); color: #fff; }
+/* where you look: a small sun-yellow notch in the middle */
+.compass-ahead { position: absolute; left: 50%; top: 3px; margin-left: -6px; border: 6px solid transparent; border-top-color: var(--sun); }
+.compass-mark {
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--paper);
+  box-shadow: 0 3px 10px rgba(20, 12, 6, 0.35);
+  pointer-events: auto;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.compass-mark:active { scale: 0.94; }
+.compass-mark .item-pic .art { width: 32px; height: 32px; filter: none; }
+.compass-mark .item-pic .qty { inset-inline-end: -12px; bottom: -10px; min-width: 20px; height: 20px; font-size: 12.5px; }
+/* behind you: held at the nearer edge, an arrow pointing round */
+.compass-mark[data-side='left']::before,
+.compass-mark[data-side='right']::before { content: ''; position: absolute; top: 50%; margin-top: -6px; border: 6px solid transparent; }
+.compass-mark[data-side='left']::before { left: -15px; border-right-color: #fff; }
+.compass-mark[data-side='right']::before { right: -15px; border-left-color: #fff; }
+
+/* ── a machine asking before it takes its ingredients: a small card over the action button (src/ui/ConfirmCard.tsx) ── */
+.confirm-card {
+  position: fixed;
+  z-index: 12;
+  width: min(300px, calc(100vw - 28px));
+  padding: 12px 14px 14px;
+  border-radius: var(--r-card);
+  /* on a computer, over the prompt in the middle at the bottom */
+  left: 0;
+  right: 0;
+  margin-inline: auto;
+  bottom: calc(max(72px, env(safe-area-inset-bottom)) + 62px);
+  animation: sheet-up 0.22s var(--ease-pop);
+}
+/* on a touch screen, right over the action button, under the thumb */
+.confirm-card.touch {
+  left: auto;
+  right: calc(var(--touch-pad, 14px) + env(safe-area-inset-right));
+  margin: 0;
+  bottom: calc(var(--touch-pad, 14px) + var(--touch-main, 84px) + 14px + env(safe-area-inset-bottom));
+}
+.confirm-head { display: flex; align-items: center; gap: 12px; }
+.confirm-head .item-pic .art { width: 52px; height: 52px; }
+.confirm-title { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; }
+.confirm-title strong { font: 600 19px/1.15 var(--font-display); color: var(--ink); }
+.confirm-inputs { display: flex; flex-wrap: wrap; gap: 10px 14px; margin: 12px 0 4px; padding: 8px 10px 10px; border-radius: 14px; background: var(--paper-2); }
+.confirm-inputs .item-pic .art { width: 30px; height: 30px; }
+.confirm-inputs .item-pic .qty { min-width: 19px; height: 19px; font-size: 12px; inset-inline-end: -8px; bottom: -6px; }
+.confirm-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 12px; }
+.confirm-actions .btn.leaf { flex: 1; }
+.confirm-actions kbd { margin-inline-start: 6px; padding: 1px 6px; border-radius: 6px; background: rgba(255, 255, 255, 0.22); font: 700 12px/1.4 var(--font-text); }
+
+/* a status line's missing things (the oven: what a cake still needs), as pictures with how many */
+.status-needs { display: inline-flex; align-items: center; gap: 14px; margin-inline: 4px 6px; }
+/* with things missing the status takes two lines: what it is about, then the pictures */
+.prompt.status:has(.status-needs) { flex-wrap: wrap; justify-content: center; row-gap: 6px; max-width: min(92vw, 440px); padding: 8px 16px 12px; border-radius: 24px; }
+.prompt.status:has(.status-needs) .status-needs { flex-basis: 100%; justify-content: center; margin: 0; }
+.status-needs .item-pic .art { width: 28px; height: 28px; filter: none; }
+.status-needs .item-pic .qty { min-width: 18px; height: 18px; padding: 0 5px; font-size: 12px; inset-inline-end: -8px; bottom: -6px; }

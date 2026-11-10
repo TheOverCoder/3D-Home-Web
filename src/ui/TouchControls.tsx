@@ -72,6 +72,7 @@ export function TouchControls() {
   const occupied = useHome(busy)
   const actions = useHome((s) => s.actions)
   const carrying = useHome((s) => s.carrying)
+  const asking = useHome((s) => s.confirm !== null)
   const [size, setSize] = useState(measure)
 
   useEffect(() => {
@@ -99,6 +100,7 @@ export function TouchControls() {
     const top = PAD + size.main / 2 + size.ring + size.sat / 2 // the top of the place above the action button
     const leftOfButtons = PAD + size.main / 2 + size.ring + size.sat / 2 // from the right edge
     css.setProperty('--touch-stick', `${size.stick}px`)
+    css.setProperty('--touch-main', `${size.main}px`)
     css.setProperty('--touch-pad', `${PAD}px`)
     css.setProperty('--prompt-bottom', `${size.landscape ? PAD + 6 : Math.max(size.stick + PAD, top) + 12}px`)
     css.setProperty('--prompt-left', `${size.landscape ? size.stick + PAD * 2 : PAD}px`)
@@ -163,9 +165,9 @@ export function TouchControls() {
         }}
       />
       {first && <ActionButton key="main" action={first} main size={size.main} at={{ right: PAD, bottom: PAD }} />}
-      {actions.slice(1, 3).map((a, i) => (
-        <ActionButton key={others[i]} action={a} size={size.sat} at={place(size, others[i], size.sat)} />
-      ))}
+      {/* while a machine asks (its card sits over the button), only the button itself, which closes the card */}
+      {!asking &&
+        actions.slice(1, 3).map((a, i) => <ActionButton key={others[i]} action={a} size={size.sat} at={place(size, others[i], size.sat)} />)}
     </>
   )
 }

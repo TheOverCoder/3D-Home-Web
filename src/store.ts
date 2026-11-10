@@ -18,6 +18,7 @@ export interface Nearby {
   reach?: boolean // offered for being within reach, not for being looked at: using it turns you towards it
   side?: 'ahead' | 'left' | 'right' | 'back' // where it is, seen from where you look (first person)
   hint?: string // a keyboard shortcut that goes with it (shown on a computer)
+  needs?: { item: string; count: number }[] // a status's missing things, shown as pictures with how many
 }
 
 /** Why the 3D scene could not start: what to tell the player, and the technical detail for "Copy details". */
@@ -27,8 +28,32 @@ export interface Failure {
   detail?: string
 }
 
-/** A small game panel over the scene (seed packets, a buyer's offer, the farm shop, the mill, the oven). */
-export type Panel = { kind: 'seeds'; bed: number } | { kind: 'build'; bed: number } | { kind: 'queue' } | { kind: 'shop' } | { kind: 'mill' } | { kind: 'oven' } | { kind: 'basket' }
+/** A small game panel over the scene (seed packets, a bed to build, the buyers, the farm shop, the basket). */
+export type Panel = { kind: 'seeds'; bed: number } | { kind: 'build'; bed: number } | { kind: 'queue' } | { kind: 'shop' } | { kind: 'basket' }
+
+/** A machine about to take ingredients — the oven a cake's, the mill a load of wheat: a small card over the action
+ *  button names them and asks first (a second press by mistake never uses them up). */
+export interface Confirm {
+  /** the action that asked (the card goes when it is no longer on offer: walked away, or the oven got busy) */
+  id: string
+  /** what comes out, and how many */
+  item: string
+  count: number
+  title: string
+  seconds: number
+  /** what goes in */
+  inputs: { item: string; count: number }[]
+  /** the word on the button that goes ahead (Bake, Mill, Weave) */
+  word: string
+  go: () => void
+}
+
+/** A job for the compass at the top of the screen: what is ready to take out of reach (see findFar). */
+export interface CompassMark {
+  id: string
+  item: string
+  count: number
+}
 
 interface HomeState {
   phase: 'intro' | 'playing'
@@ -44,7 +69,9 @@ interface HomeState {
   nearby: Nearby | null // the action E (or the big touch button) runs
   actions: Nearby[] // everything on offer, `nearby` first
   status: Nearby | null // nothing to do here: what is on its way (a growing bed, the oven baking) — shown, not pressed
-  guide: { id: string; at: number } | null // the job "Next: …" pointed to: marked in the world until you get there
+  guide: { id: string; at: number } | null // a compass mark tapped: marked in the world until you get there
+  compass: CompassMark[] // what is ready to take out of reach, nearest first (outdoors)
+  confirm: Confirm | null // a machine asking before it takes its ingredients
   screen: string | null
   panel: Panel | null
   editing: boolean // the farm's edit mode: the view from above, moving things, buying land
@@ -67,6 +94,8 @@ interface HomeState {
   setOutdoors: (outdoors: boolean) => void
   setActions: (actions: Nearby[], status?: Nearby | null) => void
   setGuide: (id: string | null) => void
+  setCompass: (marks: CompassMark[]) => void
+  setConfirm: (confirm: Confirm | null) => void
   openScreen: (id: string) => void
   closeScreen: () => void
   openPanel: (panel: Panel) => void
@@ -98,6 +127,8 @@ export const useHome = create<HomeState>()((set, get) => ({
   actions: [],
   status: null,
   guide: null,
+  compass: [],
+  confirm: null,
   screen: null,
   panel: null,
   editing: false,
@@ -113,21 +144,23 @@ export const useHome = create<HomeState>()((set, get) => ({
   markReady: (key) => set((s) => (s.ready[key] ? s : { ready: { ...s.ready, [key]: true } })),
   setFailure: (failure) => set({ failure }),
   setView: (view) => set({ view }),
-  setSettingsOpen: (settingsOpen) => set(settingsOpen ? { settingsOpen, nearby: null, actions: [], status: null } : { settingsOpen }),
+  setSettingsOpen: (settingsOpen) => set(settingsOpen ? { settingsOpen, nearby: null, actions: [], status: null, confirm: null } : { settingsOpen }),
   markHintShown: () => set({ hintShown: true }),
   setRoom: (room) => set({ room }),
   setOutdoors: (outdoors) => set({ outdoors }),
   setActions: (actions, status = null) => set({ actions, nearby: actions[0] ?? null, status }),
   setGuide: (id) => set({ guide: id ? { id, at: performance.now() } : null }),
-  openScreen: (screen) => set({ screen, nearby: null, actions: [], status: null }),
+  setCompass: (compass) => set({ compass }),
+  setConfirm: (confirm) => set({ confirm }),
+  openScreen: (screen) => set({ screen, nearby: null, actions: [], status: null, confirm: null }),
   closeScreen: () => set({ screen: null }),
-  openPanel: (panel) => set({ panel, nearby: null, actions: [], status: null }),
+  openPanel: (panel) => set({ panel, nearby: null, actions: [], status: null, confirm: null }),
   closePanel: () => set({ panel: null }),
-  setEditing: (editing) => set(editing ? { editing, panel: null, nearby: null, actions: [], status: null } : { editing }),
+  setEditing: (editing) => set(editing ? { editing, panel: null, nearby: null, actions: [], status: null, confirm: null, compass: [] } : { editing }),
   toggleLamp: (id) => set((s) => ({ lamps: { ...s.lamps, [id]: !s.lamps[id] } })),
   toggleDoor: (id) => set((s) => ({ doors: { ...s.doors, [id]: !s.doors[id] } })),
   // the item leaves the registry with its body: forget it as the aimed thing right away, so E drops it next
-  pickUp: (id) => set({ carrying: id, nearby: null, actions: [], status: null }),
+  pickUp: (id) => set({ carrying: id, nearby: null, actions: [], status: null, confirm: null }),
   drop: (pos) => {
     const id = get().carrying
     if (!id) return
