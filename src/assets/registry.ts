@@ -6,7 +6,8 @@
 //   src/assets/models/character.glb    rigged humanoid (e.g. Quaternius Universal Base Character)
 //   src/assets/models/animations.glb   animation clips on the same rig (e.g. Quaternius Universal Animation Library)
 //   src/assets/models/props/<id>.glb   optional replacement for a placeholder prop (sofa, desk, ...)
-//   src/assets/hdri/home.hdr|.exr      image-based lighting (any single .hdr/.exr works)
+//   src/assets/hdri/home.jpg|.hdr|.exr  image-based lighting: a JPEG with a gain map is taken first (a fraction of the
+//                                       size: scripts/hdr-to-gainmap.mjs makes one and keeps the .hdr in hdri/raw)
 //   src/assets/textures/<surface>/*.jpg real PBR maps replacing a generated surface: wood, tile, carpet, plaster, fabric,
 //                                       grass, veneer, leather, brushed, stone, paint. File names: *diff*|*color*|*albedo*,
 //                                       *nor*, *rough* (Poly Haven / ambientCG names work as downloaded)
@@ -16,7 +17,11 @@ const urls = (glob: Record<string, string>) =>
 
 const modelFiles = urls(import.meta.glob<string>('./models/*.glb', { eager: true, query: '?url', import: 'default' }))
 const propFiles = urls(import.meta.glob<string>('./models/props/*.glb', { eager: true, query: '?url', import: 'default' }))
-const hdriFiles = urls(import.meta.glob<string>('./hdri/*.{hdr,exr}', { eager: true, query: '?url', import: 'default' }))
+// a JPEG with a gain map before an .hdr or .exr of the same name
+const hdriFiles = {
+  ...urls(import.meta.glob<string>('./hdri/*.{hdr,exr}', { eager: true, query: '?url', import: 'default' })),
+  ...urls(import.meta.glob<string>('./hdri/*.jpg', { eager: true, query: '?url', import: 'default' })),
+}
 
 const textureFiles = import.meta.glob<string>('./textures/*/*.{jpg,jpeg,png,webp}', { eager: true, query: '?url', import: 'default' })
 
@@ -40,12 +45,13 @@ for (const [path, url] of Object.entries(textureFiles)) {
 }
 
 const hdriNames = Object.keys(hdriFiles).sort()
-const hdriExt = Object.fromEntries(Object.keys(import.meta.glob('./hdri/*.{hdr,exr}')).map((p) => [p.split('/').pop()!.replace(/\.[^.]+$/, ''), p.split('.').pop()!]))
+const hdriExt = Object.fromEntries(Object.keys(import.meta.glob(['./hdri/*.{hdr,exr}', './hdri/*.jpg'])).map((p) => [p.split('/').pop()!.replace(/\.[^.]+$/, ''), p.split('.').pop()!]))
 
 // an inlined (data:) HDRI has no file extension for the loader to read: label it the way drei expects
 function tagHdr(name: string | undefined, url: string | undefined) {
   if (!url?.startsWith('data:') || !name) return url
-  return `data:application/${hdriExt[name] === 'exr' ? 'exr' : 'hdr'};base64,${url.slice(url.indexOf(',') + 1)}`
+  const ext = hdriExt[name]
+  return `data:${ext === 'jpg' ? 'image/jpeg' : ext === 'exr' ? 'application/exr' : 'application/hdr'};base64,${url.slice(url.indexOf(',') + 1)}`
 }
 const hdriName = hdriFiles['home'] ? 'home' : hdriNames[0]
 

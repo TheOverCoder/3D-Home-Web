@@ -10,6 +10,8 @@ function labelFor(file: string): { label: string; kind: 'code' | 'model' | 'hdr'
   const base = name.replace(/\.[^.]+$/, '')
   if (/\.glb$/.test(name)) return { label: `Model · ${base.replace(/-/g, ' ')}`, kind: 'model' }
   if (/\.(hdr|exr)$/.test(name)) return { label: 'Sky light (HDR)', kind: 'hdr' }
+  // the sky light as a JPEG with a gain map (src/assets/hdri/home.jpg)
+  if (/\.jpe?g$/.test(name) && base === 'home') return { label: 'Sky light', kind: 'hdr' }
   if (/\.(jpe?g|png|webp|ktx2)$/.test(name)) return { label: `Texture · ${base.split('_')[0]}`, kind: 'texture' }
   if (/\.css$/.test(name)) return { label: 'Styles', kind: 'other' }
   const known: Record<string, string> = {

@@ -13,8 +13,11 @@ Keep this file and `src/data/credits.ts` (shown in the app's intro) in sync. Any
 | Specular Silk Pouf (living-room footstool) | Wayfair, LLC — Eric Chadwick (Khronos glTF Sample Assets) | CC BY 4.0 — attribution required | https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/SpecularSilkPouf |
 | Diffuse Transmission Teacup (coffee table) | Poly Haven and Eric Chadwick (Khronos glTF Sample Assets) | CC0 | https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/DiffuseTransmissionTeacup |
 | Water Bottle (studio desk) | Microsoft (Khronos glTF Sample Assets) | CC0 | https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/WaterBottle |
-| Blouberg Sunrise 2 (1k HDRI) | Poly Haven | CC0 | https://polyhaven.com/a/blouberg_sunrise_2 |
-| Fabric Pattern 07 — normal map only (1k, OpenGL), used for every woven fabric | Poly Haven (file mirrored in godotengine/godot-demo-projects) | CC0 | https://polyhaven.com/a/fabric_pattern_07 |
+| Blouberg Sunrise 2 (1k HDRI, kept as a JPEG with a gain map: `scripts/hdr-to-gainmap.mjs`) | Poly Haven | CC0 | https://polyhaven.com/a/blouberg_sunrise_2 |
+| Fabric Pattern 07 — normal map only (1k, OpenGL, re-saved at JPEG quality 85), used for every woven fabric | Poly Haven (file mirrored in godotengine/godot-demo-projects) | CC0 | https://polyhaven.com/a/fabric_pattern_07 |
+| Fluent Emoji 3D (interface art: coin, basket, shop and menu pictures; the app icon) | Microsoft Corporation | MIT | https://github.com/microsoft/fluentui-emoji |
+| Phosphor Icons (interface glyphs) | Phosphor Icons | MIT | https://phosphoricons.com |
+| Fredoka and Nunito typefaces | The Fredoka Project Authors; The Nunito Project Authors | SIL OFL 1.1 | https://fonts.google.com/specimen/Fredoka |
 
 The models were compressed (meshopt + WebP textures, small props capped at 512–1024 px; the pouf and teacup meshes simplified with meshoptimizer) with `npm run assets:optimize`; nothing else was changed.
 

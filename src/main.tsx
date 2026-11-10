@@ -19,6 +19,12 @@ if (new URLSearchParams(location.search).has('gallery')) {
 } else if (new URLSearchParams(location.search).has('furniture')) {
   // the furniture's pictures drawn from the pieces (src/home/FurnitureArtPage.tsx), to look at and to save
   import('./home/FurnitureArtPage').then(({ FurnitureArtPage }) => root.render(<FurnitureArtPage />))
+} else if (import.meta.env.DEV && new URLSearchParams(location.search).has('gainmap')) {
+  // the sky light as a JPEG with a gain map (src/tools/hdrToGainmap.ts), for scripts/hdr-to-gainmap.mjs to save
+  // (while developing only: the build leaves it, and the .hdr it reads, out)
+  import('./tools/hdrToGainmap').then(async ({ hdrToGainmap }) => {
+    ;(window as unknown as { __gainmap: Record<string, string> }).__gainmap = await hdrToGainmap()
+  })
 } else if (new URLSearchParams(location.search).has('items')) {
   // the item pictures drawn from the models (src/models/ItemArtPage.tsx), to look at and to save
   import('./models/ItemArtPage').then(({ ItemArtPage }) => root.render(<ItemArtPage />))
