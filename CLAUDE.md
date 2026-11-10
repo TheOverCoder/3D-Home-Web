@@ -15,6 +15,10 @@ The README has the overview; `tests/README.md` what each test guards.
   its compact one-line rules by hand). Comments say
   what and why, in plain words.
 - Budget: under 250,000 triangles and 700 draw calls per view (`05-budget`). Check it when adding geometry.
+- Speed never costs the game anything. A fix for speed or the budget may not lower quality or what the game holds: not
+  plainer models, fewer buyers, animals or pieces, smaller rooms or lower caps. It changes how things are drawn
+  (what cannot be seen is not drawn; detail the screen cannot show is not drawn), and the player must not be able to
+  see the difference. A limit that exists only for speed is a debt to remove, not a rule to keep.
 - Tests must not read a value that runs on in real time across separate `page.evaluate` calls (the farm ticks
   every frame): advance and read in the same call.
 
