@@ -5,7 +5,7 @@ import { useInteractable } from '../lib/interaction'
 import { PersonRig, personParts } from '../models/person'
 import { useHome } from '../store'
 import { GATE_SPOT, count } from './data'
-import { drawProduce } from './icons'
+import { iconImages } from './icons'
 import { farm, waiting, type Visitor } from './state'
 
 // People from the lane who queue at the garden gate to buy something. Built like the player's own body, in their
@@ -15,6 +15,8 @@ import { farm, waiting, type Visitor } from './state'
 // (src/models/person.ts) on a rig of joints that is posed, then copied into one instanced draw per part for the
 // whole crowd; and one bubble each.
 
+/** The bubble over a buyer: the good's picture and how many, the coin and the offer. It is drawn at once and
+ *  again when the pictures and the type have loaded (on the first bubbles of a visit). */
 function bubbleTexture(v: Visitor): CanvasTexture {
   const W = 320
   const H = 136
@@ -22,28 +24,36 @@ function bubbleTexture(v: Visitor): CanvasTexture {
   canvas.width = W
   canvas.height = H
   const c = canvas.getContext('2d')!
-  const r = 34
-  c.fillStyle = 'rgba(255,255,255,0.96)'
-  c.beginPath()
-  c.moveTo(r, 4)
-  c.arcTo(W - 4, 4, W - 4, H - 24, r)
-  c.arcTo(W - 4, H - 24, 4, H - 24, r)
-  c.lineTo(W / 2 + 14, H - 24)
-  c.lineTo(W / 2, H - 4)
-  c.lineTo(W / 2 - 14, H - 24)
-  c.arcTo(4, H - 24, 4, 4, r)
-  c.arcTo(4, 4, W - 4, 4, r)
-  c.closePath()
-  c.fill()
-  drawProduce(c, v.want, 58, 56, 72)
-  c.fillStyle = '#1d232c'
-  c.font = '700 44px Inter, system-ui, sans-serif'
-  c.textBaseline = 'middle'
-  c.fillText(`×${v.qty}`, 100, 58)
-  drawProduce(c, 'coin', 214, 56, 50)
-  c.fillText(String(v.offer), 244, 58)
   const t = new CanvasTexture(canvas)
   t.colorSpace = SRGBColorSpace
+  const draw = (want?: HTMLImageElement, coin?: HTMLImageElement) => {
+    const r = 34
+    c.clearRect(0, 0, W, H)
+    c.fillStyle = 'rgba(255, 247, 232, 0.97)'
+    c.beginPath()
+    c.moveTo(r, 4)
+    c.arcTo(W - 4, 4, W - 4, H - 24, r)
+    c.arcTo(W - 4, H - 24, 4, H - 24, r)
+    c.lineTo(W / 2 + 14, H - 24)
+    c.lineTo(W / 2, H - 4)
+    c.lineTo(W / 2 - 14, H - 24)
+    c.arcTo(4, H - 24, 4, 4, r)
+    c.arcTo(4, 4, W - 4, 4, r)
+    c.closePath()
+    c.fill()
+    if (want) c.drawImage(want, 16, 14, 84, 84)
+    if (coin) c.drawImage(coin, 186, 30, 54, 54)
+    c.fillStyle = '#3b2a1e'
+    c.font = '800 44px "Nunito Variable", Nunito, system-ui, sans-serif'
+    c.textBaseline = 'middle'
+    c.fillText(`×${v.qty}`, 102, 58)
+    c.fillText(String(v.offer), 244, 58)
+    t.needsUpdate = true
+  }
+  draw()
+  Promise.all([iconImages([v.want, 'coin']), document.fonts?.load('800 44px "Nunito Variable"')])
+    .then(([[want, coin]]) => draw(want, coin))
+    .catch(() => {})
   return t
 }
 

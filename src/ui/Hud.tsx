@@ -107,7 +107,7 @@ export function Hud() {
 
       {toast && (
         <div className="toast" role="status" key={toast.id}>
-          {toast.item && <img className="toast-item" src={iconUrl(toast.item as ProduceId, 96)} alt="" draggable={false} />}
+          {toast.item && <img className="toast-item" src={iconUrl(toast.item as ProduceId)} alt="" draggable={false} />}
           <span>{toast.text}</span>
         </div>
       )}

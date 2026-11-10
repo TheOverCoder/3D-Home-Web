@@ -16,7 +16,7 @@ test.describe('sculpted models', () => {
     // every entry draws something once the first frames have posed it
     await page.waitForFunction(() => (window as any).__gallery.entries.every((e: any) => e.triangles > 1000), null, { timeout: 60_000, polling: 250 })
     const entries = await page.evaluate(() => (window as any).__gallery.entries.map((e: any) => e.id))
-    expect(entries).toEqual(['cow', 'sheep', 'chickens', 'people', 'crops', 'farm'])
+    expect(entries).toEqual(['cow', 'sheep', 'chickens', 'people', 'crops', 'farm', 'goods'])
     // the checks catch a piece a centimetre off its model, and a model two centimetres above the ground
     expect(await page.evaluate(() => (window as any).__gallery.selfTest())).toEqual(['loose', 'open', 'floating'])
     // the kit's checks, on every model in every variant and pose: no piece apart from its model, nothing floating

@@ -8,6 +8,7 @@ import { PersonRig, personParts, type PersonLook } from './person'
 import { cropParts } from './crops'
 import { GROWERS, putEgg, putLemon } from './plants'
 import { coopModel, lemonSpots, lemonTreeModel, ovenModel, structurePieces, troughModel, type Structure } from './structures'
+import { GOODS, type GoodsId } from './goods'
 
 // Every model, in every variant and in the poses it takes in the game, run through the kit's checks (see
 // src/lib/sculpt/check.ts): every piece holds on to the rest, and the model stands on its ground. The gallery shows
@@ -193,6 +194,13 @@ export const MODEL_CHECKS: ModelCheck[] = [
           { ground: 0, open: openParts(lemons) },
         ),
       ].flat()
+    },
+  },
+  {
+    id: 'goods',
+    name: 'The goods (the item pictures)',
+    run() {
+      return (Object.keys(GOODS) as GoodsId[]).flatMap((id) => checkPieces(id.replace('_', ' '), ...structure(GOODS[id]())))
     },
   },
 ]

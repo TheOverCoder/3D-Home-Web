@@ -8,6 +8,7 @@ import { GROWERS, putEgg, putLemon } from './plants'
 import type { CropId } from '../farm/data'
 import { Group, Mesh, MeshStandardMaterial } from 'three'
 import { coopModel, lemonSpots, lemonTreeModel, mouthGlowMaterial, mouthGlowShape, ovenModel, structureParts, troughModel } from './structures'
+import { GOODS, type GoodsId } from './goods'
 
 // Every model the kit makes, posed and moving, for the gallery page (open the site with ?gallery). Add a new
 // model here as soon as it has a shape: it is the quickest way to see it from every side, in the game's light.
@@ -205,6 +206,23 @@ export const GALLERY: GalleryEntry[] = [
           ;(glow.material as MeshStandardMaterial).emissiveIntensity = 2.2 * (0.75 + Math.sin(t * 13) * 0.12 + Math.sin(t * 29) * 0.08)
         },
       }
+    },
+  },
+  {
+    id: 'goods',
+    label: 'Goods',
+    name: 'The goods, as their pictures show them (?items draws the pictures)',
+    make() {
+      const ids = Object.keys(GOODS) as GoodsId[]
+      const object = new Group()
+      const all = ids.map((id, k) => {
+        const parts = structureParts(GOODS[id](), `goods-${id}`)
+        // two rows, side by side
+        parts.group.position.set(((k % 10) - 4.5) * 0.42, 0, k < 10 ? -0.3 : 0.3)
+        object.add(parts.group)
+        return parts
+      })
+      return { object, width: 4.4, height: 0.6, triangles: () => all.reduce((n, p) => n + p.triangles(), 0), update() {} }
     },
   },
 ]

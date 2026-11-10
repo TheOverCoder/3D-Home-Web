@@ -24,7 +24,9 @@ The README has the overview; `tests/README.md` what each test guards.
 - Use the tokens and classes, not new colours or fonts: `.paper` sheets, `.btn` (`.soft`, `.leaf`, `.berry`,
   `.small`, `.round`) or `.primary`, `.tag` chips, `.art` pictures. Fredoka for titles/buttons, Nunito for text
   and numbers. Glyphs from `glyphs.ts` (Phosphor, bold/fill), pictures from `art.ts` (Fluent 3D) — add a file
-  there rather than drawing one; credit anything new in `src/data/credits.ts`.
+  there rather than drawing one; credit anything new in `src/data/credits.ts`. A good of the farm is pictured by
+  its model (`src/models/goods.ts`, `iconUrl` in `src/farm/icons.ts`): a new good gets a model there, and after
+  changing one, save the pictures again with `node scripts/render-item-art.mjs` (dev server up).
 - A panel: picture, a few-word title, chips, at most one line of text, at most two buttons (Cancel first, the
   action last with its price). 44 px targets, text ≥ 15 px (never < 13).
 

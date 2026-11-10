@@ -195,7 +195,7 @@ export function ActionFace({ icon, className }: { icon?: ActionIcon; className?:
     <span className={`act-face${icon?.item ? ' has-item' : ''}${className ? ` ${className}` : ''}`} data-verb={verb} style={{ ['--verb' as string]: colour }}>
       {icon?.item ? (
         <>
-          <img className="act-face-item" src={iconUrl(icon.item as ProduceId, 128)} alt="" draggable={false} />
+          <img className="act-face-item" src={iconUrl(icon.item as ProduceId)} alt="" draggable={false} />
           <span className="act-face-mark">
             <Glyph verb={verb} className="act-glyph" />
           </span>

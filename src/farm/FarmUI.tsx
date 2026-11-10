@@ -62,26 +62,42 @@ function FarmChip() {
   const line = inLine().length
   return (
     <button className="farm-chip" aria-label="Your coins and harvest — open the basket" onClick={() => !panel && openPanel({ kind: 'basket' })}>
-      <span className="farm-chip-item coins" title="Coins">
+      <ChipItem value={farm.coins} className="coins" title="Coins">
         <img src={art('coin')} alt="" />
         <b>{farm.coins}</b>
-      </span>
+      </ChipItem>
       {farm.started && (
-        <span className={`farm-chip-item line${line >= placesInLine() ? ' full' : ''}`} title="Buyers in line at the gate">
+        <ChipItem value={line} className={`line${line >= placesInLine() ? ' full' : ''}`} title="Buyers in line at the gate">
           <Users weight="bold" />
           <b>
             {line}/{placesInLine()}
           </b>
-        </span>
+        </ChipItem>
       )}
       {shown.map((p) => (
-        <span key={p.id} className="farm-chip-item" title={cap(p.plural)}>
-          <img src={iconUrl(p.id, 48)} alt="" />
+        <ChipItem key={p.id} value={farm.inv[p.id]} title={cap(p.plural)}>
+          <img src={iconUrl(p.id)} alt="" />
           <b>{farm.inv[p.id]}</b>
-        </span>
+        </ChipItem>
       ))}
       {hidden > 0 && <span className="farm-chip-item more">+{hidden}</span>}
     </button>
+  )
+}
+
+/** One count in the chip row. It hops when the count goes up — a harvest landing in the basket, a sale paid —
+ *  so you see where it went (two class names, so that a hop right after another starts again). */
+function ChipItem({ value, className = '', title, children }: { value: number; className?: string; title?: string; children: ReactNode }) {
+  const [last, setLast] = useState(value)
+  const [hops, setHops] = useState(0)
+  if (value !== last) {
+    setLast(value)
+    if (value > last) setHops(hops + 1)
+  }
+  return (
+    <span className={`farm-chip-item${className ? ` ${className}` : ''}${hops ? (hops % 2 ? ' hop-a' : ' hop-b') : ''}`} title={title}>
+      {children}
+    </span>
   )
 }
 
@@ -156,7 +172,7 @@ function SeedsPanel({ bed }: { bed: number }) {
           return (
             <button key={c.id} className="farm-card" disabled={!afford} onClick={() => choose(c.id)}>
               <kbd className="farm-key">{i + 1}</kbd>
-              <img className="art" src={iconUrl(c.id, 128)} alt="" />
+              <img className="art" src={iconUrl(c.id)} alt="" />
               <span className="farm-card-name">{cap(c.plural)}</span>
               <span className="farm-card-tags">
                 <span className="tag">
@@ -207,7 +223,7 @@ function BuildPanel({ bed }: { bed: number }) {
     close()
   }
   return (
-    <Shell title={title} art={art(field ? 'sheaf-of-rice' : 'hammer')} sub={<Purse />} onClose={close}>
+    <Shell title={title} art={field ? iconUrl('wheat') : art('hammer')} sub={<Purse />} onClose={close}>
       <p className="farm-line">{blurb}</p>
       <div className="farm-confirm">
         <button className="btn soft" onClick={close}>
@@ -306,7 +322,7 @@ function QueuePanel() {
                 {i + 1}
               </span>
               <span className="farm-want">
-                <img className="art" src={iconUrl(v.want, 128)} alt="" />
+                <img className="art" src={iconUrl(v.want)} alt="" />
                 <b>×{v.qty}</b>
               </span>
               <div className="farm-buyer-body">
@@ -367,7 +383,7 @@ function BasketPanel() {
         <div className="farm-basket">
           {stock.map((p) => (
             <div key={p.id} className="farm-basket-item" title={`${count(p.id, farm.inv[p.id])} · about ${p.price} coins each`}>
-              <img className="art" src={iconUrl(p.id, 128)} alt="" />
+              <img className="art" src={iconUrl(p.id)} alt="" />
               <b>{farm.inv[p.id]}</b>
               <span>{cap(p.plural)}</span>
             </div>
@@ -470,7 +486,7 @@ const Need = ({ id, n }: { id: ProduceId; n: number }) => {
   return (
     // enough: how many it takes, ticked; short: what you have of what it takes, in red
     <span className={have >= n ? 'farm-need ok' : 'farm-need short'} title={`${count(id, n)} (you have ${have})`}>
-      <img src={iconUrl(id, 40)} alt="" />
+      <img src={iconUrl(id)} alt="" />
       {have >= n ? (
         <>
           ×{n}
@@ -496,7 +512,7 @@ function MillPanel() {
   return (
     <Shell
       title="Mill"
-      art={art('sheaf-of-rice')}
+      art={iconUrl('flour')}
       sub={
         <span className="tag">
           <Clock weight="bold" />
@@ -513,14 +529,14 @@ function MillPanel() {
           return (
             <div key={input} className="farm-row farm-recipe">
               <div className="farm-row-flow">
-                <img className="art" src={iconUrl(input, 128)} alt="" />
+                <img className="art" src={iconUrl(input)} alt="" />
                 <span className="farm-arrow">→</span>
-                <img className="art" src={iconUrl(out, 128)} alt="" />
+                <img className="art" src={iconUrl(out)} alt="" />
               </div>
               <div className="farm-recipe-body">
                 <strong>{cap(produceById(out).plural)}</strong>
                 <span className={`tag ${have ? '' : 'short'}`}>
-                  <img src={iconUrl(input, 40)} alt="" />
+                  <img src={iconUrl(input)} alt="" />
                   {have}
                 </span>
               </div>
@@ -546,13 +562,13 @@ function OvenPanel() {
     close()
   }
   return (
-    <Shell title="Oven" art={art('shortcake')} sub={<Purse />} onClose={close}>
+    <Shell title="Oven" art={iconUrl('lemon_cake')} sub={<Purse />} onClose={close}>
       <div className="farm-list">
         {RECIPES.map((r) => {
           const ok = canBake(r.id)
           return (
             <div key={r.id} className="farm-row farm-recipe">
-              <img className="art farm-recipe-icon" src={iconUrl(r.id, 128)} alt="" />
+              <img className="art farm-recipe-icon" src={iconUrl(r.id)} alt="" />
               <div className="farm-recipe-body">
                 <strong>
                   {r.name}{' '}

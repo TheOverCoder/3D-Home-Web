@@ -26,7 +26,7 @@ function leafShade(shape: Shape, width: number) {
 
 /** Tilts a part (rx, about its own x) and then turns it about the vertical (ry), at a point: a ring of sepals,
  *  husks round a cob. */
-const around = (shape: Shape, tilt: number, turn: number, at: V3 = [0, 0, 0]) => shape.place([0, 0, 0], [tilt, 0, 0]).place(at, [0, turn, 0])
+export const around = (shape: Shape, tilt: number, turn: number, at: V3 = [0, 0, 0]) => shape.place([0, 0, 0], [tilt, 0, 0]).place(at, [0, turn, 0])
 
 /** A checker over a lathe's or loft's vertices (`seg` round each ring): seeds on a berry, kernels on a cob. */
 const checker = (seg: number) => {
@@ -39,14 +39,14 @@ const checker = (seg: number) => {
 }
 
 /** A small closed leaf (a thin lens), for parts on fruit and flowers that are seen from both sides. */
-function leaflet(length: number, width: number, droop = 0): Shape {
+export function leaflet(length: number, width: number, droop = 0, seg = 3): Shape {
   return loft(
     [
       { c: [0, 0, 0], rx: width * 0.25, ry: width * 0.06 },
       { c: [0, droop * 0.3, length * 0.45], rx: width * 0.5, ry: width * 0.07 },
       { c: [0, droop, length], rx: 0.002, ry: 0.002 },
     ],
-    { seg: 3, steps: 1 },
+    { seg, steps: 1 },
   )
 }
 
