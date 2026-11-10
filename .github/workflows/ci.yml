@@ -12,6 +12,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # the quick checks, beside the e2e shards: types, lint and the unit tests (no build, no browser), in about a minute
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+
   test:
     runs-on: ubuntu-latest
     # the suite renders in software and boots the scene a dozen times (about 35 minutes in one go): it runs as four

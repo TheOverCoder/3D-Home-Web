@@ -360,8 +360,9 @@ export function sanitizeHome(raw: unknown): HomeLayout {
     out.pieces = out.pieces.filter((o) => o.id !== p.id)
     out.stored.push(p.type)
   }
-  // whatever does not fit any more goes into storage, one by one
-  for (const p of [...out.pieces]) {
+  // whatever does not fit any more goes into storage, one by one (the loop walks the list as it was: putting a piece
+  // away makes a new one)
+  for (const p of out.pieces) {
     if (PIECES[p.type].fitted) continue
     if (!canPlacePiece(out, p).ok) {
       out.pieces = out.pieces.filter((o) => o.id !== p.id)

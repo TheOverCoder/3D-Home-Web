@@ -8,12 +8,12 @@ import { createHash } from 'node:crypto'
 function labelFor(file: string): { label: string; kind: 'code' | 'model' | 'hdr' | 'texture' | 'other' } {
   const name = file.split('/').pop()!.replace(/-[\w-]{8}(?=\.)/, '') // drop the content hash
   const base = name.replace(/\.[^.]+$/, '')
-  if (/\.glb$/.test(name)) return { label: `Model · ${base.replace(/-/g, ' ')}`, kind: 'model' }
+  if (name.endsWith('.glb')) return { label: `Model · ${base.replace(/-/g, ' ')}`, kind: 'model' }
   if (/\.(hdr|exr)$/.test(name)) return { label: 'Sky light (HDR)', kind: 'hdr' }
   // the sky light as a JPEG with a gain map (src/assets/hdri/home.jpg)
   if (/\.jpe?g$/.test(name) && base === 'home') return { label: 'Sky light', kind: 'hdr' }
   if (/\.(jpe?g|png|webp|ktx2)$/.test(name)) return { label: `Texture · ${base.split('_')[0]}`, kind: 'texture' }
-  if (/\.css$/.test(name)) return { label: 'Styles', kind: 'other' }
+  if (name.endsWith('.css')) return { label: 'Styles', kind: 'other' }
   const known: Record<string, string> = {
     'vendor-physics': 'Physics engine (Rapier)',
     rapier_wasm3d_bg: 'Physics engine (Rapier)', // its WebAssembly, a file of its own (rapierWasmAsFile below)

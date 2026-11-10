@@ -132,6 +132,7 @@ test.describe('no WebGL', () => {
     const context = await browser.newContext({ viewport: { width: 640, height: 360 }, baseURL: 'http://localhost:4185' })
     const page = await context.newPage()
     await page.addInitScript(() => {
+      // eslint-disable-next-line @typescript-eslint/unbound-method -- called with the canvas as `this` below
       const original = HTMLCanvasElement.prototype.getContext
       HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, type: string, ...rest: unknown[]) {
         if (/webgl/i.test(type)) return null
