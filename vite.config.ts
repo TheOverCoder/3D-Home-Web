@@ -8,14 +8,15 @@ import { createHash } from 'node:crypto'
 function labelFor(file: string): { label: string; kind: 'code' | 'model' | 'hdr' | 'texture' | 'other' } {
   const name = file.split('/').pop()!.replace(/-[\w-]{8}(?=\.)/, '') // drop the content hash
   const base = name.replace(/\.[^.]+$/, '')
-  if (/\.glb$/.test(name)) return { label: `Model · ${base.replace(/-/g, ' ')}`, kind: 'model' }
+  if (name.endsWith('.glb')) return { label: `Model · ${base.replace(/-/g, ' ')}`, kind: 'model' }
   if (/\.(hdr|exr)$/.test(name)) return { label: 'Sky light (HDR)', kind: 'hdr' }
   // the sky light as a JPEG with a gain map (src/assets/hdri/home.jpg)
   if (/\.jpe?g$/.test(name) && base === 'home') return { label: 'Sky light', kind: 'hdr' }
   if (/\.(jpe?g|png|webp|ktx2)$/.test(name)) return { label: `Texture · ${base.split('_')[0]}`, kind: 'texture' }
-  if (/\.css$/.test(name)) return { label: 'Styles', kind: 'other' }
+  if (name.endsWith('.css')) return { label: 'Styles', kind: 'other' }
   const known: Record<string, string> = {
     'vendor-physics': 'Physics engine (Rapier)',
+    rapier_wasm3d_bg: 'Physics engine (Rapier)', // its WebAssembly, a file of its own (rapierWasmAsFile below)
     'vendor-three': '3D engine (three.js)',
     'vendor-r3f': 'Scene tools & film effects',
     'vendor-react': 'Interface (React)',
@@ -28,12 +29,40 @@ function labelFor(file: string): { label: string; kind: 'code' | 'model' | 'hdr'
 }
 
 /**
+ * Rapier's compat build carries its WebAssembly as base64 inside the JS (2.2 MB of script, 830 KB gzipped); the
+ * package also ships the same binary as a file: the build loads that instead (143 KB of script and the 1.57 MB file,
+ * 612 KB gzipped together; compiled while it streams in, kept by the service worker like any other file). The dev
+ * server keeps the package as it is. A changed pattern (another Rapier version) fails the build, not the game.
+ */
+function rapierWasmAsFile(): Plugin {
+  // init's only argument in 0.19.x: `(<decoder>.toByteArray("<base64 wasm>").buffer)` (without `.buffer` the
+  // replacement still builds but the game fails to start)
+  const inlined = /\([\w$]+\.toByteArray\("AGFzbQ[A-Za-z0-9+/=]+"\)\.buffer\)/g
+  return {
+    name: 'home-rapier-wasm-file',
+    apply: 'build',
+    enforce: 'pre',
+    transform(code, id) {
+      if (!/[\\/]@dimforge[\\/]rapier3d-compat[\\/]rapier\.mjs$/.test(id)) return
+      if (code.match(inlined)?.length !== 1) this.error('@dimforge/rapier3d-compat: its inlined WebAssembly is not where this plugin expects it')
+      return { code: `import rapierWasmUrl from './rapier_wasm3d_bg.wasm?url';\n${code.replace(inlined, '({ module_or_path: rapierWasmUrl })')}`, map: null }
+    },
+  }
+}
+
+/** The developer pages and tools (?gallery, ?furniture, ?items, ?tune, ?console: the model gallery's chunk and the
+ *  dev-* groups below): they load only when their flag is used, so the loader does not download them for every player
+ *  and the service worker does not keep them. */
+const devOnly = (fileName: string) => /(?:^|[\\/])(?:Gallery|dev-[a-z]+)-[\w-]{8}\.js$/.test(fileName)
+
+/**
  * Writes two files into the build:
  * - assets-manifest.json: every file the 3D scene downloads after the page shell (its code, models, sky, textures)
  *   with its size — the loading screen fetches them with a progress count (src/lib/loader.ts).
  * - sw.js: a service worker that keeps the files on the device (src/sw-template.js), so the next visit loads
  *   from the phone or computer instead of the network. Hashed files never change and are served from the cache
  *   straight away; the page itself is fetched fresh when there is a connection (so new versions arrive).
+ * Neither lists the developer pages and tools (`devOnly`).
  */
 function offlineAndProgress(): Plugin {
   let base = '/'
@@ -60,18 +89,19 @@ function offlineAndProgress(): Plugin {
       if (entry) walk(entry.fileName)
       const sizeOf = (o: (typeof entries)[number]) => (o.type === 'chunk' ? Buffer.byteLength(o.code) : typeof o.source === 'string' ? Buffer.byteLength(o.source) : o.source.byteLength)
       const files = entries
-        // (the model gallery, ?gallery, is a page of its own: the game never needs it)
-        .filter((o) => !shell.has(o.fileName) && !/\.(map|json|txt)$/.test(o.fileName) && o.fileName !== 'sw.js' && !/[\\/]Gallery-/.test(o.fileName))
+        .filter((o) => !shell.has(o.fileName) && !/\.(map|json|txt)$/.test(o.fileName) && o.fileName !== 'sw.js' && !devOnly(o.fileName))
         .map((o) => ({ url: o.fileName, bytes: sizeOf(o), ...labelFor(o.fileName) }))
         .sort((a, b) => b.bytes - a.bytes)
-      const all = entries.filter((o) => !/\.(map)$/.test(o.fileName)).map((o) => o.fileName)
+      // the version goes by every file (a change to a developer page still makes a new one); the worker keeps the game's
+      const all = entries.filter((o) => !o.fileName.endsWith('.map')).map((o) => o.fileName)
       const version = createHash('sha256').update(all.sort().join('\n')).digest('hex').slice(0, 12)
       this.emitFile({ type: 'asset', fileName: 'assets-manifest.json', source: JSON.stringify({ version, files }, null, 1) })
       const shellFiles = ['', 'index.html', 'favicon.svg', ...[...shell].filter((f) => bundle[f])]
+      const kept = all.filter((f) => !devOnly(f))
       this.emitFile({
         type: 'asset',
         fileName: 'sw.js',
-        source: SW.replace('__VERSION__', version).replace('__BASE__', base).replace('__SHELL__', JSON.stringify(shellFiles)).replace('__FILES__', JSON.stringify(all)),
+        source: SW.replace('__VERSION__', version).replace('__BASE__', base).replace('__SHELL__', JSON.stringify(shellFiles)).replace('__FILES__', JSON.stringify(kept)),
       })
     },
   }
@@ -163,7 +193,7 @@ self.addEventListener('fetch', (event) => {
 
 export default defineConfig({
   base: process.env.BASE_PATH ?? '/',
-  plugins: [react(), offlineAndProgress()],
+  plugins: [react(), rapierWasmAsFile(), offlineAndProgress()],
   assetsInclude: ['**/*.glb', '**/*.gltf', '**/*.hdr', '**/*.exr', '**/*.ktx2'],
   build: {
     target: 'es2022',
@@ -179,6 +209,12 @@ export default defineConfig({
         // whole 3D bundle before the intro could show.
         codeSplitting: {
           groups: [
+            // the developer tools and pages, each a chunk of its own (`devOnly`: not downloaded up front, not kept by
+            // the service worker). Only their own modules: what they share with the game stays in the game's chunks
+            // (the game reaches them only by a dynamic import behind their flag, so no import cycle can form)
+            { name: 'dev-console', test: /node_modules[\\/]eruda[\\/]|src[\\/]debug[\\/]console\./, priority: 51, includeDependenciesRecursively: false },
+            { name: 'dev-tune', test: /node_modules[\\/]lil-gui[\\/]|src[\\/]debug[\\/]/, priority: 50, includeDependenciesRecursively: false },
+            { name: 'dev-pages', test: /src[\\/](home[\\/]FurnitureArtPage|models[\\/](ItemArtPage|itemArt))\./, priority: 50, includeDependenciesRecursively: false },
             { name: 'vendor-react', test: /node_modules[\\/](react|react-dom|scheduler|zustand|use-sync-external-store)[\\/]|vite[\\/]preload-helper/, priority: 40 },
             { name: 'vendor-physics', test: /node_modules[\\/]@dimforge[\\/]/, priority: 30 },
             { name: 'vendor-three', test: /node_modules[\\/]three[\\/]/, priority: 20 },

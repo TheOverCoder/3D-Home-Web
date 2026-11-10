@@ -6,7 +6,7 @@ import { playerState } from '../lib/playerState'
 import { useHome } from '../store'
 import { movePieceTo, putAway, turnPiece } from './actions'
 import { PIECES, type PieceType } from './catalogue'
-import { canPlacePiece, findFreeSpot, footprint, snapPiece, type HomeLayout, type HomePiece } from './layout'
+import { canPlacePiece, findFreeSpot, footprint, roomFull, snapPiece, type HomeLayout, type HomePiece } from './layout'
 
 // The house's decorate mode, its state (the scene is src/home/DecorateMode.tsx, the controls DecoratePanel.tsx):
 // which piece is picked, the one being dragged and whether it fits where it is, why the last move did not happen,
@@ -140,7 +140,7 @@ export function placeFromStorage(type: PieceType): boolean {
   const room = useDecorate.getState().room
   const spot = findFreeSpot(farm.home, type, room)
   if (!spot) {
-    useDecorate.getState().setNote(`No room for the ${PIECES[type].name.toLowerCase()} in the ${ROOMS[room].name.toLowerCase()}`)
+    useDecorate.getState().setNote(roomFull(farm.home, room, type) ? 'This room is full' : `No room for the ${PIECES[type].name.toLowerCase()} in the ${ROOMS[room].name.toLowerCase()}`)
     return false
   }
   remember()
@@ -163,7 +163,7 @@ export function buyFurniture(type: PieceType): boolean {
     forget()
     return false
   }
-  if (!placeFromStorage(type)) useDecorate.getState().setNote('Bought — it is in storage: no room for it here')
+  if (!placeFromStorage(type)) useDecorate.getState().setNote(`Bought — it is in storage: ${roomFull(farm.home, useDecorate.getState().room, type) ? 'this room is full' : 'no room for it here'}`)
   return true
 }
 

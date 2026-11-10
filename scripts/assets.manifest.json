@@ -27,7 +27,9 @@
     "what": "Sheen Chair (slipper chair)",
     "by": "Wayfair, LLC (Khronos glTF Sample Assets)",
     "license": "CC0",
-    "source": "https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/SheenChair"
+    "source": "https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/SheenChair",
+    "simplify": 0.2,
+    "simplifyError": 0.002
   },
   {
     "id": "plant-living",
@@ -37,7 +39,9 @@
     "what": "Diffuse Transmission Plant",
     "by": "Darmstadt Graphics Group GmbH (Khronos glTF Sample Assets)",
     "license": "CC-BY 4.0",
-    "source": "https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/DiffuseTransmissionPlant"
+    "source": "https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/DiffuseTransmissionPlant",
+    "simplify": 0.1,
+    "simplifyError": 0.01
   },
   {
     "id": "accent-chair",

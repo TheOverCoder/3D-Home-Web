@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useRef, useState } from 'react'
+import { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
 import { PerformanceMonitor, useProgress } from '@react-three/drei'
 import { Physics } from '@react-three/rapier'
@@ -30,6 +30,9 @@ import { Warmup } from './Warmup'
 installHdrGuard()
 // a restart in light graphics paints the generated surfaces again, at the light profile's (smaller) size
 onGraphicsRestart(resetSurfaces)
+
+// ?tune: a live tuning panel for developers (src/debug/Tune.tsx), in a chunk of its own that players never download
+const Tune = new URLSearchParams(location.search).has('tune') ? lazy(() => import('../debug/Tune')) : null
 
 const TIERS: Quality[] = ['low', 'medium', 'high']
 const isQuality = (q: unknown): q is Quality => TIERS.includes(q as Quality)
@@ -187,6 +190,11 @@ export default function Experience() {
         <Warmup />
         <RenderPause />
       </Suspense>
+      {Tune && (
+        <Suspense fallback={null}>
+          <Tune />
+        </Suspense>
+      )}
     </Canvas>
   )
 }

@@ -6,9 +6,12 @@ The README has the overview; `tests/README.md` what each test guards.
 
 ## Before pushing
 
-- `npx tsc --noEmit`, then the e2e suite: `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium npx playwright test --trace off`
-  (software WebGL, ~25 min; run single spec files while iterating). It builds and serves on :4185.
-- Code style: Prettier with `--print-width 200 --no-semi --single-quote`. Comments say what and why, in plain words.
+- `npm run check` (types, oxlint, the Vitest unit tests: ~10 s), then the e2e suite:
+  `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium npx playwright test --trace off` (software WebGL, ~25 min; run single
+  spec files while iterating). It builds and serves on :4185. A rule or a save change gets a unit test beside its
+  code (`src/**/*.test.ts`, `tests/README.md`).
+- Code style: Prettier (`.prettierrc.json`: width 200, no semicolons, single quotes; `npm run format`). Comments say
+  what and why, in plain words.
 - Budget: under 250,000 triangles and 700 draw calls per view (`05-budget`). Check it when adding geometry.
 - Tests must not read a value that runs on in real time across separate `page.evaluate` calls (the farm ticks
   every frame): advance and read in the same call.
@@ -56,8 +59,12 @@ The README has the overview; `tests/README.md` what each test guards.
 ## The house's furniture (src/home)
 
 - Where each piece stands is data in the farm's save (`layout.ts`: the rules for where a piece may go, `catalogue.ts`:
-  each kind's size, layer and price). A new kind gets a catalogue entry, a model in `PieceModel`
+  each kind's size, layer, price and weight). A new kind gets a catalogue entry, a model in `PieceModel`
   (`src/scene/Furnishings.tsx`) and its picture: `node scripts/render-furniture-art.mjs` (dev server up).
+- A room holds pieces up to `ROOM_WEIGHT` (60k triangles, `layout.ts`; *This room is full*), measured so that full
+  rooms keep every view inside `05-budget`. A kind's `weight` is its model's triangle count and `05-budget` fails when
+  a model draws more: keep a piece under its weight — slim a heavy model (`simplify` in `scripts/assets.manifest.json`,
+  then `npm run assets:optimize`) rather than raise the weight; if a weight or the limit must change, measure again.
 - Things that stand on a piece follow it: `OnPiece` for the small ones, `HOSTED` for lamps and pickups.
 
 ## Making models (src/lib/sculpt, examples in src/models)

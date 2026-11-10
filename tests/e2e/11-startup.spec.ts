@@ -37,6 +37,12 @@ test.describe('starting up', () => {
     expect(first.kinds).toContain('model')
     await expect(page.locator('.load-head')).toContainText('Ready')
 
+    // what every player downloads: the physics engine's WebAssembly as a file of its own, and none of the developer
+    // tools or pages (they load only with their flag: ?tune, ?console, ?gallery, ?furniture, ?items)
+    const listed: string[] = await page.evaluate(async () => (await (await fetch('/assets-manifest.json')).json()).files.map((f: any) => f.url))
+    expect(listed.filter((u) => /rapier_wasm3d_bg-[\w-]{8}\.wasm$/.test(u))).toHaveLength(1)
+    expect(listed.filter((u) => /(^|\/)(dev-[a-z]+|Gallery)-/.test(u))).toEqual([])
+
     // the service worker controls the page and has kept every file of the manifest
     await page.waitForFunction(
       async () => {
@@ -83,6 +89,7 @@ test.describe('starting up', () => {
     const page = await context.newPage()
     // the 3D scene's first WebGL context is lost a moment after it is made, as on a phone short of graphics memory
     await page.addInitScript(() => {
+      // eslint-disable-next-line @typescript-eslint/unbound-method -- called with the canvas as `this` below
       const original = HTMLCanvasElement.prototype.getContext
       HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, type: string, ...rest: unknown[]) {
         const gl = (original as any).call(this, type, ...rest)

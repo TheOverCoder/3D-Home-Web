@@ -5,7 +5,8 @@ import { useHome } from '../store'
 import { art } from '../ui/art'
 import { ARM_MS, Coins, Purse, Shell } from '../ui/Sheet'
 import { PIECES, PIECE_TYPES, isPieceType, type PieceDef, type PieceType } from './catalogue'
-import { buyFurniture } from './decorate'
+import { buyFurniture, useDecorate } from './decorate'
+import { roomFull } from './layout'
 import { pieceUrl } from './pictures'
 
 // The furniture shop (decorating, the bag on the card): every piece for sale by kind, each with its picture, name and
@@ -70,6 +71,7 @@ export function BuyPiece({ type }: { type: string }) {
   useFarm((s) => s.rev)
   const close = useHome((s) => s.closePanel)
   const open = useHome((s) => s.openPanel)
+  const room = useDecorate((s) => s.room)
   const [armed, setArmed] = useState(false)
   useEffect(() => {
     const t = setTimeout(() => setArmed(true), ARM_MS)
@@ -78,6 +80,8 @@ export function BuyPiece({ type }: { type: string }) {
   if (!isPieceType(type)) return null
   const def = PIECES[type as PieceType]
   const afford = farm.coins >= def.price
+  // the room in view holds all it may draw (src/home/layout.ts): bought now, it waits in storage
+  const full = roomFull(farm.home, room, type as PieceType)
   const buy = () => {
     if (!armed || !afford) return
     close()
@@ -91,7 +95,7 @@ export function BuyPiece({ type }: { type: string }) {
           {metres(def.size[0])} × {metres(def.size[2])}
         </span>
       </div>
-      <p className="farm-line">It goes in the room you are looking at, ready to drag.</p>
+      <p className="farm-line">{full ? 'This room is full: it waits in storage.' : 'It goes in the room you are looking at, ready to drag.'}</p>
       <div className="farm-confirm">
         <button className="btn soft" onClick={() => open({ kind: 'furniture' })}>
           Cancel
