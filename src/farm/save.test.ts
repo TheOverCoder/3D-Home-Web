@@ -145,4 +145,11 @@ describe('a save broken or edited by hand', () => {
       expect(farm.layout.land).toEqual(layout.land)
     }
   })
+
+  it('the silo and the barn saved broken load made safe; everything else as it was', () => {
+    // levels below 1 or not numbers: level 1
+    startFrom({ ...played, storage: { silo: -3, barn: 'x' } })
+    expect(farm.storage).toEqual({ silo: 1, barn: 1 })
+    expect(without(savedNow(), 'storage')).toEqual(without(loaded, 'storage'))
+  })
 })

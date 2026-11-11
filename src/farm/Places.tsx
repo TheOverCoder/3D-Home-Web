@@ -6,14 +6,18 @@ import { B } from '../scene/Furnishings'
 import { StaticBatch } from '../scene/House'
 import { tree } from '../scene/flora'
 import { coopModel, lemonTreeModel, structureParts, troughModel, type Structure } from '../models/structures'
-import { COOP, FOLD, HAY_RACK, NEST, PASTURE, RUN, TROUGH } from './data'
+import { barnModel, siloModel } from '../models/buildings'
+import { registerInteractable } from '../lib/interaction'
+import type { Point3 } from '../lib/playerState'
+import { useHome } from '../store'
+import { COOP, FOLD, HAY_RACK, NEST, PASTURE, RUN, STORES, TROUGH, type StoreId } from './data'
 import { usePlacement, useShownPlacement } from './edit'
 import { alongBoundary, toWorld, turnOf, type PlaceId } from './layout'
-import { farm, useFarm } from './state'
+import { capacity, farm, room, useFarm, used, waitingFor } from './state'
 import { useProducer } from './useProducer'
 
-// The farm's movable places — the hen run with its coop, the cows' pasture, the sheep fold, the lemon tree and the
-// three big trees — each drawn in its own frame inside a group that stands where the layout puts it (or where the
+// The farm's movable places — the hen run with its coop, the cows' pasture, the sheep fold, the silo, the barn, the
+// lemon tree and the three big trees — each drawn in its own frame inside a group that stands where the layout puts it (or where the
 // edit mode is dragging it). Their colliders and interactions follow where they stand.
 
 export const WOOD = '#8a6440'
@@ -317,6 +321,51 @@ function FoldBody() {
   )
 }
 
+// ───────────────────────────── the silo and the barn ─────────────────────────────
+
+/** Where you stand at a building's door, what you look at, and its body, in its own frame (its door faces +x). */
+const STORE_SPOTS: Record<StoreId, { stand: [number, number, number]; aim: [number, number, number]; boxes: Box[]; posts: Post[] }> = {
+  silo: { stand: [1.9, 1.0, 0], aim: [1.08, 1.1, 0], boxes: [], posts: [{ half: 2.8, radius: 1.2, at: [0, 2.8, 0] }] },
+  barn: { stand: [2.75, 1.0, 0], aim: [1.9, 1.3, 0], boxes: [{ half: [1.9, 1.9, 1.62], at: [0, 1.9, 0] }], posts: [] },
+}
+
+/** The silo or the barn: its model where its place stands, its body, and its door on the action button (it opens its
+ *  panel: what is inside, how full, its next level). With more goods waiting than it has room for, it is on the
+ *  compass, ringed in red. */
+function StoreBuilding({ id }: { id: StoreId }) {
+  const def = STORES[id]
+  const spot = STORE_SPOTS[id]
+  const p = usePlacement(def.place)
+  useEffect(() => {
+    const w = ([x, y, z]: [number, number, number]): Point3 => {
+      const [wx, wz] = toWorld(p, x, z)
+      return { x: wx, y, z: wz }
+    }
+    return registerInteractable({
+      id: `farm-${id}`,
+      position: w(spot.stand),
+      aim: w(spot.aim),
+      radius: 2.4,
+      label: () => `${def.name} · ${used(id)}/${capacity(id)}`,
+      icon: () => ({ verb: 'watch', item: id }),
+      // more goods waiting (on the animals, in the beds, in the machines) than it has room for: it needs you
+      ready: () => {
+        const n = waitingFor(id)
+        return n > room(id) ? { item: id, count: n, alert: true } : null
+      },
+      run: () => useHome.getState().openPanel({ kind: 'store', store: id }),
+    })
+  }, [id, p, def, spot])
+  return (
+    <>
+      <Placed id={def.place}>
+        <Sculpted make={id === 'silo' ? siloModel : barnModel} name={id} />
+      </Placed>
+      <Body id={def.place} boxes={spot.boxes} posts={spot.posts} />
+    </>
+  )
+}
+
 // ───────────────────────────── trees ─────────────────────────────
 
 function LemonTree() {
@@ -374,6 +423,8 @@ export function Places() {
       <CowPasture />
       <Fold />
       <FoldBody />
+      <StoreBuilding id="silo" />
+      <StoreBuilding id="barn" />
       <LemonTree />
       {CORNER_TREES.map((_, i) => (
         <BigTree key={i} index={i} />

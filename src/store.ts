@@ -29,14 +29,15 @@ export interface Failure {
 }
 
 /** A small game panel over the scene (seed packets, a bed to build, what a bed always grows, the buyers, the farm
- *  shop, the basket, the furniture shop and buying a piece). */
+ *  shop, the silo or the barn and its next level, the furniture shop and buying a piece). */
 export type Panel =
   | { kind: 'seeds'; bed: number }
   | { kind: 'build'; bed: number }
   | { kind: 'bed'; bed: number }
   | { kind: 'queue' }
   | { kind: 'shop' }
-  | { kind: 'basket' }
+  | { kind: 'store'; store: 'silo' | 'barn' } // what is inside, how full, and its next level
+  | { kind: 'store-upgrade'; store: 'silo' | 'barn' } // the card that asks before the materials are used
   | { kind: 'furniture' } // the furniture shop (decorating)
   | { kind: 'buy-piece'; type: string } // buying one piece: what it is and its price, Cancel or Buy
 
@@ -71,6 +72,8 @@ export interface CompassMark {
   id: string
   item: string
   count: number
+  /** a building that needs you (the barn full, goods waiting for room): drawn with a red ring */
+  alert?: boolean
 }
 
 interface HomeState {

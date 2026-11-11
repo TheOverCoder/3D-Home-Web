@@ -3,13 +3,13 @@ import { SHRUB_SPOTS, CORNER_TREES } from '../data/garden'
 import { BED, BEDS, MACHINES, PATH_X, SHED, STAND } from './data'
 
 // Where the farm's movable things stand, and the land they may stand on. A "place" is a whole thing moved in one
-// go in the edit mode (the hen run with its coop, the cows' pasture, the sheep fold, the lemon tree, the big
-// trees): its footprint is a rectangle in its own frame, turned in quarter turns. Land is the home garden plus
+// go in the edit mode (the hen run with its coop, the cows' pasture, the sheep fold, the silo, the barn, the lemon
+// tree, the big trees): its footprint is a rectangle in its own frame, turned in quarter turns. Land is the home garden plus
 // fields for sale round it; a place fits where it is on owned land and clear of the house, the beds, the paths, the
 // workshop and the other places. Everything here is plain data and arithmetic (no scene, no state), so the scene,
 // the farm's save and the tests share it.
 
-export type PlaceId = 'hens' | 'cows' | 'sheep' | 'lemon' | 'tree0' | 'tree1' | 'tree2'
+export type PlaceId = 'hens' | 'cows' | 'sheep' | 'silo' | 'barn' | 'lemon' | 'tree0' | 'tree1' | 'tree2'
 export type ParcelId = 'north' | 'east' | 'west' | 'northEast' | 'northWest'
 
 export interface Rect {
@@ -52,6 +52,10 @@ export const PLACES: Record<PlaceId, PlaceDef> = {
   cows: { id: 'cows', name: "Cows' pasture", local: rect(-2.2, 2.2, -6.55, 6.55), door: rect(-3.0, -2.2, 1.7, 3.3), home: { x: 11.35, z: -2.9, rot: 0 } },
   // the sheep fold, 8.6 × 3.7 m, its gate in the south fence
   sheep: { id: 'sheep', name: 'Sheep fold', local: rect(-4.35, 4.35, -1.9, 1.9), door: rect(-0.9, 0.9, 1.9, 2.7), home: { x: -2.1, z: -10.45, rot: 0 } },
+  // the silo (what grows) and the barn (what the animals and the machines give), in the west yard, their doors
+  // facing the house
+  silo: { id: 'silo', name: 'Silo', local: rect(-1.3, 1.3, -1.3, 1.3), door: rect(1.3, 2.0, -0.6, 0.6), home: { x: -10.7, z: 0.4, rot: 0 } },
+  barn: { id: 'barn', name: 'Barn', local: rect(-2.0, 2.0, -1.8, 1.8), door: rect(2.0, 2.8, -0.9, 0.9), home: { x: -11.4, z: -5.4, rot: 0 } },
   lemon: { id: 'lemon', name: 'Lemon tree', local: rect(-1.0, 1.0, -1.0, 1.0), home: { x: -6.1, z: 10.3, rot: 0 } },
   ...(Object.fromEntries(CORNER_TREES.map(([x, z], i) => [`tree${i}`, { id: `tree${i}`, name: 'Tree', local: rect(-0.9, 0.9, -0.9, 0.9), home: { x, z, rot: 0 } }])) as Record<
     'tree0' | 'tree1' | 'tree2',

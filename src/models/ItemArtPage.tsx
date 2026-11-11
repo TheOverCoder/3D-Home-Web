@@ -1,5 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react'
-import { produceById, type ProduceId } from '../farm/data'
+import { PRODUCE, type ProduceId } from '../farm/data'
+import type { PictureId } from '../farm/icons'
 import { ITEM_IDS, renderItemArt } from './itemArt'
 
 // The item pictures drawn from the models (open the site with ?items): each at the size the panels show it, on
@@ -12,13 +13,13 @@ const card: CSSProperties = { margin: 0, padding: 10, display: 'grid', justifyIt
 const dark: CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, padding: '4px 10px', borderRadius: 999, background: 'var(--night)' }
 
 export function ItemArtPage() {
-  const [items, setItems] = useState<[ProduceId, string][]>([])
+  const [items, setItems] = useState<[PictureId, string][]>([])
   useEffect(() => {
     const size = Number(new URLSearchParams(location.search).get('size')) || 256
-    const out = {} as Record<ProduceId, string>
+    const out = {} as Record<PictureId, string>
     for (const id of ITEM_IDS) out[id] = renderItemArt(id, size)
     ;(window as unknown as { __itemArt: Record<string, string> }).__itemArt = out
-    setItems(Object.entries(out) as [ProduceId, string][])
+    setItems(Object.entries(out) as [PictureId, string][])
   }, [])
   return (
     <main style={page}>
@@ -31,7 +32,7 @@ export function ItemArtPage() {
               <img src={url} alt="" width={40} height={40} />
               <img src={url} alt="" width={24} height={24} />
             </span>
-            <figcaption>{produceById(id).name}</figcaption>
+            <figcaption>{PRODUCE.find((p) => p.id === (id as ProduceId))?.name ?? id}</figcaption>
           </figure>
         ))}
       </div>

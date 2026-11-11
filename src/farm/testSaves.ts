@@ -24,6 +24,7 @@ import {
   storePiece,
   switchSlot,
   tick,
+  upgradeStore,
   water,
 } from './state'
 
@@ -157,9 +158,9 @@ export function seeded(seed: number) {
 /** A farm played for a while, as the game saves it: something in every part of the save. The east beds, the west field
  *  and two meadows bought, the lemon tree moved out onto one; three cows, three sheep, four hens; beds growing (two
  *  watered, the rest dry), two set to a crop, a staked-out one built; things sold, declined, harvested and baked; the
- *  oven and the loom done, the mill at work; five buyers in a line of seven; the pouf moved, a plant put away, a stool
- *  bought and stood in the kitchen, a plant bought and waiting in storage. The same every time (its buyers' looks and
- *  names come from a seed). */
+ *  oven and the loom done, the mill at work; five buyers in a line of seven; the barn made bigger once, a building
+ *  material or two kept; the pouf moved, a plant put away, a stool bought and stood in the kitchen, a plant bought and
+ *  waiting in storage. The same every time (its buyers' looks and names come from a seed). */
 export function playedSave(): Record<string, unknown> {
   const random = vi.spyOn(Math, 'random').mockImplementation(seeded(7))
   try {
@@ -203,6 +204,9 @@ export function playedSave(): Record<string, unknown> {
     spawnVisitor({ want: 'egg', qty: 2, offer: 5, queued: true })
     spawnVisitor({ want: 'milk', qty: 1, offer: 4, queued: true })
     spawnVisitor({ want: 'lemon_cake', qty: 1, offer: 60, queued: true })
+    // the barn a level bigger, a material or two left
+    Object.assign(farm.inv, { brick: 2, plank: 1, nail: 1, iron: 1, log: 2 })
+    upgradeStore('barn')
     movePiece('pouf', { x: -1.5, z: 1.5, rot: 0 })
     storePiece('plant-studio')
     buyPiece('stool')

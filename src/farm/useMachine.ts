@@ -7,8 +7,8 @@ import { playGesture } from '../lib/gestures'
 import { registerInteractable, type ActionIcon, type InteractableDef } from '../lib/interaction'
 import type { Point3 } from '../lib/playerState'
 import { useHome } from '../store'
-import { MACHINES, inputOf, produceById, type MachineId, type ProduceId, type Recipe } from './data'
-import { batches, clockText, collectMachine, farm, loadMachine, machineRecipe, machineSecondsLeft, machineStage } from './state'
+import { MACHINES, count, inputOf, produceById, type MachineId, type ProduceId, type Recipe } from './data'
+import { batches, clockText, collectMachine, farm, loadMachine, machineCollectable, machineRecipe, machineSecondsLeft, machineStage } from './state'
 
 // A machine on the action button (MACHINES in src/farm/data.ts): the mill, the loom and the oven. Its main action takes
 // out what it made, or says how long it still works; with nothing to work on, a status says what it wants. A recipe it
@@ -94,7 +94,7 @@ function main(id: MachineId): InteractableDef {
     label: () => {
       const s = machineStage(id)
       const m = farm.machines[id]
-      if (s === 'done') return def.words.done(machineRecipe(id)!, m.ready)
+      if (s === 'done') return machineCollectable(id) ? def.words.done(machineRecipe(id)!, machineCollectable(id)) : `Barn full · ${count(machineRecipe(id)!.makes, m.ready)} waiting`
       if (s === 'working') return def.words.working(machineRecipe(id)!, m.count, clockText(machineSecondsLeft(id)))
       const r = loadable()
       return r ? def.words.load(r, batches(id, r)) : def.words.idle(nearest(id))
@@ -103,7 +103,8 @@ function main(id: MachineId): InteractableDef {
     icon: (): ActionIcon => {
       const s = machineStage(id)
       const m = farm.machines[id]
-      if (s === 'done') return { verb: 'pick', item: machineRecipe(id)!.makes, count: m.ready }
+      if (s === 'done')
+        return machineCollectable(id) ? { verb: 'pick', item: machineRecipe(id)!.makes, count: machineCollectable(id) } : { verb: 'wait', item: machineRecipe(id)!.makes, count: m.ready, full: 'barn' }
       if (s === 'working') return { verb: 'wait', item: machineRecipe(id)!.makes, count: m.count, seconds: whole(machineSecondsLeft(id)) }
       const r = loadable()
       if (r) return { verb: 'make', item: r.makes, word: def.words.word, count: batches(id, r) }
@@ -111,13 +112,13 @@ function main(id: MachineId): InteractableDef {
       if (def.picture) return { verb: 'wait', item: def.picture, makes: def.recipes.map((x) => ({ from: inputOf(x), to: x.makes })) }
       return { verb: 'wait', item: nearest(id).makes }
     },
-    ready: () => (machineStage(id) === 'done' ? { item: machineRecipe(id)!.makes, count: farm.machines[id].ready } : null),
+    ready: () => (machineStage(id) === 'done' && machineCollectable(id) ? { item: machineRecipe(id)!.makes, count: machineCollectable(id) } : null),
     run: () => {
       const s = machineStage(id)
       const { pan, near } = placeSound(def.x, def.z)
       if (s === 'done') {
         const good = machineRecipe(id)?.makes
-        collectMachine(id)
+        if (!collectMachine(id)) return
         playGesture('interact')
         farmSound('harvest', pan, near)
         farmFx('harvest', def.x + def.sparkle[0], def.sparkle[1], def.z + def.sparkle[2], { good })

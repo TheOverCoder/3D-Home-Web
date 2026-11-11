@@ -6,7 +6,10 @@ import type { PlaceId } from './layout'
 
 export type CropId = 'lettuce' | 'carrot' | 'strawberry' | 'tomato' | 'corn' | 'pumpkin' | 'wheat' | 'sugarcane'
 export type CakeId = 'lemon_cake' | 'strawberry_cake' | 'carrot_cake' | 'pumpkin_pie'
-export type ProduceId = CropId | 'lemon' | 'egg' | 'milk' | 'wool' | 'sugar' | 'flour' | 'cloth' | CakeId
+/** The building materials: what the silo and the barn are made bigger with (STORES, below). Never sold or asked for;
+ *  they are kept in the barn. */
+export type ItemId = 'brick' | 'plank' | 'nail' | 'iron' | 'bolt' | 'log'
+export type ProduceId = CropId | 'lemon' | 'egg' | 'milk' | 'wool' | 'sugar' | 'flour' | 'cloth' | CakeId | ItemId
 
 export interface CropDef {
   id: CropId
@@ -36,6 +39,8 @@ export interface ProduceDef {
   plural: string
   price: number
   maxAsk: number // the most a single buyer asks for
+  /** a building material: kept in the barn, spent on the silo and the barn, never sold or asked for */
+  material?: true
 }
 
 export const PRODUCE: ProduceDef[] = [
@@ -51,9 +56,51 @@ export const PRODUCE: ProduceDef[] = [
   { id: 'strawberry_cake', name: 'strawberry cake', plural: 'strawberry cakes', price: 48, maxAsk: 1 },
   { id: 'carrot_cake', name: 'carrot cake', plural: 'carrot cakes', price: 40, maxAsk: 1 },
   { id: 'pumpkin_pie', name: 'pumpkin pie', plural: 'pumpkin pies', price: 50, maxAsk: 1 },
+  // the building materials (no price: nobody buys them, nobody asks for them)
+  { id: 'brick', name: 'brick', plural: 'bricks', price: 0, maxAsk: 0, material: true },
+  { id: 'plank', name: 'plank', plural: 'planks', price: 0, maxAsk: 0, material: true },
+  { id: 'nail', name: 'nail', plural: 'nails', price: 0, maxAsk: 0, material: true },
+  { id: 'iron', name: 'iron bar', plural: 'iron bars', price: 0, maxAsk: 0, material: true },
+  { id: 'bolt', name: 'bolt', plural: 'bolts', price: 0, maxAsk: 0, material: true },
+  { id: 'log', name: 'log', plural: 'logs', price: 0, maxAsk: 0, material: true },
 ]
 export const produceById = (id: ProduceId) => PRODUCE.find((p) => p.id === id)!
+/** The six building materials, in the order the silo and the barn list them. */
+export const ITEMS: ItemId[] = ['brick', 'plank', 'nail', 'iron', 'bolt', 'log']
+export const isItem = (id: string): id is ItemId => (ITEMS as string[]).includes(id)
+/** What buyers and orders can ask for: every good but the building materials. */
+export const SELLABLE: ProduceId[] = PRODUCE.filter((p) => !p.material).map((p) => p.id)
 export const count = (id: ProduceId, n: number) => `${n} ${n === 1 ? produceById(id).name : produceById(id).plural}`
+
+// ───────────────────────────── the silo and the barn ─────────────────────────────
+
+export type StoreId = 'silo' | 'barn'
+
+/** Where the farm keeps its goods: the silo what grows in the ground, on a tree or on a bush (every crop, the lemons);
+ *  the barn what comes from the animals and the machines (eggs, milk, wool, sugar, flour, cloth, cakes) and the
+ *  building materials. Each holds `step` goods a level, from level 1; the next level costs as many of each of its
+ *  three materials as the level it is at (1, 1, 1 from level 1 to 2; then 2, 2, 2; and so on, with no end). */
+export interface StoreDef {
+  id: StoreId
+  name: string
+  /** what it is made bigger with */
+  materials: [ItemId, ItemId, ItemId]
+  /** the movable place it stands in (src/farm/layout.ts) */
+  place: PlaceId
+}
+
+export const STORES: Record<StoreId, StoreDef> = {
+  silo: { id: 'silo', name: 'Silo', materials: ['iron', 'bolt', 'log'], place: 'silo' },
+  barn: { id: 'barn', name: 'Barn', materials: ['brick', 'plank', 'nail'], place: 'barn' },
+}
+export const STORE_IDS = Object.keys(STORES) as StoreId[]
+/** Goods a level holds: 50 at level 1, 100 at level 2, … */
+export const STORE_STEP = 50
+export const storeCapacity = (level: number) => STORE_STEP * level
+/** How many of each of its three materials the next level costs, from `level`. */
+export const upgradeCost = (level: number) => level
+/** Where a good is kept: the silo for what grows (a crop, a lemon), the barn for the rest. */
+export const storeOf = (id: ProduceId): StoreId => (CROPS.some((c) => c.id === id) || id === 'lemon' ? 'silo' : 'barn')
 
 /** Water lasts this share of a crop's growing time: plant (and water) once, water once more halfway. */
 export const WATER_SHARE = 0.55

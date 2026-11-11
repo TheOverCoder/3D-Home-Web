@@ -26,6 +26,8 @@ import {
   bedStage,
   bedsForSeeds,
   bedsNear,
+  bedsToHarvest,
+  harvestFits,
   buy,
   collect,
   collectMachine,
@@ -33,6 +35,11 @@ import {
   farm,
   harvest,
   harvestBeds,
+  upgradeStore,
+  used,
+  capacity,
+  room,
+  storeLevel,
   loadMachine,
   machineRecipe,
   machineStage,
@@ -177,8 +184,10 @@ const priceLabel = (index: number) => {
   return def.expansion ? `Expand the farm: ${EXPANSIONS[def.expansion].name} · ${priceOf(index)} coins` : `Build a bed · ${priceOf(index)} coins`
 }
 
-/** The beds near where you stand at `stage`, the one in front of you first: one press does them all. */
-const bedsInReach = (index: number, stage: BedStage) => bedsNear(index, stage, playerState.position.x, playerState.position.z)
+/** The beds near where you stand at `stage`, the one in front of you first: one press does them all (ripe ones: as many
+ *  as the silo has room for). */
+const bedsInReach = (index: number, stage: BedStage) =>
+  stage === 'ripe' ? bedsToHarvest(index, playerState.position.x, playerState.position.z) : bedsNear(index, stage, playerState.position.x, playerState.position.z)
 
 /** An empty bed set to always grow one crop (its gear): the action button buys those seeds and plants them, in every
  *  empty bed within reach set to the same crop, as far as the coins go. Null for a bed where you choose each time. */
@@ -293,7 +302,8 @@ function Bed({ index }: { index: number }) {
       const beds = bedsInReach(index, stage).sort((a, b) => a - b)
       return `beds:${stage}:${beds.join(',')}`
     },
-    ready: () => (bedStage(index) === 'ripe' ? { item: farm.beds[index].crop!, count: yieldOf(farm.beds[index].crop!) } : null),
+    // ripe, and the silo has room for it (a harvest cannot half stay in its bed: one that does not fit waits)
+    ready: () => (harvestFits(index) ? { item: farm.beds[index].crop!, count: yieldOf(farm.beds[index].crop!) } : null),
     label: () => {
       const b = farm.beds[index]
       const stage = bedStage(index)
@@ -305,6 +315,7 @@ function Bed({ index }: { index: number }) {
         return `Plant ${r.crop.plural}${r.beds.length > 1 ? ` in ${r.beds.length} beds` : ''} · ${cost} ${cost === 1 ? 'coin' : 'coins'}`
       }
       const crop = cropById(b.crop!)
+      if (stage === 'ripe' && !harvestFits(index)) return `${room('silo') ? 'No room in the silo' : 'Silo full'} · ${count(crop.id, yieldOf(crop.id))} waiting`
       if (stage === 'thirsty' || stage === 'ripe') {
         const n = bedsInReach(index, stage).length
         if (n > 1) return `${stage === 'ripe' ? 'Harvest' : 'Water'} ${n} beds`
@@ -321,7 +332,7 @@ function Bed({ index }: { index: number }) {
         return r ? { verb: 'plant', item: r.crop.id, count: r.beds.length, coins: r.crop.seedCost * r.beds.length } : { verb: 'plant' }
       }
       if (stage === 'thirsty') return { verb: 'water', item: crop!, count: bedsInReach(index, 'thirsty').length }
-      if (stage === 'ripe') return { verb: 'pick', ...harvestOf(bedsInReach(index, 'ripe')) }
+      if (stage === 'ripe') return harvestFits(index) ? { verb: 'pick', ...harvestOf(bedsInReach(index, 'ripe')) } : { verb: 'wait', item: crop!, count: yieldOf(crop!), full: 'silo' }
       return { verb: 'wait', item: crop!, count: yieldOf(crop!), seconds: Math.max(0, Math.ceil(cropById(crop!).growSeconds - farm.beds[index].growth)) }
     },
     run: () => {
@@ -344,6 +355,7 @@ function Bed({ index }: { index: number }) {
         for (const i of beds) farmFx('water', BEDS[i].x, BED.h + 0.03, BEDS[i].z)
       } else if (stage === 'ripe') {
         const beds = bedsInReach(index, 'ripe')
+        if (!beds.length) return
         const crops = beds.map((i) => farm.beds[i].crop ?? undefined)
         harvestBeds(beds)
         playGesture('interact')
@@ -630,6 +642,12 @@ function FarmClock() {
       places: PLACES,
       parcels: PARCELS,
       edit: { useEdit, dragTo, drop, turn, camera: editCamera },
+      // the silo and the barn (src/farm/data.ts: STORES)
+      upgradeStore,
+      used,
+      capacity,
+      room,
+      storeLevel,
     })
   }, [])
   useFrame(() => {

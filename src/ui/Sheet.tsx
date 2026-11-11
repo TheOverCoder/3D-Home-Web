@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { farm, useFarm } from '../farm/state'
 import { art } from './art'
 import { X } from './glyphs'
@@ -53,3 +53,13 @@ export const Purse = () => {
 /** How long a confirm button waits before it can be pressed: a second tap of the button that opened the card (a
  *  double tap, a key held down) lands on nothing. */
 export const ARM_MS = 450
+
+/** False until a card's confirm button may be pressed (ARM_MS after the card opens). */
+export function useArmed() {
+  const [armed, setArmed] = useState(false)
+  useEffect(() => {
+    const t = setTimeout(() => setArmed(true), ARM_MS)
+    return () => clearTimeout(t)
+  }, [])
+  return armed
+}

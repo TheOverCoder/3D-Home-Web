@@ -20,7 +20,10 @@ import {
   PRODUCERS,
   PRODUCER_IDS,
   QUEUE_LEVELS,
+  SELLABLE,
   START_COINS,
+  STORES,
+  STORE_IDS,
   UPGRADES,
   VISITOR,
   WALK_Z,
@@ -28,18 +31,23 @@ import {
   arrivalEvery,
   count,
   cropById,
+  isItem,
   mostAnimals,
   produceById,
   queuePlaces,
   queueSpot,
+  storeCapacity,
+  storeOf,
   type CropId,
   type Expansion,
   type MachineId,
   type ProduceId,
   type ProducerId,
   type Recipe,
+  type StoreId,
   type UpgradeId,
 } from './data'
+import { canUpgrade, nextLevel, roomIn, usedIn } from './storage'
 import { PARCELS, PLACES, canBuyParcel, canPlace, defaultLayout, sanitizeLayout, snap, type FarmLayout, type Fit, type ParcelId, type PlaceId, type Placement } from './layout'
 import { PIECES, type PieceType } from '../home/catalogue'
 import { canPlacePiece, defaultHome, findFreeSpot, sanitizeHome, type HomeLayout, type HomePiece } from '../home/layout'
@@ -107,7 +115,10 @@ export interface MachineState {
 
 export interface FarmData {
   coins: number
+  /** every good the farm has, wherever it is kept: the silo takes what grows, the barn the rest (`storage`) */
   inv: Record<ProduceId, number>
+  /** the silo's and the barn's levels: each holds 50 goods a level (src/farm/data.ts, STORES) */
+  storage: Record<StoreId, number>
   beds: BedState[]
   /** the lemon tree, the hens' nest, the cows, the sheep */
   producers: Record<ProducerId, ProducerState>
@@ -167,6 +178,7 @@ function fresh(): FarmData {
   return {
     coins: START_COINS,
     inv: emptyInv(),
+    storage: { silo: 1, barn: 1 },
     beds: BEDS.map((b) => ({ built: b.price === 0 && !b.expansion, crop: null, growth: 0, water: 0, fixed: null })),
     producers: Object.fromEntries(PRODUCER_IDS.map((id) => [id, freshProducer(id)])) as Record<ProducerId, ProducerState>,
     machines: Object.fromEntries(MACHINE_IDS.map((id) => [id, freshMachine()])) as Record<MachineId, MachineState>,
@@ -201,6 +213,8 @@ const clock = (v: unknown, every: number) => {
   return t > 0 && t < every ? t : 0
 }
 const isProduce = (v: unknown): v is ProduceId => produceIds.includes(v as ProduceId)
+/** A good buyers ask for (not a building material). */
+const isSellable = (v: unknown): v is ProduceId => SELLABLE.includes(v as ProduceId)
 const isCrop = (v: unknown): v is CropId => CROPS.some((c) => c.id === v)
 /** The water a crop's seeds go in with, and a watering gives: this share of its growing time. */
 const fullWater = (crop: CropId) => cropById(crop).growSeconds * WATER_SHARE
@@ -275,7 +289,7 @@ function savedBuyer(raw: unknown): SavedBuyer | null {
   if (!raw || typeof raw !== 'object') return null
   const b = raw as Partial<SavedBuyer>
   const l = (b.look ?? {}) as Partial<Look>
-  if (!isProduce(b.want) || !l || !isColour(l.shirt) || !isColour(l.trousers) || !isColour(l.skin) || !isColour(l.hair)) return null
+  if (!isSellable(b.want) || !l || !isColour(l.shirt) || !isColour(l.trousers) || !isColour(l.skin) || !isColour(l.hair)) return null
   return {
     name: typeof b.name === 'string' && b.name.length <= 24 ? b.name : NAMES[0],
     look: {
@@ -293,6 +307,9 @@ function savedBuyer(raw: unknown): SavedBuyer | null {
   }
 }
 
+/** The most a building's level can be read as (there is no end to them in play; a number past this is no level). */
+const MOST_LEVEL = 1e6
+
 /** The saved farm, made safe (a hand-edited or old save can never break the game), plus the time it was saved. */
 function load(text: string | null = readRaw(KEY)): { data: FarmData; savedAt: number | null; queue: SavedBuyer[] } {
   const data = fresh()
@@ -301,6 +318,8 @@ function load(text: string | null = readRaw(KEY)): { data: FarmData; savedAt: nu
     if (!raw || typeof raw !== 'object') return { data, savedAt: null, queue: [] }
     data.coins = amount(raw.coins, START_COINS)
     for (const id of produceIds) data.inv[id] = amount(field(raw.inv, id), 0)
+    // the silo and the barn from level 1 (a farm from before them keeps all it has, even past what they hold)
+    for (const id of STORE_IDS) data.storage[id] = int(field(raw.storage, id), 1, 1, MOST_LEVEL)
     data.expansions = { east: !!raw.expansions?.east, west: !!raw.expansions?.west }
     // the beds, read only from a list: on anything else a list method threw half-way, and everything read after the
     // beds came back as on a new farm (and was saved over the farm)
@@ -389,11 +408,59 @@ const toast = (text: string, item?: string) => useHome.getState().showToast(text
 const pick = <T>(list: readonly T[]) => list[Math.floor(Math.random() * list.length)]
 const rand = (a: number, b: number) => a + Math.random() * (b - a)
 const remember = (id: ProduceId) => {
-  if (!farm.made.includes(id)) farm.made.push(id)
+  if (!farm.made.includes(id) && !isItem(id)) farm.made.push(id)
 }
-const gain = (id: ProduceId, n: number) => {
-  farm.inv[id] += n
-  remember(id)
+
+// ───────────────────────────── the silo and the barn ─────────────────────────────
+
+/** A building's level (1: 50 goods). */
+export const storeLevel = (id: StoreId) => farm.storage[id]
+/** How many goods a building holds at its level. */
+export const capacity = (id: StoreId) => storeCapacity(farm.storage[id])
+/** How many it holds now. */
+export const used = (id: StoreId) => usedIn(farm.inv, id)
+/** How many more it takes (none once full). */
+export const room = (id: StoreId) => roomIn(farm.inv, farm.storage, id)
+/** Room for a good where it is kept. */
+export const roomFor = (good: ProduceId) => room(storeOf(good))
+/** A building is full. */
+export const isFull = (id: StoreId) => room(id) <= 0
+
+/** How many goods wait for room in a building: ripe in the beds and on the lemon tree (the silo); on the animals and
+ *  in the machines (the barn). */
+export function waitingFor(id: StoreId) {
+  let n = 0
+  if (id === 'silo') farm.beds.forEach((b, i) => (n += bedStage(i) === 'ripe' && b.crop ? yieldOf(b.crop) : 0))
+  for (const p of PRODUCER_IDS) if (storeOf(PRODUCERS[p].good) === id) n += farm.producers[p].stock.reduce((a, b) => a + b, 0)
+  if (id === 'barn') for (const m of MACHINE_IDS) n += farm.machines[m].ready
+  return n
+}
+
+/**
+ * Puts goods that were collected into their building, as many as it has room for: how many went in. What does not
+ * fit is never thrown away: the caller leaves it where it was (on the animal, in the bed, in the machine).
+ */
+function store(id: ProduceId, n: number) {
+  const k = Math.max(0, Math.min(n, roomFor(id)))
+  farm.inv[id] += k
+  if (k) remember(id)
+  return k
+}
+
+/** The next level of a building: as many of each of its three materials as its level now, for 50 more goods. */
+export const nextStoreLevel = (id: StoreId) => nextLevel(id, farm.storage[id])
+export const canUpgradeStore = (id: StoreId) => canUpgrade(farm.inv, id, farm.storage[id])
+
+/** Makes a building bigger with its materials (its card asked first): true when it was. */
+export function upgradeStore(id: StoreId) {
+  if (!canUpgradeStore(id)) return false
+  const next = nextStoreLevel(id)
+  for (const n of next.needs) farm.inv[n.item] -= n.count
+  farm.storage[id] = next.level
+  toast(`${STORES[id].name}: level ${next.level} · room for ${next.capacity}`)
+  bump()
+  save()
+  return true
 }
 
 // ───────────────────────────── beds ─────────────────────────────
@@ -469,15 +536,36 @@ export function harvest(i: number) {
   return harvestBeds([i])
 }
 
-/** Harvests every ripe bed of these (what is within reach, in one go): one toast for all of it. */
+/** The ripe beds near (x, z) one press harvests: this one first, then the others within reach, as many as the silo
+ *  has room for (a harvest cannot half stay in its bed: a bed whose crop does not fit waits, ripe). */
+export function bedsToHarvest(index: number, x: number, z: number): number[] {
+  let left = room('silo')
+  return bedsNear(index, 'ripe', x, z).filter((i) => {
+    const n = yieldOf(farm.beds[i].crop!)
+    if (n > left) return false
+    left -= n
+    return true
+  })
+}
+
+/** A ripe bed's harvest fits in the silo. */
+export const harvestFits = (i: number) => bedStage(i) === 'ripe' && yieldOf(farm.beds[i].crop!) <= room('silo')
+
+/** Harvests every ripe bed of these (what is within reach, in one go) whose crop the silo has room for: one toast
+ *  for all of it. A bed that does not fit stays ripe (the toast says the silo is full). */
 export function harvestBeds(beds: number[]) {
   const got = new Map<CropId, number>()
   let total = 0
+  let full = false
   for (const i of beds) {
     const b = farm.beds[i]
     if (!b?.crop || bedStage(i) !== 'ripe') continue
     const n = yieldOf(b.crop)
-    gain(b.crop, n)
+    if (n > room('silo')) {
+      full = true
+      continue
+    }
+    store(b.crop, n)
     farm.stats.harvested += n
     got.set(b.crop, (got.get(b.crop) ?? 0) + n)
     total += n
@@ -485,8 +573,11 @@ export function harvestBeds(beds: number[]) {
     b.growth = 0
     b.water = 0
   }
-  if (!total) return 0
-  toast(`+ ${[...got].map(([crop, n]) => count(crop, n)).join(', ')}`, [...got][0][0])
+  if (!total) {
+    if (full) toast('The silo is full', 'silo')
+    return 0
+  }
+  toast(`+ ${[...got].map(([crop, n]) => count(crop, n)).join(', ')}${full ? ' · the silo is full' : ''}`, [...got][0][0])
   bump()
   save()
   return total
@@ -536,18 +627,27 @@ export function animalName(id: ProducerId, i: number) {
   return names?.length ? names[i % names.length] : ''
 }
 
-/** Takes what a producer holds into the basket — picks the lemons, collects the eggs, milks a cow, shears a sheep —
- *  and starts the wait for the next one again (but the hens: they lay on). */
+/** How many of what a producer holds would go in now (as many as its building has room for). */
+export const collectable = (id: ProducerId, i = 0) => Math.min(stockOf(id, i), roomFor(PRODUCERS[id].good))
+
+/** Takes what a producer holds into its building — picks the lemons, collects the eggs, milks a cow, shears a sheep —
+ *  as much as there is room for, and starts the wait for the next one again once all of it is taken (but the hens':
+ *  they lay on). What does not fit stays where it is. */
 export function collect(id: ProducerId, i = 0) {
   const def = PRODUCERS[id]
   const p = farm.producers[id]
-  const n = p.stock[i] ?? 0
-  if (!n) return 0
-  p.stock[i] = 0
-  if (!def.keepsClock) p.timer[i] = 0
-  gain(def.good, n)
+  const has = p.stock[i] ?? 0
+  if (!has) return 0
+  const n = store(def.good, has)
+  if (!n) {
+    toast(`The ${STORES[storeOf(def.good)].name.toLowerCase()} is full`, storeOf(def.good))
+    return 0
+  }
+  p.stock[i] = has - n
+  if (!def.keepsClock && !p.stock[i]) p.timer[i] = 0
   farm.stats.harvested += n
-  toast(`+ ${count(def.good, n)}`, def.good)
+  const left = n < has ? ` · the ${STORES[storeOf(def.good)].name.toLowerCase()} is full` : ''
+  toast(`+ ${count(def.good, n)}${left}`, def.good)
   bump()
   save()
   return n
@@ -620,17 +720,28 @@ export function loadMachine(id: MachineId, recipe: string) {
   return n
 }
 
-/** Takes out what a machine has made, into the basket: how many. */
+/** How many of what a machine made would go into the barn now. */
+export const machineCollectable = (id: MachineId) => {
+  const r = machineRecipe(id)
+  return r ? Math.min(farm.machines[id].ready, roomFor(r.makes)) : 0
+}
+
+/** Takes out what a machine has made, into the barn, as much as it has room for (the rest waits in the machine): how
+ *  many. */
 export function collectMachine(id: MachineId) {
   const m = farm.machines[id]
   const r = machineRecipe(id)
   if (!r || !m.ready) return 0
-  const n = m.ready
-  gain(r.makes, n)
+  const n = store(r.makes, m.ready)
+  if (!n) {
+    toast('The barn is full', 'barn')
+    return 0
+  }
   const counts = MACHINES[id].counts
   if (counts) farm.stats[counts] += n
-  farm.machines[id] = freshMachine()
-  toast(`+ ${count(r.makes, n)}`, r.makes)
+  if (n < m.ready) farm.machines[id] = { ...m, ready: m.ready - n }
+  else farm.machines[id] = freshMachine()
+  toast(`+ ${count(r.makes, n)}${farm.machines[id].ready ? ' · the barn is full' : ''}`, r.makes)
   bump()
   save()
   return n
@@ -824,10 +935,13 @@ const HAIRS = ['#2b2017', '#5a3a22', '#a8743f', '#d9b98a', '#1c1c1c', '#7b4b2a',
 
 let visitorSeq = 0
 
+/** What the farm grows and makes (and what every farm has: lemons, eggs, milk): what buyers ask for. */
+const knownGoods = () => [...new Set<ProduceId>([...farm.planted, ...farm.made, 'lemon', 'egg', 'milk'])].filter(isSellable)
+
 /** What a buyer asks for: mostly something you have, sometimes something your farm makes but has run out of. */
 function chooseRequest(): { want: ProduceId; qty: number } {
-  const stocked = produceIds.filter((id) => farm.inv[id] > 0)
-  const known = [...new Set<ProduceId>([...farm.planted, ...farm.made, 'lemon', 'egg', 'milk'])]
+  const stocked = SELLABLE.filter((id) => farm.inv[id] > 0)
+  const known = knownGoods()
   const fromStock = stocked.length > 0 && Math.random() < 0.72
   const want = fromStock ? pick(stocked) : pick(known)
   const def = produceById(want)
@@ -1092,7 +1206,7 @@ let gifted = false
 function neverStuck() {
   const broke = farm.coins < Math.min(...CROPS.map((c) => c.seedCost))
   // a machine at work or with something to take out is something on its way
-  const nothing = farm.beds.every((b) => !b.crop) && produceIds.every((id) => farm.inv[id] === 0) && MACHINE_IDS.every((id) => machineStage(id) === 'idle')
+  const nothing = farm.beds.every((b) => !b.crop) && SELLABLE.every((id) => farm.inv[id] === 0) && MACHINE_IDS.every((id) => machineStage(id) === 'idle')
   if (broke && nothing && !gifted) {
     gifted = true
     farm.coins += 6

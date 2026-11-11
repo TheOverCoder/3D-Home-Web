@@ -1,15 +1,16 @@
 import { Box3, DirectionalLight, HemisphereLight, NeutralToneMapping, PerspectiveCamera, PMREMGenerator, Scene, SRGBColorSpace, Vector3, WebGLRenderer } from 'three'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
-import type { ProduceId } from '../farm/data'
+import type { PictureId } from '../farm/icons'
+import { barnModel, siloModel } from './buildings'
 import { GOODS } from './goods'
-import { structureParts } from './structures'
+import { structureParts, type Structure } from './structures'
 
 // The pictures of the farm's goods, drawn from their models (src/models/goods.ts) in one still studio: soft light
 // from above, a warm key from the upper left, a cool rim from behind, a room's reflections on the glossy ones, a
 // view from the front left and a little above. Each is cropped to fill its square (the interface puts the same
 // soft shadow under it as under every picture: .art in styles.css). `scripts/render-item-art.mjs` draws them all
 // (open the site with ?items to see them) and saves them as WebP files in src/assets/items, which
-// src/farm/icons.ts serves.
+// src/farm/icons.ts serves. The silo and the barn are drawn the same way (their chips at the top, their panels).
 
 interface Item {
   /** where it is seen from: degrees round from the front (negative: from the left) and up */
@@ -18,7 +19,7 @@ interface Item {
 }
 
 /** How each good is seen (from the front left and a little above, unless said here). */
-const VIEWS: Partial<Record<ProduceId, Item>> = {
+const VIEWS: Partial<Record<PictureId, Item>> = {
   lettuce: { el: 30 },
   tomato: { el: 22 },
   wheat: { el: 10 },
@@ -31,9 +32,20 @@ const VIEWS: Partial<Record<ProduceId, Item>> = {
   strawberry_cake: { el: 30 },
   carrot_cake: { el: 30 },
   pumpkin_pie: { el: 44 },
+  brick: { el: 28 },
+  plank: { el: 30 },
+  nail: { el: 40 },
+  iron: { el: 30 },
+  bolt: { el: 14 },
+  log: { el: 22 },
+  silo: { el: 12 },
+  barn: { az: -38, el: 14 },
 }
 
-export const ITEM_IDS = Object.keys(GOODS) as ProduceId[]
+/** Every picture drawn from a model: the goods (src/models/goods.ts), the silo and the barn. */
+const MODELS: Record<PictureId, () => Structure> = { ...GOODS, silo: siloModel, barn: barnModel }
+
+export const ITEM_IDS = Object.keys(MODELS) as PictureId[]
 
 let studio: { renderer: WebGLRenderer; scene: Scene; camera: PerspectiveCamera } | null = null
 
@@ -62,11 +74,11 @@ function getStudio(px: number) {
 
 /** One good's picture, `size` pixels square, as a WebP data URL: drawn at three times the size, cropped to the
  *  thing itself and scaled down into the square with a little room round it. */
-export function renderItemArt(id: ProduceId, size = 256): string {
+export function renderItemArt(id: PictureId, size = 256): string {
   const S = size * 3
   const { renderer, scene, camera } = getStudio(S)
   const def = VIEWS[id] ?? {}
-  const item = structureParts(GOODS[id](), `item-${id}`)
+  const item = structureParts(MODELS[id](), `item-${id}`)
   scene.add(item.group)
   item.group.updateMatrixWorld(true)
   const box = new Box3().setFromObject(item.group)

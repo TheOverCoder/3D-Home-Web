@@ -9,6 +9,7 @@ import type { CropId } from '../farm/data'
 import { Group, Mesh, MeshStandardMaterial } from 'three'
 import { coopModel, lemonSpots, lemonTreeModel, mouthGlowMaterial, mouthGlowShape, ovenModel, structureParts, troughModel } from './structures'
 import { GOODS, type GoodsId } from './goods'
+import { barnModel, siloModel } from './buildings'
 
 // Every model the kit makes, posed and moving, for the gallery page (open the site with ?gallery). Add a new
 // model here as soon as it has a shape: it is the quickest way to see it from every side, in the game's light.
@@ -209,6 +210,21 @@ export const GALLERY: GalleryEntry[] = [
     },
   },
   {
+    id: 'stores',
+    label: 'Stores',
+    name: 'The silo and the barn',
+    make() {
+      const silo = structureParts(siloModel(), 'silo')
+      const barn = structureParts(barnModel(), 'barn')
+      silo.group.position.x = -2.2
+      barn.group.position.x = 1.6
+      barn.group.rotation.y = -0.5
+      const object = new Group()
+      object.add(silo.group, barn.group)
+      return { object, width: 7.2, height: 5.8, triangles: () => silo.triangles() + barn.triangles(), update() {} }
+    },
+  },
+  {
     id: 'goods',
     label: 'Goods',
     name: 'The goods, as their pictures show them (?items draws the pictures)',
@@ -217,12 +233,12 @@ export const GALLERY: GalleryEntry[] = [
       const object = new Group()
       const all = ids.map((id, k) => {
         const parts = structureParts(GOODS[id](), `goods-${id}`)
-        // two rows, side by side
-        parts.group.position.set(((k % 10) - 4.5) * 0.42, 0, k < 10 ? -0.3 : 0.3)
+        // three rows, side by side
+        parts.group.position.set(((k % 10) - 4.5) * 0.42, 0, (Math.floor(k / 10) - 1) * 0.6)
         object.add(parts.group)
         return parts
       })
-      return { object, width: 4.4, height: 0.6, triangles: () => all.reduce((n, p) => n + p.triangles(), 0), update() {} }
+      return { object, width: 4.4, height: 0.8, triangles: () => all.reduce((n, p) => n + p.triangles(), 0), update() {} }
     },
   },
 ]

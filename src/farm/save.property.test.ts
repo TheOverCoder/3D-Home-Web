@@ -5,7 +5,7 @@ import { PIECES, PIECE_TYPES } from '../home/catalogue'
 import { ROOM_WEIGHT, canPlacePiece, defaultHome, roomWeight, unreachable } from '../home/layout'
 import { ROOMS, type RoomId } from '../data/layout'
 import { endsWithin } from '../lib/endsWithin'
-import { BEDS, CROPS, MACHINES, MACHINE_IDS, NAMES, PACE_LEVELS, PRODUCE, PRODUCERS, PRODUCER_IDS, QUEUE_LEVELS, WATER_SHARE, cropById, type CropId } from './data'
+import { BEDS, CROPS, MACHINES, MACHINE_IDS, NAMES, PACE_LEVELS, PRODUCE, PRODUCERS, PRODUCER_IDS, QUEUE_LEVELS, SELLABLE, STORE_IDS, WATER_SHARE, cropById, type CropId } from './data'
 import { PARCELS, PARCEL_IDS, PLACE_IDS, canPlace } from './layout'
 import { arrivalSeconds, farm, inLine, placesInLine, tick } from './state'
 import { OLD_SAVE, OLD_SAVE_2, playedSave, savedNow, seeded, startFrom } from './testSaves'
@@ -32,6 +32,8 @@ interface Base {
 }
 
 const produceIds: string[] = PRODUCE.map((p) => p.id)
+/** What buyers ask for (no building material). */
+const sellable: string[] = SELLABLE
 const cropIds: string[] = CROPS.map((c) => c.id)
 const isCrop = (v: unknown): v is CropId => cropIds.includes(v as string)
 /** A kind of furniture of the catalogue (not the game's own isPieceType: the rules here do not lean on the code they test). */
@@ -218,9 +220,11 @@ function farmProblems(): string[] {
   bad('no more in line than its places', inLine().length <= placesInLine())
   for (const v of farm.visitors) {
     const colours = [v.look.shirt, v.look.trousers, v.look.skin, v.look.hair].every((c) => /^#[0-9a-f]{6}$/i.test(c))
-    bad(`buyer ${v.id}`, produceIds.includes(v.want) && isCount(v.qty) && v.qty >= 1 && v.qty <= 12 && isCount(v.offer) && v.offer >= 1 && v.offer <= 999 && colours)
+    bad(`buyer ${v.id}`, sellable.includes(v.want) && isCount(v.qty) && v.qty >= 1 && v.qty <= 12 && isCount(v.offer) && v.offer >= 1 && v.offer <= 999 && colours)
     bad(`buyer ${v.id}: name`, typeof v.name === 'string' && v.name.length <= 24)
   }
+  // the silo and the barn: a level each, from 1
+  bad('storage: the silo and the barn', sameKeys(farm.storage, STORE_IDS) && Object.values(farm.storage).every((l) => isCount(l) && l >= 1))
   return out
 }
 

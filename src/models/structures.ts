@@ -79,10 +79,10 @@ const BARK = rgb(0x5a4434)
 /** Hand-laid clay: the oven's dome, its mouth and its chimney pot. */
 const CLAY_SURFACE: SculptSurface = { kind: 'clay', size: 0.6, tone: 0.45 }
 
-const mix = (a: V3, b: V3, t: number): V3 => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]
+export const mix = (a: V3, b: V3, t: number): V3 => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]
 
 /** A box with soft edges: a squared loft along y, from y0 to y1, half-sizes hx (x) and hz (z). */
-function slab(hx: number, hz: number, y0: number, y1: number, soft = 5, seg = 20): Shape {
+export function slab(hx: number, hz: number, y0: number, y1: number, soft = 5, seg = 20): Shape {
   const s = loft(
     [
       { c: [0, y0, 0], rx: hx, ry: hz },
@@ -94,7 +94,7 @@ function slab(hx: number, hz: number, y0: number, y1: number, soft = 5, seg = 20
 }
 
 /** A log lying along z: bark round it (the material's bark, turned along it), pale end grain on the cut ends. */
-function log(radius: number, length: number, seed: number): Shape {
+export function log(radius: number, length: number, seed: number): Shape {
   const s = loft(
     [
       { c: [0, 0, -length / 2], rx: radius, ry: radius },
@@ -114,7 +114,7 @@ function log(radius: number, length: number, seed: number): Shape {
 
 /** A stack of logs (along z) in rows, each row resting in the grooves of the one under it: bottom row first,
  *  centres across x. The rows sit a little into each other, so the stack holds together. */
-function woodpile(rows: { xs: number[]; r: number }[], length: number, seed: number): Shape {
+export function woodpile(rows: { xs: number[]; r: number }[], length: number, seed: number): Shape {
   const logs: Shape[] = []
   let y = 0
   rows.forEach((row, k) => {
@@ -141,7 +141,7 @@ const DOME = { base: 0.72, r: 0.6, top: 1.28 } as const
 
 /** An arch-shaped ring's radius multiplier (for a loft along x, `up` +y): a half circle above the spring line,
  *  straight sides down to a flat floor `below` under it. */
-const archRing = (below: number) => (a: number) => {
+export const archRing = (below: number) => (a: number) => {
   const c = Math.cos(a)
   const s = Math.sin(a)
   if (s >= 0) return 1
@@ -310,7 +310,7 @@ export function ovenModel(): Structure<OvenPart> {
 // ───────────────────────────── troughs ─────────────────────────────
 
 /** Wood with a grain along one axis: streaks of a darker brown. */
-const grain =
+export const grain =
   (axis: 0 | 1 | 2, seed: number) =>
   (x: number, y: number, z: number): V3 => {
     const p = [x, y, z]

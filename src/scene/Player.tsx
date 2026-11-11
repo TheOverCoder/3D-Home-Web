@@ -77,7 +77,7 @@ const DOOR_HALF = GARDEN_DOOR.width / 2 - 0.1 // the garden door's opening, less
 // the prompt draws an action's numbers (how many, coins, how long), not only its label: a change in one is a change
 const iconKey = (i: ActionIcon | undefined) => (i ? `${i.verb}|${i.item}|${i.art}|${i.count}|${i.of}|${i.coins}|${i.seconds}|${i.also?.map((g) => `${g.item}${g.count}`).join(',')}` : '')
 const actionsKey = (list: Nearby[]) => list.map((a) => `${a.id}|${a.label}|${iconKey(a.icon)}|${a.reach}|${a.side}|${a.hint}|${a.needs?.map((n) => `${n.item}${n.count}`).join(',')}`).join('\n')
-const marksKey = (list: CompassMark[]) => list.map((m) => `${m.id}|${m.item}|${m.count}`).join('\n')
+const marksKey = (list: CompassMark[]) => list.map((m) => `${m.id}|${m.item}|${m.count}|${m.alert ? 1 : 0}`).join('\n')
 
 /**
  * Never let the eyes enter a wall or rise through the ceiling — inside, outside, and in between: the only way

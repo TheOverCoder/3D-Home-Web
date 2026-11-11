@@ -81,6 +81,9 @@
   transition: scale 0.1s;
 }
 .compass-mark:active .compass-pin { scale: 0.9; }
+/* the silo or the barn full, goods waiting for room: a red ring */
+.compass-mark.alert .compass-pin { box-shadow: 0 0 0 2px var(--berry), 0 2px 6px rgba(20, 12, 6, 0.35); }
+.compass-mark.alert .compass-pin .item-pic .qty { background: var(--berry); color: #fff; }
 .compass-pin .item-pic .art { width: 18px; height: 18px; filter: none; }
 .compass-pin .item-pic .qty { min-width: 15px; height: 15px; padding: 0 4px; font-size: 10px; inset-inline-end: -11px; bottom: -9px; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.6); }
 /* two or more behind you at an edge (or more than the strip holds) fold into one: how many, on a small pill; a tap

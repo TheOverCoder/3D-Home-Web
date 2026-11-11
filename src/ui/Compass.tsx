@@ -15,7 +15,8 @@ import './Compass.css'
 // behind you waits at the nearer edge, with an arrow; two or more there fold into one "+N" mark (more than the strip
 // holds fold in too, the farthest off to the side first), which turns you to the nearest of them. Tap a mark to turn
 // to it (an arrow then hangs over it until you get there). Within reach a thing leaves the compass — the button takes
-// it — and if you walk off without it, it comes back. Outdoors, unless the top of the screen is set clear (HudMode).
+// it — and if you walk off without it, it comes back. The silo or the barn full while goods wait for room is a mark
+// too, ringed in red: its picture and how many wait. Outdoors, unless the top of the screen is set clear (HudMode).
 
 const SPAN = (75 * Math.PI) / 180 // the strip spans what lies within 75° either side of where you look
 const GAP = 30 // marks closer than this are spread apart
@@ -86,6 +87,9 @@ const name = (item: string, n: number) => {
   const p = produceById(item as ProduceId)
   return p ? `${n} ${n === 1 ? p.name : p.plural}` : item
 }
+
+/** What a mark says to a screen reader: something ready to take, or a building that needs you. */
+const markLabel = (m: { item: string; count: number; alert?: boolean }) => (m.alert ? `The ${m.item} is full: ${m.count} waiting for room — turn to it` : `${name(m.item, m.count)} ready — turn to it`)
 
 export function Compass() {
   const phase = useHome((s) => s.phase)
@@ -181,13 +185,13 @@ export function Compass() {
         {marks.map((m) => (
           <button
             key={m.item}
-            className="compass-mark"
+            className={`compass-mark${m.alert ? ' alert' : ''}`}
             ref={(el) => {
               if (el) pins.current.set(m.id, el)
               else pins.current.delete(m.id)
             }}
             onClick={() => guideTo(m.id)}
-            aria-label={`${name(m.item, m.count)} ready — turn to it`}
+            aria-label={markLabel(m)}
           >
             <span className="compass-pin">
               <ItemPic id={m.item} count={m.count} />
