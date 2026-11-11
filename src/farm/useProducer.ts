@@ -38,7 +38,7 @@ export function producerOffer(id: ProducerId, i: number, at: { stand: Point3; ai
     },
     icon: () => (fits() ? { verb: def.verb, item: def.good, count: fits() } : { verb: 'wait', item: def.good, count: n(), full: store.id }),
     run: () => {
-      if (!collect(id, i)) return
+      if (!collect(id, i, { x: at.aim.x, y: def.sparkle, z: at.aim.z })) return
       playGesture('interact')
       onCollect?.()
       const { pan, near } = placeSound(at.aim.x, at.aim.z)

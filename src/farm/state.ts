@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { farmSound, placeSound } from '../audio/sound'
-import { coinsFx } from '../fx/fx'
+import { coinsFx, itemFx } from '../fx/fx'
 import { dampAngle } from '../lib/damp'
 import { groundDistance } from '../lib/interaction'
 import { useHome } from '../store'
@@ -11,6 +11,7 @@ import {
   CROPS,
   EXPANSIONS,
   GATE_SPOT,
+  ITEM_ODDS,
   LANE_ENDS,
   MACHINES,
   MACHINE_IDS,
@@ -40,6 +41,7 @@ import {
   storeOf,
   type CropId,
   type Expansion,
+  type ItemId,
   type MachineId,
   type ProduceId,
   type ProducerId,
@@ -47,7 +49,7 @@ import {
   type StoreId,
   type UpgradeId,
 } from './data'
-import { canUpgrade, nextLevel, roomIn, usedIn } from './storage'
+import { bringsSurprise, canUpgrade, nextLevel, randomItem, roomIn, rollItems, usedIn } from './storage'
 import { PARCELS, PLACES, canBuyParcel, canPlace, defaultLayout, sanitizeLayout, snap, type FarmLayout, type Fit, type ParcelId, type PlaceId, type Placement } from './layout'
 import { PIECES, type PieceType } from '../home/catalogue'
 import { canPlacePiece, defaultHome, findFreeSpot, sanitizeHome, type HomeLayout, type HomePiece } from '../home/layout'
@@ -93,6 +95,8 @@ export interface Visitor {
   mood: 'neutral' | 'happy' | 'sad'
   moodAt: number // farm clock when the mood changed (the scene plays a little reaction)
   departAt: number // farm clock when they set off home (a moment to react first)
+  /** comes with a surprise (a building material), given as you sell to them: shown on their bubble */
+  gift: boolean
 }
 
 /** A producer (PRODUCERS in src/farm/data.ts): what waits to be collected and the seconds towards the next one — one
@@ -219,13 +223,14 @@ const isCrop = (v: unknown): v is CropId => CROPS.some((c) => c.id === v)
 /** The water a crop's seeds go in with, and a watering gives: this share of its growing time. */
 const fullWater = (crop: CropId) => cropById(crop).growSeconds * WATER_SHARE
 
-/** A buyer in the line, as saved: who they are and what they want. */
+/** A buyer in the line, as saved: who they are, what they want, and whether they bring a surprise. */
 interface SavedBuyer {
   name: string
   look: Look
   want: ProduceId
   qty: number
   offer: number
+  gift: boolean
 }
 
 const isColour = (v: unknown): v is string => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v)
@@ -304,6 +309,7 @@ function savedBuyer(raw: unknown): SavedBuyer | null {
     want: b.want,
     qty: int(b.qty, 1, 1, 12),
     offer: int(b.offer, 1, 1, 999),
+    gift: b.gift === true,
   }
 }
 
@@ -388,7 +394,7 @@ function saveNow() {
   try {
     const { visitors, clock: _c, ...rest } = farm
     // the line at the gate is kept too: buyers wait for you while you are away
-    const queue: SavedBuyer[] = visitors.filter((v) => v.phase !== 'leaving').map(({ name, look, want, qty, offer }) => ({ name, look, want, qty, offer }))
+    const queue: SavedBuyer[] = visitors.filter((v) => v.phase !== 'leaving').map(({ name, look, want, qty, offer, gift }) => ({ name, look, want, qty, offer, gift }))
     localStorage.setItem(KEY, JSON.stringify({ ...rest, queue, time: Date.now() }))
   } catch {
     /* storage full or blocked: the farm still works for this visit */
@@ -409,6 +415,13 @@ const pick = <T>(list: readonly T[]) => list[Math.floor(Math.random() * list.len
 const rand = (a: number, b: number) => a + Math.random() * (b - a)
 const remember = (id: ProduceId) => {
   if (!farm.made.includes(id) && !isItem(id)) farm.made.push(id)
+}
+
+/** The farm's dice for its surprises: Math.random, unless a test sets its own. */
+let random: () => number = () => Math.random()
+/** For the tests: the dice from a function of their own (null: Math.random again). */
+export function setRandom(f: (() => number) | null) {
+  random = f ?? (() => Math.random())
 }
 
 // ───────────────────────────── the silo and the barn ─────────────────────────────
@@ -445,6 +458,23 @@ function store(id: ProduceId, n: number) {
   farm.inv[id] += k
   if (k) remember(id)
   return k
+}
+
+/** Puts in a surprise: always taken in, even past full (refused, it would be lost). */
+function putBack(id: ProduceId, n: number) {
+  farm.inv[id] += n
+}
+
+/** What the toast says about surprises, after what else it says ("· Surprise: a brick"). */
+const surpriseWords = (items: ItemId[]) => (items.length ? ` · Surprise: ${[...new Set(items)].map((i) => count(i, items.filter((x) => x === i).length)).join(', ')}` : '')
+
+/** Surprises into the barn (always: they are what makes it bigger), each flying up from where it was found to the
+ *  barn's chip at the top. */
+function gainItems(items: ItemId[], at?: { x: number; y: number; z: number }) {
+  for (const item of items) putBack(item, 1)
+  if (!items.length) return
+  if (at) items.forEach((item, k) => itemFx(at.x, at.y, at.z, item, k))
+  farmSound('surprise')
 }
 
 /** The next level of a building: as many of each of its three materials as its level now, for 50 more goods. */
@@ -552,9 +582,11 @@ export function bedsToHarvest(index: number, x: number, z: number): number[] {
 export const harvestFits = (i: number) => bedStage(i) === 'ripe' && yieldOf(farm.beds[i].crop!) <= room('silo')
 
 /** Harvests every ripe bed of these (what is within reach, in one go) whose crop the silo has room for: one toast
- *  for all of it. A bed that does not fit stays ripe (the toast says the silo is full). */
+ *  for all of it. A bed that does not fit stays ripe (the toast says the silo is full). Each bed harvested may turn
+ *  up a surprise. */
 export function harvestBeds(beds: number[]) {
   const got = new Map<CropId, number>()
+  const found: ItemId[] = []
   let total = 0
   let full = false
   for (const i of beds) {
@@ -572,12 +604,15 @@ export function harvestBeds(beds: number[]) {
     b.crop = null
     b.growth = 0
     b.water = 0
+    const items = rollItems(1, ITEM_ODDS.harvest, random)
+    gainItems(items, { x: BEDS[i].x, y: 0.7, z: BEDS[i].z })
+    found.push(...items)
   }
   if (!total) {
     if (full) toast('The silo is full', 'silo')
     return 0
   }
-  toast(`+ ${[...got].map(([crop, n]) => count(crop, n)).join(', ')}${full ? ' · the silo is full' : ''}`, [...got][0][0])
+  toast(`+ ${[...got].map(([crop, n]) => count(crop, n)).join(', ')}${full ? ' · the silo is full' : ''}${surpriseWords(found)}`, found[0] ?? [...got][0][0])
   bump()
   save()
   return total
@@ -632,8 +667,9 @@ export const collectable = (id: ProducerId, i = 0) => Math.min(stockOf(id, i), r
 
 /** Takes what a producer holds into its building — picks the lemons, collects the eggs, milks a cow, shears a sheep —
  *  as much as there is room for, and starts the wait for the next one again once all of it is taken (but the hens':
- *  they lay on). What does not fit stays where it is. */
-export function collect(id: ProducerId, i = 0) {
+ *  they lay on). What does not fit stays where it is. Each egg, bottle and fleece (each picking of the tree) may turn
+ *  up a surprise, which flies up from `at`. */
+export function collect(id: ProducerId, i = 0, at?: { x: number; y: number; z: number }) {
   const def = PRODUCERS[id]
   const p = farm.producers[id]
   const has = p.stock[i] ?? 0
@@ -646,8 +682,10 @@ export function collect(id: ProducerId, i = 0) {
   p.stock[i] = has - n
   if (!def.keepsClock && !p.stock[i]) p.timer[i] = 0
   farm.stats.harvested += n
+  const items = rollItems(def.surprise === 'each' ? n : 1, def.surprise === 'each' ? ITEM_ODDS.unit : ITEM_ODDS.harvest, random)
+  gainItems(items, at)
   const left = n < has ? ` · the ${STORES[storeOf(def.good)].name.toLowerCase()} is full` : ''
-  toast(`+ ${count(def.good, n)}${left}`, def.good)
+  toast(`+ ${count(def.good, n)}${left}${surpriseWords(items)}`, items[0] ?? def.good)
   bump()
   save()
   return n
@@ -964,7 +1002,7 @@ export const inLine = () => farm.visitors.filter((v) => v.phase !== 'leaving')
 /** Everyone standing in line, the front first. */
 export const waiting = () => farm.visitors.filter((v) => v.phase === 'queued')
 
-function newVisitor(want: ProduceId, qty: number, offer: number, from: -1 | 1, look?: Look, name?: string): Visitor {
+function newVisitor(want: ProduceId, qty: number, offer: number, from: -1 | 1, gift: boolean, look?: Look, name?: string): Visitor {
   const startX = LANE_ENDS[from < 0 ? 0 : 1]
   return {
     id: ++visitorSeq,
@@ -991,6 +1029,7 @@ function newVisitor(want: ProduceId, qty: number, offer: number, from: -1 | 1, l
     mood: 'neutral',
     moodAt: farm.clock,
     departAt: 0,
+    gift,
   }
 }
 
@@ -1005,10 +1044,10 @@ function standInLine(v: Visitor) {
 }
 
 /** A new buyer walks up the lane (`queued`: is already standing in line). */
-export function spawnVisitor(opts: Partial<Pick<Visitor, 'want' | 'qty' | 'offer'>> & { from?: -1 | 1; queued?: boolean } = {}) {
+export function spawnVisitor(opts: Partial<Pick<Visitor, 'want' | 'qty' | 'offer' | 'gift'>> & { from?: -1 | 1; queued?: boolean } = {}) {
   const from = opts.from ?? (Math.random() < 0.5 ? -1 : 1)
   const request = opts.want ? { want: opts.want, qty: opts.qty ?? 2 } : chooseRequest()
-  const v = newVisitor(request.want, request.qty, opts.offer ?? priceFor(request.want, request.qty), from)
+  const v = newVisitor(request.want, request.qty, opts.offer ?? priceFor(request.want, request.qty), from, opts.gift ?? bringsSurprise(random))
   farm.visitors.push(v)
   if (opts.queued) standInLine(v)
   bump()
@@ -1034,20 +1073,25 @@ function leave(v: Visitor, mood: Visitor['mood']) {
 export const visitorById = (id: number) => farm.visitors.find((v) => v.id === id)
 export const canSell = (v: Visitor) => farm.inv[v.want] >= v.qty
 
-function sell(v: Visitor) {
+/** Sells to a buyer: their coins, and their surprise if they brought one (it flies up from them to the barn). */
+function sell(v: Visitor): ItemId[] {
   coinsFx(v.x, v.z, v.offer)
   farm.inv[v.want] -= v.qty
   farm.coins += v.offer
   farm.stats.sold += v.qty
   farm.stats.earned += v.offer
+  const items = v.gift ? [randomItem(random)] : []
+  v.gift = false
+  gainItems(items, { x: v.x, y: 1.9, z: v.z })
   leave(v, 'happy')
+  return items
 }
 
 export function acceptOffer(id: number) {
   const v = visitorById(id)
   if (!v || v.phase !== 'queued' || !canSell(v)) return false
-  sell(v)
-  toast(`+ ${v.offer} coins · ${v.name}`, 'coin')
+  const items = sell(v)
+  toast(`+ ${v.offer} coins · ${v.name}${surpriseWords(items)}`, items[0] ?? 'coin')
   farmSound('coins')
   save()
   return true
@@ -1082,14 +1126,15 @@ export function lineShort(): { item: ProduceId; count: number }[] {
 export function sellAll() {
   let buyers = 0
   let coins = 0
+  const items: ItemId[] = []
   for (const v of waiting()) {
     if (!canSell(v)) continue
-    sell(v)
+    items.push(...sell(v))
     buyers++
     coins += v.offer
   }
   if (!buyers) return 0
-  toast(`+ ${coins} coins · ${buyers} ${buyers === 1 ? 'buyer' : 'buyers'}`, 'coin')
+  toast(`+ ${coins} coins · ${buyers} ${buyers === 1 ? 'buyer' : 'buyers'}${surpriseWords(items)}`, items[0] ?? 'coin')
   farmSound('coins')
   save()
   return buyers
@@ -1235,7 +1280,7 @@ export function tick(dt: number) {
 // grows on and buyers keep joining the line — as many as it has room for
 function resumeFrom(l: ReturnType<typeof load>) {
   for (const b of l.queue) {
-    const v = newVisitor(b.want, b.qty, b.offer, 1, b.look, b.name)
+    const v = newVisitor(b.want, b.qty, b.offer, 1, b.gift, b.look, b.name)
     farm.visitors.push(v)
     standInLine(v)
   }

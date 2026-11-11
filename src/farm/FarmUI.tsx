@@ -351,6 +351,7 @@ function QueuePanel() {
                     {Math.min(have, v.qty)}/{v.qty}
                   </span>
                   <Tag v={v} />
+                  {v.gift && <img className="farm-surprise small" src={art('wrapped-gift')} alt="and a surprise" title="Brings a surprise: a building material" />}
                 </span>
               </div>
               <div className="farm-buyer-actions">

@@ -40,6 +40,7 @@ import {
   capacity,
   room,
   storeLevel,
+  setRandom,
   loadMachine,
   machineRecipe,
   machineStage,
@@ -642,12 +643,13 @@ function FarmClock() {
       places: PLACES,
       parcels: PARCELS,
       edit: { useEdit, dragTo, drop, turn, camera: editCamera },
-      // the silo and the barn (src/farm/data.ts: STORES)
+      // the silo and the barn, and the surprises' dice (src/farm/data.ts: STORES, ITEM_ODDS)
       upgradeStore,
       used,
       capacity,
       room,
       storeLevel,
+      setRandom,
     })
   }, [])
   useFrame(() => {

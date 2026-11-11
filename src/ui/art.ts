@@ -32,6 +32,7 @@ export type ArtId =
   | 'ticket'
   | 'trophy'
   | 'warning'
+  | 'wrapped-gift'
   | 'yarn'
 
 /** The URL of a piece of interface art. */

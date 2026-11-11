@@ -1,21 +1,33 @@
 // @vitest-environment happy-dom
-import { beforeEach, describe, expect, it } from 'vitest'
-import { BEDS, cropById } from './data'
-import { bedsToHarvest, capacity, collect, collectMachine, farm, harvestBeds, loadMachine, resetFarm, room, tick, upgradeStore, used } from './state'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { BEDS, ITEMS, PRODUCERS, cropById } from './data'
+import { acceptOffer, bedsToHarvest, capacity, collect, collectMachine, farm, harvestBeds, loadMachine, resetFarm, room, sellAll, setRandom, spawnVisitor, tick, upgradeStore, used } from './state'
 import { OLD_SAVE, justSaved, startFrom } from './testSaves'
 
 // The silo and the barn in play (src/farm/state.ts): what is collected goes in only while there is room — what does
-// not fit stays where it was — and never silently; upgrades take their materials.
+// not fit stays where it was — and never silently; upgrades take their materials; surprises come by their odds (the
+// farm's dice set by the test: setRandom).
+
+/** A dice that gives these numbers in turn, then 0.99 (nothing more comes up). */
+const dice =
+  (...seq: number[]) =>
+  () =>
+    seq.length ? seq.shift()! : 0.99
+/** Nothing ever comes up. */
+const never = () => 0.99
 
 /** A ripe crop in bed `i`. */
 function ripe(i: number, crop: 'lettuce' | 'pumpkin' | 'wheat' = 'lettuce') {
   Object.assign(farm.beds[i], { built: true, crop, growth: cropById(crop).growSeconds, water: 0 })
 }
+const items = () => ITEMS.reduce((n, id) => n + farm.inv[id], 0)
 
 beforeEach(() => {
   localStorage.clear()
   resetFarm()
+  setRandom(never)
 })
+afterEach(() => setRandom(null))
 
 describe('what is collected only goes in while there is room', () => {
   it('a new farm: the silo and the barn hold 50 each', () => {
@@ -94,5 +106,57 @@ describe('what is collected only goes in while there is room', () => {
     expect([farm.storage.barn, capacity('barn'), farm.inv.brick, farm.inv.plank, farm.inv.nail]).toEqual([3, 150, 0, 0, 0])
     // the silo's are its own
     expect(upgradeStore('silo')).toBe(false)
+  })
+})
+
+describe('surprises', () => {
+  it('a buyer brings one one time in two (shown on their bubble), given as you sell to them', () => {
+    setRandom(dice(0.4))
+    const v = spawnVisitor({ want: 'egg', qty: 1, offer: 3, queued: true })
+    expect(v.gift).toBe(true)
+    setRandom(dice(0.6))
+    expect(spawnVisitor({ want: 'egg', qty: 1, offer: 3, queued: true }).gift).toBe(false)
+    farm.inv.egg = 2
+    // the material: 0.0 is the first of six
+    setRandom(dice(0.0))
+    expect(acceptOffer(v.id)).toBe(true)
+    expect(farm.inv.brick).toBe(1)
+    expect(items()).toBe(1)
+    // the other buyer brought none
+    expect(sellAll()).toBe(1)
+    expect(items()).toBe(1)
+  })
+
+  it('each egg, bottle and fleece collected has its own chance: five eggs, two can come up', () => {
+    farm.producers.hens.stock[0] = 5
+    // under 5 % on the 1st and 4th eggs (each followed by which material)
+    setRandom(dice(0.01, 0.99, 0.5, 0.6, 0.02, 0.2))
+    expect(collect('hens')).toBe(5)
+    expect(farm.inv.egg).toBe(5)
+    expect(items()).toBe(2)
+    expect([farm.inv.log, farm.inv.plank]).toEqual([1, 1])
+  })
+
+  it('a harvest has one chance a bed, and picking the lemon tree one for the picking', () => {
+    ripe(0)
+    ripe(1)
+    setRandom(dice(0.6, 0.01, 0.4))
+    expect(harvestBeds([0, 1])).toBe(8)
+    expect(items()).toBe(1)
+    expect(farm.inv.nail).toBe(1)
+    expect(PRODUCERS.tree.surprise).toBe('once')
+    farm.producers.tree.stock[0] = 8
+    setRandom(dice(0.01, 0.3, 0.01, 0.3))
+    collect('tree')
+    expect(items()).toBe(2)
+  })
+
+  it('a surprise goes into the barn even when it is full (it is what makes the barn bigger)', () => {
+    farm.inv.milk = 50
+    farm.producers.tree.stock[0] = 3
+    setRandom(dice(0.01, 0.0))
+    expect(collect('tree')).toBe(3)
+    expect(farm.inv.brick).toBe(1)
+    expect(used('barn')).toBe(51)
   })
 })

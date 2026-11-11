@@ -357,7 +357,7 @@ export function screenSound(open: boolean) {
 
 // ─────────────────────── the garden ───────────────────────
 
-export type FarmSound = 'plant' | 'water' | 'harvest' | 'coins' | 'cluck' | 'bell' | 'build' | 'decline' | 'moo' | 'milk' | 'creak' | 'oven' | 'ding' | 'crow' | 'baa' | 'shear' | 'loom'
+export type FarmSound = 'plant' | 'water' | 'harvest' | 'coins' | 'cluck' | 'bell' | 'build' | 'decline' | 'moo' | 'milk' | 'creak' | 'oven' | 'ding' | 'crow' | 'baa' | 'shear' | 'loom' | 'surprise'
 
 /** A voiced, filtered tone whose pitch and brightness follow a short contour: animals. */
 function voice(e: Engine, t: number, notes: [number, number][], seconds: number, gain: number, cutoff: [number, number], pan?: number, type: OscillatorType = 'sawtooth') {
@@ -484,6 +484,10 @@ export function farmSound(kind: FarmSound, pan = 0, near = 1) {
     case 'oven': // the fire takes: a whoosh and a low roar
       burst(e, t, { type: 'bandpass', freq: 300, sweepTo: 1300, q: 0.7, gain: 0.22 * v, attack: 0.15, decay: 0.7, pan })
       burst(e, t + 0.1, { type: 'lowpass', freq: 220, q: 0.6, gain: 0.25 * v, attack: 0.2, decay: 0.9, pan })
+      break
+    case 'surprise': // a surprise found: a quick rising sparkle of four notes
+      ;[1568, 1976, 2349, 3136].forEach((f, i) => tone(e, t + i * 0.07, { type: 'sine', f0: f, gain: 0.04, attack: 0.003, decay: 0.35 + i * 0.1 }))
+      burst(e, t + 0.2, { type: 'highpass', freq: 7000, q: 0.7, gain: 0.025, attack: 0.01, decay: 0.3 })
       break
     case 'ding': // the kitchen timer: it is ready
       tone(e, t, { type: 'sine', f0: 1568, gain: 0.06, attack: 0.003, decay: 1.2 })

@@ -1,8 +1,9 @@
-import { PRODUCE, STORES, storeCapacity, storeOf, upgradeCost, type ProduceId, type StoreId } from './data'
+import { ITEMS, ITEM_ODDS, PRODUCE, STORES, storeCapacity, storeOf, upgradeCost, type ItemId, type ProduceId, type StoreId } from './data'
 
-// The silo and the barn as numbers: what each holds, how much room is left, what its next level costs. Plain
-// arithmetic on the farm's goods (src/farm/state.ts keeps them in `farm.inv`, the one record of goods; this never
-// changes them), so the tests reach it without a farm.
+// The silo and the barn as numbers: what each holds, how much room is left, what its next level costs, and the
+// surprises (a building material) a harvest, an animal, a buyer or an order brings. Plain arithmetic on the farm's
+// goods (src/farm/state.ts keeps them in `farm.inv`, the one record of goods; this never changes them), so the
+// tests reach it without a farm.
 
 /** The goods each building keeps. */
 export const STORE_GOODS: Record<StoreId, ProduceId[]> = {
@@ -25,3 +26,17 @@ export function nextLevel(store: StoreId, level: number) {
 
 /** Whether there is enough of every material for the next level. */
 export const canUpgrade = (inv: Record<ProduceId, number>, store: StoreId, level: number) => nextLevel(store, level).needs.every((n) => inv[n.item] >= n.count)
+
+/** One of the six materials, each as likely. */
+export const randomItem = (random: () => number): ItemId => ITEMS[Math.min(ITEMS.length - 1, Math.floor(random() * ITEMS.length))]
+
+/** The surprises from `chances` tries at `odds` each: a material for every one that comes up (five eggs, five tries:
+ *  two can come up). */
+export function rollItems(chances: number, odds: number, random: () => number): ItemId[] {
+  const out: ItemId[] = []
+  for (let k = 0; k < chances; k++) if (random() < odds) out.push(randomItem(random))
+  return out
+}
+
+/** Does a buyer (or an order) come with a surprise: one in two. */
+export const bringsSurprise = (random: () => number, odds: number = ITEM_ODDS.buyer) => random() < odds

@@ -4,7 +4,8 @@ import { Vector3 } from 'three'
 import { debugSet } from '../lib/debug'
 import { profile } from '../lib/profile'
 import { useHome } from '../store'
-import { flyCoins } from './coins'
+import { flyCoins, flyItem } from './coins'
+import { iconUrl } from '../farm/icons'
 import { coinsFx, coinsToFly, effectsOn, farmFx, fxStats, takeFx, type FxRequest } from './fx'
 import type { FxEngine } from './quarks'
 
@@ -84,7 +85,14 @@ export function FarmFx() {
     const asked = takeFx()
     let coins = 0
     for (const r of asked) {
-      if (r.kind === 'coins') {
+      if (r.kind === 'item') {
+        // a surprise: from where it was found on the screen (or low in the middle, when that is behind you)
+        at.set(r.x, r.y, r.z).project(camera)
+        const behind = at.z > 1
+        const x = behind ? size.width / 2 : Math.min(size.width - 40, Math.max(40, ((at.x + 1) / 2) * size.width))
+        const y = behind ? size.height * 0.6 : Math.min(size.height - 40, Math.max(90, ((1 - at.y) / 2) * size.height))
+        if (r.item && flyItem(x, y, iconUrl(r.item as Parameters<typeof iconUrl>[0]), r.order)) fxStats.items++
+      } else if (r.kind === 'coins') {
         // from the buyer's place on the screen (or the bottom edge, when they are behind you)
         at.set(r.x, r.y, r.z).project(camera)
         const behind = at.z > 1

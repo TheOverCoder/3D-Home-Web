@@ -7,7 +7,7 @@ import type { PlaceId } from './layout'
 export type CropId = 'lettuce' | 'carrot' | 'strawberry' | 'tomato' | 'corn' | 'pumpkin' | 'wheat' | 'sugarcane'
 export type CakeId = 'lemon_cake' | 'strawberry_cake' | 'carrot_cake' | 'pumpkin_pie'
 /** The building materials: what the silo and the barn are made bigger with (STORES, below). Never sold or asked for;
- *  they are kept in the barn. */
+ *  they come as surprises (ITEM_ODDS) and are kept in the barn. */
 export type ItemId = 'brick' | 'plank' | 'nail' | 'iron' | 'bolt' | 'log'
 export type ProduceId = CropId | 'lemon' | 'egg' | 'milk' | 'wool' | 'sugar' | 'flour' | 'cloth' | CakeId | ItemId
 
@@ -101,6 +101,11 @@ export const storeCapacity = (level: number) => STORE_STEP * level
 export const upgradeCost = (level: number) => level
 /** Where a good is kept: the silo for what grows (a crop, a lemon), the barn for the rest. */
 export const storeOf = (id: ProduceId): StoreId => (CROPS.some((c) => c.id === id) || id === 'lemon' ? 'silo' : 'barn')
+
+/** The odds of a surprise, a building material (any of the six alike): a buyer in two comes with one, given as you
+ *  sell to them; each egg, bottle of milk and fleece collected; each bed harvested and each picking of the lemon
+ *  tree; an order in two at the office. */
+export const ITEM_ODDS = { buyer: 0.5, unit: 0.05, harvest: 0.05, order: 0.5 } as const
 
 /** Water lasts this share of a crop's growing time: plant (and water) once, water once more halfway. */
 export const WATER_SHARE = 0.55
@@ -347,6 +352,9 @@ export interface ProducerDef {
   /** the sound as it is taken, and how high its sparkles pop, over what you look at */
   sound: FarmSound
   sparkle: number
+  /** its surprises (a building material, ITEM_ODDS): one chance for `each` good taken (every egg, bottle of milk,
+   *  fleece), or `once` for each picking (the lemon tree, as a harvest) */
+  surprise: 'each' | 'once'
 }
 
 export const PRODUCERS: Record<ProducerId, ProducerDef> = {
@@ -365,6 +373,7 @@ export const PRODUCERS: Record<ProducerId, ProducerDef> = {
     reach: 2.6,
     sound: 'harvest',
     sparkle: 1.6,
+    surprise: 'once',
   },
   // the hens lay into the nest box, collected from outside the run
   hens: {
@@ -383,6 +392,7 @@ export const PRODUCERS: Record<ProducerId, ProducerDef> = {
     reach: 2.2,
     sound: 'cluck',
     sparkle: 0.78,
+    surprise: 'each',
   },
   // each cow gives her own milk, wherever she has wandered to in the pasture
   cows: {
@@ -400,6 +410,7 @@ export const PRODUCERS: Record<ProducerId, ProducerDef> = {
     reach: 2.7,
     sound: 'milk',
     sparkle: 1.55,
+    surprise: 'each',
   },
   // and each sheep grows her own fleece, up to two before it stops
   sheep: {
@@ -418,6 +429,7 @@ export const PRODUCERS: Record<ProducerId, ProducerDef> = {
     reach: 2.4,
     sound: 'shear',
     sparkle: 1.0,
+    surprise: 'each',
   },
 }
 export const PRODUCER_IDS = Object.keys(PRODUCERS) as ProducerId[]

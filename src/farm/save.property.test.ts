@@ -222,6 +222,7 @@ function farmProblems(): string[] {
     const colours = [v.look.shirt, v.look.trousers, v.look.skin, v.look.hair].every((c) => /^#[0-9a-f]{6}$/i.test(c))
     bad(`buyer ${v.id}`, sellable.includes(v.want) && isCount(v.qty) && v.qty >= 1 && v.qty <= 12 && isCount(v.offer) && v.offer >= 1 && v.offer <= 999 && colours)
     bad(`buyer ${v.id}: name`, typeof v.name === 'string' && v.name.length <= 24)
+    bad(`buyer ${v.id}: a surprise or none`, typeof v.gift === 'boolean')
   }
   // the silo and the barn: a level each, from 1
   bad('storage: the silo and the barn', sameKeys(farm.storage, STORE_IDS) && Object.values(farm.storage).every((l) => isCount(l) && l >= 1))

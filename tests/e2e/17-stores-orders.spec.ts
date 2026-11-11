@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { test, expect, type Game } from './helpers'
 
-// The silo and the barn: what is in them, how full, made bigger with building materials. Time is fast-forwarded with
-// __home.farm.tick.
+// The silo and the barn (what is in them, how full, made bigger with building materials), and the surprises (a
+// building material from a buyer, an animal, a harvest). Time is fast-forwarded with
+// __home.farm.tick; the dice is set with __home.farm.setRandom where a surprise must come up.
 
 const until = (game: Game, fn: () => boolean, timeout = 30_000) => game.page.waitForFunction(fn, null, { timeout, polling: 200 })
 const nearbyIs = (game: Game, id: string) => game.page.waitForFunction((want) => (window as any).__home.useHome.getState().nearby?.id === want, id, { timeout: 60_000, polling: 250 })
@@ -11,6 +12,7 @@ const reset = (game: Game, inv: Record<string, number> = {}, coins = 200) =>
   game.page.evaluate(
     ([inv, coins]) => {
       const f = (window as any).__home.farm
+      f.setRandom(null)
       f.reset()
       f.tick(0.01)
       Object.assign(f.state.inv, inv)
@@ -20,7 +22,7 @@ const reset = (game: Game, inv: Record<string, number> = {}, coins = 200) =>
     [inv, coins] as const,
   )
 
-test.describe('the silo and the barn', () => {
+test.describe('the silo, the barn and surprises', () => {
   test('the chips at the top show how full the silo and the barn are; a tap opens what is inside', async ({ game }) => {
     await game.ready()
     const { page } = game
@@ -95,6 +97,41 @@ test.describe('the silo and the barn', () => {
     await until(game, () => (window as any).__home.useHome.getState().panel?.kind === 'store')
     await expect(page.locator('.farm-panel .farm-need .qty')).toHaveText(['2', '2', '2'])
     await page.evaluate(() => (window as any).__home.useHome.getState().closePanel())
+  })
+
+  test('surprises: a buyer with one gives it as you sell, each egg can turn one up; they fly to the barn', async ({ game }) => {
+    await game.ready()
+    const { page } = game
+    await reset(game, { egg: 2 })
+    await game.teleport(5.6, 1.4, 11.6, Math.PI, -0.05)
+    const before = await page.evaluate(() => (window as any).__home.fx.stats.items)
+    // every chance comes up, and the material is the first of the six (a brick)
+    await page.evaluate(() => (window as any).__home.farm.setRandom(() => 0.01))
+    const id = await page.evaluate(() => {
+      const f = (window as any).__home.farm
+      const v = f.spawnVisitor({ want: 'egg', qty: 1, offer: 3, queued: true })
+      return v.gift ? v.id : -1
+    })
+    expect(id).toBeGreaterThan(0)
+    // (the toast goes after a moment: read in the same call as the sale)
+    const toast = await page.evaluate((id) => {
+      const h = (window as any).__home
+      h.farm.acceptOffer(id)
+      return h.useHome.getState().toast?.text as string
+    }, id)
+    expect(toast).toMatch(/Surprise: 1 brick/)
+    expect((await state(game)).inv.brick).toBe(1)
+    // it popped up over the buyer and flew to the barn's chip
+    await until(game, () => (window as any).__home.fx.stats.items > 0)
+    expect(await page.evaluate(() => (window as any).__home.fx.stats.items)).toBeGreaterThan(before)
+    // three eggs collected: three chances
+    await page.evaluate(() => {
+      const f = (window as any).__home.farm
+      f.state.producers.hens.stock[0] = 3
+      f.collect('hens')
+    })
+    expect((await state(game)).inv.brick).toBe(4)
+    await page.evaluate(() => (window as any).__home.farm.setRandom(null))
     expect(game.errors).toEqual([])
   })
 })

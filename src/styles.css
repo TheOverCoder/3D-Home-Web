@@ -372,6 +372,8 @@ a:focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; border-rad
 
 /* coins flying from a buyer to the coin chip when they pay (src/fx/coins.ts: placed and flown by script) */
 .coin-fly { position: fixed; z-index: 70; width: 30px; height: 30px; pointer-events: none; user-select: none; filter: drop-shadow(0 2px 3px rgba(40, 24, 10, 0.4)); will-change: transform, opacity; }
+/* a surprise found (a building material): its picture pops up where it was found, then flies to the barn's chip */
+.item-fly { position: fixed; z-index: 70; width: 56px; height: 56px; pointer-events: none; user-select: none; filter: drop-shadow(0 0 10px rgba(255, 214, 92, 0.85)) drop-shadow(0 3px 3px rgba(40, 24, 10, 0.35)); will-change: transform, opacity; }
 
 /* a few words and a picture of what came in ("+ 4 lettuces"), on paper, popping in under the coin chip */
 .toast {
@@ -984,6 +986,8 @@ button.farm-chip-item:focus-visible { outline: 3px solid var(--sun); outline-off
 .farm-need { display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .farm-need .item-pic .art { width: 44px; height: 44px; }
 
+.farm-surprise { width: 30px; height: 30px; filter: drop-shadow(0 2px 2px rgba(60, 35, 10, 0.2)); }
+.farm-surprise.small { width: 24px; height: 24px; }
 
 /* the shop: a picture, the name and one line, its price on the button */
 .farm-shop { display: grid; gap: 8px; }
