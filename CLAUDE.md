@@ -34,8 +34,9 @@ The README has the overview; `tests/README.md` what each test guards.
   rooms and the outside are cells seen only through the doorways, windows and garden door of `src/data/layout.ts`
   (the kitchen's door shut closes its doorway); every `Parts` crowd draws only its models in view; the sun's shadow
   map leaves out the casters under the ceilings that no window lets sunlight reach, and is kept between frames while
-  everything that moved is out of it (`src/scene/Lighting.tsx`). Third person, decorating and the edit mode: only the
-  crowds' view test.
+  everything that moved is out of it (`src/scene/Lighting.tsx`). Third person, decorating, the edit mode and first
+  person outdoors: the crowds' view test, and the house's walls hide what lies wholly behind one opaque piece of them
+  (`walls.ts`; a wall fading hides nothing; a thing drawn without the depth test is never hidden).
 - The house's shell (walls, floors, ceilings, doors) is drawn always: it is under `userData.cell = 'always'`
   (`House.tsx`), as is your own body for the camera (the sun judges it like anything in a room: `userData.sun =
   'room'`). What is outdoors is under `cell: 'outside'` (the farm, the garden round the

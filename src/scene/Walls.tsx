@@ -1,7 +1,7 @@
-import { useContext, useMemo, useRef } from 'react'
+import { useContext, useEffect, useMemo, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { CuboidCollider, RigidBody } from '@react-three/rapier'
-import { Box3, BoxGeometry, DoubleSide, MathUtils, Ray, Vector3, type MeshStandardMaterial } from 'three'
+import { Box3, BoxGeometry, DoubleSide, MathUtils, Ray, Vector3, type Group, type MeshStandardMaterial, type Object3D } from 'three'
 import { DOORWAYS, HOUSE, ROOMS, WINDOWS, type Vec3, type WindowDef } from '../data/layout'
 import { boxProject } from '../lib/boxProject'
 import { surface } from '../lib/proceduralTextures'
@@ -9,6 +9,7 @@ import { playerState } from '../lib/playerState'
 import { useHome } from '../store'
 import { decorateEye, decorateFocus } from '../home/decorate'
 import { BatchContext } from '../lib/batch'
+import { setWalls, type WallPiece } from '../lib/visibility/walls'
 
 type Kind = 'wall' | 'trim' | 'glass' | 'fabric' | 'dark'
 
@@ -225,6 +226,35 @@ export function Walls() {
   // the walls are merged (House.tsx); one that fades is drawn on its own while it does, in the frame it starts
   const batch = useContext(BatchContext)
   const alone = useRef(new Set<string>())
+  const root = useRef<Group>(null)
+
+  // the wall pieces hide what lies wholly behind them (src/lib/visibility/walls.ts), while opaque: a wall fading is
+  // drawn on its own, see-through, and hides nothing
+  useEffect(() => {
+    const index: number[] = []
+    const pieces: WallPiece[] = []
+    segs.forEach((s, i) => {
+      if (s.kind !== 'wall') return
+      const [cx, cy, cz] = s.center
+      const [sx, sy, sz] = s.size
+      const onX = s.axis === 'x'
+      index.push(i)
+      pieces.push({
+        axis: s.axis,
+        at: onX ? cz : cx,
+        a: onX ? cx - sx / 2 : cz - sz / 2,
+        b: onX ? cx + sx / 2 : cz + sz / 2,
+        y0: cy - sy / 2,
+        y1: cy + sy / 2,
+        box: [cx - sx / 2, cy - sy / 2, cz - sz / 2, cx + sx / 2, cy + sy / 2, cz + sz / 2],
+      })
+    })
+    const shown = () => {
+      for (let o: Object3D | null = root.current; o; o = o.parent) if (!o.visible) return false
+      return root.current !== null
+    }
+    return setWalls({ pieces, opaque: (k) => fade.current[index[k]] >= 0.995, drawn: shown })
+  }, [segs])
 
   useFrame((_, dt) => {
     const state = useHome.getState()
@@ -279,7 +309,7 @@ export function Walls() {
   })
 
   return (
-    <group>
+    <group ref={root}>
       {segs.map((s, i) => {
         const tex = textures[i]
         const onX = s.axis === 'x'

@@ -15,14 +15,17 @@
 //             through the windows, so a caster in the house is drawn into the map only where its footprint there
 //             meets a window's (the map keeps exactly what it had: the shell is nearer the sun everywhere else). Your
 //             own body, drawn always by the camera, is to the sun a thing in a room like any other.
+//   walls   — the house's walls hide what lies wholly behind one of them (walls.ts): a wall fading is no wall. Every
+//             view but first person in the house (there the rooms' portals already leave out what is behind a wall):
+//             third person, decorating, the edit mode and first person outdoors.
 //   keep    — the sun's map is drawn again only when something in it changed (Lighting.tsx's ShadowDirector, which
 //             checks in the frame's render, every matrix final, before the shadow pass: setShadowCheck): a caster
 //             that moved, but was left out of the map's last drawing and is left out now (out of the sun's view, or
 //             under the ceilings where no window lets sunlight in), changes nothing in it, so the map is kept —
 //             walking and turning indoors, the sun costs nothing (sunLeftOut).
 //
-// Off: third person, decorating and the farm's edit mode (the walls fade, the ceiling goes, the camera flies) — only
-// the crowds' view test stays, which holds for any camera. `window.__home.view` (?debug) turns each part on and off
+// Off: third person, decorating and the farm's edit mode (the walls fade, the ceiling goes, the camera flies) — the
+// rooms and the sun; the crowds' view test and the walls hold for any camera. `window.__home.view` (?debug) turns each part on and off
 // and counts what it did; tests/e2e/16-view.spec.ts renders the same frame both ways and compares every pixel.
 
 import {
@@ -44,6 +47,7 @@ import {
 import { HOUSE } from '../../data/layout'
 import { liveParts, type Parts } from '../sculpt/parts'
 import { CELLS, OUTER_PORTALS, OUTSIDE, Portals, portalBox, type Cell } from './portals'
+import { updateWalls, wallHides } from './walls'
 
 export interface ViewHooks {
   scene: Scene
@@ -69,6 +73,10 @@ const stats = {
   /** crowd models tested, left out; part instances put, drawn */
   models: 0,
   modelsCulled: 0,
+  /** this render: the wall pieces used, and the things and crowd models they hid (counted in culled and modelsCulled too) */
+  walls: 0,
+  wallCulled: 0,
+  wallModels: 0,
   instances: 0,
   drawn: 0,
   /** the sun's last shadow pass: casters asked about, left out */
@@ -94,6 +102,8 @@ export const view = {
   portals: true,
   crowds: true,
   sun: true,
+  /** the house's walls hide what is behind them */
+  walls: true,
   /** the sun's map kept when all that changed is what it leaves out */
   keep: true,
   /** time every test three asks for (costs a little time itself) */
@@ -204,6 +214,7 @@ const finite = () => B[0] <= B[3] && B[1] <= B[4] && B[2] <= B[5]
 let hooks: ViewHooks | null = null
 let inRender = false
 let portalsOn = false
+let wallsOn = false
 let sunOn = false
 let sunFrustum: Frustum | null = null
 let sunLight: DirectionalLight | null = null
@@ -237,7 +248,7 @@ function judge(o: Object3D, f: Frustum): boolean {
   if ((o as InstancedMesh).isInstancedMesh && (o as InstancedMesh).count === 0) return false
   if (!inRender) return true
   if (f === sunFrustum) return sunOn ? sunSees(o) : true
-  if (!portalsOn || !isCameraFrustum(f)) return true
+  if (!(portalsOn || wallsOn) || !isCameraFrustum(f)) return true
   const t0 = view.timing ? performance.now() : 0
   stats.tested++
   const seen = cameraSees(o)
@@ -249,9 +260,24 @@ function judge(o: Object3D, f: Frustum): boolean {
 function cameraSees(o: Object3D): boolean {
   const tag = tagOf(o)
   if (tag === ALWAYS) return true
-  if (tag === OUT && portals.isStart(OUTSIDE)) return true
+  const byPortals = portalsOn && !(tag === OUT && portals.isStart(OUTSIDE))
+  if (!byPortals && !wallsOn) return true
   if (!worldBox(o)) return true
-  return portals.seesBox(B[0], B[1], B[2], B[3], B[4], B[5], tag === OUT)
+  if (byPortals && !portals.seesBox(B[0], B[1], B[2], B[3], B[4], B[5], tag === OUT)) return false
+  // the walls: only a mesh drawn with the depth test (one drawn over everything shows through a wall)
+  if (!wallsOn || !(o as Mesh).isMesh || !depthTested(o as Mesh)) return true
+  if (!wallHides(B[0], B[1], B[2], B[3], B[4], B[5])) return true
+  stats.wallCulled++
+  return false
+}
+
+function depthTested(m: Mesh): boolean {
+  const mat = m.material
+  if (Array.isArray(mat)) {
+    for (const x of mat) if (x.depthTest === false) return false
+    return true
+  }
+  return !!mat && mat.depthTest !== false
 }
 
 // the frustum tests three calls: each answers as before, then the pass may still say no
@@ -390,8 +416,11 @@ const modelSeen = (minX: number, minY: number, minZ: number, maxX: number, maxY:
     // the box's corner farthest along the plane's normal
     if (n.x * (n.x > 0 ? maxX : minX) + n.y * (n.y > 0 ? maxY : minY) + n.z * (n.z > 0 ? maxZ : minZ) + planes[i].constant < 0) return false
   }
-  if (!portalsOn || crowdTag === ALWAYS) return true
-  return portals.seesBox(minX, minY, minZ, maxX, maxY, maxZ, crowdTag === OUT)
+  if (crowdTag === ALWAYS) return true
+  if (portalsOn && !portals.seesBox(minX, minY, minZ, maxX, maxY, maxZ, crowdTag === OUT)) return false
+  if (!wallsOn || !wallHides(minX, minY, minZ, maxX, maxY, maxZ)) return true
+  stats.wallModels++
+  return false
 }
 
 function inScene(o: Object3D, scene: Scene) {
@@ -431,6 +460,7 @@ function beforeRender(renderer: WebGLRenderer, scene: Scene, camera: Camera) {
   if (ours) {
     stats.renders++
     stats.tested = stats.culled = stats.models = stats.modelsCulled = stats.instances = stats.drawn = 0
+    stats.wallCulled = stats.wallModels = 0
     stats.testMs = 0
     stats.portals = portalsOn
     stats.sun = sunOn
@@ -439,14 +469,15 @@ function beforeRender(renderer: WebGLRenderer, scene: Scene, camera: Camera) {
     const cam = camera as PerspectiveCamera
     projScreen.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse)
     frustum.setFromProjectionMatrix(projScreen, WebGLCoordinateSystem, cam.reversedDepth)
-    if (portalsOn) {
-      const e = cam.matrixWorld.elements
-      eye.x = e[12]
-      eye.y = e[13]
-      eye.z = e[14]
-      portals.update(cam.matrixWorldInverse.elements, cam.projectionMatrix.elements, cam.near, eye, h.doorOpen())
-    }
-  }
+    const e = cam.matrixWorld.elements
+    eye.x = e[12]
+    eye.y = e[13]
+    eye.z = e[14]
+    if (portalsOn) portals.update(cam.matrixWorldInverse.elements, cam.projectionMatrix.elements, cam.near, eye, h.doorOpen())
+    // the walls, where the portals do not already leave out what is behind them: any view but first person in the house
+    stats.walls = view.on && view.walls && (!portalsOn || portals.isStart(OUTSIDE)) ? updateWalls(eye.x, eye.y, eye.z, cam.near, cam.far) : 0
+    wallsOn = stats.walls > 0
+  } else wallsOn = false
   crowdScene = scene
   liveParts.forEach(cullCrowd)
   if (ours) {
@@ -501,6 +532,6 @@ export function installViewPass(h: ViewHooks): () => void {
     hooked.onAfterRender = after
     liveParts.forEach((p) => p.cull(null))
     if (hooks === h) hooks = null
-    inRender = portalsOn = sunOn = crowdsOn = false
+    inRender = portalsOn = wallsOn = sunOn = crowdsOn = false
   }
 }

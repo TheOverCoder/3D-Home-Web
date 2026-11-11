@@ -162,7 +162,7 @@ function installProbe() {
     h.view.on = true
     // kept for the rays through those pixels (behindShell)
     w.__viewProbe.last = { culprits: found, pixels: bad.map((k) => [k % off.W, Math.floor(k / off.W)]), W: off.W, H: off.H, pose: lastPose }
-    // each reaches across the left or right side of the screen (its box, projected)
+    // each reaches across an edge of the screen (its box, projected): a side, or (seen from above, third person) the top
     const V = h.camera.position.constructor
     const straddles = found.every((o: any) => {
       const g = o.geometry
@@ -170,12 +170,16 @@ function installProbe() {
       const b = g.boundingBox
       let x0 = Infinity
       let x1 = -Infinity
+      let y0 = Infinity
+      let y1 = -Infinity
       for (let k = 0; k < 8; k++) {
         const v = new V(k & 1 ? b.max.x : b.min.x, k & 2 ? b.max.y : b.min.y, k & 4 ? b.max.z : b.min.z).applyMatrix4(o.matrixWorld).project(h.camera)
         x0 = Math.min(x0, v.x)
         x1 = Math.max(x1, v.x)
+        y0 = Math.min(y0, v.y)
+        y1 = Math.max(y1, v.y)
       }
-      return (x0 < -1 && x1 > -1) || (x0 < 1 && x1 > 1)
+      return (x0 < -1 && x1 > -1) || (x0 < 1 && x1 > 1) || (y0 < -1 && y1 > -1) || (y0 < 1 && y1 > 1)
     })
     // today's depth there (metres along the view): where it is drawn
     const n = h.camera.near
@@ -535,11 +539,11 @@ const EYE = 1.62
 
 function report(log: string[], name: string, r: any) {
   log.push(
-    `${name} (${r.size.join('×')}): ${r.before.calls} draws / ${r.before.triangles} triangles → ${r.after.calls} / ${r.after.triangles}; ${r.stats.culled} of ${r.stats.tested} things and ${r.stats.modelsCulled} of ${r.stats.models} crowd models left out; eye in ${r.cells.start.join(', ') || '-'}, seen ${r.cells.seen.join(', ') || '-'}; ${r.differ} pixels differ${r.differ ? ` ${JSON.stringify(r.pixels)} (${r.culprits?.join('; ')}; across the screen's side: ${r.straddles}; today drawn at ${r.depths?.join(', ')} m; same with them hidden: ${r.sameAsHidden}; rays ${JSON.stringify(r.rays)})` : ''}`,
+    `${name} (${r.size.join('×')}): ${r.before.calls} draws / ${r.before.triangles} triangles → ${r.after.calls} / ${r.after.triangles}; ${r.stats.culled} of ${r.stats.tested} things and ${r.stats.modelsCulled} of ${r.stats.models} crowd models left out (behind a wall: ${r.stats.wallCulled} things, ${r.stats.wallModels} models, of ${r.stats.walls} wall pieces); eye in ${r.cells.start.join(', ') || '-'}, seen ${r.cells.seen.join(', ') || '-'}; ${r.differ} pixels differ${r.differ ? ` ${JSON.stringify(r.pixels)} (${r.culprits?.join('; ')}; across the screen's edge: ${r.straddles}; today drawn at ${r.depths?.join(', ')} m; same with them hidden: ${r.sameAsHidden}; rays ${JSON.stringify(r.rays)})` : ''}`,
   )
 }
 
-/** No pixel may differ — but for the one known edge case, proven again: a pixel or two at the side of the screen
+/** No pixel may differ — but for the one known edge case, proven again: a pixel or two at the edge of the screen
  *  where a thing far behind a wall shows through today, and the pass's frame is exactly today's with those things
  *  hidden. */
 function check(name: string, r: any) {
@@ -547,7 +551,7 @@ function check(name: string, r: any) {
   expect(r.crowds, `${name}: no crowd model left out may show`).toBe(false)
   expect(r.differ, `${name}: ${r.differ} pixels differ at ${JSON.stringify(r.pixels)}`).toBeLessThanOrEqual(2)
   expect(r.culprits?.length, `${name}: what the pass left out there`).toBeGreaterThan(0)
-  expect(r.straddles, `${name}: ${r.culprits?.join('; ')} do not reach across the side of the screen`).toBe(true)
+  expect(r.straddles, `${name}: ${r.culprits?.join('; ')} do not reach across an edge of the screen`).toBe(true)
   expect(r.sameAsHidden, `${name}: the pass's frame is today's with ${r.culprits?.join('; ')} hidden`).toBe(true)
   // and what was left out is behind the house's shell there: no ray through those pixels meets it first
   expect(r.rays?.length, `${name}: rays through the pixels`).toBe(r.differ)
@@ -696,7 +700,7 @@ test.describe('the drawing pass leaves out only what cannot be seen', () => {
     console.log(log.join('\n'))
   })
 
-  test('third person, decorating and the edit mode: the rooms and the sun are not used', async ({ game }) => {
+  test('third person, decorating and the edit mode: the rooms and the sun are not used, the walls are', async ({ game }) => {
     await setUp(game)
     const { page } = game
     const log: string[] = []
@@ -712,9 +716,13 @@ test.describe('the drawing pass leaves out only what cannot be seen', () => {
       // the camera's flight there (about a second)
       await page.waitForTimeout(2500)
       const r = await page.evaluate(() => (window as any).__viewProbe.camera(null))
+      // (the known edge case, proven as in first person: rays through the pixels, from the game's camera as it stands)
+      if (r.differ && r.culprits?.length) r.rays = await page.evaluate(behindShell)
       report(log, name, r)
       check(name, r)
       expect(r.stats.portals, `${name}: no rooms and portals`).toBe(false)
+      // the house's walls hide what is behind them (src/lib/visibility/walls.ts), in third person from every room
+      if (mode === 'third' && x > -7 && x < 7 && z > -6 && z < 6) expect(r.stats.wallCulled + r.stats.wallModels, `${name}: things behind a wall left out`).toBeGreaterThan(0)
       const s = await page.evaluate(() => (window as any).__viewProbe.shadow())
       log.push(`  sun's shadow map: ${s.after.calls} draws, ${s.culled} casters left out, ${s.differ} bytes differ`)
       expect(s.sun, `${name}: the sun's pass is whole`).toBe(false)
@@ -729,6 +737,9 @@ test.describe('the drawing pass leaves out only what cannot be seen', () => {
       await page.waitForFunction(() => (window as any).__home.view.stats.portals === true, null, { timeout: 30_000, polling: 250 })
     }
     await off('third person, the living room', 'third', -3.5, 2.5)
+    await off('third person, the office', 'third', -3.5, -2)
+    await off('third person, the kitchen', 'third', 3.5, -3)
+    await off('third person, the bedroom', 'third', 3.5, 1)
     await off('third person, the yard', 'third', -6, 9)
     await off('decorating the living room', 'decorate', -3.5, 2.5)
     await off('the edit mode over the farm', 'edit', 2, 9)
