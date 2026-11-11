@@ -940,6 +940,10 @@ button.farm-chip-item:focus-visible { outline: 3px solid var(--sun); outline-off
 .farm-card-name { font: 600 17px/1.15 var(--font-display); }
 .farm-card-tags { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
 .farm-key { position: absolute; top: 8px; inset-inline-start: 8px; font-size: 11px; opacity: 0.55; }
+/* how many of a crop are in the silo: a small chip in the card's right corner */
+.farm-stock { position: absolute; top: 6px; inset-inline-end: 6px; gap: 2px; padding: 1px 7px 1px 3px; font-size: 13px; box-shadow: 0 1px 0 var(--paper-3); }
+.farm-stock img { width: 16px; height: 16px; }
+.farm-stock.none { opacity: 0.6; }
 
 /* a buyer's order: what they want, how many you have of it, what they pay; sell, or a small × to send away */
 .farm-list { display: grid; gap: 8px; }

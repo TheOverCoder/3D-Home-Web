@@ -164,6 +164,10 @@ function SeedsPanel({ bed }: { bed: number }) {
           return (
             <button key={c.id} className="farm-card" disabled={!afford} onClick={() => choose(c.id)}>
               <kbd className="farm-key">{i + 1}</kbd>
+              <span className={`tag farm-stock${farm.inv[c.id] ? '' : ' none'}`} title={`${farm.inv[c.id]} in the silo`} aria-label={`${farm.inv[c.id]} in the silo`}>
+                <img src={iconUrl('silo')} alt="" />
+                {farm.inv[c.id]}
+              </span>
               <img className="art" src={iconUrl(c.id)} alt="" />
               <span className="farm-card-name">{cap(c.plural)}</span>
               <span className="farm-card-tags">

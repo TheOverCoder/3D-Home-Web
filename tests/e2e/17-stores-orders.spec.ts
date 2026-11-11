@@ -254,6 +254,15 @@ test.describe('the silo, the barn, surprises and orders', () => {
     await until(game, () => (window as any).__home.useHome.getState().panel?.kind === 'orders')
     await expect(page.locator('.farm-order:not(.waiting)')).toHaveCount(4)
     await page.evaluate(() => (window as any).__home.useHome.getState().closePanel())
+  })
+
+  test('the seed packets show how many of each crop are in the silo', async ({ game }) => {
+    await game.ready()
+    const { page } = game
+    await reset(game, { lettuce: 7, tomato: 2 })
+    await page.evaluate(() => (window as any).__home.useHome.getState().openPanel({ kind: 'seeds', bed: 0 }))
+    await expect(page.locator('.farm-card .farm-stock')).toHaveText(['7', '0', '0', '2', '0', '0', '0', '0'])
+    await page.evaluate(() => (window as any).__home.useHome.getState().closePanel())
     expect(game.errors).toEqual([])
   })
 })
