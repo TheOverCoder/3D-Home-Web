@@ -55,24 +55,27 @@ export function Plants() {
     last.current = t
     seen.current = { lemon, hens }
     parts.begin()
-    parts.at(0, 0, 0)
+    // each plant, lemon and egg a model of its own (put where it stands): the view draws the ones it can see
     BEDS.forEach((def, i) => {
       const bed = farm.beds[i]
       if (!bed.built || !bed.crop) return
       const g = bedProgress(i)
       LAYOUT[bed.crop].forEach(([lx, lz], k) => {
         const seed = hash(i + 1, k + 1)
+        parts.at(0, 0, 0)
         GROWERS[bed.crop!](parts, def.x + lx + (hash(k, i) - 0.5) * 0.04, SOIL_Y, def.z + lz + (hash(i, k) - 0.5) * 0.04, g, seed)
       })
     })
     for (let k = 0; k < stockOf('tree'); k++) {
       const [lx, y, lz] = LEMON_SPOTS[k]
       const [x, z] = toWorld(lemon, lx, lz)
+      parts.at(0, 0, 0)
       putLemon(parts, x, y, z, k)
     }
     for (let k = 0; k < stockOf('hens'); k++) {
       const [ex, ez] = EGG_SPOTS[k]
       const [x, z] = toWorld(hens, NEST.x + ez, NEST.z + ex)
+      parts.at(0, 0, 0)
       putEgg(parts, x, NEST_FLOOR, z, k)
     }
     parts.end()

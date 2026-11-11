@@ -671,7 +671,8 @@ function SeedKeys() {
 
 export function Garden() {
   return (
-    <group name="farm">
+    // the outside, for the drawing pass (src/lib/visibility): seen from the house only through its windows and doors
+    <group name="farm" userData={{ cell: 'outside' }}>
       <FarmClock />
       <SeedKeys />
       <StaticBatch>

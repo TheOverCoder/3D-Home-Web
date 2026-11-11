@@ -149,6 +149,9 @@ function ShadowDirector() {
   return null
 }
 
+/** The sun, for the drawing pass (src/lib/visibility): its shadow map leaves out what no sunlight reaches. */
+export const sunLight = { current: null as DirectionalLight | null }
+
 // shadow map resolution per tier comes from the device profile (low: half, and the cheaper filter comes from
 // fewer texels to fetch; phones: 1k below the top tier)
 
@@ -160,6 +163,12 @@ export function Lighting() {
   const sun = useRef<DirectionalLight>(null)
   const size = profile.shadowMap[quality]
   const applied = useRef(size)
+  useEffect(() => {
+    sunLight.current = sun.current
+    return () => {
+      sunLight.current = null
+    }
+  }, [])
   useEffect(() => {
     const light = sun.current
     if (!light || applied.current === size) return
@@ -175,8 +184,10 @@ export function Lighting() {
       <color attach="background" args={['#a9c4e0']} />
       {/* haze: distant things sink into a pale grey-blue, which is what makes the rooms and the garden feel deep */}
       <fogExp2 attach="fog" args={['#aab4c0', haze ? 0.04 : 0.0006]} />
-      {/* the sky you see through windows and over the roof */}
-      <Sky distance={900} sunPosition={SUN_DIR} turbidity={3} rayleigh={1.3} mieCoefficient={0.004} mieDirectionalG={0.85} />
+      {/* the sky you see through windows and over the roof (the outside, for the drawing pass: src/lib/visibility) */}
+      <group userData={{ cell: 'outside' }}>
+        <Sky distance={900} sunPosition={SUN_DIR} turbidity={3} rayleigh={1.3} mieCoefficient={0.004} mieDirectionalG={0.85} />
+      </group>
       <ErrorBoundary fallback={null} onError={() => markReady('env')}>
         <Ibl />
       </ErrorBoundary>

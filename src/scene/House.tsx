@@ -95,22 +95,29 @@ export function House() {
       </>
     )
   }
+  // what the drawing pass may leave out (src/lib/visibility): the shell — walls, floors, ceilings, doors — is always
+  // drawn; the garden round the house is the outside, seen from indoors only through a window or the garden door; the
+  // furniture and everything else in a room is drawn where its room can be seen
   return (
     <>
-      <Floors />
-      <StaticBatch firstPersonOnly>
-        <Walls />
-      </StaticBatch>
-      <Ceilings />
-      <StaticBatch>
-        <Exterior />
-      </StaticBatch>
+      <group userData={{ cell: 'always' }}>
+        <Floors />
+        <StaticBatch firstPersonOnly>
+          <Walls />
+        </StaticBatch>
+        <Ceilings />
+        <Door />
+        <GardenDoor />
+      </group>
+      <group userData={{ cell: 'outside' }}>
+        <StaticBatch>
+          <Exterior />
+        </StaticBatch>
+      </group>
       <StaticBatch rev={homeRev} off={decorating}>
         <Furnishings />
         <Dressing />
       </StaticBatch>
-      <Door />
-      <GardenDoor />
       <Lamps />
     </>
   )

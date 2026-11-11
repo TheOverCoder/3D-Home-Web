@@ -32,10 +32,18 @@ function underNoBatch(o: Object3D, root: Object3D): boolean {
   return false
 }
 
+/** What the drawing pass makes of a mesh (src/lib/visibility: `userData.cell`, 'always' or 'outside'), when a group
+ *  inside the batch says so: it travels with the geometry into its merged mesh. */
+function cellUnder(o: Object3D, root: Object3D): string {
+  for (let p: Object3D | null = o; p && p !== root; p = p.parent) if (typeof p.userData.cell === 'string') return p.userData.cell
+  return ''
+}
+
 interface Bucket {
   material: Material
   cast: boolean
   receive: boolean
+  cell: string
   geometries: BufferGeometry[]
 }
 
@@ -82,9 +90,10 @@ export function batchStatic(root: Object3D): Batch {
     g.computeBoundingBox()
     const c = g.boundingBox!.getCenter(centre)
     const cell = `${c.x < 0 ? 'w' : 'e'}${c.z < 0 ? 'n' : 's'}`
-    const key = `${cell}#${signature(m)}#${mesh.castShadow ? 1 : 0}${mesh.receiveShadow ? 1 : 0}`
+    const tag = cellUnder(mesh, root)
+    const key = `${cell}#${signature(m)}#${mesh.castShadow ? 1 : 0}${mesh.receiveShadow ? 1 : 0}${tag ? `#${tag}` : ''}`
     let bucket = buckets.get(key)
-    if (!bucket) buckets.set(key, (bucket = { material: m, cast: mesh.castShadow, receive: mesh.receiveShadow, geometries: [] }))
+    if (!bucket) buckets.set(key, (bucket = { material: m, cast: mesh.castShadow, receive: mesh.receiveShadow, cell: tag, geometries: [] }))
     bucket.geometries.push(g)
     hidden.push(mesh)
   })
@@ -98,6 +107,7 @@ export function batchStatic(root: Object3D): Batch {
     mesh.castShadow = b.cast
     mesh.receiveShadow = b.receive
     mesh.name = 'static-batch'
+    if (b.cell) mesh.userData.cell = b.cell
     mesh.matrixAutoUpdate = false
     root.add(mesh)
     made.push(mesh)

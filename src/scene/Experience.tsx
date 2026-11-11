@@ -25,6 +25,7 @@ import { DecorateMode } from '../home/DecorateMode'
 import { RenderPause } from './RenderPause'
 import { Player } from './Player'
 import { Screens } from './Screens'
+import { ViewPass } from './ViewPass'
 import { Warmup } from './Warmup'
 
 // before any material compiles: no lit surface may write a value the half-float buffers cannot hold
@@ -170,6 +171,8 @@ export default function Experience() {
       style={{ position: 'fixed', inset: 0, zIndex: 0, touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}
     >
       {!lockedQuality && qualityAuto && <QualityGovernor onLastResort={() => setSqueeze(true)} />}
+      {/* leaves out of each frame what cannot be seen (behind walls, out of view, out of the sun) */}
+      <ViewPass />
       <Lighting />
       <Suspense fallback={null}>
         <Physics gravity={[0, -9.81, 0]}>

@@ -49,6 +49,17 @@ test.describe('sculpted models', () => {
     // look at the garden from the path, so every group has been drawn
     await game.teleport(3.0, 1.4, 7.6, Math.PI, -0.1)
     await page.waitForTimeout(2000)
+    // each crowd draws only the models in view (src/lib/visibility), and the sheep's fold is behind the house: count
+    // what every crowd puts, the drawing pass off for a frame
+    await page.evaluate(() => ((window as any).__home.view.on = false))
+    await page.waitForFunction(
+      () => (window as any).__home.view.stats.renders > 0 && (window as any).__home.scene.getObjectByName('sheep')?.children.some((m: any) => m.isInstancedMesh && m.count > 0),
+      null,
+      {
+        timeout: 30_000,
+        polling: 250,
+      },
+    )
     const drawn = await page.evaluate(() => {
       const h = (window as any).__home
       const out: Record<string, Record<string, number>> = {}
@@ -58,6 +69,7 @@ test.describe('sculpted models', () => {
         out[name] = {}
         for (const m of g.children) if (m.isInstancedMesh && m.count > 0) out[name][m.name.replace(`${name}-`, '')] = m.count
       }
+      h.view.on = true
       return out
     })
     // two cows (one in each of two coats), three sheep, three hens and the rooster

@@ -10,6 +10,10 @@ const { wallHeight: H } = HOUSE
 const WARM = '#fff0d8'
 
 const PAD = 0.08 // overhang past the outer faces only, so neighbouring slabs never overlap
+
+/** Each room's ceiling up, whole and opaque this frame: the drawing pass (src/lib/visibility) needs the house closed
+ *  round the eye before it leaves out what is behind its walls and under its ceilings. */
+export const ceilingsUp: Record<RoomId, boolean> = { living: false, office: false, kitchen: false, bedroom: false }
 const THICK = 0.3
 
 /**
@@ -60,6 +64,7 @@ function Ceiling({ id }: { id: RoomId }) {
         mat.current.needsUpdate = true
       }
     }
+    ceilingsUp[id] = shown.current && !!group.current?.visible && !!slab.current?.castShadow && mat.current?.transparent === false
   })
 
   return (

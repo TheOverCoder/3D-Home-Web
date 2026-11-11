@@ -1,7 +1,7 @@
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { CuboidCollider, RigidBody, type RapierRigidBody } from '@react-three/rapier'
-import { MathUtils, Quaternion, Vector3 } from 'three'
+import { MathUtils, Quaternion, Vector3, type Group } from 'three'
 import { DOOR } from '../data/layout'
 import { useInteractable } from '../lib/interaction'
 import { playGesture } from '../lib/gestures'
@@ -10,6 +10,19 @@ import { B } from './Furnishings'
 
 const axis = new Vector3(0, 1, 0)
 const quat = new Quaternion()
+
+/** The door's leaf, for the drawing pass (src/lib/visibility): shut, it closes the doorway between the kitchen and
+ *  the bedroom. */
+export const kitchenDoor = { leaf: null as Group | null }
+
+/** How far the leaf is turned from shut (radians), as it is drawn now; Infinity when there is no door. */
+export function doorAngle() {
+  const leaf = kitchenDoor.leaf
+  if (!leaf || !leaf.parent) return Infinity
+  const e = leaf.matrixWorld.elements
+  // its own x axis, turned about y from (1, 0, 0)
+  return Math.abs(Math.atan2(-e[2], e[0]))
+}
 
 /** Hinged door in the kitchen/bedroom doorway: swings on a kinematic body so the player is pushed, not clipped. */
 export function Door() {
@@ -44,8 +57,15 @@ export function Door() {
   return (
     <RigidBody ref={body} type="kinematicPosition" colliders={false} position={DOOR.hinge}>
       <CuboidCollider args={[DOOR.width / 2, DOOR.height / 2, DOOR.thickness / 2]} position={[DOOR.width / 2, DOOR.height / 2, 0]} />
-      <B size={[DOOR.width - 0.02, DOOR.height - 0.02, DOOR.thickness]} position={[DOOR.width / 2, DOOR.height / 2, 0]} color="#b58a60" roughness={0.6} radius={0.008} mat="veneer" tile={1.1} />
-      <B size={[0.12, 0.03, 0.1]} position={[DOOR.width - 0.12, 1.0, 0]} color="#c9ccce" metalness={0.9} roughness={0.25} radius={0.008} />
+      <group
+        name="door-leaf"
+        ref={(g) => {
+          kitchenDoor.leaf = g
+        }}
+      >
+        <B size={[DOOR.width - 0.02, DOOR.height - 0.02, DOOR.thickness]} position={[DOOR.width / 2, DOOR.height / 2, 0]} color="#b58a60" roughness={0.6} radius={0.008} mat="veneer" tile={1.1} />
+        <B size={[0.12, 0.03, 0.1]} position={[DOOR.width - 0.12, 1.0, 0]} color="#c9ccce" metalness={0.9} roughness={0.25} radius={0.008} />
+      </group>
     </RigidBody>
   )
 }

@@ -92,5 +92,10 @@ export function Effects() {
   fx.push(<HueSaturation key="hs" saturation={grade.saturation} />)
   fx.push(<Vignette key="vig" offset={vignette.offset} darkness={vignette.darkness} />)
   if (filmGrain) fx.push(<Noise key="grain" blendFunction={BlendFunction.SOFT_LIGHT} opacity={LOOK.grain} />)
-  return <EffectComposer multisampling={profile.msaa[quality]}>{fx}</EffectComposer>
+  return (
+    // the composer for the tests (?debug): a frame of the whole film look drawn on demand
+    <EffectComposer ref={(c) => debugSet('composer', c)} multisampling={profile.msaa[quality]}>
+      {fx}
+    </EffectComposer>
+  )
 }

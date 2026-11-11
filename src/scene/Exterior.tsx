@@ -26,14 +26,19 @@ export function Exterior() {
   const d = HOUSE.maxZ - HOUSE.minZ + 3.2
   return (
     <group>
-      <mesh rotation-x={-Math.PI / 2} position={[0, -0.03, 0]} receiveShadow>
-        <planeGeometry args={[800, 800]} />
-        <meshStandardMaterial map={grass.map} normalMap={grass.normalMap} roughnessMap={grass.roughnessMap} roughness={1} />
-      </mesh>
-      <mesh rotation-x={-Math.PI / 2} position={[0, -0.015, 0]} receiveShadow>
-        <planeGeometry args={[w, d]} />
-        <meshStandardMaterial color="#9a9c98" roughness={0.95} />
-      </mesh>
+      {/* The lawn and the apron run on under the house, a few centimetres below its floors. Hidden there, but over so
+          large a plane the depth the renderer works out can come out a hair nearer than the floor's at a low angle,
+          and the grass shows through: the drawing pass (src/lib/visibility) draws them always, so nothing changes. */}
+      <group userData={{ cell: 'always' }}>
+        <mesh rotation-x={-Math.PI / 2} position={[0, -0.03, 0]} receiveShadow>
+          <planeGeometry args={[800, 800]} />
+          <meshStandardMaterial map={grass.map} normalMap={grass.normalMap} roughnessMap={grass.roughnessMap} roughness={1} />
+        </mesh>
+        <mesh rotation-x={-Math.PI / 2} position={[0, -0.015, 0]} receiveShadow>
+          <planeGeometry args={[w, d]} />
+          <meshStandardMaterial color="#9a9c98" roughness={0.95} />
+        </mesh>
+      </group>
       {/* the lane outside the farm gate, where buyers come and go */}
       <mesh rotation-x={-Math.PI / 2} position={[0, -0.02, LANE.z]} receiveShadow>
         <planeGeometry args={[160, LANE.width]} />
