@@ -14,8 +14,6 @@ import { buyLadder, farm, ladderLevel, ladderMaxed, ladderOpen, useFarm } from '
 
 /** Each ladder's picture. */
 const LADDER_ART: Record<LadderId, ArtId> = { rate: 'coin', places: 'package', group: 'shopping-cart', pace: 'person-running', stock: 'building-construction', discount: 'coin' }
-/** The panel each ladder's row is on: its card goes back there. */
-const LADDER_HOME: Record<LadderId, 'manager' | 'market' | 'contractor'> = { rate: 'manager', places: 'market', group: 'market', pace: 'market', stock: 'contractor', discount: 'contractor' }
 
 /** What a ladder means now → after its next step (now only, at its top), as two chips that wrap on a narrow screen. */
 function Say({ id }: { id: LadderId }) {
@@ -40,6 +38,9 @@ function Say({ id }: { id: LadderId }) {
 export function LadderRow({ id }: { id: LadderId }) {
   useFarm((s) => s.rev)
   const openPanel = useHome((s) => s.openPanel)
+  // the panel this row is on (the manager's, the computer, the contractor's), for its card to go back to
+  const kind = useHome((s) => s.panel?.kind)
+  const from = kind === 'manager' || kind === 'market' || kind === 'contractor' ? kind : undefined
   const def = LADDERS[id]
   const k = ladderLevel(id)
   const max = ladderMaxed(id)
@@ -57,7 +58,7 @@ export function LadderRow({ id }: { id: LadderId }) {
       <button
         className={`btn small${max ? ' soft' : ''}`}
         disabled={max || !ladderOpen(id) || farm.coins < price}
-        onClick={() => openPanel({ kind: 'ladder', id })}
+        onClick={() => openPanel({ kind: 'ladder', id, from })}
         aria-label={max ? `${def.name}: done` : `${def.name}, level ${k + 1}, for ${price} coins`}
       >
         {max ? <Check weight="bold" /> : <Coins n={price} />}
@@ -66,18 +67,20 @@ export function LadderRow({ id }: { id: LadderId }) {
   )
 }
 
-/** The card that asks before a ladder's step is bought: its picture, now → after, Not now, and Buy with the price. */
+/** The card that asks before a ladder's step is bought: its picture, now → after, Not now, and Buy with the price.
+ *  Opened from a panel (its `from`), it goes back there; opened from the world (a price tag), it closes. */
 export function LadderCard({ id }: { id: LadderId }) {
   useFarm((s) => s.rev)
   const openPanel = useHome((s) => s.openPanel)
   const close = useHome((s) => s.closePanel)
+  const from = useHome((s) => (s.panel?.kind === 'ladder' ? s.panel.from : undefined))
   const armed = useArmed()
   const def = LADDERS[id]
   const max = ladderMaxed(id)
   const price = ladderPrice(id, ladderLevel(id))
   const open = ladderOpen(id) && !max
   const afford = open && farm.coins >= price
-  const back = () => openPanel({ kind: LADDER_HOME[id] })
+  const back = () => (from ? openPanel({ kind: from }) : close())
   const confirm = () => {
     if (!armed || !buyLadder(id)) return
     farmSound('build')

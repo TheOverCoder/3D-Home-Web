@@ -104,7 +104,7 @@ export const laneEnd = (side: 0 | 1): Point => ({ x: LANE_ENDS[side], z: WALK_Z 
 const [LANE, OUTSIDE, INSIDE] = MARKET_PATH
 
 // Ways through the hall that keep a person's body clear of the counter, the shelves and the island (worked out from
-// their boxes in src/data/market.ts). TODO(lead): these could be rows of src/data/market.ts beside MARKET_PATH.
+// their boxes in src/data/market.ts).
 /** The hall's middle: south of the pay line, north of the shelves along the south wall. */
 const MIDDLE: Point = { x: COUNTER.x0 + 0.2, z: (PAY_SPOT.z + BROWSE_SPOTS[0].z) / 2 + 0.1 }
 /** Just west of the counter's end, on the way out from paying. */
@@ -117,8 +117,8 @@ const DOOR_X = (INNER_DOOR.x0 + INNER_DOOR.x1) / 2
 const BACK_SIDE: Point = { x: DOOR_X, z: INNER_DOOR.z1 + 0.3 }
 const HALL_SIDE: Point = { x: DOOR_X, z: INNER_DOOR.z0 - 0.4 }
 const ROUND_DESK: Point = { x: DESK.x1 + 0.5, z: MANAGER_SPOT.z }
-/** The contractor's way out of his cabin (its north side, towards the lane) and the corner of the lot beside it. TODO(lead): a
- *  door in the cabin's north side at this x (src/models/market.ts). */
+/** The contractor's way out of his cabin, through the door in its north side (towards the lane: CABIN_DOOR in
+ *  src/models/market.ts), and the corner of the lot beside it. */
 const CABIN_DOOR: Point = { x: CONTRACTOR_SPOT.x, z: CABIN.z0 - 0.2 }
 const CORNER: Point = { x: CABIN.x1 + 0.5, z: CABIN.z0 - 0.75 }
 
@@ -178,3 +178,25 @@ export function scriptSeconds(x: number, z: number, steps: Step[], speed: number
 
 /** The seconds a walker still has to go on its steps, from where it is now. */
 export const secondsLeft = (w: Walker, speed: number) => Math.max(0, scriptSeconds(w.x, w.z, w.steps.slice(w.at), speed) - w.waited)
+
+/** Places to stand `n` people along the ways in through the hall (from just inside the front door towards each browse
+ *  spot), each at least `apart` from the others and from `taken` (those already standing): the shop at its fullest,
+ *  for measuring what it draws. Fewer come back when the ways have no more room. */
+export function hallStands(n: number, taken: readonly Point[], apart = 0.6): { x: number; z: number; heading: number }[] {
+  const out: { x: number; z: number; heading: number }[] = []
+  const clear = (p: Point) => [...taken, ...out].every((q) => Math.hypot(q.x - p.x, q.z - p.z) >= apart)
+  for (let spot = 0; spot < BROWSE_SPOTS.length && out.length < n; spot++) {
+    const steps = shopperIn(spot).filter((s): s is { to: Point } => 'to' in s)
+    const way = steps.slice(steps.findIndex((s) => s.to.x === INSIDE.x && s.to.z === INSIDE.z)).map((s) => s.to)
+    for (let k = 1; k < way.length && out.length < n; k++) {
+      const [a, b] = [way[k - 1], way[k]]
+      const d = Math.hypot(b.x - a.x, b.z - a.z)
+      const heading = Math.atan2(b.x - a.x, b.z - a.z)
+      for (let at = 0; at < d && out.length < n; at += 0.1) {
+        const p = { x: a.x + ((b.x - a.x) * at) / d, z: a.z + ((b.z - a.z) * at) / d }
+        if (clear(p)) out.push({ ...p, heading })
+      }
+    }
+  }
+  return out
+}

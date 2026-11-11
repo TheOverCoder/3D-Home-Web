@@ -164,7 +164,7 @@ function PlaceRow({ k }: { k: number }) {
   return (
     <button
       className={`market-place${s.units > 0 ? '' : ' empty'}`}
-      onClick={() => openPanel({ kind: 'market-place', place: k })}
+      onClick={() => openPanel({ kind: 'market-place', place: k, from: 'market' })}
       aria-label={`Place ${k + 1}: ${good ? `${s.units} of ${SHOP.units} ${name.toLowerCase()}` : 'empty'}`}
     >
       {good ? <ItemPic id={good} /> : <span className="market-slot" aria-hidden="true" />}
@@ -200,7 +200,7 @@ function ClosedPlace() {
     <button
       className="market-place closed"
       disabled={!ladderOpen('places')}
-      onClick={() => openPanel({ kind: 'ladder', id: 'places' })}
+      onClick={() => openPanel({ kind: 'ladder', id: 'places', from: 'market' })}
       aria-label={`Open place ${placesOpen(k) + 1} for ${price} coins`}
     >
       <span className="market-slot" aria-hidden="true" />
@@ -295,11 +295,13 @@ function Stepper({ label, less, more, onLess, onMore, children }: { label: strin
 
 /** One place's card: an empty place takes a good from the silo or the barn (1 to SHOP.units of it); one with goods on
  *  it can be emptied (they go back); its price is set with − and + (it shows a unit's coins and a shopper's chance),
- *  at once, like a bed's gear. Not now, then Fill (or Empty). */
+ *  at once, like a bed's gear. Not now, then Fill (or Empty). Not now and Fill go back to the computer when the card
+ *  was opened there, and close it when it was opened at the shelf. */
 export function MarketPlacePanel({ place }: { place: number }) {
   useFarm((s) => s.rev)
   const openPanel = useHome((s) => s.openPanel)
   const close = useHome((s) => s.closePanel)
+  const from = useHome((s) => (s.panel?.kind === 'market-place' ? s.panel.from : undefined))
   const shelf = farm.market.shelves[place]
   const stock = SELLABLE.filter((id) => farm.inv[id] > 0)
   const [pick, setPick] = useState<ProduceId | null>(() => (shelf?.good && farm.inv[shelf.good] > 0 ? shelf.good : (stock[0] ?? null)))
@@ -310,7 +312,8 @@ export function MarketPlacePanel({ place }: { place: number }) {
   const good = held ? shelf.good : pick && farm.inv[pick] > 0 ? pick : (stock[0] ?? null)
   const most = good ? Math.min(SHOP.units, farm.inv[good]) : 0
   const n = Math.max(1, Math.min(units, most))
-  const back = () => openPanel({ kind: 'market' })
+  // back to the computer when it was opened there; closed when it was opened at the shelf
+  const back = () => (from ? openPanel({ kind: from }) : close())
   const price = (d: number) => {
     const next = snapPct(pct + d * SHOP.pct.step)
     setPct(next)

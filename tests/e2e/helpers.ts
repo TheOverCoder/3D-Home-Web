@@ -192,17 +192,18 @@ export async function fillFarm(page: Page): Promise<FullFarm> {
 }
 
 /**
- * The supermarket at its fullest (`fillFarm`; 05 and 16 fill it again before each view, since shoppers take what they
- * buy): the shop yours, every place on its shelves open and full of corn, the heaviest good to draw (its kernels are
- * geometry), as the rooms are filled with the heaviest piece. And the farm's clock at noon and stopped, as `ready()`
- * leaves it. (Guarded: a page from before the supermarket and the day has no such hooks.)
+ * The supermarket at its fullest (`fillFarm`; 05 and 16 fill it again before each view): the shop yours, every place on
+ * its shelves open and full of corn, the heaviest good to draw (its kernels are geometry), as the rooms are filled with
+ * the heaviest piece — and quiet: nobody about and no visits, so no shopper walking by opens its front door at random
+ * (its shoppers are measured in the market's own views, standing still). And the farm's clock at noon and stopped, as
+ * `ready()` leaves it. (Guarded: a page from before the supermarket and the day has no such hooks.)
  */
 export async function fillShelves(page: Page) {
   await page.evaluate(() => {
     const f = (window as any).__home.farm
     f.setHour?.(12)
     f.freezeDay?.(true)
-    f.marketFill?.('corn')
+    f.marketFill?.('corn', { quiet: true })
   })
 }
 

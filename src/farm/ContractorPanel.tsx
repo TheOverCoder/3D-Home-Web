@@ -9,7 +9,7 @@ import { CONTRACTOR, HOURS, ITEMS, STORES, STORE_IDS, count, produceById, type I
 import { piecePrice } from './contractor'
 import { iconUrl } from './icons'
 import { LadderRow } from './Ladder'
-import { buyFromContractor, contractorHere, contractorOffers, farm, nextStoreLevel, sellToContractor, useFarm } from './state'
+import { buyFromContractor, contractorHere, farm, nextStoreLevel, sellToContractor, useFarm } from './state'
 
 // The contractor's panel (his window behind the market): today's pieces, each with its price (a sold one greyed out);
 // what he pays for the building materials you have, each with what the silo's or the barn's next level takes of it;
@@ -81,7 +81,8 @@ export function ContractorPanel() {
   const close = useHome((s) => s.closePanel)
   const armed = useArmed()
   const here = contractorHere()
-  const offers = contractorOffers()
+  // as saved: the farm's tick makes each day's offers (read only here, so drawing never rolls the dice)
+  const offers = farm.contractor.offers
   const price = piecePrice(farm.ladders.discount)
   const mats = ITEMS.filter((id) => farm.inv[id] > 0)
   return (

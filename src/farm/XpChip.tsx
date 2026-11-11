@@ -118,9 +118,11 @@ export function XpChip() {
     farmSound('xp')
   }, [seen, shown, level, k])
 
+  // pays the levels the bar shows, never one whose crystals are still in the air: the coins paid are the coins shown
   const claim = (chip: HTMLElement) => {
     const coin = chip.querySelector('.xp-coin')?.getBoundingClientRect()
-    const coins = claimLevel()
+    // the levels the bar shows (crystals still in the air are not paid for yet)
+    const coins = claimLevel(level)
     if (coins > 0 && coin && !reducedMotion()) flyCoins(coin.left + coin.width / 2, coin.top + coin.height / 2, coinsToFly(coins))
   }
 

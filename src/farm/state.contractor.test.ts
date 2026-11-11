@@ -2,13 +2,14 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { CONTRACTOR_SPOT } from '../data/market'
 import { useHome } from '../store'
-import { CONTRACTOR, DAY, LADDERS, XP_FOR, produceById } from './data'
+import { CONTRACTOR, DAY, LADDERS, VISITOR, XP_FOR, produceById } from './data'
 import { offersPerDay, piecePrice, shortMaterials } from './contractor'
 import {
   buyFromContractor,
   buyLadder,
   cameBack,
   capacity,
+  contractorBackIn,
   contractorHere,
   contractorNow,
   contractorOffers,
@@ -24,6 +25,7 @@ import {
   tick,
 } from './state'
 import { xpForSale } from './xp'
+import { contractorComes, laneEnd, scriptSeconds } from './script'
 
 // The contractor behind the market and the farm's day (src/farm/state.ts; the rules in src/farm/contractor.ts and
 // day.ts): he is at his window in the morning, at noon and in the evening, walks off at night and back in the
@@ -199,5 +201,28 @@ describe('the contractor', () => {
     // and the card knows a new day began: new pieces
     expect(r.pieces).toBe(true)
     expect(cameBack(30)!.pieces).toBe(false)
+  })
+
+  it('his window trades only while he is at it: not on his walk back in the morning, not from the first second of the night', () => {
+    farm.coins = 10_000
+    farm.inv.brick = 4
+    const end = laneEnd(1)
+    const walk = scriptSeconds(end.x, end.z, contractorComes(), VISITOR.speed)
+    expect(walk).toBeGreaterThan(5)
+    // the morning has begun, he is still on his way from the lane
+    setHour(24 + 5 + 2 / HOUR)
+    contractorOffers()
+    expect([contractorHere(), contractorNow()?.walking]).toEqual([false, true])
+    expect(contractorBackIn()).toBeCloseTo(walk - 2, 5)
+    expect([sellToContractor('brick'), buyFromContractor(0), ladderOpen('stock'), buyLadder('discount')]).toEqual([0, false, false, false])
+    // at his window: he trades
+    setHour(24 + 5 + (walk + 0.01) / HOUR)
+    expect(contractorNow()).toMatchObject({ x: CONTRACTOR_SPOT.x, z: CONTRACTOR_SPOT.z, walking: false })
+    expect([contractorHere(), contractorBackIn()]).toEqual([true, 0])
+    expect(sellToContractor('brick')).toBe(4 * CONTRACTOR.buys)
+    // the night: off at once, while he waves and walks away; back the next morning after his walk
+    setHour(21)
+    expect([contractorHere(), contractorNow()?.pose]).toEqual([false, 'wave'])
+    expect(contractorBackIn()).toBeCloseTo(8 * HOUR + walk, 5)
   })
 })

@@ -7,8 +7,8 @@ import type { PlaceId } from './layout'
 
 export type CropId = 'lettuce' | 'carrot' | 'strawberry' | 'tomato' | 'corn' | 'pumpkin' | 'wheat' | 'sugarcane'
 export type CakeId = 'lemon_cake' | 'strawberry_cake' | 'carrot_cake' | 'pumpkin_pie'
-/** The building materials: what the silo and the barn are made bigger with (STORES, below). Never sold or asked for;
- *  they come as surprises (ITEM_ODDS) and are kept in the barn. */
+/** The building materials: what the silo and the barn are made bigger with (STORES, below). Never asked for, and sold
+ *  only to the contractor behind the market (CONTRACTOR); they come as surprises (ITEM_ODDS) and are kept in the barn. */
 export type ItemId = 'brick' | 'plank' | 'nail' | 'iron' | 'bolt' | 'log'
 export type ProduceId = CropId | 'lemon' | 'egg' | 'milk' | 'wool' | 'sugar' | 'flour' | 'cloth' | CakeId | ItemId
 
@@ -40,7 +40,8 @@ export interface ProduceDef {
   plural: string
   price: number
   maxAsk: number // the most a single buyer asks for
-  /** a building material: kept in the barn, spent on the silo and the barn, never sold or asked for */
+  /** a building material: kept in the barn, spent on the silo and the barn; buyers never ask for it, only the
+   *  contractor behind the market buys it (CONTRACTOR) */
   material?: true
 }
 
@@ -57,7 +58,7 @@ export const PRODUCE: ProduceDef[] = [
   { id: 'strawberry_cake', name: 'strawberry cake', plural: 'strawberry cakes', price: 48, maxAsk: 1 },
   { id: 'carrot_cake', name: 'carrot cake', plural: 'carrot cakes', price: 40, maxAsk: 1 },
   { id: 'pumpkin_pie', name: 'pumpkin pie', plural: 'pumpkin pies', price: 50, maxAsk: 1 },
-  // the building materials (no price: nobody buys them, nobody asks for them)
+  // the building materials (no price: no buyer asks for them; the contractor pays CONTRACTOR.buys each)
   { id: 'brick', name: 'brick', plural: 'bricks', price: 0, maxAsk: 0, material: true },
   { id: 'plank', name: 'plank', plural: 'planks', price: 0, maxAsk: 0, material: true },
   { id: 'nail', name: 'nail', plural: 'nails', price: 0, maxAsk: 0, material: true },

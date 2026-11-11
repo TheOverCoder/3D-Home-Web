@@ -619,6 +619,18 @@ export function farmSound(kind: FarmSound, pan = 0, near = 1) {
 let outdoors = false
 let birdTimer: number | undefined
 let isNight = () => false
+/** Outdoors but inside a walk-in building (the market): its walls keep out the wind and the birds. */
+let walledIn = false
+let walledTimer: number | undefined
+
+/** Whether you have stepped into or out of a walk-in building; its room tone follows. */
+function checkWalledIn() {
+  const at = playerState.position
+  const now = outdoors && insideWalkIn(at.x, at.z) !== null
+  if (now === walledIn) return
+  walledIn = now
+  setRoomTone(wantedRoom)
+}
 
 /** How the garden's sounds know the farm's time of day (src/farm/DayChip.tsx tells them, so this file never loads the
  *  farm): no birds at night, a few crickets instead. */
@@ -639,8 +651,8 @@ function cricket(e: Engine) {
 /** One bird somewhere in the garden: a songbird's quick phrase, now and then a dove. At night a cricket instead, now
  *  and then; inside a walk-in building (the market) neither. */
 function birdCall() {
-  const at = playerState.position
-  const e = outdoors && !insideWalkIn(at.x, at.z) ? live() : null
+  checkWalledIn()
+  const e = outdoors && !walledIn ? live() : null
   if (e && isNight()) {
     if (Math.random() < 0.6) cricket(e)
   } else if (e) {
@@ -662,12 +674,19 @@ function birdCall() {
   birdTimer = window.setTimeout(birdCall, rnd(900, 3800))
 }
 
-/** In the garden: open-air wind instead of a room's tone, and birds. */
+/** In the garden: open-air wind instead of a room's tone, and birds (but inside a walk-in building, the house's
+ *  quiet indoor tone and no birds: looked at a few times a second while you are outdoors). */
 export function setOutdoors(on: boolean) {
   if (on === outdoors) return
   outdoors = on
   window.clearTimeout(birdTimer)
-  if (on) birdTimer = window.setTimeout(birdCall, 500)
+  window.clearInterval(walledTimer)
+  walledIn = false
+  if (on) {
+    birdTimer = window.setTimeout(birdCall, 500)
+    walledTimer = window.setInterval(checkWalledIn, 400)
+    checkWalledIn()
+  }
   setRoomTone(wantedRoom)
 }
 
@@ -732,7 +751,8 @@ export function setRoomTone(room: RoomId | null) {
   wantedRoom = room
   if (!engine || !ambient) return
   const now = engine.ac.currentTime
-  const tone = outdoors ? { cutoff: 1100, level: 0.05, hum: 0, fan: 0 } : room ? ROOM_TONE[room] : { cutoff: 350, level: 0.04, hum: 0, fan: 0 }
+  // the open air outdoors; a room's own tone; else the house's quiet indoor tone (between its rooms, or in a walk-in)
+  const tone = outdoors && !walledIn ? { cutoff: 1100, level: 0.05, hum: 0, fan: 0 } : room ? ROOM_TONE[room] : { cutoff: 350, level: 0.04, hum: 0, fan: 0 }
   ambient.filter.frequency.setTargetAtTime(tone.cutoff, now, 0.8)
   ambient.gain.gain.setTargetAtTime(tone.level, now, 0.8)
   ambient.hum.gain.setTargetAtTime(tone.hum, now, 1.0)

@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { BROWSE_SPOTS, CONTRACTOR_SPOT, COUNTER, DESK, ISLAND, MANAGER_SPOT, MARKET_WALKIN, PAY_SPOT, SHELF_RUN } from '../data/market'
 import type { Box } from '../data/buildings'
 import { LANE_ENDS, SHOP, VISITOR, WALK_Z } from './data'
-import { contractorComes, contractorLeaves, laneEnd, managerLeaves, payPlace, scriptSeconds, shopperIn, shopperOut, shopperPay, stepScript, walker, type Step } from './script'
+import { CABIN_DOOR } from '../models/market'
+import { contractorComes, contractorLeaves, hallStands, laneEnd, managerLeaves, payPlace, scriptSeconds, shopperIn, shopperOut, shopperPay, stepScript, walker, type Step } from './script'
 
 // The movement scripts (src/farm/script.ts): a walker goes through its steps at its speed, the same however the
 // frames fall; and the ways made from the market's row keep a body clear of what stands in the hall.
@@ -144,5 +145,24 @@ describe('the ways through the market', () => {
     expect(scriptSeconds(end.x, end.z, back, speed)).toBeLessThan(60)
     // outside the market's walls all the way
     expect(bumps(CONTRACTOR_SPOT.x, CONTRACTOR_SPOT.z, away).filter((h) => h.startsWith('wall'))).toEqual([])
+  })
+
+  it("the contractor goes out and in by his cabin's door", () => {
+    const door = (contractorLeaves()[1] as { to: { x: number; z: number } }).to
+    expect(door.x).toBeGreaterThanOrEqual(CABIN_DOOR.x0 + BODY)
+    expect(door.x).toBeLessThanOrEqual(CABIN_DOOR.x1 - BODY)
+    expect(contractorComes()).toContainEqual({ to: door })
+  })
+
+  it('places to stand people on the ways in through the hall: clear of everything, of each other and of those already there', () => {
+    const taken = [...BROWSE_SPOTS, ...[0, 1, 2, 3].map(payPlace)]
+    const stands = hallStands(6, taken)
+    expect(stands.length).toBe(6)
+    for (const p of stands) {
+      expect(bumps(p.x, p.z, [{ to: { x: p.x, z: p.z } }]), JSON.stringify(p)).toEqual([])
+      for (const q of [...taken, ...stands]) if (q !== p) expect(Math.hypot(p.x - q.x, p.z - q.z)).toBeGreaterThanOrEqual(0.6 - 1e-9)
+    }
+    // no more than the ways have room for
+    expect(hallStands(500, taken).length).toBeLessThan(500)
   })
 })

@@ -44,11 +44,10 @@ import { BAY_DEPTH, CABIN_WINDOW, MARKET_SCREEN, MARKET_SIGN, fittingShapes, mar
 import { hidingPiece, walkInDoor, WalkIn } from '../scene/WalkIn'
 import { useHome } from '../store'
 import { LADDERS, MANAGER, SELLABLE, SHOP, count, produceById, type ProduceId } from './data'
-import { untilPhase } from './day'
 import { MAX_PLACES, ladderPrice, managerPct } from './market'
 import { MarketGoods, goodsTriangles } from './marketGoods'
 import { useMarketPeople } from './marketPeople'
-import { contractorHere, farm, ladderOpen, managerNow, marketForSale, placesNow, restockPlaces, shoppersNow, takeTill, tillReady, useFarm } from './state'
+import { contractorBackIn, contractorHere, farm, weighGoods, ladderOpen, managerNow, managerPays, marketForSale, placesNow, restockPlaces, shoppersNow, takeTill, tillReady, useFarm } from './state'
 
 const mmss = (seconds: number) => {
   const t = Math.max(0, Math.ceil(seconds))
@@ -314,7 +313,8 @@ function Bay({ k }: { k: number }) {
     },
     icon: () => {
       const s = farm.market.shelves[k]
-      if (!s.good) return { verb: 'drop', word: 'Stock' }
+      // never set: the press opens its card, to choose its good
+      if (!s.good) return { verb: 'watch', art: 'convenience-store', word: 'Choose' }
       if (farm.inv[s.good] <= 0) return { verb: 'wait', art: 'convenience-store' }
       return { verb: 'drop', word: 'Stock', ...stockOf(baysToStock(k)) }
     },
@@ -350,6 +350,9 @@ function Bay({ k }: { k: number }) {
 
 // ───────────────────────────── the manager, the computer, the till, the contractor ─────────────────────────────
 
+/** Whether the manager pays anything for a good you hold. */
+const managerBuysAny = () => SELLABLE.some((id) => managerPays(id) > 0)
+
 function Counterparts() {
   const openPanel = useHome((s) => s.openPanel)
 
@@ -360,8 +363,9 @@ function Counterparts() {
     aim: [MANAGER_SPOT.x, 1.5, MANAGER_SPOT.z],
     radius: 1.2,
     enabled: () => !farm.market.owned,
-    label: 'Sell to the manager',
-    icon: { verb: 'sell', art: 'office-worker' },
+    // selling only when he pays for something you hold; otherwise just him (his panel: his rate, the shop for sale)
+    label: () => (managerBuysAny() ? 'Sell to the manager' : 'The manager'),
+    icon: () => (managerBuysAny() ? { verb: 'sell', art: 'office-worker' } : { verb: 'watch', art: 'office-worker' }),
     run: () => openPanel({ kind: 'manager' }),
   })
 
@@ -411,8 +415,8 @@ function Counterparts() {
     position: [CONTRACTOR_STAND.x, 1.0, CONTRACTOR_STAND.z],
     aim: [CONTRACTOR_SPOT.x, 1.5, CONTRACTOR_SPOT.z],
     radius: 1.3,
-    label: () => (contractorHere() ? 'Trade with the contractor' : `The contractor is back in the morning · ${mmss(untilPhase(farm.day.t, 'morning'))}`),
-    icon: () => (contractorHere() ? { verb: 'shop', art: 'construction-worker' } : { verb: 'wait', art: 'construction-worker', seconds: Math.ceil(untilPhase(farm.day.t, 'morning')) }),
+    label: () => (contractorHere() ? 'Trade with the contractor' : `The contractor is back in the morning · ${mmss(contractorBackIn())}`),
+    icon: () => (contractorHere() ? { verb: 'shop', art: 'construction-worker' } : { verb: 'wait', art: 'construction-worker', seconds: Math.ceil(contractorBackIn()) }),
     run: () => {
       if (contractorHere()) openPanel({ kind: 'contractor' })
     },
@@ -467,6 +471,8 @@ export function Market() {
       goodsTriangles: () => goodsTriangles(SELLABLE),
       hall: HALL,
     })
+    // the goods weighed for drawing, for marketFill's `mixed` (the budget test stocks the heaviest ten)
+    weighGoods(goodsTriangles)
   }, [goods, fittings])
 
   return (

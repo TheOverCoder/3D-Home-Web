@@ -225,6 +225,20 @@ describe('gainXp, the level and its coins', () => {
     expect(claimLevel()).toBe(levelReward(5))
   })
 
+  it('claiming up to the level the chip shows (XP still flying is not claimed yet): those levels only, the rest later', () => {
+    gainXp('build', 20) // level 4 reached
+    const coins = farm.coins
+    expect(claimLevel(3)).toBe(levelReward(2) + levelReward(3))
+    expect([farm.xp.paid, farm.coins - coins, xpNow().unpaid]).toEqual([3, levelReward(2) + levelReward(3), levelReward(4)])
+    expect(claimLevel(3)).toBe(0)
+    expect(claimLevel(2)).toBe(0)
+    expect(farm.xp.paid).toBe(3)
+    // past the level reached: only up to it; not a number: nothing
+    expect(claimLevel(NaN)).toBe(0)
+    expect(claimLevel(99)).toBe(levelReward(4))
+    expect([farm.xp.paid, xpNow().unpaid]).toEqual([4, 0])
+  })
+
   it('only play raises the events the level-up show listens to: not a reset, a load, a switch, an import or an old farm seeded', () => {
     gainXp('build', 30)
     const events = xpEventCount()

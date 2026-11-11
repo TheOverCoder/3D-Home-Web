@@ -1,10 +1,12 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { BROWSE_SPOTS, MANAGER_SPOT, PAY_SPOT } from '../data/market'
+import { insideWalkIn } from '../data/buildings'
+import { BROWSE_SPOTS, LOT, MANAGER_SPOT, PAY_SPOT } from '../data/market'
 import { useHome } from '../store'
-import { LADDERS, MANAGER, SHOP, XP_FOR, produceById } from './data'
+import { LADDERS, MANAGER, SELLABLE, SHOP, WALK_Z, XP_FOR, produceById } from './data'
 import { MAX_PLACES, ladderPrice, managerPay, managerPct, shopperEvery, shoppersAtOnce, unitPrice } from './market'
 import {
+  MOST_INSIDE,
   MOST_SHOPPERS,
   awayNews,
   buyLadder,
@@ -28,6 +30,7 @@ import {
   takeTill,
   tick,
   tillReady,
+  weighGoods,
 } from './state'
 import { savedNow, seeded, startFrom } from './testSaves'
 import { xpForSale } from './xp'
@@ -318,4 +321,86 @@ describe('shoppers and the till', () => {
     tick(0.1)
     expect(farm.coins).toBe(6)
   })
+})
+
+describe('the market at its fullest, for measuring what it draws (marketFill)', () => {
+  it('every place open and full of one good; or, mixed, ten different goods, the heaviest to draw', () => {
+    marketFill('corn')
+    expect(farm.market.shelves.every((sh) => sh.good === 'corn' && sh.units === SHOP.units)).toBe(true)
+    expect(farm.ladders.places).toBe(LADDERS.places.levels)
+    // weighed by the scene: the heaviest ten, heaviest first
+    weighGoods((ids) => Object.fromEntries(ids.map((id, k) => [id, k])))
+    marketFill('corn', { mixed: true })
+    expect(farm.market.shelves.map((sh) => sh.good)).toEqual([...SELLABLE].reverse().slice(0, 10))
+    expect(farm.market.shelves.every((sh) => sh.units === SHOP.units)).toBe(true)
+  })
+
+  it('with shoppers: as many as the crowd has places for, standing still — as many inside as ever are in play, the rest on the lane in front', () => {
+    marketFill('corn', { shoppers: true })
+    const people = shoppersNow()
+    expect(people.length).toBe(MOST_SHOPPERS)
+    const inside = people.filter((p) => insideWalkIn(p.x, p.z))
+    expect(inside.length).toBe(MOST_INSIDE)
+    // the browse spots first, then the counter
+    BROWSE_SPOTS.forEach((b) => expect(inside).toContainEqual(expect.objectContaining({ x: b.x, z: b.z, pose: 'browse' })))
+    if (MOST_INSIDE > BROWSE_SPOTS.length) expect(inside).toContainEqual(expect.objectContaining({ x: PAY_SPOT.x, z: PAY_SPOT.z, pose: 'pay' }))
+    // the rest walking the lane in front of the market
+    for (const p of people.filter((q) => !insideWalkIn(q.x, q.z))) {
+      expect(p.z).toBe(WALK_Z)
+      expect(p.x).toBeGreaterThanOrEqual(0)
+      expect(p.x).toBeLessThanOrEqual(LOT[0].x1)
+    }
+    // nobody on top of anybody
+    for (const a of people) for (const b of people) if (a !== b) expect(Math.hypot(a.x - b.x, a.z - b.z)).toBeGreaterThanOrEqual(0.6 - 1e-9)
+    const where = people.map((p) => [p.x, p.z, p.heading])
+    // they stay put, and no visit comes past them
+    setRandom(() => 0)
+    for (let t = 0; t < 120; t += 0.5) tick(0.5)
+    expect(shoppersNow().map((p) => [p.x, p.z, p.heading])).toEqual(where)
+    // until the shop is filled without them
+    marketFill('corn')
+    expect(shoppersNow().length).toBe(0)
+  })
+
+  it('quiet: the shelves stocked, nobody about and no visit coming however long, until the shop is filled without it', () => {
+    setRandom(() => 0)
+    marketFill('corn')
+    farm.market.nextIn = 0
+    tick(0.1)
+    expect(shoppersNow().length).toBeGreaterThan(0)
+    marketFill('corn', { quiet: true })
+    expect(shoppersNow().length).toBe(0)
+    for (let t = 0; t < 600; t += 0.5) tick(0.5)
+    expect(shoppersNow().length).toBe(0)
+    expect(farm.market.shelves.every((sh) => sh.good === 'corn' && sh.units === SHOP.units)).toBe(true)
+    expect(farm.market.till).toEqual({ coins: 0, goods: 0 })
+    // filled again without it: shoppers come again
+    marketFill('corn')
+    for (let t = 0; t < 200 && !shoppersNow().length; t += 0.5) tick(0.5)
+    expect(shoppersNow().length).toBeGreaterThan(0)
+  })
+
+  it('no more are ever inside the market at once than MOST_INSIDE: the top of both ladders played for hours, either lane end, buying or not', () => {
+    let most = 0
+    for (const [seed, pct] of [
+      [1, 100],
+      [2, 100],
+      [3, 300],
+      [4, 200],
+    ]) {
+      resetFarm()
+      ownShop()
+      for (let k = 0; k < LADDERS.group.levels; k++) buyLadder('group')
+      for (let k = 0; k < LADDERS.pace.levels; k++) buyLadder('pace')
+      marketFill('lettuce')
+      for (const sh of farm.market.shelves) sh.pct = pct
+      setRandom(seeded(seed))
+      for (let t = 0; t < 3 * 3600; t += 0.25) {
+        tick(0.25)
+        most = Math.max(most, shoppersNow().filter((p) => insideWalkIn(p.x, p.z)).length)
+        for (const sh of farm.market.shelves) sh.units = SHOP.units
+      }
+    }
+    expect(most).toBe(MOST_INSIDE)
+  }, 60_000)
 })

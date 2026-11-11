@@ -74,11 +74,6 @@ export interface WalkIn {
 
 export const WALK_INS: readonly WalkIn[] = [MARKET_WALKIN]
 
-/** The walls' outer footprint of a walk-in (its walls' boxes, on the ground). */
-export function outline(w: WalkIn): Rect[] {
-  return w.walls.map(({ x0, x1, z0, z1 }) => ({ x0, x1, z0, z1 }))
-}
-
 /** The whole walk-in's extent on the ground (walls included). */
 export function bounds(w: WalkIn): Rect {
   return {

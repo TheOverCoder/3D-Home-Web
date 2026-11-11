@@ -23,7 +23,9 @@ The README has the overview; `tests/README.md` what each test guards.
   shadow pass, counted on its own, under 150,000 and 250. A view over it today is a debt listed in 05 (and
   `tests/README.md`) with what it measured as its ceiling: debts only go down, and a paid one leaves the list. Check
   it when adding geometry (`BUDGET_MEASURE=1` prints the table without the checks; `?debug&stress=10` is ten times
-  the farm, reported there).
+  the farm, reported there). The market is measured at its fullest that play can reach in its own views (`marketFill`:
+  shelves full of the heaviest good, its most shoppers inside); elsewhere it stands quiet, so no view depends on when a
+  shopper walks through its door.
 - Speed never costs the game anything. A fix for speed or the budget may not lower quality or what the game holds: not
   plainer models, fewer buyers, animals or pieces, smaller rooms or lower caps. It changes how things are drawn
   (what cannot be seen is not drawn; detail the screen cannot show is not drawn), and the player must not be able to
@@ -117,7 +119,8 @@ The README has the overview; `tests/README.md` what each test guards.
 
 - `farm.inv` is the one record of goods; each good is kept in the silo (what grows: every crop, the lemons) or the barn
   (what the animals and the machines give, and the building materials) by `storeOf`. A new good gets its building
-  there; a building material is a `PRODUCE` row with `material: true` (never sold, never asked for).
+  there; a building material is a `PRODUCE` row with `material: true` (buyers and orders never ask for it; only the
+  contractor buys it).
 - What is collected goes in only while there is room (`store` in `state.ts`), and nothing is lost: what does not fit
   stays where it was (on the animal, in the bed, in the machine) and its offer turns into a status (`full` on the icon);
   goods coming back from an order and surprises always go in, past full. A new source of goods follows the same rule.

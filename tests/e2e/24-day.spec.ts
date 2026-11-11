@@ -138,7 +138,8 @@ test.describe('the day', () => {
       expect(off.farthest).toBeGreaterThan(3)
       expect(off.here).toBe(false)
       expect(off.gone, 'gone a minute into the night').toBe(true)
-      // deep in the night his window is a status: how long until morning; nothing to press
+      // deep in the night his window is a status: how long until he is back at it (the morning, and his walk back in its
+      // first minute); nothing to press
       const hour = 23.5
       await setHour(page, hour)
       await atWindow(game)
@@ -150,7 +151,7 @@ test.describe('the day', () => {
       expect(s.status.icon.verb).toBe('wait')
       const morning = (24 - hour + DAY.phases[0].from) * HOUR
       expect(s.status.icon.seconds).toBeGreaterThanOrEqual(morning - 2)
-      expect(s.status.icon.seconds).toBeLessThanOrEqual(morning + 2)
+      expect(s.status.icon.seconds).toBeLessThanOrEqual(morning + 60)
       expect(s.nearby).not.toBe('farm-contractor')
       // the night turning to morning: he comes back to his window
       const back = await page.evaluate(

@@ -647,8 +647,9 @@ async function standAt(game: Game, p: Pose) {
       const h = (window as any).__home
       const s = h.useHome.getState()
       if (door !== null && s.doors['door-kitchen-bedroom'] !== door) s.toggleDoor('door-kitchen-bedroom')
-      // the market's shelves full again (shoppers take what they buy as the poses go on)
-      h.farm.marketFill?.('corn')
+      // the market's shelves full again, and the shop quiet: nobody about, no visits (a shopper walking by would open its
+      // front door at random)
+      h.farm.marketFill?.('corn', { quiet: true })
       // already standing there (the pose before was here too): no need to go again
       const at = h.playerState.position
       if (Math.hypot(at.x - x, at.z - z) > 0.6) h.teleport(x, 1.4, z)

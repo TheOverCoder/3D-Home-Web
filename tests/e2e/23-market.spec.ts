@@ -309,6 +309,8 @@ test.describe('the supermarket', () => {
     await page.waitForTimeout(600)
     await page.locator('.farm-confirm .farm-buy').click()
     await until(game, () => (window as any).__home.farm.state.market.owned === true)
+    // (the card goes back to his panel, opened from it)
+    await closePanel(page)
     f = await farm(game.page)
     expect(f.coins).toBe(100)
     expect(await xp(page)).toBe(xp0 + XP_FOR.shop)

@@ -37,6 +37,7 @@ const PAID = 0.05
 const OCCLUDERS = "the farm's buildings hiding what is behind them, as the house's walls do (third person over the yard: a fifth to a third of it is behind something)"
 const MERGED = 'the merged pieces left out one by one where they cannot be seen (a merged mesh is drawn whole)'
 const FURNITURE = 'fewer furniture draws: the pieces of one kind in a room drawn together'
+const SHOPPERS = 'the shoppers hiding the goods behind them, as the walls do (from the door, those at the counter and the browse spots stand between you and the shelves)'
 
 interface Debt {
   view: string
@@ -52,6 +53,8 @@ interface Debt {
 const YARD = 'over the farm the walls hide only what is behind the house: every room is seen through its windows, full of furniture, and the whole farm in front with its animals and buyers'
 const ROOMS = 'the ceilings go and the eye is over the walls: every room in view is drawn, full of furniture (the walls hide only what is low and close behind them)'
 const SHADOWS = 'the ceilings go, so the sun reaches every room: every piece of furniture is drawn into its map'
+const SHOP =
+  'the shop at its fullest, seen across its shelves from the door: every place full of corn, the heaviest good to draw (its kernels are geometry: 7.2k triangles a cob, thirty on the shelves), and the six shoppers there are at the most inside'
 
 /** The views over the budget today (with the drawing pass, the hedge and the woods in pieces), and the most each may draw
  *  until it is paid: the most it measured, and 5 % more (the animals and buyers wander in and out of a view: the yard
@@ -63,6 +66,9 @@ const DEBTS: Debt[] = [
   { view: 'yard, over the farm', size: '1055×487', pass: 'camera', triangles: 276_000, why: YARD, pays: [OCCLUDERS] },
   // the pieces and the walls stay merged while decorating (649 → 373 draws): a merged mesh is drawn whole, 3-7 % more triangles
   { view: 'decorating the living room', size: '640×360', pass: 'camera', triangles: 300_000, why: ROOMS, pays: [MERGED] },
+  // the market at its fullest (marketFill with its shoppers): 253.1k and 253.4k, the corn alone 230k (upright 114k)
+  { view: 'market, the shelves', size: '640×360', pass: 'camera', triangles: 266_000, why: SHOP, pays: [SHOPPERS] },
+  { view: 'market, the shelves', size: '1055×487', pass: 'camera', triangles: 266_000, why: SHOP, pays: [SHOPPERS] },
   ...SIZES.flatMap((s): Debt[] => [
     { view: 'third person, the living room', size: s.name, pass: 'shadow', triangles: 315_000, draws: 453, why: SHADOWS, pays: [FURNITURE] },
     { view: 'decorating the living room', size: s.name, pass: 'shadow', triangles: 313_000, draws: 447, why: SHADOWS, pays: [FURNITURE] },
@@ -73,7 +79,7 @@ const DEBTS: Debt[] = [
  *  triangles stay under the budget). Indoors it is paid while no window's sunlight falls on you (215-220 draws: the
  *  walls drawn merged, your body out of the map); where it does, your body is drawn into the map — 37 draws of its 52
  *  meshes, 6.9k triangles — and the same debt holds (the office, 0.8 m from where the walk stands: 252). */
-const OUTDOORS = ['gate, the line', 'yard, over the farm', 'yard, back at the house', 'lane, the market', 'market, the shelves']
+const OUTDOORS = ['gate, the line', 'yard, over the farm', 'yard, back at the house', 'lane, the market', 'lane, the market, its shoppers', 'market, the shelves', 'market, the shelves, mixed']
 const SUN_DEBT: Debt = {
   view: 'first person outdoors, and indoors in a window’s sunlight',
   size: 'every size',
@@ -102,6 +108,11 @@ interface View {
   mode?: 'third' | 'decorate'
   /** the market's sliding doors as the view means them: shut (from the lane) or open (you by them) */
   marketDoor?: 0 | 1
+  /** the market at its fullest for this view (`marketFill`): its shoppers standing in and round the hall (the most
+   *  there are about at once), and each place a different good (the most draws) rather than all corn (the most
+   *  triangles). Without it, every place full of corn and the shop quiet: nobody about and no visits, so no view ever
+   *  depends on when a shopper walks through its front door (which opens for them). */
+  fill?: { shoppers?: boolean; mixed?: boolean; quiet?: boolean }
 }
 
 /** The walk: the four rooms, each doorway with the kitchen's door shut and open, out of the garden door, the gate with
@@ -125,12 +136,16 @@ const WALK: View[] = [
   { name: 'gate, the line', x: 4.2, z: 10.8, yaw: P - 0.5, pitch: -0.05 },
   { name: 'yard, over the farm', x: -12, z: -10.5, yaw: (-3 * P) / 4, pitch: -0.08 },
   { name: 'yard, back at the house', x: 0, z: 12.5, yaw: 0, pitch: 0.02 },
-  // the supermarket across the lane (src/data/market.ts), every place on its shelves full of corn, the heaviest good
-  // (fillShelves): from the lane, 2.4 m out from its doorway and looking at its front, its sliding doors shut (they open
-  // within 2 m; the garden's gate, more than 1.8 m away, stays shut too); and inside by the door, the doors open beside
-  // you, looking across the shelves along the south wall to the island (36° east of south)
+  // the supermarket across the lane (src/data/market.ts), every place on its shelves full: from the lane, 2.4 m out from
+  // its doorway and looking at its front, its sliding doors shut (they open for anyone within 2 m; the garden's gate,
+  // more than 1.8 m away, stays shut too) — and with its shoppers about, who keep the doors open (one stands just inside
+  // them); and inside by the door, the doors open beside you, looking across the shelves along the south wall to the
+  // island (36° east of south), its shoppers about, every place full of corn (the most triangles) and each a different
+  // good (the most draws)
   { name: 'lane, the market', x: (FRONT_DOOR.x0 + FRONT_DOOR.x1) / 2, z: FRONT_DOOR.z0 - 2.4, yaw: P, pitch: -0.03, marketDoor: 0 },
-  { name: 'market, the shelves', x: FRONT_DOOR.x1 - 0.3, z: HALL.z0 + 0.6, yaw: -P + (36 * P) / 180, pitch: -0.12, marketDoor: 1 },
+  { name: 'lane, the market, its shoppers', x: (FRONT_DOOR.x0 + FRONT_DOOR.x1) / 2, z: FRONT_DOOR.z0 - 2.4, yaw: P, pitch: -0.03, marketDoor: 1, fill: { shoppers: true } },
+  { name: 'market, the shelves', x: FRONT_DOOR.x1 - 0.3, z: HALL.z0 + 0.6, yaw: -P + (36 * P) / 180, pitch: -0.12, marketDoor: 1, fill: { shoppers: true } },
+  { name: 'market, the shelves, mixed', x: FRONT_DOOR.x1 - 0.3, z: HALL.z0 + 0.6, yaw: -P + (36 * P) / 180, pitch: -0.12, marketDoor: 1, fill: { shoppers: true, mixed: true } },
   { name: 'third person, the living room', x: -3.5, z: 2.5, yaw: P, mode: 'third', door: false },
   { name: 'decorating the living room', x: -3.5, z: 2.5, yaw: P, mode: 'decorate', door: false },
 ]
@@ -213,12 +228,13 @@ function count([pose, asWhole]: [number[] | null, boolean]) {
 /** Stands the player at a view with the kitchen's door as it says, until the camera is there and the door still. */
 async function standAt(page: Page, v: View) {
   await page.evaluate(
-    ([x, z, yaw, door]) => {
+    ([x, z, yaw, door, fill]) => {
       const h = (window as any).__home
       const s = h.useHome.getState()
       if (door !== null && s.doors['door-kitchen-bedroom'] !== door) s.toggleDoor('door-kitchen-bedroom')
-      // the market's shelves full again (shoppers take what they buy as the walk goes on): every view sees them full
-      h.farm.marketFill?.('corn')
+      // the market full again as the view means it: its shoppers standing for the market's views that ask for them, and
+      // for every other view quiet (nobody about, no visits)
+      h.farm.marketFill?.('corn', fill)
       const at = h.playerState.position
       if (Math.hypot(at.x - x, at.z - z) > 0.6) h.teleport(x, 1.4, z)
       if (typeof h.look === 'function') h.look({ yaw, pitch: 0 })
@@ -227,7 +243,7 @@ async function standAt(page: Page, v: View) {
         h.look.pitch = 0
       }
     },
-    [v.x, v.z, v.yaw, v.door ?? null] as [number, number, number, boolean | null],
+    [v.x, v.z, v.yaw, v.door ?? null, v.fill ?? { quiet: true }] as [number, number, number, boolean | null, NonNullable<View['fill']>],
   )
   await expect
     .poll(

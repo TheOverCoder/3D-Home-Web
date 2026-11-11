@@ -59,6 +59,7 @@ import {
   LADDERS,
   CONTRACTOR,
   DAY,
+  HOURS,
   MANAGER,
   SHOP,
   XP_FOR,
@@ -68,11 +69,27 @@ import {
 import { sanitizeXp, seedXp, levelOf, xpAt, unpaidCoins, xpForSale, type Xp } from './xp'
 import { SHOP_LADDERS, clampLevels, freshMarket, ladderPrice, managerPay, managerPct, placesOpen, rollShopper, sanitizeMarket, shopperEvery, shoppersAtOnce, snapPct, type Market } from './market'
 import { dailyOffers, offersPerDay, piecePrice, sanitizeContractor, shortMaterials, type Contractor } from './contractor'
-import { dayOf, hourOf, isOpen, phaseOf } from './day'
+import { dayOf, hourOf, isOpen, phaseOf, untilPhase } from './day'
 import type { PersonLook } from '../models/person'
 import { CONTRACTOR_LOOK, MANAGER_LOOK, rollLook, sanitizeLook } from '../models/look'
-import { BROWSE_SPOTS, CONTRACTOR_SPOT, MANAGER_SPOT, SCREEN, TILL } from '../data/market'
-import { contractorComes, contractorLeaves, laneEnd, managerLeaves, scriptSeconds, secondsLeft, shopperIn, shopperOut, shopperPay, stepScript, walker, type Pose, type Walker } from './script'
+import { BROWSE_SPOTS, CONTRACTOR_SPOT, LOT, MANAGER_SPOT, SCREEN, TILL } from '../data/market'
+import {
+  contractorComes,
+  contractorLeaves,
+  hallStands,
+  laneEnd,
+  managerLeaves,
+  payPlace,
+  scriptSeconds,
+  secondsLeft,
+  shopperIn,
+  shopperOut,
+  shopperPay,
+  stepScript,
+  walker,
+  type Pose,
+  type Walker,
+} from './script'
 import { isComplete, makeOrder, orderKey, orderPay, cratesFor, type Order, type OrderLine, type OrderSlot } from './orders'
 import { bringsSurprise, canUpgrade, nextLevel, randomItem, roomIn, rollItems, usedIn } from './storage'
 import { GOALS, GOAL_IDS, MOST_STEPS, goalById, goalReward, goalTarget, startStep, type GoalId } from './goals'
@@ -1603,11 +1620,14 @@ export function xpNow() {
   return { level, into: farm.xp.points - xpAt(level), need: xpAt(level + 1) - xpAt(level), points: farm.xp.points, unpaid: unpaidCoins(farm.xp) }
 }
 
-/** Claims the coins of every level reached and not yet paid; returns them (0 when none wait). */
-export function claimLevel(): number {
-  const coins = unpaidCoins(farm.xp)
+/** Claims the coins of every level reached and not yet paid, up to level `upTo` (the level the chip shows: XP still
+ *  flying to it as crystals is not claimed yet); returns them (0 when none wait). */
+export function claimLevel(upTo?: number): number {
+  const reached = levelOf(farm.xp.points)
+  const level = upTo === undefined ? reached : Math.min(reached, Math.floor(upTo))
+  if (!(level > farm.xp.paid)) return 0
+  const coins = unpaidCoins({ points: xpAt(level), paid: farm.xp.paid })
   if (!(coins > 0)) return 0
-  const level = levelOf(farm.xp.points)
   farm.coins = Math.min(Number.MAX_SAFE_INTEGER, farm.coins + coins)
   farm.xp.paid = level
   toast(`Level ${level} · + ${coins} coins`, 'coin')
@@ -1814,12 +1834,47 @@ export function takeTill(): number {
   return coins
 }
 
-/** Tests: the shop yours, every place open and full of `item` (the heaviest good to draw by default). */
-export function marketFill(item: ProduceId = 'corn') {
+/** Weighs goods for drawing (triangles of one unit each): set by the scene (goodsTriangles, registered in
+ *  src/farm/Market.tsx), asked only by marketFill's `mixed`, once; with none set, `mixed` takes the first ten goods
+ *  that sell. */
+let weigher: ((ids: readonly ProduceId[]) => Record<string, number>) | null = null
+let heaviest: ProduceId[] | null = null
+export function weighGoods(fn: (ids: readonly ProduceId[]) => Record<string, number>) {
+  weigher = fn
+  heaviest = null
+}
+/** The goods that sell, the heaviest to draw first (as they are when nothing weighs them). */
+function heaviestGoods(): ProduceId[] {
+  if (heaviest) return heaviest
+  if (!weigher) return SELLABLE
+  const w = weigher(SELLABLE)
+  heaviest = SELLABLE.map((id, k) => ({ id, k, n: w[id] ?? 0 }))
+    .sort((a, b) => b.n - a.n || a.k - b.k)
+    .map((g) => g.id)
+  return heaviest
+}
+
+/** Tests: the shop yours, every place open and full of `item` (the heaviest good to draw by default). `mixed`: each
+ *  place a different good instead, the heaviest ten. `shoppers`: MOST_SHOPPERS people standing still, as many inside
+ *  as ever are in play (MOST_INSIDE: at the browse spots, at the counter and in its line, then on the ways in) and the
+ *  rest on the lane in front, until a marketFill without it (the market at its fullest, for measuring what it draws).
+ *  `quiet`: nobody about and no visit coming, until a marketFill without it (views elsewhere, measured the same every
+ *  time: a shopper in the doorway would let what is inside be seen). */
+export function marketFill(item: ProduceId = 'corn', opts: { shoppers?: boolean; mixed?: boolean; quiet?: boolean } = {}) {
   if (!isSellable(item)) return
   farm.market.owned = true
   farm.ladders.places = LADDERS.places.levels
-  for (const s of farm.market.shelves) Object.assign(s, { good: item, units: SHOP.units })
+  const goods = opts.mixed ? heaviestGoods() : []
+  farm.market.shelves.forEach((s, k) => Object.assign(s, { good: goods[k] ?? item, units: SHOP.units }))
+  if (opts.shoppers) standShoppers()
+  else if (opts.quiet) {
+    // nobody about and nobody coming: a view of the farm is the same however long it is measured
+    shoppers = []
+    standing = true
+  } else if (standing) {
+    shoppers = []
+    standing = false
+  }
   bump()
   save()
 }
@@ -1842,6 +1897,11 @@ type Person = Walker & Walking
  *  src/farm/Visitors.tsx, less the contractor's and the tractor driver's; the manager walks out in one of these). As
  *  many as the top of both ladders has about at once (group 3, pace 4: up to 14), so the shop keeps the ladders' pace. */
 export const MOST_SHOPPERS = 14
+/** The most of them ever inside the market at once (its rooms and its doorway), at the top of both ladders: measured by
+ *  playing the shop for hours (src/farm/state.market.test.ts); the rest of those about are on the lane. */
+export const MOST_INSIDE = 6
+/** The lane in front of the market, where those about but not inside stand when the shop is filled for measuring. */
+const LANE_IN_FRONT = { x0: 0, x1: LOT[0].x1 } as const
 /** Two shoppers never browse at one spot at once: the one coming is there this long after the one before has gone. */
 const SPOT_GAP = 1
 /** Ids of their own (the buyers at the gate count up from 1). */
@@ -1882,6 +1942,32 @@ export function shoppersNow(): readonly Walking[] {
 /** The manager: behind his desk until the shop is yours, then walking out (null once he has gone). */
 export function managerNow(): Walking | null {
   return farm.market.owned ? leaving : standingManager
+}
+
+/** The shoppers stand still where marketFill put them (they neither walk nor come). */
+let standing = false
+/** MOST_SHOPPERS people standing still, the fullest the shop ever is in play: MOST_INSIDE inside — one at each browse
+ *  spot, browsing; one paying at the counter and the line behind; then on the ways in, facing the way they go — and the
+ *  rest walking the lane in front of it. */
+function standShoppers() {
+  const at: { x: number; z: number; heading: number; pose: Pose; spot: number }[] = []
+  BROWSE_SPOTS.forEach((b, spot) => at.push({ ...b, pose: 'browse', spot }))
+  for (let k = 0; k < BROWSE_SPOTS.length; k++) at.push({ ...payPlace(k), pose: k ? 'stand' : 'pay', spot: k })
+  for (const p of hallStands(MOST_INSIDE - at.length, at)) at.push({ ...p, pose: 'stand', spot: 0 })
+  const inside = at.slice(0, MOST_INSIDE)
+  const lane = MOST_SHOPPERS - inside.length
+  const { x0, x1 } = LANE_IN_FRONT
+  for (let k = 0; k < lane; k++) inside.push({ x: x0 + ((x1 - x0) * (k + 0.5)) / lane, z: WALK_Z, heading: k % 2 ? -Math.PI / 2 : Math.PI / 2, pose: 'stand', spot: 0 })
+  shoppers = inside.map((p) => ({
+    ...walker(p.x, p.z, p.heading, []),
+    pose: p.pose,
+    id: -(100 + ++shopperSeq),
+    look: rollLook(random),
+    phase: 'in' as const,
+    spot: p.spot,
+    side: 1 as const,
+  }))
+  standing = true
 }
 
 /** Whether a shopper setting off now would find browse spot `spot` free when they get there (from the nearer lane
@@ -1927,7 +2013,7 @@ const setOff = { at: 0, waited: 0, walking: true, pose: 'stand' } as const
 /** The shoppers walk on: one who has browsed takes what they want (and goes to pay), or nothing (and goes); one who has
  *  paid goes; one at the lane's end is gone. */
 function moveShoppers(dt: number) {
-  for (const s of shoppers.slice()) {
+  for (const s of standing ? [] : shoppers.slice()) {
     if (!stepScript(s, dt, VISITOR.speed)) continue
     if (s.phase === 'in') {
       const bought = shopperBuys() > 0
@@ -1943,6 +2029,7 @@ function moveShoppers(dt: number) {
  *  no morning. */
 function forgetWalkers() {
   shoppers = []
+  standing = false
   held = 0
   leaving = null
   contractorWalk = null
@@ -1954,7 +2041,8 @@ function forgetWalkers() {
 function runShop(dt: number) {
   moveShoppers(dt)
   const m = farm.market
-  if (!m.owned) return
+  // filled for measuring (marketFill): those standing stay as they are, and no one comes
+  if (!m.owned || standing) return
   const late = Math.max(0, dt - m.nextIn)
   m.nextIn = Math.max(0, m.nextIn - dt)
   if (m.nextIn > 0 || shelvesEmpty()) {
@@ -1991,9 +2079,24 @@ function shopAway(dt: number) {
 
 // ───────────────────────────── the contractor ─────────────────────────────
 
-/** He is at his window in his hours (HOURS in ./data: the morning, noon and the evening). */
+/** He is at his window in his hours (HOURS in ./data: the morning, noon and the evening), once he has walked back to it
+ *  from the lane in the morning (the window does not trade while it is empty); at night he is off. */
 export function contractorHere(): boolean {
-  return isOpen('contractor', farm.day.t)
+  const t = farm.day.t
+  if (!isOpen('contractor', t)) return false
+  const since = intoPhase(t)
+  const turned = !isOpen('contractor', t - since - 1)
+  return !(turned && since < COMES_SECONDS)
+}
+/** How long his walk back to the window takes (from the lane's east end). */
+const COMES_SECONDS = scriptSeconds(LANE_ENDS[1], WALK_Z, contractorComes(), VISITOR.speed)
+/** The seconds until he is at his window again (0 while he is): for the window's wait. */
+export function contractorBackIn(): number {
+  if (contractorHere()) return 0
+  const t = farm.day.t
+  const first = HOURS.contractor[0]
+  // walking back in now, or away until his hours begin and then the walk
+  return isOpen('contractor', t) ? COMES_SECONDS - intoPhase(t) : untilPhase(t, first) + COMES_SECONDS
 }
 
 /** Today's offers, made the first time the day is seen (the farm's dice): the pieces the silo or the barn is shortest
