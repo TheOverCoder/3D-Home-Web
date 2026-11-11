@@ -53,6 +53,18 @@ The README has the overview; `tests/README.md` what each test guards.
   its wander numbers (`wander.ts`), body and pose. A new machine: its row, its model, and its moving parts driven by
   the work level `useMachine(id)` gives back.
 
+## The silo and the barn (src/farm/storage.ts, STORES in src/farm/data.ts)
+
+- `farm.inv` is the one record of goods; each good is kept in the silo (what grows: every crop, the lemons) or the barn
+  (what the animals and the machines give, and the building materials) by `storeOf`. A new good gets its building
+  there; a building material is a `PRODUCE` row with `material: true` (never sold, never asked for).
+- What is collected goes in only while there is room (`store` in `state.ts`), and nothing is lost: what does not fit
+  stays where it was (on the animal, in the bed, in the machine) and its offer turns into a status (`full` on the icon);
+  goods coming back from an order and surprises always go in, past full. A new source of goods follows the same rule.
+- Surprises (a building material) have their odds in `ITEM_ODDS` and roll on the farm's own dice (`setRandom` in
+  tests); orders are rows of the board (`farm.orders`), the tractor's trip a timeline (`tractorRoute.ts`), both in the
+  save like the line at the gate.
+
 ## Interface (src/styles.css tokens, src/ui/art.ts, src/ui/glyphs.ts)
 
 - Use the tokens and classes, not new colours or fonts: `.paper` sheets, `.btn` (`.soft`, `.leaf`, `.berry`,
