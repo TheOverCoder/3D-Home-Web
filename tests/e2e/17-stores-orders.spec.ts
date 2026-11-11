@@ -223,9 +223,11 @@ test.describe('the silo, the barn, surprises and orders', () => {
     // the trip done, it stands in its yard again
     await page.evaluate(() => (window as any).__home.farm.tick(120))
     await until(game, () => (window as any).__home.farm.state.dispatch.trip === -1)
-    await page.waitForTimeout(600)
+    // (drawn there on the next frame: on the software renderer one can take more than a second)
+    await page.waitForFunction((x) => Math.abs((window as any).__home.scene.getObjectByName('tractor-body').instanceMatrix.array[12] - x) < 0.05, home.x, { timeout: 30_000, polling: 100 })
     const back = await tractorX()
     expect(back.x).toBeCloseTo(home.x, 1)
+    expect(back.drawn).toBe(1)
   })
 
   test('the tractor is solid: walking into it in its yard, you stop at it', async ({ game }) => {
