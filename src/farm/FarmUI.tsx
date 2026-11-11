@@ -10,6 +10,7 @@ import { EditButton, EditPanel } from './EditPanel'
 import { DecoratePanel } from '../home/DecoratePanel'
 import { BuyPiece, FurnitureShop } from '../home/FurnitureShop'
 import { iconUrl } from './icons'
+import { OfficeUpgradePanel, OrdersPanel } from './OrdersPanel'
 import { StorePanel, StoreUpgradePanel } from './StorePanel'
 import { ItemPic } from '../ui/ItemPic'
 import { ARM_MS, Coins, Purse, Shell } from '../ui/Sheet'
@@ -505,6 +506,8 @@ export function FarmUI() {
       {panel?.kind === 'shop' && <ShopPanel />}
       {panel?.kind === 'store' && <StorePanel store={panel.store} />}
       {panel?.kind === 'store-upgrade' && <StoreUpgradePanel store={panel.store} />}
+      {panel?.kind === 'orders' && <OrdersPanel />}
+      {panel?.kind === 'office-upgrade' && <OfficeUpgradePanel id={panel.id} />}
     </>
   )
 }

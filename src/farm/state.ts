@@ -16,17 +16,22 @@ import {
   MACHINES,
   MACHINE_IDS,
   NAMES,
+  OFFICE_SCREEN,
+  OFFICE_UPGRADES,
   PACE_LEVELS,
   PRODUCE,
   PRODUCERS,
   PRODUCER_IDS,
   QUEUE_LEVELS,
   SELLABLE,
+  SLOT_LEVELS,
   START_COINS,
   STORES,
   STORE_IDS,
+  TRACTOR,
   UPGRADES,
   VISITOR,
+  WAIT_LEVELS,
   WALK_Z,
   WATER_SHARE,
   arrivalEvery,
@@ -34,6 +39,8 @@ import {
   cropById,
   isItem,
   mostAnimals,
+  orderSlots,
+  orderWait,
   produceById,
   queuePlaces,
   queueSpot,
@@ -43,14 +50,17 @@ import {
   type Expansion,
   type ItemId,
   type MachineId,
+  type OfficeUpgradeId,
   type ProduceId,
   type ProducerId,
   type Recipe,
   type StoreId,
   type UpgradeId,
 } from './data'
+import { isComplete, makeOrder, orderKey, orderPay, cratesFor, type Order, type OrderLine, type OrderSlot } from './orders'
 import { bringsSurprise, canUpgrade, nextLevel, randomItem, roomIn, rollItems, usedIn } from './storage'
-import { PARCELS, PLACES, canBuyParcel, canPlace, defaultLayout, sanitizeLayout, snap, type FarmLayout, type Fit, type ParcelId, type PlaceId, type Placement } from './layout'
+import { tripSeconds } from './tractorRoute'
+import { PARCELS, PLACES, boundary, canBuyParcel, canPlace, defaultLayout, sanitizeLayout, snap, type FarmLayout, type Fit, type ParcelId, type PlaceId, type Placement } from './layout'
 import { PIECES, type PieceType } from '../home/catalogue'
 import { canPlacePiece, defaultHome, findFreeSpot, sanitizeHome, type HomeLayout, type HomePiece } from '../home/layout'
 
@@ -143,6 +153,12 @@ export interface FarmData {
   /** where the house's furniture stands, and what is in storage (src/home/layout.ts) */
   home: HomeLayout
   nextVisitorIn: number // counts down to the next buyer (it holds at zero while the line is full)
+  /** the order board on the office's computer: each place an order, or the seconds until a new one comes */
+  orders: OrderSlot[]
+  /** the office's upgrades: places on the board beyond the first three, and minutes off the wait for a new order */
+  office: { slots: number; wait: number }
+  /** the crates of the orders sent: on the pallet, on the tractor, and its trip (seconds into it; -1 at home) */
+  dispatch: { waiting: number; aboard: number; trip: number }
   clock: number // seconds of farm time since the page opened
 }
 
@@ -178,6 +194,9 @@ function freshProducer(id: ProducerId): ProducerState {
 }
 const freshMachine = (): MachineState => ({ recipe: null, count: 0, progress: 0, ready: 0 })
 
+/** A board of empty places: a new order comes in each straight away. */
+const emptyBoard = (n: number): OrderSlot[] => Array.from({ length: n }, () => ({ wait: 0 }))
+
 function fresh(): FarmData {
   return {
     coins: START_COINS,
@@ -199,6 +218,9 @@ function fresh(): FarmData {
     layout: defaultLayout(),
     home: defaultHome(),
     nextVisitorIn: VISITOR.firstAfter,
+    orders: emptyBoard(orderSlots(0)),
+    office: { slots: 0, wait: 0 },
+    dispatch: { waiting: 0, aboard: 0, trip: -1 },
     clock: 0,
   }
 }
@@ -217,7 +239,7 @@ const clock = (v: unknown, every: number) => {
   return t > 0 && t < every ? t : 0
 }
 const isProduce = (v: unknown): v is ProduceId => produceIds.includes(v as ProduceId)
-/** A good buyers ask for (not a building material). */
+/** A good buyers and orders ask for (not a building material). */
 const isSellable = (v: unknown): v is ProduceId => SELLABLE.includes(v as ProduceId)
 const isCrop = (v: unknown): v is CropId => CROPS.some((c) => c.id === v)
 /** The water a crop's seeds go in with, and a watering gives: this share of its growing time. */
@@ -315,6 +337,40 @@ function savedBuyer(raw: unknown): SavedBuyer | null {
 
 /** The most a building's level can be read as (there is no end to them in play; a number past this is no level). */
 const MOST_LEVEL = 1e6
+/** The most crates that wait on the pallet. */
+const MOST_CRATES = 999
+
+/** An order as saved, made safe: the goods it asks for (each once, none a building material), how many of each have
+ *  been put in (never more than it wants), what it pays; an order of nothing is no order (a new one comes). */
+function savedOrder(raw: unknown): Order | null {
+  const lines: unknown[] = isObject(raw) && Array.isArray(raw.lines) ? raw.lines : []
+  const out: OrderLine[] = []
+  for (const l of lines.slice(0, 9)) {
+    if (!isObject(l) || !isSellable(l.good) || out.some((o) => o.good === l.good)) continue
+    const want = int(l.want, 1, 1, 99)
+    out.push({ good: l.good, want, have: int(l.have, 0, 0, want) })
+  }
+  if (!out.length) return null
+  return { id: orderKey(), lines: out, coins: int(field(raw, 'coins'), orderPay(out), 1, 99_999), surprise: field(raw, 'surprise') === true }
+}
+
+/** A place on the order board as saved: its order, or the seconds until a new one comes (never longer than the wait). */
+function savedPlace(raw: unknown, wait: number): OrderSlot {
+  const order = savedOrder(raw)
+  if (order) return { order }
+  return { wait: span(field(raw, 'wait'), wait) }
+}
+
+/** Where the tractor's track crosses the farm's west edge (the gate in the hedge): the garden's own, or the west
+ *  meadow's once it is bought. */
+export function gateX(layout: FarmLayout = farm.layout): number {
+  const key = layout.land.join(',')
+  if (gateCache?.key === key) return gateCache.x
+  const edge = boundary(layout).find((e) => e.axis === 'z' && e.out === 'west' && e.from <= TRACTOR.z && e.to >= TRACTOR.z && e.at < 0)
+  gateCache = { key, x: edge?.at ?? -14 }
+  return gateCache.x
+}
+let gateCache: { key: string; x: number } | null = null
 
 /** The saved farm, made safe (a hand-edited or old save can never break the game), plus the time it was saved. */
 function load(text: string | null = readRaw(KEY)): { data: FarmData; savedAt: number | null; queue: SavedBuyer[] } {
@@ -365,6 +421,17 @@ function load(text: string | null = readRaw(KEY)): { data: FarmData; savedAt: nu
     data.layout = sanitizeLayout(raw.layout)
     // a farm from before the house could be furnished keeps today's furniture where it always stood
     data.home = sanitizeHome(raw.home)
+    // the order board, as many places as the office has, each an order or a wait (a farm from before the office: a
+    // new order in each place straight away); the crates sent, and the tractor's trip
+    data.office = { slots: int(field(raw.office, 'slots'), 0, 0, SLOT_LEVELS), wait: int(field(raw.office, 'wait'), 0, 0, WAIT_LEVELS) }
+    const board: unknown[] = Array.isArray(raw.orders) ? raw.orders : []
+    data.orders = Array.from({ length: orderSlots(data.office.slots) }, (_, k) => savedPlace(board[k], orderWait(data.office.wait)))
+    const aboard = int(field(raw.dispatch, 'aboard'), 0, 0, TRACTOR.load)
+    data.dispatch = {
+      waiting: int(field(raw.dispatch, 'waiting'), 0, 0, MOST_CRATES),
+      aboard,
+      trip: aboard ? span(field(raw.dispatch, 'trip'), tripSeconds(aboard, gateX(data.layout))) : -1,
+    }
     const queue = (Array.isArray(raw.queue) ? raw.queue : []).map(savedBuyer).filter((b): b is SavedBuyer => !!b)
     return { data, savedAt: num(raw.time, 0) || null, queue: queue.slice(0, queuePlaces(data.queueLevel)) }
   } catch {
@@ -392,10 +459,12 @@ function saveNow() {
   window.clearTimeout(saveTimer)
   saveTimer = undefined
   try {
-    const { visitors, clock: _c, ...rest } = farm
+    const { visitors, clock: _c, orders: board, ...rest } = farm
     // the line at the gate is kept too: buyers wait for you while you are away
     const queue: SavedBuyer[] = visitors.filter((v) => v.phase !== 'leaving').map(({ name, look, want, qty, offer, gift }) => ({ name, look, want, qty, offer, gift }))
-    localStorage.setItem(KEY, JSON.stringify({ ...rest, queue, time: Date.now() }))
+    // the orders without their keys (each gets a new one as the farm loads)
+    const orders = board.map((slot) => ('order' in slot ? { lines: slot.order.lines, coins: slot.order.coins, surprise: slot.order.surprise } : slot))
+    localStorage.setItem(KEY, JSON.stringify({ ...rest, orders, queue, time: Date.now() }))
   } catch {
     /* storage full or blocked: the farm still works for this visit */
   }
@@ -417,7 +486,7 @@ const remember = (id: ProduceId) => {
   if (!farm.made.includes(id) && !isItem(id)) farm.made.push(id)
 }
 
-/** The farm's dice for its surprises: Math.random, unless a test sets its own. */
+/** The farm's dice for its surprises (and new orders): Math.random, unless a test sets its own. */
 let random: () => number = () => Math.random()
 /** For the tests: the dice from a function of their own (null: Math.random again). */
 export function setRandom(f: (() => number) | null) {
@@ -460,7 +529,8 @@ function store(id: ProduceId, n: number) {
   return k
 }
 
-/** Puts in a surprise: always taken in, even past full (refused, it would be lost). */
+/** Puts back goods that were the farm's already (an order declined) or a surprise: always taken in, even past full
+ *  (refused, they would be lost). */
 function putBack(id: ProduceId, n: number) {
   farm.inv[id] += n
 }
@@ -973,7 +1043,7 @@ const HAIRS = ['#2b2017', '#5a3a22', '#a8743f', '#d9b98a', '#1c1c1c', '#7b4b2a',
 
 let visitorSeq = 0
 
-/** What the farm grows and makes (and what every farm has: lemons, eggs, milk): what buyers ask for. */
+/** What the farm grows and makes (and what every farm has: lemons, eggs, milk): what buyers and orders ask for. */
 const knownGoods = () => [...new Set<ProduceId>([...farm.planted, ...farm.made, 'lemon', 'egg', 'milk'])].filter(isSellable)
 
 /** What a buyer asks for: mostly something you have, sometimes something your farm makes but has run out of. */
@@ -1152,9 +1222,143 @@ export function declineOffer(id: number) {
   return true
 }
 
+// ───────────────────────────── orders: the office and the tractor ─────────────────────────────
+
+/** How many orders the board holds at a time, and how long a new one takes after one is declined. */
+export const orderPlaces = () => orderSlots(farm.office.slots)
+export const orderWaitSeconds = () => orderWait(farm.office.wait)
+
+/** The order in a place on the board (null while a new one is on its way). */
+export const orderAt = (k: number): Order | null => {
+  const slot = farm.orders[k]
+  return slot && 'order' in slot ? slot.order : null
+}
+
+/** How many of each good of an order could go in now, from the silo and the barn. */
+export const canFill = (k: number) => {
+  const o = orderAt(k)
+  return !!o && o.lines.some((l) => l.have < l.want && farm.inv[l.good] > 0)
+}
+
+/** Puts into an order what the silo and the barn have of what it asks for (all of it, or what there is: the rest can
+ *  follow later); they leave the buildings and wait in the order. How many went in. */
+export function fillOrder(k: number) {
+  const o = orderAt(k)
+  if (!o) return 0
+  let n = 0
+  for (const l of o.lines) {
+    const put = Math.min(l.want - l.have, farm.inv[l.good])
+    if (put <= 0) continue
+    farm.inv[l.good] -= put
+    l.have += put
+    n += put
+  }
+  if (!n) return 0
+  bump()
+  save()
+  return n
+}
+
+/** Sends a full order: it is paid at once (and brings its surprise, if it has one), its crates go to the pallet for
+ *  the tractor, and a new order takes its place straight away. */
+export function sendOrder(k: number) {
+  const o = orderAt(k)
+  if (!o || !isComplete(o)) return false
+  farm.coins += o.coins
+  farm.stats.earned += o.coins
+  farm.stats.sold += o.lines.reduce((n, l) => n + l.want, 0)
+  const items = o.surprise ? [randomItem(random)] : []
+  gainItems(items, OFFICE_SCREEN)
+  farm.dispatch.waiting = Math.min(MOST_CRATES, farm.dispatch.waiting + cratesFor(o))
+  farm.orders[k] = { order: makeOrder(knownGoods(), random) }
+  toast(`Order sent · + ${o.coins} coins${surpriseWords(items)}`, items[0] ?? 'coin')
+  farmSound('coins')
+  bump()
+  save()
+  return true
+}
+
+/** Declines an order (or cancels one half filled): what was put into it goes back to the silo and the barn (even past
+ *  full: it was the farm's already), and a new order comes after the wait. */
+export function declineOrder(k: number) {
+  const o = orderAt(k)
+  if (!o) return false
+  for (const l of o.lines) if (l.have) putBack(l.good, l.have)
+  farm.orders[k] = { wait: orderWaitSeconds() }
+  const back = o.lines.reduce((n, l) => n + l.have, 0)
+  toast(back ? `Order declined · ${back} back in store` : 'Order declined', back ? o.lines.find((l) => l.have)!.good : undefined)
+  farmSound('decline')
+  bump()
+  save()
+  return true
+}
+
+/** Steps bought of an office upgrade, its next price, and whether it is all bought. */
+export const officeLevel = (id: OfficeUpgradeId) => farm.office[id]
+export const officePrice = (id: OfficeUpgradeId) => OFFICE_UPGRADES[id].price + OFFICE_UPGRADES[id].priceStep * farm.office[id]
+export const officeMaxed = (id: OfficeUpgradeId) => farm.office[id] >= OFFICE_UPGRADES[id].levels
+
+/** Buys the next step of an office upgrade (its card asked first): one more place on the board (a new order comes in
+ *  it straight away), or a minute off the wait (and off every wait already running). */
+export function buyOffice(id: OfficeUpgradeId) {
+  const price = officePrice(id)
+  if (officeMaxed(id) || farm.coins < price) return false
+  farm.coins -= price
+  farm.office = { ...farm.office, [id]: farm.office[id] + 1 }
+  if (id === 'slots') {
+    farm.orders.push({ order: makeOrder(knownGoods(), random) })
+    toast(`The board holds ${orderPlaces()} orders`)
+  } else {
+    const wait = orderWaitSeconds()
+    farm.orders = farm.orders.map((slot) => ('wait' in slot ? { wait: Math.min(slot.wait, wait) } : slot))
+    toast(`A new order every ${mmss(wait)}`)
+  }
+  bump()
+  save()
+  return true
+}
+
+/** Orders on their way come in once their wait is over. */
+function growOrders(dt: number) {
+  farm.orders.forEach((slot, k) => {
+    if (!('wait' in slot)) return
+    slot.wait = Math.max(0, slot.wait - dt)
+    if (slot.wait <= 0) farm.orders[k] = { order: makeOrder(knownGoods(), random) }
+  })
+}
+
+/** The tractor: once at home with crates on the pallet it takes up to four on a trip; the trip runs its course. */
+function growDispatch(dt: number) {
+  const d = farm.dispatch
+  let left = dt
+  for (let guard = 0; guard < 64 && left > 0; guard++) {
+    if (d.trip < 0) {
+      if (!d.waiting) return
+      d.aboard = Math.min(TRACTOR.load, d.waiting)
+      d.waiting -= d.aboard
+      d.trip = 0
+    }
+    const total = tripSeconds(d.aboard, gateX())
+    const step = Math.min(left, total - d.trip)
+    d.trip += step
+    left -= step
+    if (d.trip >= total) {
+      d.trip = -1
+      d.aboard = 0
+    }
+  }
+}
+
 // ───────────────────────────── time ─────────────────────────────
 
-const stageKey = () => [...farm.beds.map((_, i) => bedStage(i)), ...PRODUCER_IDS.map((id) => farm.producers[id].stock.join(',')), ...MACHINE_IDS.map(machineStage)].join('|')
+const stageKey = () =>
+  [
+    ...farm.beds.map((_, i) => bedStage(i)),
+    ...PRODUCER_IDS.map((id) => farm.producers[id].stock.join(',')),
+    ...MACHINE_IDS.map(machineStage),
+    farm.orders.map((slot) => ('order' in slot ? 'o' : 'w')).join(''),
+    farm.dispatch.trip < 0 ? `home ${farm.dispatch.waiting}` : `trip ${farm.dispatch.aboard}`,
+  ].join('|')
 
 function grow(dt: number) {
   for (const b of farm.beds) {
@@ -1168,6 +1372,8 @@ function grow(dt: number) {
   }
   for (const id of PRODUCER_IDS) growProducer(id, dt)
   for (const id of MACHINE_IDS) growMachine(id, dt)
+  growOrders(dt)
+  growDispatch(dt)
 }
 
 function walk(v: Visitor, dt: number) {
@@ -1251,7 +1457,12 @@ let gifted = false
 function neverStuck() {
   const broke = farm.coins < Math.min(...CROPS.map((c) => c.seedCost))
   // a machine at work or with something to take out is something on its way
-  const nothing = farm.beds.every((b) => !b.crop) && SELLABLE.every((id) => farm.inv[id] === 0) && MACHINE_IDS.every((id) => machineStage(id) === 'idle')
+  // (goods put into an order are the farm's too: they come back if it is declined)
+  const nothing =
+    farm.beds.every((b) => !b.crop) &&
+    SELLABLE.every((id) => farm.inv[id] === 0) &&
+    MACHINE_IDS.every((id) => machineStage(id) === 'idle') &&
+    farm.orders.every((slot) => !('order' in slot) || slot.order.lines.every((l) => !l.have))
   if (broke && nothing && !gifted) {
     gifted = true
     farm.coins += 6

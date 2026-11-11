@@ -986,8 +986,22 @@ button.farm-chip-item:focus-visible { outline: 3px solid var(--sun); outline-off
 .farm-need { display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .farm-need .item-pic .art { width: 44px; height: 44px; }
 
+/* the order board: each order's goods (how many it asks, how many are in), its pay and surprise, Put in or Send, × */
+.farm-orders { margin-bottom: 12px; }
+.farm-order { display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: var(--r-card); background: var(--paper-2); border: 2px solid transparent; }
+.farm-order.ok { border-color: #8fd18a; background: #f1fae9; }
+.farm-order.waiting { flex-direction: row; align-items: center; gap: 8px; min-height: 52px; color: var(--ink-2); font-size: 15px; }
+.farm-order.waiting svg { width: 20px; height: 20px; }
+.farm-order-goods { display: flex; flex-wrap: wrap; gap: 8px 12px; }
+.farm-order-line { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.farm-order-line .item-pic .art { width: 44px; height: 44px; }
+.farm-order-line .tag { padding: 0 7px; font-size: 13px; }
+.farm-order-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.farm-order-pay { display: inline-flex; align-items: center; gap: 8px; font-size: 18px; color: var(--ink); }
 .farm-surprise { width: 30px; height: 30px; filter: drop-shadow(0 2px 2px rgba(60, 35, 10, 0.2)); }
 .farm-surprise.small { width: 24px; height: 24px; }
+.farm-order .btn.leaf { min-width: 96px; }
+.farm-office { margin-top: 4px; }
 
 /* the shop: a picture, the name and one line, its price on the button */
 .farm-shop { display: grid; gap: 8px; }

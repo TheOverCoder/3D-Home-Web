@@ -9,7 +9,8 @@ import { cropParts } from './crops'
 import { GROWERS, putEgg, putLemon } from './plants'
 import { coopModel, lemonSpots, lemonTreeModel, ovenModel, structurePieces, troughModel, type Structure } from './structures'
 import { GOODS, type GoodsId } from './goods'
-import { barnModel, siloModel } from './buildings'
+import { barnModel, crateModel, deskModel, farmGateModel, officeModel, palletModel, siloModel } from './buildings'
+import { DRIVER, putTractor, seatDriver, tractorParts } from './tractor'
 
 // Every model, in every variant and in the poses it takes in the game, run through the kit's checks (see
 // src/lib/sculpt/check.ts): every piece holds on to the rest, and the model stands on its ground. The gallery shows
@@ -201,9 +202,44 @@ export const MODEL_CHECKS: ModelCheck[] = [
   },
   {
     id: 'stores',
-    name: 'The silo and the barn',
+    name: 'The silo, the barn, the order office and its desk, a crate, the pallet, the farm gate',
     run() {
-      return [checkPieces('silo', ...structure(siloModel())), checkPieces('barn', ...structure(barnModel()))].flat()
+      return [
+        checkPieces('silo', ...structure(siloModel())),
+        checkPieces('barn', ...structure(barnModel())),
+        checkPieces('order office', ...structure(officeModel())),
+        checkPieces('desk and computer', ...structure(deskModel())),
+        checkPieces('crate', ...structure(crateModel())),
+        checkPieces('pallet', ...structure(palletModel())),
+        checkPieces('farm gate', ...structure(farmGateModel())),
+      ].flat()
+    },
+  },
+  {
+    id: 'tractor',
+    name: 'The tractor, its driver and its crates',
+    run() {
+      const parts = tractorParts(4)
+      const people = personParts(1)
+      const open = [...openParts(parts), ...openParts(people)]
+      return [0, 2, 4].flatMap((aboard) =>
+        [0, 0.7].flatMap((roll) => {
+          const driver = new PersonRig(DRIVER)
+          seatDriver(driver, roll ? 0.6 : 0)
+          // the tractor with its crates, and the driver on its seat, as one model
+          const pieces = [
+            ...posedPieces(parts, (pp) => {
+              pp.begin()
+              putTractor(pp, 0, 0, 0, roll, aboard)
+            }),
+            ...posedPieces(people, (pp) => {
+              pp.begin()
+              driver.write(pp)
+            }),
+          ]
+          return checkPieces(`tractor with ${aboard} crates, wheels turned ${roll} m`, pieces, { ground: 0, open })
+        }),
+      )
     },
   },
   {

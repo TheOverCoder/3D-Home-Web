@@ -40,7 +40,13 @@ import {
   capacity,
   room,
   storeLevel,
+  fillOrder,
+  sendOrder,
+  declineOrder,
+  buyOffice,
+  orderAt,
   setRandom,
+  gateX,
   loadMachine,
   machineRecipe,
   machineStage,
@@ -74,6 +80,7 @@ import { Places, WOOD, WOOD_DARK } from './Places'
 import { Sheep, flock } from './Sheep'
 import { Visitors } from './Visitors'
 import { Workshop } from './Workshop'
+import { OrderYard } from './OrderYard'
 
 const mmss = (seconds: number) => {
   const t = Math.max(0, Math.ceil(seconds))
@@ -643,13 +650,19 @@ function FarmClock() {
       places: PLACES,
       parcels: PARCELS,
       edit: { useEdit, dragTo, drop, turn, camera: editCamera },
-      // the silo and the barn, and the surprises' dice (src/farm/data.ts: STORES, ITEM_ODDS)
+      // the silo and the barn, the order board and the tractor (src/farm/data.ts: STORES, ORDERS, TRACTOR)
       upgradeStore,
       used,
       capacity,
       room,
       storeLevel,
+      fillOrder,
+      sendOrder,
+      declineOrder,
+      buyOffice,
+      orderAt,
       setRandom,
+      gateX,
     })
   }, [])
   useFrame(() => {
@@ -710,6 +723,7 @@ export function Garden() {
       <Sheep />
       <Workshop />
       <Visitors />
+      <OrderYard />
     </group>
   )
 }

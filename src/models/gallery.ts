@@ -6,10 +6,11 @@ import { PersonRig, personParts } from './person'
 import { cropParts } from './crops'
 import { GROWERS, putEgg, putLemon } from './plants'
 import type { CropId } from '../farm/data'
-import { Group, Mesh, MeshStandardMaterial } from 'three'
+import { Group, Mesh, MeshStandardMaterial, PlaneGeometry } from 'three'
 import { coopModel, lemonSpots, lemonTreeModel, mouthGlowMaterial, mouthGlowShape, ovenModel, structureParts, troughModel } from './structures'
 import { GOODS, type GoodsId } from './goods'
-import { barnModel, siloModel } from './buildings'
+import { DESK_SCREEN, OFFICE_FLOOR, barnModel, crateModel, deskModel, farmGateModel, officeModel, palletModel, siloModel } from './buildings'
+import { DRIVER, putTractor, seatDriver, tractorParts } from './tractor'
 
 // Every model the kit makes, posed and moving, for the gallery page (open the site with ?gallery). Add a new
 // model here as soon as it has a shape: it is the quickest way to see it from every side, in the game's light.
@@ -222,6 +223,70 @@ export const GALLERY: GalleryEntry[] = [
       const object = new Group()
       object.add(silo.group, barn.group)
       return { object, width: 7.2, height: 5.8, triangles: () => silo.triangles() + barn.triangles(), update() {} }
+    },
+  },
+  {
+    id: 'office',
+    label: 'Office',
+    name: 'The order office, its desk and computer, a crate on its pallet, the farm gate',
+    make() {
+      const office = structureParts(officeModel(), 'office')
+      const desk = structureParts(deskModel(), 'desk')
+      const pallet = structureParts(palletModel(), 'pallet')
+      const crate = structureParts(crateModel(), 'crate')
+      const gate = structureParts(farmGateModel(), 'gate')
+      // the desk in the office, against its back wall; a desk on its own beside it, to see it whole
+      desk.group.position.set(-0.64, OFFICE_FLOOR, 0)
+      const lone = structureParts(deskModel(), 'desk-lone')
+      lone.group.position.set(-2.6, 0, 0.4)
+      lone.group.rotation.y = 0.5
+      const screen = new Mesh(new PlaneGeometry(DESK_SCREEN.half[0] * 2, DESK_SCREEN.half[1] * 2), new MeshStandardMaterial({ color: 0x0c1a22, emissive: 0x7fd3ff, emissiveIntensity: 0.6 }))
+      screen.position.set(DESK_SCREEN.x + 0.002, DESK_SCREEN.y, 0)
+      screen.rotation.y = Math.PI / 2
+      lone.group.add(screen)
+      pallet.group.position.set(2.0, 0, 0.6)
+      crate.group.position.set(2.0, 0.14, 0.6)
+      gate.group.position.set(3.6, 0, -0.2)
+      const object = new Group()
+      office.group.add(desk.group)
+      object.add(office.group, lone.group, pallet.group, crate.group, gate.group)
+      return {
+        object,
+        width: 8,
+        height: 3,
+        triangles: () => office.triangles() + desk.triangles() + lone.triangles() + pallet.triangles() + crate.triangles() + gate.triangles(),
+        update() {},
+      }
+    },
+  },
+  {
+    id: 'tractor',
+    label: 'Tractor',
+    name: 'The tractor and its driver, four crates on its carrier, rolling on and off',
+    make() {
+      const parts = tractorParts(4)
+      const people = personParts(1)
+      const driver = new PersonRig(DRIVER)
+      const object = new Group()
+      object.add(parts.group, people.group)
+      return {
+        object,
+        width: 4,
+        height: 2.2,
+        triangles: () => parts.triangles() + people.triangles(),
+        update(t) {
+          const roll = Math.sin(t * 0.6) * 1.2
+          parts.begin()
+          putTractor(parts, 0, 0, Math.PI / 2, roll, 4)
+          parts.end()
+          driver.root.position.set(0, 0, 0)
+          driver.root.rotation.y = Math.PI / 2
+          seatDriver(driver, Math.sin(t * 0.5) * 0.4)
+          people.begin()
+          driver.write(people)
+          people.end()
+        },
+      }
     },
   },
   {

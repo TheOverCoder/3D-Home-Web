@@ -6,13 +6,15 @@ import { SHRUB_SPOTS } from '../data/garden'
 import { GARDEN, GATE, LANE } from '../data/layout'
 import { surface } from '../lib/proceduralTextures'
 import { fenceRun, hedgeRun, mulberry, tree, type TreeParts } from '../scene/flora'
+import { TRACTOR } from './data'
 import { boundary, ownedRects, type Edge, type FarmLayout, type ParcelId } from './layout'
 import { farm, useFarm } from './state'
 
 // The land the farm owns, drawn round its edge: a clipped hedge along the sides that face north and west, a
 // slatted timber fence along those that face south and east (the sunny side, so it throws no shade into the rooms),
-// with the farm gate in the garden's south fence; and the woods beyond. Buying a field moves all of it out round
-// the new land: the woods step back so the field is open ground.
+// with the farm gate in the garden's south fence and a gap in the west hedge where the tractor's track goes out (its
+// gate: src/farm/OrderYard.tsx); and the woods beyond. Buying a field moves all of it out round the new land: the woods
+// step back so the field is open ground, and from the lane and the tractor's track.
 
 const SEP = 0.5 // a fence stops this short of a hedge it runs into
 
@@ -41,8 +43,10 @@ function woods(layout: FarmLayout): TreeParts[] {
     const height = 6 + r() * 4
     while (onLand(Math.cos(angle) * radius, Math.sin(angle) * radius) && radius < 80) radius += 1
     const x = Math.cos(angle) * radius
-    const z = Math.sin(angle) * radius
-    // keep the lane outside the farm gate clear: those trees step back from it
+    let z = Math.sin(angle) * radius
+    // keep the tractor's track out of the west hedge clear (and the ground beside it where it turns round), and the
+    // lane outside the farm gate: those trees step back from them
+    if (x < -8 && Math.abs(z - TRACTOR.z) < 5) z = TRACTOR.z + (z >= TRACTOR.z ? 1 : -1) * (5.5 + (i % 3))
     const onLane = Math.abs(z - LANE.z) < 3.2
     out.push(tree(x, onLane ? LANE.z + 5.5 + (i % 3) : z, height, 40 + i))
   }
@@ -62,7 +66,14 @@ function build(layout: FarmLayout): Built {
     if (e.out === 'north' || e.out === 'west') {
       // each hedge its own seed, so the sections never repeat (the garden's own two keep the ones they always had)
       const seed = (e.out === 'north' ? 3 : 5) + 4 * runs[e.out]++
-      hedge.push(...hedgeRun(e.axis, e.at, e.axis === 'z' && e.from === GARDEN.minZ ? e.from + SEP : e.from, e.to, seed))
+      const from = e.axis === 'z' && e.from === GARDEN.minZ ? e.from + SEP : e.from
+      // the west hedge the tractor's track crosses: a gap there for its gate
+      if (e.axis === 'z' && e.out === 'west' && e.from < TRACTOR.z && e.to > TRACTOR.z) {
+        const half = TRACTOR.gate / 2 + 0.14
+        hedge.push(...hedgeRun('z', e.at, from, TRACTOR.z - half, seed), ...hedgeRun('z', e.at, TRACTOR.z + half, e.to, seed + 2))
+        return
+      }
+      hedge.push(...hedgeRun(e.axis, e.at, from, e.to, seed))
       return
     }
     const start = e.axis === 'x' ? onHedge(e.from, e.at) : onHedge(e.at, e.from)

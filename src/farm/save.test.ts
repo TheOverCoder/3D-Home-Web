@@ -3,7 +3,8 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import { endsWithin } from '../lib/endsWithin'
 import { BEDS, MACHINES, PRODUCERS, PRODUCER_IDS } from './data'
 import { PLACES, type Placement } from './layout'
-import { buyPiece, collect, farm, freeSpotFor, placeStored, storePiece, tick } from './state'
+import { buyPiece, collect, farm, freeSpotFor, gateX, placeStored, storePiece, tick } from './state'
+import { tripSeconds } from './tractorRoute'
 import { OLD_SAVE, playedSave, savedNow, startFrom } from './testSaves'
 
 // Saves broken or edited by hand (a file imported in src/ui/SavesPanel.tsx, the browser's storage changed by hand):
@@ -146,10 +147,49 @@ describe('a save broken or edited by hand', () => {
     }
   })
 
-  it('the silo and the barn saved broken load made safe; everything else as it was', () => {
+  it('the silo, the barn, the order board and the tractor saved broken load made safe; everything else as it was', () => {
+    const board = played.orders as unknown[]
+    expect(board.length).toBe(4)
     // levels below 1 or not numbers: level 1
     startFrom({ ...played, storage: { silo: -3, barn: 'x' } })
     expect(farm.storage).toEqual({ silo: 1, barn: 1 })
     expect(without(savedNow(), 'storage')).toEqual(without(loaded, 'storage'))
+    // a board that is not a list: a new order on its way in every place
+    startFrom({ ...played, orders: 'many' })
+    expect(farm.orders).toEqual([{ wait: 0 }, { wait: 0 }, { wait: 0 }, { wait: 0 }])
+    expect(without(savedNow(), 'orders')).toEqual(without(loaded, 'orders'))
+    // an order of a building material, of a good twice, of nothing: no order; a wait longer than the office's: its wait
+    startFrom({
+      ...played,
+      orders: [
+        { lines: [{ good: 'brick', want: 3, have: 9 }] },
+        { wait: 1e9 },
+        {
+          lines: [
+            { good: 'egg', want: 2, have: 9 },
+            { good: 'egg', want: 5, have: 0 },
+          ],
+          coins: -4,
+          surprise: 'yes',
+        },
+        null,
+      ],
+    })
+    expect(farm.orders[0]).toEqual({ wait: 0 })
+    expect(farm.orders[1]).toEqual({ wait: 600 })
+    expect(farm.orders[2]).toMatchObject({ order: { lines: [{ good: 'egg', want: 2, have: 2 }], coins: 1, surprise: false } })
+    expect(farm.orders[3]).toEqual({ wait: 0 })
+    // the tractor: no crates under none, no more aboard than its carrier takes, its trip within its length
+    startFrom({ ...played, dispatch: { waiting: -1, aboard: 99, trip: 1e20 } })
+    expect(farm.dispatch.waiting).toBe(0)
+    expect(farm.dispatch.aboard).toBe(4)
+    expect(farm.dispatch.trip).toBeLessThanOrEqual(tripSeconds(4, gateX()))
+    expect(endsWithin(1500, () => tick(1))).toBe(true)
+    startFrom({ ...played, dispatch: { waiting: 3, aboard: 0, trip: 50 } })
+    expect(farm.dispatch).toEqual({ waiting: 3, aboard: 0, trip: -1 })
+    // the office past its upgrades: the most there are, and as many places on the board
+    startFrom({ ...played, office: { slots: 99, wait: -2 } })
+    expect(farm.office).toEqual({ slots: 6, wait: 0 })
+    expect(farm.orders.length).toBe(9)
   })
 })

@@ -481,4 +481,37 @@ export const UPGRADES: Upgrade[] = [
   { id: 'compost', name: 'Compost bin', blurb: 'Half as much again from every harvest.', price: 45 },
 ]
 
+// ───────────────────────────── orders: the office and the tractor ─────────────────────────────
+
+/** The order board on the office's computer: three orders at a time to begin with, and after one is declined a new one
+ *  takes ten minutes to come in; the office's upgrades take it up to nine at a time and the wait down to five minutes.
+ *  An order asks for one to nine kinds of goods, pays a quarter over their fair price, and one in two brings a
+ *  surprise (ITEM_ODDS.order). No time limit: it waits until it is sent or declined. */
+export const ORDERS = { slots: 3, maxSlots: 9, wait: 600, fastest: 300, step: 60, kinds: 9, markup: 1.25 } as const
+export const SLOT_LEVELS = ORDERS.maxSlots - ORDERS.slots
+export const WAIT_LEVELS = (ORDERS.wait - ORDERS.fastest) / ORDERS.step
+export const orderSlots = (level: number) => ORDERS.slots + level
+export const orderWait = (level: number) => ORDERS.wait - ORDERS.step * level
+
+export type OfficeUpgradeId = 'slots' | 'wait'
+
+/** What the office's computer sells, one step at a time (like the shop's longer queue and busier lane). */
+export const OFFICE_UPGRADES: Record<OfficeUpgradeId, { name: string; blurb: string; price: number; priceStep: number; levels: number }> = {
+  slots: { name: 'More orders', blurb: 'One more order on the board at a time.', price: 80, priceStep: 40, levels: SLOT_LEVELS },
+  wait: { name: 'Faster orders', blurb: 'A new order comes a minute sooner.', price: 60, priceStep: 30, levels: WAIT_LEVELS },
+}
+
+/** The order office in the west yard, south of the west field: a small timber office, its door facing the house, a
+ *  desk with the computer inside (x, z: its middle; half: its size each way). It never moves: the tractor's yard and
+ *  its track out through the west hedge start beside it. */
+export const OFFICE = { x: -9.8, z: 6.3, half: { x: 1.1, z: 1.0 } } as const
+/** Where you stand to use the computer (in the doorway, on the paving) and what you look at (its screen). */
+export const OFFICE_STAND = { x: -8.0, z: 6.3 } as const
+export const OFFICE_SCREEN = { x: -10.25, y: 1.12, z: 6.3 } as const
+
+/** The tractor's yard: it stands at `park` facing west (the gate in the hedge, along `z`); the crates of the orders
+ *  sent wait on the pallet behind it until it loads them (up to `load` at a time) and drives them off along the track
+ *  out of the farm, then backs in again. */
+export const TRACTOR = { z: 7.9, park: -11.95, pallet: { x: -9.45, z: 8.05 }, load: 4, gate: 2.2 } as const
+
 export const NAMES = ['Maya', 'Noa', 'Daniel', 'Yael', 'Omer', 'Tamar', 'Eitan', 'Shira', 'Avi', 'Lior', 'Ruth', 'Yoni', 'Michal', 'Gal']

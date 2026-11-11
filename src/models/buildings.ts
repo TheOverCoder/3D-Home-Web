@@ -1,13 +1,20 @@
-import { Shape, fbm3, lathe, loft, merge, rgb, smoothstep, squircle, tube, type SculptSurface, type V3 } from '../lib/sculpt'
+import { Shape, fbm3, lathe, loft, merge, noise3, rgb, smoothstep, squircle, tube, type SculptSurface, type V3 } from '../lib/sculpt'
 import { grain, mix, slab, type Structure } from './structures'
 
-// The silo and the barn, sculpted like the coop and the oven (src/models/structures.ts): built once in their own
+// The farm's newer buildings, sculpted like the coop and the oven (src/models/structures.ts): built once in their own
 // frame (the ground under their middle at the origin, the way in facing +x), a part per material.
 //
 //   silo     a round silo of corrugated steel on a concrete ring, a cone roof with a vent, a ladder up its side and a
 //            timber door at its foot (what grows is kept in it; it is made bigger with iron, bolts and logs)
 //   barn     a red barn of upright boards under a gambrel roof of shingles, white trim, a pair of braced doors and a
 //            hayloft door in its gable, a cupola on the ridge (it is made bigger with bricks, planks and nails)
+//   office   a small timber office with a doorway in its front, a window each side and a shingled roof: the order
+//            board's computer is on a desk inside (desk)
+//   desk     a desk with the computer on it (its screen is drawn by the scene, src/farm/OrderYard.tsx), a keyboard, a mug
+//            and a chair
+//   crate    a slatted crate: an order on its way, on the pallet or on the tractor
+//   pallet   the pallet the crates wait on in the tractor's yard
+//   gate     the farm gate in the hedge the tractor goes out through: two posts and a leaf (drawn twice, swinging)
 
 const STEEL = rgb(0xb7c0c6)
 const STEEL_DARK = rgb(0x7f8a92)
@@ -15,7 +22,11 @@ const CONCRETE = rgb(0xb3ada3)
 const BARN_RED = rgb(0xb5523a)
 const TRIM = rgb(0xece5d6)
 const SHINGLE = rgb(0x46494c)
+const WOOD = rgb(0x8a6440)
 const WOOD_DARK = rgb(0x5e4630)
+const PINE = rgb(0xd7b07a)
+const SAGE = rgb(0x6f8f6a)
+const GLASS = rgb(0x2d4250)
 const BLACK = rgb(0x2a2c2f)
 
 /** A straight piece of wood or steel from a to b: rx across (sideways), ry along `up`, its ends closed flat. */
@@ -246,5 +257,211 @@ export function barnModel(): Structure<BarnPart> {
     roof: { shape: roof, material: { roughness: 0.7, surface: { kind: 'shingle', size: 0.6, tone: 0.55 } } },
     trim: { shape: trim, material: { roughness: 0.75 } },
     doors: { shape: doors, material: { roughness: 0.8, surface: { kind: 'boards', size: 0.5, turn: true, tone: 0.3 } } },
+  }
+}
+
+// ───────────────────────────── the office ─────────────────────────────
+
+export type OfficePart = 'floor' | 'walls' | 'roof' | 'trim' | 'glass'
+
+/** The order office: 2.1 × 1.9 m, its doorway in the front (+x), its eaves at 2.25 m and its ridge (along x) at
+ *  2.85 m. Inside it is open: the desk (deskModel) stands on its floor, against the back wall. */
+export const OFFICE_FLOOR = 0.14
+
+export function officeModel(): Structure<OfficePart> {
+  const W = 1.05
+  const D = 0.95
+  const T = 0.04 // half a wall's thickness
+  const eaves = 2.25
+  const ridge = 2.85
+  const door = 0.45 // half the doorway's width
+  const lintel = 2.02
+  const floor = slab(W + 0.06, D + 0.06, 0, OFFICE_FLOOR, 8, 20).paint(grain(0, 51), 0)
+  const wall = (x: number, z: number, hx: number, hz: number, y0: number, y1: number) => slab(hx, hz, y0, y1, 10, 12).place([x, 0, z])
+  const walls = merge(
+    // back, sides
+    wall(-W + T, 0, T, D, OFFICE_FLOOR - 0.02, eaves),
+    wall(0, -D + T, W, T, OFFICE_FLOOR - 0.02, eaves),
+    wall(0, D - T, W, T, OFFICE_FLOOR - 0.02, eaves),
+    // the front, round the doorway
+    wall(W - T, -(D + door) / 2, T, (D - door) / 2, OFFICE_FLOOR - 0.02, eaves),
+    wall(W - T, (D + door) / 2, T, (D - door) / 2, OFFICE_FLOOR - 0.02, eaves),
+    wall(W - T, 0, T, door + 0.02, lintel, eaves),
+    // the gables, front and back
+    gable(
+      W - T,
+      [
+        [-D, eaves - 0.02],
+        [0, ridge],
+        [D, eaves - 0.02],
+      ],
+      SAGE,
+    ),
+    gable(
+      -W + T,
+      [
+        [-D, eaves - 0.02],
+        [0, ridge],
+        [D, eaves - 0.02],
+      ],
+      SAGE,
+    ),
+  ).paint(() => SAGE, 0)
+  const roof = merge(slope([D + 0.18, eaves - 0.04], [0, ridge], W + 0.2, 0.03), slope([-D - 0.18, eaves - 0.04], [0, ridge], W + 0.2, 0.03)).paint(() => SHINGLE, 0)
+  // white trim: corner boards, the doorway's frame, a frame round each window
+  const corners = [-1, 1].flatMap((sx) => [-1, 1].map((sz) => box(sx * (W - 0.01), (OFFICE_FLOOR + eaves) / 2, sz * (D - 0.01), 0.04, (eaves - OFFICE_FLOOR) / 2, 0.04, 6, 8)))
+  const frame = [box(W + 0.005, 1.08, -door - 0.03, 0.04, 0.95, 0.04, 6, 8), box(W + 0.005, 1.08, door + 0.03, 0.04, 0.95, 0.04, 6, 8), box(W + 0.005, lintel + 0.02, 0, 0.04, 0.04, door + 0.07, 6, 8)]
+  const windowFrame = (sz: number) => {
+    const z = sz * (D + 0.005)
+    return [
+      box(0, 1.0, z, 0.36, 0.035, 0.03, 6, 8),
+      box(0, 1.62, z, 0.36, 0.035, 0.03, 6, 8),
+      box(-0.33, 1.31, z, 0.035, 0.3, 0.03, 6, 8),
+      box(0.33, 1.31, z, 0.035, 0.3, 0.03, 6, 8),
+      box(0, 1.31, z, 0.015, 0.3, 0.025, 6, 8),
+    ]
+  }
+  const fascia = [-1, 1].map((sz) => beam([-W - 0.2, eaves - 0.07, sz * (D + 0.17)], [W + 0.2, eaves - 0.07, sz * (D + 0.17)], 0.03, 0.05, [0, 1, 0], 6))
+  const trim = merge(...corners, ...frame, ...windowFrame(-1), ...windowFrame(1), ...fascia)
+    .paint(() => TRIM, 0)
+    .surface(0)
+  // the windows' glass (on the walls: the room is seen through the doorway)
+  const glass = merge(...[-1, 1].map((sz) => box(0, 1.31, sz * (D + 0.002), 0.31, 0.28, 0.012, 6, 8))).paint((_x, y) => mix(GLASS, rgb(0x6f8ea0), smoothstep(1.05, 1.6, y) * 0.5), 0)
+  return {
+    floor: { shape: floor, material: { roughness: 0.85, surface: { kind: 'boards', size: 0.6, tone: 0.35 } } },
+    walls: { shape: walls, material: { roughness: 0.8, surface: { kind: 'boards', size: 0.56, turn: true, tone: 0.3 } } },
+    roof: { shape: roof, material: { roughness: 0.7, surface: { kind: 'shingle', size: 0.6, tone: 0.55 } } },
+    trim: { shape: trim, material: { roughness: 0.75 } },
+    glass: { shape: glass, material: { roughness: 0.08, metalness: 0.2 }, castShadow: false },
+  }
+}
+
+export type DeskPart = 'desk' | 'computer' | 'chair'
+
+/** Where the computer's screen is on the desk (its middle, and half its size): the scene draws the screen there. */
+export const DESK_SCREEN = { x: -0.07, y: 1.1, half: [0.28, 0.16] as [number, number] }
+
+/** The desk with the order board's computer (its screen faces +x, towards the doorway), a keyboard and a mug, and
+ *  a chair; its back edge at x = -0.35, standing on y = 0. */
+export function deskModel(): Structure<DeskPart> {
+  const top = 0.76
+  const desk = merge(
+    box(0, top - 0.02, 0, 0.32, 0.02, 0.62, 10),
+    ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => box(sx * 0.28, (top - 0.03) / 2, sz * 0.57, 0.025, (top - 0.03) / 2 + 0.01, 0.025, 6, 8))),
+    // a drawer under the right side
+    box(0.04, top - 0.12, 0.38, 0.27, 0.09, 0.2, 10),
+  ).paint(grain(2, 61), 0)
+  // the computer: a flat screen on a stand, its keyboard in front; and a mug of tea beside it
+  const screen = box(DESK_SCREEN.x - 0.03, DESK_SCREEN.y, 0, 0.025, DESK_SCREEN.half[1] + 0.025, DESK_SCREEN.half[0] + 0.025, 10)
+  const computer = merge(
+    screen,
+    box(-0.1, top + 0.012, 0, 0.09, 0.012, 0.12, 10),
+    box(-0.11, (top + DESK_SCREEN.y) / 2, 0, 0.015, (DESK_SCREEN.y - top) / 2, 0.03, 6, 8),
+    box(0.12, top + 0.012, 0, 0.07, 0.012, 0.22, 10),
+    lathe(
+      [
+        [0, top - 0.002],
+        [0.035, top - 0.002],
+        [0.038, top + 0.09],
+        [0.03, top + 0.09],
+        [0.0, top + 0.02],
+      ],
+      { seg: 14, steps: 1 },
+    ).place([0.12, 0, -0.42]),
+  ).paint((x, y, z) => (Math.hypot(x - 0.12, z + 0.42) < 0.05 ? rgb(0xe9e2d2) : mix(BLACK, rgb(0x4a4e54), y > top + 0.02 ? 0.15 : 0.35)), 0)
+  // a wooden chair, turned to the desk, its back to the doorway
+  const seat = 0.46
+  const chair = merge(
+    box(0, seat, 0, 0.21, 0.025, 0.21, 10),
+    ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => box(sx * 0.17, seat / 2, sz * 0.17, 0.02, seat / 2, 0.02, 6, 8))),
+    ...[-1, 1].map((sz) => box(0.17, seat + 0.26, sz * 0.17, 0.02, 0.26, 0.02, 6, 8)),
+    box(0.17, seat + 0.42, 0, 0.018, 0.08, 0.2, 8),
+  )
+    .paint(grain(1, 63), 0)
+    .place([0.55, 0, 0.05], [0, 0.12, 0])
+  return {
+    desk: { shape: desk, material: { roughness: 0.75 } },
+    computer: { shape: computer, material: { roughness: 0.4 } },
+    chair: { shape: chair, material: { roughness: 0.8 } },
+  }
+}
+
+// ───────────────────────────── crates, the pallet, the gate ─────────────────────────────
+
+/** A crate's size (half of it each way): the tractor's carrier takes two by two of them. */
+export const CRATE = { x: 0.24, y: 0.18, z: 0.2 } as const
+
+/** A crate of slats round a frame of darker battens, closed. Its bottom on y = 0. */
+export function crateShape(): Shape {
+  const { x: hx, y: hy, z: hz } = CRATE
+  const body = box(0, hy, 0, hx - 0.012, hy - 0.006, hz - 0.012, 12).paint((x, y, z) => mix(PINE, rgb(0xb98a4e), 0.3 * (0.5 + 0.5 * noise3(x * 30, y * 9, z * 30, 3))), 0)
+  const battens: Shape[] = []
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) battens.push(box(sx * (hx - 0.02), hy, sz * (hz - 0.02), 0.024, hy, 0.024, 6, 8))
+  for (const y of [0.02, 2 * hy - 0.02]) {
+    for (const sz of [-1, 1]) battens.push(box(0, y, sz * (hz - 0.01), hx, 0.02, 0.014, 6, 8))
+    for (const sx of [-1, 1]) battens.push(box(sx * (hx - 0.01), y, 0, 0.014, 0.02, hz, 6, 8))
+  }
+  return merge(
+    body,
+    merge(...battens).paint(() => mix(WOOD, WOOD_DARK, 0.4), 0),
+  )
+}
+
+export function crateModel(): Structure<'crate'> {
+  return { crate: { shape: crateShape(), material: { roughness: 0.85, surface: { kind: 'boards', size: 0.36, tone: 0.3 } } } }
+}
+
+/** How high a crate stands on the pallet. */
+export const PALLET_TOP = 0.14
+
+/** The pallet in the tractor's yard: five slats across three runners. */
+export function palletModel(): Structure<'pallet'> {
+  const slats = [-0.36, -0.18, 0, 0.18, 0.36].map((z) => box(0, PALLET_TOP - 0.012, z, 0.52, 0.012, 0.07, 8))
+  const runners = [-0.45, 0, 0.45].map((x) => box(x, 0.06, 0, 0.05, 0.06, 0.44, 8))
+  return { pallet: { shape: merge(...slats, ...runners).paint(grain(2, 81), 0), material: { roughness: 0.85 } } }
+}
+
+/** The farm gate's size: the opening between its posts (across z) and its leaves' height. */
+export const FARM_GATE = { half: 1.1, height: 1.25 } as const
+
+/** A leaf of the farm gate, hung from its hinge at the origin, reaching along +z: two rails, a stile at each end, a
+ *  brace across. */
+export function gateLeafShape(): Shape {
+  const len = FARM_GATE.half - 0.06
+  return merge(
+    ...[0.25, 0.7, FARM_GATE.height - 0.05].map((y) => beam([0, y, 0.0], [0, y, len], 0.025, 0.045, [0, 1, 0], 6)),
+    beam([0, 0.2, 0.04], [0, FARM_GATE.height, 0.04], 0.03, 0.045, [0, 0, 1], 6),
+    beam([0, 0.2, len - 0.03], [0, FARM_GATE.height, len - 0.03], 0.03, 0.045, [0, 0, 1], 6),
+    beam([0, 0.25, 0.06], [0, FARM_GATE.height - 0.05, len - 0.06], 0.022, 0.04, [1, 0, 0], 6),
+  ).paint(grain(1, 91), 0)
+}
+
+/** The gate's two posts, either side of an opening across z, and the hinge pins the leaves hang from. */
+export function gatePostsShape(): Shape {
+  return merge(
+    ...[-1, 1].map((sz) => box(0, 0.8, sz * (FARM_GATE.half + 0.06), 0.08, 0.8, 0.08, 6, 10)),
+    ...[-1, 1].map((sz) =>
+      lathe(
+        [
+          [0, 1.6],
+          [0.11, 1.6],
+          [0.0, 1.72],
+        ],
+        { seg: 4, steps: 1 },
+      )
+        .place([0, 0, 0], [0, Math.PI / 4, 0])
+        .place([0, 0, sz * (FARM_GATE.half + 0.06)]),
+    ),
+  ).paint(grain(1, 93), 0)
+}
+
+export type GatePart = 'posts' | 'leaf'
+
+/** The farm gate as a structure, its leaves shut (for the gallery and the checks). */
+export function farmGateModel(): Structure<GatePart> {
+  const half = FARM_GATE.half
+  return {
+    posts: { shape: gatePostsShape(), material: { roughness: 0.85 } },
+    leaf: { shape: merge(gateLeafShape().place([0, 0, -half]), gateLeafShape().place([0, 0, 0], [0, Math.PI, 0]).place([0, 0, half])), material: { roughness: 0.85 } },
   }
 }

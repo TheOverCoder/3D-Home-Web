@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { CanvasTexture, Group, MathUtils, Sprite, SpriteMaterial, SRGBColorSpace } from 'three'
 import { useInteractable } from '../lib/interaction'
+import type { Parts } from '../lib/sculpt'
 import { PersonRig, personParts } from '../models/person'
 import { art } from '../ui/art'
 import { useHome } from '../store'
@@ -15,6 +16,7 @@ import { farm, lineShort, sellAllPreview, waiting, type Visitor } from './state'
 // Up to fifteen can stand in line, so they are drawn together: each person is a sculpted model
 // (src/models/person.ts) on a rig of joints that is posed, then copied into one instanced draw per part for the
 // whole crowd; and one bubble each. A buyer in two brings a surprise: a gift on their bubble, given as you sell to them.
+// The tractor's driver is drawn with the crowd too (crowdGuests): one more person costs no draw of its own.
 
 /** How wide a bubble is: room for a gift at its end when the buyer brings a surprise. */
 const bubbleWidth = (v: Visitor) => (v.gift ? 392 : 320)
@@ -74,7 +76,11 @@ function giftImage() {
   return gift
 }
 
-const MAX_PEOPLE = 32 // fifteen in line, and room for those walking off after "sell to everyone"
+const MAX_PEOPLE = 33 // fifteen in line, room for those walking off after "sell to everyone", and the tractor's driver
+
+/** Others drawn with the crowd (the tractor's driver, src/farm/OrderYard.tsx): each puts its people into the crowd's
+ *  parts every frame, after the buyers. */
+export const crowdGuests = new Set<(parts: Parts) => void>()
 
 interface Rig {
   body: PersonRig
@@ -153,7 +159,7 @@ export function Visitors() {
     parts.begin()
     let people = 0
     for (const v of farm.visitors) {
-      if (people >= MAX_PEOPLE) break
+      if (people >= MAX_PEOPLE - 1) break // (the last one is the driver's)
       people++
       live.add(v.id)
       let rig = rigs.current.get(v.id)
@@ -207,6 +213,7 @@ export function Visitors() {
       disposeRig(rig)
       rigs.current.delete(id)
     }
+    for (const guest of crowdGuests) guest(parts)
     parts.end() // drawn as a crowd, culled together when out of view (indoors, looking away)
   })
 
