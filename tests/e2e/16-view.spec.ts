@@ -546,10 +546,10 @@ function report(log: string[], name: string, r: any) {
 /** No pixel may differ — but for the one known edge case, proven again: a pixel or two at the edge of the screen
  *  where a thing far behind a wall shows through today, and the pass's frame is exactly today's with those things
  *  hidden. */
-function check(name: string, r: any) {
+function check(name: string, r: any, most = 2) {
   if (r.differ === 0) return
   expect(r.crowds, `${name}: no crowd model left out may show`).toBe(false)
-  expect(r.differ, `${name}: ${r.differ} pixels differ at ${JSON.stringify(r.pixels)}`).toBeLessThanOrEqual(2)
+  expect(r.differ, `${name}: ${r.differ} pixels differ at ${JSON.stringify(r.pixels)}`).toBeLessThanOrEqual(most)
   expect(r.culprits?.length, `${name}: what the pass left out there`).toBeGreaterThan(0)
   expect(r.straddles, `${name}: ${r.culprits?.join('; ')} do not reach across an edge of the screen`).toBe(true)
   expect(r.sameAsHidden, `${name}: the pass's frame is today's with ${r.culprits?.join('; ')} hidden`).toBe(true)
@@ -716,10 +716,13 @@ test.describe('the drawing pass leaves out only what cannot be seen', () => {
       // the camera's flight there (about a second)
       await page.waitForTimeout(2500)
       const r = await page.evaluate(() => (window as any).__viewProbe.camera(null))
-      // (the known edge case, proven as in first person: rays through the pixels, from the game's camera as it stands)
+      // (the known edge case, proven as in first person: rays through the pixels, from the game's camera as it stands;
+      // seen from above, the walls hide many things far off along the top of the screen, so a few more pixels — each
+      // still proven: the frame is today's with those things hidden, and a ray through it meets the wall first)
       if (r.differ && r.culprits?.length) r.rays = await page.evaluate(behindShell)
       report(log, name, r)
-      check(name, r)
+      if (r.differ) console.log(log[log.length - 1])
+      check(name, r, 8)
       expect(r.stats.portals, `${name}: no rooms and portals`).toBe(false)
       // the house's walls hide what is behind them (src/lib/visibility/walls.ts), in third person from every room
       if (mode === 'third' && x > -7 && x < 7 && z > -6 && z < 6) expect(r.stats.wallCulled + r.stats.wallModels, `${name}: things behind a wall left out`).toBeGreaterThan(0)
