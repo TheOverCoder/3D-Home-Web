@@ -53,9 +53,9 @@ function rapierWasmAsFile(): Plugin {
   }
 }
 
-/** The developer pages and tools (?gallery, ?furniture, ?items, ?tune, ?console: the model gallery's chunk and the
- *  dev-* groups below): they load only when their flag is used, so the loader does not download them for every player
- *  and the service worker does not keep them. */
+/** The developer pages and tools (?gallery, ?furniture, ?items, ?tune, ?console, ?debug&stress: the model gallery's
+ *  chunk and the dev-* groups below): they load only when their flag is used, so the loader does not download them for
+ *  every player and the service worker does not keep them. */
 const devOnly = (fileName: string) => /(?:^|[\\/])(?:Gallery|dev-[a-z]+)-[\w-]{8}\.js$/.test(fileName)
 
 /** The farm's particle effects (three.quarks, the `effects` group below): the game imports them once it is playing, so
@@ -220,6 +220,7 @@ export default defineConfig({
             // the service worker). Only their own modules: what they share with the game stays in the game's chunks
             // (the game reaches them only by a dynamic import behind their flag, so no import cycle can form)
             { name: 'dev-console', test: /node_modules[\\/]eruda[\\/]|src[\\/]debug[\\/]console\./, priority: 51, includeDependenciesRecursively: false },
+            { name: 'dev-stress', test: /src[\\/]debug[\\/]Stress\./, priority: 51, includeDependenciesRecursively: false },
             { name: 'dev-tune', test: /node_modules[\\/]lil-gui[\\/]|src[\\/]debug[\\/]/, priority: 50, includeDependenciesRecursively: false },
             { name: 'dev-pages', test: /src[\\/](home[\\/]FurnitureArtPage|models[\\/](ItemArtPage|itemArt))\./, priority: 50, includeDependenciesRecursively: false },
             // the particle engine and the effects made with it, imported once the game is playing (`later`)

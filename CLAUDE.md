@@ -7,14 +7,20 @@ The README has the overview; `tests/README.md` what each test guards.
 ## Before pushing
 
 - `npm run check` (types, oxlint, the Vitest unit tests, the format check: ~15 s), then the e2e suite:
-  `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium npx playwright test --trace off` (software WebGL, ~25 min; run single
-  spec files while iterating, or `npm run test:e2e:quick`, ~7 min: all but the six `@boot` tests that start a page
-  of their own). It builds and serves on :4185. A rule or a save change gets a unit test beside its
-  code (`src/**/*.test.ts`, `tests/README.md`).
+  `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium npx playwright test --trace off` (software WebGL, ~45 min; run single
+  spec files while iterating, or `npm run test:e2e:quick`, ~20 min: all but the seven `@boot` tests that start a page
+  of their own; `05`'s walks alone take 10–20 min, its ten times the farm, at one size, some minutes more). It builds and serves on
+  :4185. A rule or a save change gets a unit test beside its code (`src/**/*.test.ts`, `tests/README.md`).
 - Code style: Prettier (`.prettierrc.json`: width 200, no semicolons, single quotes; `npm run format`; the CSS keeps
   its compact one-line rules by hand). Comments say
   what and why, in plain words.
-- Budget: under 250,000 triangles and 700 draw calls per view (`05-budget`). Check it when adding geometry.
+- Budget (`05-budget`): measured over a walk (the rooms, each doorway with the door shut and open, the garden door, the
+  gate, the yard, third person, decorating) with the farm at its fullest, at 640×360 and at a phone's drawing buffers
+  (487×1055 upright, 1055×487 sideways). The camera pass stays under 250,000 triangles and 700 draws, and the sun's
+  shadow pass, counted on its own, under 150,000 and 250. A view over it today is a debt listed in 05 (and
+  `tests/README.md`) with what it measured as its ceiling: debts only go down, and a paid one leaves the list. Check
+  it when adding geometry (`BUDGET_MEASURE=1` prints the table without the checks; `?debug&stress=10` is ten times
+  the farm, reported there).
 - Speed never costs the game anything. A fix for speed or the budget may not lower quality or what the game holds: not
   plainer models, fewer buyers, animals or pieces, smaller rooms or lower caps. It changes how things are drawn
   (what cannot be seen is not drawn; detail the screen cannot show is not drawn), and the player must not be able to
@@ -35,6 +41,12 @@ The README has the overview; `tests/README.md` what each test guards.
   nothing. A new opening is a row in `layout.ts`; a new door that shuts must close its portal.
 - A crowd's model is everything put after one `at`: each animal, person or plant gets its own. Parts that cast a
   shadow are drawn whole.
+- A big thing is built from pieces a few metres across, never one mesh round the farm: one mesh is always partly in
+  view, so it is always drawn whole (the hedge and the woods' crowns, `src/farm/Land.tsx`). Each piece is made from
+  the same data the one mesh had, with a material of its own made in the one mesh's drawing order (three draws a
+  material's meshes nearest first, materials in the order they were made), so not a pixel changes: `16-view`
+  compares them (`window.__home.land.whole`). A light thing (the fence, the trunks: a few hundred triangles) stays
+  one mesh, a draw costs more than it saves.
 - `16-view` draws the same frames with the pass on and off and requires every pixel, depth and shadow-map texel to
   match: anything new (a room, an opening, a kind of view) gets a pose there. `window.__home.view` (?debug) turns the
   pass and its parts off and counts what it left out.
@@ -94,9 +106,10 @@ The README has the overview; `tests/README.md` what each test guards.
   each kind's size, layer, price and weight). A new kind gets a catalogue entry, a model in `PieceModel`
   (`src/scene/Furnishings.tsx`) and its picture: `node scripts/render-furniture-art.mjs` (dev server up).
 - A room holds pieces up to `ROOM_WEIGHT` (60k triangles, `layout.ts`; *This room is full*), measured so that full
-  rooms keep every view inside `05-budget`. A kind's `weight` is its model's triangle count and `05-budget` fails when
-  a model draws more: keep a piece under its weight — slim a heavy model (`simplify` in `scripts/assets.manifest.json`,
-  then `npm run assets:optimize`) rather than raise the weight; if a weight or the limit must change, measure again.
+  rooms keep every first-person view in the house inside `05-budget` (the views over it are its listed debts). A
+  kind's `weight` is its model's triangle count and `05-budget` fails when a model draws more: keep a piece under its
+  weight — slim a heavy model (`simplify` in `scripts/assets.manifest.json`, then `npm run assets:optimize`) rather
+  than raise the weight; if a weight or the limit must change, measure again.
 - Things that stand on a piece follow it: `OnPiece` for the small ones, `HOSTED` for lamps and pickups.
 
 ## Making models (src/lib/sculpt, examples in src/models)

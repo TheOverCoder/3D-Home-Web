@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { CanvasTexture, Group, MathUtils, Sprite, SpriteMaterial, SRGBColorSpace } from 'three'
+import { debugFlag } from '../lib/debug'
 import { useInteractable } from '../lib/interaction'
 import { PersonRig, personParts } from '../models/person'
 import { useHome } from '../store'
@@ -57,7 +58,9 @@ function bubbleTexture(v: Visitor): CanvasTexture {
   return t
 }
 
-const MAX_PEOPLE = 32 // fifteen in line, and room for those walking off after "sell to everyone"
+// fifteen in line, and room for those walking off after "sell to everyone" (`?debug&people=N`: N, to measure)
+const asked = Math.floor(Number(debugFlag('people')))
+const MAX_PEOPLE = asked > 0 ? asked : 32
 
 interface Rig {
   body: PersonRig

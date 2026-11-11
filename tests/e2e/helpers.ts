@@ -115,4 +115,71 @@ export const test = base.extend<object, { game: Game }>({
   ],
 })
 
+/** What `fillFarm` did: the heaviest piece for sale, and for each room how many went in, what the room then weighs, its
+ *  limit and why one more is refused; the buyers in line; the herds. */
+export interface FullFarm {
+  heaviest: string
+  rooms: Record<string, { added: number; weight: number; limit: number; reason: string }>
+  line: number
+  animals: Record<string, number>
+  /** filled by this call (the furniture still merging, the animals going to their places) */
+  fresh: boolean
+}
+
+/**
+ * The farm at its fullest (05-budget, 16-view): each room filled with the heaviest piece for sale until the next one
+ * is refused, every animal the shop sells, fifteen buyers in line, a ripe crop in every bed. Once per page, until
+ * `emptyFarm`; waits for the furniture to merge again and the animals and buyers to take their places.
+ */
+export async function fillFarm(page: Page): Promise<FullFarm> {
+  const done: FullFarm = await page.evaluate(() => {
+    const h = (window as any).__home
+    if (h.__fullFarm) return { ...h.__fullFarm, fresh: false }
+    h.farm.state.coins = 1_000_000
+    const pieces = h.home.pieces
+    const heaviest = Object.keys(pieces)
+      .filter((t) => pieces[t].price > 0)
+      .sort((a, b) => pieces[b].weight - pieces[a].weight)[0]
+    const centre: Record<string, number[]> = { living: [-3.5, 3], office: [-3.5, -3], kitchen: [3.5, -3], bedroom: [3.5, 3] }
+    const rooms: FullFarm['rooms'] = {}
+    // the bedroom first: the lightest room the busiest view (the kitchen's) looks into
+    for (const room of ['bedroom', 'living', 'office', 'kitchen']) {
+      let added = 0
+      // (without the room limit, `?debug&nocap`, a room takes what fits on its floor)
+      for (let spot = h.home.freeSpot(heaviest, room); spot && added < 200; spot = h.home.freeSpot(heaviest, room)) {
+        if (!h.home.buy(heaviest) || !h.home.placeStored(heaviest, spot).ok) break
+        added++
+      }
+      const next = h.home.canPlace({ id: 'one-more', type: heaviest, x: centre[room][0], z: centre[room][1], rot: 0 })
+      rooms[room] = { added, weight: h.home.roomWeight(room), limit: h.home.roomLimit, reason: next.reason ?? '' }
+    }
+    const f = h.farm
+    for (let i = 0; i < 10; i++) for (const id of ['hen', 'cow', 'sheep']) f.buy(id)
+    for (let i = 0; i < 12; i++) f.buy('queue')
+    for (let i = f.inLine().length; i < f.placesInLine(); i++) f.spawnVisitor({ queued: true })
+    f.state.beds.forEach((b: any) => (b.built = true))
+    const crops = ['lettuce', 'carrot', 'strawberry', 'tomato', 'corn', 'pumpkin', 'wheat', 'sugarcane']
+    f.state.beds.forEach((_: any, i: number) => {
+      if (f.plant(i, crops[i % crops.length])) f.state.beds[i].growth = 1e6
+    })
+    f.state.producers.tree.stock[0] = 3
+    f.state.producers.hens.stock[0] = 2
+    const animals = Object.fromEntries(['cows', 'sheep', 'hens'].map((k) => [k, f.state.producers[k].animals]))
+    h.__fullFarm = { heaviest, rooms, line: f.inLine().length, animals }
+    return { ...h.__fullFarm, fresh: true }
+  })
+  // the furniture merged again, the animals and the buyers in their places
+  if (done.fresh) await page.waitForTimeout(6000)
+  return done
+}
+
+/** Today's farm again, after `fillFarm`, for the specs that follow. */
+export async function emptyFarm(page: Page) {
+  await page.evaluate(() => {
+    const h = (window as any).__home
+    h.farm.reset()
+    delete h.__fullFarm
+  })
+}
+
 export { expect }

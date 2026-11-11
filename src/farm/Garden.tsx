@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { CuboidCollider, CylinderCollider, RigidBody } from '@react-three/rapier'
 import { BoxGeometry, CanvasTexture, Color, SRGBColorSpace, type BufferGeometry, type MeshStandardMaterial, type Sprite } from 'three'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import { farmSound, placeSound } from '../audio/sound'
 import { GARDEN, GATE } from '../data/layout'
-import { debugSet } from '../lib/debug'
+import { debugFlag, debugSet } from '../lib/debug'
 import { playGesture } from '../lib/gestures'
 import { farmFx } from '../fx/fx'
 import { useInteractable } from '../lib/interaction'
@@ -669,10 +669,20 @@ function SeedKeys() {
   return null
 }
 
+/** `?debug&stress=N`: N times the farm's most, drawn in place to measure with (src/debug/Stress.tsx); a chunk of its own,
+ *  fetched only then. */
+const stressK = Number(debugFlag('stress') ?? 0)
+const Stress = stressK > 0 ? lazy(() => import('../debug/Stress')) : null
+
 export function Garden() {
   return (
     // the outside, for the drawing pass (src/lib/visibility): seen from the house only through its windows and doors
     <group name="farm" userData={{ cell: 'outside' }}>
+      {Stress && (
+        <Suspense fallback={null}>
+          <Stress k={stressK} />
+        </Suspense>
+      )}
       <FarmClock />
       <SeedKeys />
       <StaticBatch>

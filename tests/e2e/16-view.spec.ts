@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import fs from 'node:fs'
 import path from 'node:path'
-import { test, expect, type Game } from './helpers'
+import { test, expect, emptyFarm, fillFarm, type Game } from './helpers'
 
 // The drawing pass that leaves out what cannot be seen (src/lib/visibility) changes how a frame is drawn, never what is
 // in it. With the farm at its fullest (every room full, every animal the shop sells, fifteen buyers, a ripe crop in
@@ -261,7 +261,49 @@ function installProbe() {
     for (let i = 0; i < off.px.length; i++) if (off.px[i] !== on.px[i]) differ++
     return { before: { calls: off.calls, triangles: off.triangles }, after: { calls: on.calls, triangles: on.triangles }, sun: stats.sun, casters: stats.casters, culled: stats.castersCulled, differ }
   }
-  w.__viewProbe = { camera, shadow }
+
+  /** The land as one mesh each (`__home.land.whole`, the way it was built before the pieces) and in pieces: the
+   *  camera's frame with the sun's map redrawn for each, and that map, exactly (the camera set by hand). */
+  const land = (pose: number[]) => {
+    lastPose = pose
+    const cam = h.camera
+    cam.position.set(pose[0], pose[1], pose[2])
+    cam.rotation.order = 'YXZ'
+    cam.rotation.set(pose[4], pose[3], 0)
+    cam.updateMatrixWorld(true)
+    const s = sunLight()
+    gl.info.autoReset = false
+    const draw = (whole: boolean) => {
+      h.land.whole(whole)
+      gl.shadowMap.needsUpdate = true
+      gl.info.reset()
+      const frame = shot()
+      const counts = { calls: gl.info.render.calls, triangles: gl.info.render.triangles }
+      const map = s.shadow.map
+      return { frame, counts, sun: readDepth(map.depthTexture, map.width, map.height) }
+    }
+    try {
+      const whole = draw(true)
+      const pieces = draw(false)
+      const bad = differing(whole.frame, pieces.frame)
+      let texels = 0
+      for (let i = 0; i < whole.sun.length; i++) if (whole.sun[i] !== pieces.sun[i]) texels++
+      return {
+        size: [whole.frame.W, whole.frame.H],
+        whole: whole.counts,
+        pieces: pieces.counts,
+        differ: bad.length,
+        pixels: bad.slice(0, 8).map((k) => [k % whole.frame.W, Math.floor(k / whole.frame.W)]),
+        texels,
+        portals: h.view.stats.portals,
+      }
+    } finally {
+      h.land.whole(false)
+      gl.info.autoReset = true
+      gl.shadowMap.needsUpdate = true
+    }
+  }
+  w.__viewProbe = { camera, shadow, land }
 }
 
 /**
@@ -316,44 +358,6 @@ async function behindShell() {
     out.push({ pixel: [x, y], behind, shell: +nearestShell.toFixed(3), thing: +nearestThing.toFixed(3) })
   }
   return out
-}
-
-/** The farm at its fullest: each room filled with the heaviest piece for sale, every animal the shop sells, fifteen
- *  buyers in line, a ripe crop in every bed. Once per page. */
-async function fill(game: Game) {
-  const done = await game.page.evaluate(() => {
-    const h = (window as any).__home
-    if (h.__viewFilled) return { ...h.__viewFilled, fresh: false }
-    h.farm.state.coins = 1_000_000
-    const pieces = h.home.pieces
-    const heaviest = Object.keys(pieces)
-      .filter((t) => pieces[t].price > 0)
-      .sort((a, b) => pieces[b].weight - pieces[a].weight)[0]
-    const rooms: Record<string, number> = {}
-    for (const room of ['bedroom', 'living', 'office', 'kitchen']) {
-      rooms[room] = 0
-      for (let spot = h.home.freeSpot(heaviest, room); spot && rooms[room] < 50; spot = h.home.freeSpot(heaviest, room)) {
-        if (!h.home.buy(heaviest) || !h.home.placeStored(heaviest, spot).ok) break
-        rooms[room]++
-      }
-    }
-    const f = h.farm
-    for (let i = 0; i < 10; i++) for (const id of ['hen', 'cow', 'sheep']) f.buy(id)
-    for (let i = 0; i < 12; i++) f.buy('queue')
-    for (let i = f.inLine().length; i < f.placesInLine(); i++) f.spawnVisitor({ queued: true })
-    f.state.beds.forEach((b: any) => (b.built = true))
-    const crops = ['lettuce', 'carrot', 'strawberry', 'tomato', 'corn', 'pumpkin', 'wheat', 'sugarcane']
-    f.state.beds.forEach((_: any, i: number) => {
-      if (f.plant(i, crops[i % crops.length])) f.state.beds[i].growth = 1e6
-    })
-    f.state.producers.tree.stock[0] = 3
-    f.state.producers.hens.stock[0] = 2
-    h.__viewFilled = { heaviest, rooms, line: f.inLine().length, animals: ['cows', 'sheep', 'hens'].map((k) => f.state.producers[k].animals) }
-    return { ...h.__viewFilled, fresh: true }
-  })
-  // the furniture merged again, the animals and the buyers in their places
-  if (done.fresh) await game.page.waitForTimeout(6000)
-  return done
 }
 
 interface Pose {
@@ -505,9 +509,9 @@ async function setUp(game: Game) {
     )
   }
   await game.page.evaluate(installProbe)
-  const filled = await fill(game)
+  const filled = await fillFarm(game.page)
   expect(filled.line).toBe(15)
-  for (const room of ['bedroom', 'living', 'office', 'kitchen']) expect(filled.rooms[room], room).toBeGreaterThan(0)
+  for (const room of ['bedroom', 'living', 'office', 'kitchen']) expect(filled.rooms[room].added, room).toBeGreaterThan(0)
 }
 
 test.describe('the drawing pass leaves out only what cannot be seen', () => {
@@ -601,13 +605,78 @@ test.describe('the drawing pass leaves out only what cannot be seen', () => {
     console.log(log.join('\n'))
   })
 
+  test('the hedge and the woods in pieces: the same frame and sun as one mesh each, built again when land is bought', async ({ game }) => {
+    await setUp(game)
+    const { page } = game
+    const log: string[] = []
+    /** At a pose (the player there, the camera set by hand): the land drawn both ways, every pixel and texel the same. */
+    const landAt = async (p: Pose) => {
+      await page.evaluate(
+        ([x, z, yaw]) => {
+          const h = (window as any).__home
+          h.teleport(x, 1.4, z)
+          if (typeof h.look === 'function') h.look({ yaw, pitch: 0 })
+          else {
+            h.look.yaw = yaw
+            h.look.pitch = 0
+          }
+        },
+        [p.x, p.z, p.yaw],
+      )
+      await page.waitForFunction(([x, z]) => Math.hypot((window as any).__home.camera.position.x - x, (window as any).__home.camera.position.z - z) < 1.2, [p.x, p.z], {
+        timeout: 60_000,
+        polling: 250,
+      })
+      const r = await page.evaluate((pose) => (window as any).__viewProbe.land(pose), [p.x, p.y ?? EYE, p.z, p.yaw, p.pitch ?? 0])
+      log.push(
+        `${p.name} (${r.size.join('×')}): one mesh each ${r.whole.calls} draws / ${r.whole.triangles} triangles, in pieces ${r.pieces.calls} / ${r.pieces.triangles} (camera and sun); ${r.differ} pixels and ${r.texels} sun texels differ${r.differ ? ` ${JSON.stringify(r.pixels)}` : ''}`,
+      )
+      expect(r.differ, `${p.name}: pixels ${JSON.stringify(r.pixels)}`).toBe(0)
+      expect(r.texels, `${p.name}: the sun's map`).toBe(0)
+      return r
+    }
+    // from the yard, at the gate and out of the garden door (the portals leave out what the doorway does not show)
+    const poses = [OUTSIDE[3], OUTSIDE[4], OUTSIDE[7], OUTSIDE[0], ROOMS[0]]
+    for (const p of poses) await landAt(p)
+
+    // buying the north meadow moves the hedge and the woods out round it: the pieces are built again and the old ones let
+    // go of (each geometry disposed)
+    const old = await page.evaluate(() => {
+      const w = window as any
+      const h = w.__home
+      w.__landDisposed = 0
+      const pieces = h.land.pieces()
+      for (const m of pieces) m.geometry.addEventListener('dispose', () => w.__landDisposed++)
+      h.farm.state.coins += 1000
+      return { pieces: pieces.length, bought: h.farm.buyLand('north') }
+    })
+    expect(old.bought).toBe(true)
+    await page.waitForFunction((n) => (window as any).__landDisposed === n, old.pieces, { timeout: 30_000, polling: 250 })
+    const now = await page.evaluate(() =>
+      (window as any).__home.land.pieces().map((m: any) => {
+        m.geometry.computeBoundingBox()
+        const b = m.geometry.boundingBox
+        return { name: m.name, box: [b.min.x, b.min.z, b.max.x, b.max.z] }
+      }),
+    )
+    log.push(`the north meadow bought: ${old.pieces} pieces let go, ${now.length} built`)
+    const hedges = now.filter((p: any) => p.name === 'hedge')
+    // the hedge along the meadow's north edge (z = −25), none left along the garden's (z = −13)
+    expect(hedges.some((p: any) => p.box[3] < -24 && p.box[1] > -25.6)).toBe(true)
+    expect(hedges.some((p: any) => p.box[3] - p.box[1] < 1.5 && Math.abs((p.box[1] + p.box[3]) / 2 + 13) < 0.6)).toBe(false)
+    // no tree stands on the meadow
+    for (const c of now.filter((p: any) => p.name === 'crown')) {
+      const [x, z] = [(c.box[0] + c.box[2]) / 2, (c.box[1] + c.box[3]) / 2]
+      expect(x > -14 && x < 14 && z > -25 && z < -13, `a tree at ${x.toFixed(1)}, ${z.toFixed(1)}`).toBe(false)
+    }
+    // and the new pieces draw the same as one mesh too
+    for (const p of [OUTSIDE[3], { name: 'the north meadow, looking north', x: 0, z: -16, yaw: 0, pitch: -0.05 }]) await landAt(p)
+    console.log(log.join('\n'))
+  })
+
   test('afterwards: the house as it was, no console errors', async ({ game }) => {
     await game.ready()
-    await game.page.evaluate(() => {
-      const h = (window as any).__home
-      h.farm.reset()
-      delete h.__viewFilled
-    })
+    await emptyFarm(game.page)
     expect(game.errors).toEqual([])
   })
 })

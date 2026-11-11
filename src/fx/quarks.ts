@@ -251,6 +251,9 @@ export function createFx(scene: Scene): FxEngine {
       const probe = system({ count: 1, life: [0.1, 0.1], speed: [0, 0], size: [0.01, 0.01], color: new ColorRange(lin('#ffffff'), lin('#ffffff')), tile: 0, shape: new CircleEmitter(), behaviors: [] })
       renderer.addSystem(probe)
       renderer.deleteSystem(probe)
+      // a new batch asks for Infinity instances until it is first updated: while it shows for the compile below, three
+      // drew (and counted) its whole buffer, a thousand empty particles a frame. Updated now it holds what is alive: none
+      renderer.update(0)
       const was = renderer.visible
       renderer.visible = true
       try {

@@ -1,6 +1,7 @@
 import { DOOR, DOORWAYS, HOUSE, LAMPS, ROOMS, SPAWN, WINDOWS, roomAt, type RoomId } from '../data/layout'
 import { SCREENS } from '../data/screens'
 import { carry, rectToWorld, type Fit, type Placement, type Rect } from '../farm/layout'
+import { debugFlag } from '../lib/debug'
 import { PIECES, isPieceType, type PieceType } from './catalogue'
 
 // Where the house's furniture stands, and the rules for moving it (pure, like src/farm/layout.ts): every piece is a
@@ -141,9 +142,11 @@ const windowZones = WINDOWS.filter((w) => !w.door).map((w) => {
  * Walls hide nothing from the renderer, so a view also draws the rooms it looks towards: measured with the heaviest
  * piece (the easy chair) filling a room to this, the worst room view (the kitchen's, towards the bedroom) drew 194k
  * triangles, and 204k with all four rooms full: under the 250k a view may draw (tests/e2e/05-budget) with room to
- * spare for the farm outside. Today's house: living room 34.2k, bedroom 12.7k, studio 6.3k, kitchen 2.6k.
+ * spare for the farm outside. Today's house: living room 34.2k, bedroom 12.7k, studio 6.3k, kitchen 2.6k. A limit for
+ * speed only (a debt, CLAUDE.md): `?debug&nocap` lifts it, to measure rooms filled until nothing more fits (05-budget's
+ * ten times the farm).
  */
-export const ROOM_WEIGHT = 60_000
+export const ROOM_WEIGHT = debugFlag('nocap') !== null ? Infinity : 60_000
 
 /** What a room's pieces draw (their weights), leaving one piece out (the one being moved). */
 export function roomWeight(layout: HomeLayout, room: RoomId, except?: string): number {

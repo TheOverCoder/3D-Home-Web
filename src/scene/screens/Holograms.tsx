@@ -28,6 +28,14 @@ import { drawArt, mulberry32, rgba } from '../../ui/screens/art'
 import { FONT_FAMILY } from './fonts'
 
 type Reveal = RefObject<number>
+
+/** A label's glyphs come back from troika's worker a moment after it mounts; until then its geometry asks for Infinity
+ *  instances, which three counts (`gl.info` read Infinity triangles) while WebGL draws none. None until it has them. */
+const noGlyphsYet = (text: Mesh | null) => {
+  const g = text?.geometry as { instanceCount?: number } | undefined
+  if (g && g.instanceCount === Infinity) g.instanceCount = 0
+}
+
 const easeOut = (x: number) => 1 - Math.pow(1 - MathUtils.clamp(x, 0, 1), 3)
 const easeBack = (x: number) => {
   const c = 1.4
@@ -229,7 +237,7 @@ function Rings({ def, reveal }: { def: ScreenDef; reveal: Reveal }) {
               side={DoubleSide}
             />
           </mesh>
-          <Text font={interBold} fontSize={0.05} color={i === 0 ? def.accent : '#ffffff'} fillOpacity={1} position={[0.36, 0.17 - i * 0.11, 0]} anchorX="left" anchorY="middle">
+          <Text ref={noGlyphsYet} font={interBold} fontSize={0.05} color={i === 0 ? def.accent : '#ffffff'} fillOpacity={1} position={[0.36, 0.17 - i * 0.11, 0]} anchorX="left" anchorY="middle">
             {`${b.label}  ${Math.round(b.value * 100)}%`}
           </Text>
         </group>
@@ -388,7 +396,7 @@ export function Hologram({ def }: { def: ScreenDef }) {
       </mesh>
       <group ref={face}>
         <Kind def={def} reveal={reveal} />
-        <Text font={interBold} fontSize={0.085} color={hot(def.accent, 1.15)} position={[0, 0.74, 0]} anchorX="center" anchorY="bottom">
+        <Text ref={noGlyphsYet} font={interBold} fontSize={0.085} color={hot(def.accent, 1.15)} position={[0, 0.74, 0]} anchorX="center" anchorY="bottom">
           {def.title}
         </Text>
       </group>
