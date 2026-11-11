@@ -15,11 +15,13 @@ import { openEdit, stopDecorating, useDecorate } from '../home/decorate'
 import { coarsePointer } from '../lib/device'
 import { focus } from '../lib/focus'
 import { playGesture } from '../lib/gestures'
-import { findActions, findFar, findStatus, findTag, triggerInteraction, type ActionIcon, type ViewRay } from '../lib/interaction'
+import { findActions, findFar, findStatus, findTag, interactable, triggerInteraction, type ActionIcon, type ViewRay } from '../lib/interaction'
 import { addLook, look, look as lookState, stepTurn, stopTurn } from '../lib/look'
 import { resume } from '../lib/startup'
 import { RUN_AT, followTurn, orbit, useStick } from '../lib/stick'
-import { playerState } from '../lib/playerState'
+import { Walker } from '../lib/route/walker'
+import { stepWalkView, stopWalk, useWalk, walkStats, walkStick, walkTo, walkingTo } from '../lib/route/walking'
+import { BODY, playerState } from '../lib/playerState'
 import { useSettings } from '../settings'
 import { busy, useHome, type CompassMark, type Nearby } from '../store'
 import { landBounds } from '../farm/layout'
@@ -29,9 +31,9 @@ import { GuideMarker } from './GuideMarker'
 import { gardenDoor } from './GardenDoor'
 import { Avatar, HeldItem } from './Avatar'
 
-const CAPSULE_HALF = 0.5
-const CAPSULE_RADIUS = 0.28
-const FLOAT = 0.12
+const CAPSULE_HALF = BODY.half
+const CAPSULE_RADIUS = BODY.radius
+const FLOAT = BODY.float
 // body-centre → feet: the capsule hovers FLOAT above the floor
 const FEET = CAPSULE_HALF + CAPSULE_RADIUS + FLOAT
 const EYE_HEIGHT = 1.62 // above the feet
@@ -61,9 +63,10 @@ const floorAt = (x: number, z: number): FloorKind => {
   return room ? ROOMS[room].floor : groundAt(x, z)
 }
 
-/** The touch stick as the player reads it: walking on by itself (the button beside the stick) is the stick pushed
- *  straight ahead, at a walk. */
+/** The touch stick as the player reads it: walking to a compass mark by itself is the stick pushed where the way goes
+ *  (src/lib/route); walking on by itself (the button beside the stick) is the stick pushed straight ahead, at a walk. */
 function stickInput() {
+  if (walkStick.on) return { x: walkStick.x, y: walkStick.y, run: walkStick.run }
   if (useStick.getState().cruise) return { x: 0, y: 1, run: false }
   const joy = useJoystickStore.getState().joysticks.default
   const x = joy?.x ?? 0
@@ -124,6 +127,10 @@ function spring(s: { x: number; v: number }, to: number, omega: number, dt: numb
   s.x = to + (x0 + k) * e
   s.v = (s.v - omega * k) * e
 }
+
+/** What the player is told to do this frame (ecctrl keeps the last of each until told otherwise). */
+const move = { forward: false, backward: false, leftward: false, rightward: false, jump: false, run: false, joystick: { x: 0, y: 0 } }
+const STILL = { forward: false, backward: false, leftward: false, rightward: false, jump: false, run: false, joystick: { x: 0, y: 0 } }
 
 const KEYS: Record<string, 'forward' | 'backward' | 'leftward' | 'rightward' | 'jump' | 'run'> = {
   KeyW: 'forward',
@@ -205,6 +212,8 @@ function useKeyboard() {
       }
       if (KEYS[e.code]) {
         e.preventDefault()
+        // walking to a compass mark by itself: a step or a jump of your own takes over (Shift only runs)
+        if (KEYS[e.code] !== 'run') stopWalk('key')
         held.add(e.code)
         refreshKeys()
       }
@@ -460,11 +469,13 @@ function CameraRig({ ecctrl, feet }: { ecctrl: RefObject<EcctrlHandle | null>; f
     const walking = playerState.grounded && playerState.speed > 0.3 && !state.screen && settings.headBob
     b.amp = MathUtils.damp(b.amp, walking ? Math.min(playerState.speed / 2.3, 1.7) * 0.02 : 0, 8, dt)
     const t = gait.phase
-    // the view turns towards where you walk with the stick, when chosen (touch: the button beside the stick)
+    // the view turns towards where you walk with the stick, when chosen (touch: the button beside the stick); walking to a
+    // compass mark by itself, towards where the way goes, whatever is chosen
     if (coarsePointer && !busy(state)) {
       const s = stickInput()
-      look.yaw += followTurn(s.x, s.y, playerState.speed > 0.3, dt)
+      look.yaw += followTurn(s.x, s.y, playerState.speed > 0.3 && !walkStick.on, dt)
     }
+    stepWalkView(dt)
     stepTurn(dt) // a turn towards something you chose to use from where you stand
     const th = look.pitch
     // eye position relative to the body, in the view's yaw frame (camera forward is local −z)
@@ -551,6 +562,8 @@ export function Player() {
   const [fps, setFps] = useState(60)
   const meter = useRef({ t: 0, n: 0, fps: 60 })
   const groundRay = useMemo(() => new rapier.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: -1, z: 0 }), [rapier])
+  // walking to a compass mark by itself: finds the way and pushes the stick along it
+  const walker = useMemo(() => new Walker(world, rapier, () => ecctrl.current?.body), [world, rapier])
   const focusRay = useMemo(() => new rapier.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: -1 }), [rapier])
   const impulse = useMemo(() => ({ x: 0, y: 0, z: 0 }), [])
   // the body tree never changes with the frame rate: keep it out of those re-renders
@@ -582,6 +595,7 @@ export function Player() {
   useEffect(() => {
     debugSet('teleport', (x: number, y: number, z: number) => {
       stopTurn()
+      stopWalk('moved')
       const body = ecctrl.current?.body
       body?.setTranslation({ x, y, z }, true)
       body?.setRotation({ x: 0, y: 0, z: 0, w: 1 }, true)
@@ -600,7 +614,21 @@ export function Player() {
     debugSet('camera', camera)
     debugSet('scene', scene)
     debugSet('gesture', playGesture)
-  }, [camera, scene])
+    // walking to a mark: start and stop it, how it went, the way to a thing found at once, the whole grid measured
+    debugSet('walk', {
+      to: walkTo,
+      stop: stopWalk,
+      state: () => useWalk.getState(),
+      stats: walkStats,
+      plan: (id: string, from?: { x: number; z: number }, fresh?: boolean) => walker.planNow(id, from, fresh),
+      measure: () => walker.measureGrid(),
+      // where a thing is and how far it reaches (what a walk to it ends within)
+      target: (id: string) => {
+        const d = interactable(id)
+        return d ? { position: { ...d.position }, aim: { ...(d.aim ?? d.position) }, box: d.box, radius: d.radius } : null
+      },
+    })
+  }, [camera, scene, walker])
 
   useFrame((_, dt) => {
     const handle = ecctrl.current
@@ -610,6 +638,7 @@ export function Player() {
     const to = playerState.moveTo
     if (to) {
       playerState.moveTo = null
+      stopWalk('moved')
       const body = handle.body
       body?.setTranslation(to, true)
       body?.setLinvel({ x: 0, y: 0, z: 0 }, true)
@@ -717,8 +746,28 @@ export function Player() {
     const wanted = state.view === 'first' ? (hit ? hit.timeOfImpact : 14) : camera.position.distanceTo(pos)
     focus.distance += (Math.max(0.4, wanted) - focus.distance) * (1 - Math.exp(-6 * dt))
 
-    if (!busy(state)) handle.setMovement(keys)
-    else handle.setMovement({ forward: false, backward: false, leftward: false, rightward: false, jump: false, run: false })
+    // walking to a compass mark by itself: anything you do yourself takes over — the stick, the jump button, a panel or
+    // a card opening (a key: see useKeyboard; tapping the mark again: the compass)
+    if (useWalk.getState().id) {
+      const joy = useJoystickStore.getState().joysticks.default
+      if (busy(state) || state.confirm) stopWalk('busy')
+      else if (coarsePointer && Math.hypot(joy?.x ?? 0, joy?.y ?? 0) > 0) stopWalk('stick')
+      else if (coarsePointer && useButtonStore.getState().buttons.jump) stopWalk('jump')
+    }
+    fwd.set(aim.x, 0, aim.z).normalize()
+    walker.frame(dt, pos, handle.moveSpeed, { x: fwd.x, z: fwd.z }, state.view === 'first')
+
+    if (!busy(state)) {
+      move.forward = keys.forward
+      move.backward = keys.backward
+      move.leftward = keys.leftward
+      move.rightward = keys.rightward
+      move.jump = keys.jump
+      move.run = keys.run || (walkStick.on && walkStick.run)
+      move.joystick.x = walkStick.on ? walkStick.x : 0
+      move.joystick.y = walkStick.on ? walkStick.y : 0
+      handle.setMovement(move)
+    } else handle.setMovement(STILL)
 
     // on-screen controls (touch devices)
     const cruising = useStick.getState().cruise
@@ -757,11 +806,13 @@ export function Player() {
     // with nothing to do here, what is on its way (shown, not pressed)
     const status = next.length || state.carrying ? null : findStatus(from, view)
     // what is ready to take farther off is on the compass at the top, not on the button (in reach, it is the
-    // button's, and it leaves the compass)
-    const marks = outdoors ? findFar(from) : []
+    // button's, and it leaves the compass); indoors too, what is ready outside (tap it to walk there)
+    const marks = findFar(from)
     if (marksKey(marks) !== marksKey(state.compass)) state.setCompass(marks)
-    // a mark tapped is reached: its arrow in the world goes
-    if (state.guide && (next.some((a) => a.id === state.guide!.id) || performance.now() - state.guide.at > 12000)) state.setGuide(null)
+    // a mark tapped is reached: its arrow in the world goes (or after a while, unless you are still walking to it; read
+    // afresh: a walk stopped this frame has just set it again)
+    const guide = useHome.getState().guide
+    if (guide && (next.some((a) => a.id === guide.id) || (!walkingTo(guide.id) && performance.now() - guide.at > 12000))) state.setGuide(null)
     // a confirm card asks about an action that is still on offer (walked away, or the oven got busy: it goes)
     if (state.confirm && !next.some((a) => a.id === state.confirm!.id)) state.setConfirm(null)
     if (actionsKey(next) !== actionsKey(state.actions) || actionsKey(status ? [status] : []) !== actionsKey(state.status ? [state.status] : [])) state.setActions(next, status)

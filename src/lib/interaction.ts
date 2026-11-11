@@ -6,6 +6,7 @@ import type { ArtId } from '../ui/art'
 import { canVibrate, coarsePointer } from './device'
 import { look, turnTowards } from './look'
 import { playerState, type Point3 } from './playerState'
+import { stopWalk } from './route/walking'
 import { useStick } from './stick'
 
 /** What an action does — drawn as a glyph on the action button. (Nothing that spends coins is one: building and buying
@@ -99,6 +100,9 @@ export function registerInteractable(def: InteractableDef) {
   }
 }
 
+/** The interactable registered under `id`, if there is one now. */
+export const interactable = (id: string): InteractableDef | undefined => registry.get(id)
+
 const labelOf = (def: InteractableDef) => (typeof def.label === 'function' ? def.label() : def.label)
 
 /** What a thing carries on it (its gear or its price tag), or null. */
@@ -151,6 +155,14 @@ function sameSpace(p: Point3, here: string) {
   if (!inside) return false
   const room = roomAt(p.x, p.z)
   return room === null || here === 'house' || room === here
+}
+
+/** Whether a thing is within reach of `from` as the action button measures it (on the ground, from its footprint's
+ *  edge, and in the same room or both outdoors), with `margin` metres to spare. */
+export function inReach(def: InteractableDef, from: { x: number; z: number }, margin = 0) {
+  if (reachOf(def, { x: from.x, y: 0, z: from.z }) > def.radius - margin) return false
+  const here = insideHouse(from.x, from.z) ? (roomAt(from.x, from.z) ?? 'house') : 'out'
+  return sameSpace(def.position, here)
 }
 
 interface Candidate {
@@ -329,7 +341,8 @@ function buzz() {
   if (coarsePointer && canVibrate && useSettings.getState().vibration) navigator.vibrate(12)
 }
 
-/** A mark tapped on the compass: turns you to face it and marks it in the world until you get there. */
+/** Turns you to face a thing and marks it in the world until you get there: a compass mark tapped when there is no way
+ *  to walk to it (src/lib/route/walker.ts), or you are already there. */
 export function guideTo(id: string) {
   const target = registry.get(id)
   if (!target) return
@@ -374,8 +387,9 @@ export function triggerInteraction(id?: string) {
   const offer = id === undefined ? nearby : actions.find((a) => a.id === id)
   const def = offer ? registry.get(offer.id) : undefined
   if (offer && def && (!def.enabled || def.enabled())) {
-    // you came for it: walking on by itself stops here
+    // you came for it: walking on by itself stops here, as does walking to a mark
     useStick.getState().setCruise(false)
+    stopWalk('used')
     // turn from where the body stands (the same place the offer was worked out from), at eye height
     if (offer.reach && state.view === 'first') turnTowards({ x: playerState.position.x, y: playerState.eye.y, z: playerState.position.z }, def.aim ?? def.position)
     const job = isJob(iconOf(def)) // (asked before it runs: after watering, the bed only says how long)

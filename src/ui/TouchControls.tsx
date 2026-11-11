@@ -5,6 +5,7 @@ import { uiClick } from '../audio/sound'
 import { coarsePointer } from '../lib/device'
 import { triggerInteraction } from '../lib/interaction'
 import { DEAD, RUN_AT, touchLayout, turnRound, useStick } from '../lib/stick'
+import { stopWalk, useWalk } from '../lib/route/walking'
 import { useSettings } from '../settings'
 import { busy, useHome, type Nearby } from '../store'
 import { ActionFace, TurnHint, actionWord } from './ActionGlyph'
@@ -95,8 +96,8 @@ function ActionButton({ action, main, size, at }: { action: Nearby; main?: boole
 /**
  * The stick. It rests in the bottom-left corner, and comes to wherever the thumb lands in the area round it, so the
  * first touch never pushes it by itself; a quiet middle (a thumb settling) does nothing, and past the ring on its
- * base it runs — the ring lights up and the knob shows a runner. Taking it stops walking on by itself. It writes
- * ecctrl's stick store, which the player reads every frame.
+ * base it runs — the ring lights up and the knob shows a runner. Taking it stops walking on by itself, and walking to a
+ * compass mark. It writes ecctrl's stick store, which the player reads every frame.
  */
 function Stick({ size }: { size: Size }) {
   const side = leftSide(size)
@@ -158,6 +159,7 @@ function Stick({ size }: { size: Size }) {
         held.current = { id: e.pointerId, x, y, left: box.left, top: box.top }
         e.currentTarget.setPointerCapture(e.pointerId)
         useStick.getState().setCruise(false)
+        stopWalk('stick')
         move(e)
       }}
       onPointerMove={move}
@@ -181,11 +183,13 @@ function Stick({ size }: { size: Size }) {
 }
 
 /** The row of round buttons over the stick: the view turns where you walk (on or off, remembered), walk on by
- *  yourself (until you take the stick), and turn round. */
+ *  yourself (until you take the stick; it shows pressed while you walk to a compass mark too, and then stops that), and
+ *  turn round. */
 function StickTools({ size }: { size: Size }) {
   const side = leftSide(size)
   const follow = useSettings((s) => s.followMove)
   const cruise = useStick((s) => s.cruise)
+  const walking = useWalk((s) => s.id !== null)
   const at = (i: number) => ({ ...edgeLeft(side.toolsLeft + i * (TOOL + TOOL_GAP), side.toolsBottom), width: TOOL, height: TOOL })
   return (
     <>
@@ -206,15 +210,16 @@ function StickTools({ size }: { size: Size }) {
       <button
         className="stick-tool"
         style={at(1)}
-        aria-pressed={cruise}
+        aria-pressed={cruise || walking}
         aria-label="Walk on by yourself"
         onClick={() => {
           uiClick()
-          useStick.getState().setCruise(!cruise)
+          if (walking) stopWalk('button')
+          else useStick.getState().setCruise(!cruise)
         }}
         onContextMenu={(e) => e.preventDefault()}
       >
-        <PersonSimpleWalk weight={cruise ? 'fill' : 'bold'} />
+        <PersonSimpleWalk weight={cruise || walking ? 'fill' : 'bold'} />
       </button>
       <button
         className="stick-tool"

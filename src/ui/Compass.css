@@ -86,8 +86,14 @@
 .compass-mark.alert .compass-pin .item-pic .qty { background: var(--berry); color: #fff; }
 .compass-pin .item-pic .art { width: 18px; height: 18px; filter: none; }
 .compass-pin .item-pic .qty { min-width: 15px; height: 15px; padding: 0 4px; font-size: 10px; inset-inline-end: -11px; bottom: -9px; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.6); }
+/* walking there by yourself (the mark tapped, or its "+N"): a sun-yellow ring that breathes until you get there */
+.compass-mark.going .compass-pin { box-shadow: 0 0 0 2px var(--sun), 0 0 0 5px color-mix(in srgb, var(--sun) 35%, transparent), 0 2px 6px rgba(20, 12, 6, 0.35); animation: compass-going 1.4s ease-in-out infinite; }
+@keyframes compass-going { 50% { scale: 1.14; } }
+@media (prefers-reduced-motion: reduce) {
+  .compass-mark.going .compass-pin { animation: none; }
+}
 /* two or more behind you at an edge (or more than the strip holds) fold into one: how many, on a small pill; a tap
-   turns you to the nearest of them */
+   walks you to the nearest of them */
 .compass-more .compass-pin { width: auto; min-width: 28px; padding: 0 6px; border-radius: 999px; font: 800 13px/1 var(--font-text); font-variant-numeric: tabular-nums; color: var(--ink); }
 /* behind you: held at the nearer edge, a small arrow pointing round */
 .compass-mark[data-side='left']::before,
