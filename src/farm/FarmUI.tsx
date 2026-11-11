@@ -1,3 +1,5 @@
+import { GoalsPanel, useGoalsReady } from './GoalsPanel'
+import { AwayPanel, AwayWatcher } from './AwayPanel'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { farmSound, placeSound, uiClick } from '../audio/sound'
 import { coarsePointer } from '../lib/device'
@@ -84,7 +86,27 @@ function FarmChip() {
       {STORE_IDS.map((id) => (
         <StoreChip key={id} id={id} />
       ))}
+      <GoalsChip />
     </div>
+  )
+}
+
+/** The goals board's trophy: how many goals wait to be claimed (it hops as one is reached), and opens the board. */
+function GoalsChip() {
+  const openPanel = useHome((s) => s.openPanel)
+  const panel = useHome((s) => s.panel)
+  const ready = useGoalsReady()
+  return (
+    <ChipItem
+      value={ready}
+      className={`goals${ready ? ' ready' : ''}`}
+      title={ready ? `Goals: ${ready} to claim` : 'Goals'}
+      onClick={() => !panel && openPanel({ kind: 'goals' })}
+      label={ready ? `Goals: ${ready} reached, to claim — open the board` : 'Goals — open the board'}
+    >
+      <img src={art('trophy')} alt="" />
+      {ready > 0 && <b>{ready}</b>}
+    </ChipItem>
   )
 }
 
@@ -512,6 +534,9 @@ export function FarmUI() {
       {panel?.kind === 'store-upgrade' && <StoreUpgradePanel store={panel.store} />}
       {panel?.kind === 'orders' && <OrdersPanel />}
       {panel?.kind === 'office-upgrade' && <OfficeUpgradePanel id={panel.id} />}
+      {panel?.kind === 'away' && <AwayPanel />}
+      {panel?.kind === 'goals' && <GoalsPanel />}
+      <AwayWatcher />
     </>
   )
 }

@@ -856,6 +856,8 @@ a:focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; border-rad
 .farm-chip-item.line.full { border-color: rgba(120, 220, 120, 0.6); color: #c9f0b8; }
 .farm-chip-item.more { padding: 2px 12px; }
 .farm-chip-item .of { font-size: 13.5px; opacity: 0.72; }
+.farm-chip-item.goals { padding-inline: 10px; }
+.farm-chip-item.goals.ready { border-color: rgba(120, 220, 120, 0.6); color: #c9f0b8; }
 /* the silo and the barn: buttons, their tap area grown to 44 px round the 36 px chip */
 button.farm-chip-item { position: relative; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 button.farm-chip-item::after { content: ''; position: absolute; inset: -4px -2px; }
@@ -977,6 +979,10 @@ button.farm-chip-item:focus-visible { outline: 3px solid var(--sun); outline-off
 .farm-basket-item { gap: 4px; }
 .farm-basket-item .art { width: 52px; height: 52px; }
 .farm-basket-item > span { color: var(--ink-2); font-size: 13px; }
+/* welcome back: what needs you (beds gone dry, a building too full) in the short tag's colours */
+.farm-basket-item.needs { background: #fde1da; }
+.farm-basket-item.needs > span { color: #9a2c1c; }
+.away-line { margin: 12px 0 0; }
 
 /* the silo and the barn: what is inside (as the basket showed it), how full, and the next level — its three materials,
    each with how many you have of how many it takes, and the room it gives */
@@ -1005,6 +1011,19 @@ button.farm-chip-item:focus-visible { outline: 3px solid var(--sun); outline-off
 .farm-surprise { width: 30px; height: 30px; filter: drop-shadow(0 2px 2px rgba(60, 35, 10, 0.2)); }
 .farm-surprise.small { width: 24px; height: 24px; }
 .farm-order .btn.leaf { min-width: 96px; }
+/* the goals board: a card like an order's — its picture, what to do and how far, what it gives; reached, green */
+.farm-goals { display: flex; flex-direction: column; gap: 8px; }
+.farm-goal { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 6px 12px; padding: 10px 12px; border-radius: var(--r-card); background: var(--paper-2); border: 2px solid transparent; }
+.farm-goal.ok { border-color: #8fd18a; background: #f1fae9; }
+.farm-goal > .item-pic .art { width: 48px; height: 48px; }
+.farm-goal-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.farm-goal-text strong { font-family: var(--font-display); font-weight: 600; font-size: 17px; color: var(--ink); }
+.farm-goal-bar { height: 8px; border-radius: 999px; background: var(--paper-3); overflow: hidden; }
+.farm-goal-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--leaf); }
+.farm-goal-count { font-size: 14px; color: var(--ink-2); }
+.farm-goal-reward { display: flex; align-items: center; gap: 8px; }
+.farm-goal-reward .item-pic .art { width: 36px; height: 36px; }
+.farm-goal > .btn { grid-column: 1 / -1; justify-self: end; min-width: 120px; min-height: 44px; }
 .farm-office { margin-top: 4px; }
 
 /* the shop: a picture, the name and one line, its price on the button */

@@ -8,7 +8,7 @@ import { iconUrl } from '../farm/icons'
 import type { ProduceId } from '../farm/data'
 import { capacity, clockText, used } from '../farm/state'
 import { ActionFace, TurnHint, VerbMark } from './ActionGlyph'
-import { art } from './art'
+import { art, type ArtId } from './art'
 import { Compass } from './Compass'
 import { ConfirmCard } from './ConfirmCard'
 import { ArrowRight, Clock } from './glyphs'
@@ -256,7 +256,7 @@ export function Hud() {
 
       {toast && (
         <div className="toast" role="status" key={toast.id}>
-          {toast.item && <img className="toast-item" src={iconUrl(toast.item as ProduceId)} alt="" draggable={false} />}
+          {toast.item && <img className="toast-item" src={iconUrl(toast.item as ProduceId) ?? art(toast.item as ArtId)} alt="" draggable={false} />}
           <span>{toast.text}</span>
         </div>
       )}

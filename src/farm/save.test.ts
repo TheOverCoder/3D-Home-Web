@@ -52,13 +52,13 @@ describe('a save broken or edited by hand', () => {
 
   it('each stat is a whole number from 0, and there are no others (a count saved as text took a harvest as text: "7" + 2 = "72")', () => {
     startFrom({ ...played, stats: { harvested: '7', sold: [3], earned: -5, declined: 2.6, baked: null, cheat: 1, constructor: 2 } })
-    expect(farm.stats).toEqual({ harvested: 0, sold: 0, earned: 0, declined: 3, baked: 0 })
+    expect(farm.stats).toEqual({ harvested: 0, sold: 0, earned: 0, declined: 3, baked: 0, sent: 0 })
     const n = collect('tree')
     expect(n).toBeGreaterThan(0)
     expect(farm.stats.harvested).toBe(n)
     for (const stats of ['abc', [1, 2], null]) {
       startFrom({ ...played, stats })
-      expect(farm.stats, JSON.stringify(stats)).toEqual({ harvested: 0, sold: 0, earned: 0, declined: 0, baked: 0 })
+      expect(farm.stats, JSON.stringify(stats)).toEqual({ harvested: 0, sold: 0, earned: 0, declined: 0, baked: 0, sent: 0 })
     }
     // a count past 2^53 no longer counts (one more is the same number): it stops at the last one that does
     startFrom({ ...played, stats: { ...(played.stats as object), earned: 1e300 } })

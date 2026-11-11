@@ -96,6 +96,10 @@ The README has the overview; `tests/README.md` what each test guards.
 - What is collected goes in only while there is room (`store` in `state.ts`), and nothing is lost: what does not fit
   stays where it was (on the animal, in the bed, in the machine) and its offer turns into a status (`full` on the icon);
   goods coming back from an order and surprises always go in, past full. A new source of goods follows the same rule.
+- Time away (the page closed or hidden: `cameBack` in `state.ts`) runs the farm on in steps for up to three hours and
+  tells what happened (`AwayPanel.tsx`, from what was ready before and after): a new producer or machine is in it by
+  being a row. A goal is a row in `GOALS` (`src/farm/goals.ts`) counting the farm's numbers (`stats`, `got`); a new
+  good the farm makes is counted in `got` where it comes in, as the others are.
 - Surprises (a building material) have their odds in `ITEM_ODDS` and roll on the farm's own dice (`setRandom` in
   tests); orders are rows of the board (`farm.orders`), the tractor's trip a timeline (`tractorRoute.ts`), both in the
   save like the line at the gate.

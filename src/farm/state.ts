@@ -59,6 +59,7 @@ import {
 } from './data'
 import { isComplete, makeOrder, orderKey, orderPay, cratesFor, type Order, type OrderLine, type OrderSlot } from './orders'
 import { bringsSurprise, canUpgrade, nextLevel, randomItem, roomIn, rollItems, usedIn } from './storage'
+import { GOALS, GOAL_IDS, MOST_STEPS, goalById, goalReward, goalTarget, startStep, type GoalId } from './goals'
 import { tripSeconds } from './tractorRoute'
 import { PARCELS, PLACES, boundary, canBuyParcel, canPlace, defaultLayout, sanitizeLayout, snap, type FarmLayout, type Fit, type ParcelId, type PlaceId, type Placement } from './layout'
 import { PIECES, type PieceType } from '../home/catalogue'
@@ -146,7 +147,11 @@ export interface FarmData {
   started: boolean // the player has planted something: from then on buyers come by
   planted: CropId[] // kinds ever planted: buyers ask for what you grow
   made: ProduceId[] // everything the farm has ever produced: buyers ask for that too
-  stats: { harvested: number; sold: number; earned: number; declined: number; baked: number }
+  stats: { harvested: number; sold: number; earned: number; declined: number; baked: number; sent: number }
+  /** every good the farm has got by its work: harvested, collected, made, found as a surprise (the goals count it) */
+  got: Record<ProduceId, number>
+  /** the goals board: the step each goal is on (src/farm/goals.ts) */
+  goals: Record<GoalId, number>
   visitors: Visitor[]
   /** where the movable places stand, and the fields bought (src/farm/layout.ts) */
   layout: FarmLayout
@@ -213,7 +218,9 @@ function fresh(): FarmData {
     started: false,
     planted: [],
     made: [],
-    stats: { harvested: 0, sold: 0, earned: 0, declined: 0, baked: 0 },
+    stats: { harvested: 0, sold: 0, earned: 0, declined: 0, baked: 0, sent: 0 },
+    got: emptyInv(),
+    goals: Object.fromEntries(GOAL_IDS.map((id) => [id, 0])) as Record<GoalId, number>,
     visitors: [],
     layout: defaultLayout(),
     home: defaultHome(),
@@ -417,6 +424,7 @@ function load(text: string | null = readRaw(KEY)): { data: FarmData; savedAt: nu
     data.made = Array.isArray(raw.made) ? [...new Set(raw.made.filter(isProduce))] : []
     // each stat a count, and no others (spread in as saved, a count saved as text made a harvest add "7" + 3 = "73")
     for (const k of Object.keys(data.stats) as (keyof FarmData['stats'])[]) data.stats[k] = amount(field(raw.stats, k), 0)
+    for (const id of produceIds) data.got[id] = amount(field(raw.got, id), 0)
     // a farm from before the layout keeps everything where it always stood
     data.layout = sanitizeLayout(raw.layout)
     // a farm from before the house could be furnished keeps today's furniture where it always stood
@@ -432,6 +440,9 @@ function load(text: string | null = readRaw(KEY)): { data: FarmData; savedAt: nu
       aboard,
       trip: aboard ? span(field(raw.dispatch, 'trip'), tripSeconds(aboard, gateX(data.layout))) : -1,
     }
+    // the goals: each on the step it was saved on; a farm from before them starts each where it is (what it did before
+    // is not paid for again)
+    for (const def of GOALS) data.goals[def.id] = isObject(raw.goals) ? int(field(raw.goals, def.id), 0, 0, MOST_STEPS) : startStep(def, data)
     const queue = (Array.isArray(raw.queue) ? raw.queue : []).map(savedBuyer).filter((b): b is SavedBuyer => !!b)
     return { data, savedAt: num(raw.time, 0) || null, queue: queue.slice(0, queuePlaces(data.queueLevel)) }
   } catch {
@@ -541,7 +552,10 @@ const surpriseWords = (items: ItemId[]) => (items.length ? ` · Surprise: ${[...
 /** Surprises into the barn (always: they are what makes it bigger), each flying up from where it was found to the
  *  barn's chip at the top. */
 function gainItems(items: ItemId[], at?: { x: number; y: number; z: number }) {
-  for (const item of items) putBack(item, 1)
+  for (const item of items) {
+    putBack(item, 1)
+    farm.got[item] += 1
+  }
   if (!items.length) return
   if (at) items.forEach((item, k) => itemFx(at.x, at.y, at.z, item, k))
   farmSound('surprise')
@@ -669,6 +683,7 @@ export function harvestBeds(beds: number[]) {
     }
     store(b.crop, n)
     farm.stats.harvested += n
+    farm.got[b.crop] += n
     got.set(b.crop, (got.get(b.crop) ?? 0) + n)
     total += n
     b.crop = null
@@ -752,6 +767,7 @@ export function collect(id: ProducerId, i = 0, at?: { x: number; y: number; z: n
   p.stock[i] = has - n
   if (!def.keepsClock && !p.stock[i]) p.timer[i] = 0
   farm.stats.harvested += n
+  farm.got[def.good] += n
   const items = rollItems(def.surprise === 'each' ? n : 1, def.surprise === 'each' ? ITEM_ODDS.unit : ITEM_ODDS.harvest, random)
   gainItems(items, at)
   const left = n < has ? ` · the ${STORES[storeOf(def.good)].name.toLowerCase()} is full` : ''
@@ -847,6 +863,7 @@ export function collectMachine(id: MachineId) {
   }
   const counts = MACHINES[id].counts
   if (counts) farm.stats[counts] += n
+  farm.got[r.makes] += n
   if (n < m.ready) farm.machines[id] = { ...m, ready: m.ready - n }
   else farm.machines[id] = freshMachine()
   toast(`+ ${count(r.makes, n)}${farm.machines[id].ready ? ' · the barn is full' : ''}`, r.makes)
@@ -1267,6 +1284,7 @@ export function sendOrder(k: number) {
   farm.coins += o.coins
   farm.stats.earned += o.coins
   farm.stats.sold += o.lines.reduce((n, l) => n + l.want, 0)
+  farm.stats.sent += 1
   const items = o.surprise ? [randomItem(random)] : []
   gainItems(items, OFFICE_SCREEN)
   farm.dispatch.waiting = Math.min(MOST_CRATES, farm.dispatch.waiting + cratesFor(o))
@@ -1487,27 +1505,148 @@ export function tick(dt: number) {
   }
 }
 
-// the line at the gate as you left it; then, for the time the page was closed (up to three hours), the farm
-// grows on and buyers keep joining the line — as many as it has room for
+// ───────────────────────────── the goals board ─────────────────────────────
+
+/** Claims a goal reached (src/farm/goals.ts): its coins, and the building material the silo or the barn is shortest of
+ *  (into the barn even past full, as surprises do); the goal moves on to its next count. What it gave, or null. */
+export function claimGoal(id: GoalId) {
+  const def = goalById(id)
+  const step = farm.goals[id]
+  if (!def || step >= MOST_STEPS || def.measure(farm) < goalTarget(def, step)) return null
+  const reward = goalReward(def, step, farm)
+  farm.goals[id] = step + 1
+  farm.coins += reward.coins
+  putBack(reward.item, reward.count)
+  toast(`${def.say(goalTarget(def, step))} · + ${reward.coins} coins, + ${count(reward.item, reward.count)}`, reward.item)
+  farmSound('coins')
+  bump()
+  save()
+  return reward
+}
+
+// ───────────────────────────── while you were away ─────────────────────────────
+
+/** The most of a time away the farm goes on for: the page closed, or hidden (another app, the phone locked). */
+export const AWAY_MOST = 3 * 3600
+/** Away at least this long, the game tells you what happened (shorter, it just goes on). */
+export const AWAY_TELLS = 120
+
+/** What there is to take at a moment, to tell what came while you were away. */
+interface Snapshot {
+  ripe: boolean[]
+  stock: Record<ProducerId, number>
+  ready: Record<MachineId, number>
+  line: number
+  orders: number
+  trip: boolean
+}
+
+const snapshot = (): Snapshot => ({
+  ripe: farm.beds.map((_, i) => bedStage(i) === 'ripe'),
+  stock: Object.fromEntries(PRODUCER_IDS.map((id) => [id, farm.producers[id].stock.reduce((a, b) => a + b, 0)])) as Record<ProducerId, number>,
+  ready: Object.fromEntries(MACHINE_IDS.map((id) => [id, farm.machines[id].ready])) as Record<MachineId, number>,
+  line: inLine().length,
+  orders: farm.orders.filter((slot) => 'order' in slot).length,
+  trip: farm.dispatch.trip >= 0,
+})
+
+/** What happened while you were away: what came to be ready to take (each good with how many: the harvest of the beds
+ *  that ripened, what the animals and the tree gave, what the machines finished), who joined the line, the orders that
+ *  came in and the tractor back home; and what needs you (beds gone dry, a building too full to take what waits). */
+export interface AwayReport {
+  /** how long you were away, and how much of it the farm went on for (at most AWAY_MOST) */
+  seconds: number
+  counted: number
+  goods: { item: ProduceId; count: number }[]
+  buyers: number
+  orders: number
+  tractor: boolean
+  thirsty: number
+  full: StoreId[]
+}
+
+function awayReport(before: Snapshot, seconds: number, counted: number): AwayReport {
+  const after = snapshot()
+  const goods = new Map<ProduceId, number>()
+  const add = (item: ProduceId, n: number) => n > 0 && goods.set(item, (goods.get(item) ?? 0) + n)
+  farm.beds.forEach((b, i) => {
+    if (after.ripe[i] && !before.ripe[i] && b.crop) add(b.crop, yieldOf(b.crop))
+  })
+  for (const id of PRODUCER_IDS) add(PRODUCERS[id].good, after.stock[id] - before.stock[id])
+  for (const id of MACHINE_IDS) {
+    const r = machineRecipe(id)
+    if (r) add(r.makes, after.ready[id] - before.ready[id])
+  }
+  // a building is full while something waits that it has no room for
+  const waiting = (store: StoreId) =>
+    farm.beds.some((b, i) => after.ripe[i] && b.crop && storeOf(b.crop) === store) ||
+    PRODUCER_IDS.some((id) => after.stock[id] > 0 && storeOf(PRODUCERS[id].good) === store) ||
+    MACHINE_IDS.some((id) => after.ready[id] > 0 && machineRecipe(id) && storeOf(machineRecipe(id)!.makes) === store)
+  return {
+    seconds,
+    counted,
+    goods: [...goods].map(([item, count]) => ({ item, count })),
+    buyers: Math.max(0, after.line - before.line),
+    orders: Math.max(0, after.orders - before.orders),
+    tractor: before.trip && !after.trip,
+    thirsty: farm.beds.filter((_, i) => bedStage(i) === 'thirsty').length,
+    full: STORE_IDS.filter((id) => room(id) <= 0 && waiting(id)),
+  }
+}
+
+/** Whether a report has anything to tell. */
+export const awayNews = (r: AwayReport) => r.goods.length > 0 || r.buyers > 0 || r.orders > 0 || r.tractor || r.thirsty > 0 || r.full.length > 0
+
+/** The farm goes on for a time away, as it would have: in steps of 5 s (a bed ripens, an animal fills, a machine
+ *  finishes in the step it would have), buyers joining the line as they come, as many as it has room for. */
+function goOn(seconds: number) {
+  for (let left = seconds; left > 0; left -= 5) {
+    const dt = Math.min(5, left)
+    farm.clock += dt
+    grow(dt)
+  }
+  if (farm.started) {
+    let t = seconds - farm.nextVisitorIn
+    let n = 0
+    if (t >= 0) {
+      n = 1 + Math.floor(t / arrivalSeconds())
+      t %= arrivalSeconds()
+      farm.nextVisitorIn = arrivalSeconds() - t
+    } else farm.nextVisitorIn -= seconds
+    for (let i = Math.min(n, placesInLine() - inLine().length); i > 0; i--) spawnVisitor({ queued: true })
+  }
+}
+
+/** The last time away, until the game has shown it (Welcome back, src/farm/FarmUI.tsx). */
+let lastAway: AwayReport | null = null
+export const awaySummary = () => lastAway
+export const clearAwaySummary = () => {
+  lastAway = null
+  bump()
+}
+
+/** Back after `seconds` away (the page hidden, or closed): the farm goes on for that time (at most three hours), and
+ *  what happened is kept for the game to tell, when it was long enough and anything did. */
+export function cameBack(seconds: number): AwayReport | null {
+  if (!(seconds > 0)) return null
+  const counted = Math.min(AWAY_MOST, seconds)
+  const before = snapshot()
+  goOn(counted)
+  const report = awayReport(before, seconds, counted)
+  if (seconds >= AWAY_TELLS && awayNews(report)) lastAway = report
+  bump()
+  save()
+  return report
+}
+
+// the line at the gate as you left it; then the time the page was closed
 function resumeFrom(l: ReturnType<typeof load>) {
   for (const b of l.queue) {
     const v = newVisitor(b.want, b.qty, b.offer, 1, b.gift, b.look, b.name)
     farm.visitors.push(v)
     standInLine(v)
   }
-  if (!l.savedAt) return
-  const away = Math.min(3 * 3600, Math.max(0, (Date.now() - l.savedAt) / 1000))
-  for (let left = away; left > 0; left -= 5) grow(Math.min(5, left))
-  if (farm.started) {
-    let t = away - farm.nextVisitorIn
-    let n = 0
-    if (t >= 0) {
-      n = 1 + Math.floor(t / arrivalSeconds())
-      t %= arrivalSeconds()
-      farm.nextVisitorIn = arrivalSeconds() - t
-    } else farm.nextVisitorIn -= away
-    for (let i = Math.min(n, placesInLine() - inLine().length); i > 0; i--) spawnVisitor({ queued: true })
-  }
+  if (l.savedAt) cameBack(Math.max(0, (Date.now() - l.savedAt) / 1000))
 }
 resumeFrom(loaded)
 
@@ -1515,6 +1654,7 @@ resumeFrom(loaded)
 export function resetFarm() {
   const f = fresh()
   Object.assign(farm, f)
+  lastAway = null
   saveNow()
   bump()
 }
@@ -1571,6 +1711,8 @@ export function switchSlot(n: Slot) {
   farm.visitors = []
   const panel = useHome.getState().panel
   if (panel) useHome.getState().closePanel()
+  // what happened on the farm left behind is not this one's
+  lastAway = null
   resumeFrom(l)
   bump()
 }

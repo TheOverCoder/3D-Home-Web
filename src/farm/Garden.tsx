@@ -63,6 +63,8 @@ import {
   sendHome,
   spawnVisitor,
   tick,
+  cameBack,
+  awaySummary,
   fixBed,
   useFarm,
   waiting,
@@ -602,6 +604,8 @@ function FarmClock() {
       state: farm,
       useFarm,
       tick,
+      cameBack,
+      awaySummary,
       reset: resetFarm,
       spawnVisitor,
       plant,
@@ -669,10 +673,16 @@ function FarmClock() {
     const now = performance.now()
     const dt = (now - last.current) / 1000
     last.current = now
-    tick(Math.min(dt, 3600))
+    // a long gap between frames is time away (another app, the phone locked: no frames while the page is hidden): the
+    // farm goes on for it as it does for a page closed, and the game tells what happened
+    if (dt > AWAY_GAP) cameBack(dt)
+    else tick(dt)
   })
   return null
 }
+
+/** Longer than this between two frames (s), the page was hidden: time away, not a slow frame. */
+const AWAY_GAP = 30
 
 /** The kitchen garden in the south yard (see src/farm/data.ts for what grows and where things stand). */
 /** On a keyboard, with an empty bed in front of you: 1–9 plant that crop (the seed packets' order) in every empty

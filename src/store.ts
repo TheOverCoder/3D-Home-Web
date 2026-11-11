@@ -43,6 +43,8 @@ export type Panel =
   | { kind: 'office-upgrade'; id: 'slots' | 'wait' } // the card that asks before an office upgrade is bought
   | { kind: 'furniture' } // the furniture shop (decorating)
   | { kind: 'buy-piece'; type: string } // buying one piece: what it is and its price, Cancel or Buy
+  | { kind: 'away' } // welcome back: what happened on the farm while you were away
+  | { kind: 'goals' } // the goals board: what to reach next, and the rewards to claim
 
 /** The thing you look at carries a tag (src/ui/ThingTag.tsx): a gear for what can be set about it, or a price tag for
  *  what it costs to build or buy; tapped (or G), it opens its card. */

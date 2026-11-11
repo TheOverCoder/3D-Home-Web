@@ -27,6 +27,7 @@ import {
   orderWait,
   type CropId,
 } from './data'
+import { GOAL_IDS, MOST_STEPS } from './goals'
 import { PARCELS, PARCEL_IDS, PLACE_IDS, canPlace } from './layout'
 import { arrivalSeconds, farm, gateX, inLine, placesInLine, tick } from './state'
 import { tripSeconds } from './tractorRoute'
@@ -60,7 +61,7 @@ const cropIds: string[] = CROPS.map((c) => c.id)
 const isCrop = (v: unknown): v is CropId => cropIds.includes(v as string)
 /** A kind of furniture of the catalogue (not the game's own isPieceType: the rules here do not lean on the code they test). */
 const isKind = (v: unknown) => (PIECE_TYPES as string[]).includes(v as string)
-const STATS = ['harvested', 'sold', 'earned', 'declined', 'baked']
+const STATS = ['harvested', 'sold', 'earned', 'declined', 'baked', 'sent']
 
 // ───────────────────────────── what a value can be turned into ─────────────────────────────
 
@@ -175,6 +176,8 @@ function free(base: Base, path: Key[], names: string[]): (name: string) => boole
   const at = base.old && OLD_PARTS[path[0]] ? OLD_PARTS[path[0]] : path.join('.')
   const touched = names.filter((n) => n === at || n.startsWith(`${at}.`) || at.startsWith(`${n}.`))
   const coupled = touched.map(alsoChanges).filter((r): r is RegExp => !!r)
+  // a farm from before the goals starts each where its counts are: they follow the stats and what it has got
+  if (base.old && /^(stats|got)(\.|$)/.test(at)) coupled.push(/^goals(\.|$)/)
   return (n) => touched.includes(n) || coupled.some((r) => r.test(n))
 }
 
@@ -242,8 +245,11 @@ function farmProblems(): string[] {
   bad('nextVisitorIn', isWithin(farm.nextVisitorIn, 0, arrivalSeconds()))
   bad('planted: crops, once each', farm.planted.every(isCrop) && unique(farm.planted))
   bad('made: goods, once each', farm.made.every((id) => produceIds.includes(id)) && unique(farm.made))
-  bad('stats: the five', sameKeys(farm.stats, STATS))
+  bad('stats: the six', sameKeys(farm.stats, STATS))
   for (const [k, n] of Object.entries(farm.stats)) bad(`stats.${k}`, isCount(n))
+  // what the farm has got by its work: a count for each good; the goals: a step for each, from 0
+  bad('got: each good', sameKeys(farm.got, produceIds) && Object.values(farm.got).every((n) => isCount(n)))
+  bad('goals: each goal', sameKeys(farm.goals, GOAL_IDS) && Object.values(farm.goals).every((n) => isCount(n, MOST_STEPS)))
   bad('no more in line than its places', inLine().length <= placesInLine())
   for (const v of farm.visitors) {
     const colours = [v.look.shirt, v.look.trousers, v.look.skin, v.look.hair].every((c) => /^#[0-9a-f]{6}$/i.test(c))
