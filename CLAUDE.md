@@ -8,7 +8,7 @@ The README has the overview; `tests/README.md` what each test guards.
 
 - `npm run check` (types, oxlint, the Vitest unit tests, the format check: ~15 s), then the e2e suite:
   `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium npx playwright test --trace off` (software WebGL, ~45 min; run single
-  spec files while iterating, or `npm run test:e2e:quick`, ~20 min: all but the seven `@boot` tests that start a page
+  spec files while iterating, or `npm run test:e2e:quick`, ~20 min: all but the eight `@boot` tests that start a page
   of their own; `05`'s walks alone take 10–20 min, its ten times the farm, at one size, some minutes more). It builds and serves on
   :4185. A rule or a save change gets a unit test beside its code (`src/**/*.test.ts`, `tests/README.md`).
 - Code style: Prettier (`.prettierrc.json`: width 200, no semicolons, single quotes; `npm run format`; the CSS keeps
@@ -33,10 +33,12 @@ The README has the overview; `tests/README.md` what each test guards.
 - A drawing pass leaves out of each frame what cannot be seen, and never changes the picture. First person: the four
   rooms and the outside are cells seen only through the doorways, windows and garden door of `src/data/layout.ts`
   (the kitchen's door shut closes its doorway); every `Parts` crowd draws only its models in view; the sun's shadow
-  map leaves out the casters under the ceilings that no window lets sunlight reach. Third person, decorating and the
-  edit mode: only the crowds' view test.
+  map leaves out the casters under the ceilings that no window lets sunlight reach, and is kept between frames while
+  everything that moved is out of it (`src/scene/Lighting.tsx`). Third person, decorating and the edit mode: only the
+  crowds' view test.
 - The house's shell (walls, floors, ceilings, doors) is drawn always: it is under `userData.cell = 'always'`
-  (`House.tsx`), as is your own body. What is outdoors is under `cell: 'outside'` (the farm, the garden round the
+  (`House.tsx`), as is your own body for the camera (the sun judges it like anything in a room: `userData.sun =
+  'room'`). What is outdoors is under `cell: 'outside'` (the farm, the garden round the
   house). Anything else stands in a room and is judged each frame by where it is now: a new thing in the house needs
   nothing. A new opening is a row in `layout.ts`; a new door that shuts must close its portal.
 - A crowd's model is everything put after one `at`: each animal, person or plant gets its own. Parts that cast a

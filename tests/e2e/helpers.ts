@@ -10,7 +10,7 @@ export interface Game {
   page: Page
   /** console errors / page errors seen since the page was created */
   errors: string[]
-  /** Boots the app if needed, then resets the world to a known state (spawn, nothing open or carried). */
+  /** Boots the app if needed, then resets the world to a known state (spawn, nothing open or carried, every pickup where it started). */
   ready: () => Promise<void>
   state: () => Promise<any>
   teleport: (x: number, y: number, z: number, yaw?: number, pitch?: number) => Promise<void>
@@ -94,6 +94,13 @@ export const test = base.extend<object, { game: Game }>({
             if (s.settingsOpen) s.setSettingsOpen(false)
             if (s.editing) s.setEditing(false)
             if (s.view !== 'first') s.setView('first')
+            // every pickup back where it started (the first reset after the page booted saw them all there): one left
+            // somewhere by a test (the mug dropped in the yard) would stand in the next one's way
+            h.itemsHome ??= Object.fromEntries(Object.entries(s.items).map(([id, it]: [string, any]) => [id, it.pos]))
+            for (const [id, pos] of Object.entries(h.itemsHome as Record<string, number[]>)) {
+              const now = s.items[id]?.pos
+              if (now && now.some((v: number, k: number) => v !== pos[k])) s.placeItem(id, pos)
+            }
             h.useHome.setState({
               carrying: null,
               lamps: Object.fromEntries(Object.keys(s.lamps).map((k) => [k, true])),

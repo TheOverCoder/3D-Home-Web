@@ -132,8 +132,8 @@ test.describe('the silo, the barn, surprises and orders', () => {
     expect(toast).toMatch(/Surprise: 1 brick/)
     expect((await state(game)).inv.brick).toBe(1)
     // it popped up over the buyer and flew to the barn's chip
-    await until(game, () => (window as any).__home.fx.stats.items > 0)
-    expect(await page.evaluate(() => (window as any).__home.fx.stats.items)).toBeGreaterThan(before)
+    // (counted from what earlier tests on the shared page flew: the effect starts a frame or more after the sale)
+    await page.waitForFunction((before) => (window as any).__home.fx.stats.items > before, before, { timeout: 30_000, polling: 200 })
     // three eggs collected: three chances
     await page.evaluate(() => {
       const f = (window as any).__home.farm

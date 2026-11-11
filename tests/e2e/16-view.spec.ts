@@ -303,7 +303,62 @@ function installProbe() {
       gl.shadowMap.needsUpdate = true
     }
   }
-  w.__viewProbe = { camera, shadow, land }
+  const sameBytes = (a: Uint8Array, b: Uint8Array) => {
+    let differ = 0
+    for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) differ++
+    return differ
+  }
+  const pixelsDiffer = (a: any, b: any) => differing(a, b).length
+  const mapNow = () => {
+    const map = sunLight().shadow.map
+    return readDepth(map.depthTexture, map.width, map.height)
+  }
+  /** One redraw of the sun's map now, the pass on or off, into the shots' own target (a render of the scene straight to
+   *  the canvas, which the game never makes, changes what the next frames draw). */
+  const redraw = (on: boolean) => {
+    const prev = gl.getRenderTarget()
+    h.view.on = on
+    gl.shadowMap.needsUpdate = true
+    gl.setRenderTarget(target())
+    gl.render(h.scene, h.camera)
+    gl.setRenderTarget(prev)
+    h.view.on = true
+    gl.shadowMap.needsUpdate = false
+  }
+  /** The sun's map as the game left it (drawn again or kept), against a full redraw now — every caster, then the pass
+   *  on (left in place: the same map, when they match) — and the camera's frame with each. */
+  const kept = () => {
+    const stats = { drawn: h.view.stats.mapDrawn, kept: h.view.stats.mapKept }
+    gl.shadowMap.needsUpdate = false
+    const game = mapNow()
+    const gameShot = shot()
+    redraw(false)
+    const all = mapNow()
+    const allShot = shot()
+    redraw(true)
+    const full = mapNow()
+    const fullShot = shot()
+    return { ...stats, differ: sameBytes(game, full), differAll: sameBytes(game, all), pixels: pixelsDiffer(gameShot, fullShot), pixelsAll: pixelsDiffer(gameShot, allShot) }
+  }
+  /** Your body moved by hand (dx metres): what changes in the map drawn with every caster (the pass off), against the
+   *  map before — a stale map, were it kept. */
+  const bodyMoved = (dx: number) => {
+    let body: any = null
+    h.scene.traverse((o: any) => {
+      if (!body && o.userData?.sun === 'room') body = o
+    })
+    redraw(false)
+    const before = mapNow()
+    body.position.x += dx
+    body.updateMatrixWorld(true)
+    redraw(false)
+    const after = mapNow()
+    body.position.x -= dx
+    body.updateMatrixWorld(true)
+    redraw(true)
+    return sameBytes(before, after)
+  }
+  w.__viewProbe = { camera, shadow, land, kept, bodyMoved }
 }
 
 /**
@@ -547,6 +602,97 @@ test.describe('the drawing pass leaves out only what cannot be seen', () => {
     // put down in the bedroom, seen from the living room through the doorway
     await page.evaluate(() => (window as any).__home.useHome.getState().drop([2.5, 0.3, 3.4]))
     await compareAt(game, { name: 'the mug left in the bedroom, from the living room', x: -1.2, z: 3, yaw: -P / 2 }, log)
+    console.log(log.join('\n'))
+  })
+
+  // The sun's map is drawn again only when something in it changed (Lighting.tsx): your body walking, turning or jumping
+  // indoors where no window lets sunlight in is left out of it, so the map is kept. After each thing that happens, the
+  // map as the game left it must be a full redraw's, texel for texel (every caster, and the pass on), and so must the
+  // frame drawn with it; and the check must see a stale map (your body moved outdoors, the map left as it was).
+  test("the sun's map, kept while you move where no sunlight reaches, is always a full redraw's", async ({ game }) => {
+    // a dozen places and things that happen, each compared three ways: longer than one room's poses
+    test.setTimeout(600_000)
+    await setUp(game)
+    const { page } = game
+    const log: string[] = []
+    let last = { drawn: 0, kept: 0 }
+    const check = async (name: string) => {
+      const r = await page.evaluate(() => (window as any).__viewProbe.kept())
+      log.push(
+        `${name}: map drawn again on ${r.drawn - last.drawn} frames, kept on ${r.kept - last.kept}; ${r.differ} bytes differ from a full redraw (${r.differAll} with every caster), ${r.pixels} pixels (${r.pixelsAll})`,
+      )
+      expect(r.differ, `${name}: the map is a full redraw's`).toBe(0)
+      expect(r.differAll, `${name}: the map is every caster's`).toBe(0)
+      expect(r.pixels, `${name}: the frame drawn with it`).toBe(0)
+      expect(r.pixelsAll, `${name}: the frame drawn with every caster's map`).toBe(0)
+      const since = { drawn: r.drawn - last.drawn, kept: r.kept - last.kept }
+      last = r
+      return since
+    }
+    const at = async (x: number, z: number, yaw: number) => {
+      await game.teleport(x, 1.4, z, yaw, 0)
+      await page.waitForTimeout(2500)
+    }
+    const turn = async (by: number) => {
+      await page.evaluate((by) => ((window as any).__home.look.yaw += by), by)
+      await page.waitForTimeout(1500)
+    }
+    // turning in the living room: the body moves every frame, the map stays
+    await at(-3.5, 1.3, P)
+    await check('living room')
+    let kept = 0
+    for (let i = 0; i < 3; i++) {
+      await turn(0.5)
+      kept += (await check(`living room, turned ${i + 1}`)).kept
+    }
+    expect(kept, 'turning indoors keeps the map').toBeGreaterThan(0)
+    // walking, then a jump, indoors
+    await page.keyboard.down('KeyW')
+    await page.waitForTimeout(1000)
+    await check('walking in the living room')
+    await page.keyboard.up('KeyW')
+    await page.keyboard.down('Space')
+    await page.waitForTimeout(200)
+    await page.keyboard.up('Space')
+    await check('jumping, in the air')
+    await page.waitForTimeout(2000)
+    await check('landed')
+    // into the sunlight from the kitchen's east window, and turning there; the kitchen's door opened and shut
+    await at(3.5, -3, P)
+    await check('kitchen')
+    await at(5.3, -4.0, -P / 2)
+    await check("kitchen, in the east window's sunlight")
+    await turn(0.6)
+    await check('kitchen, in the sunlight, turned')
+    for (const time of ['once', 'twice']) {
+      await page.evaluate(() => (window as any).__home.useHome.getState().toggleDoor('door-kitchen-bedroom'))
+      await page.waitForTimeout(4000)
+      await check(`the kitchen's door moved ${time}`)
+    }
+    // carrying the mug, then out through the garden door (it opens as you come) into the yard, and turning there
+    await page.evaluate(() => (window as any).__home.useHome.getState().pickUp('item-mug'))
+    await at(-1.2, 4.6, P)
+    await check('carrying the mug, at the garden door')
+    await at(-1.2, 8.5, 0)
+    await check('the yard')
+    await turn(0.6)
+    await check('the yard, turned')
+    await page.evaluate(() => (window as any).__home.useHome.getState().drop([-1.0, 0.3, 9.0]))
+    await page.waitForTimeout(2000)
+    await check('the mug dropped in the yard')
+    expect(await page.evaluate(() => (window as any).__viewProbe.bodyMoved(0.3)), 'a stale map is seen: the body moved outdoors').toBeGreaterThan(0)
+    // third person and back
+    await at(-3.5, 1.3, P)
+    await page.evaluate(() => (window as any).__home.useHome.getState().setView('third'))
+    await page.waitForTimeout(3000)
+    await check('third person')
+    await turn(0.5)
+    await check('third person, turned')
+    await page.evaluate(() => (window as any).__home.useHome.getState().setView('first'))
+    await page.waitForFunction(() => (window as any).__home.view.stats.portals === true, null, { timeout: 30_000, polling: 250 })
+    await page.waitForTimeout(1500)
+    await check('first person again')
+    expect(await page.evaluate(() => (window as any).__viewProbe.bodyMoved(0.3)), 'indoors, the moved body changes nothing in the map (with every caster)').toBe(0)
     console.log(log.join('\n'))
   })
 

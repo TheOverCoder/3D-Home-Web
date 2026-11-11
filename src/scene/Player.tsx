@@ -545,6 +545,7 @@ export function Player() {
   const acc = useRef(0)
   const prevInteract = useRef(false)
   const blocked = useRef(0) // how long walking on by itself has been held up
+  const blockedFrames = useRef(0) // and for how many frames
   const air = useRef({ airborne: false, minVy: 0 })
   // frame-rate meter for the acceleration rescaling: re-renders only when the rate really changes
   const [fps, setFps] = useState(60)
@@ -728,9 +729,12 @@ export function Player() {
       const interact = !!buttons.interact
       if (interact && !prevInteract.current) triggerInteraction()
       prevInteract.current = interact
-      // walking on by itself stops at a wall (held up for a second)
-      blocked.current = cruising && handle.moveSpeed < 0.3 ? blocked.current + dt : 0
-      if (blocked.current > 1) useStick.getState().setCruise(false)
+      // walking on by itself stops at a wall: held up for a second, and for ten frames at least (on a page drawing a
+      // frame or two a second, the first second is spent getting going)
+      const held = cruising && handle.moveSpeed < 0.3
+      blocked.current = held ? blocked.current + dt : 0
+      blockedFrames.current = held ? blockedFrames.current + 1 : 0
+      if (blocked.current > 1 && blockedFrames.current > 10) useStick.getState().setCruise(false)
     } else if (cruising) useStick.getState().setCruise(false) // something opened: you stop
 
     // detection runs at ~10 Hz — no need to do it every frame
@@ -788,8 +792,10 @@ export function Player() {
         accDeltaTime={perFrame(ACC_60, fps)}
         decDeltaTime={perFrame(DEC_60, fps)}
       >
-        {/* your own body (and what you carry) is drawn whatever the rooms and portals say (src/lib/visibility) */}
-        <group ref={feet} position={[0, -FEET, 0]} userData={{ cell: 'always' }}>
+        {/* your own body (and what you carry) is drawn whatever the rooms and portals say; to the sun it is a thing in
+            a room like any other: indoors where no window lets sunlight in, its shadow is left out of the map, and
+            walking there does not draw the map again (src/lib/visibility) */}
+        <group ref={feet} position={[0, -FEET, 0]} userData={{ cell: 'always', sun: 'room' }}>
           {/* in first person the body sits just behind the eyes so you look down onto your own arms, hands and feet */}
           <group ref={bodyYaw}>
             <group position={[0, 0, view === 'first' ? -BODY_BACK : 0]}>{avatar}</group>

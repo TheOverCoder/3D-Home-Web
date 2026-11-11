@@ -55,23 +55,28 @@ const DEBTS: Debt[] = [
   { view: 'yard, over the farm', size: '640×360', pass: 'camera', triangles: 460_000, why: YARD, pays: [LOD, FURNITURE] },
   { view: 'yard, over the farm', size: '487×1055', pass: 'camera', triangles: 295_000, why: YARD, pays: [LOD, FURNITURE] },
   { view: 'yard, over the farm', size: '1055×487', pass: 'camera', triangles: 462_000, why: YARD, pays: [LOD, FURNITURE] },
+  { view: 'yard, back at the house', size: '640×360', pass: 'camera', triangles: 268_000, why: YARD, pays: [LOD, FURNITURE] },
   { view: 'yard, back at the house', size: '1055×487', pass: 'camera', triangles: 277_000, why: YARD, pays: [LOD, FURNITURE] },
   { view: 'third person, the living room', size: '1055×487', pass: 'camera', triangles: 290_000, why: ROOMS, pays: [LOD, FURNITURE] },
-  { view: 'decorating the living room', size: '640×360', pass: 'camera', triangles: 284_000, why: ROOMS, pays: [LOD, FURNITURE] },
+  // the pieces and the walls stay merged while decorating (649 → 373 draws): a merged mesh is drawn whole, 3-7 % more triangles
+  { view: 'decorating the living room', size: '640×360', pass: 'camera', triangles: 304_000, why: ROOMS, pays: [LOD, FURNITURE] },
+  { view: 'decorating the living room', size: '1055×487', pass: 'camera', triangles: 264_000, why: ROOMS, pays: [LOD, FURNITURE] },
   ...SIZES.flatMap((s): Debt[] => [
-    { view: 'third person, the living room', size: s.name, pass: 'shadow', triangles: 315_000, draws: 531, why: SHADOWS, pays: [FURNITURE, LOD] },
-    { view: 'decorating the living room', size: s.name, pass: 'shadow', triangles: 313_000, draws: 684, why: SHADOWS, pays: [FURNITURE, LOD] },
+    { view: 'third person, the living room', size: s.name, pass: 'shadow', triangles: 315_000, draws: 453, why: SHADOWS, pays: [FURNITURE, LOD] },
+    { view: 'decorating the living room', size: s.name, pass: 'shadow', triangles: 313_000, draws: 447, why: SHADOWS, pays: [FURNITURE, LOD] },
   ]),
 ]
 
-/** First person, the sun's shadow pass is the same from every view: one debt for all of them (draws only; its triangles
- *  stay under the budget). */
+/** Outdoors in first person the sun's shadow pass is the same from every view: one debt for them (draws only; its
+ *  triangles stay under the budget). Indoors it is paid: the walls drawn merged, and your body out of the map where
+ *  no sunlight reaches it (215-220 draws). */
+const OUTDOORS = ['gate, the line', 'yard, over the farm', 'yard, back at the house']
 const SUN_DEBT: Debt = {
-  view: 'every first-person view',
+  view: 'first person outdoors',
   size: 'every size',
   pass: 'shadow',
   draws: 275,
-  why: 'the silo, the barn, the office and the tractor cast shadows of their own: 19 draws more (242 → 261)',
+  why: 'the silo, the barn, the office and the tractor cast shadows of their own (242 → 261), and so does your body in the sun',
   pays: ['their static parts drawn into the map together', "the sun's map kept between frames while nothing that shows in it moves (being tried)"],
 }
 
@@ -283,7 +288,7 @@ async function resize(page: Page, size: { width: number; height: number } | null
 function judge(row: Row) {
   const notes: string[] = []
   for (const pass of ['camera', 'shadow'] as const) {
-    const debt = DEBTS.find((d) => d.view === row.view && d.size === row.size && d.pass === pass) ?? (pass === 'shadow' && row.portals ? SUN_DEBT : undefined)
+    const debt = DEBTS.find((d) => d.view === row.view && d.size === row.size && d.pass === pass) ?? (pass === 'shadow' && row.portals && OUTDOORS.includes(row.view) ? SUN_DEBT : undefined)
     for (const what of ['triangles', 'draws'] as const) {
       const value = row.on[pass][what]
       const limit = LIMITS[pass][what]

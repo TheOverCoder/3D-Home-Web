@@ -13,13 +13,34 @@
 //             each model tested once by its box; parts that cast a shadow stay whole.
 //   sun     — the sun's shadow pass, first person: under the ceilings and inside the walls sunlight only comes in
 //             through the windows, so a caster in the house is drawn into the map only where its footprint there
-//             meets a window's (the map keeps exactly what it had: the shell is nearer the sun everywhere else).
+//             meets a window's (the map keeps exactly what it had: the shell is nearer the sun everywhere else). Your
+//             own body, drawn always by the camera, is to the sun a thing in a room like any other.
+//   keep    — the sun's map is drawn again only when something in it changed (Lighting.tsx's ShadowDirector, which
+//             checks in the frame's render, every matrix final, before the shadow pass: setShadowCheck): a caster
+//             that moved, but was left out of the map's last drawing and is left out now (out of the sun's view, or
+//             under the ceilings where no window lets sunlight in), changes nothing in it, so the map is kept —
+//             walking and turning indoors, the sun costs nothing (sunLeftOut).
 //
 // Off: third person, decorating and the farm's edit mode (the walls fade, the ceiling goes, the camera flies) — only
 // the crowds' view test stays, which holds for any camera. `window.__home.view` (?debug) turns each part on and off
 // and counts what it did; tests/e2e/16-view.spec.ts renders the same frame both ways and compares every pixel.
 
-import { Frustum, Line, Matrix4, Mesh, Points, Sprite, WebGLCoordinateSystem, type Camera, type DirectionalLight, type InstancedMesh, type Object3D, type PerspectiveCamera, type Scene } from 'three'
+import {
+  Frustum,
+  Line,
+  Matrix4,
+  Mesh,
+  Points,
+  Sprite,
+  WebGLCoordinateSystem,
+  type Camera,
+  type DirectionalLight,
+  type InstancedMesh,
+  type Object3D,
+  type PerspectiveCamera,
+  type Scene,
+  type WebGLRenderer,
+} from 'three'
 import { HOUSE } from '../../data/layout'
 import { liveParts, type Parts } from '../sculpt/parts'
 import { CELLS, OUTER_PORTALS, OUTSIDE, Portals, portalBox, type Cell } from './portals'
@@ -53,9 +74,15 @@ const stats = {
   /** the sun's last shadow pass: casters asked about, left out */
   casters: 0,
   castersCulled: 0,
+  /** since the start: frames the sun's map was drawn again for a change (ShadowDirector), and frames it was kept
+   *  although casters moved (only what the map leaves out: `keep`) */
+  mapDrawn: 0,
+  mapKept: 0,
   /** the pass's own time: the hook before the render (ms), last and most; with `timing`, the tests during it too */
   hookMs: 0,
   maxHookMs: 0,
+  /** the hook's time summed over every render since the start (a frame may draw the scene more than once) */
+  hookSum: 0,
   testMs: 0,
   maxTestMs: 0,
 }
@@ -67,6 +94,8 @@ export const view = {
   portals: true,
   crowds: true,
   sun: true,
+  /** the sun's map kept when all that changed is what it leaves out */
+  keep: true,
   /** time every test three asks for (costs a little time itself) */
   timing: false,
   stats,
@@ -91,6 +120,17 @@ function tagOf(o: Object3D): number {
     const c = p.userData.cell
     if (c === 'always') return ALWAYS
     if (c === 'outside') return OUT
+  }
+  return NONE
+}
+/** The same for the sun: what is drawn always by the camera but stands in a room (your own body, `sun: 'room'`) is
+ *  judged by where it is, like anything else there. */
+function sunTagOf(o: Object3D): number {
+  for (let p: Object3D | null = o; p; p = p.parent) {
+    const u = p.userData
+    if (u.sun === 'room') return NONE
+    if (u.cell === 'always') return ALWAYS
+    if (u.cell === 'outside') return OUT
   }
   return NONE
 }
@@ -218,7 +258,16 @@ function cameraSees(o: Object3D): boolean {
 for (const proto of [Mesh.prototype, Sprite.prototype, Line.prototype, Points.prototype] as unknown as { intersectsFrustum: (this: Object3D, f: Frustum) => boolean }[]) {
   const own = proto.intersectsFrustum
   proto.intersectsFrustum = function (this: Object3D, f: Frustum) {
-    return own.call(this, f) && judge(this, f)
+    if (f !== sunFrustum || !inRender) return own.call(this, f) && judge(this, f)
+    // the sun's shadow pass: what it leaves out (by three's test or the pass's) is noted, for sunLeftOut
+    if (sunPassOf !== renders) {
+      sunPassOf = renders
+      sunPasses++
+      stats.casters = stats.castersCulled = 0
+    }
+    const seen = own.call(this, f) && judge(this, f)
+    if (!seen) leftOut.set(this, sunPasses)
+    return seen
   }
 }
 
@@ -227,6 +276,12 @@ for (const proto of [Mesh.prototype, Sprite.prototype, Line.prototype, Points.pr
 const H = HOUSE.wallHeight
 const HALF = HOUSE.wallThickness / 2
 const INNER = { minX: HOUSE.minX + HALF, maxX: HOUSE.maxX - HALF, minZ: HOUSE.minZ + HALF, maxZ: HOUSE.maxZ - HALF }
+/** renders of the game's scene (any camera), the sun's shadow passes in them, and the render of the last pass */
+let renders = 0
+let sunPasses = 0
+let sunPassOf = -1
+/** the shadow pass each caster was last left out of */
+const leftOut = new WeakMap<Object3D, number>()
 /** the windows' rectangles in the sun's map (NDC), worked out once per shadow pass */
 const windows = new Float64Array(OUTER_PORTALS.length * 4)
 let windowsFor = -1
@@ -260,10 +315,18 @@ function lightRect(minX: number, minY: number, minZ: number, maxX: number, maxY:
 }
 
 function sunSees(o: Object3D): boolean {
-  if (windowsFor !== stats.renders) {
-    // the first caster of this shadow pass (the sun's camera is placed by now)
-    windowsFor = stats.renders
-    stats.casters = stats.castersCulled = 0
+  stats.casters++
+  if (!sunCulls(o)) return true
+  stats.castersCulled++
+  return false
+}
+
+/** Whether the sun's pass leaves a caster out: it stands wholly in the house, under the ceilings, and its footprint in
+ *  the sun's map meets no window's. */
+function sunCulls(o: Object3D): boolean {
+  if (windowsFor !== sunPasses) {
+    // once per shadow pass (the sun's camera is placed by now: at its first caster, or after it)
+    windowsFor = sunPasses
     // a texel of margin each way
     const t = 2 / Math.max(1, sunLight!.shadow.mapSize.x)
     for (let i = 0; i < OUTER_PORTALS.length; i++) {
@@ -275,20 +338,42 @@ function sunSees(o: Object3D): boolean {
       windows[i * 4 + 3] += t
     }
   }
-  stats.casters++
-  if (tagOf(o) !== NONE) return true
-  if (!worldBox(o)) return true
+  if (sunTagOf(o) !== NONE) return false
+  if (!worldBox(o)) return false
   // only what lies wholly within the outer walls' inner faces and under the ceilings: there every line from the sun
   // passes through a wall, a ceiling slab or a window (inside a wall's thickness the wall's own far face is not)
-  if (B[0] < INNER.minX || B[3] > INNER.maxX || B[2] < INNER.minZ || B[5] > INNER.maxZ || B[4] > H) return true
+  if (B[0] < INNER.minX || B[3] > INNER.maxX || B[2] < INNER.minZ || B[5] > INNER.maxZ || B[4] > H) return false
   lightRect(B[0], B[1], B[2], B[3], B[4], B[5], LR, 0)
-  if (!(LR[0] <= LR[1] && LR[2] <= LR[3])) return true
+  if (!(LR[0] <= LR[1] && LR[2] <= LR[3])) return false
   for (let i = 0; i < OUTER_PORTALS.length; i++) {
     const w = i * 4
-    if (LR[0] <= windows[w + 1] && LR[1] >= windows[w] && LR[2] <= windows[w + 3] && LR[3] >= windows[w + 2]) return true
+    if (LR[0] <= windows[w + 1] && LR[1] >= windows[w] && LR[2] <= windows[w + 3] && LR[3] >= windows[w + 2]) return false
   }
-  stats.castersCulled++
-  return false
+  return true
+}
+
+/**
+ * For the shadow director, during its check (setShadowCheck), about a caster that moved, appeared, vanished or stopped
+ * casting: whether the sun's map stays as it is all the same — the sun's pass left it out of the map's last drawing,
+ * and leaves it out now (out of the sun's view, or, with `culling` (this render's), in the house where no window lets
+ * sunlight in).
+ */
+export function sunLeftOut(o: Object3D, culling: boolean): boolean {
+  if (!view.on || !view.keep || sunFrustum === null || sunLight === null || leftOut.get(o) !== sunPasses || !(o as Mesh).isMesh) return false
+  if ((o as InstancedMesh).isInstancedMesh && (o as InstancedMesh).count === 0) return true
+  if (!sunFrustum.intersectsObject(o)) return true
+  return culling && sunCulls(o)
+}
+
+/** The shadow director's check (Lighting.tsx): called in every render of the game's scene by its camera, once the pass
+ *  is set up for it — every matrix final, before the shadow pass — with whether the sun's pass leaves out what no
+ *  sunlight reaches in this render. It asks for the map to be drawn, or keeps it (once a frame, in its own render). */
+let shadowCheck: ((renderer: WebGLRenderer, culling: boolean) => void) | null = null
+export function setShadowCheck(check: (renderer: WebGLRenderer, culling: boolean) => void) {
+  shadowCheck = check
+  return () => {
+    if (shadowCheck === check) shadowCheck = null
+  }
 }
 
 // ── crowds ──
@@ -329,11 +414,12 @@ const cullCrowd = (p: Parts) => {
   stats.drawn += p.drawnInstances
 }
 
-function beforeRender(scene: Scene, camera: Camera) {
+function beforeRender(renderer: WebGLRenderer, scene: Scene, camera: Camera) {
   const h = hooks
   if (!h || scene !== h.scene) return
   const t0 = performance.now()
   inRender = true
+  renders++
   cameraFrustum = null
   const ours = camera === h.camera && (camera as PerspectiveCamera).isPerspectiveCamera === true
   crowdsOn = view.on && view.crowds && ours
@@ -366,7 +452,10 @@ function beforeRender(scene: Scene, camera: Camera) {
   if (ours) {
     const ms = performance.now() - t0
     stats.hookMs = ms
+    stats.hookSum += ms
     if (ms > stats.maxHookMs) stats.maxHookMs = ms
+    // the sun's map: drawn again in this render if something in it changed
+    shadowCheck?.(renderer, sunOn)
   }
 }
 const eye = { x: 0, y: 0, z: 0 }
@@ -401,7 +490,7 @@ export function installViewPass(h: ViewHooks): () => void {
   const after = hooked.onAfterRender
   hooked.onBeforeRender = function (this: Scene, ...args: unknown[]) {
     before.apply(this, args)
-    beforeRender(args[1] as Scene, args[2] as Camera)
+    beforeRender(args[0] as WebGLRenderer, args[1] as Scene, args[2] as Camera)
   }
   hooked.onAfterRender = function (this: Scene, ...args: unknown[]) {
     after.apply(this, args)

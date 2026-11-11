@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { useContext, useMemo, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { CuboidCollider, RigidBody } from '@react-three/rapier'
 import { Box3, BoxGeometry, DoubleSide, MathUtils, Ray, Vector3, type MeshStandardMaterial } from 'three'
@@ -8,6 +8,7 @@ import { surface } from '../lib/proceduralTextures'
 import { playerState } from '../lib/playerState'
 import { useHome } from '../store'
 import { decorateEye, decorateFocus } from '../home/decorate'
+import { BatchContext } from '../lib/batch'
 
 type Kind = 'wall' | 'trim' | 'glass' | 'fabric' | 'dark'
 
@@ -221,6 +222,9 @@ export function Walls() {
   const fade = useRef<number[]>(segs.map(() => 1))
   const settled = useRef(false)
   const camera = useThree((s) => s.camera)
+  // the walls are merged (House.tsx); one that fades is drawn on its own while it does, in the frame it starts
+  const batch = useContext(BatchContext)
+  const alone = useRef(new Set<string>())
 
   useFrame((_, dt) => {
     const state = useHome.getState()
@@ -230,6 +234,7 @@ export function Walls() {
     if (inside && settled.current) return
     settled.current = false
     let allBack = true
+    let regroup = false
     // decorating, the camera that matters is the decorate view's (it moves after this runs)
     const eyeAt = decorating ? eyePoint.set(decorateEye.x, decorateEye.y, decorateEye.z) : camera.position
     ray.origin.copy(eyeAt)
@@ -251,6 +256,11 @@ export function Walls() {
       if (fade.current[i] < 0.999) allBack = false
       const o = fade.current[i] * (BASE_OPACITY[segs[i].kind] ?? 1)
       const transparent = segs[i].kind === 'glass' || fade.current[i] < 0.995
+      if (segs[i].kind !== 'glass' && transparent !== alone.current.has(segs[i].key)) {
+        if (transparent) alone.current.add(segs[i].key)
+        else alone.current.delete(segs[i].key)
+        regroup = true
+      }
       for (const mat of mats.current[i]) {
         if (!mat) continue
         mat.opacity = o
@@ -262,6 +272,10 @@ export function Walls() {
       }
     }
     settled.current = inside && allBack
+    if (regroup && batch) {
+      batch.exclude = new Set(alone.current)
+      batch.batch?.exclude(batch.exclude)
+    }
   })
 
   return (
@@ -272,7 +286,7 @@ export function Walls() {
         const len = onX ? s.size[0] : s.size[2]
         const trimDepth = T + 0.04
         return (
-          <group key={s.key} position={s.center}>
+          <group key={s.key} position={s.center} userData={{ part: s.key }}>
             <mesh castShadow={s.kind !== 'glass'} receiveShadow={s.kind !== 'glass'} geometry={geometries[i] ?? undefined}>
               {!geometries[i] && <boxGeometry args={s.size} />}
               {s.kind === 'glass' ? (
