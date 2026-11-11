@@ -788,8 +788,10 @@ export function Player() {
         accDeltaTime={perFrame(ACC_60, fps)}
         decDeltaTime={perFrame(DEC_60, fps)}
       >
-        {/* your own body (and what you carry) is drawn whatever the rooms and portals say (src/lib/visibility) */}
-        <group ref={feet} position={[0, -FEET, 0]} userData={{ cell: 'always' }}>
+        {/* your own body (and what you carry) is drawn whatever the rooms and portals say; to the sun it is a thing in
+            a room like any other: indoors where no window lets sunlight in, its shadow is left out of the map, and
+            walking there does not draw the map again (src/lib/visibility) */}
+        <group ref={feet} position={[0, -FEET, 0]} userData={{ cell: 'always', sun: 'room' }}>
           {/* in first person the body sits just behind the eyes so you look down onto your own arms, hands and feet */}
           <group ref={bodyYaw}>
             <group position={[0, 0, view === 'first' ? -BODY_BACK : 0]}>{avatar}</group>
