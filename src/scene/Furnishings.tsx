@@ -523,16 +523,17 @@ export function Placed({ p }: { p: HomePiece }) {
   const def = PIECES[p.type]
   const dragged = useDecorate((s) => s.drag?.id === p.id)
   const rotationY = (p.rot * Math.PI) / 2
+  // `part`: the furniture's merged meshes can leave it out and draw it on its own (src/lib/batch.ts, House.tsx)
   if (def.layer === 'rug')
     return (
-      <group name={`piece-${p.id}`} visible={!dragged}>
+      <group name={`piece-${p.id}`} userData={{ part: p.id }} visible={!dragged}>
         <Decor position={[p.x, 0, p.z]} rotationY={rotationY}>
           <PieceModel type={p.type} />
         </Decor>
       </group>
     )
   return (
-    <group name={`piece-${p.id}`} visible={!dragged}>
+    <group name={`piece-${p.id}`} userData={{ part: p.id }} visible={!dragged}>
       <Solid id={modelId(p)} position={[p.x, 0, p.z]} rotationY={rotationY} size={def.size}>
         <PieceModel type={p.type} />
       </Solid>
@@ -550,7 +551,7 @@ export function OnPiece({ id, children }: { id: string; children: ReactNode }) {
   if (!m) return null
   const to = dragged ?? m.to
   return (
-    <group position={[to.x, 0, to.z]} rotation-y={((to.rot - m.from.rot) * Math.PI) / 2}>
+    <group position={[to.x, 0, to.z]} rotation-y={((to.rot - m.from.rot) * Math.PI) / 2} userData={{ part: id }}>
       <group position={[-m.from.x, 0, -m.from.z]}>{children}</group>
     </group>
   )

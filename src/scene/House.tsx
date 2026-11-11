@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useGLTF } from '@react-three/drei'
 import { RigidBody, TrimeshCollider } from '@react-three/rapier'
 import type { Group, Mesh } from 'three'
 import { assets } from '../assets/registry'
-import { batchStatic, type Batch } from '../lib/batch'
+import { BatchContext, batchStatic, type BatchHandle } from '../lib/batch'
 import { buildTrimesh } from '../lib/collision'
 import { Ceilings } from './Ceilings'
 import { Door } from './Door'
@@ -16,34 +16,40 @@ import { Lamps } from './Lamps'
 import { Walls } from './Walls'
 import { useHome } from '../store'
 import { farm, useFarm } from '../farm/state'
+import { useDecorate } from '../home/decorate'
+import type { HomeLayout, HomePiece } from '../home/layout'
 import '../home/actions' // the decorating actions (and their test hook)
 
 /**
- * Merges the never-moving placeholder geometry into a few draws (see lib/batch). With `firstPersonOnly` the
- * original pieces come back in the third-person view, where walls must be able to fade individually. When `rev`
- * changes (a piece of furniture moved), the merge is made again from what is there now.
+ * Merges the never-moving placeholder geometry into a few draws (see lib/batch). A part inside (`userData.part`) can be
+ * drawn on its own instead, as it is now: a wall while it fades (third person, decorating), a piece dragged or moved
+ * while decorating (`exclude`). When `rev` changes (a piece of furniture moved), the merge is made again from what is
+ * there now.
  */
-export function StaticBatch({ children, firstPersonOnly = false, rev, off = false }: { children: ReactNode; firstPersonOnly?: boolean; rev?: string; off?: boolean }) {
+export function StaticBatch({ children, rev, off = false, exclude }: { children: ReactNode; rev?: string; off?: boolean; exclude?: ReadonlySet<string> }) {
   const group = useRef<Group>(null)
-  const batch = useRef<Batch | null>(null)
+  const handle = useMemo<BatchHandle>(() => ({ batch: null, exclude: NONE }), [])
+  // the parts drawn on their own: before the frame is drawn (the piece dragged moves at once)
+  useLayoutEffect(() => {
+    if (!exclude) return
+    handle.exclude = exclude
+    handle.batch?.exclude(exclude)
+  }, [exclude, handle])
   useEffect(() => {
-    // `off`: nothing merged (decorating: each piece is drawn on its own, so one can be picked up and moved)
+    // `off`: nothing merged
     const b = group.current && !off ? batchStatic(group.current) : null
-    batch.current = b
-    const merged = (s: { view: string; phase: string; decorating: boolean }) => s.view === 'first' && s.phase === 'playing' && !s.decorating
-    if (b && firstPersonOnly) b.setMerged(merged(useHome.getState()))
-    const unsub = firstPersonOnly
-      ? useHome.subscribe((s, prev) => {
-          if (merged(s) !== merged(prev)) b?.setMerged(merged(s))
-        })
-      : undefined
+    handle.batch = b
+    b?.exclude(handle.exclude)
     return () => {
-      unsub?.()
       b?.dispose()
-      batch.current = null
+      handle.batch = null
     }
-  }, [firstPersonOnly, rev, off])
-  return <group ref={group}>{children}</group>
+  }, [rev, off, handle])
+  return (
+    <BatchContext.Provider value={handle}>
+      <group ref={group}>{children}</group>
+    </BatchContext.Provider>
+  )
 }
 
 /** Physics-only geometry: a dedicated low-poly collision GLB, or the visual house itself. */
@@ -81,11 +87,38 @@ function GltfHouse({ url, collisionUrl }: { url: string; collisionUrl?: string }
   )
 }
 
+const NONE: ReadonlySet<string> = new Set()
+const placed = (p: HomePiece) => `${p.x}:${p.z}:${p.rot}`
+
+/**
+ * Where the furniture stands, for its merged meshes: made again when a piece moves. While decorating they stay as they
+ * were when it began (no merging again at every move): the piece being dragged, and any moved, put away or bought
+ * since, are drawn on their own instead (their own meshes, where they are now); all merged again when decorating ends.
+ */
+function useFurnitureBatch(home: HomeLayout, decorating: boolean) {
+  const homeRev = useMemo(() => home.pieces.map((p) => `${p.id}:${placed(p)}`).join('|'), [home])
+  const dragged = useDecorate((s) => (decorating ? (s.drag?.id ?? null) : null))
+  // as merged: the rev, where each piece stood, and the pieces changed since (a changed piece is drawn afresh by React,
+  // so it stays on its own even when it goes back)
+  const [kept, setKept] = useState<{ rev: string; at: Map<string, string>; changed: Set<string> } | null>(null)
+  if (decorating && !kept) setKept({ rev: homeRev, at: new Map(home.pieces.map((p) => [p.id, placed(p)])), changed: new Set() })
+  if (!decorating && kept) setKept(null)
+  const exclude = useMemo(() => {
+    if (!kept) return NONE
+    const now = new Map(home.pieces.map((p) => [p.id, placed(p)]))
+    for (const [id, at] of kept.at) if (now.get(id) !== at) kept.changed.add(id)
+    const out = new Set(kept.changed)
+    if (dragged) out.add(dragged)
+    return out
+  }, [kept, dragged, home])
+  return { rev: kept?.rev ?? homeRev, exclude }
+}
+
 export function House() {
   // where the furniture stands: the merged furniture is made again when it moves
   const home = useFarm(() => farm.home)
-  const homeRev = useMemo(() => home.pieces.map((p) => `${p.id}:${p.x}:${p.z}:${p.rot}`).join('|'), [home])
   const decorating = useHome((s) => s.decorating)
+  const furniture = useFurnitureBatch(home, decorating)
   if (assets.house) {
     return (
       <>
@@ -102,7 +135,7 @@ export function House() {
     <>
       <group userData={{ cell: 'always' }}>
         <Floors />
-        <StaticBatch firstPersonOnly>
+        <StaticBatch>
           <Walls />
         </StaticBatch>
         <Ceilings />
@@ -114,7 +147,7 @@ export function House() {
           <Exterior />
         </StaticBatch>
       </group>
-      <StaticBatch rev={homeRev} off={decorating}>
+      <StaticBatch rev={furniture.rev} exclude={furniture.exclude}>
         <Furnishings />
         <Dressing />
       </StaticBatch>

@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { FogExp2, MathUtils, Matrix4, Quaternion, Vector3, type PerspectiveCamera } from 'three'
 import { uiClick } from '../audio/sound'
 import { HOUSE, ROOMS, roomAt, type RoomId } from '../data/layout'
-import { Outline } from '../farm/EditMode'
+import { FloorOutlines, outlinesWarmup, type FloorRect } from './FloorOutlines'
 import { farm, useFarm } from '../farm/state'
 import { focus } from '../lib/focus'
 import { PieceLook } from '../scene/Furnishings'
@@ -400,18 +400,20 @@ function Outlines() {
   const home = useFarm(() => farm.home)
   const picked = useDecorate((s) => s.picked)
   const drag = useDecorate((s) => s.drag)
-  return (
-    <>
-      {home.pieces
+  // all of them in two draws (FloorOutlines), as each drawn on its own would look
+  const rects = useMemo<FloorRect[]>(
+    () =>
+      home.pieces
         .filter((p) => !PIECES[p.type].fitted)
         .map((p) => {
           const dragged = drag?.id === p.id ? drag : null
           const on = dragged || p.id === picked
           const color = dragged ? (dragged.fit.ok ? COLOURS.fits : COLOURS.bad) : on ? COLOURS.picked : COLOURS.idle
-          return <Outline key={p.id} r={footprint(dragged?.at ?? p)} color={color} fill={on ? 0.22 : 0.05} edge={on ? 0.07 : 0.025} y={0.03} />
-        })}
-    </>
+          return { key: p.id, r: footprint(dragged?.at ?? p), color, fill: on ? 0.22 : 0.05, edge: on ? 0.07 : 0.025, y: 0.03 }
+        }),
+    [home, picked, drag],
   )
+  return <FloorOutlines rects={rects} />
 }
 
 /** The piece being dragged, drawn where it would go. */
@@ -460,6 +462,7 @@ export function DecorateMode() {
   })
   return (
     <>
+      <primitive object={outlinesWarmup} />
       <DecorateCamera view={view} goal={goal} />
       <DecorateInput view={view} goal={goal} />
       {decorating && <Dragged />}
