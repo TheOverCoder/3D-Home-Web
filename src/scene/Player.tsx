@@ -622,6 +622,7 @@ export function Player() {
       stats: walkStats,
       plan: (id: string, from?: { x: number; z: number }, fresh?: boolean) => walker.planNow(id, from, fresh),
       measure: () => walker.measureGrid(),
+      forget: () => walker.forget(),
       // where a thing is and how far it reaches (what a walk to it ends within)
       target: (id: string) => {
         const d = interactable(id)

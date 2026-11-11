@@ -355,6 +355,11 @@ export class Walker {
     }
   }
 
+  /** For measuring: drops the grid, so the next way found works out its cells afresh. */
+  forget() {
+    this.grid = null
+  }
+
   /** For measuring: a fresh grid over the whole land, every cell worked out at once, and what it took. */
   measureGrid() {
     this.grid = null

@@ -13,8 +13,9 @@ export interface WalkState {
   item: string | null
   /** each tap starts a new walk, even to the same thing */
   seq: number
-  /** how the last walk ended: 'arrived', or what stopped it ('stick', 'key', 'jump', 'busy', 'again', 'blocked',
-   *  'no-way', 'gone', 'moved', 'slow') */
+  /** how the last walk ended: 'arrived', or what stopped it — you ('stick', 'key', 'jump', 'busy' for a panel or a card
+   *  or an edit mode, 'again' for the mark, 'button' for the walk-on button, 'used' for the action button), or the way
+   *  ('blocked' held up twice, 'no-way', 'gone' the thing went, 'moved' you were put elsewhere, 'slow' far too long) */
   ended: string | null
 }
 
