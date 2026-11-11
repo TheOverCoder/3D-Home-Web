@@ -30,10 +30,10 @@ const WICKER = rgb(0xb88a52)
 const WICKER_DARK = rgb(0x8a6236)
 
 /** A vertical loft (rings along y, ry front to back). */
-const column = (rings: [number, number, number, number?][], o: { seg?: number; steps?: number; round?: [number, number]; shape?: (a: number, t: number) => number } = {}) =>
+const column = (rings: [number, number, number, number?][], o: { seg?: number; steps?: number; round?: [number, number]; shape?: (a: number, t: number) => number; caps?: [boolean, boolean] } = {}) =>
   loft(
     rings.map(([y, rx, ry, z]) => ({ c: [0, y, z ?? 0] as V3, rx, ry })),
-    { seg: o.seg ?? 8, steps: o.steps ?? 1, up: [0, 0, 1], round: o.round, shape: o.shape },
+    { seg: o.seg ?? 8, steps: o.steps ?? 1, up: [0, 0, 1], round: o.round, shape: o.shape, caps: o.caps },
   )
 
 /** Hips: the seat of the trousers, up to the waist (under the shirt). */
@@ -151,7 +151,9 @@ function forearm(side: 1 | -1, basket: boolean): Shape {
 }
 
 /** Thigh: hip joint (at the origin) to the knee. */
-function thigh(): Shape {
+/** The thigh, from the hip joint (at the origin) to the knee; `closed`: its ends closed too (seated, the hip and the
+ *  knee bend far enough to bring them out of the pelvis and the shin). */
+function thigh(closed = false): Shape {
   return column(
     [
       [0.04, 0.086, 0.088],
@@ -159,12 +161,13 @@ function thigh(): Shape {
       [-0.26, 0.068, 0.07],
       [-0.44, 0.058, 0.06],
     ],
-    { seg: 9 },
+    { seg: 9, round: closed ? [0.05, 0.05] : undefined },
   ).shade((_x, y) => 0.9 + 0.1 * smoothstep(-0.4, 0, y))
 }
 
-/** Shin and shoe: knee (at the origin) to the ground at −0.465. */
-function shin(): Shape {
+/** Shin and shoe: knee (at the origin) to the ground at −0.465 (`closed`: the knee's end rounded off, for a bent
+ *  knee). */
+function shin(closed = false): Shape {
   const leg = column(
     [
       [0.02, 0.058, 0.06],
@@ -174,7 +177,7 @@ function shin(): Shape {
       [-0.425, 0.042, 0.044],
     ],
     // (the last ring is inside the shoe: the leg goes into it)
-    { seg: 9 },
+    { seg: 9, round: closed ? [0.05, 0] : undefined },
   ).shade((_x, y) => 0.88 + 0.12 * smoothstep(-0.38, 0, y))
   // the shoe: its flattened sole on the ground (0.465 under the knee, as the rig's legs are long)
   const shoe = loft(
@@ -343,7 +346,8 @@ function hat(): Shape {
   return merge(straw, band)
 }
 
-export type PersonPart = 'pelvis' | 'torso' | 'upperArm' | 'forearmL' | 'forearmR' | 'thigh' | 'shin' | 'head' | 'hairShort' | 'hairLong' | 'hairBun' | 'hat'
+export type PersonPart =
+  'pelvis' | 'torso' | 'upperArm' | 'forearmL' | 'forearmR' | 'forearmRBare' | 'thigh' | 'shin' | 'thighSeated' | 'shinSeated' | 'head' | 'hairShort' | 'hairLong' | 'hairBun' | 'hat'
 
 let made: Record<PersonPart, BufferGeometry> | null = null
 
@@ -355,8 +359,13 @@ export function personGeometries(): Record<PersonPart, BufferGeometry> {
     upperArm: upperArm().geometry(),
     forearmL: forearm(1, false).geometry(),
     forearmR: forearm(-1, true).geometry(),
+    // the right hand with no basket (the tractor's driver: both hands on the wheel)
+    forearmRBare: forearm(-1, false).geometry(),
     thigh: thigh().geometry(),
     shin: shin().geometry(),
+    // a seated person's legs (the tractor's driver), their ends rounded off
+    thighSeated: thigh(true).geometry(),
+    shinSeated: shin(true).geometry(),
     head: head().geometry(),
     hairShort: hairShort().geometry(),
     hairLong: hairLong().geometry(),
@@ -383,8 +392,11 @@ export function personParts(max: number): Parts {
     upperArm: { geometry: g.upperArm, max: max * 2, material: CLOTH },
     forearmL: { geometry: g.forearmL, max, material: SKIN },
     forearmR: { geometry: g.forearmR, max, material: SKIN },
+    forearmRBare: { geometry: g.forearmRBare, max: 2, material: SKIN },
     thigh: { geometry: g.thigh, max: max * 2, material: CLOTH },
     shin: { geometry: g.shin, max: max * 2, material: CLOTH },
+    thighSeated: { geometry: g.thighSeated, max: 2, material: CLOTH },
+    shinSeated: { geometry: g.shinSeated, max: 2, material: CLOTH },
     head: { geometry: g.head, max, material: SKIN },
     hairShort: { geometry: g.hairShort, max, material: HAIR },
     hairLong: { geometry: g.hairLong, max, material: HAIR },
@@ -405,6 +417,10 @@ export interface PersonLook {
   hat: boolean
   /** 1 is the player's own size */
   height: number
+  /** a basket on the right arm (the buyers'; the tractor's driver has none) */
+  basket?: boolean
+  /** sits (the tractor's driver): legs whose ends are closed, for knees and hips bent far */
+  seated?: boolean
 }
 
 /** One person's joints (posed by turning them) and the parts that hang from them. */
@@ -440,9 +456,9 @@ export class PersonRig {
     piece(this.hips, 'torso', shirt)
     const leg = (side: 1 | -1) => {
       const thigh = joint(this.hips, side * PERSON.hipX, 0, 0)
-      piece(thigh, 'thigh', trousers)
+      piece(thigh, look.seated ? 'thighSeated' : 'thigh', trousers)
       const knee = joint(thigh, 0, PERSON.kneeY, 0)
-      piece(knee, 'shin', trousers)
+      piece(knee, look.seated ? 'shinSeated' : 'shin', trousers)
       return [thigh, knee]
     }
     ;[this.thighL, this.kneeL] = leg(1)
@@ -451,7 +467,7 @@ export class PersonRig {
       const shoulder = joint(this.hips, side * PERSON.shoulder[0], PERSON.shoulder[1], 0)
       piece(shoulder, 'upperArm', shirt)
       const elbow = joint(shoulder, 0, PERSON.elbowY, 0)
-      piece(elbow, side > 0 ? 'forearmL' : 'forearmR', skin)
+      piece(elbow, side > 0 ? 'forearmL' : look.basket === false ? 'forearmRBare' : 'forearmR', skin)
       return [shoulder, elbow]
     }
     ;[this.armL, this.elbowL] = arm(1)

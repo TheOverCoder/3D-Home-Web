@@ -415,6 +415,7 @@ const OUTSIDE: Pose[] = [
   { name: 'yard, behind the house', x: 0, z: -9.5, yaw: P, pitch: 0.05 },
   { name: 'gate, the line', x: 4.2, z: 10.8, yaw: P - 0.5, pitch: -0.05 },
   { name: 'gate, along the line', x: 5.6, z: 12.2, yaw: 1.25, pitch: -0.05 },
+  { name: 'yard, the office and the tractor', x: -5, z: 7.9, yaw: P / 2, pitch: -0.05, shadow: true },
 ]
 
 /** Stands the player at a pose (the kitchen's door as it says), then compares the frame there. */

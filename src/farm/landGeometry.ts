@@ -3,6 +3,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import { SHRUB_SPOTS } from '../data/garden'
 import { GARDEN, GATE, LANE } from '../data/layout'
 import { fenceRun, hedgeRun, mulberry, tree, type TreeParts } from '../scene/flora'
+import { TRACTOR } from './data'
 import { boundary, ownedRects, type Edge, type FarmLayout } from './layout'
 
 // What the farm's land is made of (src/farm/Land.tsx draws it): the hedge along the sides that face north and west, the
@@ -58,8 +59,10 @@ function woods(layout: FarmLayout): TreeParts[] {
     const height = 6 + r() * 4
     while (onLand(Math.cos(angle) * radius, Math.sin(angle) * radius) && radius < 80) radius += 1
     const x = Math.cos(angle) * radius
-    const z = Math.sin(angle) * radius
-    // keep the lane outside the farm gate clear: those trees step back from it
+    let z = Math.sin(angle) * radius
+    // keep the tractor's track out of the west hedge clear (and the ground beside it where it turns round), and the
+    // lane outside the farm gate: those trees step back from them
+    if (x < -8 && Math.abs(z - TRACTOR.z) < 5) z = TRACTOR.z + (z >= TRACTOR.z ? 1 : -1) * (5.5 + (i % 3))
     const onLane = Math.abs(z - LANE.z) < 3.2
     out.push(tree(x, onLane ? LANE.z + 5.5 + (i % 3) : z, height, 40 + i))
   }
@@ -79,7 +82,14 @@ function sections(layout: FarmLayout): Sections {
     if (e.out === 'north' || e.out === 'west') {
       // each hedge its own seed, so the sections never repeat (the garden's own two keep the ones they always had)
       const seed = (e.out === 'north' ? 3 : 5) + 4 * runs[e.out]++
-      hedges.push(flat(hedgeRun(e.axis, e.at, e.axis === 'z' && e.from === GARDEN.minZ ? e.from + SEP : e.from, e.to, seed)))
+      const from = e.axis === 'z' && e.from === GARDEN.minZ ? e.from + SEP : e.from
+      // the west hedge the tractor's track crosses: a gap there for its gate (src/farm/OrderYard.tsx)
+      if (e.axis === 'z' && e.out === 'west' && e.from < TRACTOR.z && e.to > TRACTOR.z) {
+        const half = TRACTOR.gate / 2 + 0.14
+        hedges.push(flat([...hedgeRun('z', e.at, from, TRACTOR.z - half, seed), ...hedgeRun('z', e.at, TRACTOR.z + half, e.to, seed + 2)]))
+        return
+      }
+      hedges.push(flat(hedgeRun(e.axis, e.at, from, e.to, seed)))
       return
     }
     const start = e.axis === 'x' ? onHedge(e.from, e.at) : onHedge(e.at, e.from)

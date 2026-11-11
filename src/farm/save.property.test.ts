@@ -5,9 +5,31 @@ import { PIECES, PIECE_TYPES } from '../home/catalogue'
 import { ROOM_WEIGHT, canPlacePiece, defaultHome, roomWeight, unreachable } from '../home/layout'
 import { ROOMS, type RoomId } from '../data/layout'
 import { endsWithin } from '../lib/endsWithin'
-import { BEDS, CROPS, MACHINES, MACHINE_IDS, NAMES, PACE_LEVELS, PRODUCE, PRODUCERS, PRODUCER_IDS, QUEUE_LEVELS, WATER_SHARE, cropById, type CropId } from './data'
+import {
+  BEDS,
+  CROPS,
+  MACHINES,
+  MACHINE_IDS,
+  NAMES,
+  PACE_LEVELS,
+  PRODUCE,
+  PRODUCERS,
+  PRODUCER_IDS,
+  QUEUE_LEVELS,
+  SELLABLE,
+  SLOT_LEVELS,
+  STORE_IDS,
+  TRACTOR,
+  WAIT_LEVELS,
+  WATER_SHARE,
+  cropById,
+  orderSlots,
+  orderWait,
+  type CropId,
+} from './data'
 import { PARCELS, PARCEL_IDS, PLACE_IDS, canPlace } from './layout'
-import { arrivalSeconds, farm, inLine, placesInLine, tick } from './state'
+import { arrivalSeconds, farm, gateX, inLine, placesInLine, tick } from './state'
+import { tripSeconds } from './tractorRoute'
 import { OLD_SAVE, OLD_SAVE_2, playedSave, savedNow, seeded, startFrom } from './testSaves'
 
 // The farm's save against anything (fast-check): one value of a real save, anywhere in it, turned into anything at all
@@ -32,6 +54,8 @@ interface Base {
 }
 
 const produceIds: string[] = PRODUCE.map((p) => p.id)
+/** What buyers and orders ask for (no building material). */
+const sellable: string[] = SELLABLE
 const cropIds: string[] = CROPS.map((c) => c.id)
 const isCrop = (v: unknown): v is CropId => cropIds.includes(v as string)
 /** A kind of furniture of the catalogue (not the game's own isPieceType: the rules here do not lean on the code they test). */
@@ -128,15 +152,20 @@ const OLD_PARTS: Record<string, string> = {
  *  - that countdown → the line: a buyer due as the farm loads joins it, and the countdown starts again
  *  - the time it was saved → all that grows while away (the beds, the producers, the machines) and the buyers who came
  *  - the furniture → storage (a piece that does not fit is put away) and the number for new pieces (past every id's)
- *  - the layout is one part: a field not bought sends the places on it home, and one place sent home can send all home
+ *  - the layout is one part: a field not bought sends the places on it home, and one place sent home can send all home;
+ *    the west meadow bought or not moves the tractor's gate, and so how long its trip is (dispatch)
+ *  - the office's upgrades → the order board: as many places, and no wait longer than the office's
+ *  - the time it was saved also → the orders on their way (they come in) and the tractor's trip (it goes on)
  */
 function alsoChanges(part: string): RegExp | null {
   if (part.startsWith('expansions')) return /^beds\./
+  if (part === 'office') return /^orders$/
+  if (part === 'layout') return /^dispatch$/
   const herd = /^producers\.(\w+)\.animals$/.exec(part)
   if (herd) return new RegExp(`^producers\\.${herd[1]}\\.(stock|timer)$`)
   if (part === 'queueLevel' || part === 'nextVisitorIn') return /^queue$/
   if (part === 'paceLevel') return /^nextVisitorIn$/
-  if (part === 'time') return /^(beds|producers|machines)\.|^nextVisitorIn$|^queue$/
+  if (part === 'time') return /^(beds|producers|machines)\.|^nextVisitorIn$|^queue$|^orders$|^dispatch$/
   if (part === 'home.pieces') return /^home\.(stored|next)$/
   return null
 }
@@ -218,9 +247,27 @@ function farmProblems(): string[] {
   bad('no more in line than its places', inLine().length <= placesInLine())
   for (const v of farm.visitors) {
     const colours = [v.look.shirt, v.look.trousers, v.look.skin, v.look.hair].every((c) => /^#[0-9a-f]{6}$/i.test(c))
-    bad(`buyer ${v.id}`, produceIds.includes(v.want) && isCount(v.qty) && v.qty >= 1 && v.qty <= 12 && isCount(v.offer) && v.offer >= 1 && v.offer <= 999 && colours)
+    bad(`buyer ${v.id}`, sellable.includes(v.want) && isCount(v.qty) && v.qty >= 1 && v.qty <= 12 && isCount(v.offer) && v.offer >= 1 && v.offer <= 999 && colours)
     bad(`buyer ${v.id}: name`, typeof v.name === 'string' && v.name.length <= 24)
+    bad(`buyer ${v.id}: a surprise or none`, typeof v.gift === 'boolean')
   }
+  // the silo and the barn: a level each, from 1
+  bad('storage: the silo and the barn', sameKeys(farm.storage, STORE_IDS) && Object.values(farm.storage).every((l) => isCount(l) && l >= 1))
+  // the order board: as many places as the office has, each an order (one to nine goods buyers buy, each once, no more
+  // in than it wants) or a wait no longer than the office's
+  bad('office', sameKeys(farm.office, ['slots', 'wait']) && isCount(farm.office.slots, SLOT_LEVELS) && isCount(farm.office.wait, WAIT_LEVELS))
+  bad('orders: a place each', farm.orders.length === orderSlots(farm.office.slots))
+  farm.orders.forEach((slot, k) => {
+    if ('wait' in slot) return bad(`orders.${k}: a wait`, sameKeys(slot, ['wait']) && isWithin(slot.wait, 0, orderWait(farm.office.wait)))
+    const o = slot.order
+    bad(`orders.${k}: an order`, sameKeys(slot, ['order']) && sameKeys(o, ['id', 'lines', 'coins', 'surprise']) && isCount(o.coins) && o.coins >= 1 && typeof o.surprise === 'boolean')
+    bad(`orders.${k}: one to nine goods, each once`, o.lines.length >= 1 && o.lines.length <= 9 && unique(o.lines.map((l) => l.good)))
+    for (const l of o.lines) bad(`orders.${k}.${l.good}`, sellable.includes(l.good) && isCount(l.want) && l.want >= 1 && isCount(l.have, l.want))
+  })
+  // the crates sent and the tractor: on a trip with some aboard, or at home with none
+  const d = farm.dispatch
+  bad('dispatch', sameKeys(d, ['waiting', 'aboard', 'trip']) && isCount(d.waiting) && isCount(d.aboard, TRACTOR.load))
+  bad('dispatch: a trip with crates, or home', d.aboard ? isWithin(d.trip, 0, tripSeconds(d.aboard, gateX())) : d.trip === -1)
   return out
 }
 

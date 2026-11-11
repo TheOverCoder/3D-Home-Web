@@ -1,12 +1,14 @@
 import type { ProduceId } from '../farm/data'
 import { blade, blob, fbm3, lathe, loft, merge, noise3, rgb, smoothstep, squircle, tube, type Shape, type V3 } from '../lib/sculpt'
 import { around, leaflet } from './crops'
-import type { Structure, StructurePart } from './structures'
+import { woodpile, type Structure, type StructurePart } from './structures'
 
 // Every good on the farm as a thing you hold — the harvest as it goes in the basket, and what the hens, the cows,
 // the sheep, the mill, the oven and the loom give: a head of lettuce, a carrot, a strawberry, a tomato, a cob of
 // corn, a pumpkin, a sheaf of wheat, sugar cane, a lemon, eggs, a bottle of milk, a ball of wool, a bowl of
-// sugar, a sack of flour, a roll of cloth, three cakes and a pie. Each is a small structure (a part per material)
+// sugar, a sack of flour, a roll of cloth, three cakes and a pie; and the six building materials the silo and the
+// barn are made bigger with: two bricks, two planks, three nails, two iron bars, a bolt with its nut, a stack of
+// logs. Each is a small structure (a part per material)
 // of about 0.1–0.5 m, posed the way its picture shows it and set down on y = 0, finer than the garden's own parts
 // (it is seen big, once). They are drawn into the game's item pictures (src/models/itemArt.ts), and shown in the
 // gallery and checked like every other model.
@@ -759,6 +761,147 @@ function pie(): Structure<'dish' | 'pie'> {
   return { dish: { shape: dish, material: { roughness: 0.25 } }, pie: { shape: merge(crust, filling, cream), material: { roughness: 0.6 } } }
 }
 
+// ───────────────────────────── the building materials ─────────────────────────────
+
+/** A box with soft edges, its middle at the origin: half-sizes x, y, z (a brick, a board, an iron bar). `top`
+ *  narrows the top face (an ingot), as a share of the bottom. */
+function block(hx: number, hy: number, hz: number, soft = 8, top = 1): Shape {
+  return loft(
+    [
+      { c: [0, -hy, 0], rx: hx, ry: hz },
+      { c: [0, hy, 0], rx: hx * top, ry: hz * top },
+    ],
+    { seg: 40, steps: 1, up: [0, 0, 1], shape: (a) => squircle(a, soft), caps: [true, true] },
+  )
+}
+
+const BRICK_RED = rgb(0xb4492f)
+const BRICK_DARK = rgb(0x8a3322)
+const PINE = rgb(0xe2b97c)
+const PINE_DARK = rgb(0xb98a4e)
+const STEEL = rgb(0xa9b2bb)
+const STEEL_DARK = rgb(0x6f7880)
+const IRON = rgb(0x5d6670)
+const IRON_LIGHT = rgb(0x8c96a0)
+
+/** Three bricks in running bond, two side by side and one across the joint on top: fired clay, a little speckled. */
+function bricks(): Structure<'bricks'> {
+  // (a flat face is a cap: its colour is even, so it is painted smoothly, and the fired clay's grain is the
+  // material's fine detail)
+  const brick = (tone: number) => block(0.1, 0.03, 0.048, 12).paint((_x, y) => mix(mix(BRICK_RED, BRICK_DARK, tone), BRICK_DARK, smoothstep(0.03, -0.03, y) * 0.35), 0)
+  const a = brick(0.25).place([0, 0.03, -0.051])
+  const b = brick(0.05).place([0, 0.03, 0.051])
+  const top = brick(0.15).place([0.004, 0.03 + 0.058, 0], [0, Math.PI / 2 - 0.08, 0])
+  return { bricks: { shape: merge(a, b, top), material: { roughness: 0.92, detail: { scale: 260, bump: 0.002, shade: 0.12 } } } }
+}
+
+/** Three planks of pine, two side by side and one across them: the grain runs along each (a plank is lofted along
+ *  its length, so its long faces carry it), the sawn ends lighter. */
+function planks(): Structure<'planks'> {
+  const plank = (seed: number, tone: number) => {
+    const p = loft(
+      [
+        { c: [-0.17, 0, 0], rx: 0.04, ry: 0.018 },
+        { c: [0.17, 0, 0], rx: 0.04, ry: 0.018 },
+      ],
+      { seg: 44, steps: 1, up: [0, 1, 0], shape: (a) => squircle(a, 12), caps: [true, true] },
+    )
+    const ends = p.ends ?? p.count
+    return p.paint((_x, y, z, k) => {
+      if (k >= ends) return mix(PINE, rgb(0xf3dcae), 0.55)
+      const g = 0.5 + 0.5 * Math.sin(z * 260 + 3 * noise3(z * 40, y * 40, 0.5, seed))
+      return mix(mix(PINE, PINE_DARK, tone), PINE_DARK, 0.45 * smoothstep(0.55, 0.95, g))
+    }, 0)
+  }
+  const a = plank(7, 0.15).place([0, 0.018, -0.043])
+  const b = plank(8, 0.3).place([0, 0.018, 0.043])
+  const top = plank(9, 0.05)
+    .place([0, 0, 0], [0, Math.PI / 2 - 0.35, 0])
+    .place([0.01, 0.018 + 0.034, 0])
+  return { planks: { shape: merge(a, b, top), material: { roughness: 0.8 } } }
+}
+
+/** Three steel nails lying in a fan: a round head, a shank, a sharp point. */
+function nails(): Structure<'nails'> {
+  const nail = (turn: number, at: V3) => {
+    const head = lathe(
+      [
+        [0, -0.004],
+        [0.014, -0.0035],
+        [0.015, 0.0],
+        [0.012, 0.003],
+        [0.0, 0.0035],
+      ],
+      { seg: 16, steps: 1 },
+    )
+    const shank = lathe(
+      [
+        [0.0055, -0.004],
+        [0.0055, -0.11],
+        [0.0045, -0.125],
+        [0.0, -0.138],
+      ],
+      { seg: 10, steps: 1 },
+    )
+    // lying down: along the ground, its head's rim on it
+    return merge(head, shank)
+      .paint((_x, y) => mix(STEEL, STEEL_DARK, smoothstep(-0.02, -0.13, y) * 0.5), 0)
+      .place([0, 0, 0], [Math.PI / 2, 0, 0])
+      .place([0, 0.015, 0], [0, turn, 0])
+      .place(at)
+  }
+  return grounded({ nails: { shape: merge(nail(-0.35, [-0.03, 0, -0.03]), nail(0.05, [0, 0, 0]), nail(0.45, [0.035, 0, -0.02])), material: { roughness: 0.32, metalness: 0.65 } } })
+}
+
+/** Two bars of iron, one across the other: dark, cast, a little lighter on their edges. */
+function ironBars(): Structure<'iron'> {
+  const bar = (tone: number) => block(0.12, 0.024, 0.045, 14, 0.8).paint((_x, y) => mix(IRON, IRON_LIGHT, tone + 0.3 * smoothstep(-0.024, 0.024, y)), 0)
+  const low = bar(0.1).place([0, 0.024, 0])
+  const high = bar(0.25).place([0, 0.024 + 0.046, 0], [0, Math.PI / 2 - 0.25, 0])
+  return { iron: { shape: merge(low, high), material: { roughness: 0.5, metalness: 0.5 } } }
+}
+
+/** A hex bolt standing on its head, threaded, its nut screwed halfway up. */
+function bolt(): Structure<'bolt'> {
+  const hex = (r: number, y0: number, y1: number) =>
+    lathe(
+      [
+        [0, y0],
+        [r * 0.92, y0],
+        [r, y0 + 0.004],
+        [r, y1 - 0.004],
+        [r * 0.92, y1],
+        [0, y1],
+      ],
+      { seg: 6, steps: 1 },
+    )
+  const head = hex(0.034, 0, 0.026)
+  const shank = lathe(
+    [
+      [0.0135, 0.02],
+      [0.0135, 0.168],
+      [0.011, 0.176],
+      [0.0, 0.177],
+    ],
+    { seg: 14, steps: 1 },
+  ).pattern((_x, y) => (y > 0.07 ? 0.5 + 0.6 * Math.sin(y * 520) : 0), STEEL_DARK)
+  const nut = hex(0.03, 0.098, 0.124).place([0, 0, 0], [0, 0.4, 0])
+  return { bolt: { shape: merge(head, shank, nut).paint((_x, y) => mix(STEEL, STEEL_DARK, smoothstep(0.03, 0.0, y) * 0.35), 0), material: { roughness: 0.3, metalness: 0.7 } } }
+}
+
+/** Three logs stacked, two below and one in the groove between them: bark round them, pale cut ends. */
+function logs(): Structure<'logs'> {
+  const pile = woodpile(
+    [
+      { xs: [-0.07, 0.07], r: 0.068 },
+      { xs: [0], r: 0.064 },
+    ],
+    0.3,
+    71,
+  ).place([0, 0, 0], [0, Math.PI / 2, 0])
+  return grounded({ logs: { shape: pile, material: { roughness: 0.9, surface: { kind: 'bark', size: 0.3, turn: true } } } })
+}
+
 export type GoodsId = ProduceId
 
 /** Every good's model, by the produce id it stands for. */
@@ -782,4 +925,10 @@ export const GOODS: Record<GoodsId, () => Structure> = {
   strawberry_cake: () => cake(rgb(0xf7e3c4), rgb(0xf6a0bd), merge(berry([0.048, 0.132, 0.0], 0), berry([-0.026, 0.132, 0.044], 2), berry([-0.026, 0.132, -0.044], 4), berry([0, 0.14, 0], 1))),
   carrot_cake: () => cake(rgb(0xbf7a3c), ICING, merge(littleCarrot([0.044, 0.13, 0.0], 0), littleCarrot([-0.022, 0.13, 0.038], 2.1), littleCarrot([-0.022, 0.13, -0.038], 4.2))),
   pumpkin_pie: pie,
+  brick: bricks,
+  plank: planks,
+  nail: nails,
+  iron: ironBars,
+  bolt,
+  log: logs,
 }

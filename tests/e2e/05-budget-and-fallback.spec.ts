@@ -64,6 +64,17 @@ const DEBTS: Debt[] = [
   ]),
 ]
 
+/** First person, the sun's shadow pass is the same from every view: one debt for all of them (draws only; its triangles
+ *  stay under the budget). */
+const SUN_DEBT: Debt = {
+  view: 'every first-person view',
+  size: 'every size',
+  pass: 'shadow',
+  draws: 275,
+  why: 'the silo, the barn, the office and the tractor cast shadows of their own: 19 draws more (242 → 261)',
+  pays: ['their static parts drawn into the map together', "the sun's map kept between frames while nothing that shows in it moves (being tried)"],
+}
+
 /** `BUDGET_MEASURE=1`: the table without the checks, to measure the debts again (after a change that pays one). */
 const MEASURE_ONLY = !!process.env.BUDGET_MEASURE
 
@@ -272,7 +283,7 @@ async function resize(page: Page, size: { width: number; height: number } | null
 function judge(row: Row) {
   const notes: string[] = []
   for (const pass of ['camera', 'shadow'] as const) {
-    const debt = DEBTS.find((d) => d.view === row.view && d.size === row.size && d.pass === pass)
+    const debt = DEBTS.find((d) => d.view === row.view && d.size === row.size && d.pass === pass) ?? (pass === 'shadow' && row.portals ? SUN_DEBT : undefined)
     for (const what of ['triangles', 'draws'] as const) {
       const value = row.on[pass][what]
       const limit = LIMITS[pass][what]

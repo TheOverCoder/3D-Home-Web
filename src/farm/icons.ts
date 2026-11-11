@@ -8,15 +8,18 @@ import type { ProduceId } from './data'
 
 const files = import.meta.glob('../assets/items/*.webp', { eager: true, query: '?url', import: 'default' }) as Record<string, string>
 
-/** The picture of a good (or of coins), as an image URL. */
-export function iconUrl(id: ProduceId | 'coin'): string {
+/** What has a picture of its own, drawn from its model: every good, the silo and the barn. */
+export type PictureId = ProduceId | 'silo' | 'barn'
+
+/** The picture of a good, a farm building (or of coins), as an image URL. */
+export function iconUrl(id: PictureId | 'coin'): string {
   return id === 'coin' ? art('coin') : files[`../assets/items/${id}.webp`]
 }
 
 const images = new Map<string, Promise<HTMLImageElement>>()
 
 /** The pictures as loaded images, to draw on a canvas (each loaded once). */
-export function iconImages(ids: (ProduceId | 'coin')[]): Promise<HTMLImageElement[]> {
+export function iconImages(ids: (PictureId | 'coin')[]): Promise<HTMLImageElement[]> {
   return Promise.all(
     ids.map((id) => {
       let p = images.get(id)

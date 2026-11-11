@@ -3,7 +3,9 @@ import { useFrame } from '@react-three/fiber'
 import { CanvasTexture, Group, MathUtils, Sprite, SpriteMaterial, SRGBColorSpace } from 'three'
 import { debugFlag } from '../lib/debug'
 import { useInteractable } from '../lib/interaction'
+import type { Parts } from '../lib/sculpt'
 import { PersonRig, personParts } from '../models/person'
+import { art } from '../ui/art'
 import { useHome } from '../store'
 import { GATE_SPOT, count } from './data'
 import { iconImages } from './icons'
@@ -14,12 +16,17 @@ import { farm, lineShort, sellAllPreview, waiting, type Visitor } from './state'
 // to them and shake their head when you say no. A speech bubble over each head shows what they want and offer.
 // Up to fifteen can stand in line, so they are drawn together: each person is a sculpted model
 // (src/models/person.ts) on a rig of joints that is posed, then copied into one instanced draw per part for the
-// whole crowd; and one bubble each.
+// whole crowd; and one bubble each. A buyer in two brings a surprise: a gift on their bubble, given as you sell to them.
+// The tractor's driver is drawn with the crowd too (crowdGuests): one more person costs no draw of its own.
 
-/** The bubble over a buyer: the good's picture and how many, the coin and the offer. It is drawn at once and
- *  again when the pictures and the type have loaded (on the first bubbles of a visit). */
+/** How wide a bubble is: room for a gift at its end when the buyer brings a surprise. */
+const bubbleWidth = (v: Visitor) => (v.gift ? 392 : 320)
+
+/** The bubble over a buyer: the good's picture and how many, the coin and the offer, and a gift when they bring a
+ *  surprise. It is drawn at once and again when the pictures and the type have loaded (on the first bubbles of a
+ *  visit). */
 function bubbleTexture(v: Visitor): CanvasTexture {
-  const W = 320
+  const W = bubbleWidth(v)
   const H = 136
   const canvas = document.createElement('canvas')
   canvas.width = W
@@ -27,7 +34,7 @@ function bubbleTexture(v: Visitor): CanvasTexture {
   const c = canvas.getContext('2d')!
   const t = new CanvasTexture(canvas)
   t.colorSpace = SRGBColorSpace
-  const draw = (want?: HTMLImageElement, coin?: HTMLImageElement) => {
+  const draw = (want?: HTMLImageElement, coin?: HTMLImageElement, gift?: HTMLImageElement) => {
     const r = 34
     c.clearRect(0, 0, W, H)
     c.fillStyle = 'rgba(255, 247, 232, 0.97)'
@@ -44,6 +51,7 @@ function bubbleTexture(v: Visitor): CanvasTexture {
     c.fill()
     if (want) c.drawImage(want, 16, 14, 84, 84)
     if (coin) c.drawImage(coin, 186, 30, 54, 54)
+    if (gift) c.drawImage(gift, 322, 22, 62, 62)
     c.fillStyle = '#3b2a1e'
     c.font = '800 44px "Nunito Variable", Nunito, system-ui, sans-serif'
     c.textBaseline = 'middle'
@@ -52,15 +60,31 @@ function bubbleTexture(v: Visitor): CanvasTexture {
     t.needsUpdate = true
   }
   draw()
-  Promise.all([iconImages([v.want, 'coin']), document.fonts?.load('800 44px "Nunito Variable"')])
-    .then(([[want, coin]]) => draw(want, coin))
+  Promise.all([iconImages([v.want, 'coin']), v.gift ? giftImage() : Promise.resolve(undefined), document.fonts?.load('800 44px "Nunito Variable"')])
+    .then(([[want, coin], gift]) => draw(want, coin, gift))
     .catch(() => {})
   return t
 }
 
-// fifteen in line, and room for those walking off after "sell to everyone" (`?debug&people=N`: N, to measure)
+let gift: Promise<HTMLImageElement> | null = null
+/** The surprise's picture (a gift), loaded once. */
+function giftImage() {
+  if (!gift) {
+    const img = new Image()
+    img.src = art('wrapped-gift')
+    gift = img.decode().then(() => img)
+  }
+  return gift
+}
+
+// fifteen in line, room for those walking off after "sell to everyone", and the tractor's driver (`?debug&people=N`:
+// N buyers, to measure)
 const asked = Math.floor(Number(debugFlag('people')))
-const MAX_PEOPLE = asked > 0 ? asked : 32
+const MAX_PEOPLE = (asked > 0 ? asked : 32) + 1
+
+/** Others drawn with the crowd (the tractor's driver, src/farm/OrderYard.tsx): each puts its people into the crowd's
+ *  parts every frame, after the buyers. */
+export const crowdGuests = new Set<(parts: Parts) => void>()
 
 interface Rig {
   body: PersonRig
@@ -72,7 +96,7 @@ interface Rig {
 
 function buildRig(v: Visitor): Rig {
   const bubble = new Sprite(new SpriteMaterial({ map: bubbleTexture(v), transparent: true, depthWrite: false }))
-  bubble.scale.set(0.66, 0.28, 1)
+  bubble.scale.set((0.66 * bubbleWidth(v)) / 320, 0.28, 1)
   bubble.visible = false
   return { body: new PersonRig(v.look), bubble, phase: Math.random() * 10, lastX: v.x, lastZ: v.z }
 }
@@ -139,7 +163,7 @@ export function Visitors() {
     parts.begin()
     let people = 0
     for (const v of farm.visitors) {
-      if (people >= MAX_PEOPLE) break
+      if (people >= MAX_PEOPLE - 1) break // (the last one is the driver's)
       people++
       live.add(v.id)
       let rig = rigs.current.get(v.id)
@@ -193,6 +217,7 @@ export function Visitors() {
       disposeRig(rig)
       rigs.current.delete(id)
     }
+    for (const guest of crowdGuests) guest(parts)
     parts.end() // drawn as a crowd, culled together when out of view (indoors, looking away)
   })
 

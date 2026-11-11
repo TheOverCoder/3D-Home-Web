@@ -6,7 +6,7 @@ import { useSettings } from '../settings'
 import { busy, useHome, type Nearby } from '../store'
 import { iconUrl } from '../farm/icons'
 import type { ProduceId } from '../farm/data'
-import { clockText } from '../farm/state'
+import { capacity, clockText, used } from '../farm/state'
 import { ActionFace, TurnHint, VerbMark } from './ActionGlyph'
 import { art } from './art'
 import { Compass } from './Compass'
@@ -127,12 +127,32 @@ function actionPictures(icon: ActionIcon | undefined, mark: Verb | undefined): R
 /**
  * What is on its way, as pictures: the thing (how many) and how long; at the oven with something missing, what is
  * missing (each with how many) → the cake it is for, and at the gate with nothing the line wants, what it asks for
- * (each with how many more) → the line; at a machine with nothing to work on, what it makes from what. Null when
- * there is nothing to draw it with (the label is shown instead).
+ * (each with how many more) → the line; at a machine with nothing to work on, what it makes from what; with the
+ * silo or the barn full, what waits here (how many) → the building and how full it is (50/50). Null when there is
+ * nothing to draw it with (the label is shown instead).
  */
 function statusPictures(status: Nearby): ReactNode {
   const icon = status.icon
   const arrow = <ArrowRight weight="bold" className="prompt-arrow" />
+  if (icon?.full)
+    return (
+      <span className="prompt-goods" aria-hidden="true">
+        {icon.item && (
+          <span className="prompt-good">
+            <Pic src={good(icon.item)} />
+            {icon.count !== undefined && <Count n={icon.count} />}
+          </span>
+        )}
+        {arrow}
+        <span className="prompt-good prompt-full">
+          <Pic src={good(icon.full)} />
+          <b className="prompt-count">
+            {used(icon.full)}
+            <span className="prompt-of">/{capacity(icon.full)}</span>
+          </b>
+        </span>
+      </span>
+    )
   if (status.needs?.length)
     return (
       <span className="prompt-goods" aria-hidden="true">

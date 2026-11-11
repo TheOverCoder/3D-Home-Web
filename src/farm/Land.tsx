@@ -9,8 +9,9 @@ import { farm, useFarm } from './state'
 
 // The land the farm owns, drawn round its edge: a clipped hedge along the sides that face north and west, a
 // slatted timber fence along those that face south and east (the sunny side, so it throws no shade into the rooms),
-// with the farm gate in the garden's south fence; and the woods beyond (made in landGeometry.ts). Buying a field moves
-// all of it out round the new land: the woods step back so the field is open ground.
+// with the farm gate in the garden's south fence and a gap in the west hedge where the tractor's track goes out (its
+// gate: src/farm/OrderYard.tsx); and the woods beyond (made in landGeometry.ts). Buying a field moves all of it out
+// round the new land: the woods step back so the field is open ground, and from the lane and the tractor's track.
 
 function Boundary({ layout }: { layout: FarmLayout }) {
   const built = useMemo(() => build(layout), [layout])

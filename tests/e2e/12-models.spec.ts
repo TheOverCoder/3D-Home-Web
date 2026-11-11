@@ -16,7 +16,7 @@ test.describe('sculpted models', () => {
     // every entry draws something once the first frames have posed it
     await page.waitForFunction(() => (window as any).__gallery.entries.every((e: any) => e.triangles > 1000), null, { timeout: 60_000, polling: 250 })
     const entries = await page.evaluate(() => (window as any).__gallery.entries.map((e: any) => e.id))
-    expect(entries).toEqual(['cow', 'sheep', 'chickens', 'people', 'crops', 'farm', 'goods'])
+    expect(entries).toEqual(['cow', 'sheep', 'chickens', 'people', 'crops', 'farm', 'stores', 'office', 'tractor', 'goods'])
     // the checks catch a piece a centimetre off its model, and a model two centimetres above the ground
     expect(await page.evaluate(() => (window as any).__gallery.selfTest())).toEqual(['loose', 'open', 'floating'])
     // the kit's checks, on every model in every variant and pose: no piece apart from its model, nothing floating
@@ -80,10 +80,13 @@ test.describe('sculpted models', () => {
     expect(drawn.sheep?.hind).toBe(6)
     expect(drawn.chickens?.henBody).toBe(3)
     expect(drawn.chickens?.roosterBody).toBe(1)
-    // three buyers, each in one of the hair styles
-    expect(drawn.people?.torso).toBe(3)
-    expect(drawn.people?.head).toBe(3)
-    expect((drawn.people?.hairShort ?? 0) + (drawn.people?.hairLong ?? 0) + (drawn.people?.hairBun ?? 0)).toBe(3)
+    // three buyers, each in one of the hair styles, and the tractor's driver (drawn with them, seated: his legs are
+    // the seated ones, his right hand has no basket)
+    expect(drawn.people?.torso).toBe(4)
+    expect(drawn.people?.head).toBe(4)
+    expect((drawn.people?.hairShort ?? 0) + (drawn.people?.hairLong ?? 0) + (drawn.people?.hairBun ?? 0)).toBe(4)
+    expect(drawn.people?.thighSeated).toBe(2)
+    expect(drawn.people?.forearmRBare).toBe(1)
     // ripe crops: tomatoes on the vine, strawberries, pumpkins, carrots' fronds; lemons and eggs
     for (const part of ['lettuceLeaf', 'lettuceHeart', 'frond', 'carrotTop', 'trefoil', 'strawberry', 'tomatoLeaf', 'tomato', 'stalk', 'grassBlade', 'cob', 'pumpkinLeaf', 'pumpkin', 'lemon', 'egg']) {
       expect(drawn.crops?.[part] ?? 0, `crops: ${part}`).toBeGreaterThan(0)

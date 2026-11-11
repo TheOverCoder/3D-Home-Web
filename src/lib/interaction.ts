@@ -36,6 +36,8 @@ export interface ActionIcon {
   /** a status at a machine with nothing to work on: what it makes from what (the mill: flour from wheat, sugar from
    *  sugar cane) */
   makes?: { from: string; to: string }[]
+  /** a status: what is ready here cannot be taken, its building is full (the silo or the barn: its picture, how full) */
+  full?: 'silo' | 'barn'
 }
 
 export interface InteractableDef {
@@ -57,8 +59,9 @@ export interface InteractableDef {
   enabled?: () => boolean
   /** what is ready to take here, for the compass at the top of the screen (a ripe bed, a nest with no room for
    *  another egg, a cow full of milk, a batch out of the oven): null while there is nothing, or less than the most
-   *  it holds — a nest with room for more eggs is not worth the walk yet */
-  ready?: () => { item: string; count: number } | null
+   *  it holds — a nest with room for more eggs is not worth the walk yet. `alert`: not something to take but a
+   *  building that needs you (the barn full while goods wait for room) */
+  ready?: () => { item: string; count: number; alert?: boolean } | null
   /** for a status: what is still missing, shown as pictures with how many (the oven's ingredients for a cake, what
    *  the line at the gate wants) */
   needs?: () => { item: string; count: number }[] | null
@@ -291,6 +294,8 @@ export interface FarMark {
   item: string
   count: number
   d: number
+  /** a building that needs you (full, with goods waiting), not something to take */
+  alert?: boolean
 }
 
 /**
@@ -307,7 +312,7 @@ export function findFar(from: Point3): FarMark[] {
     const d = reachOf(def, from)
     if (d <= def.radius && sameSpace(def.position, here)) continue
     const m = byItem.get(r.item)
-    if (!m) byItem.set(r.item, { id: def.id, item: r.item, count: r.count, d })
+    if (!m) byItem.set(r.item, { id: def.id, item: r.item, count: r.count, d, ...(r.alert ? { alert: true } : {}) })
     else {
       m.count += r.count
       if (d < m.d) Object.assign(m, { id: def.id, d })

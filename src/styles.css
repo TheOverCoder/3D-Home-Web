@@ -365,11 +365,15 @@ a:focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; border-rad
 .prompt-time svg { width: 18px; height: 18px; }
 .prompt-arrow { flex: none; width: 18px; height: 18px; opacity: 0.75; }
 .prompt-make + .prompt-make { padding-inline-start: 14px; border-inline-start: 1.5px solid var(--night-line); }
+/* the silo or the barn full: how full, in a warm red (what waits here stays where it is) */
+.prompt-full .prompt-count { color: #ffb3a6; }
 /* the label, kept for screen readers behind the pictures */
 .prompt-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 /* coins flying from a buyer to the coin chip when they pay (src/fx/coins.ts: placed and flown by script) */
 .coin-fly { position: fixed; z-index: 70; width: 30px; height: 30px; pointer-events: none; user-select: none; filter: drop-shadow(0 2px 3px rgba(40, 24, 10, 0.4)); will-change: transform, opacity; }
+/* a surprise found (a building material): its picture pops up where it was found, then flies to the barn's chip */
+.item-fly { position: fixed; z-index: 70; width: 56px; height: 56px; pointer-events: none; user-select: none; filter: drop-shadow(0 0 10px rgba(255, 214, 92, 0.85)) drop-shadow(0 3px 3px rgba(40, 24, 10, 0.35)); will-change: transform, opacity; }
 
 /* a few words and a picture of what came in ("+ 4 lettuces"), on paper, popping in under the coin chip */
 .toast {
@@ -810,7 +814,8 @@ a:focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; border-rad
 }
 
 /* ───────── the garden ───────── */
-/* the chips at the top while you are outside: coins, the line at the gate, the basket (Nunito numbers) */
+/* the chips at the top while you are outside: coins, the line at the gate, how full the silo and the barn are (Nunito
+   numbers); the silo and the barn open their panels */
 .farm-chip {
   position: fixed;
   top: max(14px, env(safe-area-inset-top));
@@ -850,6 +855,14 @@ a:focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; border-rad
 .farm-chip-item.line svg { width: 20px; height: 20px; margin-inline-start: 6px; color: #fff; }
 .farm-chip-item.line.full { border-color: rgba(120, 220, 120, 0.6); color: #c9f0b8; }
 .farm-chip-item.more { padding: 2px 12px; }
+.farm-chip-item .of { font-size: 13.5px; opacity: 0.72; }
+/* the silo and the barn: buttons, their tap area grown to 44 px round the 36 px chip */
+button.farm-chip-item { position: relative; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+button.farm-chip-item::after { content: ''; position: absolute; inset: -4px -2px; }
+button.farm-chip-item:active { transform: translateY(1px) scale(0.97); }
+button.farm-chip-item:focus-visible { outline: 3px solid var(--sun); outline-offset: 2px; }
+.farm-chip-item.store img { width: 32px; height: 32px; margin-inline-start: -2px; }
+.farm-chip-item.store.full { border-color: rgba(255, 128, 104, 0.75); color: #ffc4b8; }
 /* a count that goes up hops, its rim lit in sun yellow for a moment */
 @media (prefers-reduced-motion: no-preference) {
   .farm-chip-item.hop-a { animation: hop-a 0.5s var(--ease-pop); }
@@ -927,6 +940,10 @@ a:focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; border-rad
 .farm-card-name { font: 600 17px/1.15 var(--font-display); }
 .farm-card-tags { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
 .farm-key { position: absolute; top: 8px; inset-inline-start: 8px; font-size: 11px; opacity: 0.55; }
+/* how many of a crop are in the silo: a small chip in the card's right corner */
+.farm-stock { position: absolute; top: 6px; inset-inline-end: 6px; gap: 2px; padding: 1px 7px 1px 3px; font-size: 13px; box-shadow: 0 1px 0 var(--paper-3); }
+.farm-stock img { width: 16px; height: 16px; }
+.farm-stock.none { opacity: 0.6; }
 
 /* a buyer's order: what they want, how many you have of it, what they pay; sell, or a small × to send away */
 .farm-list { display: grid; gap: 8px; }
@@ -960,6 +977,35 @@ a:focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; border-rad
 .farm-basket-item { gap: 4px; }
 .farm-basket-item .art { width: 52px; height: 52px; }
 .farm-basket-item > span { color: var(--ink-2); font-size: 13px; }
+
+/* the silo and the barn: what is inside (as the basket showed it), how full, and the next level — its three materials,
+   each with how many you have of how many it takes, and the room it gives */
+.tag.fill img { width: 20px; height: 20px; margin-block: -2px; }
+.farm-upgrade { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px 12px; margin-top: 12px; padding: 10px 12px; border-radius: var(--r-card); background: var(--paper-2); }
+.farm-upgrade-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; grid-column: 1 / -1; }
+.farm-upgrade-head strong { font: 600 17px/1.15 var(--font-display); }
+.farm-upgrade .farm-needs { margin: 0; }
+.farm-upgrade-go { min-width: 110px; }
+.farm-needs { display: flex; flex-wrap: wrap; gap: 10px 16px; margin: 4px 0 2px; }
+.farm-need { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.farm-need .item-pic .art { width: 44px; height: 44px; }
+
+/* the order board: each order's goods (how many it asks, how many are in), its pay and surprise, Put in or Send, × */
+.farm-orders { margin-bottom: 12px; }
+.farm-order { display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: var(--r-card); background: var(--paper-2); border: 2px solid transparent; }
+.farm-order.ok { border-color: #8fd18a; background: #f1fae9; }
+.farm-order.waiting { flex-direction: row; align-items: center; gap: 8px; min-height: 52px; color: var(--ink-2); font-size: 15px; }
+.farm-order.waiting svg { width: 20px; height: 20px; }
+.farm-order-goods { display: flex; flex-wrap: wrap; gap: 8px 12px; }
+.farm-order-line { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.farm-order-line .item-pic .art { width: 44px; height: 44px; }
+.farm-order-line .tag { padding: 0 7px; font-size: 13px; }
+.farm-order-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.farm-order-pay { display: inline-flex; align-items: center; gap: 8px; font-size: 18px; color: var(--ink); }
+.farm-surprise { width: 30px; height: 30px; filter: drop-shadow(0 2px 2px rgba(60, 35, 10, 0.2)); }
+.farm-surprise.small { width: 24px; height: 24px; }
+.farm-order .btn.leaf { min-width: 96px; }
+.farm-office { margin-top: 4px; }
 
 /* the shop: a picture, the name and one line, its price on the button */
 .farm-shop { display: grid; gap: 8px; }

@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defaultHome, ROOM_WEIGHT, roomWeight, type HomePiece } from '../home/layout'
 import { useHome } from '../store'
 import {
@@ -71,8 +71,15 @@ describe('a save from before the tables', () => {
   beforeEach(() => {
     localStorage.clear()
     resetFarm()
+    // the clock stands still while a save loads: "saved just now" is no time away, however long the loading takes (the
+    // hens' clock runs four times as fast: 13 ms of loading was enough to move it past what the tests allow)
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(Date.UTC(2026, 10, 10, 12))
   })
-  afterEach(() => switchSlot(1))
+  afterEach(() => {
+    switchSlot(1)
+    vi.useRealTimers()
+  })
 
   it('a file loads with every stock, timer, machine job and count as it was, and is saved again in the new shape', () => {
     expect(importSlot(1, JSON.stringify({ kind: '3d-home-farm-save', version: 1, slot: 1, save: justSaved(OLD_SAVE) }))).toEqual({ ok: true })
