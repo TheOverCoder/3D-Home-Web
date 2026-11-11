@@ -81,6 +81,8 @@ const stats = {
   /** the pass's own time: the hook before the render (ms), last and most; with `timing`, the tests during it too */
   hookMs: 0,
   maxHookMs: 0,
+  /** the hook's time summed over every render since the start (a frame may draw the scene more than once) */
+  hookSum: 0,
   testMs: 0,
   maxTestMs: 0,
 }
@@ -450,6 +452,7 @@ function beforeRender(renderer: WebGLRenderer, scene: Scene, camera: Camera) {
   if (ours) {
     const ms = performance.now() - t0
     stats.hookMs = ms
+    stats.hookSum += ms
     if (ms > stats.maxHookMs) stats.maxHookMs = ms
     // the sun's map: drawn again in this render if something in it changed
     shadowCheck?.(renderer, sunOn)

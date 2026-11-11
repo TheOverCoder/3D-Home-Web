@@ -5,7 +5,10 @@ import type { Color, DirectionalLight, FogExp2, HemisphereLight, Object3D } from
 import { CROPS, MACHINES, MACHINE_IDS, PRODUCE, PRODUCERS, PRODUCER_IDS, QUEUE, VISITOR, produceById } from '../farm/data'
 import { tick } from '../farm/state'
 import { profile } from '../lib/profile'
+import { debugSet } from '../lib/debug'
+import { view } from '../lib/visibility/pass'
 import { LOOK, useLook } from '../scene/Effects'
+import { PLACE_NAMES, SWITCHES, createMeter, passFromQuery, type Meter } from './measure'
 import { useHome, type Quality } from '../store'
 
 // A live tuning panel for developers (open the game with ?tune; Experience.tsx loads it in a chunk of its own, which
@@ -13,7 +16,8 @@ import { useHome, type Quality } from '../store'
 // prices (src/farm/data.ts), the film look (LOOK in src/scene/Effects.tsx), the sun, sky light and haze as they are in
 // the scene, and this device's profile (src/lib/profile.ts). One line shows frames per second and what the view draws,
 // counted as tests/e2e/05-budget counts it; *Copy changes* puts what was changed on the clipboard as JSON (and in the
-// console), to write back into the code. Nothing is kept: a reload starts from the code again.
+// console), to write back into the code. Nothing is kept: a reload starts from the code again. The Measure folder
+// measures this device with the drawing pass on and off (src/debug/measure.ts).
 
 const TIERS: Quality[] = ['high', 'medium', 'low']
 
@@ -42,6 +46,13 @@ export default function Tune() {
   const camera = useThree((s) => s.camera)
   const budget = useRef({ line: '…' })
   const frames = useRef({ n: 0, since: performance.now() })
+  const meterRef = useRef<Meter>(null!)
+  meterRef.current ??= createMeter(gl, scene, camera)
+  const info = useRef(meterRef.current.info())
+  useEffect(() => {
+    passFromQuery()
+    debugSet('measure', meterRef.current)
+  }, [])
 
   useEffect(() => {
     const gui = new GUI({ title: 'Tune', width: 250, closeFolders: true })
@@ -149,16 +160,48 @@ export default function Tune() {
     }
     gui.add({ copy }, 'copy').name('Copy changes (JSON)')
 
+    // ── measuring on a phone (src/debug/measure.ts): what the device is, where, and the drawing pass on against off
+    const meter = meterRef.current
+    const mf = gui.addFolder('Measure')
+    for (const k of Object.keys(info.current)) mf.add(info.current, k).name(k).listen().disable()
+    const passF = mf.addFolder('Drawing pass (switches)')
+    passF.add(view, 'on').name('the pass').listen()
+    passF.add(view, 'portals').name('rooms and portals').listen()
+    passF.add(view, 'crowds').name('crowds in view').listen()
+    passF.add(view, 'sun').name("sun's culling").listen()
+    passF.add(view, 'keep').name("sun's map kept").listen()
+    mf.add({ place: '' }, 'place', ['', ...PLACE_NAMES])
+      .name('Go to')
+      .onChange((p: string) => p && meter.goTo(p))
+    mf.add({ fill: () => meter.fill() }, 'fill').name('Fill test farm (farm 3)')
+    mf.add(meter, 'switch', Object.keys(SWITCHES)).name('ON/OFF switches')
+    mf.add({ still: () => meter.run('still') }, 'still').name('Measure still (~36 s)')
+    mf.add({ turning: () => meter.run('turning') }, 'turning').name('Measure turning (~36 s)')
+    mf.add({ soak: () => meter.soak(10) }, 'soak').name('Soak 10 min')
+    mf.add({ stop: () => meter.stop() }, 'stop').name('Stop')
+    for (const k of Object.keys(meter.lines))
+      mf.add(meter.lines, k)
+        .name(k === 'status' ? 'status' : `${k} ON / OFF`)
+        .listen()
+        .disable()
+    mf.add({ copy: () => meter.copy() }, 'copy').name('Copy (JSON)')
+
     return () => gui.destroy()
   }, [scene])
 
+  // the measuring tool's frame: its first moment, and its last (after the effects have drawn it)
+  useFrame(() => meterRef.current.begin(), -1000)
+  useFrame(() => meterRef.current.end(), 1000)
+
   // frames per second, and once a second the scene drawn on its own as 05-budget counts it (no post-processing, no
-  // shadow maps), before the effects draw the frame: nothing of it shows
+  // shadow maps), before the effects draw the frame: nothing of it shows (not while measuring)
   useFrame(() => {
     const f = frames.current
     f.n++
     const now = performance.now()
     if (now - f.since < 1000) return
+    Object.assign(info.current, meterRef.current.info())
+    if (meterRef.current.busy()) return
     const fps = (f.n * 1000) / (now - f.since)
     f.n = 0
     f.since = now
