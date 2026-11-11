@@ -30,7 +30,10 @@ const LIMITS = { camera: { triangles: 250_000, draws: 700 }, shadow: { triangles
 const PAID = 0.05
 
 /** Paid by: what each debt waits for. */
-const LOD = 'levels of detail: a model far off drawn with the triangles its pixels can show (being tried)'
+// (levels of detail — a model far off drawn with fewer triangles — were measured and pay nothing: far people change
+// pixels below a pixel's size, and at the scale where nothing changes they save 9 %)
+const OCCLUDERS = "the farm's buildings hiding what is behind them, as the house's walls do (third person over the yard: a fifth to a third of it is behind something)"
+const MERGED = 'the merged pieces left out one by one where they cannot be seen (a merged mesh is drawn whole)'
 const FURNITURE = 'fewer furniture draws: the pieces of one kind in a room drawn together'
 
 interface Debt {
@@ -54,13 +57,13 @@ const SHADOWS = 'the ceilings go, so the sun reaches every room: every piece of 
 const DEBTS: Debt[] = [
   // the house's walls hide what is behind them (src/lib/visibility/walls.ts): 436k-439k -> 256k-263k here, and the yard back at
   // the house, the yard upright, third person and decorating sideways paid
-  { view: 'yard, over the farm', size: '640×360', pass: 'camera', triangles: 278_000, why: YARD, pays: [LOD, FURNITURE] },
-  { view: 'yard, over the farm', size: '1055×487', pass: 'camera', triangles: 276_000, why: YARD, pays: [LOD, FURNITURE] },
+  { view: 'yard, over the farm', size: '640×360', pass: 'camera', triangles: 278_000, why: YARD, pays: [OCCLUDERS] },
+  { view: 'yard, over the farm', size: '1055×487', pass: 'camera', triangles: 276_000, why: YARD, pays: [OCCLUDERS] },
   // the pieces and the walls stay merged while decorating (649 → 373 draws): a merged mesh is drawn whole, 3-7 % more triangles
-  { view: 'decorating the living room', size: '640×360', pass: 'camera', triangles: 300_000, why: ROOMS, pays: [LOD, FURNITURE] },
+  { view: 'decorating the living room', size: '640×360', pass: 'camera', triangles: 300_000, why: ROOMS, pays: [MERGED] },
   ...SIZES.flatMap((s): Debt[] => [
-    { view: 'third person, the living room', size: s.name, pass: 'shadow', triangles: 315_000, draws: 453, why: SHADOWS, pays: [FURNITURE, LOD] },
-    { view: 'decorating the living room', size: s.name, pass: 'shadow', triangles: 313_000, draws: 447, why: SHADOWS, pays: [FURNITURE, LOD] },
+    { view: 'third person, the living room', size: s.name, pass: 'shadow', triangles: 315_000, draws: 453, why: SHADOWS, pays: [FURNITURE] },
+    { view: 'decorating the living room', size: s.name, pass: 'shadow', triangles: 313_000, draws: 447, why: SHADOWS, pays: [FURNITURE] },
   ]),
 ]
 

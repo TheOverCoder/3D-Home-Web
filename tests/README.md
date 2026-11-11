@@ -95,17 +95,20 @@ Views over the budget today, with the drawing pass on and the hedge and the wood
 may draw no more than its ceiling — the most it measured, and 5 % more, for what wanders in and out of a view (the
 yard back at the house sideways measured 249k to 263k over three runs, as the hens cross the edge of the view) — so a
 debt only goes down; once it measures 5 % under the budget it is paid, and must leave the list (and this table). They
-are paid by how things are drawn, never by what the game holds (CLAUDE.md): **LOD** — a model far off drawn with the
-triangles its pixels can show (being tried); **furniture** — fewer furniture draws, the pieces of one kind in a room
-drawn together (and so into the sun's map).
+are paid by how things are drawn, never by what the game holds (CLAUDE.md): **occluders** — the farm's buildings hiding
+what is behind them, as the house's walls do (third person over the yard: a fifth to a third of it is behind
+something); **merged** — the merged pieces left out one by one where they cannot be seen (a merged mesh is drawn
+whole); **furniture** — fewer furniture draws, the pieces of one kind in a room drawn together (and so into the sun's
+map). Levels of detail (a model far off drawn with fewer triangles) were measured and pay nothing: far people change
+pixels below a pixel's size (in faces, hair and shoes), and at the scale where no pixel changes they save 9 %.
 
 | View | Size | Pass | Measured | Ceiling | Why | Paid by |
 |---|---|---|---|---|---|---|
-| Yard, over the farm | 640×360 | camera | 256k–265k triangles, 352–353 draws (436k–438k before the walls) | 278k | The walls hide only what is behind the house: every room is seen through its windows, full of furniture, and the whole farm in front, its animals and buyers | LOD, furniture |
-| Yard, over the farm | 1055×487 | camera | 263k, 358 draws (439k before the walls) | 276k | the same | LOD, furniture |
-| Decorating the living room | 640×360 | camera | 286k, 352 draws | 300k | The ceilings go and the eye is over the walls: every room in view drawn, full of furniture (the walls hide only what is low and close behind them); the pieces and the walls stay merged while decorating (649 → 373 draws), and a merged mesh is drawn whole (3–7 % more triangles) | LOD, furniture |
-| Third person, the living room | every size | shadow | 309k triangles, 431 draws | 315k, 453 draws | The ceilings go, so the sun reaches every room: every piece of furniture is drawn into its map (first person: 127k, 242 draws) | furniture, LOD |
-| Decorating the living room | every size | shadow | 307k, 425 draws | 313k, 447 draws | the same | furniture, LOD |
+| Yard, over the farm | 640×360 | camera | 256k–265k triangles, 352–353 draws (436k–438k before the walls) | 278k | The walls hide only what is behind the house: every room is seen through its windows, full of furniture, and the whole farm in front, its animals and buyers | occluders |
+| Yard, over the farm | 1055×487 | camera | 263k, 358 draws (439k before the walls) | 276k | the same | occluders |
+| Decorating the living room | 640×360 | camera | 286k, 352 draws | 300k | The ceilings go and the eye is over the walls: every room in view drawn, full of furniture (the walls hide only what is low and close behind them); the pieces and the walls stay merged while decorating (649 → 373 draws), and a merged mesh is drawn whole (3–7 % more triangles) | merged |
+| Third person, the living room | every size | shadow | 309k triangles, 431 draws | 315k, 453 draws | The ceilings go, so the sun reaches every room: every piece of furniture is drawn into its map (first person: 127k, 242 draws) | furniture |
+| Decorating the living room | every size | shadow | 307k, 425 draws | 313k, 447 draws | the same | furniture |
 | First person outdoors (the gate, the yard), and indoors where a window's sunlight falls on you | every size | shadow | 136.7k triangles (under the budget), 261 draws; indoors 215–220, or 252 in the sunlight | 275 draws | The silo, the barn, the office and the tractor cast shadows of their own (242 → 261), and so does your body in the sun: 37 draws of its 52 meshes, 6.9k triangles (indoors, out of the sunlight, it is paid: the walls merged, your body out of the map) | their static parts drawn into the map together; your body drawn in fewer pieces |
 
 The house's walls (`src/lib/visibility/walls.ts`: what lies wholly behind one opaque piece of them is not drawn, in
