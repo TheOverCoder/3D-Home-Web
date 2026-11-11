@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react'
 import { produceById, type ProduceId } from '../farm/data'
-import { aimPointOf, guideTo } from '../lib/interaction'
+import { aimPointOf } from '../lib/interaction'
 import { look } from '../lib/look'
 import { playerState } from '../lib/playerState'
+import { useWalk, walkTo } from '../lib/route/walking'
 import { useSettings } from '../settings'
 import { busy, useHome } from '../store'
 import { ItemPic } from './ItemPic'
@@ -13,10 +14,13 @@ import './Compass.css'
 // ready to take that the action button cannot reach from here (a ripe bed, a nest with no room for another egg, a
 // cow full of milk, a batch out of the oven): its picture, how many, and where it lies from where you look. What is
 // behind you waits at the nearer edge, with an arrow; two or more there fold into one "+N" mark (more than the strip
-// holds fold in too, the farthest off to the side first), which turns you to the nearest of them. Tap a mark to turn
-// to it (an arrow then hangs over it until you get there). Within reach a thing leaves the compass — the button takes
-// it — and if you walk off without it, it comes back. The silo or the barn full while goods wait for room is a mark
-// too, ringed in red: its picture and how many wait. Outdoors, unless the top of the screen is set clear (HudMode).
+// holds fold in too, the farthest off to the side first), which walks you to the nearest of them. Tap a mark and you
+// walk there by yourself (src/lib/route): the way round the fences, pens and beds, out through the house's doorways and
+// the garden door, an arrow over the thing until you get there, and the mark ringed in sun-yellow while you go; the
+// stick, a key, a jump or the mark again takes over. Within reach a thing leaves the compass — the button takes it —
+// and if you walk off without it, it comes back. The silo or the barn full while goods wait for room is a mark too,
+// ringed in red: its picture and how many wait. Outdoors, and indoors while something outside is ready; not when the
+// top of the screen is set clear (HudMode).
 
 const SPAN = (75 * Math.PI) / 180 // the strip spans what lies within 75° either side of where you look
 const GAP = 30 // marks closer than this are spread apart
@@ -48,6 +52,7 @@ function place(yaw: number, half: number) {
 /** One mark as laid out on the strip this frame. */
 interface Laid {
   id: string
+  item: string
   pin: HTMLButtonElement
   x: number
   rel: number
@@ -88,8 +93,9 @@ const name = (item: string, n: number) => {
   return p ? `${n} ${n === 1 ? p.name : p.plural}` : item
 }
 
-/** What a mark says to a screen reader: something ready to take, or a building that needs you. */
-const markLabel = (m: { item: string; count: number; alert?: boolean }) => (m.alert ? `The ${m.item} is full: ${m.count} waiting for room — turn to it` : `${name(m.item, m.count)} ready — turn to it`)
+/** What a mark says to a screen reader: something ready to take, or a building that needs you; and what a tap does. */
+const markLabel = (m: { item: string; count: number; alert?: boolean }, going: boolean) =>
+  `${m.alert ? `The ${m.item} is full: ${m.count} waiting for room` : `${name(m.item, m.count)} ready`} — ${going ? 'walking there, tap to stop' : 'walk there'}`
 
 export function Compass() {
   const phase = useHome((s) => s.phase)
@@ -97,14 +103,16 @@ export function Compass() {
   const occupied = useHome(busy)
   const marks = useHome((s) => s.compass)
   const mode = useSettings((s) => s.hudMode)
+  // the good of the mark walked to now (its mark is ringed while you go)
+  const going = useWalk((s) => s.item)
   const strip = useRef<HTMLDivElement>(null)
   const scale = useRef<(HTMLSpanElement | null)[]>([])
   const heading = useRef<HTMLSpanElement>(null)
   const pins = useRef(new Map<string, HTMLButtonElement>())
   // the "+N" marks at each edge, and the nearest of what each holds (what a tap turns you to)
   const more = useRef<Record<'left' | 'right', HTMLButtonElement | null>>({ left: null, right: null })
-  const moreTo = useRef<Record<'left' | 'right', string | null>>({ left: null, right: null })
-  const shown = phase === 'playing' && outdoors && !occupied && mode !== 'clean'
+  const moreTo = useRef<Record<'left' | 'right', { id: string; item: string } | null>>({ left: null, right: null })
+  const shown = phase === 'playing' && (outdoors || marks.length > 0) && !occupied && mode !== 'clean'
 
   // the scale, the heading and the marks follow the view every frame, without React: only transforms change
   useEffect(() => {
@@ -139,22 +147,27 @@ export function Compass() {
         const at = aimPointOf(m.id)
         if (!pin || !at) continue
         const p = place(Math.atan2(-(at.x - from.x), -(at.z - from.z)), pinHalf)
-        laid.push({ id: m.id, pin, x: p.x, rel: p.rel, behind: p.behind })
+        laid.push({ id: m.id, item: m.item, pin, x: p.x, rel: p.rel, behind: p.behind })
       }
       const { shown: visible, folded } = fold(laid, Math.floor((2 * pinHalf) / GAP) + 1)
       const row: { el: HTMLButtonElement; x: number; behind: string }[] = visible.map((l) => ({ el: l.pin, x: l.x, behind: l.behind }))
       for (const s of ['left', 'right'] as const) {
         const chip = more.current[s]
         const group = folded[s]
-        moreTo.current[s] = group[0]?.id ?? null
+        moreTo.current[s] = group[0] ? { id: group[0].id, item: group[0].item } : null
         if (!chip) continue
         chip.style.display = group.length ? '' : 'none'
         if (!group.length) continue
+        // the mark walked to folded in here: the "+N" is ringed instead
+        chip.classList.toggle(
+          'going',
+          group.some((l) => l.item === going),
+        )
         const text = `+${group.length}`
         if (chip.dataset.n !== text) {
           chip.dataset.n = text
           chip.firstElementChild!.textContent = text
-          chip.setAttribute('aria-label', `${group.length} more ready ${s === 'left' ? 'to your left' : 'to your right'} — turn to the nearest`)
+          chip.setAttribute('aria-label', `${group.length} more ready ${s === 'left' ? 'to your left' : 'to your right'} — walk to the nearest`)
         }
         row.push({ el: chip, x: s === 'left' ? -pinHalf : pinHalf, behind: s })
       }
@@ -170,7 +183,7 @@ export function Compass() {
     }
     raf = requestAnimationFrame(frame)
     return () => cancelAnimationFrame(raf)
-  }, [shown, marks])
+  }, [shown, marks, going])
 
   if (!shown) return null
   return (
@@ -185,13 +198,14 @@ export function Compass() {
         {marks.map((m) => (
           <button
             key={m.item}
-            className={`compass-mark${m.alert ? ' alert' : ''}`}
+            className={`compass-mark${m.alert ? ' alert' : ''}${going === m.item ? ' going' : ''}`}
             ref={(el) => {
               if (el) pins.current.set(m.id, el)
               else pins.current.delete(m.id)
             }}
-            onClick={() => guideTo(m.id)}
-            aria-label={markLabel(m)}
+            onClick={() => walkTo(m.id, m.item)}
+            aria-label={markLabel(m, going === m.item)}
+            aria-pressed={going === m.item}
           >
             <span className="compass-pin">
               <ItemPic id={m.item} count={m.count} />
@@ -205,8 +219,8 @@ export function Compass() {
             style={{ display: 'none' }}
             ref={(el) => void (more.current[s] = el)}
             onClick={() => {
-              const id = moreTo.current[s]
-              if (id) guideTo(id)
+              const to = moreTo.current[s]
+              if (to) walkTo(to.id, to.item)
             }}
           >
             <span className="compass-pin" />

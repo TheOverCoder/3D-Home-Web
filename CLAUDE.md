@@ -8,7 +8,7 @@ The README has the overview; `tests/README.md` what each test guards.
 
 - `npm run check` (types, oxlint, the Vitest unit tests, the format check: ~15 s), then the e2e spec files the change
   reaches: `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium npx playwright test --trace off <files>` (software WebGL; the
-  whole suite ~45 min, `npm run test:e2e:quick` ~20 min: all but the eight `@boot` tests that start a page of their
+  whole suite ~45 min, `npm run test:e2e:quick` ~20 min: all but the ten `@boot` tests that start a page of their
   own; `05`'s walks alone take 10–20 min, its ten times the farm, at one size, some minutes more). It builds and serves
   on :4185. A rule or a save change gets a unit test beside its code (`src/**/*.test.ts`, `tests/README.md`).
 - A push runs the whole suite on GitHub (`ci.yml`, four shards side by side, ~25 min), and the site is published only
@@ -68,6 +68,11 @@ The README has the overview; `tests/README.md` what each test guards.
 - Reach is measured on the ground, from the edge of a thing's footprint (`box`, half its size each way) or from its
   `position`, within its `radius` (`groundDistance`): a bed is in reach 1.5 m from its frame (`BED_REACH`), and the
   "every like bed" batch uses the same measure. Offered, a thing you look at wins over one only within reach.
+- A compass mark tapped walks you there (`src/lib/route`): the stick pushed along a way found on cells asked of the
+  physics world (the player's capsule against fixed colliders), until the thing is within reach by that same measure.
+  Something new with a fixed collider needs nothing (any change to one makes the cells again); something that blocks
+  the way but moves only when you work it (a door that shuts, like the kitchen's) is put into the cells as it stands
+  (`physics.ts`).
 - The prompt over the button is pictures, not a sentence (`src/ui/Hud.tsx`): an action about a good gives its icon
   `count` (how many one press takes, makes or sells), `coins` where coins change hands, a status `seconds`; one about
   no good its `art` (the gate: the line's picture, `count` of `of` — the 4 of 7 waiting you can serve). The `label`

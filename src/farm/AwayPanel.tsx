@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
-import { findFar, guideTo } from '../lib/interaction'
+import { findFar } from '../lib/interaction'
+import { walkTo } from '../lib/route/walking'
 import { playerState } from '../lib/playerState'
 import { useHome } from '../store'
 import { art, type ArtId } from '../ui/art'
@@ -13,8 +14,8 @@ import { awaySummary, clearAwaySummary, useFarm } from './state'
 // Welcome back: after a time away (the page closed, or hidden while you were in another app or the phone was locked),
 // the farm has gone on for it (src/farm/state.ts, cameBack) — and this card says what happened: each good that came to
 // be ready with how many, who joined the line, the orders that came in, the tractor back; what needs you (beds gone
-// dry, a building too full to take what waits) in red. Close, or Go there: the nearest thing ready to take, as
-// tapping it on the compass does.
+// dry, a building too full to take what waits) in red. Close, or Go there: you walk to the nearest thing ready to
+// take, as tapping its mark on the compass does.
 
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1)
 
@@ -66,7 +67,8 @@ export function AwayPanel() {
   const go = () => {
     const target = far[0]
     close()
-    if (target) guideTo(target.id)
+    // the walk there by itself, as tapping its mark on the compass does
+    if (target) walkTo(target.id, target.item)
   }
   const capped = r.counted < r.seconds
   return (
