@@ -5,7 +5,7 @@ import { playerState } from '../lib/playerState'
 import { useHome } from '../store'
 import { art, type ArtId } from '../ui/art'
 import { ItemPic } from '../ui/ItemPic'
-import { Shell } from '../ui/Sheet'
+import { Coins, Shell } from '../ui/Sheet'
 import { Clock, NavigationArrow } from '../ui/glyphs'
 import { STORES, count, produceById } from './data'
 import { iconUrl } from './icons'
@@ -13,9 +13,10 @@ import { awaySummary, clearAwaySummary, useFarm } from './state'
 
 // Welcome back: after a time away (the page closed, or hidden while you were in another app or the phone was locked),
 // the farm has gone on for it (src/farm/state.ts, cameBack) — and this card says what happened: each good that came to
-// be ready with how many, who joined the line, the orders that came in, the tractor back; what needs you (beds gone
-// dry, a building too full to take what waits) in red. Close, or Go there: you walk to the nearest thing ready to
-// take, as tapping its mark on the compass does.
+// be ready with how many, who joined the line, the orders that came in, what your shop sold (and the coins in its
+// till), new pieces at the contractor, the tractor back; what needs you (beds gone dry, a building too full to take
+// what waits) in red. Close, or Go there: you walk to the nearest thing ready to take, as tapping its mark on the
+// compass does.
 
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1)
 
@@ -100,6 +101,20 @@ export function AwayPanel() {
           <div className="farm-basket-item" title={`${r.orders} new orders`}>
             <ArtPic id="clipboard" count={r.orders} />
             <span>Orders</span>
+          </div>
+        )}
+        {r.shop && r.shop.goods > 0 && (
+          <div className="farm-basket-item" title={`${r.shop.goods} sold in your shop; ${r.shop.coins} coins in the till`}>
+            <ArtPic id="convenience-store" count={r.shop.goods} />
+            <span>
+              <Coins n={r.shop.coins} /> in the till
+            </span>
+          </div>
+        )}
+        {r.pieces && (
+          <div className="farm-basket-item" title="The contractor has new pieces">
+            <img className="art" src={art('construction-worker')} alt="" />
+            <span>New pieces</span>
           </div>
         )}
         {r.tractor && (

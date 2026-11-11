@@ -2,6 +2,7 @@
 // oscillators — nothing is downloaded. The context is created on the first user gesture (browsers refuse
 // to start audio before one) and every function here is a silent no-op until then, or while sound is off.
 // No three.js in here: the entry chunk imports this file.
+import { insideWalkIn } from '../data/buildings'
 import type { FloorKind, RoomId } from '../data/layout'
 import { playerState } from '../lib/playerState'
 
@@ -358,7 +359,34 @@ export function screenSound(open: boolean) {
 // ─────────────────────── the garden ───────────────────────
 
 export type FarmSound =
-  'plant' | 'water' | 'harvest' | 'coins' | 'cluck' | 'bell' | 'build' | 'decline' | 'moo' | 'milk' | 'creak' | 'oven' | 'ding' | 'crow' | 'baa' | 'shear' | 'loom' | 'surprise' | 'chug'
+  | 'plant'
+  | 'water'
+  | 'harvest'
+  | 'coins'
+  | 'cluck'
+  | 'bell'
+  | 'build'
+  | 'decline'
+  | 'moo'
+  | 'milk'
+  | 'creak'
+  | 'oven'
+  | 'ding'
+  | 'crow'
+  | 'baa'
+  | 'shear'
+  | 'loom'
+  | 'surprise'
+  | 'chug'
+  | 'xp' // a crystal joining the level chip's bar
+  | 'level' // a new level
+  | 'till' // the shop's till emptied into your purse
+  | 'chime' // the contractor has what you need today
+
+/** Crystals landing one close behind another climb this scale (semitones over the first note), then hold its top. */
+const XP_STEPS = [0, 2, 4, 7, 9, 12, 14, 16]
+let xpRun = 0
+let xpLast = -Infinity
 
 /** A voiced, filtered tone whose pitch and brightness follow a short contour: animals. */
 function voice(e: Engine, t: number, notes: [number, number][], seconds: number, gain: number, cutoff: [number, number], pan?: number, type: OscillatorType = 'sawtooth') {
@@ -494,6 +522,38 @@ export function farmSound(kind: FarmSound, pan = 0, near = 1) {
       tone(e, t, { type: 'sawtooth', f0: rnd(62, 70), f1: 48, gain: 0.05 * v, attack: 0.006, decay: 0.09, pan })
       burst(e, t, { type: 'lowpass', freq: 240, q: 0.8, gain: 0.12 * v, attack: 0.004, decay: 0.08, pan })
       break
+    case 'xp': {
+      // a crystal joins the bar: a glassy tink, a step up the scale for each that lands close behind the one before
+      const now = performance.now()
+      xpRun = now - xpLast < 450 ? Math.min(xpRun + 1, XP_STEPS.length - 1) : 0
+      xpLast = now
+      const f = 1760 * 2 ** (XP_STEPS[xpRun] / 12)
+      tone(e, t, { type: 'sine', f0: f, gain: 0.035, attack: 0.002, decay: 0.16 })
+      tone(e, t, { type: 'triangle', f0: f * 1.5, gain: 0.01, attack: 0.002, decay: 0.1 })
+      tone(e, t, { type: 'sine', f0: f * 2.01, gain: 0.012, attack: 0.002, decay: 0.07 })
+      break
+    }
+    case 'level': // a new level: a quick rising arpeggio, then its chord rings on under a shimmer
+      ;[1047, 1319, 1568, 2093].forEach((f, i) => tone(e, t + i * 0.08, { type: 'triangle', f0: f, gain: 0.05, attack: 0.004, decay: 0.25 }))
+      for (const f of [1047, 1319, 1568, 2093]) tone(e, t + 0.34, { type: 'sine', f0: f, gain: 0.028, attack: 0.012, decay: 1.3 })
+      tone(e, t + 0.34, { type: 'sine', f0: 4186, gain: 0.008, attack: 0.012, decay: 0.8 })
+      burst(e, t, { type: 'highpass', freq: 3000, sweepTo: 9000, q: 0.7, gain: 0.03, attack: 0.25, decay: 0.5 })
+      break
+    case 'till': // the till: its drawer rolls out and knocks open, the bell rings, the coins clink
+      burst(e, t, { type: 'bandpass', freq: 1800, sweepTo: 700, q: 1.2, gain: 0.1, attack: 0.01, decay: 0.12 })
+      burst(e, t + 0.12, { type: 'lowpass', freq: 500, q: 0.8, gain: 0.22, attack: 0.002, decay: 0.06 })
+      tone(e, t + 0.14, { type: 'sine', f0: 2637, gain: 0.055, attack: 0.002, decay: 0.9 })
+      tone(e, t + 0.14, { type: 'sine', f0: 3951, gain: 0.025, attack: 0.002, decay: 0.6 })
+      tone(e, t + 0.14, { type: 'sine', f0: 5274, gain: 0.01, attack: 0.002, decay: 0.3 })
+      tone(e, t + 0.34, { type: 'sine', f0: 2093, gain: 0.03, attack: 0.002, decay: 0.2 })
+      tone(e, t + 0.41, { type: 'sine', f0: 2794, gain: 0.03, attack: 0.002, decay: 0.3 })
+      break
+    case 'chime': // news worth hearing: three soft handbell notes rising, each with its bell's high overtone
+      ;[880, 1175, 1760].forEach((f, i) => {
+        tone(e, t + i * 0.16, { type: 'sine', f0: f, gain: 0.04, attack: 0.003, decay: 1.1 })
+        tone(e, t + i * 0.16, { type: 'sine', f0: f * 2.76, gain: 0.008, attack: 0.002, decay: 0.3 })
+      })
+      break
     case 'ding': // the kitchen timer: it is ready
       tone(e, t, { type: 'sine', f0: 1568, gain: 0.06, attack: 0.003, decay: 1.2 })
       tone(e, t, { type: 'sine', f0: 3136, gain: 0.02, attack: 0.003, decay: 0.5 })
@@ -558,11 +618,32 @@ export function farmSound(kind: FarmSound, pan = 0, near = 1) {
 
 let outdoors = false
 let birdTimer: number | undefined
+let isNight = () => false
 
-/** One bird somewhere in the garden: a songbird's quick phrase, now and then a dove. */
+/** How the garden's sounds know the farm's time of day (src/farm/DayChip.tsx tells them, so this file never loads the
+ *  farm): no birds at night, a few crickets instead. */
+export function hearNight(night: () => boolean) {
+  isNight = night
+}
+
+/** A cricket somewhere in the dark: two or three chirps, each a quick trill of four pulses. */
+function cricket(e: Engine) {
+  const t = e.ac.currentTime + 0.01
+  const pan = rnd(-0.9, 0.9)
+  const f = rnd(4200, 4800)
+  const g = rnd(0.006, 0.014)
+  const chirps = 2 + Math.floor(Math.random() * 2)
+  for (let c = 0; c < chirps; c++) for (let i = 0; i < 4; i++) tone(e, t + c * 0.32 + i * 0.024, { type: 'sine', f0: f, gain: g, attack: 0.003, decay: 0.012, pan })
+}
+
+/** One bird somewhere in the garden: a songbird's quick phrase, now and then a dove. At night a cricket instead, now
+ *  and then; inside a walk-in building (the market) neither. */
 function birdCall() {
-  const e = live()
-  if (e && outdoors) {
+  const at = playerState.position
+  const e = outdoors && !insideWalkIn(at.x, at.z) ? live() : null
+  if (e && isNight()) {
+    if (Math.random() < 0.6) cricket(e)
+  } else if (e) {
     const t = e.ac.currentTime + 0.01
     const pan = rnd(-0.9, 0.9)
     const g = rnd(0.012, 0.03)

@@ -8,7 +8,7 @@ The README has the overview; `tests/README.md` what each test guards.
 
 - `npm run check` (types, oxlint, the Vitest unit tests, the format check: ~15 s), then the e2e spec files the change
   reaches: `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium npx playwright test --trace off <files>` (software WebGL; the
-  whole suite ~45 min, `npm run test:e2e:quick` ~20 min: all but the ten `@boot` tests that start a page of their
+  whole suite ~45 min, `npm run test:e2e:quick` ~20 min: all but the twelve `@boot` tests that start a page of their
   own; `05`'s walks alone take 10–20 min, its ten times the farm, at one size, some minutes more). It builds and serves
   on :4185. A rule or a save change gets a unit test beside its code (`src/**/*.test.ts`, `tests/README.md`).
 - A push runs the whole suite on GitHub (`ci.yml`, four shards side by side, ~25 min), and the site is published only
@@ -39,7 +39,10 @@ The README has the overview; `tests/README.md` what each test guards.
   map leaves out the casters under the ceilings that no window lets sunlight reach, and is kept between frames while
   everything that moved is out of it (`src/scene/Lighting.tsx`). Third person, decorating, the edit mode and first
   person outdoors: the crowds' view test, and the house's walls hide what lies wholly behind one opaque piece of them
-  (`walls.ts`; a wall fading hides nothing; a thing drawn without the depth test is never hidden).
+  (`walls.ts`; a wall fading hides nothing; a thing drawn without the depth test is never hidden). In first person in
+  the house the walls still judge what is outdoors (what the portals let in through a window). A walk-in building adds
+  its walls as another source, and while its doors are shut it hides everything wholly inside its rooms from an eye
+  outside (its `enclosure`).
 - The house's shell (walls, floors, ceilings, doors) is drawn always: it is under `userData.cell = 'always'`
   (`House.tsx`), as is your own body for the camera (the sun judges it like anything in a room: `userData.sun =
   'room'`). What is outdoors is under `cell: 'outside'` (the farm, the garden round the
@@ -92,6 +95,23 @@ The README has the overview; `tests/README.md` what each test guards.
 - A new animal: its row (and an `UPGRADES` row with `herd` to buy more), its model, and a thin `<Herd>` (`Herd.tsx`) with
   its wander numbers (`wander.ts`), body and pose. A new machine: its row, its model, and its moving parts driven by
   the work level `useMachine(id)` gives back.
+
+## Levels, the market, the contractor, the day (src/farm/xp.ts, market.ts, contractor.ts, day.ts, src/data/buildings.ts)
+
+- A thing the player does gives XP: `gainXp(action, n, at)` once, in the lowest function every way to it goes through
+  (`XP_FOR` in `data.ts`; a sale is worth its coins); never in `tick`, `goOn` or `cameBack`, and nothing that can be
+  undone for free gives any. The crystals fly up from `at` (a panel's sale: from low in the middle).
+- An upgrade bought a step at a time is a row in `LADDERS` (one buy, `buyLadder`; one card, `LadderCard`; its level in
+  `farm.ladders`), with `say(k)` for what step k gives.
+- A building you walk into is a row in `WALK_INS`: its walls, rooms, doors (an `autoDoor` slides open as anyone comes
+  near) and lights. The model, the colliders, the hiding pieces, the camera's limits, the action button's spaces
+  (`spaceAt`), the walk-to, the footsteps and the woods' clearing all follow from the row; every floor and every inner
+  face that looks at the sun must be inside the sun's shadow box (`buildings.test.ts` fails otherwise), and `16-view`
+  makes its poses from the row.
+- A new character is a roll of the people engine (`rollLook`, `src/models/look.ts`; one who always looks the same:
+  overrides) and a movement script (`src/farm/script.ts`). A look is saved as its traits, never as the roll.
+- What keeps hours is a row in `HOURS`; the day's phases and their light are `DAY`. The light changes only the colour
+  and strength of the lights there are. Tests stand at noon with the clock stopped (`helpers.ts`, `ready()`).
 
 ## The silo and the barn (src/farm/storage.ts, STORES in src/farm/data.ts)
 

@@ -49,6 +49,15 @@ vSurfAmount = surface;
 `
 if (!COLOR_VERTEX.includes('instanceColor.rgb, tint')) console.warn('[sculpt] three changed its colour chunk: instance tints apply everywhere')
 
+// A second instance colour, only in a material that asks for it (`tint2`): it applies where the `tint2` vertex mask
+// says, as the first does where `tint` says — the eyes' colour on a head whose skin is the first. Other materials
+// compile exactly as before: none of this is in their shader.
+const TINT2_HEAD = '\nattribute float tint2;\nattribute vec3 instanceColor2;'
+const TINT2_VERTEX = `
+vColor.rgb *= mix( vec3( 1.0 ), instanceColor2, tint2 );
+vColor2 *= mix( vec3( 1.0 ), instanceColor2, tint2 );
+`
+
 // the two layers meet where the pattern crosses 0.5: a smooth step one pixel wide, so the edge is sharp at any
 // distance and never jagged
 const COLOR_FRAGMENT = `
@@ -185,12 +194,15 @@ export interface SculptMaterialOptions {
   leaf?: boolean
   /** a pattern over the vertex colours: stone, brick, boards, shingles, bark, clay (see above) */
   surface?: SculptSurface
+  /** a second instance colour (a crowd's `put` gives it: Parts), applied where the geometry's `tint2` attribute (0..1
+   *  per vertex) says: the eyes on a head, the head's skin being the first colour. Off: the material is as before. */
+  tint2?: boolean
 }
 
 export function sculptMaterial(o: SculptMaterialOptions = {}): MeshStandardMaterial {
   const d = o.detail
   const sf = o.surface
-  const key = `${o.roughness ?? 0.8}|${o.doubleSided ? 2 : 1}|${o.metalness ?? 0}|${d ? `${d.scale},${d.bump},${d.shade}` : ''}|${o.leaf ? 1 : 0}|${sf ? `${sf.kind},${sf.size},${sf.joint ? sf.joint.join(',') : ''},${sf.tone ?? ''},${sf.bump ?? ''},${sf.turn ? 1 : 0}` : ''}`
+  const key = `${o.roughness ?? 0.8}|${o.doubleSided ? 2 : 1}|${o.metalness ?? 0}|${d ? `${d.scale},${d.bump},${d.shade}` : ''}|${o.leaf ? 1 : 0}|${sf ? `${sf.kind},${sf.size},${sf.joint ? sf.joint.join(',') : ''},${sf.tone ?? ''},${sf.bump ?? ''},${sf.turn ? 1 : 0}` : ''}${o.tint2 ? '|tint2' : ''}`
   let m = cache.get(key)
   if (m) return m
   m = new MeshStandardMaterial({ vertexColors: true, roughness: o.roughness ?? 0.8, metalness: o.metalness ?? 0, side: o.doubleSided ? DoubleSide : FrontSide })
@@ -198,6 +210,8 @@ export function sculptMaterial(o: SculptMaterialOptions = {}): MeshStandardMater
   if (d) defines.SCULPT_DETAIL = ''
   if (sf) defines.SCULPT_SURFACE = ''
   if (o.leaf) defines.SCULPT_LEAF = ''
+  // (a define of its own: the shader's cache key is the same for every sculpt material but for its defines)
+  if (o.tint2) defines.SCULPT_TINT2 = ''
   if (Object.keys(defines).length) m.defines = defines
   const detail = d ? new Vector3(d.scale, d.bump, d.shade) : null
   const surface = sf
@@ -220,9 +234,10 @@ export function sculptMaterial(o: SculptMaterialOptions = {}): MeshStandardMater
     shader.vertexShader = shader.vertexShader
       .replace(
         '#include <common>',
-        '#include <common>\nattribute float tint;\nattribute vec3 color2;\nattribute float pattern;\nvarying vec3 vColor2;\nvarying float vPattern;\n#if defined( SCULPT_DETAIL ) || defined( SCULPT_SURFACE )\nvarying vec3 vSculptPos;\n#endif\n#ifdef SCULPT_SURFACE\nattribute float surface;\nvarying vec3 vSurfNormal;\nvarying float vSurfAmount;\n#endif',
+        '#include <common>\nattribute float tint;\nattribute vec3 color2;\nattribute float pattern;\nvarying vec3 vColor2;\nvarying float vPattern;\n#if defined( SCULPT_DETAIL ) || defined( SCULPT_SURFACE )\nvarying vec3 vSculptPos;\n#endif\n#ifdef SCULPT_SURFACE\nattribute float surface;\nvarying vec3 vSurfNormal;\nvarying float vSurfAmount;\n#endif' +
+          (o.tint2 ? TINT2_HEAD : ''),
       )
-      .replace('#include <color_vertex>', COLOR_VERTEX)
+      .replace('#include <color_vertex>', COLOR_VERTEX + (o.tint2 ? TINT2_VERTEX : ''))
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vColor2;\nvarying float vPattern;\n' + NOISE)
       .replace('#include <color_fragment>', COLOR_FRAGMENT)

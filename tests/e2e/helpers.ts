@@ -6,6 +6,9 @@ const IGNORED = [/THREE\.Clock: This module has been deprecated/, /using depreca
 
 export const SPAWN = { x: -3.5, y: 1.4, z: 1.3 }
 
+/** The address the app is served on (playwright.config.ts: 4185, or E2E_PORT for a second copy of the tree). */
+export const BASE = `http://localhost:${Number(process.env.E2E_PORT) || 4185}`
+
 export interface Game {
   page: Page
   /** console errors / page errors seen since the page was created */
@@ -54,7 +57,7 @@ async function isPlaying(page: Page) {
 export const test = base.extend<object, { game: Game }>({
   game: [
     async ({ browser }, use) => {
-      const context = await browser.newContext({ viewport: { width: 640, height: 360 }, baseURL: 'http://localhost:4185' })
+      const context = await browser.newContext({ viewport: { width: 640, height: 360 }, baseURL: BASE })
       const page = await context.newPage()
       const errors: string[] = []
       watchErrors(page, errors)
@@ -112,6 +115,11 @@ export const test = base.extend<object, { game: Game }>({
               h.look.yaw = Math.PI
               h.look.pitch = -0.04
             }
+            // the farm's clock at noon, and stopped: the light never changes between two frames a test compares (16), nor
+            // during a walk that is measured (05); only 24-day moves it, and puts it back (guarded: a page from before
+            // the day's clock has no such hooks)
+            h.farm?.setHour?.(12)
+            h.farm?.freezeDay?.(true)
           })
         },
       }
@@ -135,10 +143,13 @@ export interface FullFarm {
 
 /**
  * The farm at its fullest (05-budget, 16-view): each room filled with the heaviest piece for sale until the next one
- * is refused, every animal the shop sells, fifteen buyers in line, a ripe crop in every bed. Once per page, until
- * `emptyFarm`; waits for the furniture to merge again and the animals and buyers to take their places.
+ * is refused, every animal the shop sells, fifteen buyers in line, a ripe crop in every bed, and the supermarket yours
+ * with every place on its shelves open and full of the heaviest good (`fillShelves`). Once per page, until `emptyFarm`
+ * (the shelves again on every call); waits for the furniture to merge again and the animals and buyers to take their
+ * places.
  */
 export async function fillFarm(page: Page): Promise<FullFarm> {
+  await fillShelves(page)
   const done: FullFarm = await page.evaluate(() => {
     const h = (window as any).__home
     if (h.__fullFarm) return { ...h.__fullFarm, fresh: false }
@@ -178,6 +189,37 @@ export async function fillFarm(page: Page): Promise<FullFarm> {
   // the furniture merged again, the animals and the buyers in their places
   if (done.fresh) await page.waitForTimeout(6000)
   return done
+}
+
+/**
+ * The supermarket at its fullest (`fillFarm`; 05 and 16 fill it again before each view, since shoppers take what they
+ * buy): the shop yours, every place on its shelves open and full of corn, the heaviest good to draw (its kernels are
+ * geometry), as the rooms are filled with the heaviest piece. And the farm's clock at noon and stopped, as `ready()`
+ * leaves it. (Guarded: a page from before the supermarket and the day has no such hooks.)
+ */
+export async function fillShelves(page: Page) {
+  await page.evaluate(() => {
+    const f = (window as any).__home.farm
+    f.setHour?.(12)
+    f.freezeDay?.(true)
+    f.marketFill?.('corn')
+  })
+}
+
+/**
+ * Waits for the market's sliding doors to stand still (`__home.market.door()`: how far open, 0 shut to 1 open; they
+ * open for you, a shopper or the manager within 2 m of the doorway, and take a moment), so that nothing compared or
+ * measured near them is caught half way: at `want` (0 shut, 1 open), or at either. A page without them waits for nothing.
+ */
+export async function marketDoorStill(page: Page, want?: 0 | 1) {
+  await page.waitForFunction(
+    (want) => {
+      const d = (window as any).__home.market?.door?.()
+      return d === undefined || (want === null ? d === 0 || d === 1 : d === want)
+    },
+    want ?? null,
+    { timeout: 90_000, polling: 250 },
+  )
 }
 
 /** Today's farm again, after `fillFarm`, for the specs that follow. */

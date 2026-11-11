@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { test, expect, bootApp, watchErrors, SPAWN } from './helpers'
+import { test, expect, bootApp, watchErrors, SPAWN, BASE } from './helpers'
 import type { Page } from '@playwright/test'
 
 // Take me there: a mark tapped on the compass walks you to the thing by yourself, on a way found round what is in the
@@ -227,7 +227,7 @@ test.describe('take me there on a phone', { tag: '@boot' }, () => {
   test('a mark tapped walks you, the walk-on button shows it, the stick takes over; tapped again it gets you there', async ({ browser }) => {
     // a phone boot under software rendering (CI) takes four to five minutes on its own
     test.setTimeout(900_000)
-    const context = await browser.newContext({ viewport: { width: 390, height: 720 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, baseURL: 'http://localhost:4185' })
+    const context = await browser.newContext({ viewport: { width: 390, height: 720 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, baseURL: BASE })
     const page = await context.newPage()
     const errors: string[] = []
     watchErrors(page, errors)

@@ -1,5 +1,7 @@
 import { APRON, GARDEN, GATE, HOUSE } from '../data/layout'
 import { SHRUB_SPOTS, CORNER_TREES } from '../data/garden'
+import { WALK_INS, bounds } from '../data/buildings'
+import { CABIN, LOT } from '../data/market'
 import { BED, BEDS, MACHINES, OFFICE, PATH_X, SHED, STAND, TRACTOR } from './data'
 
 // Where the farm's movable things stand, and the land they may stand on. A "place" is a whole thing moved in one
@@ -139,11 +141,22 @@ const around = (x: number, z: number, hx: number, hz: number) => rect(x - hx, x 
 /** The land you have: the home garden and the fields bought. */
 export const ownedRects = (layout: FarmLayout): Rect[] => [HOME_LAND, ...layout.land.map((id) => PARCELS[id].rect)]
 
-/** Everything you have, as one box (for the camera, the edit view and the safety net). */
-export function landBounds(layout: FarmLayout): Rect {
-  const rs = ownedRects(layout)
-  return rect(Math.min(...rs.map((r) => r.minX)), Math.max(...rs.map((r) => r.maxX)), Math.min(...rs.map((r) => r.minZ)), Math.max(...rs.map((r) => r.maxZ)))
-}
+/** Rectangles as one box round them all. */
+const boxOf = (rs: Rect[]) => rect(Math.min(...rs.map((r) => r.minX)), Math.max(...rs.map((r) => r.maxX)), Math.min(...rs.map((r) => r.minZ)), Math.max(...rs.map((r) => r.maxZ)))
+
+/** Everything you have, as one box (for the edit view). */
+export const landBounds = (layout: FarmLayout): Rect => boxOf(ownedRects(layout))
+
+/** A rectangle of the places' data (src/data: x0..x1, z0..z1) as one of the farm's. */
+const fromData = (r: { x0: number; x1: number; z0: number; z1: number }): Rect => rect(r.x0, r.x1, r.z0, r.z1)
+
+/** The ground you can be on: the land you have, the lot beyond the gate (src/data/market.ts), and every walk-in
+ *  building (src/data/buildings.ts) — for the camera, the safety net and walking to a mark (src/scene/Player.tsx,
+ *  src/lib/route). What you may build on stays your own land. */
+export const reachRects = (layout: FarmLayout): Rect[] => [...ownedRects(layout), ...LOT.map(fromData), ...WALK_INS.map((w) => fromData(bounds(w)))]
+
+/** All the ground you can be on, as one box. */
+export const reachBounds = (layout: FarmLayout): Rect => boxOf(reachRects(layout))
 
 /** Can this field be bought now (not yet yours, and next to land you have)? */
 export function canBuyParcel(layout: FarmLayout, id: ParcelId): boolean {
@@ -232,8 +245,10 @@ export interface Edge {
 }
 
 /** The outline of the land you have, as straight runs (shared edges between fields drop out). */
-export function boundary(layout: FarmLayout): Edge[] {
-  const rs = ownedRects(layout)
+export const boundary = (layout: FarmLayout): Edge[] => outline(ownedRects(layout))
+
+/** The outline of rectangles together, as straight runs (shared edges drop out). */
+function outline(rs: Rect[]): Edge[] {
   const owned = (x: number, z: number) => rs.some((o) => x > o.minX && x < o.maxX && z > o.minZ && z < o.maxZ)
   const xs = [...new Set(rs.flatMap((r) => [r.minX, r.maxX]))].sort((a, b) => a - b)
   const zs = [...new Set(rs.flatMap((r) => [r.minZ, r.maxZ]))].sort((a, b) => a - b)
@@ -260,6 +275,40 @@ export function boundary(layout: FarmLayout): Edge[] {
       const e = owned(x + E, mz)
       if (w !== e) add({ axis: 'z', at: x, from: zs[j], to: zs[j + 1], out: w ? 'east' : 'west' })
     }
+  return out
+}
+
+/**
+ * The edges of the lot (src/data/market.ts) that nothing closes, where an invisible wall stands (src/farm/Land.tsx):
+ * along them stands no wall of a walk-in building nor its doorway (the way in), nor the cabin, and your own land is not
+ * beyond them (its fence closes that, with the gate open in it).
+ */
+export function lotEdges(layout: FarmLayout): Edge[] {
+  const TOUCH = 0.05 // a wall this near the edge's line stands on it
+  const owned = ownedRects(layout)
+  const standing = [...WALK_INS.flatMap((w) => [...w.walls.filter((b) => b.y0 < 0.5), ...w.doors]), CABIN].map(fromData)
+  const out: Edge[] = []
+  for (const e of outline(LOT.map(fromData))) {
+    const along = e.axis === 'x'
+    // just outside the edge, across it
+    const beyond = e.at + (e.out === 'south' || e.out === 'east' ? 0.01 : -0.01)
+    const lo = (r: Rect) => (along ? r.minX : r.minZ)
+    const hi = (r: Rect) => (along ? r.maxX : r.maxZ)
+    const acrossLo = (r: Rect) => (along ? r.minZ : r.minX)
+    const acrossHi = (r: Rect) => (along ? r.maxZ : r.maxX)
+    // where along the edge something closes it
+    const shut = [...standing.filter((r) => acrossLo(r) <= e.at + TOUCH && acrossHi(r) >= e.at - TOUCH), ...owned.filter((r) => acrossLo(r) < beyond && beyond < acrossHi(r))]
+      .map((r) => [Math.max(e.from, lo(r)), Math.min(e.to, hi(r))] as const)
+      .filter(([a, b]) => b > a)
+      .sort((p, q) => p[0] - q[0])
+    // and what is left open between
+    let from = e.from
+    for (const [a, b] of shut) {
+      if (a - from > TOUCH) out.push({ ...e, from, to: a })
+      from = Math.max(from, b)
+    }
+    if (e.to - from > TOUCH) out.push({ ...e, from, to: e.to })
+  }
   return out
 }
 

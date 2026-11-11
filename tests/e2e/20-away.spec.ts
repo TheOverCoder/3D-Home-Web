@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { test, expect, bootApp, watchErrors } from './helpers'
+import { test, expect, bootApp, watchErrors, BASE } from './helpers'
 
 // Welcome back (src/farm/AwayPanel.tsx): after a time away the farm has gone on for it, and a card says what happened —
 // the page hidden for over two minutes (no frames while it is: the next comes that much later), or closed an hour and
@@ -64,7 +64,7 @@ test.describe('welcome back', () => {
 
   test('the page closed an hour: the lettuce grew on, and the card says how many to harvest after Play @boot', async ({ browser }) => {
     test.setTimeout(900_000)
-    const context = await browser.newContext({ viewport: { width: 640, height: 360 }, baseURL: 'http://localhost:4185' })
+    const context = await browser.newContext({ viewport: { width: 640, height: 360 }, baseURL: BASE })
     const page = await context.newPage()
     const errors: string[] = []
     watchErrors(page, errors)

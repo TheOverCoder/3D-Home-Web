@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { test, expect, bootApp, watchErrors } from './helpers'
+import { test, expect, bootApp, watchErrors, BASE } from './helpers'
 
 // The shared session runs on Low. These boot their own pages to exercise the heavier render paths
 // (N8AO, depth of field, MSAA, bloom) and the recovery UI, which the Low session never touches.
@@ -8,7 +8,7 @@ for (const quality of ['high', 'medium'] as const) {
   test.describe(`quality=${quality}`, () => {
     test(`boots, renders and walks with no console errors on ${quality}`, { tag: '@boot' }, async ({ browser }) => {
       test.setTimeout(300_000)
-      const context = await browser.newContext({ viewport: { width: 640, height: 360 }, baseURL: 'http://localhost:4185' })
+      const context = await browser.newContext({ viewport: { width: 640, height: 360 }, baseURL: BASE })
       const page = await context.newPage()
       const errors: string[] = []
       watchErrors(page, errors)
@@ -66,7 +66,7 @@ test.describe('graphics reset', () => {
   test('a lost WebGL context shows the notice; restoring offers to continue', { tag: '@boot' }, async ({ browser }) => {
     // a fresh boot of its own: as long as bootApp allows (the intro, then the first room), and the reset on top
     test.setTimeout(480_000)
-    const context = await browser.newContext({ viewport: { width: 640, height: 360 }, baseURL: 'http://localhost:4185' })
+    const context = await browser.newContext({ viewport: { width: 640, height: 360 }, baseURL: BASE })
     const page = await context.newPage()
     await bootApp(page)
     await page.evaluate(() => {

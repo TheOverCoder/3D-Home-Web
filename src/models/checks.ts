@@ -1,16 +1,20 @@
 import { DoubleSide } from 'three'
-import { checkPieces, checkPose, ellipsoid, lathe, piecesOf, posedPieces, type Issue, type Parts } from '../lib/sculpt'
+import { checkPieces, checkPose, ellipsoid, lathe, piecesOf, posedPieces, random, type Issue, type Parts } from '../lib/sculpt'
 import { PRODUCERS, type CropId } from '../farm/data'
 import { COATS, cowParts, putCow, type CowPose } from './cow'
 import { FACES, putSheep, sheepParts, type SheepPose } from './sheep'
 import { chickenParts, putChicken, type ChickenPose } from './chicken'
-import { PersonRig, personParts, type PersonLook } from './person'
+import { HAIR_PARTS, PersonRig, personParts, type HatKind, type PersonLook } from './person'
+import { CONTRACTOR_LOOK, MANAGER_LOOK, rollLook } from './look'
 import { cropParts } from './crops'
 import { GROWERS, putEgg, putLemon } from './plants'
 import { coopModel, lemonSpots, lemonTreeModel, ovenModel, structurePieces, troughModel, type Structure } from './structures'
 import { GOODS, type GoodsId } from './goods'
 import { barnModel, crateModel, deskModel, farmGateModel, officeModel, palletModel, siloModel } from './buildings'
 import { DRIVER, putTractor, seatDriver, tractorParts } from './tractor'
+import { marketFittingsParts, putMarketFittings, walkInShellModel } from './market'
+import { putSlidingDoor, slidingDoorParts } from './slidingDoor'
+import { WALK_INS } from '../data/buildings'
 
 // Every model, in every variant and in the poses it takes in the game, run through the kit's checks (see
 // src/lib/sculpt/check.ts): every piece holds on to the rest, and the model stands on its ground. The gallery shows
@@ -55,6 +59,12 @@ const LOOKS: PersonLook[] = [
   { shirt: '#3f6fb0', trousers: '#2d3340', skin: '#e0b48f', hair: '#3a2a1e', hairStyle: 0, hat: false, height: 1 },
   { shirt: '#c0504a', trousers: '#5a6b48', skin: '#8d5a3c', hair: '#1c1714', hairStyle: 1, hat: true, height: 0.95 },
   { shirt: '#e8d9a8', trousers: '#6a4a3a', skin: '#f0cfb0', hair: '#c79a58', hairStyle: 2, hat: false, height: 1.05 },
+  // the people engine's builds at the ends of their ranges (src/models/look.ts): broad shoulders on narrow hips, wide
+  // hips under narrow shoulders, the smallest and the biggest heads; the new hair styles, hats and the tie
+  { ...MANAGER_LOOK, skin: '#c68863', hips: 0.9, shoulders: 1.1, head: 1.05, eyes: '#3f6a8f' } as PersonLook,
+  { ...rollLook(random(7), { sex: 'f' }), hairStyle: 4, hat: 'beanie', hips: 1.1, shoulders: 0.9, head: 0.95, height: 0.92 },
+  { ...rollLook(random(11), { sex: 'm' }), hairStyle: 3, hat: 'cap', hips: 0.9, shoulders: 1.1, head: 0.95, height: 1.08 },
+  { ...rollLook(random(13), { sex: 'f' }), ...CONTRACTOR_LOOK, hairStyle: 3, hips: 1.1, shoulders: 0.9, head: 1.05 },
 ]
 
 type PersonPose = (r: PersonRig) => void
@@ -150,13 +160,19 @@ export const MODEL_CHECKS: ModelCheck[] = [
     run() {
       const parts = personParts(1)
       const open = openParts(parts)
-      return LOOKS.flatMap((look, k) =>
+      const posed = LOOKS.flatMap((look, k) =>
         personPoses.flatMap(([pose, apply, grounded]) => {
           const rig = new PersonRig(look)
           apply(rig)
           return checkPose(`person ${k + 1}, ${pose}`, parts, (pp) => rig.write(pp), { ground: grounded ? 0 : undefined, open })
         }),
       )
+      // every hair style under every hat (and none), standing
+      const hats: (false | HatKind)[] = [false, 'straw', 'cap', 'beanie']
+      const worn = HAIR_PARTS.flatMap((style, hairStyle) =>
+        hats.flatMap((hat) => checkPose(`${style} under ${hat || 'no hat'}`, parts, (pp) => new PersonRig({ ...LOOKS[0], hairStyle, hat }).write(pp), { ground: 0, open })),
+      )
+      return [...posed, ...worn]
     },
   },
   {
@@ -240,6 +256,33 @@ export const MODEL_CHECKS: ModelCheck[] = [
           return checkPieces(`tractor with ${aboard} crates, wheels turned ${roll} m`, pieces, { ground: 0, open })
         }),
       )
+    },
+  },
+  {
+    id: 'market',
+    name: "The walk-in buildings (the market and the contractor's cabin) with their fittings",
+    run() {
+      const fittings = marketFittingsParts()
+      return WALK_INS.flatMap((def) => {
+        // the shell and what stands in it and on it, as one model: the sign, the awning and the window hold on to the
+        // walls, the till to the counter, the computer to the desk; the sliding door's leaves, shut and open, to the
+        // wall at either side of the doorway
+        const door = def.autoDoor
+        const leaves = door ? slidingDoorParts(door) : null
+        return [0, 1].flatMap((open) =>
+          open && !leaves
+            ? []
+            : checkPieces(
+                `${def.id}${leaves ? `, its door ${open ? 'open' : 'shut'}` : ''}`,
+                [
+                  ...structurePieces(walkInShellModel(def)),
+                  ...(def.id === 'market' ? posedPieces(fittings, putMarketFittings) : []),
+                  ...(leaves && door ? posedPieces(leaves, (pp) => putSlidingDoor(pp, door, open)) : []),
+                ],
+                { ground: 0 },
+              ),
+        )
+      })
     },
   },
   {

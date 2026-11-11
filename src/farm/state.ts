@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { farmSound, placeSound } from '../audio/sound'
-import { coinsFx, itemFx } from '../fx/fx'
+import { coinsFx, itemFx, xpFx } from '../fx/fx'
 import { dampAngle } from '../lib/damp'
 import { groundDistance } from '../lib/interaction'
 import { useHome } from '../store'
@@ -56,7 +56,23 @@ import {
   type Recipe,
   type StoreId,
   type UpgradeId,
+  LADDERS,
+  CONTRACTOR,
+  DAY,
+  MANAGER,
+  SHOP,
+  XP_FOR,
+  type LadderId,
+  type XpAction,
 } from './data'
+import { sanitizeXp, seedXp, levelOf, xpAt, unpaidCoins, xpForSale, type Xp } from './xp'
+import { SHOP_LADDERS, clampLevels, freshMarket, ladderPrice, managerPay, managerPct, placesOpen, rollShopper, sanitizeMarket, shopperEvery, shoppersAtOnce, snapPct, type Market } from './market'
+import { dailyOffers, offersPerDay, piecePrice, sanitizeContractor, shortMaterials, type Contractor } from './contractor'
+import { dayOf, hourOf, isOpen, phaseOf } from './day'
+import type { PersonLook } from '../models/person'
+import { CONTRACTOR_LOOK, MANAGER_LOOK, rollLook, sanitizeLook } from '../models/look'
+import { BROWSE_SPOTS, CONTRACTOR_SPOT, MANAGER_SPOT, SCREEN, TILL } from '../data/market'
+import { contractorComes, contractorLeaves, laneEnd, managerLeaves, scriptSeconds, secondsLeft, shopperIn, shopperOut, shopperPay, stepScript, walker, type Pose, type Walker } from './script'
 import { isComplete, makeOrder, orderKey, orderPay, cratesFor, type Order, type OrderLine, type OrderSlot } from './orders'
 import { bringsSurprise, canUpgrade, nextLevel, randomItem, roomIn, rollItems, usedIn } from './storage'
 import { GOALS, GOAL_IDS, MOST_STEPS, goalById, goalReward, goalTarget, startStep, type GoalId } from './goals'
@@ -79,19 +95,15 @@ export interface BedState {
   fixed: CropId | null
 }
 
-export interface Look {
-  shirt: string
-  trousers: string
-  skin: string
-  hair: string
-  hairStyle: 0 | 1 | 2 // short, long, bun
-  hat: boolean
-  height: number
-}
+/** How someone looks (src/models/look.ts, PersonLook), as it is saved: its colours as text. */
+export type Look = PersonLook & { shirt: string; trousers: string; skin: string; hair: string }
+/** A look rolled or read back: always with its colours as text (the table's, or a saved look's checked ones). */
+const asLook = (look: PersonLook) => look as Look
 
 export interface Visitor {
   id: number
   name: string
+  /** how they look (src/models/look.ts): rolled on the farm's dice, saved as its traits */
   look: Look
   want: ProduceId
   qty: number
@@ -165,6 +177,16 @@ export interface FarmData {
   /** the crates of the orders sent: on the pallet, on the tractor, and its trip (seconds into it; -1 at home) */
   dispatch: { waiting: number; aboard: number; trip: number }
   clock: number // seconds of farm time since the page opened
+  /** levels (src/farm/xp.ts): every XP point gained, and the highest level whose coins were claimed */
+  xp: Xp
+  /** every upgrade ladder's step (LADDERS in ./data): the market's and the contractor's */
+  ladders: Record<LadderId, number>
+  /** the supermarket (src/farm/market.ts): yours or not, its shelves, the till, the next visit */
+  market: Market
+  /** the contractor behind the market (src/farm/contractor.ts): the day his offers are for, and the offers */
+  contractor: Contractor
+  /** the farm's day (src/farm/day.ts): seconds of farm time since the farm began (it goes on while you are away) */
+  day: { t: number }
 }
 
 // Three save slots ("farms"). The first keeps the original key, so saves from before slots load unchanged.
@@ -229,6 +251,11 @@ function fresh(): FarmData {
     office: { slots: 0, wait: 0 },
     dispatch: { waiting: 0, aboard: 0, trip: -1 },
     clock: 0,
+    xp: { points: 0, paid: 1 },
+    ladders: clampLevels({}),
+    market: freshMarket(),
+    contractor: { day: -1, offers: [] },
+    day: { t: 0 },
   }
 }
 
@@ -262,7 +289,6 @@ interface SavedBuyer {
   gift: boolean
 }
 
-const isColour = (v: unknown): v is string => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v)
 const isObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object'
 /** A field of a saved object, or an item of a saved list (anything else: nothing). */
 const field = (v: unknown, k: string | number) => (isObject(v) ? v[k] : undefined)
@@ -322,19 +348,12 @@ function savedMachine(id: MachineId, raw: Record<string, unknown>): MachineState
 function savedBuyer(raw: unknown): SavedBuyer | null {
   if (!raw || typeof raw !== 'object') return null
   const b = raw as Partial<SavedBuyer>
-  const l = (b.look ?? {}) as Partial<Look>
-  if (!isSellable(b.want) || !l || !isColour(l.shirt) || !isColour(l.trousers) || !isColour(l.skin) || !isColour(l.hair)) return null
+  // a look as saved, made safe (an older save's look loads as it was); one that is not a look: no buyer
+  const look = sanitizeLook(b.look)
+  if (!isSellable(b.want) || !look) return null
   return {
     name: typeof b.name === 'string' && b.name.length <= 24 ? b.name : NAMES[0],
-    look: {
-      shirt: l.shirt,
-      trousers: l.trousers,
-      skin: l.skin,
-      hair: l.hair,
-      hairStyle: l.hairStyle === 1 || l.hairStyle === 2 ? l.hairStyle : 0,
-      hat: !!l.hat,
-      height: Math.min(1.08, Math.max(0.9, num(l.height, 1))),
-    },
+    look: asLook(look),
     want: b.want,
     qty: int(b.qty, 1, 1, 12),
     offer: int(b.offer, 1, 1, 999),
@@ -443,6 +462,14 @@ function load(text: string | null = readRaw(KEY)): { data: FarmData; savedAt: nu
     // the goals: each on the step it was saved on; a farm from before them starts each where it is (what it did before
     // is not paid for again)
     for (const def of GOALS) data.goals[def.id] = isObject(raw.goals) ? int(field(raw.goals, def.id), 0, 0, MOST_STEPS) : startStep(def, data)
+    // levels: as saved; a farm from before them starts with XP for what it did (its levels are not paid again)
+    data.xp = sanitizeXp(raw.xp, seedXp(data.stats))
+    // the ladders, the market, the contractor and the day (a farm from before them: as on a new farm)
+    // (while the shop is not yours, its own ladders read back as 0: only the manager's rate and the contractor's two)
+    data.ladders = clampLevels(raw.ladders, field(raw.market, 'owned') === true)
+    data.market = sanitizeMarket(raw.market, data.ladders)
+    data.contractor = sanitizeContractor(raw.contractor, offersPerDay(data.ladders.stock))
+    data.day = { t: dayClock(field(raw.day, 't')) }
     const queue = (Array.isArray(raw.queue) ? raw.queue : []).map(savedBuyer).filter((b): b is SavedBuyer => !!b)
     return { data, savedAt: num(raw.time, 0) || null, queue: queue.slice(0, queuePlaces(data.queueLevel)) }
   } catch {
@@ -571,6 +598,8 @@ export function upgradeStore(id: StoreId) {
   const next = nextStoreLevel(id)
   for (const n of next.needs) farm.inv[n.item] -= n.count
   farm.storage[id] = next.level
+  const place = farm.layout.places[STORES[id].place]
+  gainXp('build', 1, { x: place.x, y: 3, z: place.z })
   toast(`${STORES[id].name}: level ${next.level} · room for ${next.capacity}`)
   bump()
   save()
@@ -612,6 +641,9 @@ export const bedProgress = (i: number) => {
   return b.crop ? Math.min(1, b.growth / cropById(b.crop).growSeconds) : 0
 }
 
+/** Where a bed's crystals (and surprises) fly up from. */
+const bedAt = (i: number) => ({ x: BEDS[i].x, y: 0.7, z: BEDS[i].z })
+
 export const yieldOf = (crop: CropId) => Math.round(cropById(crop).yield * (farm.compost ? 1.5 : 1))
 
 export function plant(i: number, crop: CropId) {
@@ -624,6 +656,7 @@ export function plant(i: number, crop: CropId) {
   b.water = fullWater(crop) // seeds go in with a good soak
   farm.started = true
   if (!farm.planted.includes(crop)) farm.planted.push(crop)
+  gainXp('plant', 1, bedAt(i))
   bump()
   save()
   return true
@@ -640,6 +673,8 @@ export function plantBeds(beds: number[], crop: CropId) {
 export function water(i: number) {
   const b = farm.beds[i]
   if (!b?.crop) return false
+  // XP only for a bed that needed it: under half its water
+  if (b.water < fullWater(b.crop) / 2) gainXp('water', 1, bedAt(i))
   b.water = fullWater(b.crop)
   bump()
   save()
@@ -690,7 +725,8 @@ export function harvestBeds(beds: number[]) {
     b.growth = 0
     b.water = 0
     const items = rollItems(1, ITEM_ODDS.harvest, random)
-    gainItems(items, { x: BEDS[i].x, y: 0.7, z: BEDS[i].z })
+    gainItems(items, bedAt(i))
+    gainXp('harvest', 1, bedAt(i))
     found.push(...items)
   }
   if (!total) {
@@ -716,6 +752,7 @@ export function buildBed(i: number) {
   if (!b || b.built || BEDS[i]?.expansion || farm.coins < price) return false
   farm.coins -= price
   b.built = true
+  gainXp('build', 1, bedAt(i))
   toast('A new bed, ready for seeds')
   bump()
   save()
@@ -770,6 +807,7 @@ export function collect(id: ProducerId, i = 0, at?: { x: number; y: number; z: n
   farm.got[def.good] += n
   const items = rollItems(def.surprise === 'each' ? n : 1, def.surprise === 'each' ? ITEM_ODDS.unit : ITEM_ODDS.harvest, random)
   gainItems(items, at)
+  gainXp('collect', n, at)
   const left = n < has ? ` · the ${STORES[storeOf(def.good)].name.toLowerCase()} is full` : ''
   toast(`+ ${count(def.good, n)}${left}${surpriseWords(items)}`, items[0] ?? def.good)
   bump()
@@ -826,6 +864,12 @@ export function machineSecondsLeft(id: MachineId) {
   return m.count && r ? m.count * r.seconds - m.progress : 0
 }
 
+/** Where a machine's crystals fly up from: where its sparkles pop. */
+const machineAt = (id: MachineId) => {
+  const def = MACHINES[id]
+  return { x: def.x + def.sparkle[0], y: def.sparkle[1], z: def.z + def.sparkle[2] }
+}
+
 /** How many batches of a recipe a machine would take now: as many as it has room for and the basket gives. */
 export function batches(id: MachineId, r: Recipe) {
   return Object.entries(r.needs).reduce((n, [k, per]) => (per ? Math.min(n, Math.floor(farm.inv[k as ProduceId] / per)) : n), MACHINES[id].capacity)
@@ -839,6 +883,7 @@ export function loadMachine(id: MachineId, recipe: string) {
   if (!n) return 0
   for (const [k, per] of Object.entries(r.needs)) farm.inv[k as ProduceId] -= (per ?? 0) * n
   farm.machines[id] = { recipe: r.id, count: n, progress: 0, ready: 0 }
+  gainXp('load', 1, machineAt(id))
   bump()
   save()
   return n
@@ -866,6 +911,7 @@ export function collectMachine(id: MachineId) {
   farm.got[r.makes] += n
   if (n < m.ready) farm.machines[id] = { ...m, ready: m.ready - n }
   else farm.machines[id] = freshMachine()
+  gainXp('make', n, machineAt(id))
   toast(`+ ${count(r.makes, n)}${farm.machines[id].ready ? ' · the barn is full' : ''}`, r.makes)
   bump()
   save()
@@ -952,6 +998,7 @@ export function buy(id: UpgradeId) {
     })
     note = `${EXPANSIONS[id].name}: the beds are in`
   }
+  gainXp('build')
   toast(note)
   bump()
   save()
@@ -966,6 +1013,7 @@ export function buyLand(id: ParcelId) {
   if (!p || !canBuyParcel(farm.layout, id) || farm.coins < p.price) return false
   farm.coins -= p.price
   farm.layout = { ...farm.layout, land: [...farm.layout.land, id] }
+  gainXp('build')
   toast(`${p.name}: it is yours`)
   bump()
   save()
@@ -1053,11 +1101,6 @@ export const freeSpotFor = (type: PieceType, room: Parameters<typeof findFreeSpo
 
 // ───────────────────────────── buyers ─────────────────────────────
 
-const SHIRTS = ['#c9573f', '#3f6fa3', '#5c8a4a', '#d9a441', '#7b5aa6', '#2f8f8a', '#e07a5f', '#4d5d73', '#b23a48', '#f2cc8f']
-const TROUSERS = ['#2b3038', '#3d4a5c', '#5a4636', '#1f2a24', '#6b6255', '#283044']
-const SKINS = ['#f1c7a5', '#e0ac87', '#c68863', '#9a6646', '#704a32', '#f6d5bd']
-const HAIRS = ['#2b2017', '#5a3a22', '#a8743f', '#d9b98a', '#1c1c1c', '#7b4b2a', '#b9b2a8']
-
 let visitorSeq = 0
 
 /** What the farm grows and makes (and what every farm has: lemons, eggs, milk): what buyers and orders ask for. */
@@ -1094,15 +1137,8 @@ function newVisitor(want: ProduceId, qty: number, offer: number, from: -1 | 1, g
   return {
     id: ++visitorSeq,
     name: name ?? pick(NAMES),
-    look: look ?? {
-      shirt: pick(SHIRTS),
-      trousers: pick(TROUSERS),
-      skin: pick(SKINS),
-      hair: pick(HAIRS),
-      hairStyle: pick([0, 1, 2] as const),
-      hat: Math.random() < 0.3,
-      height: rand(0.94, 1.05),
-    },
+    // a whole person from the table of traits, on the farm's dice (src/models/look.ts)
+    look: look ?? asLook(rollLook(random)),
     want,
     qty,
     offer,
@@ -1170,6 +1206,7 @@ function sell(v: Visitor): ItemId[] {
   const items = v.gift ? [randomItem(random)] : []
   v.gift = false
   gainItems(items, { x: v.x, y: 1.9, z: v.z })
+  gainXp('sale', v.offer, { x: v.x, y: 1.9, z: v.z })
   leave(v, 'happy')
   return items
 }
@@ -1287,6 +1324,8 @@ export function sendOrder(k: number) {
   farm.stats.sent += 1
   const items = o.surprise ? [randomItem(random)] : []
   gainItems(items, OFFICE_SCREEN)
+  gainXp('order', 1, OFFICE_SCREEN)
+  gainXp('sale', o.coins, OFFICE_SCREEN)
   farm.dispatch.waiting = Math.min(MOST_CRATES, farm.dispatch.waiting + cratesFor(o))
   farm.orders[k] = { order: makeOrder(knownGoods(), random) }
   toast(`Order sent · + ${o.coins} coins${surpriseWords(items)}`, items[0] ?? 'coin')
@@ -1323,6 +1362,7 @@ export function buyOffice(id: OfficeUpgradeId) {
   if (officeMaxed(id) || farm.coins < price) return false
   farm.coins -= price
   farm.office = { ...farm.office, [id]: farm.office[id] + 1 }
+  gainXp('build', 1, OFFICE_SCREEN)
   if (id === 'slots') {
     farm.orders.push({ order: makeOrder(knownGoods(), random) })
     toast(`The board holds ${orderPlaces()} orders`)
@@ -1376,6 +1416,11 @@ const stageKey = () =>
     ...MACHINE_IDS.map(machineStage),
     farm.orders.map((slot) => ('order' in slot ? 'o' : 'w')).join(''),
     farm.dispatch.trip < 0 ? `home ${farm.dispatch.waiting}` : `trip ${farm.dispatch.aboard}`,
+    // the shop's shelves and till (a shopper bought), the day's phase and number (the light, the contractor's pieces)
+    farm.market.shelves.map((sh) => sh.units).join(','),
+    farm.market.till.coins,
+    phaseOf(farm.day.t),
+    dayOf(farm.day.t),
   ].join('|')
 
 function grow(dt: number) {
@@ -1480,7 +1525,10 @@ function neverStuck() {
     farm.beds.every((b) => !b.crop) &&
     SELLABLE.every((id) => farm.inv[id] === 0) &&
     MACHINE_IDS.every((id) => machineStage(id) === 'idle') &&
-    farm.orders.every((slot) => !('order' in slot) || slot.order.lines.every((l) => !l.have))
+    farm.orders.every((slot) => !('order' in slot) || slot.order.lines.every((l) => !l.have)) &&
+    // goods on the shelves are the farm's too (they sell, or come back), and coins in the till are coins
+    shelvesEmpty() &&
+    !(farm.market.till.coins > 0)
   if (broke && nothing && !gifted) {
     gifted = true
     farm.coins += 6
@@ -1498,6 +1546,8 @@ export function tick(dt: number) {
   farm.clock += dt
   grow(dt)
   people(dt)
+  runShop(dt)
+  runDay(dt)
   neverStuck()
   if (stageKey() !== before) {
     bump()
@@ -1517,11 +1567,575 @@ export function claimGoal(id: GoalId) {
   farm.goals[id] = step + 1
   farm.coins += reward.coins
   putBack(reward.item, reward.count)
+  gainXp('goal')
   toast(`${def.say(goalTarget(def, step))} · + ${reward.coins} coins, + ${count(reward.item, reward.count)}`, reward.item)
   farmSound('coins')
   bump()
   save()
   return reward
+}
+
+// ───────────────────────────── levels ─────────────────────────────
+
+/** Counts every gain of XP from play (never a load, a slot switch or the old-save seed): the level-up show listens to it. */
+let xpEvents = 0
+export const xpEventCount = () => xpEvents
+
+type At = { x: number; y: number; z: number }
+
+/** XP for something the player did: `n` times the action's worth (XP_FOR), or for a sale `n` coins (xpForSale). `at` is
+ *  where the crystals fly up from. Only from a player's action: never in tick, goOn or cameBack. The XP gained. */
+export function gainXp(action: XpAction | 'sale', n = 1, at?: At): number {
+  const xp = action === 'sale' ? (n > 0 ? xpForSale(n) : 0) : n > 0 ? XP_FOR[action] * n : 0
+  if (!(xp > 0)) return 0
+  farm.xp.points = Math.min(Number.MAX_SAFE_INTEGER, farm.xp.points + xp)
+  xpEvents++
+  // the crystals fly up from where it happened; with no place to name (a panel's sale), from low in the middle
+  xpFx(at?.x ?? NaN, at?.y ?? NaN, at?.z ?? NaN, xp)
+  bump()
+  save()
+  return xp
+}
+
+/** The level now: the level, the points into it and needed for the next, all the points, the coins waiting. */
+export function xpNow() {
+  const level = levelOf(farm.xp.points)
+  return { level, into: farm.xp.points - xpAt(level), need: xpAt(level + 1) - xpAt(level), points: farm.xp.points, unpaid: unpaidCoins(farm.xp) }
+}
+
+/** Claims the coins of every level reached and not yet paid; returns them (0 when none wait). */
+export function claimLevel(): number {
+  const coins = unpaidCoins(farm.xp)
+  if (!(coins > 0)) return 0
+  const level = levelOf(farm.xp.points)
+  farm.coins = Math.min(Number.MAX_SAFE_INTEGER, farm.coins + coins)
+  farm.xp.paid = level
+  toast(`Level ${level} · + ${coins} coins`, 'coin')
+  farmSound('coins')
+  bump()
+  save()
+  return coins
+}
+
+// ───────────────────────────── the supermarket ─────────────────────────────
+
+/** Where the crystals and the coins fly from: the manager, the computer, the till, the contractor. */
+const AT_MANAGER: At = { x: MANAGER_SPOT.x, y: 1.6, z: MANAGER_SPOT.z }
+const AT_SCREEN: At = { x: SCREEN.x, y: SCREEN.y, z: SCREEN.z }
+const AT_TILL: At = { x: TILL.x, y: TILL.y, z: TILL.z }
+const AT_CONTRACTOR: At = { x: CONTRACTOR_SPOT.x, y: 1.6, z: CONTRACTOR_SPOT.z }
+
+/** What the manager pays for the whole stack of a good now (0: he does not buy it, or it comes to nothing). */
+export function managerPays(item: ProduceId): number {
+  if (farm.market.owned || !isSellable(item)) return 0
+  return managerPay(produceById(item).price, farm.inv[item], managerPct(farm.ladders.rate))
+}
+
+/** Sells him a good's whole stack, without a word: the coins (0: nothing sold). */
+function sellManager(item: ProduceId): number {
+  const coins = managerPays(item)
+  if (!(coins > 0)) return 0
+  const qty = farm.inv[item]
+  farm.inv[item] = 0
+  farm.coins = Math.min(Number.MAX_SAFE_INTEGER, farm.coins + coins)
+  farm.stats.sold += qty
+  farm.stats.earned += coins
+  gainXp('sale', coins, AT_MANAGER)
+  return coins
+}
+
+/** Sells the whole stack of a good to the manager (before the shop is yours); the coins paid, 0 when it pays nothing. */
+export function sellToManager(item: ProduceId): number {
+  const qty = farm.inv[item] ?? 0
+  const coins = sellManager(item)
+  if (!coins) return 0
+  coinsFx(AT_MANAGER.x, AT_MANAGER.z, coins)
+  toast(`+ ${coins} coins · ${count(item, qty)}`, item)
+  farmSound('coins')
+  bump()
+  save()
+  return coins
+}
+
+/** Sells him every good he pays for; the coins. */
+export function sellAllToManager(): number {
+  let coins = 0
+  let goods = 0
+  for (const id of SELLABLE) {
+    const qty = farm.inv[id]
+    const c = sellManager(id)
+    if (c) goods += qty
+    coins += c
+  }
+  if (!coins) return 0
+  coinsFx(AT_MANAGER.x, AT_MANAGER.z, coins)
+  toast(`+ ${coins} coins · ${goods} ${goods === 1 ? 'good' : 'goods'} to the manager`, 'coin')
+  farmSound('coins')
+  bump()
+  save()
+  return coins
+}
+
+/** The shop is for sale: the manager's rate is at its top and it is not yours yet. */
+export const marketForSale = () => !farm.market.owned && ladderMaxed('rate')
+
+/** Buys the shop from the manager (his rate at its top, MANAGER.shopPrice); whether it was bought. He waves and walks
+ *  out, and the computer is yours: the shelves, the till and the shop's own ladders. */
+export function buyMarket(): boolean {
+  if (!marketForSale() || farm.coins < MANAGER.shopPrice) return false
+  farm.coins -= MANAGER.shopPrice
+  farm.market.owned = true
+  farm.market.nextIn = Math.min(farm.market.nextIn, shopperEvery(farm.ladders.pace))
+  leaving = { ...managerStanding(), ...walker(MANAGER_SPOT.x, MANAGER_SPOT.z, MANAGER_SPOT.heading, managerLeaves()), id: MANAGER_ID }
+  gainXp('shop', 1, AT_SCREEN)
+  toast('The shop is yours', 'convenience-store')
+  farmSound('coins')
+  bump()
+  save()
+  return true
+}
+
+/** A ladder's step bought, its next price, whether it is at its top. */
+export const ladderLevel = (id: LadderId) => farm.ladders[id]
+export const ladderMaxed = (id: LadderId) => farm.ladders[id] >= LADDERS[id].levels
+export const ladderNextPrice = (id: LadderId) => ladderPrice(id, farm.ladders[id])
+
+/** Whether a ladder's next step can be bought now (its place is open, not at its top): the manager's rate while the
+ *  shop is not yours, the shop's own once it is, the contractor's while he is there. */
+export function ladderOpen(id: LadderId): boolean {
+  if (ladderMaxed(id)) return false
+  if (id === 'rate') return !farm.market.owned
+  if (SHOP_LADDERS.includes(id)) return farm.market.owned
+  return contractorHere()
+}
+
+/** Where the crystals of a ladder's step fly from: the one you bought it from. */
+const ladderAt = (id: LadderId) => (id === 'rate' ? AT_MANAGER : SHOP_LADDERS.includes(id) ? AT_SCREEN : AT_CONTRACTOR)
+
+/** Buys a ladder's next step (its card asked first); whether it was bought. It works at once: a busier shop's next
+ *  visit comes no later than the new wait, more pieces bring one more today, a better deal is the price from now on. */
+export function buyLadder(id: LadderId): boolean {
+  const price = ladderNextPrice(id)
+  if (!ladderOpen(id) || farm.coins < price) return false
+  // today's pieces as they were before this step (one more is added to them below)
+  if (id === 'stock') contractorDay()
+  farm.coins -= price
+  farm.ladders[id] += 1
+  if (id === 'pace') farm.market.nextIn = Math.min(farm.market.nextIn, shopperEvery(farm.ladders.pace))
+  if (id === 'stock') {
+    // the piece most wanted that he has not brought today (or any)
+    const offered = farm.contractor.offers.map((o) => o.item)
+    farm.contractor.offers.push({ item: dailyOffers(farm, offersPerDay(farm.ladders.stock), random).find((m) => !offered.includes(m)) ?? randomItem(random), sold: false })
+  }
+  gainXp('build', 1, ladderAt(id))
+  toast(`${LADDERS[id].name}: ${LADDERS[id].say(farm.ladders[id])}`)
+  bump()
+  save()
+  return true
+}
+
+/** How many places on the shelves are open now. */
+export const placesNow = () => placesOpen(farm.ladders.places)
+/** A place of your shop that is open (the shop yours, the place one of those its ladder opened). */
+const openPlace = (k: number) => farm.market.owned && Number.isInteger(k) && k >= 0 && k < placesNow()
+/** Nothing on any shelf. */
+export const shelvesEmpty = () => farm.market.shelves.every((s) => s.units <= 0)
+
+/** Puts up to `units` of a good from the silo or the barn on a place (a place's good changes only when it is empty;
+ *  a place holds SHOP.units at most); how many went up. */
+export function fillPlace(k: number, item: ProduceId, units: number): number {
+  if (!openPlace(k) || !isSellable(item)) return 0
+  const s = farm.market.shelves[k]
+  if (s.units > 0 && s.good !== item) return 0
+  const n = Math.min(Math.floor(units) || 0, SHOP.units - s.units, farm.inv[item])
+  if (!(n > 0)) return 0
+  farm.inv[item] -= n
+  s.good = item
+  s.units += n
+  bump()
+  save()
+  return n
+}
+
+/** Refills the given places that are not full (sold out, or partly) with their own good, from the silo or the barn,
+ *  in turn as far as it goes; how many units went up. */
+export function restockPlaces(ks: number[]): number {
+  let n = 0
+  for (const k of new Set(ks)) {
+    const s = openPlace(k) ? farm.market.shelves[k] : null
+    if (s?.good) n += fillPlace(k, s.good, SHOP.units - s.units)
+  }
+  return n
+}
+
+/** Takes a place's units back into the silo or the barn (even past full: they were the farm's), and leaves the place
+ *  free for another good; how many. */
+export function emptyPlace(k: number): number {
+  if (!openPlace(k)) return 0
+  const s = farm.market.shelves[k]
+  const n = s.good ? s.units : 0
+  if (s.good && n) putBack(s.good, n)
+  if (!s.good && !s.units) return 0
+  s.good = null
+  s.units = 0
+  bump()
+  save()
+  return n
+}
+
+/** Sets a place's price (percent of the fair price, snapped to its range and step). */
+export function setPlacePrice(k: number, pct: number) {
+  if (!openPlace(k)) return
+  farm.market.shelves[k].pct = snapPct(pct)
+  bump()
+  save()
+}
+
+/** The till on the compass: its coins, once it holds SHOP.readyAt or the shelves are empty (nothing more comes in). */
+export function tillReady(): { item: 'coin'; count: number } | null {
+  const coins = farm.market.till.coins
+  return farm.market.owned && coins > 0 && (coins >= SHOP.readyAt || shelvesEmpty()) ? { item: 'coin', count: coins } : null
+}
+
+/** Takes the coins in the till; how many. They count as sold and earned, as at the gate. */
+export function takeTill(): number {
+  const { coins, goods } = farm.market.till
+  if (!farm.market.owned || !(coins > 0)) return 0
+  farm.coins = Math.min(Number.MAX_SAFE_INTEGER, farm.coins + coins)
+  farm.stats.sold += goods
+  farm.stats.earned += coins
+  farm.market.till = { coins: 0, goods: 0 }
+  gainXp('sale', coins, AT_TILL)
+  coinsFx(AT_TILL.x, AT_TILL.z, coins)
+  toast(`+ ${coins} coins from the till`, 'coin')
+  farmSound('till')
+  bump()
+  save()
+  return coins
+}
+
+/** Tests: the shop yours, every place open and full of `item` (the heaviest good to draw by default). */
+export function marketFill(item: ProduceId = 'corn') {
+  if (!isSellable(item)) return
+  farm.market.owned = true
+  farm.ladders.places = LADDERS.places.levels
+  for (const s of farm.market.shelves) Object.assign(s, { good: item, units: SHOP.units })
+  bump()
+  save()
+}
+
+// ───────────────────────────── the people of the market (src/farm/script.ts) ─────────────────────────────
+
+/** A person the scene draws (the shoppers, the manager, the contractor), as the movement scripts (src/farm/script.ts) leave them. */
+export interface Walking {
+  id: number
+  x: number
+  z: number
+  heading: number
+  walking: boolean
+  pose: Pose
+  look: PersonLook
+}
+type Person = Walker & Walking
+
+/** The most shoppers about at a time, in the shop and on the lane (the crowd's guest places: GUEST_SLOTS in
+ *  src/farm/Visitors.tsx, less the contractor's and the tractor driver's; the manager walks out in one of these). As
+ *  many as the top of both ladders has about at once (group 3, pace 4: up to 14), so the shop keeps the ladders' pace. */
+export const MOST_SHOPPERS = 14
+/** Two shoppers never browse at one spot at once: the one coming is there this long after the one before has gone. */
+const SPOT_GAP = 1
+/** Ids of their own (the buyers at the gate count up from 1). */
+const MANAGER_ID = -1
+const CONTRACTOR_ID = -2
+let shopperSeq = 0
+
+/** A shopper: on their way in and browsing, on their way to pay and paying, or on their way out. */
+interface Shopper extends Person {
+  phase: 'in' | 'pay' | 'out'
+  spot: number
+  side: 0 | 1
+}
+/** Not saved: on a reload the shoppers are gone (what they bought is in the till already). */
+let shoppers: Shopper[] = []
+/** The manager walking out of the shop you bought (gone once at the lane's end, and on a reload). */
+let leaving: Person | null = null
+
+/** The same person every time: their traits rolled on dice of their own (not the farm's). */
+function steadyLook(seed: number, overrides: Partial<PersonLook>) {
+  let a = seed
+  const dice = () => {
+    a = (a * 16807) % 2147483647
+    return a / 2147483647
+  }
+  return rollLook(dice, overrides)
+}
+const MANAGER_DRESS = steadyLook(1723, MANAGER_LOOK)
+const CONTRACTOR_DRESS = steadyLook(9157, CONTRACTOR_LOOK)
+const managerStanding = (): Person => ({ id: MANAGER_ID, ...walker(MANAGER_SPOT.x, MANAGER_SPOT.z, MANAGER_SPOT.heading, []), look: MANAGER_DRESS })
+const standingManager = managerStanding()
+const standingContractor: Person = { id: CONTRACTOR_ID, ...walker(CONTRACTOR_SPOT.x, CONTRACTOR_SPOT.z, CONTRACTOR_SPOT.heading, []), look: CONTRACTOR_DRESS }
+
+/** The shoppers in the shop and on their way, as the scene draws them. */
+export function shoppersNow(): readonly Walking[] {
+  return shoppers
+}
+/** The manager: behind his desk until the shop is yours, then walking out (null once he has gone). */
+export function managerNow(): Walking | null {
+  return farm.market.owned ? leaving : standingManager
+}
+
+/** Whether a shopper setting off now would find browse spot `spot` free when they get there (from the nearer lane
+ *  end, the soonest they can): everyone on their way to it before them has browsed and gone by then. */
+function spotFree(spot: number) {
+  const there = Math.min(...([0, 1] as const).map((side) => scriptSeconds(laneEnd(side).x, laneEnd(side).z, shopperIn(spot), VISITOR.speed))) - SHOP.browse
+  return shoppers.every((s) => s.phase !== 'in' || s.spot !== spot || secondsLeft(s, VISITOR.speed) + SPOT_GAP <= there)
+}
+
+/** A browse spot for each of a visit's group (null: no room for all of them yet): a spot nobody else will be browsing
+ *  at when they get there, and a place among all about (the manager, while he walks out, takes one). */
+function visitSpots(): number[] | null {
+  const group = shoppersAtOnce(farm.ladders.group)
+  if (shoppers.length + group + (leaving ? 1 : 0) > MOST_SHOPPERS) return null
+  const spots = BROWSE_SPOTS.map((_, i) => i).filter(spotFree)
+  return spots.length >= group ? spots.slice(0, group) : null
+}
+
+/** A visit: the group walks in from the lane ends (each rolled on the farm's dice), each to their browse spot. */
+function visit(spots: number[]) {
+  for (const spot of spots) {
+    const side: 0 | 1 = random() < 0.5 ? 0 : 1
+    const end = laneEnd(side)
+    shoppers.push({ ...walker(end.x, end.z, side ? -Math.PI / 2 : Math.PI / 2, shopperIn(spot)), walking: true, id: -(100 + ++shopperSeq), look: rollLook(random), phase: 'in', spot, side })
+  }
+}
+
+/** What one shopper buys, on the farm's dice: the units off the shelves, their coins (and how many) into the till, in
+ *  the same step. How many units. */
+function shopperBuys(): number {
+  const m = farm.market
+  if (!m.owned) return 0
+  const r = rollShopper(m.shelves, placesNow(), random)
+  r.taken.forEach((n, k) => (m.shelves[k].units -= n))
+  m.till.coins = Math.min(Number.MAX_SAFE_INTEGER, m.till.coins + r.coins)
+  m.till.goods = Math.min(Number.MAX_SAFE_INTEGER, m.till.goods + r.units)
+  return r.units
+}
+
+/** A walker setting off on new steps. */
+const setOff = { at: 0, waited: 0, walking: true, pose: 'stand' } as const
+
+/** The shoppers walk on: one who has browsed takes what they want (and goes to pay), or nothing (and goes); one who has
+ *  paid goes; one at the lane's end is gone. */
+function moveShoppers(dt: number) {
+  for (const s of shoppers.slice()) {
+    if (!stepScript(s, dt, VISITOR.speed)) continue
+    if (s.phase === 'in') {
+      const bought = shopperBuys() > 0
+      const ahead = shoppers.filter((o) => o.phase === 'pay').length
+      Object.assign(s, { phase: bought ? 'pay' : 'out', steps: bought ? shopperPay(s.spot, ahead) : shopperOut(s.spot, false, s.side), ...setOff })
+    } else if (s.phase === 'pay') Object.assign(s, { phase: 'out', steps: shopperOut(s.spot, true, s.side), ...setOff })
+    else shoppers.splice(shoppers.indexOf(s), 1)
+  }
+  if (leaving && stepScript(leaving, dt, VISITOR.speed)) leaving = null
+}
+
+/** Another farm (loaded, switched to, started again): no one of this one's is left walking, and its first frame tells
+ *  no morning. */
+function forgetWalkers() {
+  shoppers = []
+  held = 0
+  leaving = null
+  contractorWalk = null
+  lastPhase = null
+}
+
+/** Your shop in play: the countdown to the next visit (it holds at 0 while the shelves are empty, and while the
+ *  shop has no room for the whole group), the visits, and the shoppers walking. */
+function runShop(dt: number) {
+  moveShoppers(dt)
+  const m = farm.market
+  if (!m.owned) return
+  const late = Math.max(0, dt - m.nextIn)
+  m.nextIn = Math.max(0, m.nextIn - dt)
+  if (m.nextIn > 0 || shelvesEmpty()) {
+    held = 0
+    return
+  }
+  // due, but no room yet for the whole group: it comes as soon as there is, and the next one no later than it would
+  // have (the shop keeps its pace)
+  held += late
+  const spots = visitSpots()
+  if (!spots) return
+  m.nextIn = Math.max(0, shopperEvery(farm.ladders.pace) - held)
+  held = 0
+  visit(spots)
+}
+
+/** Seconds a visit due has waited for room (not saved: a reload starts its count again). */
+let held = 0
+
+/** The shop while you are away: no one is seen, the visits come all the same and buy as they would have. */
+function shopAway(dt: number) {
+  moveShoppers(dt)
+  const m = farm.market
+  if (!m.owned) return
+  m.nextIn -= dt
+  if (m.nextIn > 0) return
+  if (shelvesEmpty()) {
+    m.nextIn = 0
+    return
+  }
+  for (let k = 0; k < shoppersAtOnce(farm.ladders.group); k++) shopperBuys()
+  m.nextIn = Math.max(0, Math.min(shopperEvery(farm.ladders.pace), m.nextIn + shopperEvery(farm.ladders.pace)))
+}
+
+// ───────────────────────────── the contractor ─────────────────────────────
+
+/** He is at his window in his hours (HOURS in ./data: the morning, noon and the evening). */
+export function contractorHere(): boolean {
+  return isOpen('contractor', farm.day.t)
+}
+
+/** Today's offers, made the first time the day is seen (the farm's dice): the pieces the silo or the barn is shortest
+ *  of first. */
+function contractorDay() {
+  const day = dayOf(farm.day.t)
+  if (farm.contractor.day === day) return false
+  farm.contractor = { day, offers: dailyOffers(farm, offersPerDay(farm.ladders.stock), random).map((item) => ({ item, sold: false })) }
+  return true
+}
+
+/** Today's offers (made when a new day is first seen). */
+export function contractorOffers(): Contractor['offers'] {
+  contractorDay()
+  return farm.contractor.offers
+}
+/** What one of his pieces costs now. */
+export const contractorPrice = () => piecePrice(farm.ladders.discount)
+
+/** Sells him the whole stack of a building material; the coins. */
+export function sellToContractor(item: ItemId): number {
+  if (!contractorHere() || !isItem(item)) return 0
+  const n = farm.inv[item]
+  if (!(n > 0)) return 0
+  const coins = n * CONTRACTOR.buys
+  farm.inv[item] = 0
+  farm.coins = Math.min(Number.MAX_SAFE_INTEGER, farm.coins + coins)
+  farm.stats.sold += n
+  farm.stats.earned += coins
+  gainXp('sale', coins, AT_CONTRACTOR)
+  coinsFx(AT_CONTRACTOR.x, AT_CONTRACTOR.z, coins)
+  toast(`+ ${coins} coins · ${count(item, n)}`, item)
+  farmSound('coins')
+  bump()
+  save()
+  return coins
+}
+
+/** Buys today's k-th piece; whether it was bought. It goes into the barn even past full (as a goal's material does),
+ *  and is not a surprise found: a trade, no XP. */
+export function buyFromContractor(k: number): boolean {
+  if (!contractorHere()) return false
+  contractorDay()
+  const offer = farm.contractor.offers[k]
+  const price = contractorPrice()
+  if (!offer || offer.sold || farm.coins < price) return false
+  farm.coins -= price
+  offer.sold = true
+  putBack(offer.item, 1)
+  itemFx(AT_CONTRACTOR.x, AT_CONTRACTOR.y, AT_CONTRACTOR.z, offer.item)
+  toast(`+ ${count(offer.item, 1)} · ${price} coins`, offer.item)
+  farmSound('coins')
+  bump()
+  save()
+  return true
+}
+
+/** The seconds since the phase now began. */
+const intoPhase = (t: number) => {
+  const def = DAY.phases.find((p) => p.id === phaseOf(t))!
+  return ((((hourOf(t) - def.from) % 24) + 24) % 24) * (DAY.length / 24)
+}
+/** How long he takes to walk off at night, or back in the morning (the rest of it he is at his window, or away). */
+const WALK_SECONDS = 60
+/** The contractor as the day's clock has him: walking back in the first minute of the morning, at his window in his
+ *  hours, walking off in the first minute of the night, away the rest of it. A function of the clock alone. */
+let contractorWalk: { key: string; at: number; who: Person } | null = null
+export function contractorNow(): Walking | null {
+  const t = farm.day.t
+  const phase = phaseOf(t)
+  const since = intoPhase(t)
+  // his hours begin (or end) with this phase: he was away (or there) in the one before
+  const here = isOpen('contractor', t)
+  const turned = here !== isOpen('contractor', t - since - 1)
+  const coming = here && turned && since < WALK_SECONDS
+  const going = !here && turned && since < WALK_SECONDS
+  if (!coming && !going) {
+    contractorWalk = null
+    return here ? standingContractor : null
+  }
+  const key = `${dayOf(t)} ${phase}`
+  if (contractorWalk?.key !== key || since < contractorWalk.at) {
+    const start = coming ? { x: LANE_ENDS[1], z: WALK_Z, heading: -Math.PI / 2 } : CONTRACTOR_SPOT
+    contractorWalk = { key, at: 0, who: { id: CONTRACTOR_ID, ...walker(start.x, start.z, start.heading, coming ? contractorComes() : contractorLeaves()), look: CONTRACTOR_DRESS } }
+  }
+  const done = stepScript(contractorWalk.who, since - contractorWalk.at, VISITOR.speed)
+  contractorWalk.at = since
+  return going && done ? null : contractorWalk.who
+}
+
+// ───────────────────────────── the day ─────────────────────────────
+
+let dayFrozen = false
+/** The farm's hour, phase and day now. */
+export const dayNow = () => ({ hour: hourOf(farm.day.t), phase: phaseOf(farm.day.t), day: dayOf(farm.day.t) })
+
+/** The day's clock as saved: seconds from 0. Past what any farm can have been played, adding a frame would no longer
+ *  move it on: it keeps its hour and starts counting days again. */
+function dayClock(v: unknown): number {
+  const t = typeof v === 'number' && Number.isFinite(v) ? Math.max(0, v) : 0
+  return t > 1e10 ? t % DAY.length : t
+}
+
+/** Sets the farm's clock to an hour of today (tests, ?debug): a day runs from the morning's first hour (5) through
+ *  the small hours after midnight, so 4 is the end of today and 24 + h is h tomorrow. An hour before the farm's first
+ *  morning began is that hour of the next day. */
+export function setHour(h: number) {
+  if (!Number.isFinite(h)) return
+  const hour = DAY.length / 24
+  const first = DAY.phases[0].from
+  const today = (dayOf(farm.day.t) * 24 + first - DAY.start) * hour
+  let t = today + (h >= first ? h - first : h + 24 - first) * hour
+  if (t < 0) t += DAY.length
+  farm.day.t = t
+  bump()
+  save()
+}
+/** Stops the farm's clock while you play (tests: the light must not change between two renders compared); time away
+ *  still passes. */
+export function freezeDay(on: boolean) {
+  dayFrozen = on
+}
+export const dayIsFrozen = () => dayFrozen
+
+/** The phase the last frame saw: the contractor's morning is told as it turns. */
+let lastPhase: string | null = null
+
+/** The day goes on in play: a new day brings the contractor's pieces, and the morning he has something the silo or
+ *  the barn is short of, a word and a chime. */
+function runDay(dt: number) {
+  if (!dayFrozen) farm.day.t += dt
+  contractorDay()
+  const phase = phaseOf(farm.day.t)
+  if (lastPhase && lastPhase !== phase && phase === DAY.phases[0].id) {
+    const short = shortMaterials(farm)
+    const piece = farm.contractor.offers.find((o) => !o.sold && short.includes(o.item))
+    if (piece) {
+      toast(`The contractor has ${produceById(piece.item).plural} today`, piece.item)
+      farmSound('chime')
+    }
+  }
+  lastPhase = phase
 }
 
 // ───────────────────────────── while you were away ─────────────────────────────
@@ -1539,6 +2153,8 @@ interface Snapshot {
   line: number
   orders: number
   trip: boolean
+  till: { coins: number; goods: number }
+  day: number
 }
 
 const snapshot = (): Snapshot => ({
@@ -1548,6 +2164,8 @@ const snapshot = (): Snapshot => ({
   line: inLine().length,
   orders: farm.orders.filter((slot) => 'order' in slot).length,
   trip: farm.dispatch.trip >= 0,
+  till: { ...farm.market.till },
+  day: dayOf(farm.day.t),
 })
 
 /** What happened while you were away: what came to be ready to take (each good with how many: the harvest of the beds
@@ -1563,6 +2181,10 @@ export interface AwayReport {
   tractor: boolean
   thirsty: number
   full: StoreId[]
+  /** what shoppers bought in your shop while you were away, and the coins they left in the till */
+  shop: { goods: number; coins: number } | null
+  /** a new day began: the contractor has new pieces */
+  pieces: boolean
 }
 
 function awayReport(before: Snapshot, seconds: number, counted: number): AwayReport {
@@ -1591,20 +2213,27 @@ function awayReport(before: Snapshot, seconds: number, counted: number): AwayRep
     tractor: before.trip && !after.trip,
     thirsty: farm.beds.filter((_, i) => bedStage(i) === 'thirsty').length,
     full: STORE_IDS.filter((id) => room(id) <= 0 && waiting(id)),
+    shop: after.till.coins > before.till.coins ? { goods: Math.max(0, after.till.goods - before.till.goods), coins: after.till.coins - before.till.coins } : null,
+    pieces: after.day !== before.day,
   }
 }
 
 /** Whether a report has anything to tell. */
-export const awayNews = (r: AwayReport) => r.goods.length > 0 || r.buyers > 0 || r.orders > 0 || r.tractor || r.thirsty > 0 || r.full.length > 0
+export const awayNews = (r: AwayReport) => r.goods.length > 0 || r.buyers > 0 || r.orders > 0 || r.tractor || r.thirsty > 0 || r.full.length > 0 || r.shop !== null
 
 /** The farm goes on for a time away, as it would have: in steps of 5 s (a bed ripens, an animal fills, a machine
- *  finishes in the step it would have), buyers joining the line as they come, as many as it has room for. */
+ *  finishes in the step it would have), buyers joining the line as they come, as many as it has room for; shoppers
+ *  visit your shop and buy as they would have; the day goes on (frozen or not: a test's frozen light is for play), and
+ *  a new day brings the contractor's new pieces. */
 function goOn(seconds: number) {
   for (let left = seconds; left > 0; left -= 5) {
     const dt = Math.min(5, left)
     farm.clock += dt
+    farm.day.t += dt
     grow(dt)
+    shopAway(dt)
   }
+  contractorDay()
   if (farm.started) {
     let t = seconds - farm.nextVisitorIn
     let n = 0
@@ -1633,6 +2262,8 @@ export function cameBack(seconds: number): AwayReport | null {
   const before = snapshot()
   goOn(counted)
   const report = awayReport(before, seconds, counted)
+  // the morning that came while away is not told as it turns (the contractor's word is for one seen in play)
+  lastPhase = phaseOf(farm.day.t)
   if (seconds >= AWAY_TELLS && awayNews(report)) lastAway = report
   bump()
   save()
@@ -1654,6 +2285,7 @@ resumeFrom(loaded)
 export function resetFarm() {
   const f = fresh()
   Object.assign(farm, f)
+  forgetWalkers()
   lastAway = null
   saveNow()
   bump()
@@ -1709,6 +2341,7 @@ export function switchSlot(n: Slot) {
   const l = load()
   Object.assign(farm, l.data)
   farm.visitors = []
+  forgetWalkers()
   const panel = useHome.getState().panel
   if (panel) useHome.getState().closePanel()
   // what happened on the farm left behind is not this one's
@@ -1762,6 +2395,7 @@ export function importSlot(n: Slot, text: string): { ok: true } | { ok: false; e
     const l = load()
     Object.assign(farm, l.data)
     farm.visitors = []
+    forgetWalkers()
     resumeFrom(l)
     bump()
   }

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { test, expect, watchErrors } from './helpers'
+import { test, expect, watchErrors, BASE } from './helpers'
 
 // The sculpted models (src/models): the gallery page shows every one of them and runs the kit's checks on each (every
 // piece holds on to its model, every model stands on its ground, in every variant and pose); in the game the herd,
@@ -7,7 +7,7 @@ import { test, expect, watchErrors } from './helpers'
 
 test.describe('sculpted models', () => {
   test('the model gallery shows every model', async ({ browser }) => {
-    const context = await browser.newContext({ viewport: { width: 640, height: 360 }, baseURL: 'http://localhost:4185' })
+    const context = await browser.newContext({ viewport: { width: 640, height: 360 }, baseURL: BASE })
     const page = await context.newPage()
     const errors: string[] = []
     watchErrors(page, errors)
@@ -16,7 +16,7 @@ test.describe('sculpted models', () => {
     // every entry draws something once the first frames have posed it
     await page.waitForFunction(() => (window as any).__gallery.entries.every((e: any) => e.triangles > 1000), null, { timeout: 60_000, polling: 250 })
     const entries = await page.evaluate(() => (window as any).__gallery.entries.map((e: any) => e.id))
-    expect(entries).toEqual(['cow', 'sheep', 'chickens', 'people', 'crops', 'farm', 'stores', 'office', 'tractor', 'goods'])
+    expect(entries).toEqual(['cow', 'sheep', 'chickens', 'people', 'crops', 'farm', 'stores', 'office', 'market', 'tractor', 'goods'])
     // the checks catch a piece a centimetre off its model, and a model two centimetres above the ground
     expect(await page.evaluate(() => (window as any).__gallery.selfTest())).toEqual(['loose', 'open', 'floating'])
     // the kit's checks, on every model in every variant and pose: no piece apart from its model, nothing floating
@@ -70,6 +70,11 @@ test.describe('sculpted models', () => {
         for (const m of g.children) if (m.isInstancedMesh && m.count > 0) out[name][m.name.replace(`${name}-`, '')] = m.count
       }
       h.view.on = true
+      // the market's people are drawn in the same crowd: the manager at his desk, the contractor at his window in his
+      // hours, any shoppers about (read with the counts: they come and go as the farm ticks)
+      const f = h.farm
+      const guests = [f.managerNow?.(), f.contractorNow?.(), ...(f.shoppersNow?.() ?? [])].filter(Boolean)
+      out.guests = { all: guests.length, bare: guests.filter((w: any) => w.look?.basket === false).length }
       return out
     })
     // two cows (one in each of two coats), three sheep, three hens and the rooster
@@ -81,12 +86,15 @@ test.describe('sculpted models', () => {
     expect(drawn.chickens?.henBody).toBe(3)
     expect(drawn.chickens?.roosterBody).toBe(1)
     // three buyers, each in one of the hair styles, and the tractor's driver (drawn with them, seated: his legs are
-    // the seated ones, his right hand has no basket)
-    expect(drawn.people?.torso).toBe(4)
-    expect(drawn.people?.head).toBe(4)
-    expect((drawn.people?.hairShort ?? 0) + (drawn.people?.hairLong ?? 0) + (drawn.people?.hairBun ?? 0)).toBe(4)
+    // the seated ones, his right hand has no basket); and the market's people
+    const people = 4 + drawn.guests.all
+    expect(drawn.people?.torso).toBe(people)
+    expect(drawn.people?.head).toBe(people)
+    expect(['hairShort', 'hairLong', 'hairBun', 'hairCurly', 'hairPony'].reduce((n, part) => n + (drawn.people?.[part] ?? 0), 0)).toBe(people)
     expect(drawn.people?.thighSeated).toBe(2)
-    expect(drawn.people?.forearmRBare).toBe(1)
+    expect(drawn.people?.forearmL, 'a left forearm for everyone drawn').toBe(people)
+    expect((drawn.people?.forearmR ?? 0) + (drawn.people?.forearmRBare ?? 0), 'a right forearm for everyone drawn').toBe(people)
+    expect(drawn.people?.forearmRBare).toBe(1 + drawn.guests.bare)
     // ripe crops: tomatoes on the vine, strawberries, pumpkins, carrots' fronds; lemons and eggs
     for (const part of ['lettuceLeaf', 'lettuceHeart', 'frond', 'carrotTop', 'trefoil', 'strawberry', 'tomatoLeaf', 'tomato', 'stalk', 'grassBlade', 'cob', 'pumpkinLeaf', 'pumpkin', 'lemon', 'egg']) {
       expect(drawn.crops?.[part] ?? 0, `crops: ${part}`).toBeGreaterThan(0)

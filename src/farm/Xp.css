@@ -1,0 +1,114 @@
+/* ───────── levels and XP (src/farm/XpChip.tsx, src/fx/xp.ts) ───────── */
+
+/* the level chip: a star with the level on it (it pulses as XP joins the bar: scripted, src/farm/XpChip.tsx) */
+.farm-chip-item.level { padding: 2px 6px 2px 3px; }
+.xp-star { position: relative; flex: none; display: inline-grid; place-items: center; width: 36px; height: 36px; margin-block: -6px; }
+.farm-chip-item .xp-star img { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; }
+.xp-star b {
+  position: relative;
+  top: 2px;
+  font: 700 15px/1 var(--font-display);
+  color: #fff;
+  text-shadow: 1px 0 0 var(--xp-lip), -1px 0 0 var(--xp-lip), 0 1px 0 var(--xp-lip), 0 -1px 0 var(--xp-lip), 1px 1px 0 var(--xp-lip), -1px 1px 0 var(--xp-lip), 1px -1px 0 var(--xp-lip), -1px -1px 0 var(--xp-lip), 0 2px 2px rgba(40, 24, 10, 0.4);
+}
+/* the coins of the levels reached, waiting: the chip glows until a tap claims them */
+.farm-chip-item.level.ready {
+  padding-inline-end: 12px;
+  border-color: var(--sun);
+  color: #ffe08a;
+  box-shadow: 0 3px 10px rgba(20, 12, 6, 0.25), 0 0 14px 2px color-mix(in srgb, var(--sun) 55%, transparent);
+}
+.farm-chip-item.level .xp-coin { width: 32px; height: 32px; margin-inline-start: -2px; }
+/* its glow breathes (an opacity on a layer of its own: nothing is painted again while it waits) */
+.farm-chip-item.level.ready::before { content: ''; position: absolute; inset: -2px; border-radius: inherit; box-shadow: 0 0 22px 5px color-mix(in srgb, var(--sun) 70%, transparent); opacity: 0; pointer-events: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .farm-chip-item.level.ready::before { animation: xp-ready 1.6s ease-in-out infinite; }
+}
+@keyframes xp-ready { 50% { opacity: 1; } }
+
+/* the level and its XP bar: the chip row's last item, the badge with the bar beside it taking the rest of the line (on a
+   phone's narrow row it starts a line of its own); the bar fills as the crystals land */
+.xp-line { display: flex; align-items: center; gap: 6px; flex: 1 1 150px; min-width: 0; }
+.xp-bar {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 60px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--night);
+  box-shadow: 0 0 0 1.5px var(--night-line), 0 2px 6px rgba(20, 12, 6, 0.25);
+  overflow: hidden;
+  pointer-events: none;
+}
+.xp-bar-fill { position: absolute; inset: 0 auto 0 0; overflow: hidden; border-radius: inherit; background: linear-gradient(to bottom, #b3a0ff, var(--xp) 55%, var(--xp-lip)); }
+/* the light that sweeps along the fill as it grows (scripted) */
+.xp-bar-shine { position: absolute; inset: 0 auto 0 0; width: 40%; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.95), transparent); opacity: 0; }
+
+/* XP crystals flying into the bar (placed and flown by script): the gem turned blue-violet, in a golden halo */
+.xp-fly {
+  position: fixed;
+  z-index: 70;
+  width: 24px;
+  height: 24px;
+  pointer-events: none;
+  user-select: none;
+  filter: hue-rotate(48deg) saturate(1.3) brightness(1.08) drop-shadow(0 0 2px var(--sun)) drop-shadow(0 0 6px color-mix(in srgb, var(--sun) 70%, transparent));
+  will-change: transform, opacity;
+}
+
+/* a new level: a flash, a ring of energy and the new number, under the compass (src/ui/Compass.css; below a toast
+   showing then, by script). It takes no taps, and leaves the clear view clear. */
+.level-up {
+  position: fixed;
+  z-index: 11; /* under a toast (12): the ring passes behind its words */
+  left: 50%;
+  top: calc(max(calc(var(--chips-bottom, 50px) + 6px), calc(max(14px, env(safe-area-inset-top)) + 54px)) + 50px);
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+:root[data-hud='compass'] .level-up { top: calc(max(12px, env(safe-area-inset-top)) + 60px); }
+:root[data-hud='clean'] .level-up { display: none; }
+.level-up-show {
+  position: absolute;
+  left: -110px;
+  top: 0;
+  width: 220px;
+  height: 104px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  animation: level-up-out 0.4s ease-in 1.95s both;
+}
+.level-up-flash,
+.level-up-ring { position: absolute; left: 50%; top: 50%; border-radius: 50%; }
+.level-up-flash {
+  width: 220px;
+  height: 220px;
+  margin: -110px 0 0 -110px;
+  background: radial-gradient(circle, #fff 0, color-mix(in srgb, var(--sun) 80%, transparent) 22%, var(--xp-glow) 45%, transparent 68%);
+  animation: level-up-flash 0.75s ease-out both;
+}
+.level-up-ring {
+  width: 132px;
+  height: 132px;
+  margin: -66px 0 0 -66px;
+  border: 4px solid var(--xp);
+  box-shadow: 0 0 14px var(--xp-glow), inset 0 0 14px var(--xp-glow), 0 0 0 2px color-mix(in srgb, var(--sun) 55%, transparent);
+  animation: level-up-ring 0.95s cubic-bezier(0.1, 0.7, 0.3, 1) both;
+}
+.level-up-ring.late { border-color: var(--sun); animation-delay: 0.16s; }
+.level-up-word,
+.level-up-number { position: relative; color: #fff; animation: level-up-in 0.55s var(--ease-pop) 0.05s both; }
+.level-up-word { font: 600 17px/1 var(--font-display); letter-spacing: 0.22em; text-transform: uppercase; text-shadow: 0 2px 0 var(--xp-lip), 0 0 10px var(--xp-glow); }
+.level-up-number { margin-top: 2px; font: 700 64px/1 var(--font-display); text-shadow: 0 4px 0 var(--xp-lip), 0 0 18px var(--xp-glow), 0 0 34px color-mix(in srgb, var(--sun) 65%, transparent); }
+@keyframes level-up-flash { from { opacity: 0; transform: scale(0.3); } 18% { opacity: 1; } to { opacity: 0; transform: scale(1.25); } }
+@keyframes level-up-ring { from { opacity: 1; transform: scale(0.3); } 70% { opacity: 0.8; } to { opacity: 0; transform: scale(1.9); } }
+@keyframes level-up-in { from { opacity: 0; transform: scale(0.4); } }
+@keyframes level-up-out { to { opacity: 0; transform: translateY(-12px); } }
+/* asked for less motion: the number only, still, for the same time */
+@media (prefers-reduced-motion: reduce) {
+  .level-up-flash,
+  .level-up-ring { display: none; }
+}

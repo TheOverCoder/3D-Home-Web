@@ -45,6 +45,12 @@ export type Panel =
   | { kind: 'buy-piece'; type: string } // buying one piece: what it is and its price, Cancel or Buy
   | { kind: 'away' } // welcome back: what happened on the farm while you were away
   | { kind: 'goals' } // the goals board: what to reach next, and the rewards to claim
+  | { kind: 'manager' } // the market's manager: what he pays for your goods, his rate, buying the shop
+  | { kind: 'market' } // your shop's computer: the places on the shelves, their prices, the shoppers
+  | { kind: 'market-place'; place: number } // one place: its good, how many, its price
+  | { kind: 'market-buy' } // the card that asks before the shop is bought
+  | { kind: 'contractor' } // the contractor: today's pieces, and what he pays for materials
+  | { kind: 'ladder'; id: 'rate' | 'places' | 'group' | 'pace' | 'stock' | 'discount' } // the card that asks before a ladder's step is bought
 
 /** The thing you look at carries a tag (src/ui/ThingTag.tsx): a gear for what can be set about it, or a price tag for
  *  what it costs to build or buy; tapped (or G), it opens its card. */

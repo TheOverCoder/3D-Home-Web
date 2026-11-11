@@ -1,9 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { Page } from '@playwright/test'
-import { test, expect, bootApp, emptyFarm, fillFarm, watchErrors } from './helpers'
+import { test, expect, bootApp, emptyFarm, fillFarm, marketDoorStill, watchErrors, BASE } from './helpers'
+import { FRONT_DOOR, HALL } from '../../src/data/market'
 
-// The budget, measured the way phones meet the game: a walk through the house and out over the farm, at its fullest
-// (every room filled with the heaviest piece until full, every animal the shop sells, fifteen buyers, ripe crops), at
+// The budget, measured the way phones meet the game: a walk through the house, out over the farm and into the
+// supermarket, at its fullest (every room filled with the heaviest piece until full, every animal the shop sells,
+// fifteen buyers, ripe crops, every place on the market's shelves full of corn), at
 // 640×360 and at a phone's drawing buffers held upright and turned sideways. A Pixel 7 on Medium draws 390×844 CSS px
 // at 1.25 px each: 487×1055. What a view draws depends only on its frustum (its size and the field of view the game
 // gives it, wider when upright), never on the device or the tier (src/lib/profile.ts changes the shadow map's texels,
@@ -71,7 +73,7 @@ const DEBTS: Debt[] = [
  *  triangles stay under the budget). Indoors it is paid while no window's sunlight falls on you (215-220 draws: the
  *  walls drawn merged, your body out of the map); where it does, your body is drawn into the map — 37 draws of its 52
  *  meshes, 6.9k triangles — and the same debt holds (the office, 0.8 m from where the walk stands: 252). */
-const OUTDOORS = ['gate, the line', 'yard, over the farm', 'yard, back at the house']
+const OUTDOORS = ['gate, the line', 'yard, over the farm', 'yard, back at the house', 'lane, the market', 'market, the shelves']
 const SUN_DEBT: Debt = {
   view: 'first person outdoors, and indoors in a window’s sunlight',
   size: 'every size',
@@ -98,10 +100,13 @@ interface View {
   door?: boolean
   /** third person or decorating: the game's own camera, after its flight */
   mode?: 'third' | 'decorate'
+  /** the market's sliding doors as the view means them: shut (from the lane) or open (you by them) */
+  marketDoor?: 0 | 1
 }
 
 /** The walk: the four rooms, each doorway with the kitchen's door shut and open, out of the garden door, the gate with
- *  the line, the yard over the farm and back at the house, third person and decorating in the living room. */
+ *  the line, the yard over the farm and back at the house, the supermarket from the lane and across its shelves, third
+ *  person and decorating in the living room. */
 const WALK: View[] = [
   { name: 'living room', x: -3.5, z: 1.3, yaw: P, pitch: -0.04, door: false },
   { name: 'studio', x: -3.5, z: -2, yaw: 0, door: false },
@@ -120,6 +125,12 @@ const WALK: View[] = [
   { name: 'gate, the line', x: 4.2, z: 10.8, yaw: P - 0.5, pitch: -0.05 },
   { name: 'yard, over the farm', x: -12, z: -10.5, yaw: (-3 * P) / 4, pitch: -0.08 },
   { name: 'yard, back at the house', x: 0, z: 12.5, yaw: 0, pitch: 0.02 },
+  // the supermarket across the lane (src/data/market.ts), every place on its shelves full of corn, the heaviest good
+  // (fillShelves): from the lane, 2.4 m out from its doorway and looking at its front, its sliding doors shut (they open
+  // within 2 m; the garden's gate, more than 1.8 m away, stays shut too); and inside by the door, the doors open beside
+  // you, looking across the shelves along the south wall to the island (36° east of south)
+  { name: 'lane, the market', x: (FRONT_DOOR.x0 + FRONT_DOOR.x1) / 2, z: FRONT_DOOR.z0 - 2.4, yaw: P, pitch: -0.03, marketDoor: 0 },
+  { name: 'market, the shelves', x: FRONT_DOOR.x1 - 0.3, z: HALL.z0 + 0.6, yaw: -P + (36 * P) / 180, pitch: -0.12, marketDoor: 1 },
   { name: 'third person, the living room', x: -3.5, z: 2.5, yaw: P, mode: 'third', door: false },
   { name: 'decorating the living room', x: -3.5, z: 2.5, yaw: P, mode: 'decorate', door: false },
 ]
@@ -206,6 +217,8 @@ async function standAt(page: Page, v: View) {
       const h = (window as any).__home
       const s = h.useHome.getState()
       if (door !== null && s.doors['door-kitchen-bedroom'] !== door) s.toggleDoor('door-kitchen-bedroom')
+      // the market's shelves full again (shoppers take what they buy as the walk goes on): every view sees them full
+      h.farm.marketFill?.('corn')
       const at = h.playerState.position
       if (Math.hypot(at.x - x, at.z - z) > 0.6) h.teleport(x, 1.4, z)
       if (typeof h.look === 'function') h.look({ yaw, pitch: 0 })
@@ -233,6 +246,8 @@ async function standAt(page: Page, v: View) {
       { timeout: 60_000, intervals: [250], message: `${v.name}: the player there and the door settled` },
     )
     .toMatchObject({ ready: true })
+  // the market's sliding doors still: as the view means them, or else either way (a shopper going by opens them)
+  await marketDoorStill(page, v.marketDoor)
 }
 
 /** Counts a view: first person with the camera set by hand; third person and decorating with the game's camera, after
@@ -417,7 +432,7 @@ test.describe('ten times the farm', () => {
   // been measured with it.
   test('the walk at ten times the farm, reported @boot', async ({ browser }) => {
     test.setTimeout(1_800_000)
-    const context = await browser.newContext({ viewport: { width: 640, height: 360 }, baseURL: 'http://localhost:4185' })
+    const context = await browser.newContext({ viewport: { width: 640, height: 360 }, baseURL: BASE })
     const page = await context.newPage()
     const errors: string[] = []
     watchErrors(page, errors)
@@ -449,7 +464,7 @@ test.describe('ten times the farm', () => {
 
 test.describe('no WebGL', () => {
   test('shows the failure message and keeps the intro disabled', async ({ browser }) => {
-    const context = await browser.newContext({ viewport: { width: 640, height: 360 }, baseURL: 'http://localhost:4185' })
+    const context = await browser.newContext({ viewport: { width: 640, height: 360 }, baseURL: BASE })
     const page = await context.newPage()
     await page.addInitScript(() => {
       // eslint-disable-next-line @typescript-eslint/unbound-method -- called with the canvas as `this` below

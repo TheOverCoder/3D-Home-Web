@@ -1,9 +1,10 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { endsWithin } from '../lib/endsWithin'
-import { BEDS, MACHINES, PRODUCERS, PRODUCER_IDS } from './data'
+import { BEDS, DAY, MACHINES, PRODUCERS, PRODUCER_IDS } from './data'
 import { PLACES, type Placement } from './layout'
-import { buyPiece, collect, farm, freeSpotFor, gateX, placeStored, storePiece, tick } from './state'
+import { buyPiece, collect, farm, freeSpotFor, gateX, inLine, placeStored, storePiece, tick } from './state'
+import { levelOf, seedXp } from './xp'
 import { tripSeconds } from './tractorRoute'
 import { OLD_SAVE, playedSave, savedNow, startFrom } from './testSaves'
 
@@ -191,5 +192,53 @@ describe('a save broken or edited by hand', () => {
     startFrom({ ...played, office: { slots: 99, wait: -2 } })
     expect(farm.office).toEqual({ slots: 6, wait: 0 })
     expect(farm.orders.length).toBe(9)
+  })
+
+  it('levels, the ladders, the shop, the contractor and the day saved broken load made safe; everything else as it was', () => {
+    // XP: whole points from 0, paid from 1 up to the level reached; missing, seeded from what the farm did (paid already)
+    startFrom({ ...played, xp: { points: -5, paid: 99 } })
+    expect(farm.xp).toEqual({ points: 0, paid: 1 })
+    expect(without(savedNow(), 'xp')).toEqual(without(loaded, 'xp'))
+    startFrom(without(played, 'xp'))
+    const seed = seedXp(farm.stats)
+    expect(farm.xp).toEqual({ points: seed, paid: levelOf(seed) })
+    // a shop not yours: its shelves and till empty, its own ladders none (the manager's and the contractor's kept)
+    const market = played.market as Save
+    startFrom({ ...played, market: { ...market, owned: 'yes' } })
+    expect(farm.market.owned).toBe(false)
+    expect(farm.market.shelves.every((sh) => sh.good === null && sh.units === 0)).toBe(true)
+    expect(farm.market.till).toEqual({ coins: 0, goods: 0 })
+    expect([farm.ladders.places, farm.ladders.pace, farm.ladders.rate, farm.ladders.discount]).toEqual([0, 0, 4, 1])
+    // a shelf of a building material, too many units, a price off its step
+    const shelves = market.shelves as Save[]
+    startFrom({ ...played, market: { ...market, shelves: [{ good: 'brick', units: 3, pct: 100 }, { good: 'egg', units: 99, pct: 147 }, ...shelves.slice(2)] } })
+    expect(farm.market.shelves.slice(0, 2)).toEqual([
+      { good: null, units: 0, pct: 100 },
+      { good: 'egg', units: 3, pct: 150 },
+    ])
+    expect(without(savedNow(), 'market')).toEqual(without(loaded, 'market'))
+    // the contractor: only materials, no more pieces than a day has
+    startFrom({ ...played, contractor: { day: 0, offers: [{ item: 'egg', sold: false }, ...Array.from({ length: 9 }, () => ({ item: 'brick', sold: 'no' }))] } })
+    expect(farm.contractor.offers).toEqual(Array.from({ length: 3 }, () => ({ item: 'brick', sold: false })))
+    // the day's clock: from 0; one past what can have been played keeps its hour
+    for (const [t, kept] of [
+      ['x', 0],
+      [-5, 0],
+      [1e300, 1e300 % DAY.length],
+    ] as const) {
+      startFrom({ ...played, day: { t } })
+      expect(farm.day.t, String(t)).toBe(kept)
+    }
+    expect(without(savedNow(), 'day')).toEqual(without(loaded, 'day'))
+  })
+
+  it('a buyer in line saved before the people engine (a hat yes or no, three hair styles) loads as they were', () => {
+    const queue = played.queue as Save[]
+    const look = { shirt: '#5c8a4a', trousers: '#5a4636', skin: '#f1c7a5', hair: '#b9b2a8', hairStyle: 2, hat: true, height: 1.02 }
+    startFrom({ ...played, queue: [{ ...queue[0], look }, { ...queue[1], look: { ...look, shirt: 'red' } }, ...queue.slice(2)] })
+    expect(inLine()[0].look).toMatchObject({ shirt: '#5c8a4a', hairStyle: 2, height: 1.02 })
+    expect(inLine()[0].look.hat).toBeTruthy()
+    // a look that is not one: no buyer
+    expect(inLine().length).toBe(queue.length - 1)
   })
 })

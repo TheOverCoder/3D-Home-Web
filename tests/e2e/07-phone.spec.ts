@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { test, expect, bootApp, watchErrors } from './helpers'
+import { test, expect, bootApp, watchErrors, BASE } from './helpers'
 
 // A phone in portrait, then turned to landscape: its own page with touch emulation (coarse pointer).
 test.describe('phone', { tag: '@boot' }, () => {
@@ -13,7 +13,7 @@ test.describe('phone', { tag: '@boot' }, () => {
       deviceScaleFactor: 2,
       isMobile: true,
       hasTouch: true,
-      baseURL: 'http://localhost:4185',
+      baseURL: BASE,
     })
     const page = await context.newPage()
     const errors: string[] = []

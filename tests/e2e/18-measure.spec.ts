@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { test, expect, bootApp, watchErrors } from './helpers'
+import { test, expect, bootApp, watchErrors, BASE } from './helpers'
 
 // The measuring tool for real phones (?tune, the Measure folder: src/debug/measure.ts), in a page of its own: the
 // folder is there with what the device is; Go to puts you in the kitchen with its door shut; the test farm is filled
@@ -10,7 +10,7 @@ import { test, expect, bootApp, watchErrors } from './helpers'
 
 test('the measuring tool: six slices with the drawing pass on and off', { tag: '@boot' }, async ({ browser }) => {
   test.setTimeout(1_800_000)
-  const context = await browser.newContext({ viewport: { width: 640, height: 360 }, baseURL: 'http://localhost:4185' })
+  const context = await browser.newContext({ viewport: { width: 640, height: 360 }, baseURL: BASE })
   const page = await context.newPage()
   const errors: string[] = []
   watchErrors(page, errors)

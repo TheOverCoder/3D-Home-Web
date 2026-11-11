@@ -77,10 +77,15 @@ function giftImage() {
   return gift
 }
 
-// fifteen in line, room for those walking off after "sell to everyone", and the tractor's driver (`?debug&people=N`:
-// N buyers, to measure)
+// fifteen in line, room for those walking off after "sell to everyone" (`?debug&people=N`: N buyers, to measure), and
+// the guests: the tractor's driver, the market's manager, its shoppers and the contractor
 const asked = Math.floor(Number(debugFlag('people')))
-const MAX_PEOPLE = (asked > 0 ? asked : 32) + 1
+/** Places in the crowd kept for guests (crowdGuests): the tractor's driver, the contractor, and the market's shoppers
+ *  (up to MOST_SHOPPERS in src/farm/state.ts: as many as the top of its ladders keeps about at once, so a visit never
+ *  waits for room; the manager, there only before the shop is yours, walks out in one of their places). */
+export const GUEST_SLOTS = 16
+const BUYERS = asked > 0 ? asked : 32
+const MAX_PEOPLE = BUYERS + GUEST_SLOTS
 
 /** Others drawn with the crowd (the tractor's driver, src/farm/OrderYard.tsx): each puts its people into the crowd's
  *  parts every frame, after the buyers. */
@@ -163,7 +168,7 @@ export function Visitors() {
     parts.begin()
     let people = 0
     for (const v of farm.visitors) {
-      if (people >= MAX_PEOPLE - 1) break // (the last one is the driver's)
+      if (people >= BUYERS) break // (the rest are the guests')
       people++
       live.add(v.id)
       let rig = rigs.current.get(v.id)

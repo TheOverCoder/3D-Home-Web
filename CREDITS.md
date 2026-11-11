@@ -15,7 +15,7 @@ Keep this file and `src/data/credits.ts` (shown in the app's intro) in sync. Any
 | Water Bottle (studio desk) | Microsoft (Khronos glTF Sample Assets) | CC0 | https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/WaterBottle |
 | Blouberg Sunrise 2 (1k HDRI, kept as a JPEG with a gain map: `scripts/hdr-to-gainmap.mjs`) | Poly Haven | CC0 | https://polyhaven.com/a/blouberg_sunrise_2 |
 | Fabric Pattern 07 — normal map only (1k, OpenGL, re-saved at JPEG quality 85), used for every woven fabric | Poly Haven (file mirrored in godotengine/godot-demo-projects) | CC0 | https://polyhaven.com/a/fabric_pattern_07 |
-| Fluent Emoji 3D (interface art: coin, basket, shop and menu pictures, the orders clipboard, the tractor, the surprise gift; the app icon) | Microsoft Corporation | MIT | https://github.com/microsoft/fluentui-emoji |
+| Fluent Emoji 3D (interface art: coin, basket, shop and menu pictures, the orders clipboard, the tractor, the surprise gift, the XP crystal, the market, the manager and the contractor, the times of day; the app icon) | Microsoft Corporation | MIT | https://github.com/microsoft/fluentui-emoji |
 | Phosphor Icons (interface glyphs) | Phosphor Icons | MIT | https://phosphoricons.com |
 | Fredoka and Nunito typefaces | The Fredoka Project Authors; The Nunito Project Authors | SIL OFL 1.1 | https://fonts.google.com/specimen/Fredoka |
 

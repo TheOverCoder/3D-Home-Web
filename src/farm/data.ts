@@ -1,6 +1,7 @@
 // The farm around the house: what grows, what it makes, what it sells for, and where everything stands.
 // Units are metres and seconds (real time: crops keep growing while you are inside or away).
 import type { FarmSound } from '../audio/sound'
+import type { ArtId } from '../ui/art'
 import { GATE, GARDEN, GARDEN_DOOR, LANE } from '../data/layout'
 import type { PlaceId } from './layout'
 
@@ -439,8 +440,9 @@ export const mostAnimals = (id: ProducerId) => PRODUCERS[id].herd?.max ?? 0
 export const SHED = { x: -9.0, z: 11.3 } as const
 export const STAND = { x: GATE.x + 1.7, z: GARDEN.maxZ - 0.75 } as const
 
-/** Buyers walk the lane and queue along the fence outside the gate; the first in line stands at the gate. */
-export const GATE_SPOT = { x: GATE.x, z: GARDEN.maxZ + 0.85 } as const
+/** Buyers walk the lane and queue along the fence outside the gate; the first in line stands just east of the gate,
+ *  turned towards it (the gate itself stays clear: it opens, and the way to the market goes through it). */
+export const GATE_SPOT = { x: GATE.x + 1.0, z: GARDEN.maxZ + 0.75, heading: -2.2 } as const
 export const LANE_Z = LANE.z
 export const WALK_Z = LANE.z + 0.45 // the far side of the lane, where people walk past the queue
 export const LANE_ENDS = [-34, 34] as const
@@ -454,7 +456,7 @@ export const queuePlaces = (level: number) => QUEUE.places + level
 export const arrivalEvery = (level: number) => QUEUE.every - QUEUE.step * level
 /** Where the k-th in line stands, and which way they face (the first faces the gate, the rest look up the line). */
 export function queueSpot(k: number) {
-  return k === 0 ? { x: GATE_SPOT.x, z: GATE_SPOT.z, heading: Math.PI } : { x: GATE_SPOT.x + 0.25 + k * QUEUE.spacing, z: GATE_SPOT.z + 0.1, heading: -Math.PI / 2 - 0.35 }
+  return k === 0 ? { x: GATE_SPOT.x, z: GATE_SPOT.z, heading: GATE_SPOT.heading } : { x: GATE_SPOT.x + 0.25 + k * QUEUE.spacing, z: GATE_SPOT.z + 0.1, heading: -Math.PI / 2 - 0.35 }
 }
 
 export type UpgradeId = 'sprinkler' | 'compost' | 'hen' | 'cow' | 'sheep' | 'queue' | 'pace' | Expansion
@@ -515,3 +517,86 @@ export const OFFICE_SCREEN = { x: -10.25, y: 1.12, z: 6.3 } as const
 export const TRACTOR = { z: 7.9, park: -11.95, pallet: { x: -9.45, z: 8.05 }, load: 4, gate: 2.2 } as const
 
 export const NAMES = ['Maya', 'Noa', 'Daniel', 'Yael', 'Omer', 'Tamar', 'Eitan', 'Shira', 'Avi', 'Lior', 'Ruth', 'Yoni', 'Michal', 'Gal']
+
+// ───────────────────────────── levels: what each thing you do is worth ─────────────────────────────
+
+/** XP for each thing a player does (src/farm/state.ts, gainXp): for every bed, good or batch it touched. A sale is
+ *  worth its coins instead (`xpForSale`, src/farm/xp.ts: one for every five coins, at least one). Nothing that can be
+ *  undone for free gives any (furniture, moving places, stocking shelves, prices, declining). */
+export const XP_FOR = { plant: 1, water: 1, harvest: 2, collect: 1, load: 1, make: 2, build: 5, goal: 5, shop: 25, order: 5 } as const
+export type XpAction = keyof typeof XP_FOR
+/** From level L to the next takes `step · L` XP; reaching level L pays `reward · L` coins (claimed on the level chip). */
+export const LEVELS = { step: 15, reward: 10 } as const
+
+// ───────────────────────────── the supermarket ─────────────────────────────
+
+/** The manager buys anything the farm makes (not the building materials: those are the contractor's) at `pct`% of its
+ *  price, `pctStep` more for every step of the `rate` ladder; at its top he sells you the shop for `shopPrice`. */
+export const MANAGER = { pct: 20, pctStep: 5, shopPrice: 1500 } as const
+
+/** Your shop: `places` to begin with (the `places` ladder adds more), up to `units` of one good on each, priced from
+ *  `pct.min`% to `pct.max`% of its fair price; a shopper takes each unit they see with a chance falling from
+ *  `chance.atMin` at the lowest price to `chance.atMax` at the highest (src/farm/market.ts, buyChance). A visit comes
+ *  every `every` seconds, `faster` sooner for every step of the `pace` ladder (it waits while the shelves are empty);
+ *  a shopper browses `browse` s and pays `pay` s. The till goes on the compass once it holds `readyAt` coins. */
+export const SHOP = {
+  places: 3,
+  units: 3,
+  pct: { min: 90, max: 300, step: 10, start: 100 },
+  chance: { atMin: 0.9, atMax: 0.04 },
+  every: 150,
+  faster: 30,
+  browse: 4,
+  pay: 3,
+  readyAt: 100,
+} as const
+
+/** The contractor behind the market: he buys building materials at `buys` coins each, and sells `offers` pieces a day
+ *  (the `stock` ladder adds more) at `sells` coins each (the `discount` ladder takes 10 off a step). */
+export const CONTRACTOR = { buys: 10, sells: 100, offers: 3, discountStep: 10 } as const
+
+// ───────────────────────────── upgrade ladders ─────────────────────────────
+
+export type LadderId = 'rate' | 'places' | 'group' | 'pace' | 'stock' | 'discount'
+export interface Ladder {
+  name: string
+  blurb: string
+  /** how many steps */
+  levels: number
+  /** step k costs price[0] + price[1] · k */
+  price: readonly [number, number]
+  /** what having k steps means, in a few words (the card shows now → next) */
+  say: (k: number) => string
+}
+/** Every upgrade bought one step at a time, as rows: one buy (src/farm/state.ts, buyLadder), one card
+ *  (src/farm/Ladder.tsx), one place in the save (farm.ladders). When each may be bought: `ladderOpen` in state.ts. */
+export const LADDERS: Record<LadderId, Ladder> = {
+  rate: { name: 'A better price', blurb: 'The manager pays more for what you sell him.', levels: 4, price: [120, 80], say: (k) => `Pays ${MANAGER.pct + MANAGER.pctStep * k}%` },
+  places: { name: 'Another shelf place', blurb: 'One more good on the shelves.', levels: 7, price: [80, 40], say: (k) => `${SHOP.places + k} places` },
+  group: { name: 'More shoppers', blurb: 'More shoppers come at a time.', levels: 3, price: [150, 100], say: (k) => `${1 + k} at a time` },
+  pace: { name: 'A busier shop', blurb: 'Shoppers come more often.', levels: 4, price: [100, 60], say: (k) => `Every ${SHOP.every - SHOP.faster * k} s` },
+  stock: { name: 'More pieces', blurb: 'The contractor brings more pieces a day.', levels: 2, price: [250, 250], say: (k) => `${CONTRACTOR.offers + k} pieces a day` },
+  discount: { name: 'A better deal', blurb: 'His pieces cost less.', levels: 5, price: [120, 60], say: (k) => `${CONTRACTOR.sells - CONTRACTOR.discountStep * k} coins a piece` },
+}
+export const LADDER_IDS = Object.keys(LADDERS) as LadderId[]
+
+// ───────────────────────────── the day ─────────────────────────────
+
+export type DayPhase = 'morning' | 'noon' | 'evening' | 'night'
+/** A farm day lasts `length` real seconds (24 farm hours); a new farm starts at `start` o'clock. Each phase runs from
+ *  its hour to the next one's; its `mood` sets the light (src/scene/Lighting.tsx): `sun` the sun's and the sky's share,
+ *  `warm` towards orange (or, below 0, blue), `sky` the sky and fog. Night is never darker than `minLight`. */
+export const DAY = {
+  length: 1200,
+  start: 8,
+  phases: [
+    { id: 'morning', from: 5, art: 'sunrise', mood: { sun: 0.85, warm: 0.35, sky: 0.9 } },
+    { id: 'noon', from: 11, art: 'sun', mood: { sun: 1, warm: 0, sky: 1 } },
+    { id: 'evening', from: 17, art: 'sunset', mood: { sun: 0.7, warm: 0.6, sky: 0.75 } },
+    { id: 'night', from: 21, art: 'crescent-moon', mood: { sun: 0.35, warm: -0.4, sky: 0.45 } },
+  ],
+  minLight: 0.35,
+} as const satisfies { length: number; start: number; phases: readonly { id: DayPhase; from: number; art: ArtId; mood: { sun: number; warm: number; sky: number } }[]; minLight: number }
+/** Who keeps hours, and in which phases they are there. */
+export const HOURS = { contractor: ['morning', 'noon', 'evening'] } as const satisfies Record<string, readonly DayPhase[]>
+export type Keeper = keyof typeof HOURS

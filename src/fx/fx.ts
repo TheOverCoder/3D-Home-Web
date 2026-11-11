@@ -12,7 +12,7 @@ export type FxKind = 'water' | 'harvest' | 'dust'
 
 /** One effect asked for: where, and what it is about. */
 export interface FxRequest {
-  kind: FxKind | 'coins' | 'item'
+  kind: FxKind | 'coins' | 'item' | 'xp'
   x: number
   y: number
   z: number
@@ -22,6 +22,8 @@ export interface FxRequest {
   half?: { x: number; z: number }
   /** coins: how many changed hands */
   coins?: number
+  /** XP: how much was gained (the crystals that fly to the level chip) */
+  xp?: number
   /** a surprise: the material found, and its place among several found at once (they pop one after another) */
   item?: string
   order?: number
@@ -31,7 +33,7 @@ export interface FxRequest {
 
 /** What the effects are doing, for the tests (`window.__home.fx`): bursts started, systems alive, coin flights,
  *  surprises shown. */
-export const fxStats = { loaded: false, started: 0, alive: 0, coins: 0, items: 0 }
+export const fxStats = { loaded: false, started: 0, alive: 0, coins: 0, items: 0, xp: 0 }
 
 /** The player asked their system for less motion: no particles, no flying coins. */
 export const reducedMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -64,6 +66,14 @@ export function coinsFx(x: number, z: number, coins: number) {
 export function itemFx(x: number, y: number, z: number, item: string, order = 0) {
   if (reducedMotion()) return
   queue.push({ kind: 'item', x, y, z, item, order, at: performance.now() })
+  if (queue.length > MAX_QUEUE) queue.shift()
+}
+
+/** XP gained at (x, y, z): small crystals fly up from there into the level chip's bar (src/fx/xp.ts). Not when the
+ *  player asked for less motion (the bar still fills). */
+export function xpFx(x: number, y: number, z: number, xp: number) {
+  if (reducedMotion()) return
+  queue.push({ kind: 'xp', x, y, z, xp, at: performance.now() })
   if (queue.length > MAX_QUEUE) queue.shift()
 }
 

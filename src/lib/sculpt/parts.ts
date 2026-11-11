@@ -30,6 +30,20 @@ export interface PartDef {
 
 const isMaterial = (m: SculptMaterialOptions | Material | undefined): m is Material => !!m && (m as Material).isMaterial === true
 
+/** The part's geometry with a second instance colour of this mesh's own (a material with `tint2`: the eyes on a head).
+ *  The geometry is shared by every crowd made with it, so the instanced colour goes on a geometry of the mesh's own
+ *  that shares the shape's attributes (nothing is copied). */
+function withColor2(g: BufferGeometry, max: number) {
+  const own = new BufferGeometry()
+  for (const [name, a] of Object.entries(g.attributes)) own.setAttribute(name, a)
+  own.setIndex(g.index)
+  own.boundingSphere = g.boundingSphere
+  own.boundingBox = g.boundingBox
+  const color2 = new InstancedBufferAttribute(new Float32Array(max * 3).fill(1), 3)
+  own.setAttribute('instanceColor2', color2)
+  return { geometry: own, color2 }
+}
+
 /** Whether a model can be seen: its box in world space (see `Parts.cull`). */
 export type ModelTest = (minX: number, minY: number, minZ: number, maxX: number, maxY: number, maxZ: number) => boolean
 
@@ -65,7 +79,9 @@ export class Parts<K extends string = string> {
   private s = new Vector3()
   // Everything put this frame, as it was put, whatever is drawn: each part instance's matrix and colour, and the model
   // it belongs to; each model's box in the group's frame (min x y z, max x y z), grown by its parts' bounding spheres.
-  private staged = {} as Record<K, { matrices: Float32Array; colors: Float32Array; model: Uint32Array; sphere: Float32Array; all: InstancedBufferAttribute }>
+  private staged = {} as Record<K, { matrices: Float32Array; colors: Float32Array; colors2?: Float32Array; model: Uint32Array; sphere: Float32Array; all: InstancedBufferAttribute }>
+  /** the second instance colour of the parts whose material has one (`tint2`) */
+  private color2 = {} as Partial<Record<K, InstancedBufferAttribute>>
   private boxes = new Float32Array(6 * 8)
   private shown = new Uint8Array(8)
   private drawn = new Uint8Array(8)
@@ -78,7 +94,9 @@ export class Parts<K extends string = string> {
     this.keys = Object.keys(defs) as K[]
     for (const k of this.keys) {
       const d = defs[k]
-      const mesh = new InstancedMesh(d.geometry, isMaterial(d.material) ? d.material : sculptMaterial(d.material), d.max)
+      const second = !isMaterial(d.material) && d.material?.tint2 ? withColor2(d.geometry, d.max) : null
+      if (second) this.color2[k] = second.color2
+      const mesh = new InstancedMesh(second ? second.geometry : d.geometry, isMaterial(d.material) ? d.material : sculptMaterial(d.material), d.max)
       mesh.name = `${name}-${k}`
       // white instance colours from the start: the shader is built once with them, and the tint mask decides
       // where an instance's own colour shows
@@ -96,6 +114,7 @@ export class Parts<K extends string = string> {
       this.staged[k] = {
         matrices,
         colors: new Float32Array(d.max * 3).fill(1),
+        colors2: second ? new Float32Array(d.max * 3).fill(1) : undefined,
         model: new Uint32Array(d.max),
         sphere: new Float32Array([b.center.x, b.center.y, b.center.z, b.radius]),
         all: new InstancedBufferAttribute(matrices, 16),
@@ -153,17 +172,18 @@ export class Parts<K extends string = string> {
   }
 
   /** One part of the current model: its joint at (x, y, z) in the model's frame, turned by rx, ry, rz (applied
-   *  roll, then pitch, then yaw) and scaled. A colour applies where the part's tint mask allows. */
-  put(part: K, x: number, y: number, z: number, rx = 0, ry = 0, rz = 0, scale: number | Vector3 = 1, color?: Color) {
+   *  roll, then pitch, then yaw) and scaled. A colour applies where the part's tint mask allows (and a second one,
+   *  `color2`, where its `tint2` mask does, if its material has one). */
+  put(part: K, x: number, y: number, z: number, rx = 0, ry = 0, rz = 0, scale: number | Vector3 = 1, color?: Color, color2?: Color) {
     this.q.setFromEuler(this.e.set(rx, ry, rz, 'YXZ'))
     if (typeof scale === 'number') this.s.set(scale, scale, scale)
     else this.s.copy(scale)
     this.local.compose(this.v.set(x, y, z), this.q, this.s)
-    return this.putMatrix(part, this.local, color)
+    return this.putMatrix(part, this.local, color, color2)
   }
 
   /** A part placed by a matrix of its own, in the model's frame. */
-  putMatrix(part: K, local: Matrix4, color?: Color) {
+  putMatrix(part: K, local: Matrix4, color?: Color, color2?: Color) {
     const mesh = this.meshes[part]
     const i = this.n[part]
     this.world.multiplyMatrices(this.root, local)
@@ -180,6 +200,14 @@ export class Parts<K extends string = string> {
       st.colors[i * 3 + 1] = color.g
       st.colors[i * 3 + 2] = color.b
     } else st.colors.fill(1, i * 3, i * 3 + 3)
+    const c2 = st.colors2
+    if (c2) {
+      if (color2) {
+        c2[i * 3] = color2.r
+        c2[i * 3 + 1] = color2.g
+        c2[i * 3 + 2] = color2.b
+      } else c2.fill(1, i * 3, i * 3 + 3)
+    }
     const j = this.models - 1
     st.model[i] = j
     // the model's box grows by this part's bounding sphere, where it is put
@@ -208,6 +236,7 @@ export class Parts<K extends string = string> {
       const n = this.n[k]
       copy(st.matrices, mesh.instanceMatrix.array as Float32Array, n * 16)
       copy(st.colors, mesh.instanceColor!.array as Float32Array, n * 3)
+      this.copyColor2(k, n)
       mesh.count = n
       mesh.visible = n > 0
       mesh.instanceMatrix.needsUpdate = true
@@ -295,6 +324,8 @@ export class Parts<K extends string = string> {
       const n = this.n[k]
       const dm = mesh.instanceMatrix.array as Float32Array
       const dc = mesh.instanceColor!.array as Float32Array
+      const sc2 = st.colors2
+      const dc2 = this.color2[k]?.array as Float32Array | undefined
       let q = 0
       for (let i = 0; i < n; i++) {
         if (!this.shown[st.model[i]]) continue
@@ -303,12 +334,19 @@ export class Parts<K extends string = string> {
         dc[q * 3] = st.colors[i * 3]
         dc[q * 3 + 1] = st.colors[i * 3 + 1]
         dc[q * 3 + 2] = st.colors[i * 3 + 2]
+        if (sc2 && dc2) {
+          dc2[q * 3] = sc2[i * 3]
+          dc2[q * 3 + 1] = sc2[i * 3 + 1]
+          dc2[q * 3 + 2] = sc2[i * 3 + 2]
+        }
         q++
       }
       // left visible as `end` set it (a ray still meets every model put): a draw of no instances is skipped by the pass
       mesh.count = q
       mesh.instanceMatrix.needsUpdate = true
       mesh.instanceColor!.needsUpdate = true
+      const a2 = this.color2[k]
+      if (a2) a2.needsUpdate = true
       drawn += q
     }
     for (const k of this.keys) if (this.meshes[k].castShadow) drawn += this.n[k]
@@ -326,6 +364,7 @@ export class Parts<K extends string = string> {
       const n = this.n[k]
       copy(st.matrices, mesh.instanceMatrix.array as Float32Array, n * 16)
       copy(st.colors, mesh.instanceColor!.array as Float32Array, n * 3)
+      this.copyColor2(k, n)
       mesh.count = n
       mesh.instanceMatrix.needsUpdate = true
       mesh.instanceColor!.needsUpdate = true
@@ -333,6 +372,15 @@ export class Parts<K extends string = string> {
     this.compacted = false
     this.drawnModels = -1
     this.drawnInstances = this.instances()
+  }
+
+  /** Hands a part's second instance colours (those put) to its mesh, if its material has them. */
+  private copyColor2(k: K, n: number) {
+    const a2 = this.color2[k]
+    const c2 = this.staged[k].colors2
+    if (!a2 || !c2) return
+    copy(c2, a2.array as Float32Array, n * 3)
+    a2.needsUpdate = true
   }
 
   /** How many part instances were put this frame (drawn or not). */

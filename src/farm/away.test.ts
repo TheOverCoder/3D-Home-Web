@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { BEDS, PRODUCERS, cropById } from './data'
-import { AWAY_MOST, awaySummary, cameBack, capacity, farm, inLine, plant, resetFarm, room, tick, water, yieldOf } from './state'
+import { BEDS, PRODUCERS, SHOP, cropById } from './data'
+import { AWAY_MOST, awayNews, awaySummary, cameBack, capacity, farm, inLine, marketFill, plant, resetFarm, room, setRandom, tick, water, xpEventCount, yieldOf } from './state'
 import { savedNow, startFrom } from './testSaves'
 
 // Welcome back (src/farm/AwayPanel.tsx): the farm goes on for a time away — the page closed (from the save's time) or
@@ -126,5 +126,27 @@ describe('welcome back', () => {
     farm.producers = JSON.parse(start)
     for (let t = 0; t < 600; t += 5) tick(5)
     expect(JSON.stringify(farm.producers)).toBe(away)
+  })
+
+  it('the page closed for an hour with goods on your shelves: shoppers came and bought as they would have, and the card says so', () => {
+    marketFill('egg')
+    farm.market.nextIn = 30
+    setRandom(() => 0)
+    try {
+      const xp = { points: farm.xp.points, events: xpEventCount() }
+      reopenAfter(60 * MIN)
+      const r = awaySummary()!
+      // everything on the shelves sold to the first visit (dice 0): what it paid waits in the till for you
+      expect(r.shop).toEqual({ goods: farm.market.till.goods, coins: farm.market.till.coins })
+      expect(r.shop!.goods).toBe(farm.market.shelves.length * SHOP.units)
+      expect(farm.market.shelves.every((s) => s.units === 0)).toBe(true)
+      expect(awayNews({ ...r, goods: [], buyers: 0, orders: 0, tractor: false, thirsty: 0, full: [] })).toBe(true)
+      // an hour is three farm days: the contractor has new pieces
+      expect(r.pieces).toBe(true)
+      // no XP for time away (the till's coins are a sale once taken)
+      expect([farm.xp.points, xpEventCount()]).toEqual([xp.points, xp.events])
+    } finally {
+      setRandom(null)
+    }
   })
 })

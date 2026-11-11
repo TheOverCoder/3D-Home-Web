@@ -1,11 +1,12 @@
-import { Color, Group, Object3D, type BufferGeometry } from 'three'
-import { blob, ellipsoid, lathe, loft, merge, Parts, rgb, shadowPart, smoothstep, squircle, tube, type PartDef, type Shape, type V3 } from '../lib/sculpt'
+import { BufferAttribute, Color, Group, Object3D, type BufferGeometry } from 'three'
+import { blob, ellipsoid, fbm3, lathe, loft, merge, Parts, rgb, shadowPart, smoothstep, squircle, tube, type PartDef, type Shape, type V3 } from '../lib/sculpt'
 
 // A person, in the proportions of the player's own body (1 m of "height" units: the rig scales them to each
 // person's height). Each part is built round the joint it hangs from — hips, shoulder, elbow, hip joint, knee,
 // neck — and takes its colour from the person through the tint mask: shirts, trousers, skin and hair are painted
-// white and coloured per person, so a crowd shares one set of geometry. Eyes, brows, mouth, shoes, the straw hat
-// and the basket keep their own colours.
+// white and coloured per person, so a crowd shares one set of geometry; a hat (the straw hat's band, a cap, a
+// beanie) takes the person's hat colour the same way, and the irises the head's second colour, the eyes'. Brows,
+// mouth, shoes, the straw and the basket keep their own colours.
 
 /** Where the joints are, in the rig's units (the hips are at 0.885 above the ground, the rest relative to them). */
 export const PERSON = {
@@ -17,7 +18,9 @@ export const PERSON = {
   headY: 0.79,
 }
 
-const EYE = rgb(0x1b1714)
+/** the eyes' colour when a look has none of its own (as every person had before looks had eyes) */
+export const EYES = '#1b1714'
+const PUPIL = rgb(0x0e0b0a)
 const WHITE = rgb(0xf2eee8)
 const BROW = rgb(0x3a2a22)
 const LIPS = rgb(0x9a5a50)
@@ -25,7 +28,7 @@ const SHOE = rgb(0x2a2522)
 const SOLE = rgb(0x5a4a3e)
 const STRAW = rgb(0xd9c18a)
 const STRAW_DARK = rgb(0xb89a5c)
-const BAND = rgb(0x8a4b3a)
+const TIE = rgb(0x7a2635)
 const WICKER = rgb(0xb88a52)
 const WICKER_DARK = rgb(0x8a6236)
 
@@ -195,8 +198,9 @@ function shin(closed = false): Shape {
   return merge(leg, shoe)
 }
 
-/** The head and neck, round the head joint: a face with eyes, brows, nose, mouth and ears. */
-function head(): Shape {
+/** The head and neck, round the head joint: a face with eyes, brows, nose, mouth and ears. `eyes` is the irises' mask
+ *  for the head's second colour (the eyes' own, per person): 1 on their vertices, 0 elsewhere. */
+function head(): { shape: Shape; eyes: number[] } {
   const neck = column(
     [
       [-0.2, 0.062, 0.06],
@@ -239,18 +243,21 @@ function head(): Shape {
     return [x, y, (hit ? hit.point[2] : 0.1) - into]
   }
   const parts: Shape[] = [neck, skull, nose]
+  const irises: Shape[] = []
   for (const sx of [-1, 1]) {
-    // eyes: a white half sunk into the face, a dark iris on it
+    // eyes: a white half sunk into the face, an iris on it — painted white, it takes the person's eye colour (the
+    // head's second colour), with a dark pupil in its middle
     parts.push(
       ellipsoid(0.016, 0.011, 0.008, 7, 3)
         .place(onFace(sx * 0.036, 0.016, 0.004))
         .fill(WHITE, 0),
     )
-    parts.push(
-      ellipsoid(0.009, 0.0095, 0.006, 7, 3)
-        .place(onFace(sx * 0.036, 0.016, -0.0035))
-        .fill(EYE, 0),
-    )
+    const iris = ellipsoid(0.009, 0.0095, 0.006, 7, 3)
+      .fill([1, 1, 1], 0)
+      .pattern((_x, _y, z) => 0.5 + (z / 0.006 - 0.75) * 4, PUPIL)
+      .place(onFace(sx * 0.036, 0.016, -0.0035))
+    irises.push(iris)
+    parts.push(iris)
     parts.push(tube([onFace(sx * 0.018, 0.04, 0.0015), onFace(sx * 0.037, 0.046, 0.0015), onFace(sx * 0.055, 0.042, 0.0015)], 0.0045, { seg: 5, steps: 1, round: [0.004, 0.004] }).fill(BROW, 0))
     // ears
     parts.push(
@@ -260,7 +267,7 @@ function head(): Shape {
     )
   }
   parts.push(tube([onFace(-0.024, -0.058, 0.002), onFace(0, -0.062, 0.002), onFace(0.024, -0.058, 0.002)], 0.005, { seg: 5, steps: 2, round: [0.004, 0.004] }).fill(LIPS, 0))
-  return merge(...parts)
+  return { shape: merge(...parts), eyes: parts.flatMap((p) => Array<number>(p.count).fill(irises.includes(p) ? 1 : 0)) }
 }
 
 /** How far a point is above the hair-line (higher at the brow, lower at the nape): the hair covers where it is > 0. */
@@ -308,7 +315,73 @@ function hairBun(): Shape {
   return merge(hairCap(), bun).shade((_x, y) => 0.85 + 0.15 * smoothstep(-0.05, 0.15, y))
 }
 
-/** A straw sun hat: a wide brim, a round crown and a band. */
+/** Where the curls are: lumps about 3 cm across (0..1). */
+const curl = (x: number, y: number, z: number) => fbm3(x * 30, y * 30, z * 30, 11, 2)
+
+/** Curly hair: a fuller crop of curls over the top, back and sides, its edge tucked into the scalp at the hair-line as
+ *  the others are (the curls flatten out towards it). */
+function hairCurly(): Shape {
+  const hair = column(
+    [
+      [-0.07, 0.1, 0.11, -0.004],
+      [-0.01, 0.114, 0.126, -0.004],
+      [0.055, 0.118, 0.13, -0.008],
+      [0.115, 0.1, 0.112, -0.014],
+    ],
+    { seg: 20, steps: 2, round: [0, 0.06] },
+  ).keep((x, y, z) => aboveHairline(x, y, z) > 0)
+  // how far each vertex is from the cut edge (the hair-line as the triangles left it)
+  const edge = fromEdge(hair)
+  const n = hair.normals()
+  for (let k = 0; k < hair.count; k++) {
+    const o = k * 3
+    const [x, y, z] = [hair.p[o], hair.p[o + 1], hair.p[o + 2]]
+    const near = 1 - Math.min(1, edge[k] / 0.03)
+    // the curls: lumps a few centimetres across, smoothing out towards the edge…
+    const d = (0.026 * (curl(x, y, z) - 0.45) + 0.004) * (1 - near)
+    // …which comes in towards the middle of the head, into the scalp
+    const k2 = 1 - 0.22 * near
+    hair.p[o] = (x + n[o] * d) * k2
+    hair.p[o + 1] = y + n[o + 1] * d
+    hair.p[o + 2] = (z + n[o + 2] * d + 0.006) * k2 - 0.006
+  }
+  // darker between the curls
+  return hair.shade((x, y, z) => (0.85 + 0.15 * smoothstep(-0.05, 0.14, y)) * (0.68 + 0.32 * smoothstep(0.32, 0.62, curl(x, y, z))))
+}
+
+/** How far each vertex of a shape is from its open edge (the vertices on an edge only one triangle has), in metres. */
+function fromEdge(s: Shape): number[] {
+  const uses = new Map<string, number>()
+  const key = (a: number, b: number) => (a < b ? `${a},${b}` : `${b},${a}`)
+  for (let k = 0; k < s.i.length; k += 3)
+    for (let e = 0; e < 3; e++) {
+      const id = key(s.i[k + e], s.i[k + ((e + 1) % 3)])
+      uses.set(id, (uses.get(id) ?? 0) + 1)
+    }
+  const rim = new Set<number>()
+  for (const [id, n] of uses) if (n === 1) for (const v of id.split(',')) rim.add(Number(v))
+  const p = s.p
+  return Array.from({ length: s.count }, (_, k) => {
+    let best = Infinity
+    for (const r of rim) best = Math.min(best, Math.hypot(p[k * 3] - p[r * 3], p[k * 3 + 1] - p[r * 3 + 1], p[k * 3 + 2] - p[r * 3 + 2]))
+    return best
+  })
+}
+
+/** A ponytail: the hair drawn back over the skull and tied at the back of the head, the tail hanging down the neck. */
+function hairPony(): Shape {
+  const tie: V3 = [0, 0.035, -0.126]
+  const tail = tube([[0, 0.04, -0.098], tie, [0, 0.005, -0.152], [0, -0.065, -0.158], [0, -0.135, -0.146], [0, -0.2, -0.124]], [0.022, 0.015, 0.03, 0.028, 0.02, 0], {
+    seg: 8,
+    steps: 1,
+    round: [0.012, 0],
+  })
+    // the band round it, a darker shade of the hair
+    .pattern((_x, y, z) => 0.5 + (0.007 - Math.hypot(y - tie[1], z - tie[2])) * 160, [0.45, 0.45, 0.45])
+  return merge(hairCap(), tail).shade((_x, y) => 0.82 + 0.18 * smoothstep(-0.2, 0.12, y))
+}
+
+/** A straw sun hat: a wide brim, a round crown and a band (painted white: it takes the person's hat colour). */
 function hat(): Shape {
   const brim = lathe(
     [
@@ -342,18 +415,118 @@ function hat(): Shape {
       [0.1145, 0.125],
     ],
     { seg: 14, steps: 1 },
-  ).fill(BAND, 0)
+  ).fill([1, 1, 1], 1)
   return merge(straw, band)
 }
 
+/** A hat's edge sits higher over the brow than at the nape: the rings low on the crown rise towards the front. */
+const overTheBrow =
+  (rise: number) =>
+  (x: number, y: number, z: number): V3 => [x, y + rise * smoothstep(-0.04, 0.1, z) * (1 - smoothstep(0.06, 0.13, y)), z]
+/** The face is flatter than the back of the head: a hat's crown follows it (as the skull's rings do). */
+const faceFlat = (a: number) => 1 - 0.07 * Math.max(0, Math.sin(a)) ** 4
+
+/** A cap: a snug crown and a peak over the brow, all in the person's hat colour (the contractor's yellow one is his
+ *  hard hat). Its lower edge comes in under itself, into the head, so no gap shows under it. */
+function cap(): Shape {
+  const crown = column(
+    [
+      [0.022, 0.093, 0.103, -0.006],
+      [0.045, 0.11, 0.123, -0.006],
+      [0.11, 0.095, 0.107, -0.01],
+    ],
+    { seg: 14, steps: 2, round: [0, 0.058], shape: faceFlat },
+  ).warp(overTheBrow(0.035))
+  const peak = loft(
+    [
+      { c: [0, 0.086, 0.07], rx: 0.088, ry: 0.006 },
+      { c: [0, 0.082, 0.145], rx: 0.082, ry: 0.006 },
+      { c: [0, 0.07, 0.2], rx: 0.05, ry: 0.005 },
+    ],
+    { seg: 12, steps: 2, up: [0, 1, 0], shape: (a) => squircle(a, 5), caps: [true, true] },
+  )
+    // curved down at its sides
+    .warp((x, y, z) => [x, y - 2.4 * x * x, z])
+    .shade(() => 0.86)
+  return merge(crown, peak)
+}
+
+/** A knitted beanie: a dome over the head down to the tops of the ears, a turned-up cuff, ribs, a pompom; in the
+ *  person's hat colour (the ribs a darker shade of it). */
+function beanie(): Shape {
+  const RIB = [0.78, 0.78, 0.78] as V3
+  const body = column(
+    [
+      [0.004, 0.091, 0.101, -0.006],
+      [0.02, 0.109, 0.122, -0.006],
+      [0.068, 0.112, 0.125, -0.008],
+      [0.078, 0.105, 0.118, -0.008],
+      [0.13, 0.098, 0.11, -0.012],
+      [0.17, 0.068, 0.078, -0.016],
+    ],
+    { seg: 16, round: [0, 0.032], shape: faceFlat },
+  )
+    // a rib every two of its sixteen sides
+    .pattern((x, _y, z) => 0.5 + 0.7 * Math.sin(Math.atan2(x, z + 0.01) * 8), RIB)
+    .shade((_x, y) => (y < 0.072 ? 1 : 0.93))
+    .warp(overTheBrow(0.045))
+  const pompom = blob(0.032, 1, (x, y, z) => 0.12 * Math.sin(x * 40) * Math.sin(y * 37 + z * 29)).place([0, 0.198, -0.016])
+  return merge(body, pompom)
+}
+
+/** The manager's tie, down the front of his shirt: a knot under the collar and its blade, lying on the shirt (found
+ *  where a ray from in front meets the torso, as the face's features are). */
+function tie(): Shape {
+  const shirt = torso()
+  const front = (y: number, out: number): V3 => {
+    const hit = shirt.raycast([0, y, 0.4], [0, 0, -1])
+    return [0, y, (hit ? hit.point[2] : 0.1) + out]
+  }
+  const knot = ellipsoid(0.014, 0.016, 0.01, 8, 4).place(front(0.548, 0.002))
+  const ys = [0.535, 0.47, 0.4, 0.33, 0.27, 0.235]
+  const widths = [0.01, 0.013, 0.018, 0.023, 0.026, 0]
+  const blade = loft(
+    ys.map((y, k) => ({ c: front(y, 0.003), rx: widths[k], ry: k === ys.length - 1 ? 0 : 0.0035 })),
+    { seg: 6, steps: 1, up: [0, 0, 1], shape: (a) => squircle(a, 4), caps: [true, false] },
+  )
+  return merge(
+    knot.shade(() => 0.85),
+    blade,
+  ).paint(() => TIE, 0)
+}
+
 export type PersonPart =
-  'pelvis' | 'torso' | 'upperArm' | 'forearmL' | 'forearmR' | 'forearmRBare' | 'thigh' | 'shin' | 'thighSeated' | 'shinSeated' | 'head' | 'hairShort' | 'hairLong' | 'hairBun' | 'hat'
+  | 'pelvis'
+  | 'torso'
+  | 'upperArm'
+  | 'forearmL'
+  | 'forearmR'
+  | 'forearmRBare'
+  | 'thigh'
+  | 'shin'
+  | 'thighSeated'
+  | 'shinSeated'
+  | 'head'
+  | 'hairShort'
+  | 'hairLong'
+  | 'hairBun'
+  | 'hairCurly'
+  | 'hairPony'
+  | 'hat'
+  | 'cap'
+  | 'beanie'
+  | 'tie'
 
 let made: Record<PersonPart, BufferGeometry> | null = null
 
 /** Every part of a person (built once, then shared by the crowd). */
 export function personGeometries(): Record<PersonPart, BufferGeometry> {
-  made ??= {
+  if (made) return made
+  const h = head()
+  const headGeometry = h.shape.geometry()
+  // where the head's second colour (the eyes') applies
+  headGeometry.setAttribute('tint2', new BufferAttribute(new Float32Array(h.eyes), 1))
+  made = {
     pelvis: pelvis().geometry(),
     torso: torso().geometry(),
     upperArm: upperArm().geometry(),
@@ -366,16 +539,22 @@ export function personGeometries(): Record<PersonPart, BufferGeometry> {
     // a seated person's legs (the tractor's driver), their ends rounded off
     thighSeated: thigh(true).geometry(),
     shinSeated: shin(true).geometry(),
-    head: head().geometry(),
+    head: headGeometry,
     hairShort: hairShort().geometry(),
     hairLong: hairLong().geometry(),
     hairBun: hairBun().geometry(),
+    hairCurly: hairCurly().geometry(),
+    hairPony: hairPony().geometry(),
     hat: hat().geometry(),
+    cap: cap().geometry(),
+    beanie: beanie().geometry(),
+    tie: tie().geometry(),
   }
   return made
 }
 
-export const HAIR_PARTS: PersonPart[] = ['hairShort', 'hairLong', 'hairBun']
+/** The hair styles, in the order of a look's `hairStyle`: short, long, a bun, curly, a ponytail. */
+export const HAIR_PARTS: PersonPart[] = ['hairShort', 'hairLong', 'hairBun', 'hairCurly', 'hairPony']
 
 // ───────────────────────────── drawing and posing ─────────────────────────────
 
@@ -383,7 +562,8 @@ const CLOTH = { roughness: 0.88, detail: { scale: 260, bump: 0.0015, shade: 0.07
 const SKIN = { roughness: 0.6 }
 const HAIR = { roughness: 0.55, detail: { scale: 160, bump: 0.0025, shade: 0.16 } }
 
-/** Instanced draws for a crowd of up to `max` people. */
+/** Instanced draws for a crowd of up to `max` people. A part nobody in view wears (a hair style, a hat, the tie) is
+ *  not drawn. */
 export function personParts(max: number): Parts {
   const g = personGeometries()
   const defs: Record<string, PartDef> = {
@@ -392,38 +572,70 @@ export function personParts(max: number): Parts {
     upperArm: { geometry: g.upperArm, max: max * 2, material: CLOTH },
     forearmL: { geometry: g.forearmL, max, material: SKIN },
     forearmR: { geometry: g.forearmR, max, material: SKIN },
-    forearmRBare: { geometry: g.forearmRBare, max: 2, material: SKIN },
+    // a right hand with no basket: the tractor's driver, the manager, the contractor (anyone the crowd draws may be one)
+    forearmRBare: { geometry: g.forearmRBare, max, material: SKIN },
     thigh: { geometry: g.thigh, max: max * 2, material: CLOTH },
     shin: { geometry: g.shin, max: max * 2, material: CLOTH },
     thighSeated: { geometry: g.thighSeated, max: 2, material: CLOTH },
     shinSeated: { geometry: g.shinSeated, max: 2, material: CLOTH },
-    head: { geometry: g.head, max, material: SKIN },
+    // the skin is the head's colour, the eyes its second
+    head: { geometry: g.head, max, material: { ...SKIN, tint2: true } },
     hairShort: { geometry: g.hairShort, max, material: HAIR },
     hairLong: { geometry: g.hairLong, max, material: HAIR },
     hairBun: { geometry: g.hairBun, max, material: HAIR },
+    hairCurly: { geometry: g.hairCurly, max, material: HAIR },
+    hairPony: { geometry: g.hairPony, max, material: HAIR },
     hat: { geometry: g.hat, max, material: { roughness: 0.9 } },
+    cap: { geometry: g.cap, max, material: { roughness: 0.9 } },
+    beanie: { geometry: g.beanie, max, material: CLOTH },
+    tie: { geometry: g.tie, max, material: SKIN },
     shadow: shadowPart(max, 0.24),
   }
   return new Parts(defs, 'people')
 }
 
+/** A hat, and which: `true` is the straw hat (as saves from before kept it), `false` none. */
+export type HatKind = 'straw' | 'cap' | 'beanie'
+
+/** How a person looks. The first fields are what every save has; the rest are the people engine's
+ *  (src/models/look.ts: rollLook makes them, sanitizeLook fills in what an older save lacks) and each has a default. */
 export interface PersonLook {
   shirt: Color | number | string
   trousers: Color | number | string
   skin: Color | number | string
   hair: Color | number | string
-  /** 0 short, 1 long, 2 a bun */
+  /** 0 short, 1 long, 2 a bun, 3 curly, 4 a ponytail */
   hairStyle: number
-  hat: boolean
+  hat: boolean | HatKind
   /** 1 is the player's own size */
   height: number
   /** a basket on the right arm (the buyers'; the tractor's driver has none) */
   basket?: boolean
   /** sits (the tractor's driver): legs whose ends are closed, for knees and hips bent far */
   seated?: boolean
+  /** the body's build: 'f' a little narrower at the shoulders and wider at the hips */
+  sex?: 'f' | 'm'
+  /** the shoulders', the hips' and the head's size against the built one (1) */
+  shoulders?: number
+  hips?: number
+  head?: number
+  /** the eyes' colour */
+  eyes?: Color | number | string
+  /** the hat's colour: the straw hat's band, the whole of a cap or a beanie */
+  hatBand?: Color | number | string
+  /** something worn for work: the manager's tie */
+  extra?: 'tie'
 }
 
-/** One person's joints (posed by turning them) and the parts that hang from them. */
+/** The hat's colour when a look has none of its own (the straw hat's band, as it always was). */
+export const HAT_BAND = '#8a4b3a'
+/** Over curls a hat sits a size up. */
+const OVER_CURLS = 1.08
+
+/** One person's joints (posed by turning them) and the parts that hang from them. The look's sizes are the joints'
+ *  scales: the height scales the whole body from the hips; `hips` widens the pelvis and spreads the legs (the hip
+ *  joints, thighs and shins scaled across, so they keep fitting it); `shoulders` widens the shirt and sets the arms
+ *  further out; `head` scales the head, its hair and its hat. */
 export class PersonRig {
   readonly root = new Group()
   readonly hips: Group
@@ -436,26 +648,35 @@ export class PersonRig {
   readonly armR: Group
   readonly elbowL: Group
   readonly elbowR: Group
-  private pieces: { node: Object3D; part: string; color?: Color }[] = []
+  private pieces: { node: Object3D; part: string; color?: Color; color2?: Color }[] = []
 
   constructor(look: PersonLook) {
     const shirt = new Color(look.shirt)
     const trousers = new Color(look.trousers)
     const skin = new Color(look.skin)
     const hair = new Color(look.hair)
+    const eyes = new Color(look.eyes ?? EYES)
+    const wide = { hips: look.hips ?? 1, shoulders: look.shoulders ?? 1, head: look.head ?? 1 }
     const joint = (parent: Object3D, x: number, y: number, z: number) => {
       const g = new Group()
       g.position.set(x, y, z)
       parent.add(g)
       return g
     }
-    const piece = (node: Object3D, part: string, color?: Color) => this.pieces.push({ node, part, color })
+    const piece = (node: Object3D, part: string, color?: Color, color2?: Color) => this.pieces.push({ node, part, color, color2 })
     this.hips = joint(this.root, 0, PERSON.hipsY * look.height, 0)
     this.hips.scale.setScalar(look.height)
-    piece(this.hips, 'pelvis', trousers)
-    piece(this.hips, 'torso', shirt)
+    const seat = joint(this.hips, 0, 0, 0)
+    seat.scale.x = wide.hips
+    piece(seat, 'pelvis', trousers)
+    const chest = joint(this.hips, 0, 0, 0)
+    chest.scale.x = wide.shoulders
+    piece(chest, 'torso', shirt)
+    if (look.extra === 'tie') piece(chest, 'tie')
     const leg = (side: 1 | -1) => {
-      const thigh = joint(this.hips, side * PERSON.hipX, 0, 0)
+      const thigh = joint(this.hips, side * PERSON.hipX * wide.hips, 0, 0)
+      // (across only: the thigh turns about x, so the knee and the shin under it stay in proportion)
+      thigh.scale.x = wide.hips
       piece(thigh, look.seated ? 'thighSeated' : 'thigh', trousers)
       const knee = joint(thigh, 0, PERSON.kneeY, 0)
       piece(knee, look.seated ? 'shinSeated' : 'shin', trousers)
@@ -464,7 +685,7 @@ export class PersonRig {
     ;[this.thighL, this.kneeL] = leg(1)
     ;[this.thighR, this.kneeR] = leg(-1)
     const arm = (side: 1 | -1) => {
-      const shoulder = joint(this.hips, side * PERSON.shoulder[0], PERSON.shoulder[1], 0)
+      const shoulder = joint(this.hips, side * PERSON.shoulder[0] * wide.shoulders, PERSON.shoulder[1], 0)
       piece(shoulder, 'upperArm', shirt)
       const elbow = joint(shoulder, 0, PERSON.elbowY, 0)
       piece(elbow, side > 0 ? 'forearmL' : look.basket === false ? 'forearmRBare' : 'forearmR', skin)
@@ -473,9 +694,16 @@ export class PersonRig {
     ;[this.armL, this.elbowL] = arm(1)
     ;[this.armR, this.elbowR] = arm(-1)
     this.head = joint(this.hips, 0, PERSON.headY, 0)
-    piece(this.head, 'head', skin)
-    piece(this.head, HAIR_PARTS[look.hairStyle % HAIR_PARTS.length], hair)
-    if (look.hat) piece(this.head, 'hat')
+    this.head.scale.setScalar(wide.head)
+    piece(this.head, 'head', skin, eyes)
+    const style = HAIR_PARTS[look.hairStyle % HAIR_PARTS.length]
+    piece(this.head, style, hair)
+    const hat = look.hat === 'cap' || look.hat === 'beanie' ? look.hat : look.hat ? 'hat' : null
+    if (hat) {
+      const crown = joint(this.head, 0, 0, 0)
+      if (style === 'hairCurly') crown.scale.setScalar(OVER_CURLS)
+      piece(crown, hat, new Color(look.hatBand ?? HAT_BAND))
+    }
     // a soft shadow on the ground (people do not draw into the sun's shadow map: it would redraw every frame)
     const shadow = joint(this.root, 0, 0.006, 0)
     shadow.scale.set(0.3, 1, 0.26)
@@ -486,6 +714,6 @@ export class PersonRig {
   write(parts: Parts) {
     this.root.updateMatrixWorld(true)
     parts.at(0, 0, 0)
-    for (const p of this.pieces) parts.putMatrix(p.part, p.node.matrixWorld, p.color)
+    for (const p of this.pieces) parts.putMatrix(p.part, p.node.matrixWorld, p.color, p.color2)
   }
 }

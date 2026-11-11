@@ -1,5 +1,12 @@
 import { GoalsPanel, useGoalsReady } from './GoalsPanel'
 import { AwayPanel, AwayWatcher } from './AwayPanel'
+import { LevelUp, XpChip } from './XpChip'
+import { DayChip } from './DayChip'
+import { ManagerPanel, MarketBuyPanel, MarketPanel, MarketPlacePanel } from './MarketPanel'
+import { ContractorPanel } from './ContractorPanel'
+import { LadderCard } from './Ladder'
+import './Xp.css'
+import './MarketPanel.css'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { farmSound, placeSound, uiClick } from '../audio/sound'
 import { coarsePointer } from '../lib/device'
@@ -87,6 +94,8 @@ function FarmChip() {
         <StoreChip key={id} id={id} />
       ))}
       <GoalsChip />
+      <DayChip />
+      <XpChip />
     </div>
   )
 }
@@ -536,6 +545,13 @@ export function FarmUI() {
       {panel?.kind === 'office-upgrade' && <OfficeUpgradePanel id={panel.id} />}
       {panel?.kind === 'away' && <AwayPanel />}
       {panel?.kind === 'goals' && <GoalsPanel />}
+      {panel?.kind === 'manager' && <ManagerPanel />}
+      {panel?.kind === 'market' && <MarketPanel />}
+      {panel?.kind === 'market-place' && <MarketPlacePanel place={panel.place} />}
+      {panel?.kind === 'market-buy' && <MarketBuyPanel />}
+      {panel?.kind === 'contractor' && <ContractorPanel />}
+      {panel?.kind === 'ladder' && <LadderCard id={panel.id} />}
+      <LevelUp />
       <AwayWatcher />
     </>
   )

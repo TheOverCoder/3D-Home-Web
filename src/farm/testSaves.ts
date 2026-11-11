@@ -4,8 +4,12 @@ import {
   buildBed,
   buy,
   buyLand,
+  buyFromContractor,
+  buyLadder,
+  buyMarket,
   buyOffice,
   buyPiece,
+  claimLevel,
   collect,
   collectMachine,
   currentSlot,
@@ -13,6 +17,7 @@ import {
   declineOrder,
   farm,
   fillOrder,
+  fillPlace,
   fixBed,
   freeSpotFor,
   harvestBeds,
@@ -24,7 +29,10 @@ import {
   plant,
   resetFarm,
   saveFarm,
+  sellToContractor,
+  sellToManager,
   sendOrder,
+  setPlacePrice,
   spawnVisitor,
   storePiece,
   switchSlot,
@@ -166,13 +174,17 @@ export function seeded(seed: number) {
  *  oven and the loom done, the mill at work; five buyers in a line of seven; the barn made bigger once, a building
  *  material or two kept; four orders on the board, one half filled, one sent (its crates out on the tractor) and one
  *  declined (a new one on its way); the pouf moved, a plant put away, a stool bought and stood in the kitchen, a plant
- *  bought and waiting in storage. The same every time (its buyers' looks and names, its orders, come from a seed). */
+ *  bought and waiting in storage; XP from all of it, a level's coins claimed and more waiting; the manager's rate at its
+ *  top and the shop bought, a place and a quicker pace more, four places stocked (one dearer), a shopper's coins in the
+ *  till; the contractor's day: a log stack sold to him, one of his pieces bought, his price a step lower. The same every
+ *  time (its buyers' looks and names, its orders, the contractor's pieces come from a seed). */
 export function playedSave(): Record<string, unknown> {
   const random = vi.spyOn(Math, 'random').mockImplementation(seeded(7))
   try {
     resetFarm()
-    farm.coins = 5000
+    farm.coins = 9000
     for (const u of ['east', 'west', 'cow', 'cow', 'sheep', 'hen', 'hen', 'compost', 'queue', 'queue', 'pace'] as const) buy(u)
+    claimLevel()
     buildBed(4)
     buyLand('north')
     buyLand('east')
@@ -223,6 +235,26 @@ export function playedSave(): Record<string, unknown> {
     sendOrder(1)
     declineOrder(2)
     tick(6)
+    // the manager: a sale, his rate to its top, the shop bought; two of the shop's ladders; four places stocked, a
+    // shopper's two lettuces paid for in the till
+    farm.inv.pumpkin = 3
+    sellToManager('pumpkin')
+    for (let k = 0; k < 4; k++) buyLadder('rate')
+    buyMarket()
+    buyLadder('places')
+    buyLadder('pace')
+    Object.assign(farm.inv, { lettuce: 9, carrot: 5, pumpkin: 2 })
+    fillPlace(0, 'lettuce', 3)
+    fillPlace(1, 'carrot', 2)
+    fillPlace(2, 'pumpkin', 1)
+    fillPlace(3, 'lettuce', 3)
+    setPlacePrice(1, 150)
+    farm.market.shelves[0].units -= 2
+    farm.market.till = { coins: 6, goods: 2 }
+    // the contractor's day: logs sold to him, a piece bought, a better deal
+    sellToContractor('log')
+    buyFromContractor(0)
+    buyLadder('discount')
     movePiece('pouf', { x: -1.5, z: 1.5, rot: 0 })
     storePiece('plant-studio')
     buyPiece('stool')

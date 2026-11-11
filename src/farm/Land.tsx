@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { CuboidCollider, RigidBody } from '@react-three/rapier'
 import { Group, Mesh, MeshStandardMaterial, Vector2 } from 'three'
+import { GARDEN, GATE } from '../data/layout'
 import { debugSet } from '../lib/debug'
 import { surface } from '../lib/proceduralTextures'
 import { build, buildWhole } from './landGeometry'
-import { type FarmLayout, type ParcelId } from './layout'
+import { lotEdges, type Edge, type FarmLayout, type ParcelId } from './layout'
 import { farm, useFarm } from './state'
 
 // The land the farm owns, drawn round its edge: a clipped hedge along the sides that face north and west, a
@@ -12,9 +13,29 @@ import { farm, useFarm } from './state'
 // with the farm gate in the garden's south fence and a gap in the west hedge where the tractor's track goes out (its
 // gate: src/farm/OrderYard.tsx); and the woods beyond (made in landGeometry.ts). Buying a field moves all of it out
 // round the new land: the woods step back so the field is open ground, and from the lane and the tractor's track.
+// Through the gate (src/farm/GardenGate.tsx) is the lot across the lane (src/data/market.ts): invisible walls close it
+// where nothing else does (`lotEdges`), and the walk-in buildings' own walls close the rest.
+
+const GATE_L = GATE.x - GATE.width / 2
+const GATE_R = GATE.x + GATE.width / 2
+
+/** A wall's collider along a run of an edge, from `a` to `b`: `depth` thick each way, `shift` out from its line. */
+function along(key: string, e: Edge, a: number, b: number, depth: number, shift: number) {
+  const half = (b - a) / 2
+  const mid = (a + b) / 2
+  return e.axis === 'x' ? (
+    <CuboidCollider key={key} args={[half, 1.2, depth]} position={[mid, 1.2, e.at + shift]} />
+  ) : (
+    <CuboidCollider key={key} args={[depth, 1.2, half]} position={[e.at + shift, 1.2, mid]} />
+  )
+}
+
+/** Which way is out of an edge, as a sign on its axis. */
+const outward = (e: Edge) => (e.out === 'south' || e.out === 'east' ? 1 : -1)
 
 function Boundary({ layout }: { layout: FarmLayout }) {
   const built = useMemo(() => build(layout), [layout])
+  const lot = useMemo(() => lotEdges(layout), [layout])
   const mats = useMemo(() => {
     const leaves = surface('grass', 1, 1)
     const bark = surface('veneer', 1, 1)
@@ -84,21 +105,24 @@ function Boundary({ layout }: { layout: FarmLayout }) {
       </group>
       {built.fence && <mesh geometry={built.fence} material={mats.fence} castShadow receiveShadow />}
       <mesh geometry={built.wood} material={mats.wood} />
-      {/* the boundary is solid all round (you sell over the gate, you do not walk out of it) */}
+      {/* the boundary is solid all round but for the gate in the garden's south fence, the way to the lot; the lot is
+          closed by invisible walls where nothing else closes it, and the contractor's cabin stands in it */}
       <RigidBody type="fixed" colliders={false}>
-        {built.edges.map((e, i) => {
+        {built.edges.flatMap((e, i) => {
           const hedge = e.out === 'north' || e.out === 'west'
-          const half = (e.to - e.from) / 2 + 0.05
           const depth = hedge ? 0.5 : 0.1
           // a fence's collider sits just outside its line
-          const shift = hedge ? 0 : e.out === 'south' || e.out === 'east' ? 0.05 : -0.05
-          const mid = (e.from + e.to) / 2
-          return e.axis === 'x' ? (
-            <CuboidCollider key={i} args={[half, 1.2, depth]} position={[mid, 1.2, e.at + shift]} />
-          ) : (
-            <CuboidCollider key={i} args={[depth, 1.2, half]} position={[e.at + shift, 1.2, mid]} />
-          )
+          const shift = hedge ? 0 : 0.05 * outward(e)
+          const gate = e.axis === 'x' && e.at === GARDEN.maxZ && e.from < GATE_L && e.to > GATE_R
+          const runs = gate
+            ? [
+                [e.from - 0.05, GATE_L],
+                [GATE_R, e.to + 0.05],
+              ]
+            : [[e.from - 0.05, e.to + 0.05]]
+          return runs.map(([a, b], k) => along(`${i}.${k}`, e, a, b, depth, shift))
         })}
+        {lot.map((e, i) => along(`lot${i}`, e, e.from - 0.05, e.to + 0.05, 0.1, 0.05 * outward(e)))}
       </RigidBody>
     </group>
   )

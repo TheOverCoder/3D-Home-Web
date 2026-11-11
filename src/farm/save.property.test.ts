@@ -8,6 +8,9 @@ import { endsWithin } from '../lib/endsWithin'
 import {
   BEDS,
   CROPS,
+  ITEMS,
+  LADDERS,
+  LADDER_IDS,
   MACHINES,
   MACHINE_IDS,
   NAMES,
@@ -17,6 +20,7 @@ import {
   PRODUCER_IDS,
   QUEUE_LEVELS,
   SELLABLE,
+  SHOP,
   SLOT_LEVELS,
   STORE_IDS,
   TRACTOR,
@@ -29,6 +33,10 @@ import {
 } from './data'
 import { GOAL_IDS, MOST_STEPS } from './goals'
 import { PARCELS, PARCEL_IDS, PLACE_IDS, canPlace } from './layout'
+import { MAX_PLACES, SHOP_LADDERS, placesOpen, shopperEvery } from './market'
+import { offersPerDay } from './contractor'
+import { levelOf } from './xp'
+import { sanitizeLook } from '../models/look'
 import { arrivalSeconds, farm, gateX, inLine, placesInLine, tick } from './state'
 import { tripSeconds } from './tractorRoute'
 import { OLD_SAVE, OLD_SAVE_2, playedSave, savedNow, seeded, startFrom } from './testSaves'
@@ -156,7 +164,10 @@ const OLD_PARTS: Record<string, string> = {
  *  - the layout is one part: a field not bought sends the places on it home, and one place sent home can send all home;
  *    the west meadow bought or not moves the tractor's gate, and so how long its trip is (dispatch)
  *  - the office's upgrades → the order board: as many places, and no wait longer than the office's
- *  - the time it was saved also → the orders on their way (they come in) and the tractor's trip (it goes on)
+ *  - the time it was saved also → the orders on their way (they come in) and the tractor's trip (it goes on); the
+ *    shop's visits (its shelves, its till, the countdown), the day's clock and the contractor's new day
+ *  - the ladders → the market (how many places are open, the longest wait for a visit) and the contractor (how many
+ *    pieces a day); the market (whether the shop is yours) → the ladders (the shop's own are 0 until it is)
  */
 function alsoChanges(part: string): RegExp | null {
   if (part.startsWith('expansions')) return /^beds\./
@@ -166,8 +177,12 @@ function alsoChanges(part: string): RegExp | null {
   if (herd) return new RegExp(`^producers\\.${herd[1]}\\.(stock|timer)$`)
   if (part === 'queueLevel' || part === 'nextVisitorIn') return /^queue$/
   if (part === 'paceLevel') return /^nextVisitorIn$/
-  if (part === 'time') return /^(beds|producers|machines)\.|^nextVisitorIn$|^queue$|^orders$|^dispatch$/
+  if (part === 'time') return /^(beds|producers|machines)\.|^nextVisitorIn$|^queue$|^orders$|^dispatch$|^(market|contractor|day)$/
   if (part === 'home.pieces') return /^home\.(stored|next)$/
+  // the ladders decide how many places the shop has and how often shoppers come, and how many pieces the contractor brings
+  if (part === 'ladders' || part.startsWith('ladders.')) return /^(market|contractor)(\.|$)/
+  // the shop's own ladders count only once the shop is yours (src/farm/market.ts, clampLevels)
+  if (part === 'market' || part.startsWith('market.')) return /^ladders(\.|$)/
   return null
 }
 
@@ -178,6 +193,8 @@ function free(base: Base, path: Key[], names: string[]): (name: string) => boole
   const coupled = touched.map(alsoChanges).filter((r): r is RegExp => !!r)
   // a farm from before the goals starts each where its counts are: they follow the stats and what it has got
   if (base.old && /^(stats|got)(\.|$)/.test(at)) coupled.push(/^goals(\.|$)/)
+  // and its XP starts from what it did (src/farm/xp.ts, seedXp)
+  if (base.old && /^stats(\.|$)/.test(at)) coupled.push(/^xp(\.|$)/)
   return (n) => touched.includes(n) || coupled.some((r) => r.test(n))
 }
 
@@ -188,6 +205,8 @@ const isWithin = (v: unknown, lo: number, hi: number) => typeof v === 'number' &
 const sameKeys = (o: object, keys: string[]) => Object.keys(o).sort().join() === [...keys].sort().join()
 const unique = (list: unknown[]) => new Set(list).size === list.length
 const json = (v: unknown) => JSON.stringify(v)
+/** An object as JSON with its keys in order (two looks with the same traits read the same). */
+const sorted = (v: object | null) => (v ? JSON.stringify(Object.fromEntries(Object.entries(v).sort(([a], [b]) => a.localeCompare(b)))) : 'null')
 
 /** What breaks a rule every farm keeps as it runs (nothing: an empty list). */
 function farmProblems(): string[] {
@@ -252,7 +271,9 @@ function farmProblems(): string[] {
   bad('goals: each goal', sameKeys(farm.goals, GOAL_IDS) && Object.values(farm.goals).every((n) => isCount(n, MOST_STEPS)))
   bad('no more in line than its places', inLine().length <= placesInLine())
   for (const v of farm.visitors) {
-    const colours = [v.look.shirt, v.look.trousers, v.look.skin, v.look.hair].every((c) => /^#[0-9a-f]{6}$/i.test(c))
+    const colours = [v.look.shirt, v.look.trousers, v.look.skin, v.look.hair].every((c) => typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c))
+    // a whole look, as the people engine reads one back (src/models/look.ts)
+    bad(`buyer ${v.id}: a look`, sorted(sanitizeLook(v.look)) === sorted(v.look))
     bad(`buyer ${v.id}`, sellable.includes(v.want) && isCount(v.qty) && v.qty >= 1 && v.qty <= 12 && isCount(v.offer) && v.offer >= 1 && v.offer <= 999 && colours)
     bad(`buyer ${v.id}: name`, typeof v.name === 'string' && v.name.length <= 24)
     bad(`buyer ${v.id}: a surprise or none`, typeof v.gift === 'boolean')
@@ -274,6 +295,33 @@ function farmProblems(): string[] {
   const d = farm.dispatch
   bad('dispatch', sameKeys(d, ['waiting', 'aboard', 'trip']) && isCount(d.waiting) && isCount(d.aboard, TRACTOR.load))
   bad('dispatch: a trip with crates, or home', d.aboard ? isWithin(d.trip, 0, tripSeconds(d.aboard, gateX())) : d.trip === -1)
+  // levels: every point gained, whole; the level paid for from 1 up to the one reached
+  const xp = farm.xp
+  bad('xp', sameKeys(xp, ['points', 'paid']) && isCount(xp.points) && Number.isInteger(xp.paid) && xp.paid >= 1 && xp.paid <= levelOf(xp.points))
+  // the ladders: a step count each, to its top; the shop's own none until the shop is yours
+  const l = farm.ladders
+  bad('ladders: each ladder', sameKeys(l, LADDER_IDS))
+  for (const id of LADDER_IDS) bad(`ladders.${id}`, isCount(l[id], LADDERS[id].levels) && (farm.market.owned || !SHOP_LADDERS.includes(id) || l[id] === 0))
+  // the shop: ten places, those not open empty; an open place a good that sells (kept when sold out) or none, its units
+  // up to a place's, its price in range on its step; the till and the countdown; a shop not yours holds nothing
+  const m = farm.market
+  bad('market', sameKeys(m, ['owned', 'shelves', 'till', 'nextIn']) && typeof m.owned === 'boolean' && m.shelves.length === MAX_PLACES)
+  const open = m.owned ? placesOpen(l.places) : 0
+  m.shelves.forEach((sh, k) => {
+    const { min, max, step } = SHOP.pct
+    bad(`market.shelves.${k}: its fields`, sameKeys(sh, ['good', 'units', 'pct']))
+    bad(`market.shelves.${k}.good`, sh.good === null || (sellable.includes(sh.good) && k < open))
+    bad(`market.shelves.${k}.units`, isCount(sh.units, SHOP.units) && (sh.units === 0 || sh.good !== null))
+    bad(`market.shelves.${k}.pct`, isWithin(sh.pct, min, max) && Number.isInteger((sh.pct - min) / step))
+  })
+  bad('market.till', sameKeys(m.till, ['coins', 'goods']) && isCount(m.till.coins) && isCount(m.till.goods) && (m.owned || (m.till.coins === 0 && m.till.goods === 0)))
+  bad('market.nextIn', isWithin(m.nextIn, 0, shopperEvery(l.pace)))
+  // the contractor: the day his pieces are for, no more than a day has, each a building material bought or not
+  const c = farm.contractor
+  bad('contractor', sameKeys(c, ['day', 'offers']) && Number.isInteger(c.day) && c.offers.length <= offersPerDay(l.stock))
+  c.offers.forEach((o, k) => bad(`contractor.offers.${k}`, sameKeys(o, ['item', 'sold']) && (ITEMS as string[]).includes(o.item) && typeof o.sold === 'boolean'))
+  // the day: seconds of farm time, from 0
+  bad('day', sameKeys(farm.day, ['t']) && isWithin(farm.day.t, 0, Number.MAX_VALUE))
   return out
 }
 

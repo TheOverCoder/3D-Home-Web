@@ -1,7 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import fs from 'node:fs'
 import path from 'node:path'
-import { test, expect, emptyFarm, fillFarm, type Game } from './helpers'
+import { test, expect, emptyFarm, fillFarm, marketDoorStill, type Game } from './helpers'
+import { WALK_INS, type Rect, type WalkIn, type WalkInRoom } from '../../src/data/buildings'
+import { GARDEN, GATE } from '../../src/data/layout'
+import { FRONT_DOOR, HALL, ISLAND, SHELF_RUN } from '../../src/data/market'
 
 // The drawing pass that leaves out what cannot be seen (src/lib/visibility) changes how a frame is drawn, never what is
 // in it. With the farm at its fullest (every room full, every animal the shop sells, fifteen buyers, a ripe crop in
@@ -9,7 +12,9 @@ import { test, expect, emptyFarm, fillFarm, type Game } from './helpers'
 // frame, no clock: time and animation stand still) — into a half-float target, and the two must match in every
 // pixel's colour and depth; and the sun's shadow map, drawn both ways, in every texel. In first person the pass must
 // leave things out (rooms behind walls, the sun under the ceilings); in third person, decorating and the edit mode the
-// rooms and the sun must be off. At 640×360 and at a phone's 390×844.
+// rooms and the sun must be off. At 640×360 and at a phone's 390×844. Every walk-in building (WALK_INS,
+// src/data/buildings.ts) is posed from its own row; the supermarket also from the lane with the gate open, at its
+// shelves and in its south aisle, and its interior is proven to cast no shadow anyone could see.
 //
 // One case is allowed, and only when proven again: a pixel or two where today's renderer (software WebGL) draws a
 // thing that reaches across the side of the screen through the wall in front of it, with a depth it does not have
@@ -362,13 +367,51 @@ function installProbe() {
     redraw(true)
     return sameBytes(before, after)
   }
-  w.__viewProbe = { camera, shadow, land, kept, bodyMoved }
+  /** The market's interior casters (`__home.market.casters`: its fittings and goods, which do not cast; its people are the buyers' crowd, which never casts): the
+   *  camera's frame drawn with the sun's map redrawn with them in it and without — the same in every pixel (no opening
+   *  faces the sun, and the roof shades all of it), though the map took them in (the camera set by hand). */
+  const casters = (pose: number[]) => {
+    lastPose = pose
+    const cam = h.camera
+    cam.position.set(pose[0], pose[1], pose[2])
+    cam.rotation.order = 'YXZ'
+    cam.rotation.set(pose[4], pose[3], 0)
+    cam.updateMatrixWorld(true)
+    gl.info.autoReset = false
+    const draw = (on: boolean) => {
+      h.market.casters(on)
+      gl.shadowMap.needsUpdate = true
+      gl.info.reset()
+      const frame = shot()
+      return { frame, counts: { calls: gl.info.render.calls, triangles: gl.info.render.triangles }, map: mapNow() }
+    }
+    try {
+      const off = draw(false)
+      const on = draw(true)
+      const bad = differing(off.frame, on.frame)
+      return {
+        size: [off.frame.W, off.frame.H],
+        off: off.counts,
+        on: on.counts,
+        differ: bad.length,
+        pixels: bad.slice(0, 8).map((k) => [k % off.frame.W, Math.floor(k / off.frame.W)]),
+        texels: sameBytes(off.map, on.map),
+      }
+    } finally {
+      h.market.casters(false)
+      gl.info.autoReset = true
+      gl.shadowMap.needsUpdate = true
+    }
+  }
+  w.__viewProbe = { camera, shadow, land, kept, bodyMoved, casters }
 }
 
 /**
  * Runs in the page, after a comparison where pixels differed: rays from the camera through each such pixel (its
- * centre and its corners) meet the house's opaque shell before they meet anything the pass left out there — the thing
- * is behind a wall, and today's renderer only lets it through at that pixel. (three from node_modules, as 04 does.)
+ * centre and its corners) meet an opaque shell — the house's, or a walk-in building's (its group `walk-in-<id>`: from
+ * inside one, its walls are what stands between you and the farm) — before they meet anything the pass left out there:
+ * the thing is behind a wall, and today's renderer only lets it through at that pixel. (three from node_modules, as 04
+ * does.)
  */
 async function behindShell() {
   const THREE: any = await import(/* @vite-ignore */ '/__three/three.module.js')
@@ -384,14 +427,18 @@ async function behindShell() {
   }
   const shell: any[] = []
   h.scene.traverse((o: any) => {
-    if (!o.isMesh || o.isInstancedMesh) return
+    if (!o.isMesh) return
     let always = false
+    let walkIn = false
     for (let p = o; p; p = p.parent) {
       if (p.visible === false) return
       if (p.userData?.cell === 'always') always = true
+      if (typeof p.name === 'string' && p.name.startsWith('walk-in-')) walkIn = true
     }
+    // (a walk-in's shell is one instanced part: the house's is plain meshes, its instanced crowds are not shell)
+    if (!walkIn && (!always || o.isInstancedMesh)) return
     const m = o.material
-    if (always && m && !Array.isArray(m) && !m.transparent && m.opacity >= 1 && m.colorWrite !== false) shell.push(o)
+    if (m && !Array.isArray(m) && !m.transparent && m.opacity >= 1 && m.colorWrite !== false) shell.push(o)
   })
   const rc = new THREE.Raycaster()
   rc.near = cam.near
@@ -432,6 +479,10 @@ interface Pose {
   door?: boolean
   /** also compare the sun's shadow map */
   shadow?: boolean
+  /** ms to wait once there, for something that moves as you come (the garden's gate swinging open) */
+  wait?: number
+  /** the market's sliding doors as the pose means them, waited for (0 shut, 1 open); still either way otherwise */
+  marketDoor?: 0 | 1
 }
 
 const P = Math.PI
@@ -477,14 +528,127 @@ const OUTSIDE: Pose[] = [
   { name: 'yard, the office and the tractor', x: -5, z: 7.9, yaw: P / 2, pitch: -0.05, shadow: true },
 ]
 
-/** Stands the player at a pose (the kitchen's door as it says), then compares the frame there. */
-async function compareAt(game: Game, p: Pose, log: string[]) {
+const inRect = (r: Rect, x: number, z: number, margin = 0) => x >= r.x0 - margin && x <= r.x1 + margin && z >= r.z0 - margin && z <= r.z1 + margin
+/** The yaw that looks from (x, z) towards (tx, tz) (yaw 0 looks north, along −z; π/2 west). */
+const yawTo = (x: number, z: number, tx: number, tz: number) => Math.atan2(-(tx - x), -(tz - z))
+
+/**
+ * A walk-in building's poses, made from its row alone (nothing here names one: a new row is posed the same way). In
+ * first person: outside, 2.5 m out from its outer door and facing it (with the sun's map); standing in each doorway,
+ * looking into each room it opens on; each room from just inside its door, looking across to its far corner. In third
+ * person: from that spot outside (its walls must hide what is in it) and from that spot inside its first room, facing
+ * the door (the camera behind you held in the room).
+ */
+function walkInPoses(w: WalkIn) {
+  const first: Pose[] = []
+  let outside: Pose | null = null
+  // each room's way in: the middle of the first door that opens on it, and the way into the room from there
+  const ways = new Map<WalkInRoom, { x: number; z: number; dx: number; dz: number }>()
+  for (const d of w.doors) {
+    const x = (d.x0 + d.x1) / 2
+    const z = (d.z0 + d.z1) / 2
+    // a door in a wall along x is passed through along z, and the other way round
+    const [nx, nz] = d.x1 - d.x0 >= d.z1 - d.z0 ? [0, 1] : [1, 0]
+    const side = (s: number) => w.rooms.find((r) => inRect(r, x + nx * s * 0.5, z + nz * s * 0.5)) ?? null
+    for (const s of [1, -1]) {
+      const room = side(s)
+      if (!room) continue
+      if (!ways.has(room)) ways.set(room, { x, z, dx: nx * s, dz: nz * s })
+      first.push({ name: `${w.id}: in the doorway, into ${room.space}`, x, z, yaw: yawTo(x, z, x + nx * s, z + nz * s), pitch: -0.05 })
+      if (!side(-s) && !outside) {
+        const ox = x - nx * s * 2.5
+        const oz = z - nz * s * 2.5
+        outside = { name: `${w.id}: outside, facing its door`, x: ox, z: oz, yaw: yawTo(ox, oz, x, z), pitch: -0.03, shadow: true }
+      }
+    }
+  }
+  let inside: (Pose & { room: WalkInRoom }) | null = null
+  for (const room of w.rooms) {
+    const way = ways.get(room)
+    if (!way) continue
+    const x = way.x + way.dx * 0.45
+    const z = way.z + way.dz * 0.45
+    const corners = [
+      [room.x0, room.z0],
+      [room.x1, room.z0],
+      [room.x0, room.z1],
+      [room.x1, room.z1],
+    ]
+    const [cx, cz] = corners.sort((a, b) => Math.hypot(b[0] - x, b[1] - z) - Math.hypot(a[0] - x, a[1] - z))[0]
+    first.push({ name: `${w.id}: ${room.space}, from its door across to the far corner`, x, z, yaw: yawTo(x, z, cx, cz), pitch: -0.1 })
+    inside ??= { name: `${w.id}: third person in ${room.space}`, x, z, yaw: yawTo(x, z, way.x, way.z), room }
+  }
+  if (!outside || !inside) throw new Error(`${w.id}: no outer door, or no room with a door`)
+  return { first: [outside, ...first], outside: { ...outside, name: `${w.id}: third person outside` }, inside }
+}
+
+/** The supermarket's own: from the lane before the garden's gate (open: you stand within 1.8 m of it), at the shelves
+ *  along the hall's south wall (with the sun's map), along the aisle between the island and those shelves, and from the
+ *  lane before its sliding doors, open (you within 2 m of the doorway: the shop seen through them). */
+const GATE_OPEN: Pose = { name: 'market: the gate open, from the lane', x: GATE.x, z: GARDEN.maxZ + 1.3, yaw: 0, pitch: -0.05, wait: 3000 }
+const DOORS_OPEN: Pose = { name: 'market: its doors open, from the lane', x: (FRONT_DOOR.x0 + FRONT_DOOR.x1) / 2, z: FRONT_DOOR.z0 - 1.6, yaw: P, pitch: -0.05, marketDoor: 1 }
+const SHELVES: Pose = { name: 'market: the shelves', x: (SHELF_RUN.x0 + SHELF_RUN.x1) / 2, z: SHELF_RUN.z0 - 1.1, yaw: P, pitch: -0.1, shadow: true }
+const AISLE: Pose = { name: 'market: the south aisle', x: HALL.x1 - 0.6, z: (ISLAND.z1 + HALL.z1) / 2, yaw: P / 2, pitch: -0.05 }
+const MARKET: Pose[] = [GATE_OPEN, DOORS_OPEN, SHELVES, AISLE]
+
+/** Third person at a pose: the frame compared (the walls hide things far off along the top of the screen: a few more
+ *  pixels of the known edge case, each proven), the rooms and the sun not used, the sun's map the same; `walls`: the
+ *  walls must leave something out; `room`: the camera must stay inside that room, under its top. */
+async function thirdAt(game: Game, p: Pose, log: string[], opts: { walls?: boolean; room?: WalkInRoom } = {}) {
+  const { page } = game
+  await game.teleport(p.x, 1.4, p.z, p.yaw, 0)
+  await page.waitForTimeout(600)
+  await page.evaluate(() => (window as any).__home.useHome.getState().setView('third'))
+  try {
+    // the camera's flight there (about a second), and the market's sliding doors still
+    await page.waitForTimeout(2500)
+    await marketDoorStill(page)
+    const r = await page.evaluate(() => (window as any).__viewProbe.camera(null))
+    if (r.differ && r.culprits?.length) r.rays = await page.evaluate(behindShell)
+    report(log, p.name, r)
+    if (r.differ) console.log(log[log.length - 1])
+    check(p.name, r, 8)
+    expect(r.stats.portals, `${p.name}: no rooms and portals`).toBe(false)
+    if (opts.walls) expect(r.stats.wallCulled + r.stats.wallModels, `${p.name}: things behind its walls left out`).toBeGreaterThan(0)
+    if (opts.room) {
+      const c = await page.evaluate(() => ({ ...(window as any).__home.camera.position }))
+      log.push(`  the camera at ${c.x.toFixed(2)}, ${c.y.toFixed(2)}, ${c.z.toFixed(2)}`)
+      expect(inRect(opts.room, c.x, c.z, 0.02), `${p.name}: the camera inside ${opts.room.space}`).toBe(true)
+      expect(c.y, `${p.name}: the camera under the room's top`).toBeLessThanOrEqual(opts.room.top + 0.02)
+    }
+    const s = await page.evaluate(() => (window as any).__viewProbe.shadow())
+    log.push(`  sun's shadow map: ${s.after.calls} draws, ${s.culled} casters left out, ${s.differ} bytes differ`)
+    expect(s.sun, `${p.name}: the sun's pass is whole`).toBe(false)
+    expect(s.differ).toBe(0)
+  } finally {
+    await page.evaluate(() => (window as any).__home.useHome.getState().setView('first'))
+    // back in first person: once the camera is home, the pass is back
+    await page.waitForFunction(() => (window as any).__home.view.stats.portals === true, null, { timeout: 30_000, polling: 250 })
+  }
+}
+
+/** At a pose, the market's interior casters on and off: the same frame, every pixel; and the map did take them in. */
+async function castersAt(game: Game, p: Pose, log: string[]) {
+  const { page } = game
+  await standAt(game, p)
+  const r = await page.evaluate((pose) => (window as any).__viewProbe.casters(pose), [p.x, p.y ?? EYE, p.z, p.yaw, p.pitch ?? 0])
+  log.push(
+    `${p.name}, the interior casting (${r.size.join('×')}): ${r.off.calls} draws / ${r.off.triangles} triangles with the sun's map → ${r.on.calls} / ${r.on.triangles}; ${r.texels} map bytes and ${r.differ} pixels differ${r.differ ? ` ${JSON.stringify(r.pixels)}` : ''}`,
+  )
+  expect(r.on.calls, `${p.name}: the interior's casters drawn into the sun's map`).toBeGreaterThan(r.off.calls)
+  expect(r.differ, `${p.name}: their shadows change no pixel`).toBe(0)
+}
+
+/** Stands the player at a pose (the kitchen's door as it says), until the camera is there and the door still. */
+async function standAt(game: Game, p: Pose) {
   const { page } = game
   await page.evaluate(
     ([x, z, yaw, door]) => {
       const h = (window as any).__home
       const s = h.useHome.getState()
       if (door !== null && s.doors['door-kitchen-bedroom'] !== door) s.toggleDoor('door-kitchen-bedroom')
+      // the market's shelves full again (shoppers take what they buy as the poses go on)
+      h.farm.marketFill?.('corn')
       // already standing there (the pose before was here too): no need to go again
       const at = h.playerState.position
       if (Math.hypot(at.x - x, at.z - z) > 0.6) h.teleport(x, 1.4, z)
@@ -516,6 +680,14 @@ async function compareAt(game: Game, p: Pose, log: string[]) {
       { timeout: 60_000, intervals: [250], message: `${p.name}: the player there and the door settled` },
     )
     .toMatchObject({ ready: true })
+  if (p.wait) await page.waitForTimeout(p.wait)
+  await marketDoorStill(page, p.marketDoor)
+}
+
+/** Stands the player at a pose, then compares the frame there. */
+async function compareAt(game: Game, p: Pose, log: string[]) {
+  const { page } = game
+  await standAt(game, p)
   const r = await page.evaluate((pose) => (window as any).__viewProbe.camera(pose), [p.x, p.y ?? EYE, p.z, p.yaw, p.pitch ?? 0])
   if (r.differ && r.culprits?.length) r.rays = await page.evaluate(behindShell)
   report(log, p.name, r)
@@ -553,7 +725,7 @@ function check(name: string, r: any, most = 2) {
   expect(r.culprits?.length, `${name}: what the pass left out there`).toBeGreaterThan(0)
   expect(r.straddles, `${name}: ${r.culprits?.join('; ')} do not reach across an edge of the screen`).toBe(true)
   expect(r.sameAsHidden, `${name}: the pass's frame is today's with ${r.culprits?.join('; ')} hidden`).toBe(true)
-  // and what was left out is behind the house's shell there: no ray through those pixels meets it first
+  // and what was left out is behind the house's shell (or a walk-in's) there: no ray through those pixels meets it first
   expect(r.rays?.length, `${name}: rays through the pixels`).toBe(r.differ)
   for (const ray of r.rays) expect(ray.behind, `${name}: pixel ${ray.pixel} — ${r.culprits?.join('; ')} at ${ray.thing} m, the shell at ${ray.shell} m`).toBe(true)
 }
@@ -606,6 +778,30 @@ test.describe('the drawing pass leaves out only what cannot be seen', () => {
     // put down in the bedroom, seen from the living room through the doorway
     await page.evaluate(() => (window as any).__home.useHome.getState().drop([2.5, 0.3, 3.4]))
     await compareAt(game, { name: 'the mug left in the bedroom, from the living room', x: -1.2, z: 3, yaw: -P / 2 }, log)
+    console.log(log.join('\n'))
+  })
+
+  test('640×360: every walk-in building — outside facing its door, in its doorways, each room; third person outside and in', async ({ game }) => {
+    await setUp(game)
+    const log: string[] = []
+    for (const w of WALK_INS) {
+      const poses = walkInPoses(w)
+      for (const p of poses.first) await compareAt(game, p, log)
+      await thirdAt(game, poses.outside, log, { walls: true })
+      await thirdAt(game, poses.inside, log, { room: poses.inside.room })
+    }
+    console.log(log.join('\n'))
+  })
+
+  test("640×360: the supermarket — the gate open from the lane, its shelves, its south aisle; its interior's shadows are never seen", async ({ game }) => {
+    await setUp(game)
+    const { page } = game
+    const log: string[] = []
+    for (const p of MARKET) await compareAt(game, p, log)
+    // its fittings and goods cast no shadow: proven unseen, inside, through its open doors and from outside them shut
+    expect(await page.evaluate(() => typeof (window as any).__home.market?.casters), '__home.market.casters').toBe('function')
+    const market = walkInPoses(WALK_INS.find((w) => w.id === 'market')!)
+    for (const p of [SHELVES, AISLE, DOORS_OPEN, ...market.first]) await castersAt(game, p, log)
     console.log(log.join('\n'))
   })
 
@@ -749,7 +945,7 @@ test.describe('the drawing pass leaves out only what cannot be seen', () => {
     console.log(log.join('\n'))
   })
 
-  test('a phone held upright (390×844): rooms, the door, the garden door, the yard and the gate', async ({ game }) => {
+  test('a phone held upright (390×844): rooms, the door, the garden door, the yard, the gate and the market', async ({ game }) => {
     await setUp(game)
     const { page } = game
     const log: string[] = []
@@ -757,7 +953,7 @@ test.describe('the drawing pass leaves out only what cannot be seen', () => {
     try {
       await page.waitForFunction(() => (window as any).__home.gl.domElement.height > (window as any).__home.gl.domElement.width, null, { timeout: 30_000 })
       await page.waitForTimeout(1500)
-      const poses = [ROOMS[0], ROOMS[2], ROOMS[4], ROOMS[6], DOORWAYS[4], DOORWAYS[6], OUTSIDE[0], OUTSIDE[2], OUTSIDE[3], OUTSIDE[4], OUTSIDE[7]]
+      const poses = [ROOMS[0], ROOMS[2], ROOMS[4], ROOMS[6], DOORWAYS[4], DOORWAYS[6], OUTSIDE[0], OUTSIDE[2], OUTSIDE[3], OUTSIDE[4], OUTSIDE[7], SHELVES]
       for (const p of poses) await compareAt(game, { ...p, name: `phone: ${p.name}`, shadow: p === ROOMS[0] }, log)
     } finally {
       await page.setViewportSize({ width: 640, height: 360 })

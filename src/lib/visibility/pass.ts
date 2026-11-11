@@ -17,7 +17,10 @@
 //             own body, drawn always by the camera, is to the sun a thing in a room like any other.
 //   walls   — the house's walls hide what lies wholly behind one of them (walls.ts): a wall fading is no wall. Every
 //             view but first person in the house (there the rooms' portals already leave out what is behind a wall):
-//             third person, decorating, the edit mode and first person outdoors.
+//             third person, decorating, the edit mode and first person outdoors; first person in the house they hide
+//             only what is outdoors (the rooms are the portals'; the outside comes in through one rectangle round every
+//             window seen, so what stands behind the wall between two windows, or inside a walk-in building's walls
+//             across the lane, is the walls' to leave out).
 //   keep    — the sun's map is drawn again only when something in it changed (Lighting.tsx's ShadowDirector, which
 //             checks in the frame's render, every matrix final, before the shadow pass: setShadowCheck): a caster
 //             that moved, but was left out of the map's last drawing and is left out now (out of the sun's view, or
@@ -215,6 +218,8 @@ let hooks: ViewHooks | null = null
 let inRender = false
 let portalsOn = false
 let wallsOn = false
+/** first person in the house: the walls hide only what is outdoors */
+let wallsOutdoorsOnly = false
 let sunOn = false
 let sunFrustum: Frustum | null = null
 let sunLight: DirectionalLight | null = null
@@ -261,11 +266,13 @@ function cameraSees(o: Object3D): boolean {
   const tag = tagOf(o)
   if (tag === ALWAYS) return true
   const byPortals = portalsOn && !(tag === OUT && portals.isStart(OUTSIDE))
-  if (!byPortals && !wallsOn) return true
+  // the walls: in the house, only for what is outdoors (what is in the rooms is the portals')
+  const byWalls = wallsOn && (tag === OUT || !wallsOutdoorsOnly)
+  if (!byPortals && !byWalls) return true
   if (!worldBox(o)) return true
   if (byPortals && !portals.seesBox(B[0], B[1], B[2], B[3], B[4], B[5], tag === OUT)) return false
-  // the walls: only a mesh drawn with the depth test (one drawn over everything shows through a wall)
-  if (!wallsOn || !(o as Mesh).isMesh || !depthTested(o as Mesh)) return true
+  // only a mesh drawn with the depth test (one drawn over everything shows through a wall)
+  if (!byWalls || !(o as Mesh).isMesh || !depthTested(o as Mesh)) return true
   if (!wallHides(B[0], B[1], B[2], B[3], B[4], B[5])) return true
   stats.wallCulled++
   return false
@@ -418,7 +425,7 @@ const modelSeen = (minX: number, minY: number, minZ: number, maxX: number, maxY:
   }
   if (crowdTag === ALWAYS) return true
   if (portalsOn && !portals.seesBox(minX, minY, minZ, maxX, maxY, maxZ, crowdTag === OUT)) return false
-  if (!wallsOn || !wallHides(minX, minY, minZ, maxX, maxY, maxZ)) return true
+  if (!wallsOn || (wallsOutdoorsOnly && crowdTag !== OUT) || !wallHides(minX, minY, minZ, maxX, maxY, maxZ)) return true
   stats.wallModels++
   return false
 }
@@ -474,8 +481,11 @@ function beforeRender(renderer: WebGLRenderer, scene: Scene, camera: Camera) {
     eye.y = e[13]
     eye.z = e[14]
     if (portalsOn) portals.update(cam.matrixWorldInverse.elements, cam.projectionMatrix.elements, cam.near, eye, h.doorOpen())
-    // the walls, where the portals do not already leave out what is behind them: any view but first person in the house
-    stats.walls = view.on && view.walls && (!portalsOn || portals.isStart(OUTSIDE)) ? updateWalls(eye.x, eye.y, eye.z, cam.near, cam.far) : 0
+    // the walls, in every view; first person in the house only for what is outdoors (the portals already leave out the
+    // rooms not seen, but let the outside in through one rectangle round every window seen: what stands behind the wall
+    // between two windows, or inside a walk-in building across the lane, is left to the walls)
+    wallsOutdoorsOnly = portalsOn && !portals.isStart(OUTSIDE)
+    stats.walls = view.on && view.walls ? updateWalls(eye.x, eye.y, eye.z, cam.near, cam.far) : 0
     wallsOn = stats.walls > 0
   } else wallsOn = false
   crowdScene = scene

@@ -72,7 +72,34 @@ import {
   waterBeds,
   yieldOf,
   type BedStage,
+  gainXp,
+  xpNow,
+  claimLevel,
+  xpEventCount,
+  sellToManager,
+  sellAllToManager,
+  buyMarket,
+  ladderOpen,
+  buyLadder,
+  fillPlace,
+  restockPlaces,
+  emptyPlace,
+  setPlacePrice,
+  takeTill,
+  shoppersNow,
+  managerNow,
+  contractorHere,
+  contractorNow,
+  contractorOffers,
+  sellToContractor,
+  buyFromContractor,
+  dayNow,
+  setHour,
+  freezeDay,
+  marketFill,
 } from './state'
+import { Market } from './Market'
+import { GardenGate, GateLeaf, useGateExclude } from './GardenGate'
 import { Cows, herd } from './Cows'
 import { Land } from './Land'
 import { dragTo, drop, turn, useEdit } from './edit'
@@ -567,15 +594,18 @@ function Structures() {
         {[-1, 1].map((s) => (
           <B key={s} size={[0.12, 1.35, 0.12]} position={[s * (GATE.width / 2), 0.675, 0]} color={WOOD_DARK} mat="veneer" tile={0.9} radius={0.01} />
         ))}
-        {Array.from({ length: 7 }, (_, i) => (
-          <B key={i} size={[0.11, 1.0, 0.03]} position={[-GATE.width / 2 + 0.16 + i * ((GATE.width - 0.32) / 6), 0.58, 0]} color={WOOD} mat="veneer" tile={0.9} radius={0.004} />
-        ))}
-        <B size={[GATE.width - 0.12, 0.08, 0.035]} position={[0, 0.32, 0.02]} color={WOOD} radius={0.004} />
-        <B size={[GATE.width - 0.12, 0.08, 0.035]} position={[0, 0.92, 0.02]} color={WOOD} radius={0.004} />
-        <B size={[0.07, 1.3, 0.03]} position={[0, 0.62, 0.035]} rotation={[0, 0, 0.62]} color={WOOD} radius={0.004} />
+        {/* the leaf: merged with the yard while shut, drawn on its own while it swings (GardenGate.tsx) */}
+        <GateLeaf />
       </group>
     </group>
   )
+}
+
+/** The yard's furniture, merged into a few draws; the gate's leaf is taken out of the merge while it swings. */
+function Yard() {
+  const exclude = useGateExclude()
+  const structures = useMemo(() => <Structures />, [])
+  return <StaticBatch exclude={exclude}>{structures}</StaticBatch>
 }
 
 /** What is solid in the yard and never moves: the shed, the stand and the shrubs (the boundary is the land's, the
@@ -667,6 +697,32 @@ function FarmClock() {
       orderAt,
       setRandom,
       gateX,
+      // levels, the supermarket, the contractor and the day (src/farm/xp.ts, market.ts, contractor.ts, day.ts)
+      gainXp,
+      xpNow,
+      claimLevel,
+      xpEventCount,
+      sellToManager,
+      sellAllToManager,
+      buyMarket,
+      ladderOpen,
+      buyLadder,
+      fillPlace,
+      restockPlaces,
+      emptyPlace,
+      setPlacePrice,
+      takeTill,
+      shoppersNow,
+      managerNow,
+      contractorHere,
+      contractorNow,
+      contractorOffers,
+      sellToContractor,
+      buyFromContractor,
+      dayNow,
+      setHour,
+      freezeDay,
+      marketFill,
     })
   }, [])
   useFrame(() => {
@@ -728,9 +784,7 @@ export function Garden() {
       )}
       <FarmClock />
       <SeedKeys />
-      <StaticBatch>
-        <Structures />
-      </StaticBatch>
+      <Yard />
       <Colliders />
       <Land />
       <Places />
@@ -745,6 +799,8 @@ export function Garden() {
       <Workshop />
       <Visitors />
       <OrderYard />
+      <GardenGate />
+      <Market />
     </group>
   )
 }

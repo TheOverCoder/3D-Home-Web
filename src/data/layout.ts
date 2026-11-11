@@ -133,6 +133,10 @@ export function groundAt(x: number, z: number): FloorKind {
 
 /** Direction of the sun (towards it). Drives both the light and the sky. */
 export const SUN: Vec3 = [12, 9, 10]
+/** The sun's shadow camera (src/scene/Lighting.tsx): it stands at SUN × scale looking at the origin and sees a box
+ *  ±half wide and tall, from near to far. Nothing moves it: a surface outside the box is drawn as if nothing shaded
+ *  it, so whatever must be shaded (a floor under a roof) has to stand inside (src/data/buildings.test.ts). */
+export const SUN_SHADOW = { scale: 1.6, half: 12, near: 1, far: 60 } as const
 
 export const SPAWN: Vec3 = [-3.5, 1.4, 1.3]
 

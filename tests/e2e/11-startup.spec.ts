@@ -1,11 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { test, expect, watchErrors, type Game } from './helpers'
+import { test, expect, watchErrors, type Game, BASE } from './helpers'
 
 // Starting up: the loading screen's account of what it downloads, the service worker keeping it on the device (a
 // second visit loads from there), the music player and the save list on the intro, the restart in light graphics
 // after the graphics context is lost while starting, and the save slots (file export / import).
 
-const BASE = 'http://localhost:4185'
 const readyButton = (page: Game['page']) =>
   page.waitForFunction(
     () => {

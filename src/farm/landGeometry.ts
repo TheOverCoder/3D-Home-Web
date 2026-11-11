@@ -1,10 +1,12 @@
 import { type BufferGeometry } from 'three'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
+import { WALK_INS, bounds } from '../data/buildings'
 import { SHRUB_SPOTS } from '../data/garden'
 import { GARDEN, GATE, LANE } from '../data/layout'
+import { CABIN } from '../data/market'
 import { fenceRun, hedgeRun, mulberry, tree, type TreeParts } from '../scene/flora'
 import { TRACTOR } from './data'
-import { boundary, ownedRects, type Edge, type FarmLayout } from './layout'
+import { boundary, ownedRects, type Edge, type FarmLayout, type Rect } from './layout'
 
 // What the farm's land is made of (src/farm/Land.tsx draws it): the hedge along the sides that face north and west, the
 // fence along those that face south and east, the woods beyond — made from seeds, the same every time for a layout.
@@ -44,30 +46,49 @@ export interface Built {
 
 const flat = (gs: BufferGeometry[]) => gs.map((g) => (g.index ? g.toNonIndexed() : g))
 
-/** The woods round the farm: a loose ring of broadleaf trees. One standing on land the farm owns has stepped back
- *  (outwards, away from the house) until it stands clear of it. */
-function woods(layout: FarmLayout): TreeParts[] {
+/** How far the woods stand clear of the land the farm owns and of the buildings beyond it, metres. */
+export const WOODS_CLEAR = 3.5
+
+/** Where the woods' trees stand: a loose ring round the farm. One standing on land the farm owns, or by a walk-in
+ *  building (src/data/buildings.ts) or the contractor's cabin, has stepped back (outwards, away from the house) until it
+ *  stands clear of it. */
+export function treeSpots(layout: FarmLayout): { x: number; z: number; height: number; seed: number }[] {
   const r = mulberry(9)
   // the same seed once laid out the shrubs: skip what it gave them, so the woods stand where they always have
   for (let i = 0; i < SHRUB_SPOTS.length; i++) r()
-  const rects = ownedRects(layout)
-  const onLand = (x: number, z: number) => rects.some((o) => x > o.minX - 3.5 && x < o.maxX + 3.5 && z > o.minZ - 3.5 && z < o.maxZ + 3.5)
-  const out: TreeParts[] = []
+  const owned = ownedRects(layout)
+  const built = [...WALK_INS.map(bounds), CABIN].map((b) => ({ minX: b.x0, maxX: b.x1, minZ: b.z0, maxZ: b.z1 }))
+  const C = WOODS_CLEAR
+  const near = (rects: Rect[]) => (x: number, z: number) => rects.some((o) => x > o.minX - C && x < o.maxX + C && z > o.minZ - C && z < o.maxZ + C)
+  const onLand = near(owned)
+  const byBuilding = near(built)
+  const out: { x: number; z: number; height: number; seed: number }[] = []
   for (let i = 0; i < 14; i++) {
     const angle = (i / 14) * Math.PI * 2 + (r() - 0.5) * 0.35
     let radius = 19 + r() * 9
     const height = 6 + r() * 4
     while (onLand(Math.cos(angle) * radius, Math.sin(angle) * radius) && radius < 80) radius += 1
-    const x = Math.cos(angle) * radius
+    let x = Math.cos(angle) * radius
     let z = Math.sin(angle) * radius
     // keep the tractor's track out of the west hedge clear (and the ground beside it where it turns round), and the
     // lane outside the farm gate: those trees step back from them
     if (x < -8 && Math.abs(z - TRACTOR.z) < 5) z = TRACTOR.z + (z >= TRACTOR.z ? 1 : -1) * (5.5 + (i % 3))
-    const onLane = Math.abs(z - LANE.z) < 3.2
-    out.push(tree(x, onLane ? LANE.z + 5.5 + (i % 3) : z, height, 40 + i))
+    if (Math.abs(z - LANE.z) < 3.2) z = LANE.z + 5.5 + (i % 3)
+    // and from the buildings beyond the lane, the same way: outwards, away from the house
+    if (byBuilding(x, z)) {
+      const a = Math.atan2(z, x)
+      let d = Math.hypot(x, z)
+      while ((byBuilding(Math.cos(a) * d, Math.sin(a) * d) || onLand(Math.cos(a) * d, Math.sin(a) * d)) && d < 80) d += 1
+      x = Math.cos(a) * d
+      z = Math.sin(a) * d
+    }
+    out.push({ x, z, height, seed: 40 + i })
   }
   return out
 }
+
+/** The woods round the farm (where `treeSpots` puts them). */
+const woods = (layout: FarmLayout): TreeParts[] => treeSpots(layout).map((t) => tree(t.x, t.z, t.height, t.seed))
 
 function sections(layout: FarmLayout): Sections {
   const edges = boundary(layout)

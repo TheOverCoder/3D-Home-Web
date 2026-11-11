@@ -1,6 +1,6 @@
 import type { RapierContext, RapierRigidBody } from '@react-three/rapier'
-import { DOOR, insideHouse, roomAt } from '../../data/layout'
-import { landBounds, ownedRects } from '../../farm/layout'
+import { DOOR } from '../../data/layout'
+import { reachBounds, reachRects } from '../../farm/layout'
 import { farm } from '../../farm/state'
 import { useHome } from '../../store'
 import { groundDistance, guideTo, inReach, interactable, type InteractableDef } from '../interaction'
@@ -45,10 +45,11 @@ interface Route {
   field: Field
 }
 
-/** The land the player can reach: the garden and the fields bought (src/farm/layout.ts). */
+/** The ground the player can be on: the garden and the fields bought, the lot beyond the gate and the walk-in buildings
+ *  (src/farm/layout.ts, reachRects). */
 function landArea(): Area & { key: string } {
-  const b = landBounds(farm.layout)
-  const rs = ownedRects(farm.layout)
+  const b = reachBounds(farm.layout)
+  const rs = reachRects(farm.layout)
   return { ...b, key: `${b.minX},${b.maxX},${b.minZ},${b.maxZ}|${farm.layout.land.join(',')}`, on: (x, z) => rs.some((r) => x >= r.minX && x <= r.maxX && z >= r.minZ && z <= r.maxZ) }
 }
 
@@ -161,20 +162,16 @@ export class Walker {
     const start = nearestFree(field, cx, cz, 4)
     if (start < 0) return false
     const reach = def.radius - GOAL_IN
-    const out = !insideHouse(def.position.x, def.position.z)
-    const room = out ? null : roomAt(def.position.x, def.position.z)
     const { x0, z0, cell, w } = g
     const far = (k: number) => {
       const i = k % w
       return groundDistance(x0 + (i + 0.5) * cell, z0 + ((k - i) / w + 0.5) * cell, def.position, def.box)
     }
+    // in reach as the action button has it (and as arriving is told): near enough, and in the thing's own space —
+    // outdoors for a thing outdoors, its room for one in the house or in a walk-in building
     const goal = (k: number) => {
-      if (far(k) > reach) return false
       const i = k % w
-      const x = x0 + (i + 0.5) * cell
-      const z = z0 + ((k - i) / w + 0.5) * cell
-      // in the thing's own space: outdoors for a thing outdoors, its room for one indoors
-      return out ? !insideHouse(x, z) : roomAt(x, z) === room
+      return inReach(def, { x: x0 + (i + 0.5) * cell, z: z0 + ((k - i) / w + 0.5) * cell }, GOAL_IN)
     }
     this.plan = { search: new Search(field, start, goal, (k) => Math.max(0, far(k) - reach) / cell), field }
     return true

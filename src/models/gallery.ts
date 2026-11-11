@@ -2,7 +2,9 @@ import type { Object3D } from 'three'
 import { cowParts, putCow } from './cow'
 import { putSheep, sheepParts } from './sheep'
 import { chickenParts, putChicken } from './chicken'
-import { PersonRig, personParts } from './person'
+import { PersonRig, personParts, type PersonLook } from './person'
+import { CONTRACTOR_LOOK, MANAGER_LOOK, rollLook } from './look'
+import { random } from '../lib/sculpt'
 import { cropParts } from './crops'
 import { GROWERS, putEgg, putLemon } from './plants'
 import type { CropId } from '../farm/data'
@@ -11,6 +13,9 @@ import { coopModel, lemonSpots, lemonTreeModel, mouthGlowMaterial, mouthGlowShap
 import { GOODS, type GoodsId } from './goods'
 import { DESK_SCREEN, OFFICE_FLOOR, barnModel, crateModel, deskModel, farmGateModel, officeModel, palletModel, siloModel } from './buildings'
 import { DRIVER, putTractor, seatDriver, tractorParts } from './tractor'
+import { MARKET_MIDDLE, MARKET_SCREEN, MARKET_SIGN, marketFittingsParts, marketShellParts } from './market'
+import { putSlidingDoor, slidingDoorParts } from './slidingDoor'
+import { BROWSE_SPOTS, CONTRACTOR_SPOT, MANAGER_SPOT, MARKET_WALKIN, PAY_SPOT } from '../data/market'
 
 // Every model the kit makes, posed and moving, for the gallery page (open the site with ?gallery). Add a new
 // model here as soon as it has a shape: it is the quickest way to see it from every side, in the game's light.
@@ -111,26 +116,44 @@ export const GALLERY: GalleryEntry[] = [
   {
     id: 'people',
     label: 'People',
-    name: 'People: walking, waving, standing (three hair styles, a hat)',
+    name: 'People: walking, waving, standing (every hair style and hat), the manager (his tie), the contractor (his cap as a hard hat); behind them 24 looks the people engine rolls (rollLook, the same dice every time)',
     make() {
-      const parts = personParts(4)
-      const looks = [
+      const looks: PersonLook[] = [
         { shirt: '#3f6fb0', trousers: '#2d3340', skin: '#e0b48f', hair: '#3a2a1e', hairStyle: 0, hat: false, height: 1 },
-        { shirt: '#c0504a', trousers: '#5a6b48', skin: '#8d5a3c', hair: '#1c1714', hairStyle: 1, hat: false, height: 0.95 },
-        { shirt: '#e8d9a8', trousers: '#6a4a3a', skin: '#f0cfb0', hair: '#c79a58', hairStyle: 2, hat: false, height: 0.97 },
+        { shirt: '#c0504a', trousers: '#5a6b48', skin: '#8d5a3c', hair: '#1c1714', hairStyle: 1, hat: false, height: 0.95, eyes: '#4f6b3a' },
+        { shirt: '#e8d9a8', trousers: '#6a4a3a', skin: '#f0cfb0', hair: '#c79a58', hairStyle: 2, hat: false, height: 0.97, sex: 'f', hips: 1.08, shoulders: 0.92, eyes: '#3f6a8f' },
         { shirt: '#6aa07a', trousers: '#3a3f55', skin: '#c08a64', hair: '#5a4030', hairStyle: 0, hat: true, height: 1.04 },
+        { shirt: '#7b5aa6', trousers: '#283044', skin: '#704a32', hair: '#1c1c1c', hairStyle: 3, hat: false, height: 1.02, sex: 'm', shoulders: 1.08, hips: 0.94 },
+        { shirt: '#2f8f8a', trousers: '#5a4636', skin: '#f6d5bd', hair: '#a8743f', hairStyle: 4, hat: 'beanie', hatBand: '#b23a48', height: 0.94, sex: 'f', eyes: '#3f6a8f' },
+        { ...rollLook(random(5), MANAGER_LOOK), skin: '#e0ac87' },
+        { ...rollLook(random(9), CONTRACTOR_LOOK), skin: '#c68863' },
+        { shirt: '#d9a441', trousers: '#1f2a24', skin: '#9a6646', hair: '#2b2017', hairStyle: 3, hat: 'straw', hatBand: '#2f4a6b', height: 0.98, sex: 'f', eyes: '#6b5a2a' },
+        { shirt: '#4d5d73', trousers: '#6b6255', skin: '#e0ac87', hair: '#d9b98a', hairStyle: 4, hat: false, height: 0.96, sex: 'f', hips: 1.06, shoulders: 0.94, eyes: '#4f6b3a' },
       ]
       const rigs = looks.map((l) => new PersonRig(l))
+      // the rolled ones, six by four behind the row
+      const rand = random(2024)
+      const rolled = Array.from({ length: 24 }, (_, k) => {
+        const r = new PersonRig(rollLook(rand))
+        r.root.position.set(-2.0 + (k % 6) * 0.8, 0, -0.9 - Math.floor(k / 6) * 0.8)
+        r.root.rotation.y = 0.25 * Math.sin(k * 1.7)
+        return r
+      })
+      const parts = personParts(rigs.length + rolled.length)
       return {
         object: parts.group,
-        width: 3,
+        width: 7.6,
         height: 1.8,
         triangles: () => parts.triangles(),
         update(t) {
           parts.begin()
+          rolled.forEach((r, k) => {
+            r.head.rotation.y = 0.3 * Math.sin(t * 0.8 + k)
+            r.write(parts)
+          })
           rigs.forEach((r, i) => {
-            r.root.position.set(-1.2 + i * 0.8, 0, 0)
-            r.root.rotation.y = [0.4, 0.1, -0.15, -0.4][i]
+            r.root.position.set(-3.6 + i * 0.8, 0, 0)
+            r.root.rotation.y = [0.4, 0.1, -0.15, -0.4, 0.3, -0.2, 0, 0.2, -0.3, 2.6][i]
             const f = t * 6
             const amp = i === 0 ? 0.55 : 0
             r.thighL.rotation.x = -Math.sin(f) * amp
@@ -256,6 +279,53 @@ export const GALLERY: GalleryEntry[] = [
         height: 3,
         triangles: () => office.triangles() + desk.triangles() + lone.triangles() + pallet.triangles() + crate.triangles() + gate.triangles(),
         update() {},
+      }
+    },
+  },
+  {
+    id: 'market',
+    label: 'Market',
+    name: "The market (its shell from the walk-in row, the shelves, the counter and till, the manager's desk and computer, the shop front, the sliding front door opening and shutting) and the contractor's cabin",
+    make() {
+      const shell = marketShellParts()
+      const fittings = marketFittingsParts()
+      const door = MARKET_WALKIN.autoDoor!
+      const leaves = slidingDoorParts(door)
+      const people = personParts(4)
+      const rand = random(31)
+      const at = (look: PersonLook, spot: { x: number; z: number; heading: number }) => {
+        const r = new PersonRig(look)
+        r.root.position.set(spot.x, 0, spot.z)
+        r.root.rotation.y = spot.heading
+        return r
+      }
+      const rigs = [at(rollLook(rand, MANAGER_LOOK), MANAGER_SPOT), at(rollLook(rand, CONTRACTOR_LOOK), CONTRACTOR_SPOT), at(rollLook(rand), BROWSE_SPOTS[0]), at(rollLook(rand), PAY_SPOT)]
+      people.begin()
+      for (const r of rigs) r.write(people)
+      people.end()
+      // (the screen and the sign as the scene draws them: planes where the model leaves room for them)
+      const plane = (p: { x: number; y: number; z: number; half: readonly [number, number]; heading: number }, color: number) => {
+        const m = new Mesh(new PlaneGeometry(p.half[0] * 2, p.half[1] * 2), new MeshStandardMaterial({ color: 0x0c1a22, emissive: color, emissiveIntensity: 0.5 }))
+        m.position.set(p.x, p.y, p.z)
+        m.rotation.y = p.heading
+        return m
+      }
+      const object = new Group()
+      const world = new Group()
+      world.add(shell.group, fittings.group, leaves.group, people.group, plane(MARKET_SCREEN, 0x7fd3ff), plane(MARKET_SIGN, 0xf3ead8))
+      // its front (north, to the lane) turned to the gallery's camera
+      world.rotation.y = Math.PI
+      world.position.set(MARKET_MIDDLE.x, 0, MARKET_MIDDLE.z)
+      object.add(world)
+      return {
+        object,
+        width: 10,
+        height: 3.5,
+        triangles: () => shell.triangles() + fittings.triangles() + leaves.triangles() + people.triangles(),
+        // the front door opening and shutting, as it does for whoever comes near
+        update(t) {
+          putSlidingDoor(leaves, door, Math.min(1, Math.max(0, 0.5 + Math.sin(t * 0.8) * 0.8)))
+        },
       }
     },
   },

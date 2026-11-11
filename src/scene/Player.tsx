@@ -9,6 +9,7 @@ import { CameraControlsImpl } from '@react-three/drei'
 import { MathUtils, Matrix4, Quaternion, Vector3, type Group, type PerspectiveCamera } from 'three'
 import { footstep, jumpSound, land } from '../audio/sound'
 import { GARDEN_DOOR, HOUSE, ROOMS, SPAWN, groundAt, insideHouse, roomAt, type FloorKind } from '../data/layout'
+import { WALK_INS, bounds, walkInRoomAt, type Box, type Rect, type WalkIn } from '../data/buildings'
 import { screenById, type ScreenDef } from '../data/screens'
 import { debugSet } from '../lib/debug'
 import { openEdit, stopDecorating, useDecorate } from '../home/decorate'
@@ -24,7 +25,7 @@ import { stepWalkView, stopWalk, useWalk, walkStats, walkStick, walkTo, walkingT
 import { BODY, playerState } from '../lib/playerState'
 import { useSettings } from '../settings'
 import { busy, useHome, type CompassMark, type Nearby } from '../store'
-import { landBounds } from '../farm/layout'
+import { reachBounds } from '../farm/layout'
 import { farm } from '../farm/state'
 import { AimMarker } from './AimMarker'
 import { GuideMarker } from './GuideMarker'
@@ -58,9 +59,14 @@ const gait = { phase: 0, step: 0 }
 /** Set by the player when it lands; the camera turns it into a short dip of the head. */
 const landing = { kick: 0 }
 
+/** What a walk-in building's floor sounds like underfoot. */
+const WALK_IN_FLOOR: Record<WalkIn['floor'], FloorKind> = { tile: 'tile', boards: 'wood' }
+
 const floorAt = (x: number, z: number): FloorKind => {
   const room = roomAt(x, z)
-  return room ? ROOMS[room].floor : groundAt(x, z)
+  if (room) return ROOMS[room].floor
+  const inside = walkInRoomAt(x, z)
+  return inside ? WALK_IN_FLOOR[inside.walkIn.floor] : groundAt(x, z)
 }
 
 /** The touch stick as the player reads it: walking to a compass mark by itself is the stick pushed where the way goes
@@ -82,12 +88,53 @@ const iconKey = (i: ActionIcon | undefined) => (i ? `${i.verb}|${i.item}|${i.art
 const actionsKey = (list: Nearby[]) => list.map((a) => `${a.id}|${a.label}|${iconKey(a.icon)}|${a.reach}|${a.side}|${a.hint}|${a.needs?.map((n) => `${n.item}${n.count}`).join(',')}`).join('\n')
 const marksKey = (list: CompassMark[]) => list.map((m) => `${m.id}|${m.item}|${m.count}|${m.alert ? 1 : 0}`).join('\n')
 
+// A walk-in building (src/data/buildings.ts): the eyes keep this far from its walls' faces, and a doorway's opening
+// reaches this far either side of its wall (stepping through, the eyes go a little ahead of the body)
+const WALL_CLEAR = 0.1
+const PASS = 0.35
+
+const WALK_IN_BOUNDS = WALK_INS.map((w) => ({ w, b: bounds(w) }))
+
+const inRect = (r: Rect, x: number, z: number, margin = 0) => x >= r.x0 - margin && x <= r.x1 + margin && z >= r.z0 - margin && z <= r.z1 + margin
+
+/** The doorway of a walk-in whose opening the point is in (less its jambs, and reaching PASS either side of its wall),
+ *  with how high the eyes may be there (under its lintel); or null. */
+function doorwayAt(w: WalkIn, x: number, z: number): { top: number } | null {
+  for (const d of w.doors) {
+    // the opening runs along the wall: the door's longer side
+    const alongX = d.x1 - d.x0 >= d.z1 - d.z0
+    const inside = alongX ? x > d.x0 + WALL_CLEAR && x < d.x1 - WALL_CLEAR && z > d.z0 - PASS && z < d.z1 + PASS : z > d.z0 + WALL_CLEAR && z < d.z1 - WALL_CLEAR && x > d.x0 - PASS && x < d.x1 + PASS
+    if (!inside) continue
+    // the lintel over it: the lowest wall above the opening
+    let top = Infinity
+    for (const b of w.walls) if (b.y0 > 0.5 && b.x0 < d.x1 && b.x1 > d.x0 && b.z0 < d.z1 && b.z1 > d.z0) top = Math.min(top, b.y0)
+    return { top: Number.isFinite(top) ? top : Math.min(...w.rooms.map((r) => r.top)) }
+  }
+  return null
+}
+
 /**
  * Never let the eyes enter a wall or rise through the ceiling — inside, outside, and in between: the only way
  * through the outer walls is the garden door's opening while it is open. `body` is where the body is drawn this
  * frame (not last frame's position: right after a teleport out of the house that would hold the eyes indoors).
+ * A walk-in building is the same: with your body in one of its rooms (or a doorway's thickness) the eyes stay in that
+ * room, or in a doorway out of it; outside, they keep out of its walls but for its doorways.
  */
 function keepCameraInBounds(p: Vector3, body: Vector3) {
+  const walkIn = walkInRoomAt(body.x, body.z)
+  if (walkIn) {
+    const door = doorwayAt(walkIn.walkIn, p.x, p.z)
+    if (door) {
+      // stepping through a doorway: keep under its lintel
+      p.y = Math.min(p.y, door.top - 0.12)
+      return
+    }
+    const r = walkIn.room
+    p.y = Math.min(p.y, r.top)
+    p.x = MathUtils.clamp(p.x, r.x0 + WALL_CLEAR, r.x1 - WALL_CLEAR)
+    p.z = MathUtils.clamp(p.z, r.z0 + WALL_CLEAR, r.z1 - WALL_CLEAR)
+    return
+  }
   const inOpening = gardenDoor.open > 0.55 && Math.abs(p.x - GARDEN_DOOR.centre) < DOOR_HALF
   if (inOpening && Math.abs(p.z - GARDEN_DOOR.at) < CLEAR) {
     // stepping through the door: keep to the opening
@@ -100,11 +147,26 @@ function keepCameraInBounds(p: Vector3, body: Vector3) {
     p.z = MathUtils.clamp(p.z, HOUSE.minZ + CLEAR, inOpening ? HOUSE.maxZ + 3 : HOUSE.maxZ - CLEAR)
     return
   }
-  // outdoors: above the ground, around the land the farm owns, and out of the house's walls
-  const ours = landBounds(farm.layout)
+  // outdoors: above the ground, around the ground you can be on, and out of the house's walls and every walk-in's
+  const ours = reachBounds(farm.layout)
   p.y = Math.max(p.y, 0.2)
   p.x = MathUtils.clamp(p.x, ours.minX - 4, ours.maxX + 4)
   p.z = MathUtils.clamp(p.z, ours.minZ - 4, ours.maxZ + 4)
+  for (const { w, b } of WALK_IN_BOUNDS) {
+    if (!inRect(b, p.x, p.z, WALL_CLEAR)) continue
+    // looking in through a doorway: keep under its lintel
+    const door = doorwayAt(w, p.x, p.z)
+    if (door) {
+      p.y = Math.min(p.y, door.top - 0.12)
+      continue
+    }
+    const d = [p.x - (b.x0 - WALL_CLEAR), b.x1 + WALL_CLEAR - p.x, p.z - (b.z0 - WALL_CLEAR), b.z1 + WALL_CLEAR - p.z]
+    const m = Math.min(...d)
+    if (m === d[0]) p.x = b.x0 - WALL_CLEAR
+    else if (m === d[1]) p.x = b.x1 + WALL_CLEAR
+    else if (m === d[2]) p.z = b.z0 - WALL_CLEAR
+    else p.z = b.z1 + WALL_CLEAR
+  }
   if (inOpening) {
     if (insideHouse(p.x, p.z)) p.y = Math.min(p.y, HOUSE.wallHeight - 0.12)
     return
@@ -117,6 +179,51 @@ function keepCameraInBounds(p: Vector3, body: Vector3) {
     else if (m === d[2]) p.z = HOUSE.minZ - CLEAR
     else p.z = HOUSE.maxZ + CLEAR
   }
+}
+
+// Third person: the camera keeps this far from a walk-in's walls and under its roof
+const ARM_CLEAR = 0.2
+/** What the third-person camera stays out of: every walk-in's walls, grown by ARM_CLEAR, and each room's air from its
+ *  top up through the roof over it. */
+const ARM_BOXES: Box[] = WALK_INS.flatMap((w) => [
+  ...w.walls.map((b) => ({ x0: b.x0 - ARM_CLEAR, x1: b.x1 + ARM_CLEAR, z0: b.z0 - ARM_CLEAR, z1: b.z1 + ARM_CLEAR, y0: b.y0, y1: b.y1 + ARM_CLEAR })),
+  ...w.rooms.map((r) => ({ x0: r.x0, x1: r.x1, z0: r.z0, z1: r.z1, y0: r.top, y1: w.roof.y + w.roof.thick + ARM_CLEAR })),
+])
+const armDir = new Vector3()
+const span = { near: 0, far: 0 }
+
+/** Narrows `span` to where a ray at `p` going `v` is between `lo` and `hi` on one axis (false: never). */
+function slab(p: number, v: number, lo: number, hi: number) {
+  if (Math.abs(v) < 1e-9) return p >= lo && p <= hi
+  const t0 = (lo - p) / v
+  const t1 = (hi - p) / v
+  span.near = Math.max(span.near, Math.min(t0, t1))
+  span.far = Math.min(span.far, Math.max(t0, t1))
+  return true
+}
+
+/** Where a ray from `o` along `d` first enters a box, or Infinity (it misses it, or starts inside it). */
+function enters(o: Vector3, d: Vector3, b: Box): number {
+  if (o.x >= b.x0 && o.x <= b.x1 && o.y >= b.y0 && o.y <= b.y1 && o.z >= b.z0 && o.z <= b.z1) return Infinity
+  span.near = 0
+  span.far = Infinity
+  if (!slab(o.x, d.x, b.x0, b.x1) || !slab(o.y, d.y, b.y0, b.y1) || !slab(o.z, d.z, b.z0, b.z1)) return Infinity
+  return span.near > span.far ? Infinity : span.near
+}
+
+/**
+ * Third person: the camera is held on your side of every walk-in building's walls and roof — inside one, in the room
+ * you are in, under its roof; outside, out of its walls (they never fade: src/scene/WalkIn.tsx). The line from what the
+ * camera looks at to the camera is cut where it first meets one, so it still looks at you.
+ */
+function holdArm(target: Vector3, cam: Vector3) {
+  armDir.subVectors(cam, target)
+  const length = armDir.length()
+  if (length < 1e-6) return
+  armDir.divideScalar(length)
+  let t = length
+  for (const b of ARM_BOXES) t = Math.min(t, enters(target, armDir, b))
+  if (t < length) cam.copy(target).addScaledVector(armDir, t)
 }
 
 /** Critically damped spring towards `to` (exact for any dt, so it never overshoots or explodes at low frame rates). */
@@ -334,6 +441,7 @@ const fwd = new Vector3()
 const neck = new Vector3()
 const vantage = new Vector3()
 const target = new Vector3()
+const armTarget = new Vector3()
 const screenQ = new Quaternion()
 const m4 = new Matrix4()
 const UP = new Vector3(0, 1, 0)
@@ -432,6 +540,12 @@ function CameraRig({ ecctrl, feet }: { ecctrl: RefObject<EcctrlHandle | null>; f
   // shake against the view, whatever the frame rate.
   useFrame((_, dt) => {
     const state = useHome.getState()
+    if (state.phase === 'playing' && state.view === 'third' && controls.current) {
+      // third person: along the line to what it looks at now (not where that is gliding to)
+      holdArm(controls.current.getTarget(armTarget, false), camera.position)
+      camera.updateMatrixWorld()
+      return
+    }
     if (state.phase !== 'playing' || state.view !== 'first') return
     const g = feet.current
     if (!g) return
@@ -649,8 +763,8 @@ export function Player() {
       return
     }
     // a safety net: should physics ever throw the body out of the world (through the floor, or knocked flying),
-    // it comes back to the start instead of falling or flying for ever
-    const ours = landBounds(farm.layout)
+    // it comes back to the start instead of falling or flying for ever (anywhere on the ground you can be on is in it)
+    const ours = reachBounds(farm.layout)
     if (pos.y < -6 || pos.y > 30 || pos.x < ours.minX - 8 || pos.x > ours.maxX + 8 || pos.z < ours.minZ - 8 || pos.z > ours.maxZ + 8) {
       const body = handle.body
       body?.setTranslation({ x: SPAWN[0], y: SPAWN[1], z: SPAWN[2] }, true)

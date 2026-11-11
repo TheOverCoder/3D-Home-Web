@@ -1,0 +1,75 @@
+/* ───────── the supermarket's panels, the contractor's, the upgrade ladders (src/farm/MarketPanel.tsx, ContractorPanel.tsx,
+   Ladder.tsx): the farm panels' sheets, rows and chips (styles.css), and only what they lack ───────── */
+
+/* a ladder's now → next: two chips that wrap onto two lines on a narrow screen */
+.ladder-say { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; min-width: 0; }
+.ladder-say .effect-arrow { width: 14px; height: 14px; opacity: 0.55; flex: none; }
+.ladder-say .tag b { font-weight: 800; color: var(--ink); }
+
+/* the rows under a list: the ladders, buying the shop, the way to the contractor */
+.market-ladders { margin-top: 12px; }
+.market-sell-all { margin-top: 12px; }
+.contractor-link { margin-top: 12px; }
+.contractor-link .btn { flex: none; }
+/* a button that waits a moment before it may be pressed (useArmed): the press that opened the panel lands on nothing */
+.market-sell-all.arming, .contractor-piece.arming { opacity: 0.55; }
+
+/* what the farm keeps a good for (the orders, the next level of the silo or the barn): the store's needs' chips */
+.tag.keep img { width: 20px; height: 20px; margin-block: -2px; }
+
+/* buying the shop: the silo's next level, with the shop's picture */
+.market-buy-row .farm-upgrade-head .art { width: 40px; height: 40px; margin-block: -4px; }
+.market-buy-row .farm-needs { gap: 6px; }
+
+/* a section of a panel: today's pieces, what he buys */
+.market-head { margin: 4px 0 8px; font: 600 17px/1.2 var(--font-display); color: var(--ink-2); }
+.market-head ~ .market-head { margin-top: 14px; }
+
+/* the places on your shelves: each a row (its good, how many, its price, the chance), tapped for its card */
+.market-place { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 60px; padding: 8px 12px 8px 10px; border: 2px solid transparent; border-radius: var(--r-card); background: var(--paper-2); color: var(--ink); text-align: start; box-shadow: 0 3px 0 var(--paper-3); transition: transform 0.12s, box-shadow 0.12s, background 0.15s; }
+.market-place:hover:not(:disabled), .market-place:focus-visible { background: #fff1c9; }
+.market-place:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 var(--paper-3); }
+.market-place.empty strong { color: var(--ink-2); }
+.market-place.empty .item-pic { opacity: 0.5; }
+.market-place.closed { background: transparent; border: 2px dashed var(--edge-soft); box-shadow: none; }
+.market-place:disabled { opacity: 0.6; cursor: default; }
+.market-place .item-pic .art { width: 44px; height: 44px; }
+.market-slot { flex: none; width: 44px; height: 44px; border-radius: 50%; border: 2px dashed var(--edge); opacity: 0.55; }
+.market-place-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.market-place-text strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 17px/1.15 var(--font-display); }
+.market-place-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.tag.market-price { flex: none; padding: 4px 12px 4px 8px; background: var(--sun); color: var(--ink); font-size: 15px; }
+
+/* one place's card: the goods there are to put up (the one chosen ringed in sun-yellow), then how many and the price */
+.market-goods { display: flex; flex-wrap: wrap; gap: 8px; }
+.market-good { display: grid; place-items: center; width: 60px; height: 60px; padding: 0; border: 0; border-radius: 16px; background: var(--paper-2); box-shadow: 0 3px 0 var(--paper-3); transition: transform 0.12s, box-shadow 0.12s, background 0.15s; }
+.market-good:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--paper-3); }
+.market-good[aria-pressed='true'] { background: #fff1c9; box-shadow: 0 0 0 3px var(--sun), 0 3px 0 var(--sun-lip); }
+.market-good .item-pic .art { width: 42px; height: 42px; }
+.market-held { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: var(--r-card); background: var(--paper-2); }
+.market-held .item-pic .art { width: 52px; height: 52px; }
+.market-held strong { font: 600 17px/1.15 var(--font-display); }
+.market-step { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; padding: 6px 8px 6px 14px; border-radius: var(--r-card); background: var(--paper-2); }
+.market-step-label { font: 600 16px/1.2 var(--font-display); color: var(--ink-2); }
+.market-step-set { display: flex; align-items: center; gap: 8px; }
+.market-step-set .btn.round { font: 700 26px/1 var(--font-display); }
+.market-step-value { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-width: 112px; font: 800 17px/1 var(--font-text); font-variant-numeric: tabular-nums; }
+.market-step-value .item-pic .art { width: 40px; height: 40px; }
+.market-chance { display: inline-flex; align-items: center; gap: 3px; color: var(--ink-2); }
+.market-chance img { width: 22px; height: 22px; }
+
+/* the contractor's pieces today: each its picture and its price; one sold is greyed out */
+.contractor-today { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 8px; }
+.contractor-piece { display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 44px; padding: 8px 4px; border: 0; border-radius: var(--r-card); background: var(--paper-2); color: var(--ink); box-shadow: 0 3px 0 var(--paper-3); transition: transform 0.12s, box-shadow 0.12s, background 0.15s; }
+.contractor-piece:hover:not(:disabled), .contractor-piece:focus-visible { background: #fff1c9; }
+.contractor-piece:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 var(--paper-3); }
+.contractor-piece:disabled { cursor: default; }
+.contractor-piece:disabled:not(.sold) { opacity: 0.6; }
+.contractor-piece.sold { opacity: 0.45; filter: grayscale(0.8); box-shadow: none; }
+.contractor-piece .item-pic .art { width: 48px; height: 48px; }
+
+/* a phone on its side: a little tighter */
+@media (orientation: landscape) and (max-height: 560px) {
+  .market-place { min-height: 52px; padding-block: 6px; }
+  .market-head { margin-bottom: 6px; }
+}

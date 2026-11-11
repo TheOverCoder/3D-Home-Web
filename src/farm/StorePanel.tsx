@@ -9,6 +9,7 @@ import { STORES, count, produceById, type StoreId } from './data'
 import { iconUrl } from './icons'
 import { footprint } from './layout'
 import { STORE_GOODS } from './storage'
+import { ContractorLink } from './ContractorPanel'
 import { canUpgradeStore, capacity, farm, nextStoreLevel, storeLevel, upgradeStore, useFarm, used } from './state'
 
 // The silo and the barn, tapped (their chip at the top, or the button at their door): what is inside, each good with
@@ -102,6 +103,8 @@ export function StorePanel({ store }: { store: StoreId }) {
           Upgrade
         </button>
       </div>
+      {/* short of a material: the contractor behind the market sells a few pieces a day */}
+      {next.needs.some((n) => farm.inv[n.item] < n.count) && <ContractorLink />}
     </Shell>
   )
 }

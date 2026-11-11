@@ -19,6 +19,10 @@
   --leaf-lip: #1c5c2b;
   --berry: #d2452f;
   --berry-lip: #98301f;
+  /* XP and levels: the crystals' blue-violet, its lip, and the glow round what they join (with --sun for the halo) */
+  --xp: #7a5cf0;
+  --xp-lip: #4b35b0;
+  --xp-glow: rgba(140, 110, 255, 0.55);
   --night: rgba(48, 34, 24, 0.9);
   --night-line: rgba(255, 255, 255, 0.16);
   --font-display: 'Fredoka Variable', 'Fredoka', ui-rounded, 'Nunito Variable', system-ui, sans-serif;

@@ -1,14 +1,29 @@
-import { Suspense, useEffect, useMemo, useRef } from 'react'
+import { Suspense, useEffect, useMemo, useRef, type ComponentRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Environment, Sky } from '@react-three/drei'
-import type { DirectionalLight, InstancedMesh, Mesh, Object3D, SkinnedMesh, WebGLRenderer } from 'three'
+import {
+  Color,
+  type DirectionalLight,
+  type FogExp2,
+  type HemisphereLight,
+  type InstancedMesh,
+  type Mesh,
+  type Object3D,
+  type ShaderMaterial,
+  type SkinnedMesh,
+  type Vector3,
+  type WebGLRenderer,
+} from 'three'
 import { assets } from '../assets/registry'
 import { useSettings } from '../settings'
-import { SUN } from '../data/layout'
+import { SUN, SUN_SHADOW } from '../data/layout'
 import { ErrorBoundary } from '../lib/ErrorBoundary'
 import { profile } from '../lib/profile'
 import { setShadowCheck, sunLeftOut, view } from '../lib/visibility/pass'
 import { useHome } from '../store'
+import { moodAt, phaseDef } from '../farm/day'
+import { DAY } from '../farm/data'
+import { dayIsFrozen, farm } from '../farm/state'
 
 const SUN_DIR = SUN
 
@@ -31,15 +46,18 @@ function DaylightProbe() {
   )
 }
 
+/** How much the environment lights the scene at noon: the real HDRI's, or the generated probe's. */
+const envIntensity = () => (assets.hdri && profile.hdri ? 0.75 : 0.4)
+
 /** Image-based lighting: the real HDRI if one was dropped in, otherwise a generated daylight probe. */
 function Ibl() {
   // own boundary: while an HDRI decodes, only this subtree is hidden — never the physics world
   return (
     <Suspense fallback={null}>
       {assets.hdri && profile.hdri ? (
-        <Environment files={assets.hdri} background={false} environmentIntensity={0.75} />
+        <Environment files={assets.hdri} background={false} environmentIntensity={envIntensity()} />
       ) : (
-        <Environment frames={1} resolution={128} far={900} background={false} environmentIntensity={0.4}>
+        <Environment frames={1} resolution={128} far={900} background={false} environmentIntensity={envIntensity()}>
           <DaylightProbe />
         </Environment>
       )}
@@ -244,6 +262,84 @@ function ShadowDirector() {
 /** The sun, for the drawing pass (src/lib/visibility): its shadow map leaves out what no sunlight reaches. */
 export const sunLight = { current: null as DirectionalLight | null }
 
+// ───────────────────────────── the day's light ─────────────────────────────
+
+/** The light at noon, as it always was: the sun's, the sky's and the ground's colours, the haze and the background. */
+const NOON = { sun: 2.5, sunColor: '#ffd9a0', hemi: 0.24, sky: '#dfe9ff', ground: '#4a3d32', fog: '#aab4c0', background: '#a9c4e0' } as const
+/** What each colour turns towards as the day goes, and how far: orange at sunrise and sunset (by `k[0]` of the mood's
+ *  `warm`, above 0), moonlit blue at night (by `k[1]` of it, below 0) — the sun most, the haze least. */
+interface Tint {
+  warm: Color
+  cool: Color
+  k: readonly [number, number]
+}
+const TINT: Record<'sun' | 'sky' | 'haze', Tint> = {
+  sun: { warm: new Color('#ff8a3c'), cool: new Color('#8fa8ff'), k: [0.55, 1] },
+  sky: { warm: new Color('#ffc58f'), cool: new Color('#6f86d0'), k: [0.5, 0.9] },
+  haze: { warm: new Color('#e8a774'), cool: new Color('#4f5d84'), k: [0.45, 0.7] },
+}
+/** The sun's height in the sky you see (degrees), at noon (SUN's own) and at its lowest (night: just under the
+ *  horizon, so the sky is a deep blue with the last of the light low down). Only the sky's picture: the sun's light and
+ *  its shadows never move. */
+const SUN_UP = (Math.atan2(SUN[1], Math.hypot(SUN[0], SUN[2])) * 180) / Math.PI
+const SUN_LOW = -1.2
+const DAY_MIN = DAY.minLight
+
+const base = {
+  sun: new Color(NOON.sunColor),
+  sky: new Color(NOON.sky),
+  ground: new Color(NOON.ground),
+  fog: new Color(NOON.fog),
+  background: new Color(NOON.background),
+}
+/** A colour turned by the day's warmth. */
+function tint(out: Color, from: Color, warm: number, to: Tint) {
+  out.copy(from)
+  if (warm > 0) out.lerp(to.warm, warm * to.k[0])
+  else if (warm < 0) out.lerp(to.cool, -warm * to.k[1])
+  return out
+}
+
+/**
+ * The time of day (src/farm/day.ts, moodAt): the sun's and the sky light's colour and strength, how much the
+ * environment lights, the haze and the background, and the sun's height in the sky you see — never a light added or
+ * taken away, never the sun moved, never its shadow camera, so nothing drawn changes, only how bright and what colour.
+ * With the day stopped (the tests: freezeDay) it is noon, as the light always was.
+ */
+function DayLight({ sun, hemi, sky }: { sun: { current: DirectionalLight | null }; hemi: { current: HemisphereLight | null }; sky: { current: { material: unknown } | null } }) {
+  const scene = useThree((s) => s.scene)
+  const noon = phaseDef('noon').mood
+  useFrame(() => {
+    const m = dayIsFrozen() ? noon : moodAt(farm.day.t)
+    const s = sun.current
+    if (s) {
+      s.intensity = NOON.sun * m.sun
+      tint(s.color, base.sun, m.warm, TINT.sun)
+    }
+    const h = hemi.current
+    if (h) {
+      h.intensity = NOON.hemi * m.sky
+      tint(h.color, base.sky, m.warm, TINT.sky)
+      h.groundColor.copy(base.ground)
+    }
+    // set every frame: the environment's own component sets it again whenever it renders
+    scene.environmentIntensity = envIntensity() * m.sky
+    const fog = scene.fog as FogExp2 | null
+    if (fog) tint(fog.color, base.fog, m.warm, TINT.haze).multiplyScalar(m.sky)
+    const bg = scene.background as Color | null
+    if (bg?.isColor) tint(bg, base.background, m.warm, TINT.haze).multiplyScalar(m.sky)
+    // the sky's own sun (a copy of SUN, lowered towards the horizon as the light goes: a sunset sky, a night sky)
+    const uniform = (sky.current?.material as ShaderMaterial | undefined)?.uniforms?.sunPosition
+    if (uniform) {
+      const k = Math.max(0, Math.min(1, (m.sun - DAY_MIN) / (1 - DAY_MIN)))
+      const up = SUN_LOW + (SUN_UP - SUN_LOW) * k * k * k
+      const flat = Math.hypot(SUN[0], SUN[2])
+      ;(uniform.value as Vector3).set(SUN[0], k >= 1 ? SUN[1] : flat * Math.tan((up * Math.PI) / 180), SUN[2])
+    }
+  })
+  return null
+}
+
 // shadow map resolution per tier comes from the device profile (low: half, and the cheaper filter comes from
 // fewer texels to fetch; phones: 1k below the top tier)
 
@@ -253,6 +349,8 @@ export function Lighting() {
   const quality = useHome((s) => s.quality)
   const gl = useThree((s) => s.gl)
   const sun = useRef<DirectionalLight>(null)
+  const hemi = useRef<HemisphereLight>(null)
+  const sky = useRef<ComponentRef<typeof Sky>>(null)
   const size = profile.shadowMap[quality]
   const applied = useRef(size)
   useEffect(() => {
@@ -273,31 +371,32 @@ export function Lighting() {
   }, [size, gl])
   return (
     <>
-      <color attach="background" args={['#a9c4e0']} />
+      <color attach="background" args={[NOON.background]} />
       {/* haze: distant things sink into a pale grey-blue, which is what makes the rooms and the garden feel deep */}
-      <fogExp2 attach="fog" args={['#aab4c0', haze ? 0.04 : 0.0006]} />
+      <fogExp2 attach="fog" args={[NOON.fog, haze ? 0.04 : 0.0006]} />
       {/* the sky you see through windows and over the roof (the outside, for the drawing pass: src/lib/visibility) */}
       <group userData={{ cell: 'outside' }}>
-        <Sky distance={900} sunPosition={SUN_DIR} turbidity={3} rayleigh={1.3} mieCoefficient={0.004} mieDirectionalG={0.85} />
+        <Sky ref={sky} distance={900} sunPosition={SUN_DIR} turbidity={3} rayleigh={1.3} mieCoefficient={0.004} mieDirectionalG={0.85} />
       </group>
       <ErrorBoundary fallback={null} onError={() => markReady('env')}>
         <Ibl />
       </ErrorBoundary>
-      <hemisphereLight args={['#dfe9ff', '#4a3d32', 0.24]} />
+      <hemisphereLight ref={hemi} args={[NOON.sky, NOON.ground, NOON.hemi]} />
+      <DayLight sun={sun} hemi={hemi} sky={sky} />
       <ShadowDirector />
       <directionalLight
         ref={sun}
-        position={[SUN[0] * 1.6, SUN[1] * 1.6, SUN[2] * 1.6]}
-        intensity={2.5}
-        color="#ffd9a0"
+        position={[SUN[0] * SUN_SHADOW.scale, SUN[1] * SUN_SHADOW.scale, SUN[2] * SUN_SHADOW.scale]}
+        intensity={NOON.sun}
+        color={NOON.sunColor}
         castShadow
         shadow-mapSize={[size, size]}
-        shadow-camera-left={-12}
-        shadow-camera-right={12}
-        shadow-camera-top={12}
-        shadow-camera-bottom={-12}
-        shadow-camera-near={1}
-        shadow-camera-far={60}
+        shadow-camera-left={-SUN_SHADOW.half}
+        shadow-camera-right={SUN_SHADOW.half}
+        shadow-camera-top={SUN_SHADOW.half}
+        shadow-camera-bottom={-SUN_SHADOW.half}
+        shadow-camera-near={SUN_SHADOW.near}
+        shadow-camera-far={SUN_SHADOW.far}
         shadow-radius={3}
         shadow-bias={-0.0003}
         shadow-normalBias={0.025}
