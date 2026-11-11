@@ -101,7 +101,10 @@ What fills up and is collected and what works on ingredients are rows of two tab
 ## Deploy (GitHub Pages)
 
 1. Repo → **Settings → Pages → Source: GitHub Actions**.
-2. Merge to `main`; `.github/workflows/deploy.yml` builds with `BASE_PATH=/<repo>/` and publishes `dist/`.
+2. Push to the default branch. CI (`.github/workflows/ci.yml`: the checks and the e2e suite in four shards) runs on
+   it; once it passes, `.github/workflows/deploy.yml` builds that very commit with `BASE_PATH=/<repo>/` and publishes
+   `dist/`. A push whose tests fail is never published. **Actions → Deploy to GitHub Pages → Run workflow** publishes
+   the default branch by hand.
 
 ## Layout
 

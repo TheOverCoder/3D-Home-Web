@@ -6,11 +6,14 @@ The README has the overview; `tests/README.md` what each test guards.
 
 ## Before pushing
 
-- `npm run check` (types, oxlint, the Vitest unit tests, the format check: ~15 s), then the e2e suite:
-  `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium npx playwright test --trace off` (software WebGL, ~45 min; run single
-  spec files while iterating, or `npm run test:e2e:quick`, ~20 min: all but the eight `@boot` tests that start a page
-  of their own; `05`'s walks alone take 10–20 min, its ten times the farm, at one size, some minutes more). It builds and serves on
-  :4185. A rule or a save change gets a unit test beside its code (`src/**/*.test.ts`, `tests/README.md`).
+- `npm run check` (types, oxlint, the Vitest unit tests, the format check: ~15 s), then the e2e spec files the change
+  reaches: `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium npx playwright test --trace off <files>` (software WebGL; the
+  whole suite ~45 min, `npm run test:e2e:quick` ~20 min: all but the eight `@boot` tests that start a page of their
+  own; `05`'s walks alone take 10–20 min, its ten times the farm, at one size, some minutes more). It builds and serves
+  on :4185. A rule or a save change gets a unit test beside its code (`src/**/*.test.ts`, `tests/README.md`).
+- A push runs the whole suite on GitHub (`ci.yml`, four shards side by side, ~25 min), and the site is published only
+  from a commit it passed on (`deploy.yml` waits for CI): a red push never reaches players, the site stays on the last
+  green commit. A red CI is the next thing to fix.
 - Code style: Prettier (`.prettierrc.json`: width 200, no semicolons, single quotes; `npm run format`; the CSS keeps
   its compact one-line rules by hand). Comments say
   what and why, in plain words.
