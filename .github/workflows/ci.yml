@@ -28,10 +28,12 @@ jobs:
   test:
     runs-on: ubuntu-latest
     # the browser and every library it needs come in Playwright's own image (no apt during the job: GitHub's runners
-    # could not always reach Ubuntu's mirrors); its version must be the one in package-lock.json (checked below)
+    # could not always reach Ubuntu's mirrors); its version must be the one in package-lock.json (checked below). The
+    # host's shared memory (--ipc=host, as Playwright advises for Chromium in Docker): the container's own 64 MB ran
+    # short in software WebGL, and a graphics context restarted on purpose (11-startup) was lost again for want of it
     container:
       image: mcr.microsoft.com/playwright:v1.63.0-noble
-      options: --user 1001
+      options: --user 1001 --ipc=host
     # the suite renders in software and boots the scene a dozen times (about 35 minutes in one go): it runs as four
     # shards side by side, each a quarter of the spec files, so a push waits about a quarter of that
     timeout-minutes: 40
