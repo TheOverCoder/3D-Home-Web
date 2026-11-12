@@ -57,6 +57,8 @@ The README has the overview; `tests/README.md` what each test guards.
   nothing. A new opening is a row in `layout.ts`; a new door that shuts must close its portal.
 - A crowd's model is everything put after one `at`: each animal, person or plant gets its own. Parts that cast a
   shadow are drawn whole.
+- Each good's model has a weight, the triangles it may draw (`src/models/weights.test.ts`): one grown past it fails in
+  the unit tests, in seconds; the heaviest good is the one the budget fills the market's shelves with.
 - A big thing is built from pieces a few metres across, never one mesh round the farm: one mesh is always partly in
   view, so it is always drawn whole (the hedge and the woods' crowns, `src/farm/Land.tsx`). Each piece is made from
   the same data the one mesh had, with a material of its own made in the one mesh's drawing order (three draws a
@@ -94,6 +96,10 @@ The README has the overview; `tests/README.md` what each test guards.
   (picture, price, an armed *Build*); a thing for sale offers nothing else (`enabled` false; its tag still shows).
   A bed set to one crop is the one place the button buys without a card: its seeds, with the price on the prompt.
   Nothing plants or spends by itself.
+- `tests/e2e/25-button` holds every interactable to this on farms of every kind (today's, plenty, nothing, at
+  random): offered as an action, a press changes something, spends no coin without its price on the prompt, and what
+  it opens has a button to press (a sale's panel a Sell; a panel that only shows what is inside is listed there). A
+  new interactable needs nothing: it is pressed there by being registered.
 
 ## Animals and machines (src/farm/data.ts)
 
@@ -150,7 +156,10 @@ The README has the overview; `tests/README.md` what each test guards.
   action last with its price). 44 px targets, text ≥ 15 px (never < 13). A good's picture where goods change hands
   or go into a machine is an `ItemPic` with its count (the round badge, 1 included), never the picture repeated.
 - The top of the screen has three views (`HudMode`: everything / only the compass / clear, `<html data-hud>`):
-  anything new up there must hide in the views it does not belong to (see `src/ui/Compass.css`).
+  anything new up there must hide in the views it does not belong to (see `src/ui/Compass.css`). Its middle is one
+  column under the chips (`src/ui/TopStack.tsx`): the compass, a toast, the level-up and the first hint each in its
+  slot (`<TopSlot name>`), one under another; something new there is a slot in its place in the order, never an
+  offset from another element. `22-xp` checks every box up there, with a toast and the hint, upright and sideways.
 - Touch controls (`src/ui/TouchControls.tsx`, `src/lib/stick.ts`): the stick comes to the thumb in the bottom-left
   area, with three buttons over it (look where you walk, walk on, turn round); the action buttons and jump are
   bottom right. Anything new there is placed by `measure`/`place`/`leftSide` in both orientations, clear of the

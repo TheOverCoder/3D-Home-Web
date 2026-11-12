@@ -93,27 +93,32 @@
     </div>
     <div class="card">
       <h3>מנוע תקציב ציור</h3><div class="en">budget engine</div>
-      <p>משקל אוטומטי לכל מודל, ספירת משולשים בלי לצייר, ופישוט של מודלים רחוקים רק כשההבדל קטן מחצי פיקסל.</p>
+      <p><b>שלב 1 (פועל):</b> לכל מוצר יש משקל: כמה משולשים מותר לו לצייר. מודל שגדל מעבר למשקל נכשל בבדיקה של שנייה, ולא אחרי 20 דקות בבדיקת התקציב. הבדיקה מוודאת גם שהמדפים נמדדים מלאים במוצר הכי כבד.</p>
+      <p><b>שלב 2 (הבא):</b> ספירת משולשים בלי לצייר, ופישוט מודלים רחוקים רק כשההבדל קטן מחצי פיקסל.</p>
       <p class="saves">סוגר: המאבק על המשולשים (כ-18 שמירות, 12 "חובות").</p>
-      <div class="chips"><span class="chip new">חדש</span><span class="chip home">נבנה כאן</span><span class="chip got">meshoptimizer</span><span class="chip wip">בבנייה</span></div>
+      <div class="chips"><span class="chip new">חדש</span><span class="chip home">נבנה כאן</span><span class="chip got">meshoptimizer</span><span class="chip done">שלב 1 פועל</span><span class="chip wip">שלב 2 בבנייה</span></div>
+      <span class="files">src/models/weights.test.ts</span>
     </div>
     <div class="card">
       <h3>מנוע כפתור הפעולה</h3><div class="en">action-button contract</div>
-      <p>בדיקה שעוברת על כל דבר שאפשר ללחוץ עליו במצבים רבים, ומוודאת שהכפתור לעולם לא מציע משהו שלא עושה כלום.</p>
-      <p class="saves">סוגר: באג שחזר 4 פעמים (Bake בלי מה לאפות, Sell כשאי אפשר).</p>
-      <div class="chips"><span class="chip new">חדש</span><span class="chip home">נבנה כאן</span><span class="chip wip">בבנייה</span></div>
+      <p>בדיקה שלוחצת על כל מה שהכפתור מציע, בשש חוות שונות: היום, הכול בשפע, בלי כלום, ושלוש אקראיות. בסך הכול 157 לחיצות, בתוך 9 שניות. כל לחיצה חייבת לעשות משהו, לא להוציא מטבעות בלי מחיר על הכפתור, ולפתוח רק מסך שיש בו מה ללחוץ. דבר חדש שאפשר ללחוץ עליו נבדק לבד.</p>
+      <p class="saves">כבר מצא באג: ערוגה בלי מטבעות הציעה "Plant seeds", אבל כל הזרעים היו חסומים. עכשיו היא מראה מה חסר.</p>
+      <div class="chips"><span class="chip new">חדש</span><span class="chip home">נבנה כאן</span><span class="chip done">פועל</span></div>
+      <span class="files">tests/e2e/25-button.spec.ts</span>
     </div>
     <div class="card">
       <h3>מנוע שמירה</h3><div class="en">save schema</div>
-      <p>תבנית אחת לשמירה, וממנה נבנים לבד ערכי ההתחלה, הניקוי והעדכון של שמירות ישנות. פיצ'ר חדש הוא שורה אחת.</p>
-      <p class="saves">סוגר: כ-25 שמירות של תיקוני טעינה, ו-6 פונקציות ניקוי נפרדות.</p>
-      <div class="chips"><span class="chip new">חדש</span><span class="chip home">נבנה כאן</span><span class="chip wip">בבנייה</span></div>
+      <p><b>נבדק, ולא נבנה.</b> הקיים כבר עושה את העבודה: בדיקה אוטומטית משבשת כל שדה בשמירה בדרכים שונות (אלפי שמירות אקראיות). שדה חדש נבדק בה לבד. הבדיקה גם בודקת את הטעינה בכללים משלה, בלי לסמוך על הקוד שהיא בודקת.</p>
+      <p class="saves">תבנית משותפת הייתה מבטלת את הבדיקה העצמאית הזאת ומסכנת שמירות ישנות. זה לא שיפור ודאי, ולכן לא נעשה.</p>
+      <div class="chips"><span class="chip home">קיים</span><span class="chip done">פועל</span></div>
+      <span class="files">src/farm/save.property.test.ts · state.ts load()</span>
     </div>
     <div class="card">
       <h3>מנוע פריסת מסך</h3><div class="en">HUD slots</div>
-      <p>לכל מה שבראש המסך יש מקום קבוע בטור אחד, כך ששני דברים לא יכולים להסתיר זה את זה. בדיקה אוטומטית רצה לאורך ולרוחב.</p>
-      <p class="saves">סוגר: כ-12 שמירות של חפיפות בטלפון.</p>
-      <div class="chips"><span class="chip new">חדש</span><span class="chip home">נבנה כאן</span><span class="chip wip">בבנייה</span></div>
+      <p>אמצע ראש המסך הוא טור אחד: מצפן, הודעה, עליית רמה ורמז. לכל אחד יש מקום משלו, כך שאף אחד לא יכול לכסות אחר, גם כשהשבבים למעלה תופסים כמה שורות. בדיקה בטלפון, לאורך ולרוחב, מוודאת שאף קופסה לא נוגעת באחרת.</p>
+      <p class="saves">כבר תיקן שני דברים: הרמז שנשאר בדף לנצח (שקוף), והודעה שקפצה לרגע מעל המצפן.</p>
+      <div class="chips"><span class="chip new">חדש</span><span class="chip home">נבנה כאן</span><span class="chip done">פועל</span></div>
+      <span class="files">src/ui/TopStack.tsx · tests/e2e/22-xp.spec.ts</span>
     </div>
   </div>
 
