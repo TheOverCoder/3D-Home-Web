@@ -59,6 +59,11 @@ The README has the overview; `tests/README.md` what each test guards.
   nothing. A new opening is a row in `layout.ts`; a new door that shuts must close its portal.
 - A crowd's model is everything put after one `at`: each animal, person or plant gets its own. Parts that cast a
   shadow are drawn whole.
+- Far parts of a crowd are drawn as lighter copies (`src/lib/sculpt/lod.ts`, meshoptimizer's simplifier): each part of
+  400 triangles or more that casts no shadow gets copies whose surfaces (and light and colour) move at most a known
+  error, and a copy is drawn only where that error is under half a pixel for the game's camera (`farEnough`). Not the
+  pass's: the same with it on or off, so `16-view` still compares equal; `27-far-copies` bounds what they change on
+  screen (`__home.view.lod` switches them). A new crowd part needs nothing.
 - Each good's model has a weight, the triangles it may draw (`src/models/weights.test.ts`): one grown past it fails in
   the unit tests, in seconds; the heaviest good is the one the budget fills the market's shelves with.
 - A big thing is built from pieces a few metres across, never one mesh round the farm: one mesh is always partly in

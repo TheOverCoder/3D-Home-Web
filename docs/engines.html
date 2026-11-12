@@ -95,10 +95,11 @@
       <h3>מנוע תקציב ציור</h3><div class="en">budget engine</div>
       <p><b>שלב 1 (פועל):</b> לכל מוצר יש משקל: כמה משולשים מותר לו לצייר. מודל שגדל מעבר למשקל נכשל בבדיקה של שנייה, ולא אחרי 20 דקות.</p>
       <p><b>שלב 2 (פועל):</b> ספירה בלי לצייר. בדיקת התקציב רצה על הקשר גרפי "ריק" שלא מצייר אבל סופר בדיוק כמו אמיתי. בדיקה צמודה מוכיחה שהמספרים זהים. כל הבדיקה עם שלושת הגדלים לוקחת עכשיו כדקה וחצי במקום כ-18.</p>
-      <p><b>שלב 3 (הבא):</b> פישוט אוטומטי של מודלים רחוקים, רק כשההבדל קטן מחצי פיקסל. זה ישלם את ה"חובות" באמת.</p>
+      <p><b>שלב 3 (פועל בקהלים):</b> כל חלק כבד בקהל (מוצרים על המדפים, צמחים, אנשים) מקבל עותקים פשוטים יותר. עותק מצויר רק כשהמודל רחוק מספיק, כך שהשינוי קטן מחצי פיקסל. "המדפים בסופר" ירדו מ-253 אלף ל-205–213 אלף משולשים, וה"חוב" נמחק. "החצר מלמעלה" ירדה מ-261–278 אלף ל-238–250 אלף. בדיקה משווה תמונה עם העותקים ובלעדיהם: פחות מ-0.05% מהפיקסלים משתנים בצורה ניכרת.</p>
+      <p><b>הבא:</b> אותו עיקרון לרהיטים, לגדר החיה ולעצים.</p>
       <p class="saves">גילוי: התקרה של "החצר מלמעלה" נמדדה נמוך מדי בציור האיטי, לפני שכל הקונים הגיעו לשער. עכשיו היא נמדדת נכון: 265–278 אלף, והתקרה 284 אלף.</p>
-      <div class="chips"><span class="chip new">חדש</span><span class="chip home">נבנה כאן</span><span class="chip got">meshoptimizer</span><span class="chip done">שלבים 1–2 פועלים</span><span class="chip wip">שלב 3 בבנייה</span></div>
-      <span class="files">src/models/weights.test.ts · tests/e2e/nullgl.js · 26-counting</span>
+      <div class="chips"><span class="chip new">חדש</span><span class="chip home">נבנה כאן</span><span class="chip got">meshoptimizer</span><span class="chip done">שלבים 1–3 פועלים</span><span class="chip wip">רהיטים: הבא</span></div>
+      <span class="files">src/lib/sculpt/lod.ts · src/models/weights.test.ts · tests/e2e/nullgl.js · 26 · 27</span>
     </div>
     <div class="card">
       <h3>מנוע כפתור הפעולה</h3><div class="en">action-button contract</div>
@@ -250,7 +251,7 @@
     </div>
     <div class="card">
       <h3>meshoptimizer</h3><div class="en">meshoptimizer · glTF-Transform</div>
-      <p>מפשט וכווץ מודלים. משמש בהכנת הקבצים, ובקרוב גם לפישוט אוטומטי במנוע התקציב.</p>
+      <p>מפשט וכווץ מודלים. משמש בהכנת הקבצים, ועכשיו גם במשחק עצמו: הוא בונה את העותקים הפשוטים של חלקים רחוקים (מנוע התקציב).</p>
       <div class="chips"><span class="chip got">github.com/zeux/meshoptimizer</span><span class="chip done">MIT</span></div>
     </div>
   </div>
@@ -275,6 +276,7 @@
       <tr><td class="name"><a href="https://github.com/N8python/n8ao">n8ao</a> 2.0</td><td>צל עדין בפינות (AO)</td><td class="lic">ISC</td></tr>
       <tr><td class="name"><a href="https://github.com/Alchemist0823/three.quarks">three.quarks</a> 0.17</td><td>חלקיקים</td><td class="lic">MIT</td></tr>
       <tr><td class="name"><a href="https://github.com/elalish/manifold">manifold-3d</a> 3.5</td><td>חיתוך וחיבור צורות במודלים</td><td class="lic">Apache-2.0</td></tr>
+      <tr><td class="name"><a href="https://github.com/zeux/meshoptimizer">meshoptimizer</a> 1.1</td><td>עותקים פשוטים של חלקים רחוקים (מנוע התקציב)</td><td class="lic">MIT</td></tr>
       <tr><td class="name"><a href="https://github.com/pmndrs/zustand">zustand</a> 5</td><td>מצב המשחק והשמירה בזיכרון</td><td class="lic">MIT</td></tr>
       <tr><td class="name"><a href="https://github.com/react/react">react · react-dom</a> 19.3</td><td>הממשק</td><td class="lic">MIT</td></tr>
       <tr><td class="name"><a href="https://phosphoricons.com">@phosphor-icons/react</a> 2.1</td><td>סמלים בממשק</td><td class="lic">MIT</td></tr>

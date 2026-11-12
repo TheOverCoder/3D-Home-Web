@@ -55,5 +55,5 @@ export const CREDITS: Credit[] = [
   },
   { what: 'Phosphor Icons (interface glyphs)', by: 'Phosphor Icons', license: 'MIT', url: 'https://phosphoricons.com' },
   { what: 'Fredoka and Nunito typefaces', by: 'The Fredoka Project Authors; The Nunito Project Authors', license: 'SIL OFL 1.1', url: 'https://fonts.google.com/specimen/Fredoka' },
-  { what: 'three.js, react-three-fiber, drei, Rapier, ecctrl, three.quarks', by: 'their respective authors', license: 'MIT / Apache-2.0' },
+  { what: 'three.js, react-three-fiber, drei, Rapier, ecctrl, three.quarks, meshoptimizer', by: 'their respective authors', license: 'MIT / Apache-2.0' },
 ]

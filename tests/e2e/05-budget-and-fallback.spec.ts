@@ -41,7 +41,6 @@ const PAID = 0.05
 const OCCLUDERS = "the farm's buildings hiding what is behind them, as the house's walls do (third person over the yard: a fifth to a third of it is behind something)"
 const MERGED = 'the merged pieces left out one by one where they cannot be seen (a merged mesh is drawn whole)'
 const FURNITURE = 'fewer furniture draws: the pieces of one kind in a room drawn together'
-const SHOPPERS = 'the shoppers hiding the goods behind them, as the walls do (from the door, those at the counter and the browse spots stand between you and the shelves)'
 
 interface Debt {
   view: string
@@ -57,8 +56,6 @@ interface Debt {
 const YARD = 'over the farm the walls hide only what is behind the house: every room is seen through its windows, full of furniture, and the whole farm in front with its animals and buyers'
 const ROOMS = 'the ceilings go and the eye is over the walls: every room in view is drawn, full of furniture (the walls hide only what is low and close behind them)'
 const SHADOWS = 'the ceilings go, so the sun reaches every room: every piece of furniture is drawn into its map'
-const SHOP =
-  'the shop at its fullest, seen across its shelves from the door: every place full of corn, the heaviest good to draw (its kernels are geometry: 7.2k triangles a cob, thirty on the shelves), and the six shoppers there are at the most inside'
 
 /** The views over the budget today (with the drawing pass, the hedge and the woods in pieces), and the most each may draw
  *  until it is paid: the most it measured, and 5 % more (the animals and buyers wander in and out of a view: the yard
@@ -66,16 +63,12 @@ const SHOP =
 const DEBTS: Debt[] = [
   // the house's walls hide what is behind them (src/lib/visibility/walls.ts): 436k-439k -> 256k-263k here, and the yard back at
   // the house, the yard upright, third person and decorating sideways paid
-  // measured again at full speed (the drawing-free context): with the buyers all at the gate and the animals where they
-  // wander, 261k-278k at 640x360 and 265k-278k sideways over four walks; under software rendering's few frames a second
-  // the line was still on its way in and it read 256k-265k, too low a ceiling
-  { view: 'yard, over the farm', size: '640×360', pass: 'camera', triangles: 284_000, why: YARD, pays: [OCCLUDERS] },
-  { view: 'yard, over the farm', size: '1055×487', pass: 'camera', triangles: 284_000, why: YARD, pays: [OCCLUDERS] },
+  // with the crowds' lighter copies of far parts (src/lib/sculpt/lod.ts) 238k-249k at 640x360 and 244k-250k sideways
+  // over four walks, at full speed with every buyer at the gate (261k-278k before them): under the budget, not yet 5 % under
+  { view: 'yard, over the farm', size: '640×360', pass: 'camera', triangles: 258_000, why: YARD, pays: [OCCLUDERS] },
+  { view: 'yard, over the farm', size: '1055×487', pass: 'camera', triangles: 258_000, why: YARD, pays: [OCCLUDERS] },
   // the pieces and the walls stay merged while decorating (649 → 373 draws): a merged mesh is drawn whole, 3-7 % more triangles
   { view: 'decorating the living room', size: '640×360', pass: 'camera', triangles: 300_000, why: ROOMS, pays: [MERGED] },
-  // the market at its fullest (marketFill with its shoppers): 253.1k and 253.4k, the corn alone 230k (upright 114k)
-  { view: 'market, the shelves', size: '640×360', pass: 'camera', triangles: 266_000, why: SHOP, pays: [SHOPPERS] },
-  { view: 'market, the shelves', size: '1055×487', pass: 'camera', triangles: 266_000, why: SHOP, pays: [SHOPPERS] },
   ...SIZES.flatMap((s): Debt[] => [
     { view: 'third person, the living room', size: s.name, pass: 'shadow', triangles: 315_000, draws: 453, why: SHADOWS, pays: [FURNITURE] },
     { view: 'decorating the living room', size: s.name, pass: 'shadow', triangles: 313_000, draws: 447, why: SHADOWS, pays: [FURNITURE] },

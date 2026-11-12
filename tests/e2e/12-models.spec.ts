@@ -67,7 +67,12 @@ test.describe('sculpted models', () => {
         const g = h.scene.getObjectByName(name)
         if (!g) continue
         out[name] = {}
-        for (const m of g.children) if (m.isInstancedMesh && m.count > 0) out[name][m.name.replace(`${name}-`, '')] = m.count
+        // a part's instances drawn whole and as its lighter copies (`-lod1`, `-lod2`: src/lib/sculpt/lod.ts) together
+        for (const m of g.children) {
+          if (!m.isInstancedMesh || m.count === 0) continue
+          const part = m.name.replace(`${name}-`, '').replace(/-lod\d+$/, '')
+          out[name][part] = (out[name][part] ?? 0) + m.count
+        }
       }
       h.view.on = true
       // the market's people are drawn in the same crowd: the manager at his desk, the contractor at his window in his

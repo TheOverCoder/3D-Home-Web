@@ -378,6 +378,9 @@ function installProbe() {
     cam.rotation.set(pose[4], pose[3], 0)
     cam.updateMatrixWorld(true)
     gl.info.autoReset = false
+    // the goods are made again with the casting switched (a caster is drawn whole): the crowds' lighter copies of far
+    // parts off for both frames, so only the shadows differ between them (27-far-copies holds the copies on their own)
+    h.view.lod = false
     const draw = (on: boolean) => {
       h.market.casters(on)
       gl.shadowMap.needsUpdate = true
@@ -399,6 +402,7 @@ function installProbe() {
       }
     } finally {
       h.market.casters(false)
+      h.view.lod = true
       gl.info.autoReset = true
       gl.shadowMap.needsUpdate = true
     }

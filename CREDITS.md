@@ -25,7 +25,7 @@ The models were compressed (meshopt + WebP textures, small props capped at 512�
 
 - Daylight and most surface textures are generated in code; fabrics use the Poly Haven weave above as their normal map.
 - Inter typeface for 3D labels (packaged by [`@pmndrs/assets`](https://github.com/pmndrs/assets), declared CC0-1.0) — The Inter Project Authors, SIL Open Font License 1.1.
-- three.js, @react-three/fiber, @react-three/drei, @react-three/rapier, @react-three/postprocessing, ecctrl, zustand, three.quarks (the farm's particle effects) — MIT.
+- three.js, @react-three/fiber, @react-three/drei, @react-three/rapier, @react-three/postprocessing, ecctrl, zustand, three.quarks (the farm's particle effects), meshoptimizer (the lighter copies of far parts) — MIT.
 
 ## Real assets (add when downloaded)
 

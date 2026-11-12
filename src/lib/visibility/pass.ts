@@ -48,7 +48,7 @@ import {
   type WebGLRenderer,
 } from 'three'
 import { HOUSE } from '../../data/layout'
-import { liveParts, type Parts } from '../sculpt/parts'
+import { liveParts, type LodView, type Parts } from '../sculpt/parts'
 import { CELLS, OUTER_PORTALS, OUTSIDE, Portals, portalBox, type Cell } from './portals'
 import { updateWalls, wallHides } from './walls'
 
@@ -109,6 +109,8 @@ export const view = {
   walls: true,
   /** the sun's map kept when all that changed is what it leaves out */
   keep: true,
+  /** the crowds' lighter copies of far parts (src/lib/sculpt/lod.ts): not the pass's own, on whether it is or not */
+  lod: true,
   /** time every test three asks for (costs a little time itself) */
   timing: false,
   stats,
@@ -436,14 +438,19 @@ function inScene(o: Object3D, scene: Scene) {
   return root === scene
 }
 
+/** The eye of the game's own camera render, for the crowds' lighter copies of far parts (src/lib/sculpt/lod.ts): given
+ *  pass or no pass, so the picture with the pass and without it is the same; none for any other render. */
+const lodView: LodView = { x: 0, y: 0, z: 0, pixels: 0 }
+let lodOn = false
+
 const cullCrowd = (p: Parts) => {
   if (!inScene(p.group, crowdScene!)) return
   if (!crowdsOn) {
-    p.cull(null)
+    p.cull(null, lodOn ? lodView : null)
     return
   }
   crowdTag = tagOf(p.group)
-  p.cull(modelSeen)
+  p.cull(modelSeen, lodOn ? lodView : null)
   stats.models += p.models
   stats.modelsCulled += p.culledModels
   stats.instances += p.instances()
@@ -488,6 +495,19 @@ function beforeRender(renderer: WebGLRenderer, scene: Scene, camera: Camera) {
     stats.walls = view.on && view.walls ? updateWalls(eye.x, eye.y, eye.z, cam.near, cam.far) : 0
     wallsOn = stats.walls > 0
   } else wallsOn = false
+  // the crowds' far parts: for the game's camera, how many pixels a unit is at distance one (the target drawn into, or
+  // the canvas: its height over 2·tan of half the field of view)
+  lodOn = ours && view.lod
+  if (ours) {
+    const cam = camera as PerspectiveCamera
+    const e = cam.matrixWorld.elements
+    const target = renderer.getRenderTarget()
+    const height = target ? target.height : renderer.getContext().drawingBufferHeight
+    lodView.x = e[12]
+    lodView.y = e[13]
+    lodView.z = e[14]
+    lodView.pixels = (height * cam.zoom) / (2 * Math.tan((cam.fov * Math.PI) / 360))
+  }
   crowdScene = scene
   liveParts.forEach(cullCrowd)
   if (ours) {
