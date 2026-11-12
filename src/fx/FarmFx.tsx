@@ -16,8 +16,11 @@ import type { FxEngine } from './quarks'
 // it is still fresh, else it is dropped. Coins fly on the page itself, from where the buyer stands on the screen.
 
 /** An effect asked for before the engine arrived plays if it is younger than this, else it is dropped (it would come
- *  too late to mean anything). */
+ *  too late to mean anything) — or than three of the frames before it, where frames are slow (a phone that stalls,
+ *  software rendering's second a frame: there a press's crystals were all dropped). A page hidden for a while stops
+ *  its frames altogether, and what was asked meanwhile is still dropped: the frame before the gap was quick. */
 const FRESH_MS = 700
+const FRESH_FRAMES = 3
 /** At most this many coins in the air from one frame's sales (selling to a whole line at once). */
 const MAX_COINS = 14
 
@@ -46,6 +49,8 @@ export function FarmFx() {
   const motionOk = useMotionOk()
   const engine = useRef<FxEngine | null>(null)
   const waiting = useRef<FxRequest[]>([])
+  /** the last frame's length (ms), and so how old a request may be and still play (`FRESH_MS`) */
+  const lastFrame = useRef(16)
 
   useEffect(() => {
     debugSet('fx', { stats: fxStats, time, play: farmFx, coins: coinsFx })
@@ -85,6 +90,8 @@ export function FarmFx() {
     const fx = engine.current
     const asked = takeFx()
     let coins = 0
+    const freshMs = Math.max(FRESH_MS, FRESH_FRAMES * lastFrame.current)
+    lastFrame.current = dt * 1000
     for (const r of asked) {
       if (r.kind === 'item') {
         // a surprise: from where it was found on the screen (or low in the middle, when that is behind you)
@@ -96,7 +103,7 @@ export function FarmFx() {
       } else if (r.kind === 'xp') {
         // XP: crystals from where it was gained (or low in the middle, when that is behind you) into the level chip;
         // asked for while no frame ran (the page hidden), they would only take their XP back off the bar: it is there
-        if (performance.now() - r.at > FRESH_MS) continue
+        if (performance.now() - r.at > freshMs) continue
         at.set(r.x, r.y, r.z).project(camera)
         const behind = at.z > 1
         const x = behind ? size.width / 2 : Math.min(size.width - 30, Math.max(30, ((at.x + 1) / 2) * size.width))
@@ -122,7 +129,7 @@ export function FarmFx() {
     // asked for while the engine was on its way: what is still fresh plays now
     if (waiting.current.length) {
       const now = performance.now()
-      const fresh = waiting.current.filter((r) => now - r.at < FRESH_MS)
+      const fresh = waiting.current.filter((r) => now - r.at < freshMs)
       waiting.current = fx ? [] : fresh
       if (fx)
         for (const r of fresh) {

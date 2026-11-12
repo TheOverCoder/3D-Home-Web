@@ -62,7 +62,7 @@ test.describe('welcome back', () => {
     expect(await page.evaluate(() => (window as any).__home.useHome.getState().guide)).toBe(null)
   })
 
-  test('the page closed an hour: the lettuce grew on, and the card says how many to harvest after Play @boot', async ({ browser }) => {
+  test('the page closed an hour: the lettuce grew on, and the card says how many to harvest after Play @boot', { tag: '@full' }, async ({ browser }) => {
     test.setTimeout(900_000)
     const context = await browser.newContext({ viewport: { width: 640, height: 360 }, baseURL: BASE })
     const page = await context.newPage()

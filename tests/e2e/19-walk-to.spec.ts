@@ -223,7 +223,7 @@ test.describe('take me there', () => {
 })
 
 // A phone in portrait: its own page with touch emulation (coarse pointer).
-test.describe('take me there on a phone', { tag: '@boot' }, () => {
+test.describe('take me there on a phone', { tag: ['@boot', '@full'] }, () => {
   test('a mark tapped walks you, the walk-on button shows it, the stick takes over; tapped again it gets you there', async ({ browser }) => {
     // a phone boot under software rendering (CI) takes four to five minutes on its own
     test.setTimeout(900_000)

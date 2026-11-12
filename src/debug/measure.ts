@@ -27,6 +27,9 @@ export type Switch = keyof typeof SWITCHES
 
 const SLICE_MS = 5000
 const SETTLE = 2 // frames dropped at the start of each slice (the switch has just turned)
+/** A slice ends once its time is up and it has measured this many frames: where a frame takes a second or more (software
+ *  rendering, a sync slice waiting on every frame) its time alone could pass with none measured. A phone has dozens. */
+const MIN_FRAMES = 3
 const LONG = 33.4 // ms: a frame that missed two 60 Hz refreshes
 const TURN = 0.6 // radians a second, "turning"
 
@@ -381,7 +384,7 @@ export function createMeter(gl: WebGLRenderer, scene: Scene, camera: Camera): Me
     const s = current!
     if (settle > 0) settle--
     else if (!Number.isNaN(frame.interval)) s.frames.push(frame)
-    if (cpuEnd - sliceStart < sliceMs) return
+    if (cpuEnd - sliceStart < sliceMs || s.frames.length < MIN_FRAMES) return
     // the slice is over: its draws counted once (outside the frames measured), then the next one
     const c = count()
     s.draws = c.calls

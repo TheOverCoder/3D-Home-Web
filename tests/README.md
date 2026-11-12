@@ -65,9 +65,10 @@ compass mark in `19`, the farm opened again an hour later in `20`, the phone wit
 `22`, the farm closed an hour with the shop stocked in `23`) and take most of that time; they are tagged `@boot`.
 While iterating, `npm run test:e2e:quick` runs everything else (about 20 minutes).
 
-Nine tests are tagged `@full` as well: stable ones that boot a page of their own (High and Medium in `06`, the lost
-context, the loader and the graphics lost while starting in `11`), the budget walk at ten times the farm in `05`, the
-counting check `26`, and in `16` the phone held upright and the sun's map kept. `05` runs on the drawing-free WebGL
+Eleven tests are tagged `@full` as well: stable ones that boot a page of their own (High and Medium in `06`, the lost
+context, the loader and the graphics lost while starting in `11`, the phone walking to a mark in `19`, the farm closed
+an hour in `20`), the budget walk at ten times the farm in `05`, the counting check `26`, and in `16` the phone held
+upright and the sun's map kept. `05` runs on the drawing-free WebGL
 context (`nullgl.js`, `countingTest` in `helpers.ts`): the counts are three.js's own, on the CPU, and `26` checks them
 against a real context view by view; the frames come at full speed, so its three walks take about a minute. A push runs the core
 suite on GitHub without them (`ci.yml`, `--grep-invert @full`, six shards; `npm run test:e2e:core` locally); they run
