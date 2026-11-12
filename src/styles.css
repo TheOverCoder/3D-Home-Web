@@ -793,10 +793,11 @@ a:focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; border-rad
   }
   .first-hint.touch {
     display: block;
-    top: calc(112px + env(safe-area-inset-top)); /* below the toast line */
+    /* below the toast line (.toast), which is under the chips and the compass: the farm's chips take one row or several */
+    top: max(calc(112px + env(safe-area-inset-top)), calc(var(--chips-bottom, 50px) + 120px));
     bottom: auto;
     max-width: min(420px, calc(100vw - 32px));
-    font-size: 12.5px;
+    font-size: 13px;
   }
 }
 
