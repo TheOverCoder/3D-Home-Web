@@ -15,6 +15,7 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:quick": "playwright test --grep-invert @boot",
+    "test:e2e:core": "playwright test --grep-invert @full",
     "lint": "oxlint",
     "format": "prettier --write \"src/**/*.{ts,tsx}\" \"tests/**/*.ts\" \"*.ts\" \"scripts/*.mjs\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx}\" \"tests/**/*.ts\" \"*.ts\" \"scripts/*.mjs\"",

@@ -1,7 +1,7 @@
 name: Deploy to GitHub Pages
 
-# The site is published only from a commit the whole test suite passed on: once CI (ci.yml: the quick checks and the
-# four e2e shards) finishes green for a push to the repository's default branch, whatever it is called, that commit
+# The site is published only from a commit the core suite passed on: once CI (ci.yml: the quick checks and the core
+# e2e shards; the `@full` tests run every night in full.yml) finishes green for a push to the repository's default branch, whatever it is called, that commit
 # is built and published. A push whose tests fail is never published; the site stays on the last green commit. CI
 # cancels a run when a newer push comes, so only the newest commit is published. By hand: Run workflow (the default
 # branch as it is).

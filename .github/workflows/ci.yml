@@ -34,13 +34,14 @@ jobs:
     container:
       image: mcr.microsoft.com/playwright:v1.63.0-noble
       options: --user 1001 --ipc=host
-    # the suite renders in software and boots the scene a dozen times (about 35 minutes in one go): it runs as four
-    # shards side by side, each a quarter of the spec files, so a push waits about a quarter of that
+    # the core suite: every test but the `@full` ones (stable tests that boot a page of their own, the budget walk's
+    # other two sizes, ten times the farm, two of 16's groups), which run every night and by hand (full.yml). It renders
+    # in software: six shards side by side, each a sixth of the spec files
     timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5, 6]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -54,7 +55,7 @@ jobs:
           if [ "$v" != "1.63.0" ]; then echo "::error::@playwright/test is $v but the job's image is v1.63.0: move the image tag in ci.yml to v$v"; exit 1; fi
       - run: npx tsc --noEmit
       # the Playwright config builds and serves the app itself on port 4185
-      - run: npx playwright test --shard=${{ matrix.shard }}/4
+      - run: npx playwright test --grep-invert @full --shard=${{ matrix.shard }}/6
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

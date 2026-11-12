@@ -6,30 +6,35 @@ The README has the overview; `tests/README.md` what each test guards.
 
 ## Before pushing
 
-- `npm run check` (types, oxlint, the Vitest unit tests, the format check: ~15 s), then the e2e spec files the change
-  reaches: `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium npx playwright test --trace off <files>` (software WebGL; the
-  whole suite ~45 min, `npm run test:e2e:quick` ~20 min: all but the twelve `@boot` tests that start a page of their
-  own; `05`'s walks alone take 10–20 min, its ten times the farm, at one size, some minutes more). It builds and serves
-  on :4185. A rule or a save change gets a unit test beside its code (`src/**/*.test.ts`, `tests/README.md`).
-- A push runs the whole suite on GitHub (`ci.yml`, four shards side by side, ~25 min), and the site is published only
-  from a commit it passed on (`deploy.yml` waits for CI): a red push never reaches players, the site stays on the last
-  green commit. A red CI is the next thing to fix.
+- `npm run check` (types, oxlint, the Vitest unit tests, the format check: ~15 s) always. Then, locally, only the e2e
+  spec of the area the change touches, without the nightly tests:
+  `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium npx playwright test --trace off --grep-invert @full <file>` (software
+  WebGL, a few minutes a file; it builds and serves on :4185). `05` and `16` only when the change is to geometry,
+  models, materials, lighting or `src/lib/visibility`, and only the group it touches (`-g`). A small request is one
+  agent, no team. A rule or a save change gets a unit test beside its code (`src/**/*.test.ts`, `tests/README.md`).
+- A push runs the core suite on GitHub (`ci.yml`: everything but the `@full` tests, six shards side by side), and the
+  site is published only from a commit it passed on (`deploy.yml` waits for CI): a red push never reaches players.
+  The `@full` tests — stable ones that boot a page of their own, the budget walk at its other two sizes and at ten
+  times the farm, two of 16's groups — run every night and by hand (`full.yml`, Run workflow). A red CI, or a red
+  night, is the next thing to fix.
 - Code style: Prettier (`.prettierrc.json`: width 200, no semicolons, single quotes; `npm run format`; the CSS keeps
   its compact one-line rules by hand). Comments say
   what and why, in plain words.
 - Budget (`05-budget`): measured over a walk (the rooms, each doorway with the door shut and open, the garden door, the
-  gate, the yard, third person, decorating) with the farm at its fullest, at 640×360 and at a phone's drawing buffers
-  (487×1055 upright, 1055×487 sideways). The camera pass stays under 250,000 triangles and 700 draws, and the sun's
-  shadow pass, counted on its own, under 150,000 and 250. A view over it today is a debt listed in 05 (and
-  `tests/README.md`) with what it measured as its ceiling: debts only go down, and a paid one leaves the list. Check
-  it when adding geometry (`BUDGET_MEASURE=1` prints the table without the checks; `?debug&stress=10` is ten times
-  the farm, reported there). The market is measured at its fullest that play can reach in its own views (`marketFill`:
-  shelves full of the heaviest good, its most shoppers inside); elsewhere it stands quiet, so no view depends on when a
+  gate, the yard, third person, decorating) with the farm at its fullest, at a phone's drawing buffer sideways
+  (1055×487) on every push and at 640×360 and upright (487×1055) every night. The camera pass stays under 250,000
+  triangles and 700 draws, and the sun's shadow pass, counted on its own, under 150,000 and 250. A view over it is a
+  debt listed in 05 (and `tests/README.md`) with its reason and what it measured as its ceiling: a ceiling is never
+  raised silently, a new feature may add a debt when paying it now would cost more than it is worth, and a paid one
+  leaves the list. `BUDGET_MEASURE=1` prints the table without the checks; `?debug&stress=10` is ten times the farm,
+  reported there. The market is measured at its fullest that play can reach in its own views (`marketFill`: shelves
+  full of the heaviest good, its most shoppers inside); elsewhere it stands quiet, so no view depends on when a
   shopper walks through its door.
-- Speed never costs the game anything. A fix for speed or the budget may not lower quality or what the game holds: not
-  plainer models, fewer buyers, animals or pieces, smaller rooms or lower caps. It changes how things are drawn
-  (what cannot be seen is not drawn; detail the screen cannot show is not drawn), and the player must not be able to
-  see the difference. A limit that exists only for speed is a debt to remove, not a rule to keep.
+- Quality first. A fix for speed or the budget may not make the game hold less (fewer buyers, animals or pieces,
+  smaller rooms, lower caps) or change anything a player notices in play. The way to it is how things are drawn: what
+  cannot be seen is not drawn, and detail the screen cannot show is not drawn (a simpler model where its difference is
+  under half a pixel at phone size). Judge "not noticed" by a screenshot at phone size, not by pixel equality. A limit
+  that exists only for speed is a debt to remove, not a rule to keep.
 - Tests must not read a value that runs on in real time across separate `page.evaluate` calls (the farm ticks
   every frame): advance and read in the same call.
 
@@ -59,7 +64,8 @@ The README has the overview; `tests/README.md` what each test guards.
   compares them (`window.__home.land.whole`). A light thing (the fence, the trunks: a few hundred triangles) stays
   one mesh, a draw costs more than it saves.
 - `16-view` draws the same frames with the pass on and off and requires every pixel, depth and shadow-map texel to
-  match: anything new (a room, an opening, a kind of view) gets a pose there. `window.__home.view` (?debug) turns the
+  match (a difference there is a culling bug): a new room, opening or kind of view gets a pose there; a walk-in gets
+  its poses from its row. `window.__home.view` (?debug) turns the
   pass and its parts off and counts what it left out.
 
 ## Farm actions (src/lib/interaction.ts)

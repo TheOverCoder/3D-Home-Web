@@ -21,10 +21,11 @@ import { FRONT_DOOR, HALL } from '../../src/data/market'
 // (5 % under the budget) must leave the list. Not by lowering what the game holds: by how things are drawn (CLAUDE.md).
 
 /** The sizes: the e2e window, and a phone's drawing buffers held upright and turned sideways. */
+// `core`: walked on every push; the other two every night (`@full`). A phone held sideways comes nearest its limits.
 const SIZES = [
-  { name: '640×360', width: 640, height: 360 },
-  { name: '487×1055', width: 487, height: 1055 },
-  { name: '1055×487', width: 1055, height: 487 },
+  { name: '640×360', width: 640, height: 360, core: false },
+  { name: '487×1055', width: 487, height: 1055, core: false },
+  { name: '1055×487', width: 1055, height: 487, core: true },
 ]
 
 const LIMITS = { camera: { triangles: 250_000, draws: 700 }, shadow: { triangles: 150_000, draws: 250 } }
@@ -434,7 +435,7 @@ test.describe('performance budget', () => {
   })
 
   for (const size of SIZES)
-    test(`the walk at ${size.name}: under the budget, or a listed debt no higher than it was`, async ({ game }) => {
+    test(`the walk at ${size.name}: under the budget, or a listed debt no higher than it was`, { tag: size.core ? [] : ['@full'] }, async ({ game }) => {
       test.setTimeout(1_800_000)
       await game.ready()
       await fillFarm(game.page)
@@ -446,7 +447,7 @@ test.describe('ten times the farm', () => {
   // `?debug&stress=10&nocap`: ten times today's most of every animal and buyer (src/debug/Stress.tsx) and every room
   // filled until nothing more fits on its floor. A page of its own. Reported only: no limit until real phones have
   // been measured with it.
-  test('the walk at ten times the farm, reported @boot', async ({ browser }) => {
+  test('the walk at ten times the farm, reported @boot', { tag: '@full' }, async ({ browser }) => {
     test.setTimeout(1_800_000)
     const context = await browser.newContext({ viewport: { width: 640, height: 360 }, baseURL: BASE })
     const page = await context.newPage()

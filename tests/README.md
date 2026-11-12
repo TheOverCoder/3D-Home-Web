@@ -62,8 +62,14 @@ Twelve tests start a page of their own (fresh boots on High and Medium, the lost
 second visit, the graphics lost while starting, ten times the farm in `05`, the measuring tool, the phone walking to a
 compass mark in `19`, the farm opened again an hour later in `20`, the phone with a level claimed and opened again in
 `22`, the farm closed an hour with the shop stocked in `23`) and take most of that time; they are tagged `@boot`.
-While iterating, `npm run test:e2e:quick` runs everything else (about 20 minutes); the whole suite still runs before a
-push, and CI runs it all in four shards.
+While iterating, `npm run test:e2e:quick` runs everything else (about 20 minutes).
+
+Ten tests are tagged `@full` as well: stable ones that boot a page of their own (High and Medium in `06`, the lost
+context, the loader and the graphics lost while starting in `11`), the budget walk at 640×360 and upright (487×1055)
+and at ten times the farm in `05`, and in `16` the phone held upright and the sun's map kept. A push runs the core
+suite on GitHub without them (`ci.yml`, `--grep-invert @full`, six shards; `npm run test:e2e:core` locally); they run
+every night and by hand (`full.yml`, Run workflow), and a red night is the next thing to fix. Locally, run only the
+file of the area a change touches.
 
 One browser page is shared by the whole run (`helpers.ts`, the worker-scoped `game` fixture) because booting
 the scene takes a minute or more. `game.ready()` resets the world before each test (spawn, nothing open or carried, every pickup where it started,

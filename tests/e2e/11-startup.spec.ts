@@ -16,7 +16,7 @@ const readyButton = (page: Game['page']) =>
   )
 
 test.describe('starting up', () => {
-  test('the loader lists what it downloads and keeps it on the device; a second visit loads from there', { tag: '@boot' }, async ({ browser }) => {
+  test('the loader lists what it downloads and keeps it on the device; a second visit loads from there', { tag: ['@boot', '@full'] }, async ({ browser }) => {
     test.setTimeout(600_000)
     const context = await browser.newContext({ viewport: { width: 640, height: 360 }, baseURL: BASE })
     const page = await context.newPage()
@@ -91,7 +91,7 @@ test.describe('starting up', () => {
     await context.close()
   })
 
-  test('graphics lost while starting: the house starts again in light graphics, and says so', { tag: '@boot' }, async ({ browser }) => {
+  test('graphics lost while starting: the house starts again in light graphics, and says so', { tag: ['@boot', '@full'] }, async ({ browser }) => {
     test.setTimeout(600_000)
     const context = await browser.newContext({ viewport: { width: 640, height: 360 }, baseURL: BASE })
     const page = await context.newPage()

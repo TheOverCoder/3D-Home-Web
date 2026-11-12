@@ -810,7 +810,7 @@ test.describe('the drawing pass leaves out only what cannot be seen', () => {
   // indoors where no window lets sunlight in is left out of it, so the map is kept. After each thing that happens, the
   // map as the game left it must be a full redraw's, texel for texel (every caster, and the pass on), and so must the
   // frame drawn with it; and the check must see a stale map (your body moved outdoors, the map left as it was).
-  test("the sun's map, kept while you move where no sunlight reaches, is always a full redraw's", async ({ game }) => {
+  test("the sun's map, kept while you move where no sunlight reaches, is always a full redraw's", { tag: '@full' }, async ({ game }) => {
     // a dozen places and things that happen, each compared three ways: longer than one room's poses
     test.setTimeout(600_000)
     await setUp(game)
@@ -946,7 +946,7 @@ test.describe('the drawing pass leaves out only what cannot be seen', () => {
     console.log(log.join('\n'))
   })
 
-  test('a phone held upright (390×844): rooms, the door, the garden door, the yard, the gate and the market', async ({ game }) => {
+  test('a phone held upright (390×844): rooms, the door, the garden door, the yard, the gate and the market', { tag: '@full' }, async ({ game }) => {
     await setUp(game)
     const { page } = game
     const log: string[] = []

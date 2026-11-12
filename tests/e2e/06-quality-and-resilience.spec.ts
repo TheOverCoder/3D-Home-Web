@@ -6,7 +6,7 @@ import { test, expect, bootApp, watchErrors, BASE } from './helpers'
 
 for (const quality of ['high', 'medium'] as const) {
   test.describe(`quality=${quality}`, () => {
-    test(`boots, renders and walks with no console errors on ${quality}`, { tag: '@boot' }, async ({ browser }) => {
+    test(`boots, renders and walks with no console errors on ${quality}`, { tag: ['@boot', '@full'] }, async ({ browser }) => {
       test.setTimeout(300_000)
       const context = await browser.newContext({ viewport: { width: 640, height: 360 }, baseURL: BASE })
       const page = await context.newPage()
@@ -63,7 +63,7 @@ test.describe('settings and diagnostics', () => {
 })
 
 test.describe('graphics reset', () => {
-  test('a lost WebGL context shows the notice; restoring offers to continue', { tag: '@boot' }, async ({ browser }) => {
+  test('a lost WebGL context shows the notice; restoring offers to continue', { tag: ['@boot', '@full'] }, async ({ browser }) => {
     // a fresh boot of its own: as long as bootApp allows (the intro, then the first room), and the reset on top
     test.setTimeout(480_000)
     const context = await browser.newContext({ viewport: { width: 640, height: 360 }, baseURL: BASE })
