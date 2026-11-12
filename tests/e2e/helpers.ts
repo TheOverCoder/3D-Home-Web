@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { test as base, expect, type Page } from '@playwright/test'
+import { test as base, expect, type Browser, type Page } from '@playwright/test'
 
 /** Library warnings that are known and harmless (they are warnings, but we ignore them explicitly anyway). */
 const IGNORED = [/THREE\.Clock: This module has been deprecated/, /using deprecated parameters for the initialization function/]
@@ -49,6 +49,83 @@ async function isPlaying(page: Page) {
     .catch(() => false)
 }
 
+/** The drawing-free WebGL context (nullgl.js): what a frame draws is counted as by a real one (tests/e2e/26-counting
+ *  checks it, side by side), at full speed instead of software rendering's few frames a second. */
+export const NULL_GL = new URL('./nullgl.js', import.meta.url).pathname
+
+/** A page with the game and the helpers round it (`ready`, `teleport`…), booted on its first `ready()`. `counting`: on
+ *  the drawing-free context, for what only counts draws and triangles (the budget walk); nothing is drawn. */
+export async function openGame(browser: Browser, counting = false): Promise<{ game: Game; close: () => Promise<void> }> {
+  const context = await browser.newContext({ viewport: { width: 640, height: 360 }, baseURL: BASE })
+  const page = await context.newPage()
+  if (counting) await page.addInitScript({ path: NULL_GL })
+  const errors: string[] = []
+  watchErrors(page, errors)
+
+  const g: Game = {
+    page,
+    errors,
+    state: () => page.evaluate(() => JSON.parse(JSON.stringify((window as any).__home.useHome.getState(), (_k, v) => (typeof v === 'function' ? undefined : v)))),
+    teleport: async (x, y, z, yaw, pitch = 0) => {
+      await page.evaluate(
+        ([x, y, z, yaw, pitch]) => {
+          const h = (window as any).__home
+          h.teleport(x, y, z)
+          if (yaw !== undefined) {
+            if (typeof h.look === 'function') h.look({ yaw, pitch })
+            else {
+              h.look.yaw = yaw
+              h.look.pitch = pitch
+            }
+          }
+        },
+        [x, y, z, yaw, pitch] as [number, number, number, number | undefined, number],
+      )
+    },
+    hold: async (key, ms) => {
+      await page.keyboard.down(key)
+      await page.waitForTimeout(ms)
+      await page.keyboard.up(key)
+    },
+    ready: async () => {
+      if (!(await isPlaying(page))) await bootApp(page)
+      await page.evaluate(() => {
+        const h = (window as any).__home
+        const s = h.useHome.getState()
+        if (s.screen) s.closeScreen()
+        if (s.panel) s.closePanel()
+        if (s.settingsOpen) s.setSettingsOpen(false)
+        if (s.editing) s.setEditing(false)
+        if (s.view !== 'first') s.setView('first')
+        // every pickup back where it started (the first reset after the page booted saw them all there): one left
+        // somewhere by a test (the mug dropped in the yard) would stand in the next one's way
+        h.itemsHome ??= Object.fromEntries(Object.entries(s.items).map(([id, it]: [string, any]) => [id, it.pos]))
+        for (const [id, pos] of Object.entries(h.itemsHome as Record<string, number[]>)) {
+          const now = s.items[id]?.pos
+          if (now && now.some((v: number, k: number) => v !== pos[k])) s.placeItem(id, pos)
+        }
+        h.useHome.setState({
+          carrying: null,
+          lamps: Object.fromEntries(Object.keys(s.lamps).map((k) => [k, true])),
+          doors: Object.fromEntries(Object.keys(s.doors).map((k) => [k, false])),
+        })
+        h.teleport(-3.5, 1.4, 1.3)
+        if (typeof h.look === 'function') h.look({ yaw: Math.PI, pitch: -0.04 })
+        else {
+          h.look.yaw = Math.PI
+          h.look.pitch = -0.04
+        }
+        // the farm's clock at noon, and stopped: the light never changes between two frames a test compares (16), nor
+        // during a walk that is measured (05); only 24-day moves it, and puts it back (guarded: a page from before
+        // the day's clock has no such hooks)
+        h.farm?.setHour?.(12)
+        h.farm?.freezeDay?.(true)
+      })
+    },
+  }
+  return { game: g, close: () => context.close() }
+}
+
 /**
  * One browser page is shared by the whole run: booting the software-rendered scene takes a minute or
  * more, so each test resets the world (`game.ready()`) instead of paying for a fresh page. Tests that
@@ -57,74 +134,22 @@ async function isPlaying(page: Page) {
 export const test = base.extend<object, { game: Game }>({
   game: [
     async ({ browser }, use) => {
-      const context = await browser.newContext({ viewport: { width: 640, height: 360 }, baseURL: BASE })
-      const page = await context.newPage()
-      const errors: string[] = []
-      watchErrors(page, errors)
+      const { game, close } = await openGame(browser)
+      await use(game)
+      await close()
+    },
+    { scope: 'worker', timeout: 300_000 },
+  ],
+})
 
-      const g: Game = {
-        page,
-        errors,
-        state: () => page.evaluate(() => JSON.parse(JSON.stringify((window as any).__home.useHome.getState(), (_k, v) => (typeof v === 'function' ? undefined : v)))),
-        teleport: async (x, y, z, yaw, pitch = 0) => {
-          await page.evaluate(
-            ([x, y, z, yaw, pitch]) => {
-              const h = (window as any).__home
-              h.teleport(x, y, z)
-              if (yaw !== undefined) {
-                if (typeof h.look === 'function') h.look({ yaw, pitch })
-                else {
-                  h.look.yaw = yaw
-                  h.look.pitch = pitch
-                }
-              }
-            },
-            [x, y, z, yaw, pitch] as [number, number, number, number | undefined, number],
-          )
-        },
-        hold: async (key, ms) => {
-          await page.keyboard.down(key)
-          await page.waitForTimeout(ms)
-          await page.keyboard.up(key)
-        },
-        ready: async () => {
-          if (!(await isPlaying(page))) await bootApp(page)
-          await page.evaluate(() => {
-            const h = (window as any).__home
-            const s = h.useHome.getState()
-            if (s.screen) s.closeScreen()
-            if (s.panel) s.closePanel()
-            if (s.settingsOpen) s.setSettingsOpen(false)
-            if (s.editing) s.setEditing(false)
-            if (s.view !== 'first') s.setView('first')
-            // every pickup back where it started (the first reset after the page booted saw them all there): one left
-            // somewhere by a test (the mug dropped in the yard) would stand in the next one's way
-            h.itemsHome ??= Object.fromEntries(Object.entries(s.items).map(([id, it]: [string, any]) => [id, it.pos]))
-            for (const [id, pos] of Object.entries(h.itemsHome as Record<string, number[]>)) {
-              const now = s.items[id]?.pos
-              if (now && now.some((v: number, k: number) => v !== pos[k])) s.placeItem(id, pos)
-            }
-            h.useHome.setState({
-              carrying: null,
-              lamps: Object.fromEntries(Object.keys(s.lamps).map((k) => [k, true])),
-              doors: Object.fromEntries(Object.keys(s.doors).map((k) => [k, false])),
-            })
-            h.teleport(-3.5, 1.4, 1.3)
-            if (typeof h.look === 'function') h.look({ yaw: Math.PI, pitch: -0.04 })
-            else {
-              h.look.yaw = Math.PI
-              h.look.pitch = -0.04
-            }
-            // the farm's clock at noon, and stopped: the light never changes between two frames a test compares (16), nor
-            // during a walk that is measured (05); only 24-day moves it, and puts it back (guarded: a page from before
-            // the day's clock has no such hooks)
-            h.farm?.setHour?.(12)
-            h.farm?.freezeDay?.(true)
-          })
-        },
-      }
-      await use(g)
-      await context.close()
+/** The same shared page, on the drawing-free context: for a spec that only counts (05-budget). Its own worker, so the
+ *  specs that draw keep a real context. */
+export const countingTest = base.extend<object, { game: Game }>({
+  game: [
+    async ({ browser }, use) => {
+      const { game, close } = await openGame(browser, true)
+      await use(game)
+      await close()
     },
     { scope: 'worker', timeout: 300_000 },
   ],

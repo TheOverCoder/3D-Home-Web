@@ -1,7 +1,7 @@
 name: Full suite
 
 # Every test, the `@full` ones included (ci.yml leaves them out of a push): stable tests that boot a page of their own,
-# the budget walk at its other two sizes and at ten times the farm, and two of 16's groups. Every night, and by hand
+# the budget walk at ten times the farm, the counting check (26), and two of 16's groups. Every night, and by hand
 # (Run workflow). It publishes nothing; a red night is the next thing to fix (GitHub mails the repository's owner).
 on:
   schedule:

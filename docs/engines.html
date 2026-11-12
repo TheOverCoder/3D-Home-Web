@@ -93,11 +93,12 @@
     </div>
     <div class="card">
       <h3>מנוע תקציב ציור</h3><div class="en">budget engine</div>
-      <p><b>שלב 1 (פועל):</b> לכל מוצר יש משקל: כמה משולשים מותר לו לצייר. מודל שגדל מעבר למשקל נכשל בבדיקה של שנייה, ולא אחרי 20 דקות בבדיקת התקציב. הבדיקה מוודאת גם שהמדפים נמדדים מלאים במוצר הכי כבד.</p>
-      <p><b>שלב 2 (הבא):</b> ספירת משולשים בלי לצייר, ופישוט מודלים רחוקים רק כשההבדל קטן מחצי פיקסל.</p>
-      <p class="saves">סוגר: המאבק על המשולשים (כ-18 שמירות, 12 "חובות").</p>
-      <div class="chips"><span class="chip new">חדש</span><span class="chip home">נבנה כאן</span><span class="chip got">meshoptimizer</span><span class="chip done">שלב 1 פועל</span><span class="chip wip">שלב 2 בבנייה</span></div>
-      <span class="files">src/models/weights.test.ts</span>
+      <p><b>שלב 1 (פועל):</b> לכל מוצר יש משקל: כמה משולשים מותר לו לצייר. מודל שגדל מעבר למשקל נכשל בבדיקה של שנייה, ולא אחרי 20 דקות.</p>
+      <p><b>שלב 2 (פועל):</b> ספירה בלי לצייר. בדיקת התקציב רצה על הקשר גרפי "ריק" שלא מצייר אבל סופר בדיוק כמו אמיתי. בדיקה צמודה מוכיחה שהמספרים זהים. כל הבדיקה עם שלושת הגדלים לוקחת עכשיו כדקה וחצי במקום כ-18.</p>
+      <p><b>שלב 3 (הבא):</b> פישוט אוטומטי של מודלים רחוקים, רק כשההבדל קטן מחצי פיקסל. זה ישלם את ה"חובות" באמת.</p>
+      <p class="saves">גילוי: התקרה של "החצר מלמעלה" נמדדה נמוך מדי בציור האיטי, לפני שכל הקונים הגיעו לשער. עכשיו היא נמדדת נכון: 265–278 אלף, והתקרה 284 אלף.</p>
+      <div class="chips"><span class="chip new">חדש</span><span class="chip home">נבנה כאן</span><span class="chip got">meshoptimizer</span><span class="chip done">שלבים 1–2 פועלים</span><span class="chip wip">שלב 3 בבנייה</span></div>
+      <span class="files">src/models/weights.test.ts · tests/e2e/nullgl.js · 26-counting</span>
     </div>
     <div class="card">
       <h3>מנוע כפתור הפעולה</h3><div class="en">action-button contract</div>

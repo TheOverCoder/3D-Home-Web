@@ -34,9 +34,9 @@ jobs:
     container:
       image: mcr.microsoft.com/playwright:v1.63.0-noble
       options: --user 1001 --ipc=host
-    # the core suite: every test but the `@full` ones (stable tests that boot a page of their own, the budget walk's
-    # other two sizes, ten times the farm, two of 16's groups), which run every night and by hand (full.yml). It renders
-    # in software: six shards side by side, each a sixth of the spec files
+    # the core suite: every test but the `@full` ones (stable tests that boot a page of their own, ten times the farm,
+    # the counting check, two of 16's groups), which run every night and by hand (full.yml). It renders in software
+    # (05's budget walk counts on a drawing-free context): six shards side by side, each a sixth of the spec files
     timeout-minutes: 40
     strategy:
       fail-fast: false

@@ -14,15 +14,17 @@ The README has the overview; `tests/README.md` what each test guards.
   agent, no team. A rule or a save change gets a unit test beside its code (`src/**/*.test.ts`, `tests/README.md`).
 - A push runs the core suite on GitHub (`ci.yml`: everything but the `@full` tests, six shards side by side), and the
   site is published only from a commit it passed on (`deploy.yml` waits for CI): a red push never reaches players.
-  The `@full` tests — stable ones that boot a page of their own, the budget walk at its other two sizes and at ten
-  times the farm, two of 16's groups — run every night and by hand (`full.yml`, Run workflow). A red CI, or a red
-  night, is the next thing to fix.
+  The `@full` tests — stable ones that boot a page of their own, the budget walk at ten times the farm, the counting
+  check (26), two of 16's groups — run every night and by hand (`full.yml`, Run workflow). A red CI, or a red night,
+  is the next thing to fix.
 - Code style: Prettier (`.prettierrc.json`: width 200, no semicolons, single quotes; `npm run format`; the CSS keeps
   its compact one-line rules by hand). Comments say
   what and why, in plain words.
 - Budget (`05-budget`): measured over a walk (the rooms, each doorway with the door shut and open, the garden door, the
-  gate, the yard, third person, decorating) with the farm at its fullest, at a phone's drawing buffer sideways
-  (1055×487) on every push and at 640×360 and upright (487×1055) every night. The camera pass stays under 250,000
+  gate, the yard, third person, decorating) with the farm at its fullest, at 640×360 and at a phone's drawing buffers
+  (487×1055 upright, 1055×487 sideways), on the drawing-free WebGL context (`tests/e2e/nullgl.js`: three.js counts on
+  the CPU, the same as on a real one — `26-counting` holds them side by side — at full speed: the whole walk in about a
+  minute, so locally after any drawing change too). The camera pass stays under 250,000
   triangles and 700 draws, and the sun's shadow pass, counted on its own, under 150,000 and 250. A view over it is a
   debt listed in 05 (and `tests/README.md`) with its reason and what it measured as its ceiling: a ceiling is never
   raised silently, a new feature may add a debt when paying it now would cost more than it is worth, and a paid one
