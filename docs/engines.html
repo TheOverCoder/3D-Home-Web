@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3D HOME — מנועים וספריות</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  /* the game's own paper look (src/styles.css): warm paper, brown ink, a leaf, a sun and a berry for the chips */
+  :root {
+    --paper: #fff7e8; --card: #fffdf8; --line: #ecdcc0; --ink: #3b2a1e; --ink-2: #6e5440;
+    --leaf: #2c8540; --leaf-bg: #e3f2e2; --sun: #b77d08; --sun-bg: #fff0c9; --berry: #b8392a; --berry-bg: #fbe3dd;
+    --xp: #5b44d0; --xp-bg: #ebe6ff; --sky: #2a6fb0; --sky-bg: #e2eefa;
+    --display: 'Fredoka', ui-rounded, system-ui, sans-serif; --text: 'Nunito', system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #1d1712; --card: #271f18; --line: #3d3127; --ink: #f6ead8; --ink-2: #c9b49a;
+      --leaf: #7dd08b; --leaf-bg: #1f3424; --sun: #ffd166; --sun-bg: #3a2f14; --berry: #ff8f7d; --berry-bg: #3c1f1a;
+      --xp: #b9a8ff; --xp-bg: #2a2445; --sky: #8cc4ff; --sky-bg: #1b2a3a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.6 var(--text); }
+  header { position: sticky; top: 0; z-index: 2; background: var(--paper); border-bottom: 1px solid var(--line); }
+  .bar { max-width: 960px; margin: 0 auto; padding: 14px 16px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  h1 { font: 600 22px/1.2 var(--display); margin: 0; flex: 1; }
+  h1 .brand { display: block; font: 600 12.5px/1.4 var(--display); letter-spacing: 0.08em; color: var(--ink-2); direction: ltr; text-align: right; }
+  nav { display: flex; gap: 6px; background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 4px; }
+  nav a { font: 600 15px/1 var(--display); color: var(--ink-2); text-decoration: none; padding: 10px 18px; border-radius: 999px; min-height: 40px; display: inline-flex; align-items: center; }
+  nav a.on { background: var(--ink); color: var(--paper); }
+  main { max-width: 960px; margin: 0 auto; padding: 8px 16px 64px; }
+  section.page { display: none; }
+  section.page.on { display: block; }
+  h2 { font: 600 19px/1.3 var(--display); margin: 32px 0 4px; }
+  .lede { color: var(--ink-2); margin: 4px 0 16px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 16px 18px; }
+  .card h3 { font: 600 17px/1.3 var(--display); margin: 0 0 2px; }
+  .card .en { font: 600 12.5px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink-2); direction: ltr; text-align: right; }
+  .card p { margin: 8px 0 10px; font-size: 15px; }
+  .card .saves { font-size: 14px; color: var(--ink-2); margin: 0 0 10px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { font: 700 12.5px/1 var(--text); padding: 6px 10px; border-radius: 999px; white-space: nowrap; }
+  .new { color: var(--xp); background: var(--xp-bg); }
+  .home { color: var(--leaf); background: var(--leaf-bg); }
+  .got { color: var(--sky); background: var(--sky-bg); }
+  .wip { color: var(--sun); background: var(--sun-bg); }
+  .done { color: var(--leaf); background: var(--leaf-bg); }
+  code, .files { font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; direction: ltr; unicode-bidi: isolate; }
+  .files { display: block; color: var(--ink-2); margin-top: 10px; text-align: left; overflow-wrap: anywhere; }
+  table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; font-size: 15px; }
+  th, td { text-align: right; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font: 600 14px/1.3 var(--display); color: var(--ink-2); background: var(--paper); }
+  tr:last-child td { border-bottom: 0; }
+  td.name { font-weight: 700; direction: ltr; text-align: right; white-space: nowrap; }
+  td.lic { white-space: nowrap; color: var(--ink-2); font-size: 13.5px; }
+  a { color: var(--sky); }
+  .wrap { overflow-x: auto; border-radius: 18px; }
+  .legend { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 0; }
+  footer { color: var(--ink-2); font-size: 13.5px; margin-top: 40px; }
+  @media (max-width: 560px) { td.lic, th.lic { display: none; } td.name { white-space: normal; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <h1><span class="brand">3D HOME</span>מנועים וספריות</h1>
+    <nav aria-label="דפים">
+      <a href="#engines" data-page="engines" class="on">מנועים</a>
+      <a href="#libraries" data-page="libraries">ספריות קוד</a>
+    </nav>
+  </div>
+</header>
+<main>
+
+<!-- ─────────────────────────── the engines ─────────────────────────── -->
+<section class="page on" data-page="engines">
+  <p class="lede">מנוע הוא מערכת אחת שאחראית על סוג שלם של עבודה. דבר חדש הוא שורה של נתונים, ולא קוד חדש בעשרה מקומות. כך הבסיס נכון מההתחלה, ואותה בעיה לא חוזרת.</p>
+  <div class="legend">
+    <span class="chip new">חדש</span><span class="chip home">נבנה כאן</span><span class="chip got">מוכן, הורד מבחוץ</span><span class="chip wip">בבנייה</span><span class="chip done">פועל</span>
+  </div>
+
+  <h2>מנועים חדשים (נובמבר 2026)</h2>
+  <p class="lede">נבחרו לפי מה שחזר הכי הרבה בהיסטוריה של הפרויקט (103 שמירות).</p>
+  <div class="grid">
+    <div class="card">
+      <h3>בדיקות: ליבה ולילה</h3><div class="en">ci.yml · full.yml · @full</div>
+      <p>בכל שינוי רצות ב-GitHub רק בדיקות הליבה, ב-6 חלקים במקביל. הבדיקות הכבדות והיציבות רצות בכל לילה, או בלחיצת כפתור.</p>
+      <p class="saves">חוסך: 36 דקות המתנה בכל שינוי ירדו לכ-15.</p>
+      <div class="chips"><span class="chip new">חדש</span><span class="chip home">נבנה כאן</span><span class="chip done">פועל</span></div>
+    </div>
+    <div class="card">
+      <h3>מנוע תקציב ציור</h3><div class="en">budget engine</div>
+      <p>משקל אוטומטי לכל מודל, ספירת משולשים בלי לצייר, ופישוט של מודלים רחוקים רק כשההבדל קטן מחצי פיקסל.</p>
+      <p class="saves">סוגר: המאבק על המשולשים (כ-18 שמירות, 12 "חובות").</p>
+      <div class="chips"><span class="chip new">חדש</span><span class="chip home">נבנה כאן</span><span class="chip got">meshoptimizer</span><span class="chip wip">בבנייה</span></div>
+    </div>
+    <div class="card">
+      <h3>מנוע כפתור הפעולה</h3><div class="en">action-button contract</div>
+      <p>בדיקה שעוברת על כל דבר שאפשר ללחוץ עליו במצבים רבים, ומוודאת שהכפתור לעולם לא מציע משהו שלא עושה כלום.</p>
+      <p class="saves">סוגר: באג שחזר 4 פעמים (Bake בלי מה לאפות, Sell כשאי אפשר).</p>
+      <div class="chips"><span class="chip new">חדש</span><span class="chip home">נבנה כאן</span><span class="chip wip">בבנייה</span></div>
+    </div>
+    <div class="card">
+      <h3>מנוע שמירה</h3><div class="en">save schema</div>
+      <p>תבנית אחת לשמירה, וממנה נבנים לבד ערכי ההתחלה, הניקוי והעדכון של שמירות ישנות. פיצ'ר חדש הוא שורה אחת.</p>
+      <p class="saves">סוגר: כ-25 שמירות של תיקוני טעינה, ו-6 פונקציות ניקוי נפרדות.</p>
+      <div class="chips"><span class="chip new">חדש</span><span class="chip home">נבנה כאן</span><span class="chip wip">בבנייה</span></div>
+    </div>
+    <div class="card">
+      <h3>מנוע פריסת מסך</h3><div class="en">HUD slots</div>
+      <p>לכל מה שבראש המסך יש מקום קבוע בטור אחד, כך ששני דברים לא יכולים להסתיר זה את זה. בדיקה אוטומטית רצה לאורך ולרוחב.</p>
+      <p class="saves">סוגר: כ-12 שמירות של חפיפות בטלפון.</p>
+      <div class="chips"><span class="chip new">חדש</span><span class="chip home">נבנה כאן</span><span class="chip wip">בבנייה</span></div>
+    </div>
+  </div>
+
+  <h2>מנועים שבנינו כאן</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>מנוע האנשים</h3><div class="en">rollLook · TRAITS</div>
+      <p>מגריל אדם שלם: מין, גובה, גוף, עור, עיניים, שיער, כובע, בגדים. יותר מ-600 אלף צירופים. המראה נשמר כתכונות.</p>
+      <div class="chips"><span class="chip home">נבנה כאן</span><span class="chip done">פועל</span></div>
+      <span class="files">src/models/look.ts · person.ts</span>
+    </div>
+    <div class="card">
+      <h3>מבנים שנכנסים אליהם</h3><div class="en">WALK_INS</div>
+      <p>שורה אחת למבנה, וממנה נבנים לבד הקירות, ההתנגשות, ההסתרה, גבולות המצלמה, הדלתות האוטומטיות ותנוחות הבדיקה.</p>
+      <div class="chips"><span class="chip home">נבנה כאן</span><span class="chip done">פועל</span></div>
+      <span class="files">src/data/buildings.ts · market.ts · src/scene/WalkIn.tsx</span>
+    </div>
+    <div class="card">
+      <h3>סולמות שדרוג</h3><div class="en">LADDERS · buyLadder</div>
+      <p>כל שדרוג הוא שורה: שלבים, מחיר ומה כל שלב נותן. פונקציית קנייה אחת וכרטיס אחד לכולם.</p>
+      <div class="chips"><span class="chip home">נבנה כאן</span><span class="chip done">פועל</span></div>
+      <span class="files">src/farm/data.ts · Ladder.tsx</span>
+    </div>
+    <div class="card">
+      <h3>תסריטי תנועה</h3><div class="en">script.ts · stepScript</div>
+      <p>דמות הולכת לפי רשימת צעדים: לך, חכה, פנה, נופף. כך עובדים הקונים, המנהל והקבלן.</p>
+      <div class="chips"><span class="chip home">נבנה כאן</span><span class="chip done">פועל</span></div>
+      <span class="files">src/farm/script.ts</span>
+    </div>
+    <div class="card">
+      <h3>שעון היום</h3><div class="en">DAY · HOURS · moodAt</div>
+      <p>בוקר, צהריים, ערב ולילה, עם התאורה של כל חלק. שעות עבודה של דמות הן שורה.</p>
+      <div class="chips"><span class="chip home">נבנה כאן</span><span class="chip done">פועל</span></div>
+      <span class="files">src/farm/day.ts</span>
+    </div>
+    <div class="card">
+      <h3>חיות ומכונות כטבלה</h3><div class="en">PRODUCERS · MACHINES</div>
+      <p>פרה, כבשה, טחנה או תנור הם שורה בטבלה. אותו קוד מריץ את כולם ושומר אותם.</p>
+      <div class="chips"><span class="chip home">נבנה כאן</span><span class="chip done">פועל</span></div>
+      <span class="files">src/farm/data.ts · state.ts</span>
+    </div>
+    <div class="card">
+      <h3>ערכת הפיסול ובדיקת המודלים</h3><div class="en">sculpt kit · checks</div>
+      <p>בונה מודלים מצורות בסיס, עם משטחים (לבנים, עץ, רעפים), ובודקת שאין חלקים מרחפים, חורים או חלקים תלושים.</p>
+      <div class="chips"><span class="chip home">נבנה כאן</span><span class="chip got">manifold-3d</span><span class="chip done">פועל</span></div>
+      <span class="files">src/lib/sculpt · src/models/checks.ts · gallery.ts</span>
+    </div>
+    <div class="card">
+      <h3>מה מצויר</h3><div class="en">visibility pass</div>
+      <p>לא מצייר מה שלא רואים: חדרים ופתחים, קירות שמסתירים, כל דמות בנפרד, ומפת הצל של השמש נשמרת בין תמונות.</p>
+      <div class="chips"><span class="chip home">נבנה כאן</span><span class="chip done">פועל</span></div>
+      <span class="files">src/lib/visibility</span>
+    </div>
+    <div class="card">
+      <h3>קח אותי לשם</h3><div class="en">route</div>
+      <p>מוצא דרך על רשת שנבנית מעולם הפיזיקה, ומוביל את המקל עד שהדבר בהישג יד.</p>
+      <div class="chips"><span class="chip home">נבנה כאן</span><span class="chip done">פועל</span></div>
+      <span class="files">src/lib/route</span>
+    </div>
+    <div class="card">
+      <h3>פרופילי מכשיר</h3><div class="en">profile.ts</div>
+      <p>לכל סוג מכשיר תקציב ואיכות משלו: טלפון, טאבלט, מחשב.</p>
+      <div class="chips"><span class="chip home">נבנה כאן</span><span class="chip done">פועל</span></div>
+      <span class="files">src/lib/profile.ts</span>
+    </div>
+    <div class="card">
+      <h3>רמות, XP ומטרות</h3><div class="en">XP_FOR · gainXp · GOALS</div>
+      <p>כל פעולה נותנת XP לפי טבלה אחת, ומטרה היא שורה שסופרת את מספרי החווה.</p>
+      <div class="chips"><span class="chip home">נבנה כאן</span><span class="chip done">פועל</span></div>
+      <span class="files">src/farm/xp.ts · goals.ts</span>
+    </div>
+    <div class="card">
+      <h3>ממגורה ואסם</h3><div class="en">STORES · storeOf</div>
+      <p>רשומה אחת של כל הסחורה, וכל סחורה שייכת למבנה שלה. לא מאבדים כלום כשמלא.</p>
+      <div class="chips"><span class="chip home">נבנה כאן</span><span class="chip done">פועל</span></div>
+      <span class="files">src/farm/storage.ts</span>
+    </div>
+    <div class="card">
+      <h3>טעינה, עבודה בלי רשת והתאוששות</h3><div class="en">loader · startup · sw</div>
+      <p>מראה התקדמות הורדה אמיתית, שומר את המשחק במכשיר, וחוזר לבד אחרי נפילת גרפיקה.</p>
+      <div class="chips"><span class="chip home">נבנה כאן</span><span class="chip done">פועל</span></div>
+      <span class="files">src/lib/loader.ts · startup.ts · sw.ts</span>
+    </div>
+    <div class="card">
+      <h3>צלילים מסונתזים</h3><div class="en">audio/sound.ts</div>
+      <p>כל הצלילים (ציפורים, חיות, מכונות, מטבעות) נוצרים בקוד, בלי קובצי שמע.</p>
+      <div class="chips"><span class="chip home">נבנה כאן</span><span class="chip done">פועל</span></div>
+      <span class="files">src/audio/sound.ts</span>
+    </div>
+  </div>
+
+  <h2>מנועים מוכנים שהורדנו</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>three.js</h3><div class="en">three 0.186</div>
+      <p>מנוע התלת-ממד עצמו: מצלמה, אור, צל וציור ב-WebGL.</p>
+      <div class="chips"><span class="chip got">github.com/mrdoob/three.js</span><span class="chip done">MIT</span></div>
+    </div>
+    <div class="card">
+      <h3>React Three Fiber ו-drei</h3><div class="en">@react-three/fiber 9 · drei 10</div>
+      <p>בונה את הסצנה כרכיבי React, ו-drei מוסיף כלים מוכנים: שמיים, טקסט וניטור ביצועים.</p>
+      <div class="chips"><span class="chip got">github.com/pmndrs</span><span class="chip done">MIT</span></div>
+    </div>
+    <div class="card">
+      <h3>Rapier</h3><div class="en">@react-three/rapier · rapier3d</div>
+      <p>מנוע הפיזיקה: קירות, התנגשויות, גוף השחקן והחיות.</p>
+      <div class="chips"><span class="chip got">dimforge/rapier.js</span><span class="chip done">Apache-2.0</span></div>
+    </div>
+    <div class="card">
+      <h3>ecctrl</h3><div class="en">ecctrl 2</div>
+      <p>שליטה בדמות: הליכה, ריצה וקפיצה מעל הפיזיקה.</p>
+      <div class="chips"><span class="chip got">github.com/pmndrs/ecctrl</span><span class="chip done">MIT</span></div>
+    </div>
+    <div class="card">
+      <h3>Manifold</h3><div class="en">manifold-3d</div>
+      <p>חיתוך וחיבור של צורות סגורות, למשל חלונות ופתחים בקירות של המודלים.</p>
+      <div class="chips"><span class="chip got">github.com/elalish/manifold</span><span class="chip done">Apache-2.0</span></div>
+    </div>
+    <div class="card">
+      <h3>three.quarks</h3><div class="en">three.quarks 0.17</div>
+      <p>מנוע חלקיקים: התזות מים, ניצוצות ואבק.</p>
+      <div class="chips"><span class="chip got">Alchemist0823/three.quarks</span><span class="chip done">MIT</span></div>
+    </div>
+    <div class="card">
+      <h3>postprocessing ו-N8AO</h3><div class="en">postprocessing 6 · n8ao 2</div>
+      <p>עיבוד תמונה: צל עדין בפינות, עומק שדה וזוהר, באיכות גבוהה ובינונית.</p>
+      <div class="chips"><span class="chip got">pmndrs · N8python</span><span class="chip done">Zlib · ISC</span></div>
+    </div>
+    <div class="card">
+      <h3>meshoptimizer</h3><div class="en">meshoptimizer · glTF-Transform</div>
+      <p>מפשט וכווץ מודלים. משמש בהכנת הקבצים, ובקרוב גם לפישוט אוטומטי במנוע התקציב.</p>
+      <div class="chips"><span class="chip got">github.com/zeux/meshoptimizer</span><span class="chip done">MIT</span></div>
+    </div>
+  </div>
+  <footer>מתעדכן עם כל מנוע חדש. המקור: <code>docs/engines.html</code></footer>
+</section>
+
+<!-- ─────────────────────────── the libraries ─────────────────────────── -->
+<section class="page" data-page="libraries">
+  <p class="lede">כל ספריות הקוד שהמשחק משתמש בהן, ולמה. כולן ברישיון פתוח.</p>
+
+  <h2>במשחק עצמו</h2>
+  <div class="wrap"><table>
+    <thead><tr><th>ספרייה</th><th>למה</th><th class="lic">רישיון</th></tr></thead>
+    <tbody>
+      <tr><td class="name"><a href="https://github.com/mrdoob/three.js">three</a> 0.186</td><td>ציור תלת-ממד ב-WebGL</td><td class="lic">MIT</td></tr>
+      <tr><td class="name"><a href="https://github.com/pmndrs/react-three-fiber">@react-three/fiber</a> 9.8</td><td>הסצנה כרכיבי React</td><td class="lic">MIT</td></tr>
+      <tr><td class="name"><a href="https://github.com/pmndrs/drei">@react-three/drei</a> 10.7</td><td>כלים מוכנים: שמיים, טקסט, ניטור ביצועים</td><td class="lic">MIT</td></tr>
+      <tr><td class="name"><a href="https://github.com/pmndrs/react-three-rapier">@react-three/rapier</a> 2.2</td><td>פיזיקה (Rapier) בתוך הסצנה</td><td class="lic">MIT</td></tr>
+      <tr><td class="name"><a href="https://github.com/pmndrs/ecctrl">ecctrl</a> 2.0</td><td>שליטה בדמות</td><td class="lic">MIT</td></tr>
+      <tr><td class="name"><a href="https://github.com/pmndrs/postprocessing">postprocessing</a> 6.39</td><td>עיבוד תמונה</td><td class="lic">Zlib</td></tr>
+      <tr><td class="name"><a href="https://github.com/pmndrs/react-postprocessing">@react-three/postprocessing</a> 3.1</td><td>עיבוד התמונה כרכיבים</td><td class="lic">MIT</td></tr>
+      <tr><td class="name"><a href="https://github.com/N8python/n8ao">n8ao</a> 2.0</td><td>צל עדין בפינות (AO)</td><td class="lic">ISC</td></tr>
+      <tr><td class="name"><a href="https://github.com/Alchemist0823/three.quarks">three.quarks</a> 0.17</td><td>חלקיקים</td><td class="lic">MIT</td></tr>
+      <tr><td class="name"><a href="https://github.com/elalish/manifold">manifold-3d</a> 3.5</td><td>חיתוך וחיבור צורות במודלים</td><td class="lic">Apache-2.0</td></tr>
+      <tr><td class="name"><a href="https://github.com/pmndrs/zustand">zustand</a> 5</td><td>מצב המשחק והשמירה בזיכרון</td><td class="lic">MIT</td></tr>
+      <tr><td class="name"><a href="https://github.com/react/react">react · react-dom</a> 19.3</td><td>הממשק</td><td class="lic">MIT</td></tr>
+      <tr><td class="name"><a href="https://phosphoricons.com">@phosphor-icons/react</a> 2.1</td><td>סמלים בממשק</td><td class="lic">MIT</td></tr>
+      <tr><td class="name"><a href="https://github.com/fontsource/font-files">Fredoka · Nunito</a></td><td>הגופנים</td><td class="lic">OFL-1.1</td></tr>
+      <tr><td class="name"><a href="https://github.com/pmndrs/assets">@pmndrs/assets</a> 1.7</td><td>גופן לתוויות תלת-ממד</td><td class="lic">CC0</td></tr>
+      <tr><td class="name"><a href="https://github.com/liriliri/eruda">eruda</a> · <a href="https://github.com/georgealways/lil-gui">lil-gui</a></td><td>כלי דיבוג, רק עם <code>?debug</code></td><td class="lic">MIT</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>בבנייה ובבדיקות</h2>
+  <div class="wrap"><table>
+    <thead><tr><th>ספרייה</th><th>למה</th><th class="lic">רישיון</th></tr></thead>
+    <tbody>
+      <tr><td class="name"><a href="https://github.com/vitejs/vite">vite</a> 8</td><td>בנייה ושרת פיתוח</td><td class="lic">MIT</td></tr>
+      <tr><td class="name"><a href="https://github.com/microsoft/TypeScript">typescript</a> 7</td><td>בדיקת טיפוסים</td><td class="lic">Apache-2.0</td></tr>
+      <tr><td class="name"><a href="https://github.com/vitest-dev/vitest">vitest</a> 5</td><td>בדיקות יחידה (15 שניות)</td><td class="lic">MIT</td></tr>
+      <tr><td class="name"><a href="https://github.com/dubzzz/fast-check">fast-check</a> 4</td><td>בדיקות עם אלפי מצבים אקראיים</td><td class="lic">MIT</td></tr>
+      <tr><td class="name"><a href="https://github.com/capricorn86/happy-dom">happy-dom</a> 21</td><td>דפדפן מדומה לבדיקות יחידה</td><td class="lic">MIT</td></tr>
+      <tr><td class="name"><a href="https://github.com/microsoft/playwright">@playwright/test</a> 1.63</td><td>בדיקות בדפדפן אמיתי</td><td class="lic">Apache-2.0</td></tr>
+      <tr><td class="name"><a href="https://github.com/oxc-project/oxc">oxlint</a> · <a href="https://github.com/prettier/prettier">prettier</a></td><td>בדיקת קוד וסידור</td><td class="lic">MIT</td></tr>
+      <tr><td class="name"><a href="https://github.com/donmccurdy/glTF-Transform">@gltf-transform/cli</a> 4.5</td><td>כיווץ ופישוט מודלים מוכנים (עם meshoptimizer)</td><td class="lic">MIT</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>מודלים, תמונות ואור שהורדו</h2>
+  <div class="wrap"><table>
+    <thead><tr><th>מה</th><th>מאיפה</th><th class="lic">רישיון</th></tr></thead>
+    <tbody>
+      <tr><td class="name">רהיטים (ספה, כורסאות, צמח, פוף, ספל, בקבוק)</td><td><a href="https://github.com/KhronosGroup/glTF-Sample-Assets">Khronos glTF Sample Assets</a></td><td class="lic">CC BY 4.0 / CC0</td></tr>
+      <tr><td class="name">תאורת סביבה (HDRI) ומרקם בד</td><td><a href="https://polyhaven.com">Poly Haven</a></td><td class="lic">CC0</td></tr>
+      <tr><td class="name">תמונות בממשק</td><td><a href="https://github.com/microsoft/fluentui-emoji">Fluent 3D Emoji</a> (Microsoft)</td><td class="lic">MIT</td></tr>
+    </tbody>
+  </table></div>
+  <footer>הקרדיטים המלאים במשחק: <code>src/data/credits.ts</code></footer>
+</section>
+
+</main>
+<script>
+  // the top menu: one page at a time, the one in the address (#engines or #libraries)
+  const show = () => {
+    const page = location.hash === '#libraries' ? 'libraries' : 'engines'
+    for (const s of document.querySelectorAll('section.page')) s.classList.toggle('on', s.dataset.page === page)
+    for (const a of document.querySelectorAll('nav a')) a.classList.toggle('on', a.dataset.page === page)
+  }
+  addEventListener('hashchange', () => { show(); scrollTo(0, 0) })
+  show()
+</script>
+</body>
+</html>
