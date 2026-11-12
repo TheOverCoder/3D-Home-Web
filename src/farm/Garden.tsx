@@ -228,6 +228,12 @@ const bedsInReach = (index: number, stage: BedStage) =>
 
 /** An empty bed set to always grow one crop (its gear): the action button buys those seeds and plants them, in every
  *  empty bed within reach set to the same crop, as far as the coins go. Null for a bed where you choose each time. */
+/** The fewest coins any seeds cost: with less, an empty bed can plant nothing. */
+const CHEAPEST_SEEDS = Math.min(...CROPS.map((c) => c.seedCost))
+/** An empty bed that can plant nothing (no coins for any seeds): a status saying what is missing, not a button that
+ *  opens packets all out of reach (tests/e2e/25-button found it). */
+const noSeeds = (index: number) => bedStage(index) === 'empty' && farm.coins < CHEAPEST_SEEDS
+
 function fixedPlanting(index: number): { crop: CropDef; beds: number[] } | null {
   const id = farm.beds[index].fixed
   if (!id) return null
@@ -330,7 +336,9 @@ function Bed({ index }: { index: number }) {
     radius: BED_REACH,
     // a plot to build or a field to buy offers nothing on the button: only its price tag, on the plot you look at
     enabled: () => !forSale(index),
-    hint: () => (bedStage(index) === 'empty' ? '1–9 seeds' : undefined),
+    hint: () => (bedStage(index) === 'empty' && !noSeeds(index) ? '1–9 seeds' : undefined),
+    // with no coins for any seeds: what is missing, as pictures (the coin and how many the cheapest seeds cost)
+    needs: () => (noSeeds(index) ? [{ item: 'coin', count: CHEAPEST_SEEDS }] : null),
     // watering or harvesting here does every like bed in reach: the same press from any of them (planting already
     // reads the same from each: "Plant seeds", "Plant lettuces in 2 beds")
     same: () => {
@@ -346,6 +354,7 @@ function Bed({ index }: { index: number }) {
       const stage = bedStage(index)
       if (forSale(index)) return priceLabel(index)
       if (stage === 'empty') {
+        if (noSeeds(index)) return `Seeds from ${CHEAPEST_SEEDS} coins`
         const r = fixedPlanting(index)
         if (!r) return 'Plant seeds'
         const cost = r.crop.seedCost * r.beds.length
@@ -365,6 +374,7 @@ function Bed({ index }: { index: number }) {
       const stage = bedStage(index)
       const crop = farm.beds[index].crop
       if (stage === 'empty') {
+        if (noSeeds(index)) return { verb: 'wait', art: 'seedling' }
         const r = fixedPlanting(index)
         return r ? { verb: 'plant', item: r.crop.id, count: r.beds.length, coins: r.crop.seedCost * r.beds.length } : { verb: 'plant' }
       }

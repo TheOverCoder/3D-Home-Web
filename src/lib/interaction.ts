@@ -9,6 +9,7 @@ import { look, turnTowards } from './look'
 import { playerState, type Point3 } from './playerState'
 import { stopWalk } from './route/walking'
 import { useStick } from './stick'
+import { debugSet } from './debug'
 
 /** What an action does — drawn as a glyph on the action button. (Nothing that spends coins is one: building and buying
  *  are a price tag on the thing itself, see `Tag`.) */
@@ -94,7 +95,11 @@ export interface Tag {
 
 const registry = new Map<string, InteractableDef>()
 
+/** Everything that can be pressed now (for the tests: tests/e2e/25-button holds each to the button's contract). */
+export const allInteractables = (): InteractableDef[] => [...registry.values()]
+
 export function registerInteractable(def: InteractableDef) {
+  if (registry.size === 0) debugSet('interactables', allInteractables)
   registry.set(def.id, def)
   return () => {
     if (registry.get(def.id) === def) registry.delete(def.id)
