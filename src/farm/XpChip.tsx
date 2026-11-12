@@ -4,6 +4,7 @@ import { flyCoins } from '../fx/coins'
 import { coinsToFly, reducedMotion } from '../fx/fx'
 import { onXpFlight, xpInFlight } from '../fx/xp'
 import { art } from '../ui/art'
+import { TopSlot } from '../ui/TopStack'
 import { claimLevel, farm, useFarm, xpEventCount, xpNow } from './state'
 import { levelOf, unpaidCoins, xpAt } from './xp'
 
@@ -188,28 +189,19 @@ export function LevelUp() {
     return () => window.clearTimeout(t)
   }, [show])
 
-  // under the compass, and below the toast when one shows (one often comes with the gain): never over its words
-  const box = useRef<HTMLDivElement>(null)
-  useLayoutEffect(() => {
-    const el = box.current
-    if (!el) return
-    const top = el.parentElement?.getBoundingClientRect().top ?? 0
-    const toast = document.querySelector('.toast')?.getBoundingClientRect()
-    const below = toast && toast.height > 0 ? toast.bottom + 6 - top : 0
-    el.style.top = `${Math.max(0, Math.min(below, innerHeight - 8 - el.offsetHeight - top))}px`
-  }, [show])
-
   return (
-    <div className="level-up" aria-live="polite">
-      {show && (
-        <div className="level-up-show" key={show.n} ref={box}>
-          <span className="level-up-flash" aria-hidden="true" />
-          <span className="level-up-ring" aria-hidden="true" />
-          <span className="level-up-ring late" aria-hidden="true" />
-          <span className="level-up-word">Level</span>
-          <b className="level-up-number">{show.level}</b>
-        </div>
-      )}
-    </div>
+    <TopSlot name="level">
+      <div className="level-up" aria-live="polite">
+        {show && (
+          <div className="level-up-show" key={show.n}>
+            <span className="level-up-flash" aria-hidden="true" />
+            <span className="level-up-ring" aria-hidden="true" />
+            <span className="level-up-ring late" aria-hidden="true" />
+            <span className="level-up-word">Level</span>
+            <b className="level-up-number">{show.level}</b>
+          </div>
+        )}
+      </div>
+    </TopSlot>
   )
 }

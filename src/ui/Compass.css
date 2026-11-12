@@ -2,21 +2,13 @@
    under its middle. Under the chips when everything shows; alone at the very top when it is the only thing there.
    (Its numbers are a scale, not text to read: they may be smaller than the 13 px floor.) ── */
 .compass {
-  position: fixed;
-  z-index: 11;
-  left: 0;
-  right: 0;
+  position: relative;
   width: min(320px, calc(100vw - 48px));
   height: 44px;
-  margin-inline: auto;
-  top: max(calc(var(--chips-bottom, 50px) + 6px), calc(max(14px, env(safe-area-inset-top)) + 54px));
   pointer-events: none;
   animation: fade 0.3s ease-out;
 }
-:root[data-hud='compass'] .compass {
-  top: calc(max(12px, env(safe-area-inset-top)) + 8px);
-  width: min(320px, calc(100vw - 2 * (var(--top-pad) + var(--top-step))));
-}
+:root[data-hud='compass'] .compass { width: min(320px, calc(100vw - 2 * (var(--top-pad) + var(--top-step)))); }
 .compass-strip { position: absolute; left: 0; right: 0; top: 4px; height: 20px; }
 .compass-strip::before {
   content: '';

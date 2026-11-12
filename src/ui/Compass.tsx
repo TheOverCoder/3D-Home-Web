@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { TopSlot } from './TopStack'
 import { produceById, type ProduceId } from '../farm/data'
 import { aimPointOf } from '../lib/interaction'
 import { look } from '../lib/look'
@@ -187,47 +188,49 @@ export function Compass() {
 
   if (!shown) return null
   return (
-    <div className="compass" aria-label="Compass: what is ready to take elsewhere">
-      <div className="compass-strip" ref={strip}>
-        {SCALE.map((m, k) => (
-          <span key={m.deg} className={`compass-${m.kind}${m.deg === 0 ? ' north' : ''}`} ref={(el) => void (scale.current[k] = el)}>
-            {m.text}
-          </span>
-        ))}
-        <span className="compass-ahead" aria-hidden="true" />
-        {marks.map((m) => (
-          <button
-            key={m.item}
-            className={`compass-mark${m.alert ? ' alert' : ''}${going === m.item ? ' going' : ''}`}
-            ref={(el) => {
-              if (el) pins.current.set(m.id, el)
-              else pins.current.delete(m.id)
-            }}
-            onClick={() => walkTo(m.id, m.item)}
-            aria-label={markLabel(m, going === m.item)}
-            aria-pressed={going === m.item}
-          >
-            <span className="compass-pin">
-              <ItemPic id={m.item} count={m.count} />
+    <TopSlot name="compass">
+      <div className="compass" aria-label="Compass: what is ready to take elsewhere">
+        <div className="compass-strip" ref={strip}>
+          {SCALE.map((m, k) => (
+            <span key={m.deg} className={`compass-${m.kind}${m.deg === 0 ? ' north' : ''}`} ref={(el) => void (scale.current[k] = el)}>
+              {m.text}
             </span>
-          </button>
-        ))}
-        {(['left', 'right'] as const).map((s) => (
-          <button
-            key={s}
-            className="compass-mark compass-more"
-            style={{ display: 'none' }}
-            ref={(el) => void (more.current[s] = el)}
-            onClick={() => {
-              const to = moreTo.current[s]
-              if (to) walkTo(to.id, to.item)
-            }}
-          >
-            <span className="compass-pin" />
-          </button>
-        ))}
+          ))}
+          <span className="compass-ahead" aria-hidden="true" />
+          {marks.map((m) => (
+            <button
+              key={m.item}
+              className={`compass-mark${m.alert ? ' alert' : ''}${going === m.item ? ' going' : ''}`}
+              ref={(el) => {
+                if (el) pins.current.set(m.id, el)
+                else pins.current.delete(m.id)
+              }}
+              onClick={() => walkTo(m.id, m.item)}
+              aria-label={markLabel(m, going === m.item)}
+              aria-pressed={going === m.item}
+            >
+              <span className="compass-pin">
+                <ItemPic id={m.item} count={m.count} />
+              </span>
+            </button>
+          ))}
+          {(['left', 'right'] as const).map((s) => (
+            <button
+              key={s}
+              className="compass-mark compass-more"
+              style={{ display: 'none' }}
+              ref={(el) => void (more.current[s] = el)}
+              onClick={() => {
+                const to = moreTo.current[s]
+                if (to) walkTo(to.id, to.item)
+              }}
+            >
+              <span className="compass-pin" />
+            </button>
+          ))}
+        </div>
+        <span className="compass-heading" ref={heading} aria-hidden="true" />
       </div>
-      <span className="compass-heading" ref={heading} aria-hidden="true" />
-    </div>
+    </TopSlot>
   )
 }

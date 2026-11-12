@@ -56,23 +56,12 @@
   will-change: transform, opacity;
 }
 
-/* a new level: a flash, a ring of energy and the new number, under the compass (src/ui/Compass.css; below a toast
-   showing then, by script). It takes no taps, and leaves the clear view clear. */
-.level-up {
-  position: fixed;
-  z-index: 11; /* under a toast (12): the ring passes behind its words */
-  left: 50%;
-  top: calc(max(calc(var(--chips-bottom, 50px) + 6px), calc(max(14px, env(safe-area-inset-top)) + 54px)) + 50px);
-  width: 0;
-  height: 0;
-  pointer-events: none;
-}
-:root[data-hud='compass'] .level-up { top: calc(max(12px, env(safe-area-inset-top)) + 60px); }
+/* a new level: a flash, a ring of energy and the new number, in its place in the top column (src/ui/TopStack.tsx:
+   under the compass and a toast). It takes no taps, and leaves the clear view clear. */
+.level-up { position: relative; pointer-events: none; }
 :root[data-hud='clean'] .level-up { display: none; }
 .level-up-show {
-  position: absolute;
-  left: -110px;
-  top: 0;
+  position: relative;
   width: 220px;
   height: 104px;
   display: flex;

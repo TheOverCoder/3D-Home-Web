@@ -10,6 +10,7 @@ import { capacity, clockText, used } from '../farm/state'
 import { ActionFace, TurnHint, VerbMark } from './ActionGlyph'
 import { art, type ArtId } from './art'
 import { Compass } from './Compass'
+import { TopSlot } from './TopStack'
 import { ConfirmCard } from './ConfirmCard'
 import { ArrowRight, Clock } from './glyphs'
 import { ItemPic } from './ItemPic'
@@ -41,21 +42,29 @@ function RoomTitle() {
   ) : null
 }
 
-/** One quiet line the first time you step inside; everything else lives in the settings panel. */
+/** One quiet line the first time you step inside (again whenever `hintShown` is put back to false: the tests do);
+ *  everything else lives in the settings panel. Shown for seven seconds, then gone from the page. */
 function FirstHint() {
   const hintShown = useHome((s) => s.hintShown)
-  const [visible, setVisible] = useState(!hintShown)
+  const [visible, setVisible] = useState(false)
   useEffect(() => {
     if (hintShown) return
     useHome.getState().markHintShown()
-    const t = setTimeout(() => setVisible(false), 7000)
-    return () => clearTimeout(t)
+    setVisible(true)
   }, [hintShown])
+  // its own timer: marking the hint shown must not cancel it (it did: the hint stayed in the page, faded out, for good)
+  useEffect(() => {
+    if (!visible) return
+    const t = window.setTimeout(() => setVisible(false), 7000)
+    return () => window.clearTimeout(t)
+  }, [visible])
   if (!visible) return null
   return coarsePointer ? (
-    <div className="first-hint touch" aria-hidden="true">
-      Walk with the stick · drag anywhere to look · the round button does what is near you
-    </div>
+    <TopSlot name="hint">
+      <div className="first-hint touch" aria-hidden="true">
+        Walk with the stick · drag anywhere to look · the round button does what is near you
+      </div>
+    </TopSlot>
   ) : (
     <div className="first-hint" aria-hidden="true">
       Move with <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> · look with the mouse · <kbd>Esc</kbd> for settings
@@ -255,10 +264,12 @@ export function Hud() {
       <ConfirmCard />
 
       {toast && (
-        <div className="toast" role="status" key={toast.id}>
-          {toast.item && <img className="toast-item" src={iconUrl(toast.item as ProduceId) ?? art(toast.item as ArtId)} alt="" draggable={false} />}
-          <span>{toast.text}</span>
-        </div>
+        <TopSlot name="toast">
+          <div className="toast" role="status" key={toast.id}>
+            {toast.item && <img className="toast-item" src={iconUrl(toast.item as ProduceId) ?? art(toast.item as ArtId)} alt="" draggable={false} />}
+            <span>{toast.text}</span>
+          </div>
+        </TopSlot>
       )}
     </>
   )

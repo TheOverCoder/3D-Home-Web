@@ -362,9 +362,16 @@ test.describe('levels', () => {
 /** Two boxes overlap (by more than a pixel each way). */
 const overlap = (a: Box, b: Box) => a.x + 1 < b.x + b.width && b.x + 1 < a.x + a.width && a.y + 1 < b.y + b.height && b.y + 1 < a.y + a.height
 
-/** In the page: the boxes of what is shown at the top of the screen and of the touch controls. */
-const boxes = (page: Page) =>
-  page.evaluate(() => {
+/** In the page: the boxes of what is shown at the top of the screen and of the touch controls. With `crowded`, a toast
+ *  and the first hint are shown first (each time: a toast lasts two seconds), and measured once both stand. */
+const boxes = (page: Page, crowded = false) =>
+  page.evaluate(async (crowded) => {
+    if (crowded) {
+      const h = (window as any).__home
+      h.useHome.getState().showToast('+ 4 lettuces', 'lettuce')
+      h.useHome.setState({ hintShown: false })
+      for (let i = 0; i < 100 && !(document.querySelector('.toast') && document.querySelector('.first-hint.touch')); i++) await new Promise((r) => setTimeout(r, 20))
+    }
     const shown = (sel: string) =>
       Array.from(document.querySelectorAll(sel))
         .filter((e) => e.getClientRects().length > 0 && getComputedStyle(e).visibility !== 'hidden')
@@ -378,16 +385,30 @@ const boxes = (page: Page) =>
       chips: shown('.farm-chip .farm-chip-item'),
       bar: shown('.xp-bar'),
       compass: shown('.compass'),
+      // the rest of the top column (src/ui/TopStack.tsx)
+      column: [...shown('.toast'), ...shown('.first-hint.touch'), ...shown('.level-up-show')],
       corner: shown('.hud-mode'),
       touch: [...shown('.stick-zone'), ...shown('.stick-tool'), ...shown('#ecctrl-virtual-button'), ...shown('.act-btn')],
     }
-  })
+  }, crowded)
 
 /** What is wrong at the top of the screen now: everything there on the screen and clear of each other, the touch
- *  controls clear of all of it; the level-up show (where it stood) on the screen and clear of the touch controls. */
-async function layoutProblems(page: Page, show: Box | null) {
-  const b = await boxes(page)
+ *  controls clear of all of it; the level-up show (where it stood) on the screen and clear of the touch controls.
+ *  `crowded`: with a toast and the first hint as well, each in its place in the top column and clear of the rest. */
+async function layoutProblems(page: Page, show: Box | null, crowded = false) {
+  const b = await boxes(page, crowded)
   const out: string[] = []
+  if (crowded) {
+    if (!b.column.some((x) => /toast/.test(x.what))) out.push('no toast')
+    if (!b.column.some((x) => /first-hint/.test(x.what))) out.push('no first hint')
+    const top = [...b.chips, ...b.bar, ...b.compass, ...b.corner]
+    for (const c of b.column) {
+      if (!(c.x >= -1 && c.y >= -1 && c.x + c.width <= b.width + 1 && c.y + c.height <= b.height + 1)) out.push(`${c.what} off the screen`)
+      for (const x of top) if (overlap(c, x)) out.push(`${c.what} over ${x.what}`)
+      for (const t of b.touch) if (overlap(c, t)) out.push(`${c.what} over ${t.what}`)
+    }
+    for (let i = 0; i < b.column.length; i++) for (let j = i + 1; j < b.column.length; j++) if (overlap(b.column[i], b.column[j])) out.push(`${b.column[i].what} over ${b.column[j].what}`)
+  }
   const on = (x: Box) => x.x >= -1 && x.y >= -1 && x.x + x.width <= b.width + 1 && x.y + x.height <= b.height + 1
   if (b.chips.filter((c) => /\blevel\b/.test(c.what)).length !== 1) out.push('no level chip')
   if (b.chips.filter((c) => /\bday\b/.test(c.what)).length !== 1) out.push('no day chip')
@@ -405,7 +426,8 @@ async function layoutProblems(page: Page, show: Box | null) {
 
 /** The top of the screen, once its layout has settled (a chip that grows wraps the row, and the compass under it
  *  follows on the next frame), has nothing wrong. */
-const checkLayout = (page: Page, show: Box | null, size: string) => expect.poll(() => layoutProblems(page, show), { timeout: 15_000, message: `${size}: the top of the screen` }).toEqual([])
+const checkLayout = (page: Page, show: Box | null, size: string, crowded = false) =>
+  expect.poll(() => layoutProblems(page, show, crowded), { timeout: 15_000, message: `${size}: the top of the screen${crowded ? ', with a toast and the hint' : ''}` }).toEqual([])
 
 // A phone held upright and turned sideways: a page of its own with touch (coarse pointer), and opened again.
 test.describe('levels on a phone', { tag: '@boot' }, () => {
@@ -445,11 +467,13 @@ test.describe('levels on a phone', { tag: '@boot' }, () => {
         await restore()
       }
       await checkLayout(page, show, '390×844')
+      await checkLayout(page, null, '390×844', true)
       // turned sideways
       await page.setViewportSize({ width: 844, height: 390 })
       await page.waitForFunction(() => innerWidth > innerHeight)
       await page.waitForTimeout(1500)
       await checkLayout(page, null, '844×390')
+      await checkLayout(page, null, '844×390', true)
       await page.setViewportSize({ width: 390, height: 844 })
       await page.waitForTimeout(1500)
       // the coins of level 3, claimed with a tap on the chip
