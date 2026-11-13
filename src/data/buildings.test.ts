@@ -106,11 +106,14 @@ describe('which space a point is in', () => {
   })
 
   it('outside is out: the lane, the way in before the door, the contractor’s window', () => {
-    expect(spaceAt(7, 15)).toBe('out')
-    expect(spaceAt(MARKET_PATH[0].x, MARKET_PATH[0].z)).toBe('out')
-    expect(spaceAt(MARKET_PATH[1].x, MARKET_PATH[1].z)).toBe('out')
-    expect(spaceAt((FRONT_DOOR.x0 + FRONT_DOOR.x1) / 2, FRONT_DOOR.z0 - 0.05)).toBe('out')
-    expect(spaceAt(CONTRACTOR_STAND.x, CONTRACTOR_STAND.z)).toBe('out')
+    // the lane outside the garden's fence is a space of its own (nothing in the garden in reach over the fence)
+    expect(spaceAt(7, 15)).toBe('lane')
+    expect(spaceAt(MARKET_PATH[0].x, MARKET_PATH[0].z)).toBe('lane')
+    expect(spaceAt(MARKET_PATH[1].x, MARKET_PATH[1].z)).toBe('lane')
+    expect(spaceAt((FRONT_DOOR.x0 + FRONT_DOOR.x1) / 2, FRONT_DOOR.z0 - 0.05)).toBe('lane')
+    expect(spaceAt(CONTRACTOR_STAND.x, CONTRACTOR_STAND.z)).toBe('lane')
+    // and the garden inside it is outdoors, as the farm is
+    expect(spaceAt(5.6, 12.4)).toBe('out')
     expect(insideWalkIn(7, 15)).toBeNull()
   })
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { insideHouse, roomAt } from '../data/layout'
-import { isWalkInSpace, spaceAt } from '../data/buildings'
+import { LANE, isWalkInSpace, spaceAt } from '../data/buildings'
 import { useSettings } from '../settings'
 import { busy, useHome, type Nearby } from '../store'
 import type { ArtId } from '../ui/art'
@@ -74,6 +74,9 @@ export interface InteractableDef {
   /** what one press does, as a key shared by every thing whose press does the same (two ripe beds in reach harvest
    *  both, whichever is pressed): only one of them is offered */
   same?: () => string | undefined
+  /** spaces it is in reach from besides its own: the line at the gate stands on the lane and is served over the fence
+   *  from the garden (`out`) */
+  spaces?: string[]
   run: () => void
 }
 
@@ -155,11 +158,16 @@ function aimCos(def: InteractableDef, view: ViewRay) {
 }
 
 /** Indoors only what is in the same room is within reach (not the lamp behind the wall); outdoors only what is outdoors. */
-function sameSpace(p: Point3, here: string) {
-  // a walk-in building's room (src/data/buildings.ts) is its own space: nothing in it is in reach from outside, nor
-  // anything outside from in it, however near through the wall
+/** A space walled or fenced off from the rest: a walk-in building's room, or the lane outside the garden's fence. */
+const apart = (space: string) => space === LANE || isWalkInSpace(space)
+
+function sameSpace(def: InteractableDef, here: string) {
+  const p = def.position
+  if (def.spaces?.includes(here)) return true
+  // a walk-in building's room (src/data/buildings.ts) is its own space, and so is the lane: nothing in it is in reach
+  // from outside, nor anything outside from in it, however near through the wall or over the fence
   const there = spaceAt(p.x, p.z)
-  if (isWalkInSpace(here) || isWalkInSpace(there)) return there === here
+  if (apart(here) || apart(there)) return there === here
   const inside = insideHouse(p.x, p.z)
   if (here === 'out') return !inside
   if (!inside) return false
@@ -168,10 +176,11 @@ function sameSpace(p: Point3, here: string) {
 }
 
 /** The thing you look at, and a tag, are taken across rooms of the house (a door is in reach from either side), but
- *  never into or out of a walk-in building's room. */
-function seenFrom(p: Point3, here: string) {
-  const there = spaceAt(p.x, p.z)
-  return isWalkInSpace(here) || isWalkInSpace(there) ? there === here : true
+ *  never into or out of a walk-in building's room, nor over the garden's fence (unless it says so: `spaces`). */
+function seenFrom(def: InteractableDef, here: string) {
+  if (def.spaces?.includes(here)) return true
+  const there = spaceAt(def.position.x, def.position.z)
+  return apart(here) || apart(there) ? there === here : true
 }
 
 /** Whether a thing is within reach of `from` as the action button measures it (on the ground, from its footprint's
@@ -179,7 +188,7 @@ function seenFrom(p: Point3, here: string) {
 export function inReach(def: InteractableDef, from: { x: number; z: number }, margin = 0) {
   if (reachOf(def, { x: from.x, y: 0, z: from.z }) > def.radius - margin) return false
   const here = spaceAt(from.x, from.z)
-  return sameSpace(def.position, here)
+  return sameSpace(def, here)
 }
 
 interface Candidate {
@@ -235,11 +244,11 @@ export function findActions(from: Point3, view?: ViewRay, opts: { reach?: boolea
     }
     const c = { def, d, icon }
     if (isInfo(c)) continue
-    if (inCone && score < aimedScore && seenFrom(def.position, here)) {
+    if (inCone && score < aimedScore && seenFrom(def, here)) {
       aimed = c
       aimedScore = score
     }
-    if (sameSpace(def.position, here)) near.push(c)
+    if (sameSpace(def, here)) near.push(c)
   }
   const rank = (c: Candidate) => RANK[c.icon?.verb ?? 'pick'] * 10 + c.d
   near.sort((a, b) => rank(a) - rank(b))
@@ -275,7 +284,7 @@ export function findStatus(from: Point3, view?: ViewRay): Nearby | null {
   for (const def of registry.values()) {
     if (def.enabled && !def.enabled()) continue
     const d = reachOf(def, from)
-    if (d > def.radius || !sameSpace(def.position, here) || iconOf(def)?.verb !== 'wait') continue
+    if (d > def.radius || !sameSpace(def, here) || iconOf(def)?.verb !== 'wait') continue
     let score = d
     if (view && aimCos(def, view) >= AIM_COS) score -= 100 // looked at: that one
     if (!best || score < best.score) best = { def, score }
@@ -299,7 +308,7 @@ export function findTag(from: Point3, view?: ViewRay): { id: string; tag: Tag } 
   const here = spaceAt(from.x, from.z)
   for (const def of registry.values()) {
     if (!def.tag && def.enabled && !def.enabled()) continue
-    if (!seenFrom(def.position, here)) continue
+    if (!seenFrom(def, here)) continue
     const d = reachOf(def, from)
     if (d > def.radius) continue
     let score = d
@@ -341,7 +350,7 @@ export function findFar(from: Point3): FarMark[] {
     const r = def.ready()
     if (!r || r.count <= 0) continue
     const d = reachOf(def, from)
-    if (d <= def.radius && sameSpace(def.position, here)) continue
+    if (d <= def.radius && sameSpace(def, here)) continue
     const m = byItem.get(r.item)
     if (!m) byItem.set(r.item, { id: def.id, item: r.item, count: r.count, d, ...(r.alert ? { alert: true } : {}) })
     else {
@@ -432,6 +441,7 @@ export function useInteractable(def: Omit<InteractableDef, 'position' | 'aim'> &
   const hasIcon = def.icon !== undefined
   const hasReady = def.ready !== undefined
   const hasTag = def.tag !== undefined
+  const spaces = def.spaces?.join(',')
   useEffect(() => {
     const entry: InteractableDef = {
       id: def.id,
@@ -455,8 +465,9 @@ export function useInteractable(def: Omit<InteractableDef, 'position' | 'aim'> &
       needs: () => latest.current.needs?.() ?? null,
       tag: hasTag ? () => latest.current.tag?.() ?? null : undefined,
       same: () => latest.current.same?.(),
+      spaces: spaces ? spaces.split(',') : undefined,
       run: () => latest.current.run(),
     }
     return registerInteractable(entry)
-  }, [def.id, def.radius, x, y, z, ax, ay, az, bx, bz, hasIcon, hasReady, hasTag])
+  }, [def.id, def.radius, x, y, z, ax, ay, az, bx, bz, hasIcon, hasReady, hasTag, spaces])
 }

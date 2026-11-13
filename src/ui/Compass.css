@@ -105,7 +105,7 @@
 /* with everything shown, the settings and edit buttons stand beside it, and the chips keep clear of the three */
 :root[data-hud='all'] .gear:not(.hud-mode):not(.edit-open) { right: calc(var(--top-pad) + var(--top-step) + env(safe-area-inset-right)); }
 :root[data-hud='all'] .gear.edit-open { right: calc(var(--top-pad) + 2 * var(--top-step) + env(safe-area-inset-right)); }
-:root[data-hud='all'] .farm-chip { max-width: calc(100vw - 2 * var(--top-pad) - 3 * var(--top-step) - env(safe-area-inset-right)); }
+:root[data-hud='all'] .farm-chip { width: calc(100vw - 2 * var(--top-pad) - 3 * var(--top-step) - env(safe-area-inset-right)); max-width: none; }
 /* only the compass, or nothing: everything else at the top goes */
 :root[data-hud='compass'] .farm-chip,
 :root[data-hud='clean'] .farm-chip,

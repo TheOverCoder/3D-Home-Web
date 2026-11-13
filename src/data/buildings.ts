@@ -8,7 +8,7 @@
 // must lie inside the sun's shadow box (SUN_SHADOW in ./layout): outside it a surface is drawn as if nothing shaded it,
 // and a room would look roofless. src/data/buildings.test.ts checks every row.
 
-import { MARKET_WALKIN } from './market'
+import { LOT, MARKET_WALKIN } from './market'
 import { insideHouse, roomAt } from './layout'
 
 /** A box in world metres: x and z on the ground, y up. */
@@ -117,11 +117,17 @@ export function insideWalkIn(x: number, z: number, margin = 0): WalkIn | null {
   return null
 }
 
+/** The lane outside the garden's fence (the lot before the market and the contractor's corner): a space of its own, so
+ *  nothing in the garden is in reach from it over the fence, nor the other way. */
+export const LANE = 'lane'
+
 /** Which space a point is in, for the action button (src/lib/interaction.ts): a room of the house (or 'house' in its
- *  walls), a walk-in's room, or 'out'. */
+ *  walls), a walk-in's room, the lane, or 'out' (the garden and the farm). */
 export function spaceAt(x: number, z: number): string {
   if (insideHouse(x, z)) return roomAt(x, z) ?? 'house'
-  return walkInRoomAt(x, z)?.room.space ?? 'out'
+  const walkIn = walkInRoomAt(x, z)
+  if (walkIn) return walkIn.room.space
+  return LOT.some((r) => inRect(r, x, z)) ? LANE : 'out'
 }
 
 /** Is this space a walk-in's room? */

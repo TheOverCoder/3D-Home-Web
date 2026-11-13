@@ -26,13 +26,14 @@
 }
 @keyframes xp-ready { 50% { opacity: 1; } }
 
-/* the level and its XP bar: the chip row's last item, the badge with the bar beside it taking the rest of the line (on a
-   phone's narrow row it starts a line of its own); the bar fills as the crystals land */
-.xp-line { display: flex; align-items: center; gap: 6px; flex: 1 1 150px; min-width: 0; }
+/* the level and its XP bar: the chip row's last item, the badge with the bar beside it taking the rest of the line —
+   beside the day's chip on a phone held upright (a row less at the top), on the first row sideways; the bar fills as
+   the crystals land */
+.xp-line { display: flex; align-items: center; gap: 6px; flex: 1 1 100px; min-width: 0; }
 .xp-bar {
   position: relative;
   flex: 1 1 auto;
-  min-width: 60px;
+  min-width: 52px;
   height: 6px;
   border-radius: 999px;
   background: var(--night);

@@ -124,6 +124,8 @@ function Gate() {
   useInteractable({
     id: 'farm-queue',
     position: [GATE_SPOT.x, 1.0, GATE_SPOT.z],
+    // the line stands on the lane and is served over the gate from the garden too
+    spaces: ['out', 'lane'],
     aim: [GATE_SPOT.x, 1.45, GATE_SPOT.z],
     radius: 3.2,
     enabled: () => waiting().length > 0,

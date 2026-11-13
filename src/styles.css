@@ -845,14 +845,23 @@ a:focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; border-rad
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  max-width: calc(100vw - 120px);
+  /* as wide as it may be (not as its chips): the level's row then takes what is left of a row, beside the others */
+  width: calc(100vw - 120px);
   padding: 0;
   border: 0;
   background: none;
   color: inherit;
   text-align: start;
-  pointer-events: auto;
+  /* the row's empty ends are the scene's: only the chips take a tap */
+  pointer-events: none;
   -webkit-tap-highlight-color: transparent;
+}
+.farm-chip > * { pointer-events: auto; }
+/* a phone held upright: the day's chip shows its picture (sunrise, sun, sunset, moon) and not the hour, and the level's
+   row fits beside it — a row less at the top (the hour is its title) */
+@media (max-width: 480px) {
+  .farm-chip-item.day { padding-inline-end: 4px; }
+  .farm-chip-item.day b { display: none; }
 }
 .farm-chip:focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; border-radius: 999px; }
 .farm-chip-item {
