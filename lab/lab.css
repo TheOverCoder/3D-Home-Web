@@ -113,12 +113,69 @@ h3 {
   background: var(--line);
   color: var(--ink-2);
 }
-.states {
+/* a board's title, its place, and the request */
+.title-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 8px 12px;
+  align-items: center;
 }
-.states button {
+.status {
+  font: 600 13px/1 var(--display);
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--line);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.status.choose {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.status.live {
+  background: #2c8540;
+  color: #fff;
+}
+
+/* the boards at the top */
+.boards {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 2px 2px 6px;
+  scrollbar-width: thin;
+}
+.board-card {
+  flex: 0 0 auto;
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+  min-width: 170px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+  text-decoration: none;
+}
+.board-card b {
+  font: 600 17px/1.2 var(--display);
+}
+.board-card small {
+  color: var(--ink-2);
+  font-size: 13px;
+}
+.board-card.on {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.board-card:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* chips: the states, the screens, the switches */
+.chip {
   min-height: 40px;
   padding: 6px 14px;
   border: 1px solid var(--line);
@@ -127,16 +184,41 @@ h3 {
   color: var(--ink);
   font: 500 15px/1.2 var(--text);
   cursor: pointer;
+  white-space: nowrap;
 }
-.states button.on {
+.chip.on {
   border-color: var(--accent);
   box-shadow: inset 0 0 0 1px var(--accent);
   font-weight: 700;
 }
-.states button:focus-visible,
-.again:focus-visible {
+.chip:focus-visible,
+.act:focus-visible,
+.pic:focus-visible {
   outline: 3px solid var(--accent);
   outline-offset: 2px;
+}
+.states,
+.bar,
+.group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.bar {
+  justify-content: space-between;
+  gap: 8px 18px;
+}
+/* the states and the bar stay in view while the variants scroll under them */
+.sticky {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: grid;
+  gap: 10px;
+  padding: 10px 0;
+  background: var(--wall);
+  border-bottom: 1px solid var(--line);
 }
 
 .variants {
@@ -155,6 +237,10 @@ h3 {
   background: transparent;
   border-style: dashed;
 }
+.variant.picked {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
 .variant > header {
   display: grid;
   grid-template-columns: auto 1fr auto;
@@ -168,6 +254,12 @@ h3 {
   margin: 2px 0 0;
   color: var(--ink-2);
   font-size: 15px;
+}
+.variant p.motion {
+  color: var(--ink);
+}
+.variant p.motion span {
+  color: var(--accent);
 }
 .letter {
   display: grid;
@@ -183,20 +275,44 @@ h3 {
   background: var(--line);
   color: var(--ink-2);
 }
-.again {
-  min-height: 40px;
-  padding: 6px 12px;
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.act {
+  min-height: 44px;
+  padding: 6px 14px;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: transparent;
   color: var(--ink);
-  font: 500 14px/1 var(--text);
+  font: 500 15px/1 var(--text);
   cursor: pointer;
   white-space: nowrap;
 }
+.act.primary {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--card);
+  font-weight: 700;
+}
+@media (max-width: 560px) {
+  .variant > header {
+    grid-template-columns: auto 1fr;
+  }
+  .actions {
+    grid-column: 1 / -1;
+    justify-content: stretch;
+  }
+  .actions .act {
+    flex: 1;
+  }
+}
 
-/* the phones: upright beside sideways where there is room, one under the other on a phone */
-.phones {
+/* the screens: side by side where there is room, one under the other on a phone */
+.screens {
   display: flex;
   flex-wrap: wrap;
   gap: 16px;
@@ -204,20 +320,13 @@ h3 {
   direction: ltr;
   width: 100%;
 }
-.phone {
+.screen {
   margin: 0;
   display: grid;
   gap: 6px;
-  flex: 0 1 auto;
   min-width: 0;
 }
-.phone:first-child {
-  flex-basis: 300px;
-}
-.phone:last-child {
-  flex: 1 1 420px;
-}
-.phone-glass {
+.glass {
   position: relative;
   overflow: hidden;
   border-radius: 16px;
@@ -227,7 +336,10 @@ h3 {
     0 10px 30px rgba(10, 14, 20, 0.25);
   margin: 6px;
 }
-.phone iframe {
+.screen-desktop .glass {
+  border-radius: 6px;
+}
+.glass iframe {
   position: absolute;
   top: 0;
   left: 0;
@@ -235,11 +347,181 @@ h3 {
   transform-origin: 0 0;
   background: #000;
 }
-.phone figcaption {
+.screen figcaption {
   direction: rtl;
   text-align: center;
   color: var(--ink-2);
   font-size: 13px;
+}
+
+/* one variant full screen */
+.try {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  background: color-mix(in srgb, var(--wall) 92%, transparent);
+  backdrop-filter: blur(6px);
+}
+.try-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  overflow-x: auto;
+  padding: 8px max(12px, env(safe-area-inset-right, 0px)) 8px max(12px, env(safe-area-inset-left, 0px));
+  padding-top: max(8px, env(safe-area-inset-top, 0px));
+  background: var(--card);
+  border-bottom: 1px solid var(--line);
+  scrollbar-width: none;
+}
+.try-bar > *,
+.try-bar .group > * {
+  flex: 0 0 auto;
+}
+.try-bar .group {
+  flex-wrap: nowrap;
+}
+.try-bar select {
+  min-height: 40px;
+  max-width: 220px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink);
+  font: 500 15px/1.2 var(--text);
+}
+.chip.close {
+  min-width: 44px;
+  font-size: 18px;
+}
+.try-stage {
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  overflow: hidden;
+  direction: ltr;
+}
+.try.real .try-stage {
+  place-items: stretch;
+}
+.try-real {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #000;
+}
+
+/* the map of the interface */
+.map-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 520px), 1fr));
+  gap: 16px;
+}
+.spot {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 14px;
+  padding: 14px;
+  border-radius: 18px;
+  background: var(--card);
+  border: 1px solid var(--line);
+}
+.spot .pics {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  direction: ltr;
+}
+.pic {
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--glass);
+  cursor: zoom-in;
+  line-height: 0;
+}
+.pic img {
+  display: block;
+  height: 168px;
+  width: auto;
+}
+.pic-sideways img {
+  height: 92px;
+}
+.spot-text {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  min-width: 0;
+}
+.spot h3 {
+  font-size: 18px;
+}
+.spot p,
+.spot ul {
+  margin: 0;
+  font-size: 15px;
+}
+.spot .area {
+  color: var(--ink-2);
+  font-size: 13px;
+}
+.spot code {
+  font-size: 12px;
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+.spot .works {
+  color: var(--ink-2);
+}
+.spot .wrong {
+  padding-inline-start: 18px;
+  color: var(--ink);
+}
+.tag-p,
+.tag-g {
+  font: 600 12px/1 var(--display);
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: var(--line);
+  color: var(--ink-2);
+}
+.tag-g.redo,
+.tag-g.missing {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.tag-g.good {
+  background: #2c8540;
+  color: #fff;
+}
+@media (max-width: 560px) {
+  .spot {
+    grid-template-columns: 1fr;
+  }
+}
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.82);
+  cursor: zoom-out;
+}
+.lightbox img {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 12px;
+}
+.lightbox .close {
+  position: absolute;
+  top: max(12px, env(safe-area-inset-top, 0px));
+  left: 12px;
 }
 
 .lab-foot {

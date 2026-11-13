@@ -24,6 +24,8 @@ npm run format     # Prettier (.prettierrc.json) on the TypeScript and scripts; 
 npm run test:e2e   # Playwright end-to-end suite (see tests/README.md); CI runs it on every push
 npm run lab        # the design lab: the interface's references on phone frames, chosen before they go in (lab/README.md)
 npm run lab:build  # the lab ready to publish as a link of its own → dist-lab/
+node scripts/lab-shots.mjs <board> <dir>          # every variant of a board side by side, per state and screen
+node scripts/lab-film.mjs <board> <variant> <png>  # an animation frame by frame at exact times
 ```
 
 Node 22.12 or newer (Vitest 5 needs it).

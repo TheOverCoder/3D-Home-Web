@@ -124,10 +124,10 @@
     </div>
     <div class="card">
       <h3>סטודיו עיצוב: סוכן ממשק ומעבדה</h3><div class="en">ui-designer · lab/</div>
-      <p>לסוכן הממשק יש תפקיד אחד: איך הדברים נראים. חלונות, כרטיסים, כפתורים, המסכים של המכונות והשוק. הוא לא נוגע בחוקי המשחק. הוא בונה כל שינוי קודם במעבדה, דף נפרד שמציג את "היום" לצד הצעות A, B, C. כל הצעה מוצגת על טלפון לאורך ולרוחב, מעל תמונה אמיתית מהמשחק, והכפתורים בה עובדים.</p>
-      <p>המעבדה נבנית בשנייה ומתפרסמת כלינק פרטי תוך שניות, בלי לחכות לבדיקות של המשחק. רק מה שבוחרים מהלינק נכנס למשחק.</p>
+      <p>סוכן הממשק הוא המעצב של כל מה שעוטף את המשחק: מסך הפתיחה והטעינה, מה שעל המסך בזמן משחק, חלונות וכרטיסים, מסכי המכונות, שיחות עם דמויות, הגדרות והודעות, בכל מכשיר. הוא חושב על הדרך של השחקן ולא רק על המקום של הקופסאות, וכל הצעה שלו זזה: איך היא נכנסת, איך היא עונה לאצבע ואיך היא יוצאת. הוא לא נוגע בחוקי המשחק ולא בעולם התלת-ממדי.</p>
+      <p>המעבדה היא דף נפרד שמציג את "היום" לצד הצעות A, B, C, על טלפון לאורך ולרוחב, טלפון קטן, טאבלט ומחשב, מעל תמונה אמיתית מהמשחק. כל מסך בה הוא מסך מגע עם החריץ ופס הבית של הטלפון. יש בה הילוך איטי, סימון של כל נגיעה, ומסך מלא: בטלפון של המשתמש זה בגודל האמיתי ובאצבע שלו. לסוכן יש ספריות לאנימציה, לפקדים ולחגיגות, וכלים שמצלמים את כל ההצעות בדף אחד ומצלמים אנימציה פריים אחרי פריים. המעבדה נבנית בשנייה ומתפרסמת כלינק פרטי תוך שניות. רק מה שבוחרים מהלינק נכנס למשחק.</p>
       <div class="chips"><span class="chip new">חדש</span><span class="chip home">נבנה כאן</span><span class="chip done">פועל</span></div>
-      <span class="files">.claude/agents/ui-designer.md · lab/ · npm run lab · npm run lab:build</span>
+      <span class="files">.claude/agents/ui-designer.md · lab/ · src/ui/motion.tsx · scripts/lab-shots.mjs · scripts/lab-film.mjs</span>
     </div>
     <div class="card">
       <h3>מנוע הלבשה וארון</h3><div class="en">outfit engine · wardrobe</div>
@@ -294,6 +294,9 @@
       <tr><td class="name"><a href="https://github.com/pmndrs/zustand">zustand</a> 5</td><td>מצב המשחק והשמירה בזיכרון</td><td class="lic">MIT</td></tr>
       <tr><td class="name"><a href="https://github.com/react/react">react · react-dom</a> 19.3</td><td>הממשק</td><td class="lic">MIT</td></tr>
       <tr><td class="name"><a href="https://phosphoricons.com">@phosphor-icons/react</a> 2.1</td><td>סמלים בממשק</td><td class="lic">MIT</td></tr>
+      <tr><td class="name"><a href="https://github.com/motiondivision/motion">motion</a> 14.7</td><td>אנימציות ומחוות בממשק: קפיצים, לחיצה, גרירה והחלקה, כניסה ויציאה (סוכן הממשק)</td><td class="lic">MIT</td></tr>
+      <tr><td class="name"><a href="https://github.com/radix-ui/primitives">radix-ui</a> 1.8</td><td>פקדים נגישים בלי עיצוב משלהם: מחוון, מתג, לשוניות (הגדרות)</td><td class="lic">MIT</td></tr>
+      <tr><td class="name"><a href="https://github.com/catdad/canvas-confetti">canvas-confetti</a> 1.9</td><td>קונפטי בצבעי המשחק לרגע של חגיגה</td><td class="lic">ISC</td></tr>
       <tr><td class="name"><a href="https://github.com/fontsource/font-files">Fredoka · Nunito</a></td><td>הגופנים</td><td class="lic">OFL-1.1</td></tr>
       <tr><td class="name"><a href="https://github.com/pmndrs/assets">@pmndrs/assets</a> 1.7</td><td>גופן לתוויות תלת-ממד</td><td class="lic">CC0</td></tr>
       <tr><td class="name"><a href="https://github.com/liriliri/eruda">eruda</a> · <a href="https://github.com/georgealways/lil-gui">lil-gui</a></td><td>כלי דיבוג, רק עם <code>?debug</code></td><td class="lic">MIT</td></tr>

@@ -1,38 +1,50 @@
-// Pictures of the design lab's screens, to check a variant at a phone's size before it is shown: each variant of a
-// board in each state, on a phone upright (390×844) and sideways (844×390), at twice the pixels. With the lab served
+// Pictures of the design lab's screens, to check a board before it is shown: for each state and each screen, one sheet
+// with every variant side by side (today, A, B, C), named <board>-<state>-<device>.png. With the lab served
 // (`npm run lab`, port 5180, or the build: `npx vite preview --config vite.lab.config.ts --port 5180`):
 //
-//   node scripts/lab-shots.mjs <board> <out-dir> [variant,variant…] [http://localhost:5180/]
-import { mkdir } from 'node:fs/promises'
+//   node scripts/lab-shots.mjs <board> <out-dir> [--variants a,b] [--states gift] [--devices upright,sideways,small]
+//                              [--wait 1200] [--each] [--dpr 2] [--base http://localhost:5180/]
+//
+// --wait: how long after the frame is ready the picture is taken (the opening played out); --each: every screen as a
+// picture of its own too; --dpr 2: twice the pixels (for a person; 1 is enough to check).
+import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { chromium } from '@playwright/test'
+import { args, devicePage, frameUrl, labOf, launch, ready, sheet } from './lab-tools.mjs'
 
-const [board, out, only, base = 'http://localhost:5180/'] = process.argv.slice(2)
-if (!board || !out) throw new Error('usage: node scripts/lab-shots.mjs <board> <out-dir> [variants] [base]')
+const a = args()
+const [board, out] = a._
+if (!board || !out) throw new Error('usage: node scripts/lab-shots.mjs <board> <out-dir> [--variants a,b] [--states s] [--devices upright,sideways] [--wait ms] [--each] [--dpr n]')
+const base = a.base ?? 'http://localhost:5180/'
+const wait = Number(a.wait ?? 1200)
+const dpr = Number(a.dpr ?? 1)
 await mkdir(out, { recursive: true })
-const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined })
+const browser = await launch()
 try {
-  const page = await browser.newPage()
-  await page.goto(new URL('frame.html', base).href)
-  // the board's variants and states, as the lab has them
-  await page.waitForFunction(() => window.__lab, null, { timeout: 30_000 })
-  const { variants, states } = await page.evaluate((id) => window.__lab.find((b) => b.id === id) ?? { variants: [], states: [] }, board)
-  const which = only ? only.split(',') : variants.length ? variants : ['today']
-  for (const { name, viewport } of [
-    { name: 'upright', viewport: { width: 390, height: 844 } },
-    { name: 'sideways', viewport: { width: 844, height: 390 } },
-  ]) {
-    const ctx = await browser.newContext({ viewport, deviceScaleFactor: 2, isMobile: true, hasTouch: true })
-    const p = await ctx.newPage()
-    p.on('pageerror', (e) => console.error('[page]', e.message))
-    for (const v of which)
-      for (const s of states.length ? states : ['']) {
-        await p.goto(new URL(`frame.html#${board}/${v}/${s}/0`, base).href)
-        await p.waitForTimeout(900)
-        const file = join(out, `${board}-${v}-${s || 'state'}-${name}.png`)
-        await p.screenshot({ path: file })
-        console.log(file)
+  const lab = await labOf(browser, base)
+  const b = lab.boards.find((x) => x.id === board)
+  if (!b) throw new Error(`no board "${board}" (the lab has: ${lab.boards.map((x) => x.id).join(', ')})`)
+  const variants = a.variants ? String(a.variants).split(',') : b.variants
+  const states = a.states ? String(a.states).split(',') : b.states
+  const devices = a.devices ? String(a.devices).split(',') : b.devices
+  for (const device of devices) {
+    const spec = lab.devices[device]
+    if (!spec) throw new Error(`no device "${device}"`)
+    const { ctx, page } = await devicePage(browser, spec, { dpr })
+    for (const state of states) {
+      const shots = []
+      for (const variant of variants) {
+        await page.goto(frameUrl(base, { board, variant, state, device }))
+        await ready(page)
+        await page.waitForTimeout(wait)
+        const png = await page.screenshot()
+        shots.push({ png, w: spec.w, label: variant === 'today' ? 'today' : variant.toUpperCase() })
+        if (a.each) await writeFile(join(out, `${board}-${state}-${device}-${variant}.png`), png)
       }
+      const cols = spec.w > spec.h ? 2 : Math.min(shots.length, 4)
+      const file = join(out, `${board}-${state}-${device}.png`)
+      await writeFile(file, await sheet(browser, shots, { cols, scale: 1 / dpr, title: `${board} · ${state} · ${spec.w}×${spec.h}` }))
+      console.log(file)
+    }
     await ctx.close()
   }
 } finally {

@@ -12,6 +12,7 @@ export const levelBoard: Board<LevelView> = {
   id: 'level',
   title: 'חלון הרמה',
   ask: 'הפופאפ של הרמה לא נראה מקצועי לעיצוב',
+  status: 'choose',
   still: 'yard',
   states: [
     { id: 'gift', name: 'ברמה הבאה בגד, ויש מטבעות לאסוף', data: levelView(xpAt(4) + 40, 2) },
