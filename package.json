@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
+    "lab": "vite --config vite.lab.config.ts",
+    "lab:build": "vite build --config vite.lab.config.ts && node scripts/lab-finish.mjs",
     "typecheck": "tsc --noEmit",
     "assets:hdri": "node scripts/fetch-polyhaven.mjs",
     "assets:optimize": "node scripts/optimize-models.mjs",
@@ -17,8 +19,8 @@
     "test:e2e:quick": "playwright test --grep-invert @boot",
     "test:e2e:core": "playwright test --grep-invert @full",
     "lint": "oxlint",
-    "format": "prettier --write \"src/**/*.{ts,tsx}\" \"tests/**/*.ts\" \"*.ts\" \"scripts/*.mjs\"",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx}\" \"tests/**/*.ts\" \"*.ts\" \"scripts/*.mjs\"",
+    "format": "prettier --write \"src/**/*.{ts,tsx}\" \"lab/**/*.{ts,tsx}\" \"tests/**/*.ts\" \"*.ts\" \"scripts/*.mjs\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx}\" \"lab/**/*.{ts,tsx}\" \"tests/**/*.ts\" \"*.ts\" \"scripts/*.mjs\"",
     "check": "tsc --noEmit && oxlint && vitest run && npm run format:check"
   },
   "dependencies": {

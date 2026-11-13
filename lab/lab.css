@@ -1,0 +1,263 @@
+/* The lab's page (not the game's look: the game is inside the phones). A quiet studio wall, so the screens are what
+   stands out: cool neutrals, one warm accent from the game's sun, the game's own display face for titles. */
+:root {
+  --wall: #e9ecef;
+  --card: #ffffff;
+  --ink: #1c2026;
+  --ink-2: #59616c;
+  --line: #d4d9df;
+  --accent: #f2b417;
+  --accent-ink: #3a2a14;
+  --glass: #101215;
+  --display: 'Fredoka Variable', 'Fredoka', system-ui, sans-serif;
+  --text: system-ui, -apple-system, 'Segoe UI', 'Noto Sans Hebrew', Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --wall: #121417;
+    --card: #1b1f24;
+    --ink: #eef1f4;
+    --ink-2: #9ba4ae;
+    --line: #2c3138;
+    --accent: #ffc93c;
+    --accent-ink: #2a1d0c;
+    --glass: #000;
+    color-scheme: dark;
+  }
+}
+:root[data-theme='dark'] {
+  --wall: #121417;
+  --card: #1b1f24;
+  --ink: #eef1f4;
+  --ink-2: #9ba4ae;
+  --line: #2c3138;
+  --accent: #ffc93c;
+  --accent-ink: #2a1d0c;
+  --glass: #000;
+  color-scheme: dark;
+}
+
+body {
+  background: var(--wall);
+  color: var(--ink);
+  font: 400 16px/1.55 var(--text);
+}
+.lab {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding-block: 28px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid;
+  gap: 40px;
+}
+h1,
+h2,
+h3 {
+  font-family: var(--display);
+  font-weight: 600;
+  text-wrap: balance;
+  margin: 0;
+}
+/* grid and flex children may be narrower than what is in them: the phones are sized to the room they have */
+.lab > *,
+.board > *,
+.variants > *,
+.variant > * {
+  min-width: 0;
+}
+.lab-head {
+  display: grid;
+  gap: 8px;
+  max-width: 68ch;
+}
+.eyebrow {
+  margin: 0;
+  font: 600 13px/1 var(--display);
+  letter-spacing: 0.08em;
+  color: var(--ink-2);
+}
+.lab-head h1 {
+  font-size: clamp(26px, 4.6vw, 40px);
+  line-height: 1.1;
+}
+.lede {
+  margin: 0;
+  color: var(--ink-2);
+}
+
+.board {
+  display: grid;
+  gap: 18px;
+}
+.board-head {
+  display: grid;
+  gap: 10px;
+}
+.board-head h2 {
+  font-size: 28px;
+}
+.ask {
+  margin: 0;
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  flex-wrap: wrap;
+  color: var(--ink);
+}
+.ask span {
+  font: 600 12px/1.6 var(--display);
+  letter-spacing: 0.06em;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--line);
+  color: var(--ink-2);
+}
+.states {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.states button {
+  min-height: 40px;
+  padding: 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink);
+  font: 500 15px/1.2 var(--text);
+  cursor: pointer;
+}
+.states button.on {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+  font-weight: 700;
+}
+.states button:focus-visible,
+.again:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.variants {
+  display: grid;
+  gap: 18px;
+}
+.variant {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 18px;
+  background: var(--card);
+  border: 1px solid var(--line);
+}
+.variant.today {
+  background: transparent;
+  border-style: dashed;
+}
+.variant > header {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: start;
+}
+.variant h3 {
+  font-size: 20px;
+}
+.variant p {
+  margin: 2px 0 0;
+  color: var(--ink-2);
+  font-size: 15px;
+}
+.letter {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font: 700 22px/1 var(--display);
+}
+.today .letter {
+  background: var(--line);
+  color: var(--ink-2);
+}
+.again {
+  min-height: 40px;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font: 500 14px/1 var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* the phones: upright beside sideways where there is room, one under the other on a phone */
+.phones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-start;
+  direction: ltr;
+  width: 100%;
+}
+.phone {
+  margin: 0;
+  display: grid;
+  gap: 6px;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.phone:first-child {
+  flex-basis: 300px;
+}
+.phone:last-child {
+  flex: 1 1 420px;
+}
+.phone-glass {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  background: var(--glass);
+  box-shadow:
+    0 0 0 6px var(--glass),
+    0 10px 30px rgba(10, 14, 20, 0.25);
+  margin: 6px;
+}
+.phone iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border: 0;
+  transform-origin: 0 0;
+  background: #000;
+}
+.phone figcaption {
+  direction: rtl;
+  text-align: center;
+  color: var(--ink-2);
+  font-size: 13px;
+}
+
+.lab-foot {
+  display: grid;
+  gap: 6px;
+  max-width: 68ch;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+.lab-foot h2 {
+  font-size: 20px;
+}
+.lab-foot p {
+  margin: 0;
+  color: var(--ink-2);
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto;
+  }
+}

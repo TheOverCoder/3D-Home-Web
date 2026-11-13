@@ -166,6 +166,11 @@ The README has the overview; `tests/README.md` what each test guards.
 
 ## Interface (src/styles.css tokens, src/ui/art.ts, src/ui/glyphs.ts)
 
+- How the interface looks is the interface designer's (`.claude/agents/ui-designer.md`), and it is chosen before it is
+  built into the game: a board in the design lab (`lab/`, `lab/README.md`) shows "today" beside variants A, B, C on
+  phones upright and sideways over a still of the game, published as a link of its own (`npm run lab:build`, then the
+  Artifact tool: seconds, no CI). Only the variant the user chose goes into the game. A panel's look is a component of
+  its own fed with data (`LevelCard` from `levelView`; `LevelPanel` reads the farm), so the lab shows it as it is.
 - Use the tokens and classes, not new colours or fonts: `.paper` sheets, `.btn` (`.soft`, `.leaf`, `.berry`,
   `.small`, `.round`) or `.primary`, `.tag` chips, `.art` pictures. Fredoka for titles/buttons, Nunito for text
   and numbers. Glyphs from `glyphs.ts` (Phosphor, bold/fill), pictures from `art.ts` (Fluent 3D) — add a file

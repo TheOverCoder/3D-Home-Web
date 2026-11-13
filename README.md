@@ -22,6 +22,8 @@ npm test           # the unit tests alone (src/**/*.test.ts, Node, no browser); 
 npm run lint       # oxlint (.oxlintrc.json), with the type-aware rules
 npm run format     # Prettier (.prettierrc.json) on the TypeScript and scripts; the CSS keeps its compact one-line rules
 npm run test:e2e   # Playwright end-to-end suite (see tests/README.md); CI runs it on every push
+npm run lab        # the design lab: the interface's references on phone frames, chosen before they go in (lab/README.md)
+npm run lab:build  # the lab ready to publish as a link of its own → dist-lab/
 ```
 
 Node 22.12 or newer (Vitest 5 needs it).

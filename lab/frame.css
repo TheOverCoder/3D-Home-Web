@@ -1,0 +1,10 @@
+/* the game still behind a frame's screen (the scene as it is under an open panel) */
+.lab-still {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  user-select: none;
+}

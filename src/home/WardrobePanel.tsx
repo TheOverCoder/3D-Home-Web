@@ -1,10 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { uiClick } from '../audio/sound'
-import { garmentUrl } from '../farm/icons'
 import { garmentById, garmentsAt, nextGarment, type Garment, type GarmentSlot } from '../farm/outfit'
 import { farm, sawWardrobe, useFarm, wearGarment } from '../farm/state'
 import { levelOf } from '../farm/xp'
 import { useHome } from '../store'
+import { GarmentPic } from '../ui/GarmentPic'
 import { X } from '../ui/glyphs'
 import { dressView } from './dress'
 import './Wardrobe.css'
@@ -19,15 +19,6 @@ const TABS: { slot: GarmentSlot; word: string }[] = [
   { slot: 'trousers', word: 'Trousers' },
   { slot: 'hat', word: 'Hats' },
 ]
-
-/** A garment's picture (its model in its colour). */
-export function GarmentPic({ g, className }: { g: Garment; className?: string }) {
-  return (
-    <span className={`item-pic garment-pic${className ? ` ${className}` : ''}`}>
-      <img className="art" src={garmentUrl(g.id)} alt="" draggable={false} />
-    </span>
-  )
-}
 
 /** The part of the screen the sheet leaves free, for the camera (normalised device coordinates); the chips at the top
  *  are left out too. */
