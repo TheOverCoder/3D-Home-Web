@@ -1,0 +1,147 @@
+/* B · the showcase (LevelCardB.tsx): the next level's prize on a sunny stage under a ribbon, its coins a sticker beside
+   it, the XP still needed right under it; the level a small title above. Sideways the stage lies on its side. */
+.v-level-b .farm-panel { display: flex; flex-direction: column; gap: 14px; }
+.v-level-b .farm-panel:focus { outline: none; }
+
+/* the title: the chip's star with the level on it, "Level N", the close */
+.v-level-b .lv-head { display: flex; align-items: center; gap: 10px; margin: 0; }
+.v-level-b .lv-star { position: relative; display: grid; place-items: center; flex: none; width: 50px; height: 50px; margin: -6px 0; }
+.v-level-b .lv-star .art { position: absolute; inset: 0; width: 100%; height: 100%; }
+.v-level-b .lv-star b { position: relative; top: 2px; font: 900 18px/1 var(--font-text); color: #fff; -webkit-text-stroke: 4px var(--xp-lip); paint-order: stroke fill; font-variant-numeric: tabular-nums; }
+.v-level-b .top .lv-star b { font-size: 14px; -webkit-text-stroke-width: 3.5px; }
+.v-level-b .lv-head h2 { flex: 1; min-width: 0; margin: 0; font: 600 25px/1.1 var(--font-display); color: var(--ink); }
+
+/* the stage and, under it, how far: one card */
+.v-level-b .lv-show { display: flex; flex-direction: column; border-radius: 24px; background: var(--paper-2); box-shadow: 0 4px 0 var(--paper-3); overflow: hidden; }
+.v-level-b .lv-stage,
+.v-level-b .level-next.lv-stage {
+  position: relative;
+  display: grid;
+  grid-template-areas: 'ribbon' 'prize' 'caption';
+  justify-items: center;
+  align-content: center;
+  gap: 6px;
+  min-height: 236px;
+  margin: 0;
+  padding: 14px 14px 16px;
+  border-radius: 24px 24px 0 0;
+  background: radial-gradient(120% 95% at 50% 42%, color-mix(in srgb, var(--sun) 22%, #fff) 0, color-mix(in srgb, var(--sun) 70%, var(--paper)) 52%, color-mix(in srgb, var(--sun) 88%, var(--sun-lip)) 100%);
+  box-shadow: none;
+  overflow: hidden;
+  isolation: isolate;
+}
+/* the ribbon: what level brings it */
+.v-level-b .level-next h3.lv-ribbon {
+  grid-area: ribbon;
+  margin: 0;
+  padding: 5px 26px 6px;
+  color: #fff;
+  background: linear-gradient(var(--berry), color-mix(in srgb, var(--berry) 80%, var(--berry-lip)));
+  font: 600 17px/1.2 var(--font-display);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 12px) 50%, 100% 100%, 0 100%, 12px 50%);
+}
+/* the prize: in a burst of light, on a soft shadow */
+.v-level-b .lv-prize { grid-area: prize; position: relative; z-index: 0; display: grid; place-items: center; }
+.v-level-b .lv-prize::after { content: ''; position: absolute; z-index: -1; left: 50%; bottom: 2px; width: 92px; height: 16px; margin-left: -46px; border-radius: 50%; background: radial-gradient(closest-side, rgba(120, 70, 10, 0.3), transparent); }
+.v-level-b .lv-rays {
+  position: absolute;
+  z-index: -1;
+  left: 50%;
+  top: 50%;
+  width: 380px;
+  height: 380px;
+  margin: -190px 0 0 -190px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(rgba(255, 255, 255, 0.55) 0 9deg, transparent 9deg 24deg);
+  -webkit-mask: radial-gradient(circle, #000 12%, transparent 62%);
+  mask: radial-gradient(circle, #000 12%, transparent 62%);
+}
+.v-level-b .lv-prize .garment-pic .art { width: 112px; height: 112px; }
+.v-level-b .lv-trophy { width: 96px; height: 96px; }
+.v-level-b .lv-caption { grid-area: caption; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.v-level-b .lv-caption b { font: 600 21px/1.15 var(--font-display); color: var(--ink); }
+.v-level-b .lv-caption .tag { box-shadow: 0 2px 0 color-mix(in srgb, var(--sun-lip) 35%, transparent); }
+/* its coins: a sticker beside the garment (sideways, in the stage's corner) */
+.v-level-b .lv-sticker {
+  grid-area: prize;
+  justify-self: end;
+  align-self: center;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px 4px 5px;
+  border-radius: 999px;
+  background: var(--paper);
+  box-shadow: 0 3px 0 color-mix(in srgb, var(--sun-lip) 55%, transparent), 0 6px 12px rgba(120, 70, 10, 0.18);
+  transform: rotate(6deg);
+}
+.v-level-b .lv-sticker .art { width: 30px; height: 30px; }
+.v-level-b .lv-sticker b { font: 900 19px/1 var(--font-text); color: var(--ink); font-variant-numeric: tabular-nums; }
+/* only coins: the coin is the prize */
+.v-level-b .lv-coins { display: flex; align-items: center; gap: 12px; padding: 8px 0 4px; }
+.v-level-b .lv-coins .art { width: 72px; height: 72px; }
+.v-level-b .lv-coins > span { display: flex; flex-direction: column; gap: 2px; }
+.v-level-b .lv-coins b { font: 900 36px/1 var(--font-text); color: var(--ink); font-variant-numeric: tabular-nums; }
+.v-level-b .lv-coins small { font: 700 15px/1.2 var(--font-text); color: var(--ink-2); }
+.v-level-b .lv-stage:has(.lv-coins) { min-height: 170px; }
+/* the top level: a trophy on the stage, nothing further to win */
+.v-level-b .lv-stage:not(.level-next) { min-height: 176px; }
+
+/* how far: the bar, and the XP still needed */
+.v-level-b .lv-meter { display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 16px; }
+.v-level-b .lv-bar { position: relative; flex: 1; height: 12px; border-radius: 999px; background: var(--paper-3); overflow: hidden; box-shadow: inset 0 1px 2px rgba(60, 35, 10, 0.12); }
+.v-level-b .lv-bar span { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: linear-gradient(to bottom, color-mix(in srgb, var(--xp) 55%, #fff), var(--xp) 60%, var(--xp-lip)); }
+.v-level-b .top .lv-bar span { background: linear-gradient(to bottom, color-mix(in srgb, var(--sun) 55%, #fff), var(--sun) 60%, var(--sun-lip)); }
+.v-level-b .lv-meter .farm-sub { margin: 0; flex: none; }
+.v-level-b .lv-meter .tag { font-size: 14.5px; padding: 3px 12px; }
+
+/* the next garment, further off */
+.v-level-b .level-later { display: flex; align-items: center; gap: 10px; margin: 0; padding: 0 4px; color: var(--ink-2); font: 600 15px/1.3 var(--font-text); }
+.v-level-b .level-later .garment-pic .art { width: 44px; height: 44px; }
+.v-level-b .level-later b { color: var(--ink); }
+
+.v-level-b .farm-confirm { margin-top: 0; }
+.v-level-b .farm-confirm > * { flex: 1; }
+
+/* its moment: the light turns once and the prize bounces in, as when it is won */
+@media (prefers-reduced-motion: no-preference) {
+  .v-level-b .lv-rays { animation: v-level-b-rays 3.2s cubic-bezier(0.2, 0.6, 0.3, 1) both; }
+  .v-level-b .lv-prize > :not(.lv-rays) { animation: v-level-b-bounce 0.7s var(--ease-pop) 0.12s both; }
+  .v-level-b .lv-sticker { animation: v-level-b-stick 0.45s var(--ease-pop) 0.45s both; }
+  .v-level-b .lv-bar span { animation: v-level-b-fill 0.8s cubic-bezier(0.3, 0.7, 0.2, 1) 0.25s both; }
+}
+@keyframes v-level-b-rays { from { opacity: 0; transform: rotate(-40deg) scale(0.6); } 25% { opacity: 1; } }
+@keyframes v-level-b-bounce { from { opacity: 0; transform: scale(0.3) rotate(-18deg); } }
+@keyframes v-level-b-stick { from { opacity: 0; transform: rotate(-12deg) scale(0.4); } }
+@keyframes v-level-b-fill { from { width: 0; } }
+
+/* a phone on its side: the stage lies down — the prize on the left, the ribbon and its name beside it */
+@media (orientation: landscape) and (max-height: 560px) {
+  .v-level-b .farm-panel { gap: 10px; justify-content: center; }
+  .v-level-b .lv-head h2 { font-size: 22px; }
+  .v-level-b .lv-stage,
+  .v-level-b .level-next.lv-stage {
+    grid-template-columns: 120px minmax(0, 1fr);
+    grid-template-areas: 'prize ribbon' 'prize caption';
+    justify-items: start;
+    align-content: center;
+    column-gap: 16px;
+    min-height: 150px;
+    padding: 12px 16px;
+  }
+  .v-level-b .level-next h3.lv-ribbon { align-self: end; }
+  .v-level-b .lv-caption { align-self: start; align-items: flex-start; }
+  .v-level-b .lv-prize { justify-self: center; }
+  .v-level-b .lv-sticker { grid-area: auto; position: absolute; top: 12px; inset-inline-end: 12px; }
+  .v-level-b .lv-prize .garment-pic .art { width: 96px; height: 96px; }
+  .v-level-b .lv-rays { width: 300px; height: 300px; margin: -150px 0 0 -150px; }
+  .v-level-b .lv-stage:has(.lv-coins) { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'ribbon' 'prize'; justify-items: center; min-height: 140px; }
+  .v-level-b .lv-coins .art { width: 60px; height: 60px; }
+  .v-level-b .lv-coins b { font-size: 32px; }
+  .v-level-b .lv-trophy { width: 88px; height: 88px; }
+  .v-level-b .lv-stage:not(.level-next) { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'prize'; justify-items: center; min-height: 150px; }
+  .v-level-b .lv-meter { padding: 8px 12px 8px 16px; }
+}

@@ -1,0 +1,91 @@
+/* A · the medal (LevelCardA.tsx): the level's star in a ring that is its progress, centred; what the next level brings
+   as tiles side by side (the garment the big one); sideways the medal on the left, the tiles beside it, the buttons
+   across under both */
+.v-level-a .farm-panel { position: relative; display: flex; flex-direction: column; gap: 16px; }
+.v-level-a .farm-panel:focus { outline: none; }
+.v-level-a .farm-panel > .close { position: absolute; top: 12px; inset-inline-end: 12px; z-index: 1; }
+
+/* the medal: the chip's star, big, with the level on it, in its XP ring */
+.v-level-a .lv-hero { display: flex; flex-direction: column; align-items: center; align-self: center; text-align: center; }
+.v-level-a .lv-medal { position: relative; display: grid; place-items: center; width: 124px; height: 124px; }
+.v-level-a .lv-medal svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
+.v-level-a .lv-track { fill: none; stroke: var(--paper-3); stroke-width: 8; }
+.v-level-a .lv-fill { fill: none; stroke: url(#v-level-a-xp); stroke-width: 8; stroke-linecap: round; stroke-dasharray: 100; filter: drop-shadow(0 0 3px var(--xp-glow)); }
+.v-level-a .top .lv-fill { stroke: var(--sun); filter: drop-shadow(0 0 4px color-mix(in srgb, var(--sun) 70%, transparent)); }
+.v-level-a .lv-medal .art { width: 88px; height: 88px; }
+.v-level-a .lv-medal b {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  margin-top: -11px;
+  font: 900 27px/1 var(--font-text);
+  color: #fff;
+  -webkit-text-stroke: 6px var(--xp-lip);
+  paint-order: stroke fill;
+  text-shadow: 0 2px 2px rgba(40, 24, 10, 0.35);
+  font-variant-numeric: tabular-nums;
+}
+.v-level-a .lv-medal b.long { margin-top: -8px; font-size: 21px; -webkit-text-stroke-width: 5px; }
+.v-level-a .lv-hero h2 { margin: 4px 0 0; font: 600 28px/1.1 var(--font-display); color: var(--ink); }
+.v-level-a .lv-hero .farm-sub { justify-content: center; margin-top: 6px; }
+.v-level-a .lv-hero .tag { font-size: 14.5px; padding: 3px 12px; box-shadow: 0 2px 0 var(--paper-3); }
+
+/* what the next level brings: a heading between two rules, then the tiles */
+.v-level-a .lv-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.v-level-a .level-next,
+.v-level-a .level-next.gift { padding: 0; border-radius: 0; background: none; box-shadow: none; }
+.v-level-a .level-next h3 { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; font: 600 17px/1.2 var(--font-display); color: var(--ink-2); white-space: nowrap; }
+.v-level-a .level-next h3::before,
+.v-level-a .level-next h3::after { content: ''; flex: 1; height: 2px; border-radius: 2px; background: var(--paper-3); }
+.v-level-a .lv-tiles { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 10px; }
+.v-level-a .lv-tile { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 160px; padding: 12px 8px; border-radius: var(--r-card); background: var(--paper-2); text-align: center; }
+/* the garment: on a warm light, its ring in the sun's colour */
+.v-level-a .lv-gift {
+  background: radial-gradient(circle at 50% 36%, #fff6d6 0, color-mix(in srgb, var(--sun) 30%, var(--paper)) 62%);
+  box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--sun) 75%, transparent), 0 3px 0 color-mix(in srgb, var(--sun) 45%, var(--paper-3));
+}
+.v-level-a .lv-gift .garment-pic .art { width: 84px; height: 84px; }
+.v-level-a .lv-gift > b { font: 600 18px/1.15 var(--font-display); color: var(--ink); }
+.v-level-a .lv-coins { box-shadow: 0 3px 0 var(--paper-3); }
+.v-level-a .lv-coins .art { width: 52px; height: 52px; }
+.v-level-a .lv-coins > span { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.v-level-a .lv-coins b { font: 900 28px/1 var(--font-text); color: var(--ink); font-variant-numeric: tabular-nums; }
+.v-level-a .lv-coins small { font: 700 15px/1.2 var(--font-text); color: var(--ink-2); }
+/* only coins: one tile, the coin beside the number */
+.v-level-a .lv-tiles.solo { grid-template-columns: minmax(0, 1fr); }
+.v-level-a .solo .lv-coins { flex-direction: row; gap: 12px; min-height: 84px; }
+.v-level-a .solo .lv-coins > span { flex-direction: row; align-items: baseline; gap: 6px; }
+
+/* the next garment, further off: a dashed pill */
+.v-level-a .level-later { display: flex; align-items: center; justify-content: center; gap: 10px; align-self: center; margin: 0; padding: 4px 16px 4px 6px; border: 2px dashed var(--paper-3); border-radius: 999px; color: var(--ink-2); font: 600 15px/1.3 var(--font-text); }
+.v-level-a .level-later .garment-pic .art { width: 44px; height: 44px; }
+.v-level-a .level-later b { color: var(--ink); }
+
+.v-level-a .farm-confirm { margin-top: 0; }
+.v-level-a .farm-confirm > * { flex: 1; }
+
+/* its moment: the medal pops and the ring fills to where the XP is */
+@media (prefers-reduced-motion: no-preference) {
+  .v-level-a .lv-medal .art { animation: pop 0.45s var(--ease-pop) both; }
+  .v-level-a .lv-medal b { animation: pop 0.45s var(--ease-pop) 0.12s both; }
+  .v-level-a .lv-fill { animation: v-level-a-fill 0.9s cubic-bezier(0.3, 0.7, 0.2, 1) 0.2s both; }
+  .v-level-a .lv-gift .garment-pic { animation: pop 0.45s var(--ease-pop) 0.35s both; }
+}
+@keyframes v-level-a-fill { from { stroke-dashoffset: 100; } }
+
+/* a phone on its side: the medal on the left, what the next level brings beside it, the buttons across under both */
+@media (orientation: landscape) and (max-height: 560px) {
+  .v-level-a .farm-panel { display: grid; grid-template-columns: 150px minmax(0, 1fr); grid-template-areas: 'hero side' 'act act'; align-content: center; align-items: center; gap: 14px 16px; }
+  .v-level-a .farm-panel.top { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'hero' 'act'; }
+  .v-level-a .farm-panel > .close { top: calc(10px + env(safe-area-inset-top)); inset-inline-end: calc(14px + env(safe-area-inset-right)); }
+  .v-level-a .lv-hero { grid-area: hero; }
+  .v-level-a .lv-side { grid-area: side; gap: 12px; }
+  .v-level-a .farm-confirm { grid-area: act; }
+  .v-level-a .lv-medal { width: 108px; height: 108px; }
+  .v-level-a .lv-medal .art { width: 78px; height: 78px; }
+  .v-level-a .lv-hero h2 { font-size: 23px; }
+  .v-level-a .lv-tile { min-height: 128px; padding: 10px 8px; }
+  .v-level-a .lv-gift .garment-pic .art { width: 68px; height: 68px; }
+  .v-level-a .solo .lv-coins { min-height: 76px; }
+}
