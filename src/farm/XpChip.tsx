@@ -1,17 +1,21 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { farmSound } from '../audio/sound'
-import { flyCoins } from '../fx/coins'
-import { coinsToFly, reducedMotion } from '../fx/fx'
+import { reducedMotion } from '../fx/fx'
 import { onXpFlight, xpInFlight } from '../fx/xp'
+import { GarmentPic } from '../home/WardrobePanel'
+import { useHome } from '../store'
 import { art } from '../ui/art'
 import { TopSlot } from '../ui/TopStack'
-import { claimLevel, farm, useFarm, xpEventCount, xpNow } from './state'
-import { levelOf, unpaidCoins, xpAt } from './xp'
+import { GARMENTS, type Garment } from './outfit'
+import { farm, useFarm, xpEventCount, xpNow } from './state'
+import { levelOf, levelProgress, unpaidCoins } from './xp'
 
 // The level chip in the row at the top (role G): a star with the level on it, a thin bar along the bottom of the row
 // that fills with XP as the crystals land (src/fx/xp.ts), a pulse of the star as it grows, and the coins of the levels
-// reached waiting to be claimed with a tap. LevelUp is the show of a new level (a flash, a ring, the new number),
-// started by play only (xpEventCount in state.ts): a farm loaded or switched to takes its level without a show.
+// reached waiting. A tap opens the level's card (./LevelPanel.tsx): the XP to the next level, what it brings, the
+// coins to claim. LevelUp is the show of a new level (a flash, a ring, the new number) and, every fifth level, of the
+// garment it brings for the wardrobe; started by play only (xpEventCount in state.ts): a farm loaded or switched to
+// takes its level without a show.
 
 /** The XP as the bar shows it: all the points, what is still in the air, and the count of gains from play. */
 interface Seen {
@@ -97,9 +101,7 @@ export function XpChip() {
   useFarm((s) => s.rev)
   const seen = useSeenXp()
   const shown = Math.max(0, seen.points - seen.flying)
-  const level = levelOf(shown)
-  const need = xpAt(level + 1) - xpAt(level)
-  const into = shown - xpAt(level)
+  const { level, into, need } = levelProgress(shown)
   const k = Math.min(1, into / need)
   // the coins of the levels the bar has reached (a level's crystals still in the air are not paid for yet)
   const unpaid = unpaidCoins({ points: shown, paid: farm.xp.paid })
@@ -119,13 +121,7 @@ export function XpChip() {
     farmSound('xp')
   }, [seen, shown, level, k])
 
-  // pays the levels the bar shows, never one whose crystals are still in the air: the coins paid are the coins shown
-  const claim = (chip: HTMLElement) => {
-    const coin = chip.querySelector('.xp-coin')?.getBoundingClientRect()
-    // the levels the bar shows (crystals still in the air are not paid for yet)
-    const coins = claimLevel(level)
-    if (coins > 0 && coin && !reducedMotion()) flyCoins(coin.left + coin.width / 2, coin.top + coin.height / 2, coinsToFly(coins))
-  }
+  const open = () => useHome.getState().openPanel({ kind: 'level' })
 
   const badge = (
     <span className="xp-star" ref={star}>
@@ -137,15 +133,15 @@ export function XpChip() {
   return (
     <span className="xp-line">
       {unpaid > 0 ? (
-        <button className="farm-chip-item level ready" onClick={(e) => claim(e.currentTarget)} title={`Level ${level}: ${unpaid} coins to claim`} aria-label={`Level ${level}: claim ${unpaid} coins`}>
+        <button className="farm-chip-item level ready" onClick={open} title={`Level ${level}: ${unpaid} coins to claim`} aria-label={`Level ${level}: ${unpaid} coins to claim`}>
           {badge}
           <img className="xp-coin" src={art('coin')} alt="" />
           <b>{unpaid}</b>
         </button>
       ) : (
-        <span className="farm-chip-item level" title={`Level ${level}: ${into} of ${need} XP to level ${level + 1}`}>
+        <button className="farm-chip-item level" onClick={open} title={`Level ${level}: ${into} of ${need} XP to level ${level + 1}`} aria-label={`Level ${level}: what the next level brings`}>
           {badge}
-        </span>
+        </button>
       )}
       <div className="xp-bar" role="progressbar" aria-label={`Level ${level}: XP to level ${level + 1}`} aria-valuemin={0} aria-valuemax={need} aria-valuenow={into}>
         <span className="xp-bar-fill" ref={fill} style={{ width: `${k * 100}%` }}>
@@ -156,14 +152,23 @@ export function XpChip() {
   )
 }
 
+/** How long a level's show lasts, and a garment's after it. */
+const LEVEL_MS = 2400
+const GIFT_MS = 3400
+
 /** The show of a new level, over the scene under the compass (no pointer events, never a panel or a toast): a flash,
- *  a ring of energy and the new number, once the crystals that reached it have landed on the bar. */
+ *  a ring of energy and the new number, once the crystals that reached it have landed on the bar; then, for a level
+ *  that brings a garment, the garment: its picture popping out of a burst of light, its name, and that it is in the
+ *  wardrobe now. */
 export function LevelUp() {
   const seen = useSeenXp()
   const reached = levelOf(seen.points)
   const landed = levelOf(Math.max(0, seen.points - seen.flying))
   const told = useRef({ events: seen.events, level: reached, pending: false })
   const [show, setShow] = useState<{ level: number; n: number } | null>(null)
+  // the garments the levels shown brought, still to be shown (one after another)
+  const [gifts, setGifts] = useState<Garment[]>([])
+  const [gift, setGift] = useState<{ g: Garment; n: number } | null>(null)
 
   useEffect(() => {
     const s = told.current
@@ -176,18 +181,34 @@ export function LevelUp() {
       s.pending = false
     }
     if (s.pending && landed > s.level) {
+      const from = s.level
       s.level = landed
       s.pending = landed < reached
       setShow((p) => ({ level: landed, n: (p?.n ?? 0) + 1 }))
+      const brought = GARMENTS.filter((g) => g.level > from && g.level <= landed)
+      if (brought.length) setGifts((q) => [...q, ...brought])
       farmSound('level')
     }
   }, [seen, reached, landed])
 
   useEffect(() => {
     if (!show) return
-    const t = window.setTimeout(() => setShow(null), 2400)
+    const t = window.setTimeout(() => setShow(null), LEVEL_MS)
     return () => window.clearTimeout(t)
   }, [show])
+
+  // a garment's show once the level's is over, and the next one's after it
+  useEffect(() => {
+    if (show || gift || !gifts.length) return
+    setGift((p) => ({ g: gifts[0], n: (p?.n ?? 0) + 1 }))
+    setGifts((q) => q.slice(1))
+    farmSound('garment')
+  }, [show, gift, gifts])
+  useEffect(() => {
+    if (!gift) return
+    const t = window.setTimeout(() => setGift(null), GIFT_MS)
+    return () => window.clearTimeout(t)
+  }, [gift])
 
   return (
     <TopSlot name="level">
@@ -199,6 +220,17 @@ export function LevelUp() {
             <span className="level-up-ring late" aria-hidden="true" />
             <span className="level-up-word">Level</span>
             <b className="level-up-number">{show.level}</b>
+          </div>
+        )}
+        {!show && gift && (
+          <div className="garment-show" key={`g${gift.n}`}>
+            <span className="garment-show-rays" aria-hidden="true" />
+            <GarmentPic g={gift.g} />
+            <span className="garment-show-text">
+              <span className="garment-show-word">New garment!</span>
+              <b>{gift.g.name}</b>
+              <small>In the wardrobe</small>
+            </span>
           </div>
         )}
       </div>

@@ -950,6 +950,42 @@ test.describe('the drawing pass leaves out only what cannot be seen', () => {
     console.log(log.join('\n'))
   })
 
+  test('640×360: the wardrobe open — you filmed from in front of you, your head and hat drawn (src/home/Wardrobe.tsx)', async ({ game }) => {
+    await setUp(game)
+    const { page } = game
+    const log: string[] = []
+    // before the bedroom's wardrobe, a hat on, the wardrobe opened as its button opens it
+    await game.teleport(5.8, 1.4, 1.75, 0, -0.1)
+    await page.evaluate(() => {
+      const h = (window as any).__home
+      h.farm.wearGarment('straw-brown')
+      h.interactables()
+        .find((d: any) => d.id.startsWith('wardrobe-'))
+        .run()
+    })
+    try {
+      await page.waitForFunction(() => (window as any).__home.dressView.settled === true, null, { timeout: 30_000, polling: 250 })
+      await page.waitForTimeout(600)
+      const name = 'the wardrobe, you filmed'
+      const r = await page.evaluate(() => (window as any).__viewProbe.camera(null))
+      if (r.differ && r.culprits?.length) r.rays = await page.evaluate(behindShell)
+      report(log, name, r)
+      if (r.differ) console.log(log[log.length - 1])
+      check(name, r)
+      const s = await page.evaluate(() => (window as any).__viewProbe.shadow())
+      log.push(`  sun's shadow map: ${s.after.calls} draws, ${s.culled} casters left out, ${s.differ} bytes differ`)
+      expect(s.differ).toBe(0)
+    } finally {
+      await page.evaluate(() => {
+        const h = (window as any).__home
+        h.useHome.getState().closePanel()
+        h.farm.wearGarment('straw-brown')
+      })
+      await page.waitForFunction(() => (window as any).__home.dressView.blend === 0, null, { timeout: 30_000, polling: 250 })
+    }
+    console.log(log.join('\n'))
+  })
+
   test('a phone held upright (390×844): rooms, the door, the garden door, the yard, the gate and the market', { tag: '@full' }, async ({ game }) => {
     await setUp(game)
     const { page } = game

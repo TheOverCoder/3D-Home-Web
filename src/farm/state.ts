@@ -67,6 +67,7 @@ import {
   type XpAction,
 } from './data'
 import { sanitizeXp, seedXp, levelOf, xpAt, unpaidCoins, xpForSale, type Xp } from './xp'
+import { DEFAULT_OUTFIT, garmentById, putOn, sanitizeOutfit, type Outfit } from './outfit'
 import { SHOP_LADDERS, clampLevels, freshMarket, ladderPrice, managerPay, managerPct, placesOpen, rollShopper, sanitizeMarket, shopperEvery, shoppersAtOnce, snapPct, type Market } from './market'
 import { dailyOffers, offersPerDay, piecePrice, sanitizeContractor, shortMaterials, type Contractor } from './contractor'
 import { dayOf, hourOf, isOpen, phaseOf, untilPhase } from './day'
@@ -196,6 +197,8 @@ export interface FarmData {
   clock: number // seconds of farm time since the page opened
   /** levels (src/farm/xp.ts): every XP point gained, and the highest level whose coins were claimed */
   xp: Xp
+  /** what the player wears, from the wardrobe's garments (src/farm/outfit.ts) */
+  outfit: Outfit
   /** every upgrade ladder's step (LADDERS in ./data): the market's and the contractor's */
   ladders: Record<LadderId, number>
   /** the supermarket (src/farm/market.ts): yours or not, its shelves, the till, the next visit */
@@ -269,6 +272,7 @@ function fresh(): FarmData {
     dispatch: { waiting: 0, aboard: 0, trip: -1 },
     clock: 0,
     xp: { points: 0, paid: 1 },
+    outfit: { ...DEFAULT_OUTFIT },
     ladders: clampLevels({}),
     market: freshMarket(),
     contractor: { day: -1, offers: [] },
@@ -481,6 +485,8 @@ function load(text: string | null = readRaw(KEY)): { data: FarmData; savedAt: nu
     for (const def of GOALS) data.goals[def.id] = isObject(raw.goals) ? int(field(raw.goals, def.id), 0, 0, MOST_STEPS) : startStep(def, data)
     // levels: as saved; a farm from before them starts with XP for what it did (its levels are not paid again)
     data.xp = sanitizeXp(raw.xp, seedXp(data.stats))
+    // the clothes: as saved, each one the wardrobe has at the farm's level (a farm from before it: what it always wore)
+    data.outfit = sanitizeOutfit(raw.outfit, levelOf(data.xp.points))
     // the ladders, the market, the contractor and the day (a farm from before them: as on a new farm)
     // (while the shop is not yours, its own ladders read back as 0: only the manager's rate and the contractor's two)
     data.ladders = clampLevels(raw.ladders, field(raw.market, 'owned') === true)
@@ -1635,6 +1641,29 @@ export function claimLevel(upTo?: number): number {
   bump()
   save()
   return coins
+}
+
+// ───────────────────────────── the wardrobe ─────────────────────────────
+
+/** Puts on a garment from the wardrobe (one the level has; a hat worn already comes off). True when what is worn
+ *  changed. Nothing is paid and nothing is gained: it is only clothes. */
+export function wearGarment(id: string): boolean {
+  const next = putOn(farm.outfit, id, levelOf(farm.xp.points))
+  if (next === farm.outfit || (next.shirt === farm.outfit.shirt && next.trousers === farm.outfit.trousers && next.hat === farm.outfit.hat)) return false
+  farm.outfit = next
+  if (garmentById(id)) farmSound('dress')
+  bump()
+  save()
+  return true
+}
+
+/** The wardrobe has shown every garment up to the level reached: none is marked new any more. */
+export function sawWardrobe() {
+  const level = levelOf(farm.xp.points)
+  if (farm.outfit.seen >= level) return
+  farm.outfit = { ...farm.outfit, seen: level }
+  bump()
+  save()
 }
 
 // ───────────────────────────── the supermarket ─────────────────────────────

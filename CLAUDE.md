@@ -134,6 +134,19 @@ The README has the overview; `tests/README.md` what each test guards.
 - What keeps hours is a row in `HOURS`; the day's phases and their light are `DAY`. The light changes only the colour
   and strength of the lights there are. Tests stand at noon with the clock stopped (`helpers.ts`, `ready()`).
 
+## The wardrobe and the levels' rewards (src/farm/outfit.ts, src/home/Wardrobe.tsx, src/farm/LevelPanel.tsx)
+
+- 500 levels (`LEVELS.max`), each taking longer than the one before. Each brings coins, claimed in the level's card
+  (the level chip opens it: the XP to the next level and what it brings); every fifth one a garment.
+- The player's clothes are the people engine's (its shirt, trousers, straw hat, cap, beanie) in a table of garments,
+  each with the level it comes with (`GARMENTS`: two of each at level 1, then one every `GARMENT_EVERY` levels); what
+  is worn is `farm.outfit` in the save. A new garment is a row there, and its picture is drawn from its model by
+  `node scripts/render-item-art.mjs` (`src/assets/garments`). A level reached by play shows its garment after the
+  level's show, and the wardrobe marks it new until it has been open.
+- Every wardrobe in the house opens with the action button: you turn round and the camera films you from in front,
+  framed in the part of the screen its sheet leaves free (`dressView`). It is a first-person view (opened from third
+  person, third again as it closes), in `05`'s walk and `16`'s poses.
+
 ## The silo and the barn (src/farm/storage.ts, STORES in src/farm/data.ts)
 
 - `farm.inv` is the one record of goods; each good is kept in the silo (what grows: every crop, the lemons) or the barn

@@ -76,6 +76,8 @@ import {
   xpNow,
   claimLevel,
   xpEventCount,
+  wearGarment,
+  sawWardrobe,
   sellToManager,
   sellAllToManager,
   buyMarket,
@@ -712,6 +714,9 @@ function FarmClock() {
       xpNow,
       claimLevel,
       xpEventCount,
+      // the wardrobe (src/farm/outfit.ts)
+      wearGarment,
+      sawWardrobe,
       sellToManager,
       sellAllToManager,
       buyMarket,

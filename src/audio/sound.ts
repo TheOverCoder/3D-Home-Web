@@ -382,6 +382,8 @@ export type FarmSound =
   | 'level' // a new level
   | 'till' // the shop's till emptied into your purse
   | 'chime' // the contractor has what you need today
+  | 'dress' // a garment put on: cloth rustling
+  | 'garment' // a new garment for the wardrobe: a bright flourish
 
 /** Crystals landing one close behind another climb this scale (semitones over the first note), then hold its top. */
 const XP_STEPS = [0, 2, 4, 7, 9, 12, 14, 16]
@@ -553,6 +555,16 @@ export function farmSound(kind: FarmSound, pan = 0, near = 1) {
         tone(e, t + i * 0.16, { type: 'sine', f0: f, gain: 0.04, attack: 0.003, decay: 1.1 })
         tone(e, t + i * 0.16, { type: 'sine', f0: f * 2.76, gain: 0.008, attack: 0.002, decay: 0.3 })
       })
+      break
+    case 'dress': // a garment put on: two soft swishes of cloth
+      burst(e, t, { type: 'bandpass', freq: 1600, sweepTo: 3200, q: 0.7, gain: 0.07, attack: 0.04, decay: 0.16 })
+      burst(e, t + 0.13, { type: 'bandpass', freq: 2600, sweepTo: 1300, q: 0.7, gain: 0.05, attack: 0.03, decay: 0.18 })
+      break
+    case 'garment': // a new garment: a skip up the scale, then a bright bell over a soft shimmer
+      ;[1319, 1568, 1976].forEach((f, i) => tone(e, t + i * 0.09, { type: 'triangle', f0: f, gain: 0.045, attack: 0.004, decay: 0.22 }))
+      tone(e, t + 0.3, { type: 'sine', f0: 2637, gain: 0.05, attack: 0.004, decay: 1.2 })
+      tone(e, t + 0.3, { type: 'sine', f0: 3951, gain: 0.015, attack: 0.004, decay: 0.6 })
+      burst(e, t + 0.28, { type: 'highpass', freq: 5000, sweepTo: 10000, q: 0.7, gain: 0.025, attack: 0.1, decay: 0.6 })
       break
     case 'ding': // the kitchen timer: it is ready
       tone(e, t, { type: 'sine', f0: 1568, gain: 0.06, attack: 0.003, decay: 1.2 })

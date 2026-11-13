@@ -526,8 +526,9 @@ export const NAMES = ['Maya', 'Noa', 'Daniel', 'Yael', 'Omer', 'Tamar', 'Eitan',
  *  undone for free gives any (furniture, moving places, stocking shelves, prices, declining). */
 export const XP_FOR = { plant: 1, water: 1, harvest: 2, collect: 1, load: 1, make: 2, build: 5, goal: 5, shop: 25, order: 5 } as const
 export type XpAction = keyof typeof XP_FOR
-/** From level L to the next takes `step · L` XP; reaching level L pays `reward · L` coins (claimed on the level chip). */
-export const LEVELS = { step: 15, reward: 10 } as const
+/** From level L to the next takes `step · L` XP, so each level takes longer than the one before; reaching level L pays
+ *  `reward · L` coins (claimed in the level's card). `max` is the top level: past it XP still counts, the level stays. */
+export const LEVELS = { step: 15, reward: 10, max: 500 } as const
 
 // ───────────────────────────── the supermarket ─────────────────────────────
 

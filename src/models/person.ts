@@ -558,7 +558,9 @@ export const HAIR_PARTS: PersonPart[] = ['hairShort', 'hairLong', 'hairBun', 'ha
 
 // ───────────────────────────── drawing and posing ─────────────────────────────
 
-const CLOTH = { roughness: 0.88, detail: { scale: 260, bump: 0.0015, shade: 0.07 } }
+/** Cloth (the shirt, the trousers, the beanie), with a fine weave; a hat or a cap is smoother (HAT). */
+export const CLOTH = { roughness: 0.88, detail: { scale: 260, bump: 0.0015, shade: 0.07 } }
+export const HAT = { roughness: 0.9 }
 const SKIN = { roughness: 0.6 }
 const HAIR = { roughness: 0.55, detail: { scale: 160, bump: 0.0025, shade: 0.16 } }
 
@@ -585,8 +587,8 @@ export function personParts(max: number): Parts {
     hairBun: { geometry: g.hairBun, max, material: HAIR },
     hairCurly: { geometry: g.hairCurly, max, material: HAIR },
     hairPony: { geometry: g.hairPony, max, material: HAIR },
-    hat: { geometry: g.hat, max, material: { roughness: 0.9 } },
-    cap: { geometry: g.cap, max, material: { roughness: 0.9 } },
+    hat: { geometry: g.hat, max, material: HAT },
+    cap: { geometry: g.cap, max, material: HAT },
     beanie: { geometry: g.beanie, max, material: CLOTH },
     tie: { geometry: g.tie, max, material: SKIN },
     shadow: shadowPart(max, 0.24),

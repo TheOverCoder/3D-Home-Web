@@ -1,0 +1,57 @@
+/* The wardrobe (WardrobePanel.tsx): a sheet on the right — at the bottom on a phone held upright — and the scene left
+   clear round it, where the camera films you. No dimming: you are what it shows. */
+.wardrobe-dock { position: fixed; inset: 0; z-index: 42; display: grid; place-items: stretch end; pointer-events: none; }
+.farm-panel.wardrobe {
+  display: flex;
+  flex-direction: column;
+  width: min(400px, 44vw);
+  height: 100dvh;
+  max-height: none;
+  padding: calc(12px + env(safe-area-inset-top)) calc(14px + env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) 14px;
+  border-inline-end: 0;
+  border-radius: var(--r-sheet) 0 0 var(--r-sheet);
+  pointer-events: auto;
+  animation: sheet-in 0.3s var(--ease-sheet);
+}
+.wardrobe header { margin-bottom: 10px; }
+.garment-pic .art { width: 56px; height: 56px; }
+.wardrobe .farm-head-art { width: 56px; height: 56px; margin: -4px 0; }
+.wardrobe .farm-head-art .art { width: 56px; height: 56px; }
+.wardrobe .farm-sub .tag { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+
+.wardrobe-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+.wardrobe-tab { position: relative; flex: 1 1 0; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 4px; min-height: 44px; padding: 2px 8px 2px 4px; border: 2px solid transparent; border-radius: 999px; background: var(--paper-2); color: var(--ink-2); font: 600 15px/1 var(--font-display); }
+.wardrobe-tab.on { border-color: var(--sun); background: #fff; color: var(--ink); }
+.wardrobe-tab .garment-pic .art,
+.wardrobe-tab .garment-pic.none { width: 30px; height: 30px; }
+.wardrobe-new-dot { position: absolute; top: 3px; right: 7px; width: 10px; height: 10px; border-radius: 50%; background: var(--berry); box-shadow: 0 0 0 2px #fff; }
+
+.wardrobe-grid { flex: 1 1 auto; min-height: 0; overflow: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); align-content: start; gap: 9px; padding: 7px 4px 4px; }
+.wardrobe-item { position: relative; display: grid; place-items: center; aspect-ratio: 1; min-height: 64px; padding: 6px; border: 3px solid transparent; border-radius: var(--r-card); background: var(--paper-2); color: var(--ink-2); box-shadow: 0 3px 0 var(--paper-3); }
+.wardrobe-item .art { width: 100%; height: 100%; max-width: 62px; max-height: 62px; }
+.wardrobe-item .garment-pic { display: grid; place-items: center; width: 100%; height: 100%; }
+.wardrobe-item.on { border-color: var(--leaf); background: #fff; }
+.wardrobe-item:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--paper-3); }
+.wardrobe-item.none svg { width: 28px; height: 28px; }
+.wardrobe-new { position: absolute; top: -7px; right: -6px; padding: 1px 7px; border-radius: 999px; background: var(--berry); color: #fff; font: 800 13px/1.4 var(--font-text); box-shadow: 0 2px 0 var(--berry-lip); animation: pop 0.45s var(--ease-pop) both; }
+
+.wardrobe-next { display: flex; align-items: center; gap: 8px; margin: 10px 0 0; color: var(--ink-2); font: 500 15px/1.3 var(--font-text); }
+.wardrobe-next .art { width: 40px; height: 40px; }
+.wardrobe-next b { color: var(--ink); }
+
+/* a phone held upright: the sheet at the bottom, you filmed above it */
+@media (orientation: portrait) {
+  .wardrobe-dock { place-items: end stretch; }
+  .farm-panel.wardrobe {
+    width: 100%;
+    height: auto;
+    max-height: 46dvh;
+    padding: 12px 14px calc(12px + env(safe-area-inset-bottom));
+    border-inline-end: 3px solid #fff;
+    border-bottom: 0;
+    border-radius: var(--r-sheet) var(--r-sheet) 0 0;
+    animation: sheet-up 0.32s var(--ease-sheet);
+  }
+  .wardrobe header { margin-bottom: 8px; }
+  .wardrobe-grid { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); }
+}

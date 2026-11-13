@@ -36,6 +36,7 @@ import { PARCELS, PARCEL_IDS, PLACE_IDS, canPlace } from './layout'
 import { MAX_PLACES, SHOP_LADDERS, placesOpen, shopperEvery } from './market'
 import { offersPerDay } from './contractor'
 import { levelOf } from './xp'
+import { garmentById } from './outfit'
 import { sanitizeLook } from '../models/look'
 import { arrivalSeconds, farm, gateX, inLine, placesInLine, tick } from './state'
 import { tripSeconds } from './tractorRoute'
@@ -183,6 +184,8 @@ function alsoChanges(part: string): RegExp | null {
   if (part === 'ladders' || part.startsWith('ladders.')) return /^(market|contractor)(\.|$)/
   // the shop's own ladders count only once the shop is yours (src/farm/market.ts, clampLevels)
   if (part === 'market' || part.startsWith('market.')) return /^ladders(\.|$)/
+  // the level decides which garments the wardrobe has, so what can be worn (src/farm/outfit.ts)
+  if (part === 'xp' || part.startsWith('xp.')) return /^outfit(\.|$)/
   return null
 }
 
@@ -193,8 +196,8 @@ function free(base: Base, path: Key[], names: string[]): (name: string) => boole
   const coupled = touched.map(alsoChanges).filter((r): r is RegExp => !!r)
   // a farm from before the goals starts each where its counts are: they follow the stats and what it has got
   if (base.old && /^(stats|got)(\.|$)/.test(at)) coupled.push(/^goals(\.|$)/)
-  // and its XP starts from what it did (src/farm/xp.ts, seedXp)
-  if (base.old && /^stats(\.|$)/.test(at)) coupled.push(/^xp(\.|$)/)
+  // and its XP starts from what it did (src/farm/xp.ts, seedXp), and so what the wardrobe has
+  if (base.old && /^stats(\.|$)/.test(at)) coupled.push(/^(xp|outfit)(\.|$)/)
   return (n) => touched.includes(n) || coupled.some((r) => r.test(n))
 }
 
@@ -298,6 +301,12 @@ function farmProblems(): string[] {
   // levels: every point gained, whole; the level paid for from 1 up to the one reached
   const xp = farm.xp
   bad('xp', sameKeys(xp, ['points', 'paid']) && isCount(xp.points) && Number.isInteger(xp.paid) && xp.paid >= 1 && xp.paid <= levelOf(xp.points))
+  // the clothes: a garment of its slot for each, one the level has (a hat, or none); the new marks never past the level
+  const o = farm.outfit
+  const level = levelOf(xp.points)
+  const wears = (id: unknown, slot: string) => typeof id === 'string' && garmentById(id)?.slot === slot && garmentById(id)!.level <= level
+  bad('outfit', sameKeys(o, ['shirt', 'trousers', 'hat', 'seen']) && wears(o.shirt, 'shirt') && wears(o.trousers, 'trousers') && (o.hat === null || wears(o.hat, 'hat')))
+  bad('outfit.seen', Number.isInteger(o.seen) && o.seen >= 1 && o.seen <= level)
   // the ladders: a step count each, to its top; the shop's own none until the shop is yours
   const l = farm.ladders
   bad('ladders: each ladder', sameKeys(l, LADDER_IDS))

@@ -1,6 +1,8 @@
 import { GoalsPanel, useGoalsReady } from './GoalsPanel'
 import { AwayPanel, AwayWatcher } from './AwayPanel'
 import { LevelUp, XpChip } from './XpChip'
+import { LevelPanel } from './LevelPanel'
+import { WardrobePanel } from '../home/WardrobePanel'
 import { DayChip } from './DayChip'
 import { ManagerPanel, MarketBuyPanel, MarketPanel, MarketPlacePanel } from './MarketPanel'
 import { ContractorPanel } from './ContractorPanel'
@@ -551,6 +553,8 @@ export function FarmUI() {
       {panel?.kind === 'market-buy' && <MarketBuyPanel />}
       {panel?.kind === 'contractor' && <ContractorPanel />}
       {panel?.kind === 'ladder' && <LadderCard id={panel.id} />}
+      {panel?.kind === 'level' && <LevelPanel />}
+      {panel?.kind === 'wardrobe' && <WardrobePanel />}
       <LevelUp />
       <AwayWatcher />
     </>

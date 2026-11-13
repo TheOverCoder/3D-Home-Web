@@ -1,8 +1,29 @@
-import { Box3, DirectionalLight, HemisphereLight, NeutralToneMapping, PerspectiveCamera, PMREMGenerator, Scene, SRGBColorSpace, Vector3, WebGLRenderer } from 'three'
+import {
+  Box3,
+  Color,
+  DirectionalLight,
+  Group,
+  HemisphereLight,
+  InstancedMesh,
+  Matrix4,
+  NeutralToneMapping,
+  PerspectiveCamera,
+  PMREMGenerator,
+  Quaternion,
+  Scene,
+  SRGBColorSpace,
+  Vector3,
+  WebGLRenderer,
+  type BufferGeometry,
+  type Object3D,
+} from 'three'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
+import type { Garment } from '../farm/outfit'
 import type { PictureId } from '../farm/icons'
+import { sculptMaterial, type SculptMaterialOptions } from '../lib/sculpt'
 import { barnModel, siloModel } from './buildings'
 import { GOODS } from './goods'
+import { CLOTH, HAT, PERSON, personGeometries } from './person'
 import { structureParts, type Structure } from './structures'
 
 // The pictures of the farm's goods, drawn from their models (src/models/goods.ts) in one still studio: soft light
@@ -75,13 +96,20 @@ function getStudio(px: number) {
 /** One good's picture, `size` pixels square, as a WebP data URL: drawn at three times the size, cropped to the
  *  thing itself and scaled down into the square with a little room round it. */
 export function renderItemArt(id: PictureId, size = 256): string {
+  const item = structureParts(MODELS[id](), `item-${id}`)
+  const url = shoot(item.group, VIEWS[id] ?? {}, size)
+  item.dispose()
+  return url
+}
+
+/** One thing in the studio, from where `def` says, as a picture `size` pixels square (drawn at three times the size,
+ *  cropped to the thing and scaled down into the square). */
+function shoot(object: Object3D, def: Item, size: number): string {
   const S = size * 3
   const { renderer, scene, camera } = getStudio(S)
-  const def = VIEWS[id] ?? {}
-  const item = structureParts(MODELS[id](), `item-${id}`)
-  scene.add(item.group)
-  item.group.updateMatrixWorld(true)
-  const box = new Box3().setFromObject(item.group)
+  scene.add(object)
+  object.updateMatrixWorld(true)
+  const box = new Box3().setFromObject(object)
   const centre = box.getCenter(new Vector3())
   const radius = box.getSize(new Vector3()).length() / 2
   const az = ((def.az ?? -30) * Math.PI) / 180
@@ -94,9 +122,44 @@ export function renderItemArt(id: PictureId, size = 256): string {
   camera.updateProjectionMatrix()
   camera.lookAt(centre)
   renderer.render(scene, camera)
-  scene.remove(item.group)
-  item.dispose()
+  scene.remove(object)
   return cropArt(renderer.domElement, S, size)
+}
+
+/** One piece of a person's clothes in its colour (the people engine's own part, on the kit's material). */
+function worn(geometry: BufferGeometry, material: SculptMaterialOptions, colour: string, at: Matrix4) {
+  const m = new InstancedMesh(geometry, sculptMaterial(material), 1)
+  m.setMatrixAt(0, at)
+  m.setColorAt(0, new Color(colour))
+  m.computeBoundingBox()
+  m.computeBoundingSphere()
+  return m
+}
+
+const turned = (x: number, y: number, z: number, roll = 0) => new Matrix4().compose(new Vector3(x, y, z), new Quaternion().setFromAxisAngle(new Vector3(0, 0, 1), roll), new Vector3(1, 1, 1))
+
+/** A garment's picture (the wardrobe, the level's card): the shirt with its sleeves held a little out, the trousers
+ *  standing, a hat from the front left and above — the people engine's own models in the garment's colour.
+ *  `scripts/render-item-art.mjs` saves them in src/assets/garments, which src/farm/icons.ts serves. */
+export function renderGarmentArt(g: Garment, size = 160): string {
+  const parts = personGeometries()
+  const group = new Group()
+  if (g.slot === 'shirt') {
+    group.add(worn(parts.torso, CLOTH, g.colour, turned(0, 0, 0)))
+    for (const side of [1, -1]) group.add(worn(parts.upperArm, CLOTH, g.colour, turned(side * PERSON.shoulder[0], PERSON.shoulder[1], 0, side * 0.42)))
+  } else if (g.slot === 'trousers') {
+    group.add(worn(parts.pelvis, CLOTH, g.colour, turned(0, 0, 0)))
+    for (const side of [1, -1]) {
+      group.add(worn(parts.thigh, CLOTH, g.colour, turned(side * PERSON.hipX, 0, 0)))
+      group.add(worn(parts.shin, CLOTH, g.colour, turned(side * PERSON.hipX, PERSON.kneeY, 0)))
+    }
+  } else {
+    const kind = g.hat === 'cap' || g.hat === 'beanie' ? g.hat : 'hat'
+    group.add(worn(parts[kind], kind === 'beanie' ? CLOTH : HAT, g.colour, turned(0, 0, 0)))
+  }
+  const url = shoot(group, g.slot === 'hat' ? { az: -28, el: 26 } : { az: -14, el: 10 }, size)
+  for (const m of group.children) (m as InstancedMesh).dispose()
+  return url
 }
 
 /** A picture rendered `S` pixels square on a clear background, cropped to the thing itself and scaled into a square

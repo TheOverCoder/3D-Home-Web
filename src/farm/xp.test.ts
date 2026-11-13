@@ -1,21 +1,14 @@
 import fc from 'fast-check'
 import { describe, expect, it } from 'vitest'
 import { LEVELS } from './data'
-import { levelOf, levelReward, sanitizeXp, seedXp, unpaidCoins, xpAt, xpForSale, type Xp } from './xp'
+import { levelOf, levelProgress, levelReward, sanitizeXp, seedXp, unpaidCoins, xpAt, xpForSale, type Xp } from './xp'
 
 // Levels (src/farm/xp.ts): the curve and its inverse, the rewards waiting to be claimed, what a sale is worth, the XP a
 // farm from before levels starts with, and the saved XP read back. Pure: no farm, no page.
 
 const RUNS = Number(process.env.FC_RUNS) || 300
 const MAX = Number.MAX_SAFE_INTEGER
-
-/** The highest level whose XP a number still holds exactly (xpAt(L) ≤ 2^53). */
-function topLevel() {
-  let L = Math.floor(Math.sqrt((2 * 2 ** 53) / LEVELS.step))
-  while (xpAt(L) > 2 ** 53) L--
-  while (xpAt(L + 1) <= 2 ** 53) L++
-  return L
-}
+const TOP = LEVELS.max
 
 /** A saved XP that the game can use: whole points from 0, paid a whole level from 1 up to the one reached. */
 function valid(xp: Xp) {
@@ -28,33 +21,39 @@ describe('the curve', () => {
     expect(xpAt(2)).toBe(15)
     expect(xpAt(5)).toBe(150)
     expect(xpAt(10)).toBe(675)
-    for (let L = 1; L < 200; L++) expect(xpAt(L + 1) - xpAt(L)).toBe(LEVELS.step * L)
+    for (let L = 1; L < TOP; L++) expect(xpAt(L + 1) - xpAt(L)).toBe(LEVELS.step * L)
   })
 
-  it('levelOf is its inverse: xpAt(L) is level L, one point less is L − 1, for every level a number holds exactly (to 2^53)', () => {
-    const top = topLevel()
-    expect(xpAt(top)).toBeLessThanOrEqual(2 ** 53)
-    expect(xpAt(top + 1)).toBeGreaterThan(2 ** 53)
-    const levels = new Set<number>()
-    for (let L = 1; L <= 3000; L++) levels.add(L)
-    // every 1000th level, then each level near the top, then a spread in between
-    for (let L = 3000; L <= top; L += 1000) levels.add(L)
-    for (let L = top - 3000; L <= top; L++) levels.add(L)
-    for (let L = 3000; L < top; L = Math.ceil(L * 1.01)) levels.add(L)
-    for (const L of levels) {
+  it('500 levels, each harder to reach than the one before; the top one at 1,871,250 XP', () => {
+    expect(TOP).toBe(500)
+    expect(xpAt(TOP)).toBe(1_871_250)
+    for (let L = 2; L < TOP; L++) expect(xpAt(L + 1) - xpAt(L)).toBeGreaterThan(xpAt(L) - xpAt(L - 1))
+  })
+
+  it('levelOf is its inverse: xpAt(L) is level L, one point less is L − 1, for every level to the top', () => {
+    for (let L = 1; L <= TOP; L++) {
       expect(levelOf(xpAt(L)), `level ${L} at ${xpAt(L)}`).toBe(L)
       if (L > 1) expect(levelOf(xpAt(L) - 1), `just before level ${L}`).toBe(L - 1)
     }
   })
 
-  it('any number of points sits between its level and the next', () => {
+  it('any number of points sits between its level and the next; from the top level on, it is the top level', () => {
     fc.assert(
       fc.property(fc.integer({ min: 0, max: MAX }), (p) => {
         const L = levelOf(p)
-        return Number.isInteger(L) && L >= 1 && xpAt(L) <= p && p < xpAt(L + 1)
+        return Number.isInteger(L) && L >= 1 && L <= TOP && xpAt(L) <= p && (L === TOP || p < xpAt(L + 1))
       }),
       { numRuns: RUNS },
     )
+    expect(levelOf(xpAt(TOP) - 1)).toBe(TOP - 1)
+    expect(levelOf(xpAt(TOP) * 3)).toBe(TOP)
+  })
+
+  it('the progress of a level: the points into it and to the next; at the top, a full bar and no next', () => {
+    expect(levelProgress(0)).toEqual({ level: 1, into: 0, need: 15, top: false })
+    expect(levelProgress(xpAt(5) + 7)).toEqual({ level: 5, into: 7, need: 75, top: false })
+    expect(levelProgress(xpAt(TOP))).toEqual({ level: TOP, into: 1, need: 1, top: true })
+    expect(levelProgress(MAX)).toEqual({ level: TOP, into: 1, need: 1, top: true })
   })
 
   it('never hangs and never gives a level that is not one: NaN, negatives, fractions, Infinity and numbers past 2^53', () => {
@@ -64,9 +63,8 @@ describe('the curve', () => {
     expect(levelOf(-Infinity)).toBe(1)
     expect(levelOf(14.99)).toBe(1)
     expect(levelOf(15.5)).toBe(2)
-    const top = levelOf(MAX)
-    expect(top).toBe(topLevel())
-    for (const p of [2 ** 53, 2 ** 60, 1e300, Number.MAX_VALUE, Infinity]) expect(levelOf(p), String(p)).toBe(top)
+    expect(levelOf(MAX)).toBe(TOP)
+    for (const p of [2 ** 53, 2 ** 60, 1e300, Number.MAX_VALUE, Infinity]) expect(levelOf(p), String(p)).toBe(TOP)
     expect(performance.now() - t0).toBeLessThan(1000)
   })
 })
@@ -101,9 +99,11 @@ describe('the rewards', () => {
     expect(unpaidCoins({ points: xpAt(3), paid: NaN })).toBe(20 + 30)
   })
 
-  it('is quick and finite at the top of the curve', () => {
-    const coins = unpaidCoins({ points: MAX, paid: 1 })
-    expect(Number.isFinite(coins) && coins > 0).toBe(true)
+  it('stops at the top level: XP past it pays nothing more', () => {
+    let sum = 0
+    for (let L = 2; L <= TOP; L++) sum += levelReward(L)
+    expect(unpaidCoins({ points: MAX, paid: 1 })).toBe(sum)
+    expect(unpaidCoins({ points: xpAt(TOP) * 2, paid: TOP })).toBe(0)
   })
 })
 

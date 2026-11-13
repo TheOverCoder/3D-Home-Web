@@ -1,7 +1,8 @@
 // Levels (src/farm/state.ts gainXp, src/farm/XpChip.tsx): every thing you do on the farm is worth some XP
-// (XP_FOR in ./data), and XP makes levels. From level L to the next takes LEVELS.step · L, so level 2 comes at 15,
-// level 5 at 150, level 10 at 675. Reaching level L pays LEVELS.reward · L coins, claimed by tapping the level chip.
-// Pure: everything here reads numbers, nothing changes the farm.
+// (XP_FOR in ./data), and XP makes levels. From level L to the next takes LEVELS.step · L, so each level takes longer
+// than the one before: level 2 comes at 15, level 5 at 150, level 10 at 675, the top level (LEVELS.max, 500) at
+// 1,871,250. Reaching level L pays LEVELS.reward · L coins, claimed in the level's card (the level chip opens it);
+// every fifth level brings a garment too (./outfit.ts). Pure: everything here reads numbers, nothing changes the farm.
 
 import { LEVELS } from './data'
 
@@ -18,14 +19,23 @@ export const xpAt = (level: number) => (LEVELS.step * level * (level - 1)) / 2
 const wholePoints = (points: number) => (points > 0 ? Math.min(Math.floor(points), Number.MAX_SAFE_INTEGER) : 0)
 
 /** The level for this many points: the largest L with xpAt(L) ≤ points (closed form, then put right by one either
- *  way where floating point rounds the root). Points are taken whole and at most Number.MAX_SAFE_INTEGER, where one
- *  level more still changes the number (past it, counting up by one would never end). */
+ *  way where floating point rounds the root), at most the top level. Points are taken whole and at most
+ *  Number.MAX_SAFE_INTEGER. */
 export function levelOf(points: number): number {
   const p = wholePoints(points)
-  let level = Math.max(1, Math.floor((1 + Math.sqrt(1 + (8 * p) / LEVELS.step)) / 2))
+  let level = Math.min(LEVELS.max, Math.max(1, Math.floor((1 + Math.sqrt(1 + (8 * p) / LEVELS.step)) / 2)))
   while (level > 1 && xpAt(level) > p) level--
-  while (xpAt(level + 1) <= p) level++
+  while (level < LEVELS.max && xpAt(level + 1) <= p) level++
   return level
+}
+
+/** Where a level stands: the points into it, the points it takes to the next, and whether it is the top one (whose
+ *  bar is full: there is no next). */
+export function levelProgress(points: number): { level: number; into: number; need: number; top: boolean } {
+  const level = levelOf(points)
+  const top = level >= LEVELS.max
+  const need = top ? 1 : xpAt(level + 1) - xpAt(level)
+  return { level, into: top ? need : wholePoints(points) - xpAt(level), need, top }
 }
 
 /** The coins for reaching a level. */

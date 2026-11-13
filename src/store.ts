@@ -45,6 +45,8 @@ export type Panel =
   | { kind: 'buy-piece'; type: string } // buying one piece: what it is and its price, Cancel or Buy
   | { kind: 'away' } // welcome back: what happened on the farm while you were away
   | { kind: 'goals' } // the goals board: what to reach next, and the rewards to claim
+  | { kind: 'level' } // the level's card: the XP to the next level, what it brings, the coins to claim
+  | { kind: 'wardrobe'; piece: string } // a wardrobe open: its garments, and you filmed while you choose (src/home)
   | { kind: 'manager' } // the market's manager: what he pays for your goods, his rate, buying the shop
   | { kind: 'market' } // your shop's computer: the places on the shelves, their prices, the shoppers
   | { kind: 'market-place'; place: number; from?: 'market' } // one place: its good, how many, its price (from: the panel to go back to)

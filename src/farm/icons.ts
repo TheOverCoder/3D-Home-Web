@@ -7,6 +7,7 @@ import type { ProduceId } from './data'
 // the interface's coin (src/ui/art.ts).
 
 const files = import.meta.glob('../assets/items/*.webp', { eager: true, query: '?url', import: 'default' }) as Record<string, string>
+const garments = import.meta.glob('../assets/garments/*.webp', { eager: true, query: '?url', import: 'default' }) as Record<string, string>
 
 /** What has a picture of its own, drawn from its model: every good, the silo and the barn. */
 export type PictureId = ProduceId | 'silo' | 'barn'
@@ -15,6 +16,10 @@ export type PictureId = ProduceId | 'silo' | 'barn'
 export function iconUrl(id: PictureId | 'coin'): string {
   return id === 'coin' ? art('coin') : files[`../assets/items/${id}.webp`]
 }
+
+/** A garment's picture (src/farm/outfit.ts), drawn from the people engine's model in its colour and saved the same way
+ *  (src/models/itemArt.ts, renderGarmentArt). */
+export const garmentUrl = (id: string): string | undefined => garments[`../assets/garments/${id}.webp`]
 
 const images = new Map<string, Promise<HTMLImageElement>>()
 

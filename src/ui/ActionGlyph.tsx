@@ -84,6 +84,13 @@ const GLYPHS: Record<Verb, ReactNode> = {
       <path d="M8 21h8" />
     </>
   ),
+  // a coat hanger: the wardrobe
+  dress: (
+    <>
+      <path d="M9.6 5.6a2.4 2.4 0 1 1 3.2 2.3c-.5.2-.8.6-.8 1.1v.5" />
+      <path d="M12 9.5 3.4 15.6a1 1 0 0 0 .6 1.8h16a1 1 0 0 0 .6-1.8z" />
+    </>
+  ),
   wait: (
     <>
       <circle cx="12" cy="12" r="8.5" />
@@ -141,6 +148,7 @@ const VERB_COLOUR: Record<Verb, string> = {
   switch: '#d8a92e',
   door: '#8d6e63',
   watch: '#5c6bc0',
+  dress: '#c2577a',
   wait: '#8a94a6',
   drop: '#607d8b',
 }
@@ -157,6 +165,7 @@ const VERB_WORD: Record<Verb, string> = {
   switch: 'Switch',
   door: 'Door',
   watch: 'Open',
+  dress: 'Dress',
   wait: 'Wait',
   drop: 'Put down',
 }

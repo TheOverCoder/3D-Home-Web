@@ -1,5 +1,6 @@
 // Draws the farm's item pictures from the models (src/models/itemArt.ts) and saves them as WebP files in
-// src/assets/items, which src/farm/icons.ts serves. Run it with the dev server up (npm run dev):
+// src/assets/items, and the wardrobe's garments in src/assets/garments, which src/farm/icons.ts serves. Run it with
+// the dev server up (npm run dev):
 //
 //   node scripts/render-item-art.mjs [http://localhost:5173/] [--shot page.png]
 //
@@ -15,6 +16,7 @@ const shotAt = args.indexOf('--shot')
 const shot = shotAt >= 0 ? args.splice(shotAt, 2)[1] : null
 const base = args[0] ?? 'http://localhost:5173/'
 const out = join(dirname(fileURLToPath(import.meta.url)), '../src/assets/items')
+const clothes = join(dirname(fileURLToPath(import.meta.url)), '../src/assets/garments')
 
 const browser = await chromium.launch({
   executablePath: process.env.PW_CHROMIUM_PATH || undefined,
@@ -25,14 +27,22 @@ try {
   page.on('pageerror', (e) => console.error('[page]', e.message))
   await page.goto(new URL('?items', base).href)
   await page.waitForFunction(() => window.__itemArt, null, { timeout: 120_000 })
-  const items = await page.evaluate(() => window.__itemArt)
-  await mkdir(out, { recursive: true })
-  for (const [id, url] of Object.entries(items)) {
-    const [head, data] = url.split(',')
-    if (!head.includes('image/webp')) throw new Error(`${id}: the browser did not make a WebP (${head})`)
-    const bytes = Buffer.from(data, 'base64')
-    await writeFile(join(out, `${id}.webp`), bytes)
-    console.log(`${id}.webp  ${(bytes.length / 1024).toFixed(1)} KB`)
+  const { items, garments } = await page.evaluate(() => ({ items: window.__itemArt, garments: window.__garmentArt }))
+  for (const [dir, pictures] of [
+    [out, items],
+    [clothes, garments],
+  ]) {
+    await mkdir(dir, { recursive: true })
+    let total = 0
+    for (const [id, url] of Object.entries(pictures)) {
+      const [head, data] = url.split(',')
+      if (!head.includes('image/webp')) throw new Error(`${id}: the browser did not make a WebP (${head})`)
+      const bytes = Buffer.from(data, 'base64')
+      total += bytes.length
+      await writeFile(join(dir, `${id}.webp`), bytes)
+      if (dir === out) console.log(`${id}.webp  ${(bytes.length / 1024).toFixed(1)} KB`)
+    }
+    if (dir === clothes) console.log(`${Object.keys(pictures).length} garments, ${(total / 1024).toFixed(0)} KB`)
   }
   if (shot) {
     await page.waitForTimeout(300)

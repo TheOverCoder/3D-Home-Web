@@ -96,7 +96,8 @@ export async function openGame(browser: Browser, counting = false): Promise<{ ga
         if (s.panel) s.closePanel()
         if (s.settingsOpen) s.setSettingsOpen(false)
         if (s.editing) s.setEditing(false)
-        if (s.view !== 'first') s.setView('first')
+        // (read again: closing the wardrobe goes back to the view it was opened from)
+        if (h.useHome.getState().view !== 'first') s.setView('first')
         // every pickup back where it started (the first reset after the page booted saw them all there): one left
         // somewhere by a test (the mug dropped in the yard) would stand in the next one's way
         h.itemsHome ??= Object.fromEntries(Object.entries(s.items).map(([id, it]: [string, any]) => [id, it.pos]))

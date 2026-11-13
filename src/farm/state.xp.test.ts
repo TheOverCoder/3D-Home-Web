@@ -37,14 +37,17 @@ import {
   setPlacePrice,
   setRandom,
   spawnVisitor,
+  sawWardrobe,
   switchSlot,
   tick,
   upgradeStore,
   waterBeds,
+  wearGarment,
   xpEventCount,
   xpNow,
 } from './state'
-import { OLD_SAVE, justSaved, startFrom } from './testSaves'
+import { DEFAULT_OUTFIT, garmentAt } from './outfit'
+import { OLD_SAVE, justSaved, savedNow, startFrom } from './testSaves'
 import { levelOf, levelReward, xpAt, xpForSale } from './xp'
 
 // Levels (src/farm/xp.ts; gainXp in src/farm/state.ts): every thing the player does is worth XP, counted once in the one
@@ -253,6 +256,49 @@ describe('gainXp, the level and its coins', () => {
       expect(importSlot(2, JSON.stringify({ kind: '3d-home-farm-save', version: 1, slot: 2, save: justSaved(OLD_SAVE) }))).toEqual({ ok: true })
       resetFarm()
       expect(xpEventCount()).toBe(events)
+    } finally {
+      switchSlot(1)
+      vi.useRealTimers()
+    }
+  })
+})
+
+describe('the wardrobe', () => {
+  it('a garment the level has goes on, is saved and loads back; one not reached, and clothes, give nothing', () => {
+    expect(farm.outfit).toEqual(DEFAULT_OUTFIT)
+    const later = garmentAt(5)!
+    const before = gained(() => expect(wearGarment(later.id)).toBe(false))
+    expect(farm.outfit.shirt).toBe(DEFAULT_OUTFIT.shirt)
+    expect(before).toEqual({ xp: 0, events: 0 })
+    expect(wearGarment('cap-navy')).toBe(true)
+    expect(wearGarment('shirt-rust')).toBe(true)
+    const saved = savedNow()
+    expect(saved.outfit).toMatchObject({ shirt: 'shirt-rust', hat: 'cap-navy' })
+    try {
+      // the save loaded into another slot: the same clothes
+      resetFarm()
+      startFrom(saved)
+      expect(farm.outfit).toMatchObject({ shirt: 'shirt-rust', trousers: 'trousers-charcoal', hat: 'cap-navy' })
+      // the level that brings it: then it goes on
+      gainXp('build', Math.ceil(xpAt(5) / 5))
+      expect(levelOf(farm.xp.points)).toBeGreaterThanOrEqual(5)
+      expect(wearGarment(later.id)).toBe(true)
+      expect(farm.outfit.shirt).toBe(later.id)
+    } finally {
+      switchSlot(1)
+    }
+  })
+
+  it('what is new is what came since the wardrobe was last open; a farm from before the wardrobe wears what it always wore', () => {
+    gainXp('build', Math.ceil(xpAt(12) / 5))
+    expect(farm.outfit.seen).toBe(1)
+    sawWardrobe()
+    expect(farm.outfit.seen).toBe(levelOf(farm.xp.points))
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(Date.UTC(2026, 10, 10, 12))
+    try {
+      startFrom(justSaved(OLD_SAVE))
+      expect(farm.outfit).toEqual(DEFAULT_OUTFIT)
     } finally {
       switchSlot(1)
       vi.useRealTimers()

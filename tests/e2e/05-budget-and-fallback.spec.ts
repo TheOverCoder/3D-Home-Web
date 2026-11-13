@@ -104,8 +104,9 @@ interface View {
   pitch?: number
   /** the kitchen's door open or shut */
   door?: boolean
-  /** third person or decorating: the game's own camera, after its flight */
-  mode?: 'third' | 'decorate'
+  /** third person, decorating, or the wardrobe open (you filmed from in front: src/home/Wardrobe.tsx): the game's own
+   *  camera, after its flight */
+  mode?: 'third' | 'decorate' | 'wardrobe'
   /** the market's sliding doors as the view means them: shut (from the lane) or open (you by them) */
   marketDoor?: 0 | 1
   /** the market at its fullest for this view (`marketFill`): its shoppers standing in and round the hall (the most
@@ -117,7 +118,7 @@ interface View {
 
 /** The walk: the four rooms, each doorway with the kitchen's door shut and open, out of the garden door, the gate with
  *  the line, the yard over the farm and back at the house, the supermarket from the lane and across its shelves, third
- *  person and decorating in the living room. */
+ *  person and decorating in the living room, and the bedroom's wardrobe open (a hat on). */
 const WALK: View[] = [
   { name: 'living room', x: -3.5, z: 1.3, yaw: P, pitch: -0.04, door: false },
   { name: 'studio', x: -3.5, z: -2, yaw: 0, door: false },
@@ -148,6 +149,7 @@ const WALK: View[] = [
   { name: 'market, the shelves, mixed', x: FRONT_DOOR.x1 - 0.3, z: HALL.z0 + 0.6, yaw: -P + (36 * P) / 180, pitch: -0.12, marketDoor: 1, fill: { shoppers: true, mixed: true } },
   { name: 'third person, the living room', x: -3.5, z: 2.5, yaw: P, mode: 'third', door: false },
   { name: 'decorating the living room', x: -3.5, z: 2.5, yaw: P, mode: 'decorate', door: false },
+  { name: 'the wardrobe open, you filmed', x: 5.8, z: 1.75, yaw: 0, mode: 'wardrobe', door: false },
 ]
 
 interface Count {
@@ -274,19 +276,28 @@ async function measure(page: Page, v: View, farm: string, whole: boolean): Promi
   if (v.mode) {
     await page.waitForTimeout(600)
     await page.evaluate((mode) => {
-      const s = (window as any).__home.useHome.getState()
+      const h = (window as any).__home
+      const s = h.useHome.getState()
       if (mode === 'third') s.setView('third')
-      else s.setDecorating(true)
+      else if (mode === 'decorate') s.setDecorating(true)
+      else {
+        // a hat on, and the wardrobe opened as its button opens it
+        if (!h.farm.state.outfit.hat) h.farm.wearGarment('straw-brown')
+        h.interactables()
+          .find((d: any) => d.id.startsWith('wardrobe-'))
+          .run()
+      }
     }, v.mode)
     // the camera's flight there (about a second; decorating, until its blend is done), then until it stands still over
     // two frames (a frame can take longer than a poll in software)
     await page.waitForTimeout(1500)
     await page.evaluate(() => delete (window as any).__budgetCamera)
     await page.waitForFunction(
-      (decorating) => {
+      (mode) => {
         const w = window as any
         const h = w.__home
-        if (decorating && h.home.decorate.camera.blend < 0.999) return false
+        if (mode === 'decorate' && h.home.decorate.camera.blend < 0.999) return false
+        if (mode === 'wardrobe' && !h.dressView.settled) return false
         const c = h.camera.position
         const frames = h.view.stats.renders
         const last = w.__budgetCamera
@@ -294,12 +305,13 @@ async function measure(page: Page, v: View, farm: string, whole: boolean): Promi
         w.__budgetCamera = [c.x, c.y, c.z, frames]
         return !!last && Math.hypot(c.x - last[0], c.y - last[1], c.z - last[2]) < 1e-3
       },
-      v.mode === 'decorate',
+      v.mode,
       { timeout: 120_000, polling: 250 },
     )
     r = await page.evaluate(count, [null, whole] as [null, boolean])
     await page.evaluate(() => {
       const s = (window as any).__home.useHome.getState()
+      if (s.panel) s.closePanel()
       s.setView('first')
       s.setDecorating(false)
     })
@@ -353,8 +365,9 @@ async function walk(page: Page, farm: string, sizes: typeof SIZES, check: boolea
       for (const v of WALK) {
         const row = await measure(page, v, farm, whole)
         expect(row.size, `${v.name}: the canvas at ${size.name}`).toBe(size.name)
-        // the rooms and the sun's windows are used in first person, and not in third person or decorating
-        expect(row.portals, `${v.name}: the rooms and portals`).toBe(!v.mode)
+        // the rooms and the sun's windows are used in first person (the wardrobe's camera too), and not in third person or
+        // decorating
+        expect(row.portals, `${v.name}: the rooms and portals`).toBe(!v.mode || v.mode === 'wardrobe')
         rows.push(row)
         if (check) judge(row)
         else row.verdict = 'report'

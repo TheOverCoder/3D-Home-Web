@@ -1,8 +1,8 @@
-import { Suspense, useEffect, useMemo, useRef } from 'react'
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { createPortal, useFrame } from '@react-three/fiber'
 import { useAnimations, useGLTF } from '@react-three/drei'
 import { useEcctrlAnimationStore } from 'ecctrl/animation'
-import { AnimationAction, Box3, LoopOnce, LoopRepeat, MathUtils, Mesh, Object3D, Vector2, Vector3, type Group } from 'three'
+import { AnimationAction, Box3, Color, InstancedMesh, LoopOnce, LoopRepeat, MathUtils, Matrix4, Mesh, Object3D, Vector2, Vector3, type Group } from 'three'
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js'
 import { assets } from '../assets/registry'
 import { PICKUPS } from '../data/layout'
@@ -12,6 +12,11 @@ import { onGesture } from '../lib/gestures'
 import { useRig } from '../lib/rig'
 import { surface } from '../lib/proceduralTextures'
 import { useHome } from '../store'
+import { farm, useFarm } from '../farm/state'
+import { outfitLook } from '../farm/outfit'
+import { dressView } from '../home/dress'
+import { sculptMaterial } from '../lib/sculpt'
+import { CLOTH, HAT, personGeometries, type HatKind } from '../models/person'
 import { Hand, SkinMaterial, type HandPose } from './Hand'
 import { PickupMesh } from './Pickups'
 
@@ -39,12 +44,33 @@ export function HeldItem() {
 let fabricTex: ReturnType<typeof surface> | undefined
 const fabricNormal = () => (fabricTex ??= surface('fabric', 7, 5)).normalMap
 
-const SHIRT = '#4c6a82'
-const TROUSERS = '#2b3038'
 const SHOE = '#1d1b1a'
 const HAIR = '#2b2017'
 
 type Limb = { current: Group | null }
+
+/** The people engine's hats fitted to this head (src/models/person.ts builds them for its own, a little narrower):
+ *  where the hat's joint sits in the head's group, and its size each way. */
+const HAT_FIT = { position: [0, -0.008, -0.008] as [number, number, number], scale: [1.1, 1, 1] as [number, number, number] }
+
+/** The hat you wear from the wardrobe (src/farm/outfit.ts): the people engine's own model, in its colour (a straw
+ *  hat's band, all of a cap or a beanie). */
+function AvatarHat({ kind, colour }: { kind: HatKind; colour: string }) {
+  const mesh = useMemo(() => {
+    const g = personGeometries()
+    const m = new InstancedMesh(kind === 'cap' || kind === 'beanie' ? g[kind] : g.hat, sculptMaterial(kind === 'beanie' ? CLOTH : HAT), 1)
+    m.setMatrixAt(0, new Matrix4())
+    m.castShadow = true
+    return m
+  }, [kind])
+  useLayoutEffect(() => {
+    mesh.setColorAt(0, new Color(colour))
+    mesh.instanceColor!.needsUpdate = true
+    mesh.computeBoundingSphere()
+  }, [mesh, colour])
+  useEffect(() => () => mesh.dispose(), [mesh])
+  return <primitive object={mesh} position={HAT_FIT.position} scale={HAT_FIT.scale} />
+}
 
 // radius / height pairs, swept around the vertical axis and then squashed front-to-back
 const TORSO_LOW = [
@@ -99,6 +125,11 @@ function PlaceholderAvatar() {
   const poseR = useRef<HandPose>({ curl: 0.3, point: 0 })
   const setRightHand = useRig((s) => s.setRightHand)
   const fabric = fabricNormal()
+  // what you wear, from the wardrobe
+  const outfit = useFarm(() => farm.outfit)
+  const look = useMemo(() => outfitLook(outfit), [outfit])
+  const SHIRT = look.shirt
+  const TROUSERS = look.trousers
 
   useEffect(() => onGesture(() => (gesture.current = 1.0)), [])
   useEffect(() => {
@@ -113,7 +144,8 @@ function PlaceholderAvatar() {
     const run = state === 'RUN'
     const hold = useHome.getState().carrying !== null
     const view = useHome.getState().view
-    const fp = view === 'first'
+    // first person, but for the wardrobe's camera that has left your eyes to film you
+    const fp = view === 'first' && dressView.blend < 0.12
     const reachNow = gesture.current > 0
     // Seen from inside, parts that would sit right under or against the camera are left out: the head and
     // neck, the shoulders, and the right upper arm while it is raised (only the forearm and hand show).
@@ -262,6 +294,7 @@ function PlaceholderAvatar() {
               <sphereGeometry args={[0.112, 24, 12, 0, Math.PI * 2, 0, Math.PI * 0.52]} />
               <meshStandardMaterial color={HAIR} roughness={0.9} />
             </mesh>
+            {look.hat && <AvatarHat kind={look.hat.kind} colour={look.hat.colour} />}
             {([-1, 1] as const).map((s) => (
               <group key={s}>
                 <mesh position={[s * 0.04, 0.012, 0.092]}>

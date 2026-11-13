@@ -197,7 +197,7 @@ test.describe('levels', () => {
     }
   })
 
-  test('a level reached: shown once, its coins wait on the chip, a tap claims them — two levels at once in one tap', async ({ game }) => {
+  test('a level reached: shown once, its coins wait on the chip; a tap opens its card, whose Claim pays them — two levels at once in one claim', async ({ game }) => {
     await game.ready()
     const { page } = game
     await fresh(game)
@@ -228,17 +228,25 @@ test.describe('levels', () => {
     } finally {
       await restore()
     }
-    // the coins waiting, on the chip; a tap pays them, once
+    // the coins waiting, on the chip; a tap opens the level's card: the XP to level 3 and what it brings, and Claim
+    // pays them, once
     await expect(chip).toContainText(String(levelReward(2)))
     await chip.click()
+    const card = page.locator('.farm-panel[aria-label="Level 2"]')
+    await expect(card).toBeVisible()
+    await expect(card.locator('.farm-sub')).toContainText(`${xpAt(3) - (await xpNow(page)).points} XP to level 3`)
+    await expect(card.locator('.level-next')).toContainText(`+${levelReward(3)}`)
+    await card.getByRole('button', { name: `Claim ${levelReward(2)} coins` }).click()
     await expect.poll(() => coins(page)).toBe(before.coins + levelReward(2))
     expect((await xpNow(page)).unpaid).toBe(0)
     expect(await page.evaluate(() => (window as any).__home.farm.state.xp.paid)).toBe(2)
     await expect(chip).not.toContainText(String(levelReward(2)))
-    await chip.click()
-    await page.waitForTimeout(800)
+    // nothing more to claim: the card has no Claim, and its Close pays nothing
+    await expect(card.getByRole('button', { name: /^Claim/ })).toHaveCount(0)
+    await card.getByRole('button', { name: 'Close (Esc)' }).click()
+    await expect(card).toHaveCount(0)
     expect(await coins(page)).toBe(before.coins + levelReward(2))
-    // a goal's worth fifteen times over: two levels at once, one show, and one tap pays both
+    // a goal's worth fifteen times over: two levels at once, one show, and one claim pays both
     const target = xpAt(4) - (await xpNow(page)).points
     const g = await gain(page, 'goal', Math.ceil(target / XP_FOR.goal))
     expect(g.xp.level).toBe(4)
@@ -246,8 +254,43 @@ test.describe('levels', () => {
     expect(g.events).toBe(before.events + 2)
     await expect(chip).toContainText(String(levelReward(3) + levelReward(4)))
     await chip.click()
+    await page.getByRole('button', { name: `Claim ${levelReward(3) + levelReward(4)} coins` }).click()
     await expect.poll(() => coins(page)).toBe(before.coins + levelReward(2) + levelReward(3) + levelReward(4))
     expect(await page.evaluate(() => (window as any).__home.farm.state.xp.paid)).toBe(4)
+    await page.evaluate(() => (window as any).__home.useHome.getState().closePanel())
+  })
+
+  test("the level's card: what the next level brings — a garment every fifth level, big; otherwise the level of the next one; at the top, no next", async ({ game }) => {
+    await game.ready()
+    const { page } = game
+    await fresh(game)
+    await game.teleport(-1.2, 1.4, 8.5, 0, 0)
+    const open = async (points: number) => {
+      await page.evaluate((points) => {
+        const h = (window as any).__home
+        h.useHome.getState().closePanel()
+        h.farm.state.xp.points = points
+        h.farm.state.xp.paid = h.farm.xpNow().level
+        h.farm.useFarm.setState((s: any) => ({ rev: s.rev + 1 }))
+      }, points)
+      await page.locator('.farm-chip-item.level').click()
+      return page.locator('.farm-panel[aria-label^="Level"]')
+    }
+    // level 4: level 5 brings the first garment, shown big with its name
+    let card = await open(xpAt(4))
+    await expect(card.locator('.level-next.gift')).toContainText('Cobalt shirt')
+    await expect(card.locator('.level-next.gift .garment-pic img')).toHaveAttribute('src', /cobalt/)
+    await expect(card.locator('.level-later')).toHaveCount(0)
+    // level 6: no garment at level 7; the next one is at level 10
+    card = await open(xpAt(6) + 1)
+    await expect(card.locator('.level-next')).not.toHaveClass(/gift/)
+    await expect(card.locator('.level-later')).toContainText('level 10')
+    // the top level: no next
+    card = await open(xpAt(500) + 10)
+    await expect(card.locator('.farm-sub')).toContainText('The top level')
+    await expect(card.locator('.level-next')).toHaveCount(0)
+    await page.evaluate(() => (window as any).__home.useHome.getState().closePanel())
+    expect(game.errors, game.errors.join('\n')).toEqual([])
   })
 
   test('the top of the screen: hidden, no crystals fly; cleared, no level-up shows; with less motion none fly and the bar fills at once', async ({ game }) => {
@@ -476,11 +519,13 @@ test.describe('levels on a phone', { tag: '@boot' }, () => {
       await checkLayout(page, null, '844×390', true)
       await page.setViewportSize({ width: 390, height: 844 })
       await page.waitForTimeout(1500)
-      // the coins of level 3, claimed with a tap on the chip
+      // the coins of level 3, claimed in the level's card the chip opens
       const claim = await page.evaluate(() => ({ coins: (window as any).__home.farm.state.coins as number, unpaid: (window as any).__home.farm.xpNow().unpaid as number }))
       expect(claim.unpaid).toBe(levelReward(3))
       await page.locator('.farm-chip-item.level').tap()
+      await page.getByRole('button', { name: `Claim ${levelReward(3)} coins` }).tap()
       await expect.poll(() => coins(page)).toBe(claim.coins + levelReward(3))
+      await page.evaluate(() => (window as any).__home.useHome.getState().closePanel())
       // opened again: the same XP, level 3 paid, nothing to claim, and no show (a load is not play)
       await bootApp(page)
       await watch(page)

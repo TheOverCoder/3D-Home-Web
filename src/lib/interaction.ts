@@ -13,7 +13,7 @@ import { debugSet } from './debug'
 
 /** What an action does — drawn as a glyph on the action button. (Nothing that spends coins is one: building and buying
  *  are a price tag on the thing itself, see `Tag`.) */
-export type Verb = 'pick' | 'water' | 'plant' | 'shear' | 'sell' | 'make' | 'shop' | 'switch' | 'door' | 'watch' | 'wait' | 'drop'
+export type Verb = 'pick' | 'water' | 'plant' | 'shear' | 'sell' | 'make' | 'shop' | 'switch' | 'door' | 'watch' | 'dress' | 'wait' | 'drop'
 
 /** The action button's picture: a verb glyph, and (optionally) a small picture of the thing itself, by farm icon id.
  *  Its numbers are what the prompt shows instead of a sentence (src/ui/Hud.tsx): the good and how many (the bottle
@@ -143,7 +143,7 @@ const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a))
  * Among the things within reach (not looked at), what you most likely came for: something ready to take first,
  * then what needs looking after, then the rest.
  */
-const RANK: Record<Verb, number> = { pick: 0, shear: 0, water: 1, sell: 1, make: 2, plant: 2, watch: 3, switch: 3, door: 3, shop: 3, drop: 3, wait: 5 }
+const RANK: Record<Verb, number> = { pick: 0, shear: 0, water: 1, sell: 1, make: 2, plant: 2, watch: 3, dress: 3, switch: 3, door: 3, shop: 3, drop: 3, wait: 5 }
 
 /** Only tells you how long: shown, never pressed. */
 const isInfo = (c: Candidate) => c.icon?.verb === 'wait'

@@ -22,6 +22,7 @@ import { Lighting } from './Lighting'
 import { Pickups } from './Pickups'
 import { ThingTag } from '../ui/ThingTag'
 import { DecorateMode } from '../home/DecorateMode'
+import { Wardrobes } from '../home/Wardrobe'
 import { RenderPause } from './RenderPause'
 import { Player } from './Player'
 import { Screens } from './Screens'
@@ -187,6 +188,8 @@ export default function Experience() {
           {/* after the player: the edit mode's camera runs after the player's own */}
           <EditMode />
           <DecorateMode />
+          {/* the wardrobes, and the camera that films you while one is open (after the player's own too) */}
+          <Wardrobes />
           <Ready />
         </Physics>
         {/* the farm's small effects: water, sparkles and dust (three.quarks, loaded once playing) and flying coins */}
