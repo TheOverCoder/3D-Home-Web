@@ -1,36 +1,46 @@
 /* C · the road (LevelCardC.tsx): from your level's star to the next stop, filled as far as the XP has come; the next stop
-   carries a sign of what waits there, and from it hangs a card with what it brings */
-.v-level-c .farm-panel { display: flex; flex-direction: column; gap: 14px; }
-.v-level-c .farm-panel:focus { outline: none; }
+   carries a sign of what waits there, and from it hangs a card with what it brings. The sheet, its motion and the
+   Claim row: LevelSheet. */
+.v-level-c .farm-panel { display: flex; flex-direction: column; gap: 14px; padding-top: 20px; }
 
 /* the title and the XP still needed; the close */
 .v-level-c .lv-head { display: flex; align-items: flex-start; gap: 12px; margin: 0; }
 .v-level-c .lv-title { flex: 1; min-width: 0; }
 .v-level-c .lv-title h2 { margin: 2px 0 0; font: 600 26px/1.1 var(--font-display); color: var(--ink); }
 .v-level-c .lv-title .farm-sub { margin-top: 6px; }
-.v-level-c .lv-title .tag { font-size: 14.5px; padding: 3px 12px; box-shadow: 0 2px 0 var(--paper-3); }
+.v-level-c .lv-title .tag { font-size: 15px; padding: 3px 12px; box-shadow: 0 2px 0 var(--paper-3); font-variant-numeric: tabular-nums; }
 
 /* the road: your star, the stretch the XP fills, the next stop, and the road going on */
 .v-level-c .lv-road { --stop: 60px; --tail: 40px; display: grid; grid-template-columns: var(--stop) minmax(0, 1fr) var(--stop) var(--tail); align-items: center; }
-/* the top level: the road all gold, ending at your star with a trophy on it */
-.v-level-c .top .lv-road { --stop: 68px; grid-template-columns: minmax(0, 1fr) var(--stop); padding-inline-end: 10px; }
 .v-level-c .lv-stop { position: relative; z-index: 1; display: grid; place-items: center; width: var(--stop); height: var(--stop); }
-.v-level-c .lv-now .art { position: absolute; inset: -6px; width: calc(100% + 12px); height: calc(100% + 12px); }
+.v-level-c .lv-now-in { position: absolute; inset: 0; display: grid; place-items: center; }
+.v-level-c .lv-now .art:not(.lv-sign) { position: absolute; inset: -6px; width: calc(100% + 12px); height: calc(100% + 12px); }
 .v-level-c .lv-now b { position: relative; top: 3px; font: 900 22px/1 var(--font-text); color: #fff; -webkit-text-stroke: 5px var(--xp-lip); paint-order: stroke fill; font-variant-numeric: tabular-nums; }
 .v-level-c .lv-now b.long { font-size: 17px; -webkit-text-stroke-width: 4px; }
-.v-level-c .lv-seg { position: relative; height: 12px; margin-inline: -8px; border-radius: 999px; background: var(--paper-3); box-shadow: inset 0 1px 2px rgba(60, 35, 10, 0.14); overflow: hidden; }
+.v-level-c .lv-seg { position: relative; height: 12px; margin-inline: -8px; border-radius: 999px; background: var(--paper-3); box-shadow: inset 0 1px 2px rgba(60, 35, 10, 0.14); }
 .v-level-c .lv-fill { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: linear-gradient(to bottom, color-mix(in srgb, var(--xp) 55%, #fff), var(--xp) 60%, var(--xp-lip)); }
-.v-level-c .top .lv-fill { background: linear-gradient(to bottom, color-mix(in srgb, var(--sun) 55%, #fff), var(--sun) 60%, var(--sun-lip)); }
+/* the road's head: a glowing point where the XP has come to */
+.v-level-c .lv-fill::after { content: ''; position: absolute; top: 50%; right: -5px; width: 12px; height: 12px; margin-top: -6px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 3px var(--xp), 0 0 10px 4px var(--xp-glow); }
 /* the next stop: its number in a ring, a sign of what waits there on its corner; a garment rings it in sun */
 .v-level-c .lv-next { border-radius: 50%; background: var(--paper); box-shadow: inset 0 0 0 4px var(--paper-3), 0 3px 0 var(--paper-3); }
 .v-level-c .lv-next.gift { background: #fff8dc; box-shadow: inset 0 0 0 4px var(--sun), 0 3px 0 var(--sun-lip), 0 0 18px 4px color-mix(in srgb, var(--sun) 50%, transparent); }
 .v-level-c .lv-next b { font: 600 26px/1 var(--font-display); color: var(--ink); }
+.v-level-c .lv-ring { position: absolute; inset: 0; border-radius: 50%; box-shadow: 0 0 0 3px var(--xp); opacity: 0; pointer-events: none; }
+.v-level-c .lv-next.gift .lv-ring { box-shadow: 0 0 0 3px var(--sun); }
 .v-level-c .lv-sign { position: absolute; right: -8px; bottom: -6px; width: 30px; height: 30px; }
-.v-level-c .lv-now .lv-sign { inset: auto -10px -8px auto; width: 32px; height: 32px; }
+.v-level-c .lv-now .lv-sign { right: -12px; bottom: -10px; width: 34px; height: 34px; }
 .v-level-c .lv-tail { height: 8px; margin-inline-start: 6px; background: radial-gradient(circle, var(--paper-3) 3px, transparent 3.5px) 0 50% / 12px 8px repeat-x; -webkit-mask: linear-gradient(90deg, #000, transparent); mask: linear-gradient(90deg, #000, transparent); }
 
-/* what the next stop brings: a card hanging from it (its notch under the stop) */
-.v-level-c .level-next.lv-card { position: relative; margin: 0; padding: 12px 14px 14px; border-radius: var(--r-card); background: var(--paper-2); box-shadow: 0 3px 0 var(--paper-3); }
+/* the top level: the road all gold, from level 1 to your star with a trophy on it */
+.v-level-c .top .lv-road { --stop: 72px; grid-template-columns: 40px minmax(0, 1fr) var(--stop); padding-inline-end: 12px; }
+.v-level-c .top .lv-fill { background: linear-gradient(to bottom, color-mix(in srgb, var(--sun) 55%, #fff), var(--sun) 60%, var(--sun-lip)); }
+.v-level-c .top .lv-fill::after { display: none; }
+.v-level-c .lv-first { width: 40px; height: 40px; border-radius: 50%; background: var(--sun); box-shadow: inset 0 0 0 3px var(--sun-lip), 0 3px 0 var(--sun-lip); }
+.v-level-c .lv-first b { font: 600 19px/1 var(--font-display); color: var(--ink); }
+.v-level-c .top .lv-now b.long { font-size: 20px; }
+
+/* what the next stop brings: a card hanging from it (its notch under the stop), dropped and swinging on that hook */
+.v-level-c .level-next.lv-card { position: relative; margin: 0; padding: 12px 14px 14px; border-radius: var(--r-card); background: var(--paper-2); box-shadow: 0 3px 0 var(--paper-3); transform-origin: calc(100% - var(--tail, 40px) - 30px) -12px; }
 .v-level-c .level-next.lv-card.gift { background: color-mix(in srgb, var(--sun) 26%, var(--paper)); box-shadow: 0 3px 0 color-mix(in srgb, var(--sun) 55%, var(--paper-3)); }
 .v-level-c .lv-card::before { content: ''; position: absolute; top: -11px; right: calc(var(--tail, 40px) + 30px - 12px); width: 24px; height: 12px; background: inherit; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
 .v-level-c .level-next h3 { margin: 0 0 8px; font: 600 17px/1.2 var(--font-display); color: var(--ink-2); }
@@ -56,19 +66,14 @@
 .v-level-c .farm-confirm { margin-top: 0; }
 .v-level-c .farm-confirm > * { flex: 1; }
 
-/* its moment: the road fills, the next stop glows once, and its card drops open from it */
+/* the next stop rings once as the road comes near it */
 @media (prefers-reduced-motion: no-preference) {
-  .v-level-c .lv-now .art { animation: pop 0.45s var(--ease-pop) both; }
-  .v-level-c .lv-fill { animation: v-level-c-fill 0.8s cubic-bezier(0.3, 0.7, 0.2, 1) 0.15s both; }
-  .v-level-c .lv-next { animation: v-level-c-glow 0.6s ease-out 0.75s both; }
-  .v-level-c .lv-sign { animation: pop 0.45s var(--ease-pop) 0.8s both; }
-  .v-level-c .lv-card { transform-origin: calc(100% - var(--tail, 40px) - 30px) -12px; animation: v-level-c-drop 0.4s var(--ease-pop) 0.35s both; }
+  .v-level-c .lv-ring { animation: v-level-c-ring 0.7s ease-out 0.6s both; }
 }
-@keyframes v-level-c-fill { from { width: 0; } }
-@keyframes v-level-c-glow { 40% { transform: scale(1.14); } }
-@keyframes v-level-c-drop { from { opacity: 0; transform: scale(0.6); } }
+@keyframes v-level-c-ring { from { opacity: 0.9; transform: scale(1); } to { opacity: 0; transform: scale(1.7); } }
 
-/* a phone on its side: the title and its chip on one line, the road and the card a little smaller */
+/* a phone on its side: the title and its chip on one line, the road and the card a little smaller; the top level's
+   road alone in the middle of the sheet, bigger */
 @media (orientation: landscape) and (max-height: 560px) {
   .v-level-c .farm-panel { gap: 12px; justify-content: center; }
   .v-level-c .lv-head { align-items: center; }
@@ -79,6 +84,14 @@
   .v-level-c .lv-now b { font-size: 20px; }
   .v-level-c .lv-next b { font-size: 23px; }
   .v-level-c .lv-card { --tail: 56px; padding: 10px 14px 12px; }
+  .v-level-c .level-next.lv-card { transform-origin: calc(100% - var(--tail) - 27px) -12px; }
   .v-level-c .lv-card::before { right: calc(var(--tail) + 27px - 12px); }
   .v-level-c .lv-gift .garment-pic .art { width: 68px; height: 68px; }
+  .v-level-c .farm-panel.top { gap: 28px; }
+  .v-level-c .top .lv-head { flex-direction: column; align-items: center; text-align: center; }
+  .v-level-c .top .lv-title { flex-direction: column; }
+  .v-level-c .top .lv-title h2 { font-size: 30px; }
+  .v-level-c .farm-panel.top .lv-head .close { position: absolute; top: calc(10px + env(safe-area-inset-top)); inset-inline-end: calc(12px + env(safe-area-inset-right)); }
+  .v-level-c .top .lv-road { --stop: 84px; }
+  .v-level-c .top .lv-now b.long { font-size: 24px; }
 }

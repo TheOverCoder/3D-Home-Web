@@ -1,0 +1,18 @@
+/* The lab's stand-in for the coin chip at the top of the still (index.tsx): unseen, where the still draws the chip's
+   coin (the game's .farm-chip sits at max(14px, the safe area) from the top and the left), so the game's coin flight
+   (src/fx/coins.ts) lands there as it lands on the chip in the game. */
+.farm-chip-item.coins.lab-chip-coin {
+  position: fixed;
+  top: calc(max(14px, env(safe-area-inset-top)) + 3px);
+  left: calc(max(14px, env(safe-area-inset-left)) + 3px);
+  z-index: 0;
+  display: block;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  opacity: 0;
+  pointer-events: none;
+}
+.farm-chip-item.coins.lab-chip-coin img { display: block; width: 30px; height: 30px; }

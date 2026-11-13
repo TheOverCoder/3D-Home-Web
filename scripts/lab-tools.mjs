@@ -17,8 +17,11 @@ export function args(argv = process.argv.slice(2)) {
 export const launch = () => chromium.launch({ executablePath: process.env.PW_CHROMIUM_PATH || undefined })
 
 /** A frame's address (lab/frame.html: see lab/env.ts for its settings). */
-export const frameUrl = (base, { board, variant, state, run = 0, device = 'upright', touches = false, hold = false, speed = 1 }) =>
-  new URL(`frame.html?device=${device}&touches=${touches ? 1 : 0}&speed=${speed}${hold ? '&hold=1' : ''}#${board}/${variant}/${state}/${run}`, base).href
+export const frameUrl = (base, { board, variant, state, run = 0, device = 'upright', touches = false, hold = false, speed = 1, reduced = false, fresh = false }) =>
+  new URL(
+    `frame.html?device=${device}&touches=${touches ? 1 : 0}&speed=${speed}${hold ? '&hold=1' : ''}${reduced ? '&motion=reduce' : ''}${fresh ? `&at=${variant}.${state}` : ''}#${board}/${variant}/${state}/${run}`,
+    base,
+  ).href
 
 /** What the lab holds (its boards, their variants, states and screens; the devices' sizes), read from a frame. */
 export async function labOf(browser, base) {
@@ -33,8 +36,14 @@ export async function labOf(browser, base) {
 }
 
 /** A page at a device's size, a touch screen unless it is the desktop. */
-export async function devicePage(browser, spec, { dpr = 1 } = {}) {
-  const ctx = await browser.newContext({ viewport: { width: spec.w, height: spec.h }, deviceScaleFactor: dpr, isMobile: spec.touch, hasTouch: spec.touch })
+export async function devicePage(browser, spec, { dpr = 1, reduced = false } = {}) {
+  const ctx = await browser.newContext({
+    viewport: { width: spec.w, height: spec.h },
+    deviceScaleFactor: dpr,
+    isMobile: spec.touch,
+    hasTouch: spec.touch,
+    reducedMotion: reduced ? 'reduce' : 'no-preference',
+  })
   const page = await ctx.newPage()
   page.on('pageerror', (e) => console.error('[page]', e.message))
   page.on('console', (m) => m.type() === 'error' && console.error('[console]', m.text()))

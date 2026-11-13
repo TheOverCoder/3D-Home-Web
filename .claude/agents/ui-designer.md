@@ -58,7 +58,9 @@ phone: the real size under their own finger).
   `--states`, `--variants`, `--wait ms`, `--each`, `--dpr 2`.
 - `node scripts/lab-film.mjs <board> <variant> <out.png>` — an animation as one sheet of frames at exact times (the
   page's clocks are stopped and moved by hand): the opening by default; `--tap ".selector" --before 1200` films what a
-  press does. `--every 40 --frames 16`, `--device sideways`, `--state`.
+  press does, `--swipe x,y,dx,dy[,ms]` a swipe. `--every 40 --frames 16`, `--device sideways`, `--state`, and on both
+  scripts `--reduced` (as someone who prefers less motion sees it). A film moves CSS and Web Animations by hand: if a
+  Motion fade looks wrong only in a film, check it in real time before you change it.
 - `node scripts/lab-stills.mjs` — the game stills behind the frames (needs `npm run dev`, slow: only when the scene
   behind should change, or for a new place).
 

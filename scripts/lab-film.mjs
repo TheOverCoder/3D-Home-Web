@@ -4,10 +4,13 @@
 // to the same time), so each frame is exactly at its time however slow the machine is. With the lab served:
 //
 //   node scripts/lab-film.mjs <board> <variant> <out.png> [--state gift] [--device upright] [--every 50] [--frames 16]
-//                             [--tap ".selector"] [--before 1200] [--scale 0.5] [--base http://localhost:5180/]
+//                             [--tap ".selector"] [--swipe x,y,dx,dy[,ms]] [--before 1200] [--reduced] [--scale 0.5]
+//                             [--base http://localhost:5180/]
 //
-// Without --tap it films the opening, from the first frame. With --tap it lets the opening play for --before ms, taps
-// the element (as a finger: the mark shows where), and films what follows.
+// Without --tap or --swipe it films the opening, from the first frame. With them it lets the opening play for --before
+// ms, then taps the element (as a finger: the mark shows where), or drags from x,y by dx,dy over ms (200 when not
+// given; screen pixels of the device), filming the drag as it goes and what follows. --reduced: as someone who prefers
+// less motion sees it.
 import { args, devicePage, frameUrl, labOf, launch, ready, sheet } from './lab-tools.mjs'
 
 const a = args()
@@ -16,7 +19,8 @@ if (!board || !variant || !out) throw new Error('usage: node scripts/lab-film.mj
 const base = a.base ?? 'http://localhost:5180/'
 const every = Number(a.every ?? 50)
 const frames = Number(a.frames ?? 16)
-const before = Number(a.before ?? (a.tap ? 1200 : 0))
+const swipe = a.swipe ? String(a.swipe).split(',').map(Number) : null
+const before = Number(a.before ?? (a.tap || swipe ? 1200 : 0))
 const browser = await launch()
 try {
   const lab = await labOf(browser, base)
@@ -25,7 +29,7 @@ try {
   const state = a.state ?? b.states[0]
   const device = a.device ?? 'upright'
   const spec = lab.devices[device]
-  const { ctx, page } = await devicePage(browser, spec)
+  const { ctx, page } = await devicePage(browser, spec, { reduced: !!a.reduced })
   // once as it is, so its pictures and fonts are at hand; then held, with the clocks stopped
   await page.goto(frameUrl(base, { board, variant, state, device }))
   await ready(page)
@@ -67,18 +71,40 @@ try {
     await page.locator(String(a.tap)).first().tap({ timeout: 5000 })
     await step(0)
   }
+  // a drag: down now, moved at every frame until its time is up, then let go
+  const [sx, sy, dx, dy, sms = 200] = swipe ?? []
+  if (swipe) {
+    await page.mouse.move(sx, sy)
+    await page.mouse.down()
+  }
+  let held = !!swipe
   const shots = []
   for (let i = 0; i < frames; i++) {
-    if (i > 0) await step(every)
-    shots.push({ png: await page.screenshot(), w: spec.w, label: `${a.tap ? '+' : ''}${i * every} ms` })
+    if (i > 0) {
+      if (held) {
+        const k = Math.min(1, (i * every) / sms)
+        await page.mouse.move(sx + dx * k, sy + dy * k, { steps: 2 })
+        if (k >= 1) {
+          await page.mouse.up()
+          held = false
+        }
+      }
+      await step(every)
+    }
+    shots.push({ png: await page.screenshot(), w: spec.w, label: `${a.tap || swipe ? '+' : ''}${i * every} ms` })
   }
+  if (held) await page.mouse.up()
   await ctx.close()
   const cols = spec.w > spec.h ? 4 : 8
   const scale = Number(a.scale ?? 0.5)
   const { writeFile } = await import('node:fs/promises')
   await writeFile(
     out,
-    await sheet(browser, shots, { cols, scale, title: `${board} · ${variant} · ${state} · ${device}${a.tap ? ` · tap ${a.tap} after ${before} ms` : ' · opening'} · every ${every} ms` }),
+    await sheet(browser, shots, {
+      cols,
+      scale,
+      title: `${board} · ${variant} · ${state} · ${device}${a.tap ? ` · tap ${a.tap} after ${before} ms` : swipe ? ` · swipe ${a.swipe} after ${before} ms` : ' · opening'}${a.reduced ? ' · reduced motion' : ''} · every ${every} ms`,
+    }),
   )
   console.log(out)
 } finally {

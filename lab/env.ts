@@ -10,6 +10,7 @@ import { DEVICES, type DeviceId } from './devices'
 //        target too small for a finger shows.
 //   ?touches=1   each touch marked on the screen while it lasts, as a phone's screen recording does.
 //   ?speed=0.25  everything that moves, slower: CSS, Web Animations, Motion, timers.
+//   ?motion=reduce  as someone who prefers less motion sees it (prefers-reduced-motion, in the CSS and in checks).
 //   ?hold=1      nothing shown until window.__labGo() (scripts/lab-film.mjs films an opening from its first frame).
 
 const q = new URLSearchParams(location.search)
@@ -23,6 +24,7 @@ export const env = {
   touches: q.get('touches') === '1',
   speed: Math.min(4, Math.max(0.05, Number(q.get('speed')) || 1)),
   hold: q.get('hold') === '1',
+  reduced: q.get('motion') === 'reduce',
 }
 
 const root = document.documentElement
@@ -56,23 +58,33 @@ const SAFE = /env\(\s*safe-area-inset-(top|right|bottom|left)\s*(,[^)]*)?\)/g
 const toVars = (css: string) => css.replace(SAFE, (_, side: string, fallback?: string) => `var(--lab-safe-${side}${fallback ?? ', 0px'})`)
 const COARSE = /\((any-)?pointer:\s*coarse\)|\((any-)?hover:\s*none\)/g
 const FINE = /\((any-)?pointer:\s*fine\)|\((any-)?hover:\s*hover\)/g
-const asTouch = (media: string) => media.replace(COARSE, '(min-width: 0px)').replace(FINE, '(max-width: 0px)')
+const REDUCE = /\(prefers-reduced-motion(:\s*reduce)?\)/g
+const NO_PREFERENCE = /\(prefers-reduced-motion:\s*no-preference\)/g
+const YES = '(min-width: 0px)'
+const NO = '(max-width: 0px)'
+/** a media query as the frame's screen answers it: a finger, less motion */
+const asScreen = (media: string) => {
+  let m = media
+  if (env.touch) m = m.replace(COARSE, YES).replace(FINE, NO)
+  if (env.reduced) m = m.replace(REDUCE, YES).replace(NO_PREFERENCE, NO)
+  return m
+}
 
 if (spec) for (const side of ['top', 'right', 'bottom', 'left'] as const) root.style.setProperty(`--lab-safe-${side}`, `${spec.safe[side]}px`)
 
 // a computer's mouse, seen before the touch screen is put in its place
 const realFine = window.matchMedia('(pointer: fine)').matches
 
-if (env.touch) {
+if (env.touch || env.reduced) {
   const realMatch = window.matchMedia.bind(window)
-  window.matchMedia = (media: string) => realMatch(asTouch(media))
+  window.matchMedia = (media: string) => realMatch(asScreen(media))
 }
 
 function fixRules(rules: CSSRuleList) {
   for (const r of Array.from(rules)) {
-    if (env.touch && r instanceof CSSMediaRule) {
+    if ((env.touch || env.reduced) && r instanceof CSSMediaRule) {
       const was = r.media.mediaText
-      const now = asTouch(was)
+      const now = asScreen(was)
       if (now !== was) r.media.mediaText = now
     }
     if (spec && r instanceof CSSStyleRule && r.style.cssText.includes('env(')) r.style.cssText = toVars(r.style.cssText)
@@ -97,7 +109,7 @@ function fixInline(el: Element) {
   if (spec && style?.includes('env(')) el.setAttribute('style', toVars(style))
 }
 
-if (env.touch || spec) {
+if (env.touch || env.reduced || spec) {
   fixSheets()
   new MutationObserver((changes) => {
     let sheets = false

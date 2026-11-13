@@ -1,0 +1,45 @@
+/* The sheet the new looks of the level's card share (LevelSheet.tsx): moved by Motion (in, out, a swipe), so the game's
+   CSS animations of the backdrop and the panel are off here; the shade is a layer of its own, lifting as the sheet is
+   pulled away. Upright a sheet at the bottom, sideways on the right; a grabber says it can be swiped. */
+.v-level-sheet.farm-backdrop { background: none; animation: none; overflow: hidden; }
+.v-level-sheet .lv-shade { position: absolute; inset: 0; }
+.v-level-sheet .lv-shade > span { position: absolute; inset: 0; background: rgba(40, 24, 10, 0.4); }
+.v-level-sheet .lv-sheet { position: relative; z-index: 1; display: flex; width: min(560px, 100%); }
+.v-level-sheet .lv-sheet > .farm-panel { position: relative; width: 100%; animation: none; }
+.v-level-sheet .farm-panel:focus { outline: none; }
+/* a finger held on a picture brings up no menu of its own: the sheet is swiped from anywhere */
+.v-level-sheet .farm-panel img { -webkit-user-drag: none; -webkit-touch-callout: none; user-select: none; }
+.v-level-sheet .lv-grab { position: absolute; z-index: 2; top: 7px; left: 50%; width: 40px; height: 5px; margin-left: -20px; border-radius: 3px; background: var(--paper-3); pointer-events: none; }
+/* Motion moves the buttons (a press sinks them): no CSS transition fighting it over their transform */
+.v-level-sheet .farm-confirm .btn,
+.v-level-sheet .farm-panel .close { transition: box-shadow 0.1s ease-out, filter 0.15s; }
+.v-level-sheet .farm-panel .close:active { transform: none; }
+
+/* what was claimed: in the buttons' place, as tall as they were, so nothing under it moves */
+.v-level-sheet .lv-got {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 56px;
+  margin: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--leaf) 12%, var(--paper));
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--leaf) 30%, transparent);
+  color: var(--leaf-lip);
+  font: 600 18px/1 var(--font-display);
+}
+.v-level-sheet .lv-got-check { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--leaf); color: #fff; }
+.v-level-sheet .lv-got-check svg { width: 17px; height: 17px; }
+.v-level-sheet .lv-got .farm-coins { color: var(--ink); font-size: 19px; }
+
+@media (max-width: 520px) {
+  .v-level-sheet .lv-sheet { width: 100%; }
+}
+/* a phone on its side: the sheet on the right, the whole height; the grabber on its left edge */
+@media (orientation: landscape) and (max-height: 560px) {
+  .v-level-sheet .lv-sheet { width: min(500px, 64vw); height: 100dvh; }
+  .v-level-sheet .lv-sheet > .farm-panel { width: 100%; height: 100%; padding-left: 22px; }
+  .v-level-sheet .lv-grab { top: 50%; left: 8px; width: 5px; height: 40px; margin: -20px 0 0; }
+  .v-level-sheet .lv-got { min-height: 52px; }
+}

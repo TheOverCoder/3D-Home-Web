@@ -16,7 +16,8 @@ No 3D, no farm state, no CI: it builds in a second and is published as a link of
   lists its files in `files.json`).
 - `node scripts/lab-shots.mjs <board> <out-dir>` — one sheet per state and screen, every variant side by side.
 - `node scripts/lab-film.mjs <board> <variant> <out.png>` — an animation as one sheet of frames at exact times (the
-  opening, or what a press does: `--tap ".selector"`).
+  opening, what a press does: `--tap ".selector"`, or a swipe: `--swipe x,y,dx,dy`). `--reduced` on either script: as
+  someone who prefers less motion sees it.
 - `node scripts/lab-stills.mjs` — the game stills behind the frames again (`lab/stills/<place>-upright.jpg` and
   `-sideways.jpg`, the dev server up).
 
@@ -37,7 +38,8 @@ finger, with the variants and states to switch between.
 - **the device's safe areas**: the notch and the home bar drawn over it, and their size given to the game's
   `env(safe-area-inset-*)` (in its CSS and inline styles); `device=real` (a phone, full screen) keeps its own;
 - **motion as in the game**: the variant inside `MotionRoot` and `AnimatePresence`, so `act.close()` plays its way out
-  and then opens it again; `?hold=1` shows nothing until `window.__labGo()` (for films).
+  and then opens it again; `?speed=0.25` slower, `?motion=reduce` as someone who prefers less motion sees it, `?hold=1`
+  nothing shown until `window.__labGo()` (for films).
 
 ## A board
 

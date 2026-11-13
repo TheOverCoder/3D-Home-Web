@@ -20,23 +20,25 @@ interface View {
   devices: DeviceId[]
   speed: number
   touches: boolean
+  /** as someone who prefers less motion sees it */
+  reduced: boolean
 }
 
 const STATUS = { choose: 'מחכה לבחירה שלך', chosen: 'נבחר', live: 'במשחק' } as const
 const statusText = (b: AnyBoard) => (b.status === 'chosen' && b.chosen ? `נבחר: ${b.chosen === 'today' ? 'היום' : b.chosen.toUpperCase()}` : STATUS[b.status])
 const letter = (id: string) => (id === 'today' ? 'היום' : id.toUpperCase())
 
-const frameSrc = (o: { board: string; variant: string; state: string; run: number; device: DeviceId | 'real'; speed: number; touches: boolean }) =>
-  `frame.html?device=${o.device}&speed=${o.speed}&touches=${o.touches ? 1 : 0}#${o.board}/${o.variant}/${o.state}/${o.run}`
+const frameSrc = (o: { board: string; variant: string; state: string; run: number; device: DeviceId | 'real'; speed: number; touches: boolean; reduced: boolean }) =>
+  `frame.html?device=${o.device}&speed=${o.speed}&touches=${o.touches ? 1 : 0}${o.reduced ? '&motion=reduce' : ''}#${o.board}/${o.variant}/${o.state}/${o.run}`
 
 // what the viewer set last time (a convenience: the lab works the same without it)
 const SAVED = 'lab-view'
 function savedView(): View {
-  const plain: View = { devices: ['upright', 'sideways'], speed: 1, touches: true }
+  const plain: View = { devices: ['upright', 'sideways'], speed: 1, touches: true, reduced: false }
   try {
     const v = JSON.parse(localStorage.getItem(SAVED) ?? 'null') as Partial<View> | null
     if (!v) return plain
-    return { devices: (v.devices ?? plain.devices).filter((d) => d in DEVICES), speed: v.speed === 0.25 ? 0.25 : 1, touches: v.touches !== false }
+    return { devices: (v.devices ?? plain.devices).filter((d) => d in DEVICES), speed: v.speed === 0.25 ? 0.25 : 1, touches: v.touches !== false, reduced: v.reduced === true }
   } catch {
     return plain
   }
@@ -105,6 +107,9 @@ function Bar({ view, setView, onAgain }: { view: View; setView: (v: View) => voi
         <Toggle on={view.touches} onClick={() => setView({ ...view, touches: !view.touches })} label="סימון של כל נגיעה">
           👆 נגיעות
         </Toggle>
+        <Toggle on={view.reduced} onClick={() => setView({ ...view, reduced: !view.reduced })} label="כמו שרואה מי שביקש בטלפון פחות תנועה">
+          🧘 פחות תנועה
+        </Toggle>
         <button className="chip" onClick={onAgain}>
           ↻ הכל שוב
         </button>
@@ -118,7 +123,8 @@ function BoardView({ board, view, setView, onTry }: { board: AnyBoard; view: Vie
   const [runs, setRuns] = useState<Record<string, number>>({})
   const [all, setAll] = useState(0)
   const devices = view.devices.length ? view.devices : (board.devices ?? ['upright', 'sideways'])
-  const src = (variant: string, device: DeviceId) => frameSrc({ board: board.id, variant, state, run: all + (runs[variant] ?? 0), device, speed: view.speed, touches: view.touches })
+  const src = (variant: string, device: DeviceId) =>
+    frameSrc({ board: board.id, variant, state, run: all + (runs[variant] ?? 0), device, speed: view.speed, touches: view.touches, reduced: view.reduced })
   return (
     <section className="board" aria-labelledby={`${board.id}-title`}>
       <header className="board-head">
@@ -212,7 +218,7 @@ function Try({ board, variant, state, view, onClose }: { board: AnyBoard; varian
   }, [])
   const d = DEVICES[device]
   const k = Math.min(1, (room.w - 32) / d.w, (room.h - 92) / d.h)
-  const src = frameSrc({ board: board.id, variant: v, state: s, run, device: real ? 'real' : device, speed: view.speed, touches: view.touches })
+  const src = frameSrc({ board: board.id, variant: v, state: s, run, device: real ? 'real' : device, speed: view.speed, touches: view.touches, reduced: view.reduced })
   return (
     <div className={`try${real ? ' real' : ''}`} role="dialog" aria-modal="true" aria-label={`לנסות: ${board.title}`}>
       <div className="try-bar">
@@ -260,72 +266,152 @@ function Try({ board, variant, state, view, onClose }: { board: AnyBoard; varian
 }
 
 const MAP_PICS = import.meta.glob('./map/*.{jpg,png,webp}', { eager: true, import: 'default' }) as Record<string, string>
-const picsOf = (id: string) =>
-  ['upright', 'sideways'].flatMap((k) => {
-    const hit = Object.entries(MAP_PICS).find(([p]) => p.startsWith(`./map/${id}-${k}.`))
-    return hit ? [{ k, url: hit[1] }] : []
-  })
+const KINDS = { upright: 'לאורך', sideways: 'לרוחב' } as const
+type Kind = keyof typeof KINDS
+interface Pic {
+  k: Kind
+  /** the end of its name: upright, upright-2, sideways… (Screen.shots names it) */
+  key: string
+  url: string
+}
+/** A screen's pictures, upright first: <id>-upright.jpg, <id>-upright-2.jpg…, then the same sideways. */
+const picsOf = (id: string): Pic[] =>
+  (Object.keys(KINDS) as Kind[]).flatMap((k) =>
+    Object.entries(MAP_PICS)
+      .flatMap(([path, url]) => {
+        const m = new RegExp(`^\\./map/${id}-${k}(?:-(\\d+))?\\.\\w+$`).exec(path)
+        return m ? [{ k, key: m[1] ? `${k}-${m[1]}` : k, url, n: Number(m[1] ?? 1) }] : []
+      })
+      .sort((a, b) => a.n - b.n),
+  )
 const GRADE = { good: 'טוב כמו שהוא', fix: 'לשפר', redo: 'לעצב מחדש', missing: 'חסר' } as const
 
+/** Hebrew with the game's English words in it ("Play", "5 → 6", Copy diagnostics): each run of Latin letters and
+ *  numbers is set left to right on its own, so its quotes and punctuation stay where they belong in the line. */
+const LATIN = /[A-Za-z0-9×+][^\u0590-\u05FF"]*[A-Za-z0-9…%]|[A-Za-z0-9]/g
+function say(text: string): ReactNode {
+  const out: ReactNode[] = []
+  let at = 0
+  for (const m of text.matchAll(LATIN)) {
+    if (m.index > at) out.push(text.slice(at, m.index))
+    out.push(
+      <bdi key={m.index} dir="ltr">
+        {m[0]}
+      </bdi>,
+    )
+    at = m.index + m[0].length
+  }
+  out.push(text.slice(at))
+  return out
+}
+const PRIORITY = { 1: 'הבאים בתור', 2: 'אחר כך', 3: 'כשיהיה זמן' } as const
+
+/** One screen: its name and verdict, its pictures (each opens big), what works, what is wrong, and the proposal. */
+function Spot({ s, onBoard, onPic }: { s: Screen; onBoard: (id: string) => void; onPic: (p: { url: string; caption: string }) => void }) {
+  const pics = picsOf(s.id)
+  const caption = (p: Pic) => s.shots?.[p.key] ?? KINDS[p.k]
+  return (
+    <article className={`spot grade-${s.grade}`}>
+      <header className="spot-head">
+        <div className="title-row">
+          <h4>{s.name}</h4>
+          <span className={`tag-g ${s.grade}`}>{GRADE[s.grade]}</span>
+        </div>
+        <p className="area">
+          {s.area} · <code>{s.where}</code>
+        </p>
+      </header>
+      <div className="pics">
+        {pics.map((p) => (
+          <figure key={p.key} className={`pic pic-${p.k}`}>
+            <button onClick={() => onPic({ url: p.url, caption: `${s.name} · ${caption(p)}` })} aria-label={`להגדיל: ${s.name}, ${caption(p)}`}>
+              <img src={p.url} alt="" loading="lazy" />
+            </button>
+            <figcaption>{caption(p)}</figcaption>
+          </figure>
+        ))}
+        {pics.length === 0 && <p className="pic-none">{s.grade === 'missing' ? 'אין היום מסך כזה' : 'אין תמונה'}</p>}
+      </div>
+      <div className="spot-text">
+        {s.works && <p className="works">✓ {say(s.works)}</p>}
+        {s.wrong.length > 0 && (
+          <ul className="wrong">
+            {s.wrong.map((w) => (
+              <li key={w}>{say(w)}</li>
+            ))}
+          </ul>
+        )}
+        <p className="idea">
+          <b>ההצעה</b> {say(s.idea)}
+        </p>
+        {s.board && (
+          <button className="act" onClick={() => onBoard(s.board!)}>
+            ללוח שלו ←
+          </button>
+        )}
+      </div>
+    </article>
+  )
+}
+
 function MapView({ onBoard }: { onBoard: (id: string) => void }) {
-  const [big, setBig] = useState<string | null>(null)
-  const screens = [...MAP.screens].sort((a, b) => a.priority - b.priority || AREAS.indexOf(a.area) - AREAS.indexOf(b.area))
+  const [big, setBig] = useState<{ url: string; caption: string } | null>(null)
+  const byArea = (a: Screen, b: Screen) => AREAS.indexOf(a.area) - AREAS.indexOf(b.area)
+  const groups = ([1, 2, 3] as const).map((p) => ({ p, screens: MAP.screens.filter((s) => s.priority === p).sort(byArea) })).filter((g) => g.screens.length)
+  const grades = (Object.keys(GRADE) as Screen['grade'][]).map((g) => ({ g, n: MAP.screens.filter((s) => s.grade === g).length })).filter((x) => x.n)
+  useEffect(() => {
+    if (!big) return
+    const key = (e: KeyboardEvent) => e.key === 'Escape' && setBig(null)
+    addEventListener('keydown', key)
+    return () => removeEventListener('keydown', key)
+  }, [big])
   return (
     <section className="board map" aria-labelledby="map-title">
       <header className="board-head">
         <div className="title-row">
           <h2 id="map-title">מפת הממשק</h2>
-          <span className="status chosen">{screens.length} מסכים</span>
+          <span className="status chosen">{MAP.screens.length} מסכים</span>
         </div>
         <p className="ask">
           <span>מה זה</span>
           כל מה שעוטף את המשחק, כמו שהוא היום, עם מה שהמעצב מציע לשפר, לפי סדר עדיפות. מכאן באים הלוחות הבאים.
         </p>
-        {MAP.summary && <p className="lede">{MAP.summary}</p>}
+        {MAP.summary && (
+          <div className="map-summary">
+            {MAP.summary.split('\n').map((line) => (
+              <p key={line}>{say(line)}</p>
+            ))}
+          </div>
+        )}
+        {grades.length > 0 && (
+          <p className="map-grades">
+            {grades.map(({ g, n }) => (
+              <span key={g} className={`tag-g ${g}`}>
+                {GRADE[g]} · {n}
+              </span>
+            ))}
+          </p>
+        )}
       </header>
-      {screens.length === 0 && <p className="lede">המפה עוד בהכנה.</p>}
-      <div className="map-grid">
-        {screens.map((s: Screen) => (
-          <article key={s.id} className={`spot grade-${s.grade}`}>
-            <div className="pics">
-              {picsOf(s.id).map((p) => (
-                <button key={p.k} className={`pic pic-${p.k}`} onClick={() => setBig(p.url)} aria-label={`להגדיל את ${s.name}`}>
-                  <img src={p.url} alt="" loading="lazy" />
-                </button>
-              ))}
-            </div>
-            <div className="spot-text">
-              <div className="title-row">
-                <h3>{s.name}</h3>
-                <span className="tag-p">עדיפות {s.priority}</span>
-                <span className={`tag-g ${s.grade}`}>{GRADE[s.grade]}</span>
-              </div>
-              <p className="area">
-                {s.area} · <code>{s.where}</code>
-              </p>
-              {s.works && <p className="works">✓ {s.works}</p>}
-              {s.wrong.length > 0 && (
-                <ul className="wrong">
-                  {s.wrong.map((w) => (
-                    <li key={w}>{w}</li>
-                  ))}
-                </ul>
-              )}
-              <p className="idea">
-                <b>ההצעה:</b> {s.idea}
-              </p>
-              {s.board && (
-                <button className="act" onClick={() => onBoard(s.board!)}>
-                  ללוח שלו ←
-                </button>
-              )}
-            </div>
-          </article>
-        ))}
-      </div>
+      {MAP.screens.length === 0 && <p className="lede">המפה עוד בהכנה.</p>}
+      {groups.map(({ p, screens }) => (
+        <section key={p} className="map-group" aria-labelledby={`map-p${p}`}>
+          <h3 id={`map-p${p}`}>
+            עדיפות {p} · {PRIORITY[p]} <small>{screens.length}</small>
+          </h3>
+          <div className="map-grid">
+            {screens.map((s) => (
+              <Spot key={s.id} s={s} onBoard={onBoard} onPic={setBig} />
+            ))}
+          </div>
+        </section>
+      ))}
       {big && (
-        <div className="lightbox" role="dialog" aria-modal="true" aria-label="תמונה" onClick={() => setBig(null)}>
-          <img src={big} alt="" />
+        <div className="lightbox" role="dialog" aria-modal="true" aria-label={big.caption} onClick={() => setBig(null)}>
+          <figure>
+            <img src={big.url} alt="" />
+            <figcaption>{big.caption}</figcaption>
+          </figure>
           <button className="chip close" aria-label="סגור">
             ✕
           </button>

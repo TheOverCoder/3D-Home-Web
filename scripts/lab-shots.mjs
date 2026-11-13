@@ -3,10 +3,11 @@
 // (`npm run lab`, port 5180, or the build: `npx vite preview --config vite.lab.config.ts --port 5180`):
 //
 //   node scripts/lab-shots.mjs <board> <out-dir> [--variants a,b] [--states gift] [--devices upright,sideways,small]
-//                              [--wait 1200] [--each] [--dpr 2] [--base http://localhost:5180/]
+//                              [--wait 1200] [--each] [--dpr 2] [--reduced] [--base http://localhost:5180/]
 //
 // --wait: how long after the frame is ready the picture is taken (the opening played out); --each: every screen as a
-// picture of its own too; --dpr 2: twice the pixels (for a person; 1 is enough to check).
+// picture of its own too; --dpr 2: twice the pixels (for a person; 1 is enough to check); --reduced: as someone who
+// prefers less motion sees it. Each screen is a page loaded afresh, so each opening starts from nothing.
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { args, devicePage, frameUrl, labOf, launch, ready, sheet } from './lab-tools.mjs'
@@ -29,11 +30,11 @@ try {
   for (const device of devices) {
     const spec = lab.devices[device]
     if (!spec) throw new Error(`no device "${device}"`)
-    const { ctx, page } = await devicePage(browser, spec, { dpr })
+    const { ctx, page } = await devicePage(browser, spec, { dpr, reduced: !!a.reduced })
     for (const state of states) {
       const shots = []
       for (const variant of variants) {
-        await page.goto(frameUrl(base, { board, variant, state, device }))
+        await page.goto(frameUrl(base, { board, variant, state, device, fresh: true }))
         await ready(page)
         await page.waitForTimeout(wait)
         const png = await page.screenshot()
