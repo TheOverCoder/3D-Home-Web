@@ -146,6 +146,25 @@ function BoardView({ board, view, setView, onTry }: { board: AnyBoard; view: Vie
             {board.round}
           </p>
         )}
+        {board.research && board.research.length > 0 && (
+          <details className="research">
+            <summary>מה המעצב בדק לפני שעיצב ({board.research.length})</summary>
+            <ul>
+              {board.research.map((r) => (
+                <li key={r.pattern}>
+                  <b>{r.pattern}</b> —{' '}
+                  {r.url ? (
+                    <a href={r.url} target="_blank" rel="noreferrer">
+                      {r.from}
+                    </a>
+                  ) : (
+                    r.from
+                  )}
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
       </header>
       <div className="sticky">
         <div className="states" role="radiogroup" aria-label="מצב">

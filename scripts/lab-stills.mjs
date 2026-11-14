@@ -2,7 +2,8 @@
 // top, the scene, the touch controls as a panel leaves them — on a phone held upright and sideways, at twice the
 // pixels, with the phone's safe areas (the notch, the home bar: lab/devices.ts) as the game, full screen, keeps clear
 // of them. Beside each, <name>.json: where the screen's own buttons and chips are in it (the level chip, the coins, the
-// gear…), the spots the lab's sandbox opens a board from. Run it with the dev server up (npm run dev):
+// gear…), the spots the lab's sandbox opens a board from; and yard-clean-*.jpg, the same with nothing at the top (for a
+// board that designs the top itself). Run it with the dev server up (npm run dev):
 //
 //   node scripts/lab-stills.mjs [http://localhost:5173/]
 import { chromium } from '@playwright/test'
@@ -87,6 +88,12 @@ try {
     await writeFile(join(out, `${name}.json`), JSON.stringify(await page.evaluate(spots), null, 1) + '\n')
     await page.screenshot({ path: join(out, `${name}.jpg`), type: 'jpeg', quality: 80 })
     console.log(`${name}.jpg`)
+    // the same with nothing at the top of the screen (yard-clean): behind a board that designs the top itself
+    await page.addStyleTag({ content: '.farm-chip, .gear, .top-stack, .compass { visibility: hidden !important; }' })
+    await page.waitForTimeout(500)
+    const clean = name.replace('yard', 'yard-clean')
+    await page.screenshot({ path: join(out, `${clean}.jpg`), type: 'jpeg', quality: 80 })
+    console.log(`${clean}.jpg`)
     await ctx.close()
   }
 } finally {

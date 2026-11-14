@@ -76,7 +76,7 @@ function Marks({ still, wide }: { still: string; wide: boolean }) {
   const pad = 5
   return (
     <div className={`lab-marks${hint ? ' hint' : ''}`} key={hint}>
-      {BOARDS.filter((b) => b.spot && (b.still === still || b.still === 'none') && map.spots[b.spot]).map((b) => {
+      {BOARDS.filter((b) => b.spot && map.spots[b.spot]).map((b) => {
         const r = map.spots[b.spot!]
         const box = { left: ox + r.x * k - pad, top: oy + r.y * k - pad, width: r.w * k + pad * 2, height: r.h * k + pad * 2 }
         return (

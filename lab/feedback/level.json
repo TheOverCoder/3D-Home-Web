@@ -1,0 +1,7 @@
+{
+  "board": "level",
+  "read": "2026-11-14",
+  "verdicts": { "a": "no", "b": "yes", "c": "yes" },
+  "notes": [],
+  "requests": ["action", "edit", "goals", "intro", "loading", "market", "orders", "saves", "seeds", "shop", "store", "tag", "top", "touch"]
+}

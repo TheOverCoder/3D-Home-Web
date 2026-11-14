@@ -79,7 +79,7 @@ export function Play({ start, onPage }: { start?: string; onPage: (hash: string)
   const kind: 'upright' | 'sideways' = real ? (wide ? 'sideways' : 'upright') : prefs.device
   const d = DEVICES[kind]
   const k = real ? 1 : Math.min(1, Math.max(0.2, (room.w - 24) / d.w), Math.max(0.2, (room.h - 24) / d.h))
-  const query = `play=1&device=${real ? 'real' : kind}&touches=1&speed=${prefs.slow ? 0.25 : 1}${prefs.reduced ? '&motion=reduce' : ''}`
+  const query = `play=1&device=${real ? 'real' : kind}&touches=0&speed=${prefs.slow ? 0.25 : 1}${prefs.reduced ? '&motion=reduce' : ''}`
   const hashOf = (id: string | null, v: string, s: string, n: number) => (id ? `${id}/${v}/${s}/${n}` : '')
   const [src] = useState(() => `frame.html?${query}#${hashOf(openId, variant, stateId, 0)}`)
   const [srcQuery, setSrcQuery] = useState(query)
@@ -133,7 +133,12 @@ export function Play({ start, onPage }: { start?: string; onPage: (hash: string)
   }
   const pick = (v: string) => {
     setVariant(v)
-    if (board) setPrefs({ last: { ...prefs.last, [board.id]: v } })
+    if (!board) return
+    setPrefs({ last: { ...prefs.last, [board.id]: v } })
+    // which proposal this is, in its own words, and what was said of it
+    const it = board.variants.find((x) => x.id === v)
+    const was = r.review(board.id).verdicts[v]
+    if (it) say(`${letter(v)} · ${it.name}${was ? ` · סימנת ${was === 'yes' ? '✓' : '✗'}` : ''}`)
   }
   const say = (text: string) => {
     setToast(text)

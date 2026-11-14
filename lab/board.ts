@@ -42,6 +42,8 @@ export interface Board<S> {
   spot?: string
   /** its screen in the map of the interface (lab/map.ts): its picture and verdict there, and the sandbox's list */
   screen?: string
+  /** what the designer looked at before drawing: the pattern taken, from where, and why (lab/CRAFT.md, Research) */
+  research?: { pattern: string; from: string; url?: string }[]
   /** the screens it is shown on (upright and sideways when not given) */
   devices?: DeviceId[]
   states: { id: string; name: string; data: S }[]

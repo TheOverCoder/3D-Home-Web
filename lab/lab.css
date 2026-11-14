@@ -685,3 +685,24 @@ h3 {
   font: 600 16px/1 var(--display);
   text-decoration: none;
 }
+
+/* what the designer looked at before drawing */
+.research {
+  color: var(--ink-2);
+  font-size: 15px;
+}
+.research summary {
+  cursor: pointer;
+  min-height: 32px;
+  font: 600 15px/2 var(--display);
+  color: var(--ink);
+}
+.research ul {
+  margin: 4px 0 0;
+  padding-inline-start: 18px;
+  display: grid;
+  gap: 4px;
+}
+.research a {
+  color: inherit;
+}
