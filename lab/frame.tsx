@@ -74,13 +74,15 @@ function Marks({ still, wide }: { still: string; wide: boolean }) {
   const ox = (room.w - map.w * k) / 2
   const oy = 0
   const pad = 5
+  // a name near an edge of the screen hangs from that side of its ring, so it stays on the screen
+  const side = (b: { left: number; width: number }) => (b.left + b.width / 2 < room.w * 0.25 ? ' start' : b.left + b.width / 2 > room.w * 0.75 ? ' end' : '')
   return (
     <div className={`lab-marks${hint ? ' hint' : ''}`} key={hint}>
       {BOARDS.filter((b) => b.spot && map.spots[b.spot]).map((b) => {
         const r = map.spots[b.spot!]
         const box = { left: ox + r.x * k - pad, top: oy + r.y * k - pad, width: r.w * k + pad * 2, height: r.h * k + pad * 2 }
         return (
-          <button key={b.id} className={`lab-spot${box.top > room.h / 2 ? ' low' : ''}`} style={box} onClick={() => tell({ type: 'open', board: b.id })} aria-label={`לפתוח: ${b.title}`}>
+          <button key={b.id} className={`lab-spot${box.top > room.h / 2 ? ' low' : ''}${side(box)}`} style={box} onClick={() => tell({ type: 'open', board: b.id })} aria-label={`לפתוח: ${b.title}`}>
             <span className="lab-spot-name">{b.title}</span>
           </button>
         )

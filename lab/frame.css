@@ -153,6 +153,15 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   pointer-events: none;
 }
+.lab-spot.start .lab-spot-name {
+  left: 0;
+  translate: 0 0;
+}
+.lab-spot.end .lab-spot-name {
+  left: auto;
+  right: 0;
+  translate: 0 0;
+}
 .lab-spot.low .lab-spot-name {
   top: auto;
   bottom: calc(100% + 9px);

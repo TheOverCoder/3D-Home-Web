@@ -72,7 +72,7 @@ export const topBoard: Board<TopState> = {
   title: 'החלק העליון של המסך',
   ask: 'החלק העליון לוקח רבע מהמסך לאורך: שורה אחת קטנה, המטבעות במרכז, הרמה מראה כמה נשאר ומה מקבלים, מצפן קריא, וכפתורים עם משמעות ברורה.',
   status: 'choose',
-  still: 'yard',
+  still: 'yard-clean',
   spot: 'coins',
   screen: 'top',
   research: [
