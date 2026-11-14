@@ -7,6 +7,7 @@ import { BOARDS } from './boards'
 import { DEVICES, DEVICE_IDS, type DeviceId } from './devices'
 import { AREAS, MAP, type Screen } from './map'
 import { Play } from './play/Play'
+import { StatusView } from './status/Status'
 import './play/play.css'
 
 // The lab's page. It opens on the sandbox (./play/Play.tsx: the game's screen, where what has designs opens and is
@@ -462,7 +463,8 @@ function Lab() {
     scrollTo({ top: 0 })
   }
   if (hash === '' || hash === 'play' || hash.startsWith('play/')) return <Play start={hash.split('/')[1]} onPage={go} />
-  const board = hash === 'map' ? null : (BOARDS.find((b) => b.id === hash) ?? BOARDS[0])
+  const page = hash === 'map' || hash === 'status' ? hash : null
+  const board = page ? null : (BOARDS.find((b) => b.id === hash) ?? BOARDS[0])
   return (
     <div className="lab">
       <a className="back-to-play" href="#play">
@@ -488,16 +490,27 @@ function Lab() {
             <small>{b.variants.filter((v) => v.id !== 'today').length} הצעות</small>
           </a>
         ))}
+        <a href="#status" className={`board-card${hash === 'status' ? ' on' : ''}`} aria-current={hash === 'status' ? 'page' : undefined}>
+          <b>מצב המערכת</b>
+          <span className="status live">דוח בדיקות</span>
+          <small>מה עובד ומה נמצא</small>
+        </a>
         <a href="#map" className={`board-card map-card${hash === 'map' ? ' on' : ''}`} aria-current={hash === 'map' ? 'page' : undefined}>
           <b>מפת הממשק</b>
           <span className="status chosen">{MAP.screens.length ? `${MAP.screens.length} מסכים` : 'בהכנה'}</span>
           <small>מה לשפר אחר כך</small>
         </a>
       </nav>
-      {board ? <BoardView key={board.id} board={board} view={view} setView={setView} onTry={(variant, state) => setTrying({ board, variant, state })} /> : <MapView onBoard={go} />}
+      {board ? (
+        <BoardView key={board.id} board={board} view={view} setView={setView} onTry={(variant, state) => setTrying({ board, variant, state })} />
+      ) : page === 'status' ? (
+        <StatusView onPage={go} />
+      ) : (
+        <MapView onBoard={go} />
+      )}
       <footer className="lab-foot">
         <h2>איך בוחרים</h2>
-        <p>כתבו בצ'אט את האות שבחרתם ומה לשנות, למשל: "חלון הרמה: B, אבל עם הכפתור של C". רק אחרי שתאשרו, העיצוב נכנס למשחק.</p>
+        <p>בארגז החול: פותחים את מה שעוצב, עוברים בין ההצעות ומסמנים ✓ או ✗, הערה או הערה על נקודה – זה נשמר ומגיע למעצב. אפשר גם לכתוב בצ'אט. רק מה שתאשרו נכנס למשחק.</p>
       </footer>
       {trying && <Try {...trying} view={view} onClose={() => setTrying(null)} />}
     </div>

@@ -10,6 +10,12 @@
   pointer-events: none;
   user-select: none;
 }
+/* sideways the chips are along the top from the left: a screen narrower than the still loses its right side */
+@media (orientation: landscape) {
+  .lab-still {
+    object-position: 0 0;
+  }
+}
 
 /* the device's notch and home bar (./env.ts): over everything, never in the way of a press */
 .lab-chrome {

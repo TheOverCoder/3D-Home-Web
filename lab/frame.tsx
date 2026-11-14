@@ -69,9 +69,10 @@ function Marks({ still, wide }: { still: string; wide: boolean }) {
   }, [])
   const map = spotsOf(still, wide)
   if (!map) return null
-  // the still covers the screen from its top (frame.css): the same scale and offset place its spots
+  // the still covers the screen from its top, and sideways from its left where the chips are (frame.css): the same
+  // scale and offset place its spots
   const k = Math.max(room.w / map.w, room.h / map.h)
-  const ox = (room.w - map.w * k) / 2
+  const ox = room.w > room.h ? 0 : (room.w - map.w * k) / 2
   const oy = 0
   const pad = 5
   // a name near an edge of the screen hangs from that side of its ring, so it stays on the screen
@@ -80,7 +81,9 @@ function Marks({ still, wide }: { still: string; wide: boolean }) {
     <div className={`lab-marks${hint ? ' hint' : ''}`} key={hint}>
       {BOARDS.filter((b) => b.spot && map.spots[b.spot]).map((b) => {
         const r = map.spots[b.spot!]
-        const box = { left: ox + r.x * k - pad, top: oy + r.y * k - pad, width: r.w * k + pad * 2, height: r.h * k + pad * 2 }
+        // kept on the screen, whatever the still loses at its edges
+        const left = Math.min(Math.max(2, ox + r.x * k - pad), room.w - 2 - (r.w * k + pad * 2))
+        const box = { left, top: Math.max(2, oy + r.y * k - pad), width: r.w * k + pad * 2, height: r.h * k + pad * 2 }
         return (
           <button key={b.id} className={`lab-spot${box.top > room.h / 2 ? ' low' : ''}${side(box)}`} style={box} onClick={() => tell({ type: 'open', board: b.id })} aria-label={`לפתוח: ${b.title}`}>
             <span className="lab-spot-name">{b.title}</span>

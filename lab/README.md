@@ -20,8 +20,16 @@ No 3D, no farm state, no CI: it builds in a second and is published as a link of
 - `node scripts/lab-film.mjs <board> <variant> <out.png>` — an animation as one sheet of frames at exact times (the
   opening, what a press does: `--tap ".selector"`, or a swipe: `--swipe x,y,dx,dy`). `--reduced` on either script: as
   someone who prefers less motion sees it.
+- `node scripts/lab-audit.mjs` — every screen of every board (each variant, state, upright and sideways) checked:
+  errors, nothing drawn, scrolling, buttons under 44 px, text under 13 px, a button under the notch or the home bar or
+  off the screen → `lab/audit.json`.
+- `node scripts/lab-check.mjs` — the lab used end to end as the user uses it (the sandbox, every board, every variant
+  and state, ✓ / ✗, notes and pins kept, a request, the side by side, the map, the status page) on a phone upright and
+  sideways and a computer → `lab/check.json`. Both show on the lab's status page (`#status`, ☰ → 📋): run them after a
+  change, before publishing.
 - `node scripts/lab-stills.mjs` — the game stills behind the frames again (`lab/stills/<place>-upright.jpg` and
-  `-sideways.jpg`, the dev server up).
+  `-sideways.jpg`, the dev server up; if the game never starts for it, the dev server's dependency cache is stale:
+  restart it with `npx vite --force`).
 
 ## The sandbox (what the user sees first)
 

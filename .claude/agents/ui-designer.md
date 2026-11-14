@@ -106,7 +106,9 @@ phone: the real size under their own finger).
    prize revealed, a burst), a way out (`exit`), and a gesture where a phone expects one (a sheet swiped down closes).
    One moment per screen, quick (an opening under 400 ms, a press under 150 ms), never in the way of the next press.
 5. **Check** every variant in every state on each device (`lab-shots` sheets), and film its opening and its main press
-   (`lab-film`), then look at them. Fix what is clipped, cramped, unreadable, overlapping, under a notch or a thumb, or
+   (`lab-film`), then look at them. Run `node scripts/lab-audit.mjs --boards <id>`: it finds what the eye misses
+   (a button under 44 px, text under 13 px, a button under the notch, an error) and the user sees it on the lab's
+   status page — hand back with nothing there that you can fix. Fix what is clipped, cramped, unreadable, overlapping, under a notch or a thumb, or
    moving badly (a jump, a flash, something late) before you hand anything back. `npm run check` passes (the lab is
    type-checked, linted and formatted with the game).
 6. **Hand back**: the board's files, what each variant is and how it moves, and the sheets and films you looked at.

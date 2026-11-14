@@ -429,7 +429,11 @@ function List({
   }
   return (
     <>
-      <SheetHead title="כל המסכים של המשחק" onClose={onClose} />
+      <SheetHead title="כל המסכים של המשחק" onClose={onClose}>
+        <button className="link-btn status-link" onClick={() => onPage('status')}>
+          📋 מצב המערכת
+        </button>
+      </SheetHead>
       <p className={`keeping ${r.keeping}`}>{r.keeping === 'shared' ? '✓ מה שתסמנו נשמר ומגיע למעצב' : r.keeping === 'local' ? 'מה שתסמנו נשמר רק בדפדפן הזה' : 'מתחבר…'}</p>
       <h3 className="list-title">יש הצעות – לבחירה שלך</h3>
       <div className="rows">
