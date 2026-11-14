@@ -1,10 +1,12 @@
 // The game stills behind the design lab's phones (lab/stills): the yard as it is under an open panel — the chips at the
 // top, the scene, the touch controls as a panel leaves them — on a phone held upright and sideways, at twice the
 // pixels, with the phone's safe areas (the notch, the home bar: lab/devices.ts) as the game, full screen, keeps clear
-// of them. Run it with the dev server up (npm run dev):
+// of them. Beside each, <name>.json: where the screen's own buttons and chips are in it (the level chip, the coins, the
+// gear…), the spots the lab's sandbox opens a board from. Run it with the dev server up (npm run dev):
 //
 //   node scripts/lab-stills.mjs [http://localhost:5173/]
 import { chromium } from '@playwright/test'
+import { writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -15,6 +17,25 @@ const PHONES = [
   { name: 'yard-upright', viewport: { width: 390, height: 844 }, safe: { top: 47, right: 0, bottom: 34, left: 0 } },
   { name: 'yard-sideways', viewport: { width: 844, height: 390 }, safe: { top: 0, right: 47, bottom: 21, left: 47 } },
 ]
+
+// where the screen's own buttons and chips are, in CSS pixels: each chip of the top row by its name (coins, line, silo,
+// barn, goals, day, level), the gear, the view button, the compass, the action button
+function spots() {
+  const named = { settings: '.gear:not(.hud-mode)', view: '.gear.hud-mode', compass: '.compass', action: '.act-btn.main' }
+  const out = {}
+  const put = (name, el) => {
+    const r = el.getBoundingClientRect()
+    let key = name
+    for (let n = 2; out[key]; n++) key = `${name}-${n}`
+    if (r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden') out[key] = { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) }
+  }
+  for (const el of document.querySelectorAll('.farm-chip-item')) put(el.classList[1] ?? 'chip', el)
+  for (const [name, sel] of Object.entries(named)) {
+    const el = document.querySelector(sel)
+    if (el) put(name, el)
+  }
+  return { w: innerWidth, h: innerHeight, spots: out }
+}
 
 // the game's env(safe-area-inset-*) given the phone's values (a page in a test browser has none), as lab/env.ts does
 function safeAreas(safe) {
@@ -63,6 +84,7 @@ try {
     await page.addStyleTag({ content: '.farm-backdrop { display: none !important; }' })
     await page.evaluate(safeAreas, safe)
     await page.waitForTimeout(6000)
+    await writeFile(join(out, `${name}.json`), JSON.stringify(await page.evaluate(spots), null, 1) + '\n')
     await page.screenshot({ path: join(out, `${name}.jpg`), type: 'jpeg', quality: 80 })
     console.log(`${name}.jpg`)
     await ctx.close()

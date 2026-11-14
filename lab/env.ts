@@ -12,6 +12,8 @@ import { DEVICES, type DeviceId } from './devices'
 //   ?speed=0.25  everything that moves, slower: CSS, Web Animations, Motion, timers.
 //   ?motion=reduce  as someone who prefers less motion sees it (prefers-reduced-motion, in the CSS and in checks).
 //   ?hold=1      nothing shown until window.__labGo() (scripts/lab-film.mjs films an opening from its first frame).
+//   ?play=1      the sandbox's screen (lab/play): the game's screen with nothing open, its chips and buttons that open a
+//        board marked, and a board opened by the address (#board/variant/state/n) or closed by an empty one.
 
 const q = new URLSearchParams(location.search)
 const named = q.get('device') ?? 'upright'
@@ -25,6 +27,7 @@ export const env = {
   speed: Math.min(4, Math.max(0.05, Number(q.get('speed')) || 1)),
   hold: q.get('hold') === '1',
   reduced: q.get('motion') === 'reduce',
+  play: q.get('play') === '1',
 }
 
 const root = document.documentElement

@@ -5,6 +5,8 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  /* a screen shorter than the still loses its bottom, never the chips at the top */
+  object-position: 50% 0;
   pointer-events: none;
   user-select: none;
 }
@@ -113,5 +115,69 @@
   from {
     scale: 0.6;
     opacity: 0;
+  }
+}
+
+/* the sandbox's marks (?play=1): a soft ring round each chip or button that opens a board, its name under it; a touch
+   anywhere else lights them up for a moment */
+.lab-marks {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+}
+.lab-spot {
+  position: absolute;
+  padding: 0;
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+  box-shadow:
+    0 0 0 3px #ffc93c,
+    0 0 0 7px rgba(255, 201, 60, 0.35);
+  pointer-events: auto;
+  cursor: pointer;
+  animation: lab-spot-breathe 1.8s ease-in-out infinite;
+}
+.lab-spot-name {
+  position: absolute;
+  top: calc(100% + 9px);
+  left: 50%;
+  translate: -50% 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #3b2a1e;
+  color: #fff7e8;
+  font: 600 13px/1.2 'Fredoka Variable', 'Fredoka', system-ui, sans-serif;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+}
+.lab-spot.low .lab-spot-name {
+  top: auto;
+  bottom: calc(100% + 9px);
+}
+.lab-marks.hint .lab-spot {
+  animation: lab-spot-hint 0.45s ease-out 3;
+}
+@keyframes lab-spot-breathe {
+  50% {
+    box-shadow:
+      0 0 0 3px #ffc93c,
+      0 0 0 12px rgba(255, 201, 60, 0.12);
+  }
+}
+@keyframes lab-spot-hint {
+  50% {
+    scale: 1.12;
+    box-shadow:
+      0 0 0 4px #ffc93c,
+      0 0 0 16px rgba(255, 201, 60, 0.45);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lab-spot,
+  .lab-marks.hint .lab-spot {
+    animation: none;
   }
 }

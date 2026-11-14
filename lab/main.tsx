@@ -6,8 +6,12 @@ import type { Board } from './board'
 import { BOARDS } from './boards'
 import { DEVICES, DEVICE_IDS, type DeviceId } from './devices'
 import { AREAS, MAP, type Screen } from './map'
+import { Play } from './play/Play'
+import './play/play.css'
 
-// The lab's page. At the top, every board (a piece of the interface waiting for the user's choice, chosen, or in the
+// The lab's page. It opens on the sandbox (./play/Play.tsx: the game's screen, where what has designs opens and is
+// judged), and has two more views: a board's variants side by side (#<board>) and the map of the interface (#map).
+// On those: at the top, every board (a piece of the interface waiting for the user's choice, chosen, or in the
 // game) and the map of the game's interface. A board: the request, its states, and its variants side by side, each on
 // the screens it is for (lab/frame.html at the device's own size, scaled to fit), every button and gesture working.
 // The bar sets what all of them show: the screens, slow motion, the marks of touches. ⛶ opens one variant full
@@ -438,9 +442,13 @@ function Lab() {
     location.hash = id
     scrollTo({ top: 0 })
   }
+  if (hash === '' || hash === 'play' || hash.startsWith('play/')) return <Play start={hash.split('/')[1]} onPage={go} />
   const board = hash === 'map' ? null : (BOARDS.find((b) => b.id === hash) ?? BOARDS[0])
   return (
     <div className="lab">
+      <a className="back-to-play" href="#play">
+        ▶ חזרה לארגז החול
+      </a>
       <header className="lab-head">
         <p className="eyebrow">3D HOME · מעבדת עיצוב</p>
         <h1>בוחרים עיצוב לפני שהוא נכנס למשחק</h1>
@@ -449,6 +457,11 @@ function Lab() {
         </p>
       </header>
       <nav className="boards" aria-label="לוחות">
+        <a href="#play" className="board-card play-card">
+          <b>ארגז החול</b>
+          <span className="status choose">המשחק, רק העיצובים</span>
+          <small>לגעת, לבחור ✓ ✗, להעיר</small>
+        </a>
         {BOARDS.map((b) => (
           <a key={b.id} href={`#${b.id}`} className={`board-card${board?.id === b.id ? ' on' : ''}`} aria-current={board?.id === b.id ? 'page' : undefined}>
             <b>{b.title}</b>

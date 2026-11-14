@@ -11,6 +11,8 @@ It is the game's own interface with no game round it: the panels' presentational
 …), the game's CSS and tokens, its fonts and pictures, its motion kit, and the data its pure code makes (`levelView`).
 No 3D, no farm state, no CI: it builds in a second and is published as a link of its own in a few more.
 
+- `node scripts/lab-new.mjs <id> "<title>" [--spot level] [--screen level]` — a new board, ready to fill (its folder, a
+  first variant, listed in `lab/boards.ts`): in the sandbox at once.
 - `npm run lab` — the lab as you work on it (port 5180, live reload).
 - `npm run lab:build` — `dist-lab/`, ready to publish (`scripts/lab-finish.mjs` makes its page the link's main page and
   lists its files in `files.json`).
@@ -21,9 +23,28 @@ No 3D, no farm state, no CI: it builds in a second and is published as a link of
 - `node scripts/lab-stills.mjs` — the game stills behind the frames again (`lab/stills/<place>-upright.jpg` and
   `-sideways.jpg`, the dev server up).
 
-## The page
+## The sandbox (what the user sees first)
 
-At the top every board, with where it stands (waiting for a choice, chosen, in the game), and the map. A board's bar
+`lab/play/Play.tsx`: the game's screen with nothing of the game in it but its look — a still of the game (the frame,
+`?play=1`) on which every chip or button that has designs waiting is ringed in yellow and named. A touch opens it there,
+as the game would; the bar under the thumb (a rail on the left, sideways) switches between today and the proposals and
+between the states, and takes what the user thinks: **✓ / ✗** on a variant, a **💬 note** on it, or a **📍 note pinned
+to one point** of it. ☰ lists every screen of the game (the map): those with designs open from it, the others can be
+asked for ("🙋 לעצב את זה"). On a phone the screen is the phone's own, at its size; on a computer a phone stands in the
+middle. A touch where nothing opens lights the rings up for a moment.
+
+A board is in it by itself: its `spot` (a chip or button of the game's screen, as `lab/stills/<still>.json` names it:
+`coins`, `line`, `store`, `goals`, `day`, `level`, `settings`…, recorded by `scripts/lab-stills.mjs`) rings it on the
+screen, its `screen` (an id of `lab/map.ts`) gives it its picture and place in the list.
+
+**What the user said** is kept in the published lab's database (the artifact's `db` capability: `reviews/<board>` —
+`verdicts` by variant, `notes` with the variant, state, the phone's way round and the point — and `requests/screens`).
+The main agent reads it (`ArtifactData`, `list` of `reviews` with `out_dir`) into `lab/feedback/<board>.json` for the
+designer. Where there is no database (`npm run lab`), it is kept in that browser.
+
+## The side by side and the map
+
+`#<board>` shows every variant of a board side by side, `#map` the map. There, at the top every board, with where it stands (waiting for a choice, chosen, in the game), and the map. A board's bar
 sets what every frame shows: its state, the screens (a phone upright and sideways, a small phone, a tablet, a
 computer), slow motion (four times slower: CSS, Web Animations, Motion and timers alike) and the marks of touches. ↻
 plays a variant's opening again; ⛶ opens it full screen — on a phone, at the phone's own size under the user's own

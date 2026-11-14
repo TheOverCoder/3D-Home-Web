@@ -43,6 +43,13 @@ does not give, say so in your report instead of inventing it (the main agent add
 | Icons and pictures | `src/ui/glyphs.ts` (Phosphor), `src/ui/art.ts` (Fluent 3D), `ItemPic` (a good, by its model), `GarmentPic` | Add a file there rather than drawing one; credit it in `src/data/credits.ts`. |
 | CSS motion | `@keyframes`, transitions, the tokens `--ease-pop`, `--ease-sheet` | Fine for loops (a glow, a shimmer) and simple states. |
 
+**The sandbox** is what the user opens first: the game's screen where your designs wait, ringed on the chip or button
+they open from (your board's `spot`), and listed by their screen of the map (its `screen`). The user opens one there,
+goes between today and your proposals with a thumb, and marks ✓ / ✗, writes a note, or pins a note to one point of a
+variant. Those come back to you as `lab/feedback/<board>.json` (verdicts by variant; notes with the variant, the state,
+`upright`/`sideways` and, for a pinned one, `x`/`y` as parts of the screen's width and height): read it before a new
+round, answer each note in the round's `round` line, and never leave a ✗ unanswered.
+
 **The lab** (`lab/README.md`): a board per piece of the interface, its states from the game's own pure code, its variants
 side by side on device frames over real stills of the game, every button and gesture working. A frame
 (`lab/frame.html?device=…#board/variant/state/n`) is a touch screen (the game's `(pointer: coarse)` rules hold; on a
@@ -71,7 +78,8 @@ phone: the real size under their own finger).
 2. **Think before drawing**: who is on this screen and why, the one thing they must see, the one press that matters,
    its feedback, its empty / full / locked / error states, how it agrees with the other screens. Write it down as the
    board's states.
-3. **Build a board** in `lab/boards/<id>/` (copy `lab/boards/level` as a template; list it in `lab/boards.ts`): the
+3. **Build a board**: `node scripts/lab-new.mjs <id> "<title>" --spot <chip> --screen <map id>` makes
+   `lab/boards/<id>/` with a first variant and lists it (see `lab/boards/level` for a full one). Give it the
    request, `status: 'choose'`, its states made by the game's own pure code (never numbers the game cannot produce), and
    "today" beside **two or three variants** (`a`, `b`, `c`). Each variant is its own component and CSS file, every rule
    under a class of its own (`.v-<board>-a …`), so nothing leaks. Variants differ in what matters — hierarchy, layout,

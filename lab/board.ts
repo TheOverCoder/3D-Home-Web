@@ -37,6 +37,11 @@ export interface Board<S> {
   round?: string
   /** the game still behind it: lab/stills/<name>-upright.jpg and -sideways.jpg, or none (a page of its own) */
   still: string
+  /** the chip or button of the game's screen it opens from in the sandbox (a name in lab/stills/<still>.json: level,
+   *  coins, line, goals, day, settings…); none: it opens from the sandbox's list only */
+  spot?: string
+  /** its screen in the map of the interface (lab/map.ts): its picture and verdict there, and the sandbox's list */
+  screen?: string
   /** the screens it is shown on (upright and sideways when not given) */
   devices?: DeviceId[]
   states: { id: string; name: string; data: S }[]
