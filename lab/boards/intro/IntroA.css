@@ -1,0 +1,59 @@
+/* A · the title (./IntroA.tsx): the logo over the farm, one dock at the bottom; sideways the logo left, the dock right */
+.v-intro-a {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, calc(env(safe-area-inset-bottom) + 10px)) max(16px, env(safe-area-inset-left));
+  color: var(--ink);
+}
+.v-intro-a > :not(.v-intro-bg) { position: relative; }
+.v-intro-a .ia-top { display: flex; justify-content: space-between; }
+
+/* the logo: the house, the name in letters that drop in, one line */
+.v-intro-a .ia-logo { align-self: center; justify-self: center; display: flex; flex-direction: column; align-items: center; text-align: center; padding-bottom: 4vh; }
+.v-intro-a .ia-house .art { width: clamp(96px, 30vw, 132px); height: auto; margin-bottom: -10px; animation: v-intro-a-bob 3.4s ease-in-out 1s infinite; }
+@keyframes v-intro-a-bob { 50% { transform: translateY(-5px) rotate(-1.5deg); } }
+.v-intro-a h1 { display: flex; margin: 0; white-space: pre; font: 700 clamp(56px, 16vw, 80px) / 1 var(--font-display); letter-spacing: 0.01em; }
+.v-intro-a h1 span { display: inline-block; color: #fff; -webkit-text-stroke: 8px var(--ink); paint-order: stroke fill; text-shadow: 0 7px 0 rgba(40, 24, 10, 0.4); }
+.v-intro-a .ia-logo p { margin: 10px 0 0; padding: 4px 14px; border-radius: 999px; background: rgba(40, 24, 10, 0.42); font: 600 18px/1.3 var(--font-display); color: #fff8ec; }
+
+/* the dock: the farm you go back to, then the big button */
+.v-intro-a .ia-dock { justify-self: center; width: min(420px, 100%); display: grid; gap: 12px; }
+.v-intro-a .ia-farm { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 8px; padding: 6px 12px 10px 6px; border-radius: 26px; }
+.v-intro-a .ia-farm-name { justify-self: start; display: flex; align-items: center; gap: 8px; min-height: 56px; padding: 0 10px 0 0; border: 0; border-radius: 18px; background: none; color: var(--ink); text-align: left; }
+.v-intro-a .ia-farm-name strong { display: block; font: 600 22px/1.05 var(--font-display); }
+.v-intro-a .ia-farm-name small { display: block; white-space: nowrap; font: 700 13px/1.3 var(--font-text); color: var(--ink-2); }
+.v-intro-a .ia-farm-name svg { width: 18px; height: 18px; color: var(--ink-2); }
+.v-intro-a .ia-coins { padding: 4px 12px 4px 6px; font-size: 18px; }
+.v-intro-a .ia-coins img { width: 26px; height: 26px; }
+.v-intro-a .ia-ready { grid-column: 1 / -1; display: flex; align-items: center; gap: 14px; margin-left: 6px; padding: 8px 14px 10px; border-radius: 18px; background: var(--paper-2); }
+.v-intro-a .ia-farm-name small.ia-away { color: var(--leaf); }
+.v-intro-a .ia-count { display: grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: var(--sun); color: var(--ink); font: 800 13px var(--font-text); }
+.v-intro-a .ia-ready .item-pic .art { width: 40px; height: 40px; }
+.v-intro-a .ia-more { font: 800 15px var(--font-text); color: var(--ink-2); }
+.v-intro-a .ia-buyers { margin-left: auto; }
+.v-intro-a .ia-buyers .art { width: 40px; height: 40px; }
+
+/* the big button: tall, with a shine passing over it now and then */
+.v-intro-a .ia-go { position: relative; overflow: hidden; min-height: 66px; font-size: 24px; gap: 10px; }
+.v-intro-a .ia-go svg { width: 24px; height: 24px; transition: transform 0.15s var(--ease-pop); }
+.v-intro-a .ia-go.going svg { transform: translateX(6px); }
+.v-intro-a .ia-go::after { content: ''; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.55) 50%, transparent 65%); transform: translateX(-120%); animation: v-intro-a-shine 4.2s ease-in-out 1.4s infinite; }
+@keyframes v-intro-a-shine { 0% { transform: translateX(-120%); } 30%, 100% { transform: translateX(120%); } }
+.v-intro-a .ia-quiet { justify-self: center; display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 18px 0 12px; border: 0; border-radius: 999px; background: rgba(40, 24, 10, 0.5); color: #fff8ec; font: 600 16px var(--font-display); }
+.v-intro-a .ia-quiet img { width: 26px; height: 26px; }
+@media (prefers-reduced-motion: reduce) {
+  .v-intro-a .ia-house .art,
+  .v-intro-a .ia-go::after { animation: none; }
+}
+
+/* sideways: the logo on the left over the scene, the buttons and the dock on the right, no scrolling */
+@media (orientation: landscape) {
+  .v-intro-a { grid-template-columns: 1fr minmax(340px, 400px); grid-template-rows: auto 1fr; column-gap: 28px; padding-top: max(12px, env(safe-area-inset-top)); }
+  .v-intro-a .ia-logo { grid-column: 1; grid-row: 1 / 3; padding-bottom: 0; }
+  .v-intro-a .ia-house .art { width: 104px; }
+  .v-intro-a h1 { font-size: 64px; }
+  .v-intro-a .ia-top { grid-column: 2; grid-row: 1; justify-content: flex-end; gap: 10px; }
+  .v-intro-a .ia-dock { grid-column: 2; grid-row: 2; align-self: end; }
+}

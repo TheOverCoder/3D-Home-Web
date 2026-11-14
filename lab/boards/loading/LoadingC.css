@@ -1,0 +1,87 @@
+/* C · a window onto the house (./LoadingC.tsx): a picture of the game behind everything, soft at first and sharper as
+   it loads; the logo over it; a paper sheet with what is coming and a slim bar that grows into Play. */
+.v-loading-c {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  color: var(--ink);
+  background: var(--ink);
+  user-select: none;
+}
+.v-loading-c .lc-view { position: absolute; inset: 0; }
+.v-loading-c .lc-view img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  animation: lc-drift 28s ease-in-out infinite alternate;
+}
+.v-loading-c .lc-soft { filter: blur(16px) saturate(0.85) brightness(0.86); scale: 1.12; }
+.v-loading-c .lc-sharp { transition: opacity 0.9s ease-out; }
+.v-loading-c .lc-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(40, 24, 10, 0.5), rgba(40, 24, 10, 0.08) 38%, rgba(40, 24, 10, 0.12) 60%, rgba(40, 24, 10, 0.5));
+  transition: opacity 0.9s ease-out;
+}
+.v-loading-c.ready .lc-shade { opacity: 0.55; }
+
+.v-loading-c .lc-logo { position: absolute; left: 0; right: 0; top: calc(env(safe-area-inset-top) + 34px); text-align: center; }
+.v-loading-c .lc-logo h1 {
+  margin: 0;
+  font: 700 54px/1 var(--font-display);
+  color: #fff;
+  -webkit-text-stroke: 7px var(--ink);
+  paint-order: stroke fill;
+  text-shadow: 0 6px 0 rgba(40, 24, 10, 0.35);
+}
+.v-loading-c .lc-logo p { margin: 8px 0 0; font: 600 17px/1.3 var(--font-display); color: #fff8ec; text-shadow: 0 2px 6px rgba(40, 24, 10, 0.75); }
+
+/* the sheet, floating over the bottom of the house (sideways: on the right) */
+.v-loading-c .lc-sheet {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: calc(env(safe-area-inset-bottom) + 10px);
+  margin: 0 auto;
+  max-width: 440px;
+  padding: 14px 16px 12px;
+}
+.v-loading-c .lc-cards { position: relative; overflow: hidden; touch-action: pan-y; cursor: grab; margin: 0 -4px; padding: 0 4px; }
+.v-loading-c .lc-card { display: grid; grid-template-columns: 68px 1fr; align-items: center; gap: 14px; min-height: 76px; }
+.v-loading-c .lc-card img { width: 68px; height: 68px; pointer-events: none; }
+.v-loading-c .lc-card strong { display: block; font: 600 19px/1.2 var(--font-display); }
+.v-loading-c .lc-card p { margin: 3px 0 0; font: 600 15px/1.35 var(--font-text); color: var(--ink-2); }
+.v-loading-c .lc-dots { display: flex; justify-content: center; gap: 6px; margin: 8px 0 10px; }
+.v-loading-c .lc-dots i { width: 7px; height: 7px; border-radius: 999px; background: var(--paper-3); transition: width 0.25s var(--ease-sheet), background-color 0.25s; }
+.v-loading-c .lc-dots i.on { width: 20px; background: var(--sun-lip); }
+
+.v-loading-c .lc-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding-top: 10px; border-top: 2px dashed var(--edge-soft); }
+.v-loading-c .lc-head strong { display: inline-flex; align-items: center; gap: 6px; font: 600 18px/1.25 var(--font-display); }
+.v-loading-c .lc-head strong svg { width: 20px; height: 20px; color: var(--leaf); }
+.v-loading-c .lc-pct { font: 800 15px/1 var(--font-text); color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.v-loading-c .lc-again { margin: 4px 0 0; font: 600 15px/1.3 var(--font-text); color: var(--leaf); }
+
+.v-loading-c .lc-go { position: relative; margin: 10px 0 6px; }
+.v-loading-c .lc-go > * { position: absolute; inset: 0; }
+.v-loading-c .lc-bar { overflow: hidden; border-radius: 999px; background: var(--paper-3); box-shadow: inset 0 2px 0 rgba(60, 35, 10, 0.12); }
+.v-loading-c .lc-bar span { position: absolute; inset: 0 auto 0 0; border-radius: 999px; background: linear-gradient(to bottom, #ffd96b, var(--sun) 55%, #f4b52a); transition: width 0.45s ease-out; overflow: hidden; }
+/* a soft light runs along the filled part now and then */
+.v-loading-c .lc-bar span::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent); translate: -100% 0; animation: lc-sheen 2.4s ease-in-out infinite; }
+.v-loading-c .lc-play { min-height: 0; height: 100%; font-size: 22px; }
+.v-loading-c .lc-play-in { display: inline-flex; align-items: center; gap: 8px; }
+.v-loading-c .lc-play svg { width: 22px; height: 22px; }
+
+/* sideways: the logo over the house on the left, the sheet on the right */
+.v-loading-c.wide .lc-logo { top: 50%; right: calc(env(safe-area-inset-right) + 392px); left: env(safe-area-inset-left); translate: 0 -50%; }
+.v-loading-c.wide .lc-logo h1 { font-size: 50px; }
+.v-loading-c.wide .lc-sheet { left: auto; top: 50%; bottom: auto; right: calc(env(safe-area-inset-right) + 12px); width: 360px; max-width: none; translate: 0 -50%; }
+
+@keyframes lc-drift { from { transform: scale(1.02); } to { transform: scale(1.09) translate(-1.5%, -1%); } }
+@keyframes lc-sheen { 60%, 100% { translate: 100% 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .v-loading-c .lc-view img,
+  .v-loading-c .lc-bar span::after { animation: none; }
+}

@@ -1,0 +1,64 @@
+/* C · the road (./IntroC.tsx): the logo over the farm, a card with the road into the big button, a quiet row under it */
+.v-intro-c {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(14px, calc(env(safe-area-inset-bottom) + 8px)) max(16px, env(safe-area-inset-left));
+  color: var(--ink);
+}
+.v-intro-c > :not(.v-intro-bg) { position: relative; }
+.v-intro-c .ic-logo { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-bottom: 2vh; }
+.v-intro-c .ic-logo .art { width: clamp(92px, 28vw, 124px); height: auto; margin-bottom: -8px; }
+.v-intro-c .ic-logo h1 { margin: 0; font: 700 clamp(52px, 15vw, 72px) / 1 var(--font-display); color: #fff; -webkit-text-stroke: 8px var(--ink); paint-order: stroke fill; text-shadow: 0 6px 0 rgba(40, 24, 10, 0.4); white-space: nowrap; }
+.v-intro-c .ic-low { width: min(420px, 100%); display: grid; gap: 12px; }
+
+/* the card: the farm, its road, the button */
+.v-intro-c .ic-card { display: grid; gap: 4px; padding: 10px 14px 14px; border-radius: 26px; }
+.v-intro-c .ic-head { display: flex; align-items: center; gap: 10px; min-height: 52px; }
+.v-intro-c .ic-head-art { width: 44px; height: 44px; margin: 0 4px; }
+.v-intro-c .ic-head-text { display: grid; min-width: 0; }
+.v-intro-c .ic-head-text strong { font: 600 21px/1.1 var(--font-display); }
+.v-intro-c .ic-head-text small { font: 700 14px/1.3 var(--font-text); color: var(--ink-2); }
+.v-intro-c .ic-coins { margin-left: auto; padding: 4px 12px 4px 6px; font-size: 17px; }
+.v-intro-c .ic-coins img { width: 26px; height: 26px; }
+
+/* the road: a soft path with white dashes flowing towards the button, and its stops */
+.v-intro-c .ic-road { position: relative; height: 98px; }
+.v-intro-c .ic-line { position: absolute; left: 0; top: 0; overflow: visible; }
+.v-intro-c .ic-bed { fill: none; stroke: var(--paper-3); stroke-width: 18; stroke-linecap: round; }
+.v-intro-c .ic-dash { fill: none; stroke: #fff; stroke-width: 3; stroke-linecap: round; stroke-dasharray: 2 11; animation: v-intro-c-flow 1.6s linear infinite; }
+@keyframes v-intro-c-flow { to { stroke-dashoffset: -13; } }
+.v-intro-c .ic-stops { position: absolute; inset: 0; }
+.v-intro-c .ic-stop { position: absolute; width: 0; height: 0; }
+.v-intro-c .ic-stop-pic { position: absolute; left: -28px; top: -28px; display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; background: #fff; box-shadow: 0 3px 0 var(--edge-soft), 0 6px 12px rgba(60, 35, 10, 0.12); }
+.v-intro-c .ic-stop-pic > .art,
+.v-intro-c .ic-stop-pic .item-pic .art { width: 40px; height: 40px; }
+.v-intro-c .ic-stop-pic .item-pic .qty { inset-inline-end: -12px; bottom: -8px; }
+.v-intro-c .ic-stop small { position: absolute; top: 31px; left: 0; translate: -50% 0; white-space: nowrap; font: 800 13px/1.2 var(--font-text); color: var(--ink-2); }
+.v-intro-c .ic-more { font: 800 17px var(--font-text); color: var(--ink-2); }
+
+.v-intro-c .ic-go { min-height: 62px; margin-top: 4px; font-size: 23px; gap: 10px; }
+.v-intro-c .ic-go svg { width: 24px; height: 24px; transition: transform 0.15s var(--ease-pop); }
+.v-intro-c .ic-go.going svg { transform: translateX(6px); }
+
+/* quieter: three labelled buttons on the scene */
+.v-intro-c .ic-quiet { display: flex; justify-content: center; gap: 8px; }
+.v-intro-c .ic-quiet button { position: relative; display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px 0 10px; border: 0; border-radius: 999px; background: rgba(40, 24, 10, 0.55); color: #fff8ec; font: 600 15px var(--font-display); }
+.v-intro-c .ic-quiet img,
+.v-intro-c .ic-quiet svg { width: 22px; height: 22px; }
+.v-intro-c .ic-quiet b { display: grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; background: var(--sun); color: var(--ink); font: 800 13px var(--font-text); }
+.v-intro-c .ic-quiet button.on { background: var(--sun); color: var(--ink); }
+.v-intro-c .ic-quiet button.on .v-intro-eq { display: flex; position: static; height: 14px; padding: 0; background: none; }
+.v-intro-c .ic-quiet button.on .v-intro-eq i { background: var(--ink); }
+@media (prefers-reduced-motion: reduce) { .v-intro-c .ic-dash { animation: none; } }
+
+/* sideways: the logo on the left, the card and the quiet row on the right, no scrolling */
+@media (orientation: landscape) {
+  .v-intro-c { display: grid; grid-template-columns: 1fr minmax(340px, 400px); column-gap: 28px; align-items: center; }
+  .v-intro-c .ic-logo { flex: none; padding: 0; }
+  .v-intro-c .ic-logo .art { width: 104px; }
+  .v-intro-c .ic-logo h1 { font-size: 62px; }
+  .v-intro-c .ic-low { width: 100%; align-self: end; gap: 10px; }
+}

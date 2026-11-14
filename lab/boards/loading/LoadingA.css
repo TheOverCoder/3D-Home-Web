@@ -1,0 +1,160 @@
+/* A · the farm on a stage (./LoadingA.tsx). Its grass and earth are the leaf and the edge mixed with the sun and the ink. */
+.v-loading-a {
+  --la-grass: color-mix(in oklab, var(--leaf) 62%, var(--sun));
+  --la-grass-2: color-mix(in oklab, var(--leaf) 82%, var(--ink));
+  --la-earth: color-mix(in oklab, var(--edge) 78%, var(--ink));
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  justify-items: center;
+  align-items: center;
+  padding: calc(env(safe-area-inset-top) + 18px) 20px calc(env(safe-area-inset-bottom) + 16px);
+  color: var(--ink);
+  background: radial-gradient(130% 62% at 50% 40%, #fff 0, var(--paper) 34%, var(--paper-2) 70%, var(--paper-3));
+  overflow: hidden;
+  user-select: none;
+}
+
+.v-loading-a .la-logo { text-align: center; }
+.v-loading-a .la-logo h1 {
+  margin: 0;
+  font: 700 46px/1 var(--font-display);
+  color: #fff;
+  -webkit-text-stroke: 6px var(--ink);
+  paint-order: stroke fill;
+  text-shadow: 0 5px 0 rgba(40, 24, 10, 0.25);
+}
+.v-loading-a .la-logo p { margin: 6px 0 0; font: 600 15px/1.3 var(--font-display); color: var(--ink-2); }
+
+/* the stage: a toy island of grass with a lip of earth under it, the house on it, the sun behind */
+.v-loading-a .la-stage { position: relative; width: min(370px, 100%, calc((100dvh - 330px) / 0.92)); aspect-ratio: 1 / 0.92; }
+.v-loading-a .la-island {
+  position: absolute;
+  left: 3%;
+  right: 3%;
+  top: 60%;
+  height: 32%;
+  border-radius: 50%;
+  background: radial-gradient(70% 70% at 50% 35%, var(--la-grass), var(--la-grass-2));
+  box-shadow:
+    0 14px 0 var(--la-earth),
+    0 32px 30px rgba(60, 35, 10, 0.22);
+}
+.v-loading-a .la-sun { position: absolute; left: 50%; top: 2%; width: 34%; height: auto; translate: -50% 0; }
+.v-loading-a .la-rays {
+  position: absolute;
+  left: 50%;
+  top: -24%;
+  width: 104%;
+  aspect-ratio: 1;
+  translate: -50% 0;
+  border-radius: 50%;
+  background: repeating-conic-gradient(color-mix(in oklab, var(--sun) 60%, transparent) 0 8deg, transparent 8deg 22.5deg);
+  mask: radial-gradient(closest-side, #000 22%, transparent 100%);
+  animation: la-spin 36s linear infinite;
+  pointer-events: none;
+}
+.v-loading-a .la-house {
+  position: absolute;
+  left: 50%;
+  top: 70%;
+  width: 46%;
+  translate: -50% -88%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.v-loading-a .la-house-in { display: block; transform-origin: 50% 100%; }
+.v-loading-a .la-house img { width: 100%; height: auto; transform-origin: 50% 100%; animation: la-breathe 3.4s ease-in-out infinite; filter: drop-shadow(0 6px 4px rgba(60, 35, 10, 0.22)); }
+.v-loading-a.ready .la-house img { animation: none; }
+.v-loading-a .la-thing { position: absolute; width: 13%; translate: -50% -100%; pointer-events: none; }
+.v-loading-a .la-thing.big { width: 17%; }
+.v-loading-a .la-thing img { width: 100%; height: auto; transform-origin: 50% 100%; animation: la-bob 2.8s ease-in-out infinite; }
+
+/* under the stage: the line and the bar, then the tip (Play, when ready) by the thumb */
+.v-loading-a .la-low { width: min(360px, 100%); display: grid; gap: 14px; }
+.v-loading-a .la-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.v-loading-a .la-head strong { display: inline-flex; align-items: center; gap: 6px; font: 600 20px/1.25 var(--font-display); }
+.v-loading-a .la-head strong svg { width: 20px; height: 20px; color: var(--leaf); }
+.v-loading-a .la-pct { font: 800 16px/1 var(--font-text); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.v-loading-a .la-bar { position: relative; height: 16px; margin-top: 8px; border-radius: 999px; overflow: hidden; background: var(--paper-3); box-shadow: inset 0 2px 0 rgba(60, 35, 10, 0.12); }
+.v-loading-a .la-bar > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  overflow: hidden;
+  border-radius: 999px;
+  background: linear-gradient(to bottom, #ffd96b, var(--sun) 55%, #f4b52a);
+  box-shadow: inset 0 -2px 0 rgba(160, 100, 0, 0.25);
+  transition:
+    width 0.45s ease-out,
+    background 0.3s;
+}
+/* ribs drifting backwards: a bar that seems to go faster (Harrison et al., 2010) */
+.v-loading-a .la-bar i { position: absolute; inset: 0; background: repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.32) 0 7px, transparent 7px 14px); background-size: 19.8px 100%; animation: la-ribs 1s linear infinite; }
+.v-loading-a.ready .la-bar > span { background: linear-gradient(to bottom, #5fc272, var(--leaf)); }
+.v-loading-a.ready .la-bar i { display: none; }
+.v-loading-a .la-left { display: flex; align-items: center; gap: 5px; margin: 8px 0 0; font: 700 15px/1.2 var(--font-text); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.v-loading-a .la-left svg { width: 16px; height: 16px; }
+
+.v-loading-a .la-slot { position: relative; min-height: 64px; display: grid; align-items: center; }
+.v-loading-a .la-tip {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 8px 14px;
+  border: 2px solid #fff;
+  border-radius: 18px;
+  background: var(--paper);
+  box-shadow: 0 3px 0 var(--edge-soft);
+}
+.v-loading-a .la-tip img { width: 44px; height: 44px; }
+.v-loading-a .la-tip p { margin: 0; font: 600 15px/1.35 var(--font-text); color: var(--ink); }
+.v-loading-a .la-again { background: color-mix(in oklab, var(--leaf) 10%, var(--paper)); }
+.v-loading-a .la-play { position: relative; overflow: hidden; min-height: 60px; font-size: 22px; }
+.v-loading-a .la-play svg { width: 22px; height: 22px; }
+/* one shine across it as it lands, then a calm glow that asks for the press */
+.v-loading-a .la-play::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.7) 50%, transparent 70%);
+  translate: -110% 0;
+  animation: la-shine 0.8s ease-out 0.55s both;
+  pointer-events: none;
+}
+.v-loading-a .la-play { animation: la-glow 2.6s ease-in-out 1.4s infinite; }
+
+/* sideways: the stage on the left, the logo, the line and the press on the right */
+.v-loading-a.wide {
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+  grid-template-rows: auto auto;
+  grid-template-areas: 'stage logo' 'stage low';
+  align-content: center;
+  column-gap: 28px;
+  row-gap: 18px;
+  padding: 12px calc(env(safe-area-inset-right) + 20px) calc(env(safe-area-inset-bottom) + 10px) calc(env(safe-area-inset-left) + 8px);
+}
+.v-loading-a.wide .la-stage { grid-area: stage; width: min(100%, calc((100dvh - 40px) / 0.92)); }
+.v-loading-a.wide .la-logo { grid-area: logo; align-self: end; }
+.v-loading-a.wide .la-logo h1 { font-size: 38px; -webkit-text-stroke-width: 5px; }
+.v-loading-a.wide .la-low { grid-area: low; align-self: start; gap: 12px; }
+
+@keyframes la-spin { to { rotate: 360deg; } }
+@keyframes la-breathe { 50% { transform: scale(1.025, 0.985); } }
+@keyframes la-bob { 50% { transform: translateY(-3px) rotate(-3deg); } }
+@keyframes la-ribs { to { background-position: -19.8px 0; } }
+@keyframes la-shine { to { translate: 110% 0; } }
+@keyframes la-glow { 50% { box-shadow: 0 4px 0 var(--sun-lip), 0 8px 16px rgba(40, 24, 10, 0.2), 0 0 0 8px color-mix(in oklab, var(--sun) 30%, transparent); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .v-loading-a .la-rays,
+  .v-loading-a .la-house img,
+  .v-loading-a .la-thing img,
+  .v-loading-a .la-bar i,
+  .v-loading-a .la-play,
+  .v-loading-a .la-play::after { animation: none; }
+}

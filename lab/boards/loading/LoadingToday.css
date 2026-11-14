@@ -1,0 +1,3 @@
+/* Today (./LoadingToday.tsx): the picture covers the screen */
+.v-loading-today { position: fixed; inset: 0; background: var(--ink); }
+.v-loading-today img { width: 100%; height: 100%; object-fit: cover; display: block; }

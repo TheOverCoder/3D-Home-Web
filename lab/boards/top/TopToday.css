@@ -1,0 +1,11 @@
+/* Today (./TopToday.tsx): a picture of the game's screen, covering the frame from its top. */
+.v-top-today img {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 0;
+  pointer-events: none;
+}

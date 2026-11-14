@@ -1,0 +1,175 @@
+/* The top board's shared pieces (./parts.tsx): the compass's geometry (each variant gives it its look, under its own
+   class), and the lab's stand-ins, drawn dashed so they never read as part of a design. */
+
+.top-compass {
+  position: relative;
+  pointer-events: none;
+}
+.top-compass-strip {
+  position: relative;
+  height: 30px;
+  pointer-events: auto;
+  touch-action: none;
+  cursor: ew-resize;
+}
+.top-compass-glass {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  pointer-events: none;
+}
+.top-compass-tick,
+.top-compass-major-tick,
+.top-compass-major,
+.top-compass-num,
+.top-compass-letter {
+  position: absolute;
+  top: 50%;
+  translate: -50% -50%;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.top-compass-tick {
+  width: 1.5px;
+  height: 6px;
+  border-radius: 1px;
+  background: rgba(255, 255, 255, 0.5);
+}
+.top-compass-major-tick {
+  width: 2px;
+  height: 10px;
+  border-radius: 1px;
+  background: rgba(255, 255, 255, 0.8);
+}
+.top-compass-ahead {
+  position: absolute;
+  left: 50%;
+  top: -6px;
+  margin-left: -5px;
+  border: 5px solid transparent;
+  border-top-color: var(--sun);
+  pointer-events: none;
+}
+.top-compass-mark {
+  position: absolute;
+  top: 50%;
+  width: 44px;
+  height: 44px;
+  translate: -50% -50%;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.top-compass-pin {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  transition: scale 0.1s;
+}
+.top-compass-mark:active .top-compass-pin {
+  scale: 0.9;
+}
+.top-compass-mark[data-side]::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  margin-top: -5px;
+  border: 5px solid transparent;
+}
+.top-compass-mark[data-side='left']::before {
+  left: -4px;
+  border-right-color: #fff;
+}
+.top-compass-mark[data-side='right']::before {
+  right: -4px;
+  border-left-color: #fff;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .top-compass-mark.going .top-compass-pin {
+    animation: top-compass-going 1.4s ease-in-out infinite;
+  }
+}
+@keyframes top-compass-going {
+  50% {
+    scale: 1.12;
+  }
+}
+
+/* the lab's sale (not part of a design): where the action button's prompt is, dashed */
+.top-lab-sale {
+  position: fixed;
+  left: 50%;
+  bottom: calc(150px + env(safe-area-inset-bottom));
+  translate: -50% 0;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 6px 16px 6px 10px;
+  border: 2px dashed rgba(255, 255, 255, 0.8);
+  border-radius: 999px;
+  background: rgba(30, 20, 12, 0.72);
+  color: #fff;
+  pointer-events: auto;
+  /* last: the frame rewrites a rule with env() and drops what follows a font shorthand with var() */
+  font: 800 17px/1 var(--font-text);
+}
+.top-lab-sale:active {
+  scale: 0.95;
+}
+.top-lab-sale .item-pic .art {
+  width: 34px;
+  height: 34px;
+}
+.top-lab-sale-coins {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #ffe08a;
+}
+.top-lab-sale-coins img {
+  width: 26px;
+  height: 26px;
+}
+.top-lab-sale-tag {
+  position: absolute;
+  top: -11px;
+  left: 50%;
+  translate: -50% 0;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #fff;
+  color: #3b2a1e;
+  font: 700 11px/1.4 var(--font-display);
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  .top-lab-sale {
+    bottom: calc(70px + env(safe-area-inset-bottom));
+  }
+}
+
+/* what a tap would open in the game: a dashed note low in the middle */
+.top-lab-opens {
+  position: fixed;
+  left: 50%;
+  bottom: calc(214px + env(safe-area-inset-bottom));
+  translate: -50% 0;
+  z-index: 30;
+  padding: 8px 14px;
+  border: 2px dashed var(--ink-2);
+  border-radius: 14px;
+  background: var(--paper);
+  color: var(--ink);
+  white-space: nowrap;
+  pointer-events: none;
+  font: 700 15px/1.2 var(--font-text);
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  .top-lab-opens {
+    bottom: calc(130px + env(safe-area-inset-bottom));
+  }
+}

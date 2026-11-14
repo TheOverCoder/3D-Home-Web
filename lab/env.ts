@@ -83,6 +83,16 @@ if (env.touch || env.reduced) {
   window.matchMedia = (media: string) => realMatch(asScreen(media))
 }
 
+/** Each declaration that holds env() set again with the frame's safe areas, one by one: the rest of the rule is left
+ *  as it is (writing the whole rule back loses declarations after a shorthand that holds var(), such as a font). */
+function fixDeclarations(style: CSSStyleDeclaration) {
+  for (const m of style.cssText.matchAll(/(?:^|;)\s*([\w-]+)\s*:\s*([^;]*env\([^;]*)/g)) {
+    const [, prop, raw] = m
+    const important = /!\s*important\s*$/.test(raw)
+    style.setProperty(prop, toVars(raw.replace(/!\s*important\s*$/, '').trim()), important ? 'important' : '')
+  }
+}
+
 function fixRules(rules: CSSRuleList) {
   for (const r of Array.from(rules)) {
     if ((env.touch || env.reduced) && r instanceof CSSMediaRule) {
@@ -90,7 +100,7 @@ function fixRules(rules: CSSRuleList) {
       const now = asScreen(was)
       if (now !== was) r.media.mediaText = now
     }
-    if (spec && r instanceof CSSStyleRule && r.style.cssText.includes('env(')) r.style.cssText = toVars(r.style.cssText)
+    if (spec && r instanceof CSSStyleRule && r.style.cssText.includes('env(')) fixDeclarations(r.style)
     const inner = (r as CSSGroupingRule).cssRules
     if (inner?.length) fixRules(inner)
   }

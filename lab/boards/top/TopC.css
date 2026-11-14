@@ -1,0 +1,521 @@
+/* C · a dashboard (./TopC.tsx). Upright: the coins, the level's road and the menu in one row; under it the compass
+   with its two wings of gauges. Sideways: all of it in one row. Every rule under .v-top-c (the bubble, drawn in the
+   page's body, under .v-top-c-pop). */
+.v-top-c {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+.v-top-c-row {
+  position: absolute;
+  top: calc(max(10px, env(safe-area-inset-top)) + 4px);
+  left: calc(10px + env(safe-area-inset-left));
+  right: calc(10px + env(safe-area-inset-right));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 6px;
+}
+.v-top-c-row > * {
+  pointer-events: auto;
+}
+
+/* the coins: the hero */
+.v-top-c-coins {
+  order: 1;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 46px;
+  padding: 0 14px 0 2px;
+  border-radius: 999px;
+  background: var(--night);
+  border: 2px solid color-mix(in srgb, var(--sun) 60%, transparent);
+  color: #ffe08a;
+  font: 900 22px/1 var(--font-text);
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 3px 12px rgba(20, 12, 6, 0.32);
+  overflow: hidden;
+}
+.v-top-c-coins img {
+  width: 40px;
+  height: 40px;
+  margin-left: -4px;
+  filter: drop-shadow(0 2px 1px rgba(0, 0, 0, 0.3));
+}
+.v-top-c-shine {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  background: linear-gradient(100deg, transparent, rgba(255, 240, 190, 0.75), transparent);
+  pointer-events: none;
+}
+
+/* the level: a short road from your star to the next level, its prize hanging at the end */
+.v-top-c-road {
+  order: 2;
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 46px;
+  padding: 0 6px 0 0;
+  border-radius: 999px;
+  background: var(--night);
+  border: 2px solid var(--night-line);
+  color: #fff;
+  box-shadow: 0 3px 12px rgba(20, 12, 6, 0.32);
+}
+.v-top-c-star {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex: none;
+}
+.v-top-c-star img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.v-top-c-star b {
+  position: relative;
+  top: 2px;
+  font: 900 15px/1 var(--font-text);
+  text-shadow:
+    0 0 2px var(--xp-lip),
+    0 0 2px var(--xp-lip),
+    0 1px 0 var(--xp-lip);
+}
+.v-top-c-way {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+.v-top-c-togo {
+  font: 800 13px/1 var(--font-text);
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.v-top-c-track {
+  position: relative;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.45);
+}
+.v-top-c-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--xp) 50%, #fff), var(--xp) 60%, var(--xp-lip));
+}
+.v-top-c-head {
+  position: absolute;
+  right: -6px;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  margin-top: -6px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow:
+    0 0 0 2px var(--xp),
+    0 0 10px 2px var(--xp-glow);
+}
+.v-top-c-next {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: none;
+}
+.v-top-c-next i {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px dashed rgba(255, 255, 255, 0.55);
+  color: #fff;
+  font: 800 13px/1 var(--font-text);
+  font-style: normal;
+}
+.v-top-c-prize {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin-left: 2px;
+}
+.v-top-c-prize .art {
+  width: 28px;
+  height: 28px;
+}
+.v-top-c-road.ready {
+  border-color: var(--sun);
+  box-shadow:
+    0 3px 12px rgba(20, 12, 6, 0.32),
+    0 0 14px 1px color-mix(in srgb, var(--sun) 55%, transparent);
+}
+.v-top-c-road.ready .v-top-c-togo {
+  color: #ffe08a;
+}
+.v-top-c-claim {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  height: 32px;
+  padding: 0 9px 0 1px;
+  border-radius: 999px;
+  background: var(--sun);
+  color: var(--ink);
+  font: 900 15px/1 var(--font-text);
+  box-shadow: inset 0 -2px 0 var(--sun-lip);
+  flex: none;
+}
+.v-top-c-claim img {
+  width: 28px;
+  height: 28px;
+}
+
+/* the dashboard: the compass, its wings of gauges */
+.v-top-c-dash {
+  order: 4;
+  flex: 1 0 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 6px;
+}
+.v-top-c-wing {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  pointer-events: auto;
+}
+/* upright the wings stand as two columns on the sides, the compass wide between them; sideways they lie in the row */
+.v-top-c-mid {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 360px;
+  margin-top: 5px;
+}
+.v-top-c-slot {
+  width: 42px;
+}
+.v-top-c-gauge {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border-radius: 14px;
+  border: 2px solid var(--night-line);
+  background: var(--night);
+  overflow: visible;
+  box-shadow: 0 3px 10px rgba(20, 12, 6, 0.3);
+}
+.v-top-c-tank {
+  position: absolute;
+  inset: 2px;
+  border-radius: 10px;
+  transform-origin: 50% 100%;
+  background: linear-gradient(to top, color-mix(in srgb, var(--leaf) 85%, #000), color-mix(in srgb, var(--leaf) 70%, #fff));
+  opacity: 0.9;
+}
+.v-top-c-gauge.high .v-top-c-tank {
+  background: linear-gradient(to top, var(--sun-lip), var(--sun));
+}
+.v-top-c-gauge.full {
+  border-color: var(--berry);
+}
+.v-top-c-gauge.full .v-top-c-tank {
+  background: linear-gradient(to top, var(--berry-lip), var(--berry));
+}
+.v-top-c-gauge.good {
+  border-color: color-mix(in srgb, var(--leaf) 80%, #fff);
+}
+.v-top-c-gauge.quiet {
+  opacity: 0.72;
+}
+.v-top-c-gauge-pic {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+.v-top-c-gauge-pic .art {
+  width: 30px;
+  height: 30px;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35));
+}
+.v-top-c-count {
+  position: absolute;
+  right: -7px;
+  bottom: -7px;
+  min-width: 21px;
+  height: 21px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink);
+  font: 900 13px/21px var(--font-text);
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+.v-top-c-gauge.good .v-top-c-count {
+  background: var(--leaf);
+  color: #fff;
+}
+.v-top-c-flag {
+  position: absolute;
+  left: 50%;
+  bottom: -9px;
+  translate: -50% 0;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--berry);
+  color: #fff;
+  font: 900 13px/17px var(--font-text);
+  box-shadow: 0 0 0 1.5px #fff;
+}
+
+.v-top-c .top-compass-glass {
+  background: color-mix(in srgb, var(--night) 58%, transparent);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  -webkit-backdrop-filter: blur(10px) saturate(1.3);
+  backdrop-filter: blur(10px) saturate(1.3);
+}
+.v-top-c .top-compass-strip {
+  height: 32px;
+}
+.v-top-c .top-compass-letter {
+  font: 600 16px/1 var(--font-display);
+  color: #fff;
+}
+.v-top-c .top-compass-letter.north {
+  color: var(--sun);
+}
+.v-top-c .top-compass-major {
+  font: 700 13px/1 var(--font-display);
+  color: rgba(255, 255, 255, 0.75);
+}
+.v-top-c .top-compass-pin {
+  width: 30px;
+  height: 30px;
+  background: var(--paper);
+  box-shadow:
+    0 0 0 2px #fff,
+    0 2px 6px rgba(20, 12, 6, 0.4);
+}
+.v-top-c .top-compass-pin .item-pic .art {
+  width: 23px;
+  height: 23px;
+}
+.v-top-c .top-compass-pin .item-pic .qty {
+  min-width: 19px;
+  height: 19px;
+  padding: 0 4px;
+  font: 900 13px/19px var(--font-text);
+  right: -12px;
+  bottom: -10px;
+}
+.v-top-c .top-compass-mark.alert .top-compass-pin {
+  box-shadow:
+    0 0 0 2.5px var(--berry),
+    0 2px 6px rgba(20, 12, 6, 0.4);
+}
+.v-top-c .top-compass-mark.alert .qty {
+  background: var(--berry);
+  color: #fff;
+}
+.v-top-c .top-compass-mark.going .top-compass-pin {
+  box-shadow:
+    0 0 0 2.5px var(--sun),
+    0 0 0 6px color-mix(in srgb, var(--sun) 35%, transparent);
+}
+.v-top-c-hour {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  margin-top: 3px;
+  color: #fff;
+  font: 800 13px/1 var(--font-text);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+}
+.v-top-c-hour img {
+  width: 18px;
+  height: 18px;
+}
+
+/* the menu: a round button that opens into three, each with its name */
+.v-top-c-menu {
+  order: 3;
+  position: relative;
+}
+.v-top-c-menu-btn {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid var(--night-line);
+  background: var(--night);
+  color: #fff;
+  box-shadow: 0 3px 12px rgba(20, 12, 6, 0.32);
+}
+.v-top-c-menu-btn svg {
+  width: 24px;
+  height: 24px;
+}
+.v-top-c-menu-btn.on {
+  background: var(--paper);
+  color: var(--ink);
+}
+.v-top-c-dial {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+  justify-items: end;
+}
+.v-top-c-dial-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+.v-top-c-dial-word {
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink);
+  font: 600 15px/1 var(--font-display);
+  white-space: nowrap;
+  box-shadow:
+    0 2px 0 var(--edge-soft),
+    0 3px 10px rgba(20, 12, 6, 0.25);
+}
+.v-top-c-dial-icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow:
+    0 3px 0 var(--edge-soft),
+    0 3px 10px rgba(20, 12, 6, 0.25);
+}
+.v-top-c-dial-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+/* only the compass, or clear: the compass alone, clear of the menu */
+.v-top-c.hud-compass .v-top-c-row::before {
+  content: '';
+  width: 46px;
+  flex: none;
+}
+.v-top-c.hud-compass .v-top-c-dash {
+  order: 2;
+  flex: 1 1 0;
+  min-width: 0;
+}
+.v-top-c.hud-clean .v-top-c-menu {
+  margin-left: auto;
+}
+@media (orientation: landscape) {
+  .v-top-c-row {
+    flex-wrap: nowrap;
+    align-items: flex-start;
+  }
+  .v-top-c-road {
+    flex: 0 0 196px;
+  }
+  .v-top-c-dash {
+    order: 3;
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .v-top-c-wing {
+    flex-direction: row;
+    gap: 5px;
+  }
+  .v-top-c-menu {
+    order: 4;
+  }
+}
+
+/* the bubble a gauge tells its number in */
+.v-top-c-pop {
+  z-index: 40;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 2px 14px;
+  min-width: 170px;
+  padding: 10px 10px 10px 14px;
+  border-radius: 16px;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow:
+    0 3px 0 var(--edge-soft),
+    0 10px 28px rgba(40, 24, 10, 0.35);
+  transform-origin: var(--radix-popover-content-transform-origin);
+  animation: v-top-c-pop 0.2s var(--ease-pop);
+}
+.v-top-c-pop-name {
+  grid-column: 1;
+  font: 600 15px/1.1 var(--font-display);
+  color: var(--ink-2);
+}
+.v-top-c-pop-num {
+  grid-column: 1;
+  font: 900 20px/1.1 var(--font-text);
+  font-variant-numeric: tabular-nums;
+}
+.v-top-c-pop-num small {
+  font-size: 15px;
+  color: var(--ink-2);
+}
+.v-top-c-pop .btn {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  min-height: 44px;
+}
+.v-top-c-pop-arrow {
+  fill: var(--paper);
+}
+@keyframes v-top-c-pop {
+  from {
+    opacity: 0;
+    scale: 0.85;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .v-top-c-pop {
+    animation: none;
+  }
+}

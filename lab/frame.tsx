@@ -32,8 +32,8 @@ interface Spots {
 const SPOTS = import.meta.glob('./stills/*.json', { eager: true, import: 'default' }) as Record<string, Spots>
 const spotsOf = (name: string, wide: boolean) => SPOTS[`./stills/${name}-${wide ? 'sideways' : 'upright'}.json`]
 
-/** The still every board without one of its own stands on, in the sandbox. */
-const HOME = BOARDS.find((b) => b.still !== 'none')?.still ?? 'yard'
+/** The game's screen the sandbox opens on: the yard with its chips (a board may stand on another still once open). */
+const HOME = 'yard'
 
 const parse = () => {
   const [b, v, s, n] = decodeURIComponent(location.hash.slice(1)).split('/')
