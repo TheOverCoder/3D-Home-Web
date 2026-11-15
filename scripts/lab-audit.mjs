@@ -5,7 +5,7 @@
 // page shows it) and prints a summary. With the lab served (`npm run lab`, port 5180):
 //
 //   node scripts/lab-audit.mjs [--boards level,top] [--devices upright,sideways] [--wait 1600] [--base url]
-import { writeFile } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { args, devicePage, frameUrl, labOf, launch, ready } from './lab-tools.mjs'
@@ -51,7 +51,13 @@ function measure(safe) {
 }
 
 const browser = await launch()
-const report = { at: new Date().toISOString(), devices, boards: {} }
+// boards named with --boards are checked again; what the last audit found for the others is kept
+const kept = a.boards
+  ? await readFile(out, 'utf8')
+      .then((t) => JSON.parse(t).boards ?? {})
+      .catch(() => ({}))
+  : {}
+const report = { at: new Date().toISOString(), devices, boards: { ...kept } }
 try {
   const lab = await labOf(browser, base)
   const only = a.boards ? String(a.boards).split(',') : null
@@ -59,14 +65,15 @@ try {
     const r = (report.boards[b.id] = { screens: 0, errors: [], blank: [], scroll: [], small: [], tiny: [], under: [], off: [] })
     for (const device of devices) {
       const spec = lab.devices[device]
-      const { ctx, page } = await devicePage(browser, spec)
-      const errors = []
-      page.removeAllListeners('pageerror')
-      page.removeAllListeners('console')
-      page.on('pageerror', (e) => errors.push(e.message))
-      page.on('console', (m) => m.type() === 'error' && !/favicon/.test(m.text()) && errors.push(m.text()))
-      for (const state of b.states)
-        for (const variant of b.variants) {
+      // a page of its own for each variant: one page through many 3D variants ran out of room for new frames
+      for (const variant of b.variants) {
+        const { ctx, page } = await devicePage(browser, spec)
+        const errors = []
+        page.removeAllListeners('pageerror')
+        page.removeAllListeners('console')
+        page.on('pageerror', (e) => errors.push(e.message))
+        page.on('console', (m) => m.type() === 'error' && !/favicon/.test(m.text()) && errors.push(m.text()))
+        for (const state of b.states) {
           const where = `${variant}/${state}/${device}`
           errors.length = 0
           await page.goto(frameUrl(base, { board: b.id, variant, state, device, fresh: true }))
@@ -86,7 +93,8 @@ try {
           add(r.under, m.under)
           add(r.off, m.off)
         }
-      await ctx.close()
+        await ctx.close()
+      }
     }
     const n = (k) => r[k].length
     console.log(
