@@ -37,6 +37,7 @@ import { PARCELS, PARCEL_IDS, PLACE_IDS, canPlace } from './layout'
 import { MAX_PLACES, SHOP_LADDERS, placesOpen, shopperEvery } from './market'
 import { offersPerDay } from './contractor'
 import { levelOf } from './xp'
+import { QUEUE, machineLevel } from './machineView'
 import { garmentById } from './outfit'
 import { sanitizeLook } from '../models/look'
 import { arrivalSeconds, farm, gateX, inLine, placesInLine, tick } from './state'
@@ -255,18 +256,20 @@ function farmProblems(): string[] {
     p.stock.forEach((s, i) => bad(`producers.${id}.stock.${i}`, isCount(s, def.max)))
     p.timer.forEach((t, i) => bad(`producers.${id}.timer.${i}`, typeof t === 'number' && t >= 0 && t < def.every))
   }
+  // the machines: a queue of their own recipes, twelve at most; the done ones first, no more than there are; the one
+  // under way no further in than it takes at the machine's level (none: no progress); three to twelve places; the
+  // seconds worked from 0
   bad('the machines', sameKeys(farm.machines, MACHINE_IDS))
   for (const id of MACHINE_IDS) {
     const def = MACHINES[id]
     const m = farm.machines[id]
-    const r = def.recipes.find((x) => x.id === m.recipe)
-    bad(`machines.${id}: its fields`, sameKeys(m, ['recipe', 'count', 'progress', 'ready']))
-    bad(`machines.${id}.count`, isCount(m.count, def.capacity))
-    bad(`machines.${id}.ready`, isCount(m.ready, def.capacity))
-    const idle = m.recipe === null && m.count === 0 && m.ready === 0 && m.progress === 0
-    const working = !!r && m.count > 0 && m.ready === 0 && isWithin(m.progress, 0, m.count * r.seconds)
-    const done = !!r && m.count === 0 && m.ready > 0 && m.progress === 0
-    bad(`machines.${id}: idle, at work or done`, idle || working || done)
+    bad(`machines.${id}: its fields`, sameKeys(m, ['jobs', 'done', 'progress', 'capacity', 'worked']))
+    bad(`machines.${id}.jobs`, Array.isArray(m.jobs) && m.jobs.length <= QUEUE.max && m.jobs.every((j) => def.recipes.some((r) => r.id === j)))
+    bad(`machines.${id}.done`, isCount(m.done, m.jobs.length))
+    bad(`machines.${id}.capacity`, isCount(m.capacity, QUEUE.max) && m.capacity >= QUEUE.start)
+    bad(`machines.${id}.worked`, isWithin(m.worked, 0, Number.MAX_VALUE))
+    const r = def.recipes.find((x) => x.id === m.jobs[m.done])
+    bad(`machines.${id}.progress`, r ? isWithin(m.progress, 0, r.seconds * (1 - machineLevel(m.worked).boost.speed)) : m.progress === 0)
   }
   for (const k of ['sprinkler', 'compost', 'started'] as const) bad(k, typeof farm[k] === 'boolean')
   bad('expansions', sameKeys(farm.expansions, ['east', 'west']) && Object.values(farm.expansions).every((v) => typeof v === 'boolean'))

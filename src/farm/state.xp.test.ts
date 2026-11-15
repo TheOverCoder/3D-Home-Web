@@ -6,6 +6,7 @@ import { BEDS, LEVELS, MACHINES, OFFICE_SCREEN, XP_FOR, cropById } from './data'
 import { goalById, goalTarget } from './goals'
 import {
   acceptOffer,
+  addJob,
   buildBed,
   buy,
   buyLand,
@@ -26,11 +27,12 @@ import {
   gainXp,
   harvestBeds,
   importSlot,
-  loadMachine,
   marketFill,
+  moveJob,
   movePlace,
   orderAt,
   plantBeds,
+  removeJob,
   resetFarm,
   sellAll,
   sendOrder,
@@ -97,13 +99,13 @@ describe('XP for each thing done, once, however many at a press', () => {
     expect(gained(() => harvestBeds(beds))).toEqual({ xp: 3 * XP_FOR.harvest, events: 3 })
   })
 
-  it('collecting gives XP for each good taken; a machine one for loading, and one for each good taken out', () => {
+  it('collecting gives XP for each good taken; a machine none for a job put in (it can come out again), its XP for each job taken out', () => {
     farm.producers.hens.stock[0] = 5
     expect(gained(() => collect('hens')).xp).toBe(5 * XP_FOR.collect)
     farm.inv.wheat = 8
-    expect(gained(() => loadMachine('mill', 'wheat'))).toEqual({ xp: XP_FOR.load, events: 1 })
+    expect(gained(() => [0, 1, 2].map(() => addJob('mill', 'wheat')))).toEqual({ xp: 0, events: 0 })
     tick(60)
-    expect(gained(() => collectMachine('mill')).xp).toBe(6 * XP_FOR.make)
+    expect(gained(() => collectMachine('mill'))).toEqual({ xp: 3 * XP_FOR.make, events: 1 })
   })
 
   it('a sale is worth its coins: three buyers sold to at a press, each sale on its own', () => {
@@ -151,8 +153,15 @@ describe('XP for each thing done, once, however many at a press', () => {
       () => setPlacePrice(1, 200),
       () => declineOffer(v.id),
       () => declineOrder(0),
+      // a job into a machine's queue, moved, taken out again
+      () => addJob('loom', 'wool'),
+      () => addJob('loom', 'wool'),
+      () => moveJob('loom', 1, 1),
+      () => removeJob('loom', 1),
     ]
+    farm.inv.wool = 2
     for (const act of none) expect(gained(act)).toEqual({ xp: 0, events: 0 })
+    expect(farm.machines.loom.jobs).toEqual(['wool'])
   })
 
   it('nothing for time passing, in play or away: what grows, fills, finishes, comes and buys by itself', () => {
@@ -160,7 +169,7 @@ describe('XP for each thing done, once, however many at a press', () => {
     farm.started = true
     for (const i of built()) ripe(i)
     farm.inv.wheat = 8
-    loadMachine('mill', 'wheat')
+    for (let k = 0; k < 3; k++) addJob('mill', 'wheat')
     marketFill('egg')
     setRandom(() => 0)
     expect(
@@ -191,7 +200,9 @@ describe('gainXp, the level and its coins', () => {
     plantBeds([bed], 'carrot')
     expect(takeFx()).toContainEqual(expect.objectContaining({ kind: 'xp', x: BEDS[bed].x, y: 0.7, z: BEDS[bed].z }))
     farm.inv.wool = 1
-    loadMachine('loom', 'wool')
+    addJob('loom', 'wool')
+    tick(10)
+    collectMachine('loom')
     const loom = MACHINES.loom
     expect(takeFx()).toContainEqual(expect.objectContaining({ kind: 'xp', x: loom.x + loom.sparkle[0], y: loom.sparkle[1], z: loom.z + loom.sparkle[2] }))
     // with no point to name (a claim, a panel's sale), they still fly: from low in the middle of the screen (src/fx/xp.ts

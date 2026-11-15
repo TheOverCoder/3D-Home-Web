@@ -9,6 +9,7 @@ import { Check, Clock, Minus, Plus, Users } from '../ui/glyphs'
 import { ITEMS, LADDERS, MANAGER, SELLABLE, SHOP, count, produceById, type ProduceId } from './data'
 import { buyChance, ladderPrice, managerPay, managerPct, placesOpen, shoppersAtOnce, snapPct, unitPrice } from './market'
 import { iconUrl } from './icons'
+import { priceOf } from './prices'
 import { ContractorLink, KeepTag } from './ContractorPanel'
 import { LadderRow } from './Ladder'
 import { buyMarket, clockText, emptyPlace, farm, fillPlace, ladderLevel, ladderMaxed, ladderOpen, orderAt, sellAllToManager, sellToManager, setPlacePrice, useFarm } from './state'
@@ -32,7 +33,7 @@ function ordersWant(good: ProduceId) {
 /** One good the manager buys: how many you have, what the orders still want of it, and Sell (the whole stack). */
 function ManagerRow({ id, pct }: { id: ProduceId; pct: number }) {
   const have = farm.inv[id]
-  const pay = managerPay(produceById(id).price, have, pct)
+  const pay = managerPay(priceOf(id), have, pct)
   const want = ordersWant(id)
   return (
     <div className="farm-buyer">
@@ -108,7 +109,7 @@ export function ManagerPanel() {
   const rate = ladderLevel('rate')
   const pct = managerPct(rate)
   const goods = SELLABLE.filter((id) => farm.inv[id] > 0)
-  const all = goods.reduce((n, id) => n + managerPay(produceById(id).price, farm.inv[id], pct), 0)
+  const all = goods.reduce((n, id) => n + managerPay(priceOf(id), farm.inv[id], pct), 0)
   return (
     <Shell
       title="The manager"
@@ -177,7 +178,7 @@ function PlaceRow({ k }: { k: number }) {
             </span>
             <span className="tag" title="A unit's price">
               <img src={art('coin')} alt="" />
-              {unitPrice(produceById(good).price, s.pct)}
+              {unitPrice(priceOf(good), s.pct)}
             </span>
             <span className="tag" title="The chance a shopper takes one">
               <img src={art('shopping-cart')} alt="" />
@@ -366,7 +367,7 @@ export function MarketPlacePanel({ place }: { place: number }) {
         </Stepper>
       )}
       <Stepper label="Price" less={pct > SHOP.pct.min} more={pct < SHOP.pct.max} onLess={() => price(-1)} onMore={() => price(1)}>
-        {good ? <Coins n={unitPrice(produceById(good).price, pct)} /> : <span>{pct}%</span>}
+        {good ? <Coins n={unitPrice(priceOf(good), pct)} /> : <span>{pct}%</span>}
         <span className="market-chance" title="The chance a shopper takes one">
           <img src={art('shopping-cart')} alt="" />
           {percent(buyChance(pct))}

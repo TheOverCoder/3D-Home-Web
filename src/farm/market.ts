@@ -2,7 +2,8 @@
 // what a place on your shelves sells for, how likely a shopper is to take each unit, and the saved market read back.
 // Pure: nothing here changes the farm.
 
-import { LADDERS, LADDER_IDS, MANAGER, SELLABLE, SHOP, produceById, type LadderId, type ProduceId } from './data'
+import { LADDERS, LADDER_IDS, MANAGER, SELLABLE, SHOP, type LadderId, type ProduceId } from './data'
+import { priceOf } from './prices'
 
 /** One place on the shelves: its good (kept when it sells out, as a bed keeps its crop), how many units, its price in
  *  percent of the good's fair price. */
@@ -78,7 +79,7 @@ export function rollShopper(shelves: readonly Shelf[], open: number, rand: () =>
       if (rand() < p) {
         taken[k]++
         units++
-        coins += unitPrice(produceById(s.good).price, s.pct)
+        coins += unitPrice(priceOf(s.good), s.pct)
       }
   }
   return { taken, coins, units }
