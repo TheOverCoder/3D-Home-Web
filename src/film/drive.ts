@@ -238,7 +238,7 @@ function leaving(from: Place, len: number): Shot {
             [len, 9],
           ],
         },
-        cam: { kind: 'post', at: [DRIVE.x + 13.6, 1.3, DRIVE.z + 7.2], aim: [DRIVE.x + 6, 1.0, DRIVE.z + 0.5], follow: 0.65, lens: 30 },
+        cam: { kind: 'post', at: [DRIVE.x + 13.6, 2.3, DRIVE.z + 7.2], aim: [DRIVE.x + 6, 0.8, DRIVE.z + 0.5], follow: 0.65, lens: 30 },
       }
 }
 
@@ -264,7 +264,7 @@ function arriving_(to: Place, len: number, stop: number): Shot {
         set: 'lot',
         len,
         car: { path: way, from: start, speeds: arriving(length - start, stop, 1.3) },
-        cam: { kind: 'post', at: [LOT.x + 9, 3.3, LOT.z + 0.9], aim: [LOT.x - 7, 0.5, LOT.z - 1.5], follow: 0.5, lens: 32 },
+        cam: { kind: 'post', at: [LOT.x + 9, 3.3, LOT.z + 0.5], aim: [LOT.x - 7, 0.5, LOT.z - 1.5], follow: 0.5, lens: 32 },
         horn: stop + 0.25,
       }
 }
