@@ -878,6 +878,7 @@ button.row-main {
   cursor: pointer;
 }
 .card.home {
+  flex: none;
   min-height: 52px;
   border: 1px solid var(--line);
 }
