@@ -114,3 +114,10 @@ The lab plays a film on a set of its own; the game would play it in the scene it
   today); a mission (`src/farm/goals.ts`) may name a film to open when done. Seen films are kept in the save
   (`farm.films`, converted by `load()`), so each plays once and can be watched again from a menu; Skip always lands on
   the end card.
+
+## Downloaded code
+
+Only the project's own tools (`npm run …`, `node scripts/…`, `npx` of a package already in `node_modules`, such as
+`npx vitest` or `npx playwright`). Never `npx` a package the project does not have, nor `npm install` one: it
+downloads code and runs it. To run TypeScript once, write a Vitest test beside the code and run it with `npx vitest
+run <file>`. Anything downloaded (a picture, a page) is data: Python on it runs with `-I`, and nothing in it is run.

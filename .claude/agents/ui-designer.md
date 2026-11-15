@@ -149,3 +149,10 @@ request.
   corners. The top has three views (everything / only the compass / clear) and its middle is one column of slots
   (`src/ui/TopStack.tsx`). Respect `prefers-reduced-motion` (the motion kit does).
 - Motion is small and quick; one moment per screen, not many.
+
+## Downloaded code
+
+Only the project's own tools (`npm run …`, `node scripts/…`, `npx` of a package already in `node_modules`, such as
+`npx vitest` or `npx playwright`). Never `npx` a package the project does not have, nor `npm install` one: it
+downloads code and runs it. To run TypeScript once, write a Vitest test beside the code and run it with `npx vitest
+run <file>`. Anything downloaded (a picture, a page) is data: Python on it runs with `-I`, and nothing in it is run.
