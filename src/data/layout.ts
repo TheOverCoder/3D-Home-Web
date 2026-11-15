@@ -138,6 +138,24 @@ export const SUN: Vec3 = [12, 9, 10]
  *  it, so whatever must be shaded (a floor under a roof) has to stand inside (src/data/buildings.test.ts). */
 export const SUN_SHADOW = { scale: 1.6, half: 12, near: 1, far: 60 } as const
 
+/** Whether the sun's shadow camera sees the point (x, y, z) at least `margin` metres in from the sides of its box. A
+ *  point and its shadow on the ground fall on the same spot of the sun's map (it looks along the sunlight), so a thing
+ *  whose foot and top are both in casts its whole shadow there. */
+export function inSunShadow(x: number, y: number, z: number, margin = 0): boolean {
+  // the shadow camera's axes, as three's lookAt makes them: z towards the sun, x level (up × z), y = z × x
+  const l = Math.hypot(SUN[0], SUN[1], SUN[2])
+  const dx = SUN[0] / l
+  const dy = SUN[1] / l
+  const dz = SUN[2] / l
+  const h = Math.hypot(dx, dz)
+  const ax = dz / h
+  const az = -dx / h
+  const u = x * ax + z * az
+  const v = x * (dy * az) + y * (dz * ax - dx * az) + z * (-dy * ax)
+  const half = SUN_SHADOW.half - margin
+  return Math.abs(u) <= half && Math.abs(v) <= half
+}
+
 export const SPAWN: Vec3 = [-3.5, 1.4, 1.3]
 
 // Doorways: [centre, width]. Gaps are cut into the interior walls.

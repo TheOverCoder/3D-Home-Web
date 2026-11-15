@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { CuboidCollider, CylinderCollider, RigidBody } from '@react-three/rapier'
 import { AdditiveBlending, BufferAttribute, BufferGeometry, Group, MeshBasicMaterial, Vector3 } from 'three'
+import { inSunShadow } from '../data/layout'
 import { registerInteractable } from '../lib/interaction'
 import { Parts, setSculptGlow, shadowPart, smoothstep, type PartDef } from '../lib/sculpt'
 import type { Structure } from '../models/structures'
@@ -21,17 +22,25 @@ import { producerOffer } from './useProducer'
 //
 // The lamps and the lanterns light up from the evening: their glass glows (its material's `glow`, at the level
 // `setSculptGlow` sets), and a soft pool of light lies on the ground round each (an additive disc) — no light is added
-// to the scene. Each piece has a soft shadow on the ground under it (CASTS, below). Each fruit plant is one of its kind's
+// to the scene. Each casts its shadow into the sun's map, and where the sun's map does not reach has a soft shadow on
+// the ground under it instead (CASTS, below). Each fruit plant is one of its kind's
 // producer (PRODUCERS in data.ts): its fruit hang from its crown as they ripen (one crowd, src/models/fruit.ts), and the
 // action button picks them as it picks the lemons.
 
-/** The kinds that cast into the sun's shadow map: none. A crowd that casts is drawn whole wherever it stands (the sun's
- *  map is drawn from the same meshes), in view or not, with no lighter copies far off: a decorated farm cost every view
- *  on the farm more triangles that way (tests/e2e/05). Each piece has a soft shadow on the ground under it instead, like
- *  the corner trees, the woods and the animals (a path or stepping stones none). */
-const CASTS: ReadonlySet<ShopKind> = new Set<ShopKind>([])
-/** A soft shadow's size against the footprint (the leafy ones' crowns spread past theirs). */
-const softShadow = (kind: ShopKind) => (CASTS.has(kind) || DECOR_FEET[kind].flat ? 0 : isPlant(kind) || /tree|pine|bush|roses|hedge/.test(kind) ? 1.15 : 0.9)
+/** The kinds that cast into the sun's shadow map: all but the flat ones (a path, stepping stones). A crowd that casts
+ *  is drawn into the map by meshes of its own, from its lighter copies for the sun (src/lib/sculpt/sun.ts), and is seen
+ *  like any other: only where in view, a far one from its copy. The fruit does not cast (it hangs in its crown's). */
+const CASTS: ReadonlySet<ShopKind> = new Set(([...DECOR_KINDS, ...FRUIT_KINDS] as ShopKind[]).filter((k) => !DECOR_FEET[k].flat))
+/** A soft shadow's size against the footprint (the leafy ones' crowns spread past theirs): none where the piece casts a
+ *  real one — its foot and its top inside the sun's shadow box (`inSunShadow`), its footprint's width in from its
+ *  sides — and none for the flat ones. */
+function softShadow(d: DecorPiece, top: number): number {
+  const f = DECOR_FEET[d.kind]
+  if (f.flat) return 0
+  const margin = Math.max(f.hx, f.hz) + 0.5
+  if (CASTS.has(d.kind) && inSunShadow(d.x, 0, d.z, margin) && inSunShadow(d.x, top, d.z, margin)) return 0
+  return isPlant(d.kind) || /tree|pine|bush|roses|hedge/.test(d.kind) ? 1.15 : 0.9
+}
 /** The lights' pools on the ground: how far each reaches (m). */
 const POOL: Partial<Record<ShopKind, number>> = { lamp: 2.6, lantern: 1.1 }
 
@@ -83,6 +92,8 @@ const modelOf = (kind: ShopKind): Structure<string> => (isPlant(kind) ? fruitPla
 interface Crowd {
   parts: Parts<string>
   keys: string[]
+  /** the model's top, above the ground under it (m) */
+  top: number
   /** room for this many pieces (made again, twice the size, when more stand) */
   max: number
 }
@@ -92,11 +103,14 @@ function makeCrowd(kind: ShopKind, max: number): Crowd {
   const model = modelOf(kind)
   const keys = Object.keys(model)
   const defs: Record<string, PartDef> = {}
+  let top = 0
   for (const k of keys) {
     const part = model[k]
-    defs[k] = { geometry: part.shape.geometry(), max, material: part.material, castShadow: CASTS.has(kind) && (part.castShadow ?? true), receiveShadow: part.receiveShadow ?? true }
+    const geometry = part.shape.geometry()
+    top = Math.max(top, geometry.boundingBox!.max.y)
+    defs[k] = { geometry, max, material: part.material, castShadow: CASTS.has(kind) && (part.castShadow ?? true), receiveShadow: part.receiveShadow ?? true }
   }
-  return { parts: new Parts(defs, `decor-${kind}`), keys, max }
+  return { parts: new Parts(defs, `decor-${kind}`), keys, max, top }
 }
 
 const KINDS = [...DECOR_KINDS, ...FRUIT_KINDS] as ShopKind[]
@@ -185,7 +199,7 @@ function Crowds() {
     extra.shadows.begin()
     extra.pools.begin()
     for (const d of shown) {
-      const soft = softShadow(d.kind)
+      const soft = softShadow(d, crowds.current.get(d.kind)?.top ?? 0)
       const f = DECOR_FEET[d.kind]
       if (soft) {
         extra.shadows.at(d.x, 0, d.z, turnOf(d))

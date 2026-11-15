@@ -7,6 +7,7 @@ import { boxProject } from '../lib/boxProject'
 import { material, surface, type MaterialKind } from '../lib/proceduralTextures'
 import { assets } from '../assets/registry'
 import { fitModelTextures } from '../lib/textureBudget'
+import { castFromCopies } from '../lib/sculpt/sun'
 import { farm, useFarm } from '../farm/state'
 import { PIECES, type PieceType } from '../home/catalogue'
 import { hangOf, hostMove, type HomePiece } from '../home/layout'
@@ -91,6 +92,8 @@ function GlbProp({ url, size, shadow = true }: { url: string; size: V3; shadow?:
     })
     lights.forEach((l) => l.removeFromParent())
     fitModelTextures(clone) // phones: the model's textures within the device's budget
+    // into the sun's map from lighter copies: the same shadow to the texel, fewer triangles (src/lib/sculpt/sun.ts)
+    if (shadow) castFromCopies(clone)
     return clone
   }, [scene, sx, sy, sz, shadow])
   return <primitive object={object} />

@@ -1,7 +1,7 @@
 import { OrthographicCamera, Vector3 } from 'three'
 import { describe, expect, it } from 'vitest'
 import { WALK_INS, insideWalkIn, isWalkInSpace, spaceAt } from './buildings'
-import { ROOMS, SUN, SUN_SHADOW } from './layout'
+import { ROOMS, SUN, SUN_SHADOW, inSunShadow } from './layout'
 import { BACK, CABIN, CONTRACTOR_STAND, FRONT_DOOR, HALL, INNER_DOOR, MARKET_PATH } from './market'
 import { AGENT_STAND, ESTATE_DOOR, ESTATE_PATH, ESTATE_ROOM, PARKING } from './estate'
 import { ARRIVE, CAR_SPOT } from './maps'
@@ -31,6 +31,20 @@ const HEIGHTS = [0, 1, 2, 3]
 const along = (a: number, b: number) => [a, (a + b) / 2, b]
 
 describe('the shadow box', () => {
+  it('inSunShadow says what the shadow camera sees, its margin in from the sides', () => {
+    for (let k = 0; k < 400; k++) {
+      const x = -30 + ((k * 37) % 60) + 0.31
+      const z = -30 + ((k * 53) % 60) + 0.17
+      const y = (k % 7) * 0.8
+      const sides = (m: number) => {
+        const v = new Vector3(x, y, z).applyMatrix4(cam.matrixWorldInverse)
+        return Math.max(Math.abs(v.x), Math.abs(v.y)) <= SUN_SHADOW.half - m
+      }
+      expect(inSunShadow(x, y, z), `${x}, ${y}, ${z}`).toBe(sides(0))
+      expect(inSunShadow(x, y, z, 1.5), `${x}, ${y}, ${z}`).toBe(sides(1.5))
+    }
+  })
+
   it('is the one the plan measured: its target inside, its corners on the ground where the diamond has them', () => {
     expect(inside(0, 0, 0)).toBeGreaterThan(1)
     for (const [x, z] of [

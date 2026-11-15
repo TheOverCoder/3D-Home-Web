@@ -75,13 +75,20 @@ The README has the overview; `tests/README.md` what each test guards.
   countryside on the house's). Anything else stands in a room and is judged each frame by where it is now: a new thing in the house needs
   nothing. A new opening is a row in `layout.ts` (where it is built; where it is now is the save's, `shell.ts`); a new
   door that shuts must close its portal.
-- A crowd's model is everything put after one `at`: each animal, person or plant gets its own. Parts that cast a
-  shadow are drawn whole.
-- Far parts of a crowd are drawn as lighter copies (`src/lib/sculpt/lod.ts`, meshoptimizer's simplifier): each part of
-  400 triangles or more that casts no shadow gets copies whose surfaces (and light and colour) move at most a known
-  error, and a copy is drawn only where that error is under half a pixel for the game's camera (`farEnough`). Not the
-  pass's: the same with it on or off, so `16-view` still compares equal; `27-far-copies` bounds what they change on
-  screen (`__home.view.lod` switches them). A new crowd part needs nothing.
+- A crowd's model is everything put after one `at`: each animal, person or plant gets its own. A part that casts is
+  left out like the rest: its shadow is drawn by meshes of its own (below), every model put.
+- Far parts of a crowd are drawn as lighter copies (`src/lib/sculpt/lod.ts`, meshoptimizer's simplifier): every part
+  gets copies from nearly whole to a few triangles (steps a share of its own size), each moving its surfaces at most a
+  known error in which light and colour weigh (every attribute but the position: where a copy is drawn, a change Δ
+  across n pixels only where Δ·n < ½). A copy is drawn only where its error is under half a pixel for the game's camera
+  (`farEnough`), and only where it saves a draw's worth (`A_DRAW`) across the crowd's instances in view
+  (`worthDrawing`). Not the pass's: the same with it on or off, so `16-view` still compares equal; `27-far-copies`
+  bounds what they change on screen (`__home.view.lod` switches them). A new crowd part needs nothing.
+- Shadow copies: what casts is drawn into the sun's map by a mesh no camera draws (`src/lib/sculpt/sun.ts`), from a
+  copy of its shape measured within half a texel of the sun's sharpest map (`sunLodsOf`, `sunEnough`: well inside the
+  shadow's bias), chosen by the sun alone, so the map kept between frames holds. A crowd part that casts needs nothing;
+  a model loaded from a file casts so through `castFromCopies` (the furniture). `27` bounds what they change
+  (`__home.view.sunLod`).
 - Each good's model has a weight, the triangles it may draw (`src/models/weights.test.ts`): one grown past it fails in
   the unit tests, in seconds; the heaviest good is the one the budget fills the market's shelves with.
 - A big thing is built from pieces a few metres across, never one mesh round the farm: one mesh is always partly in
@@ -200,8 +207,8 @@ The README has the overview; `tests/README.md` what each test guards.
   sections whose ends meet, path tiles that join edge to edge). Places, beds and pieces share one set of rules
   (`canPlaceThing`). A new kind: its row, its model (`src/models/decor.ts`, taken through `src/farm/decorModels.ts`),
   its ground, its body (`SOLID` in `decorScene.tsx`) and its picture (`node scripts/render-item-art.mjs`).
-- Each kind is one crowd, and none casts into the sun's map (a casting crowd is drawn whole in every view): each piece
-  has a soft shadow on the ground. The lamps' glass glows from the evening (`setSculptGlow`) over a pool of light on the
+- Each kind is one crowd and casts into the sun's map (all but the flat ones), from its copies for the sun; a piece
+  the sun's map does not reach (`inSunShadow`) has a soft shadow on the ground instead. The lamps' glass glows from the evening (`setSculptGlow`) over a pool of light on the
   ground (an additive disc): no light is added.
 - A fruit tree or bush is a `PRODUCERS` row whose plants are its kind's pieces standing, in the layout's order; its fruit
   a good of the silo.
