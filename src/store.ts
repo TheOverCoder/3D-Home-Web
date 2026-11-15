@@ -53,6 +53,9 @@ export type Panel =
   | { kind: 'market-place'; place: number; from?: 'market' } // one place: its good, how many, its price (from: the panel to go back to)
   | { kind: 'market-buy' } // the card that asks before the shop is bought
   | { kind: 'contractor' } // the contractor: today's pieces, and what he pays for materials
+  | { kind: 'car' } // the car: where it drives you (the house once it is yours, the farm)
+  | { kind: 'estate' } // the estate agent: the house for sale, its price, or that it is yours
+  | { kind: 'house-buy' } // the card that asks before the house is bought
   | { kind: 'ladder'; id: 'rate' | 'places' | 'group' | 'pace' | 'stock' | 'discount'; from?: 'manager' | 'market' | 'contractor' } // the card that asks before a ladder's step is bought (from: the panel to go back to)
 
 /** The thing you look at carries a tag (src/ui/ThingTag.tsx): a gear for what can be set about it, or a price tag for

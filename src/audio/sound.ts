@@ -384,6 +384,7 @@ export type FarmSound =
   | 'chime' // the contractor has what you need today
   | 'dress' // a garment put on: cloth rustling
   | 'garment' // a new garment for the wardrobe: a bright flourish
+  | 'keys' // the house bought: its keys handed over, jingling, and a warm chord
 
 /** Crystals landing one close behind another climb this scale (semitones over the first note), then hold its top. */
 const XP_STEPS = [0, 2, 4, 7, 9, 12, 14, 16]
@@ -565,6 +566,14 @@ export function farmSound(kind: FarmSound, pan = 0, near = 1) {
       tone(e, t + 0.3, { type: 'sine', f0: 2637, gain: 0.05, attack: 0.004, decay: 1.2 })
       tone(e, t + 0.3, { type: 'sine', f0: 3951, gain: 0.015, attack: 0.004, decay: 0.6 })
       burst(e, t + 0.28, { type: 'highpass', freq: 5000, sweepTo: 10000, q: 0.7, gain: 0.025, attack: 0.1, decay: 0.6 })
+      break
+    case 'keys': // a bunch of keys handed over: small bright clinks close together, then a warm chord rings on
+      for (let i = 0; i < 6; i++) {
+        const at = t + i * 0.055 + Math.random() * 0.03
+        tone(e, at, { type: 'sine', f0: rnd(3400, 5200), gain: 0.03, attack: 0.001, decay: 0.09 })
+        burst(e, at, { type: 'highpass', freq: 7000, q: 0.8, gain: 0.02, attack: 0.001, decay: 0.03 })
+      }
+      for (const f of [784, 988, 1175, 1568]) tone(e, t + 0.42, { type: 'sine', f0: f, gain: 0.03, attack: 0.01, decay: 1.4 })
       break
     case 'ding': // the kitchen timer: it is ready
       tone(e, t, { type: 'sine', f0: 1568, gain: 0.06, attack: 0.003, decay: 1.2 })

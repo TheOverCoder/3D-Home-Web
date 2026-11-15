@@ -1,15 +1,17 @@
 // Movement scripts: a person walks a list of steps — go to a point, wait (facing a way, in a pose) — one after another
-// (the shoppers in the market, the manager leaving it, the contractor coming and going). Not saved: the steps are
-// only what is seen; what a shopper bought is already in the till when they set off to pay.
+// (the shoppers in the market, the manager leaving it, the contractor and the estate agent coming and going). Not
+// saved: the steps are only what is seen; what a shopper bought is already in the till when they set off to pay.
 //
 // The ways themselves are made here from the market's row (src/data/market.ts): the path in from the lane, the browse
-// spots, the pay spot and the line behind it, the manager's place, the contractor's window, and the lane's ends.
+// spots, the pay spot and the line behind it, the manager's place, the contractor's window, and the lane's ends; and
+// from the estate office's (src/data/estate.ts): its door, the way round the agent's desk, his chair.
 
 import { BROWSE_SPOTS, CABIN, CONTRACTOR_SPOT, COUNTER, INNER_DOOR, ISLAND, MANAGER_SPOT, MARKET_PATH, PAY_SPOT, PAY_STEP, DESK } from '../data/market'
+import { AGENT_SEAT, ESTATE_DESK, ESTATE_PATH } from '../data/estate'
 import { dampAngle } from '../lib/damp'
 import { LANE_ENDS, SHOP, WALK_Z } from './data'
 
-export type Pose = 'stand' | 'browse' | 'pay' | 'wave'
+export type Pose = 'stand' | 'browse' | 'pay' | 'wave' | 'sit'
 
 /** One step: walk to a point; or wait there `wait` seconds, facing `face`, in a pose. */
 export type Step = { to: { x: number; z: number } } | { wait: number; face?: number; pose?: Pose }
@@ -161,6 +163,24 @@ export function contractorLeaves(): Step[] {
 /** The contractor in the morning: from the lane's east end back to his window. */
 export function contractorComes(): Step[] {
   return [to({ x: CORNER.x, z: WALK_Z }), to(CORNER), to(CABIN_DOOR), to(CONTRACTOR_SPOT), { wait: 0.5, face: CONTRACTOR_SPOT.heading }]
+}
+
+/** The estate office's way in, and round the east end of the agent's desk (the cabinet stands at its west end) to
+ *  behind it, beside his chair. */
+const [ESTATE_LANE, ESTATE_OUTSIDE, ESTATE_INSIDE] = ESTATE_PATH
+const DESK_EAST: Point = { x: ESTATE_DESK.x1 + 0.25, z: ESTATE_DESK.z0 - 0.2 }
+const BEHIND_DESK: Point = { x: ESTATE_DESK.x1 + 0.25, z: AGENT_SEAT.z }
+
+/** The estate agent in the morning: from the lane's west end along the lane to his office, in at its door, round his
+ *  desk, and down into his chair. */
+export function agentComes(): Step[] {
+  return [to({ x: ESTATE_LANE.x, z: WALK_Z }), to(ESTATE_OUTSIDE), to(ESTATE_INSIDE), to(DESK_EAST), to(BEHIND_DESK), to(AGENT_SEAT), { wait: 0.6, face: AGENT_SEAT.heading, pose: 'sit' }]
+}
+
+/** The estate agent at four: up from his chair with a wave, round his desk, out of the door and off to the lane's west
+ *  end. */
+export function agentLeaves(): Step[] {
+  return [{ wait: 2, face: AGENT_SEAT.heading, pose: 'wave' }, to(BEHIND_DESK), to(DESK_EAST), to(ESTATE_INSIDE), to(ESTATE_OUTSIDE), to(ESTATE_LANE), to(laneEnd(0))]
 }
 
 /** The seconds a whole script takes at `speed`, from (x, z). */

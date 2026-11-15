@@ -13,6 +13,11 @@ import { GOODS, type GoodsId } from './goods'
 import { barnModel, crateModel, deskModel, farmGateModel, officeModel, palletModel, siloModel } from './buildings'
 import { DRIVER, putTractor, seatDriver, tractorParts } from './tractor'
 import { marketFittingsParts, putMarketFittings, walkInShellModel } from './market'
+import { carParts, putCar } from './car'
+import { estateFittingsParts, parkingLotModel, putEstateFittings } from './estate'
+import { AGENT_SEAT, ESTATE_WALKIN, SEAT_Y } from '../data/estate'
+import { ESTATE_LOOK } from './look'
+import { sitAtDesk } from './person'
 import { putSlidingDoor, slidingDoorParts } from './slidingDoor'
 import { WALK_INS } from '../data/buildings'
 
@@ -259,10 +264,46 @@ export const MODEL_CHECKS: ModelCheck[] = [
     },
   },
   {
+    id: 'car',
+    name: 'The car',
+    run() {
+      const parts = carParts(1)
+      return checkPose('car', parts, (pp) => putCar(pp, 0, 0, 0), { ground: 0, open: openParts(parts) })
+    },
+  },
+  {
+    id: 'estate',
+    name: 'The estate agent at his desk, and the parking lot',
+    run() {
+      // the agent sitting on his chair at his desk, his forearms on it, as one model with the office and its fittings:
+      // he holds on to his chair
+      const office = structurePieces(walkInShellModel(ESTATE_WALKIN))
+      const fittings = estateFittingsParts()
+      const people = personParts(1)
+      const sitting = [0, 0.5, -0.6].flatMap((look) => {
+        const rig = new PersonRig(rollLook(random(4271), ESTATE_LOOK))
+        rig.root.position.set(AGENT_SEAT.x, 0, AGENT_SEAT.z)
+        rig.root.rotation.y = AGENT_SEAT.heading
+        sitAtDesk(rig, SEAT_Y, look)
+        const pieces = [
+          ...office,
+          ...posedPieces(fittings, putEstateFittings),
+          ...posedPieces(people, (pp) => {
+            pp.begin()
+            rig.write(pp)
+          }),
+        ]
+        return checkPieces(`the agent at his desk, looking ${look}`, pieces, { ground: 0, open: openParts(people) })
+      })
+      return [...sitting, ...checkPieces('the parking lot', ...structure(parkingLotModel()))]
+    },
+  },
+  {
     id: 'market',
-    name: "The walk-in buildings (the market and the contractor's cabin) with their fittings",
+    name: "The walk-in buildings (the market and the contractor's cabin, the estate office and its parking sign) with their fittings",
     run() {
       const fittings = marketFittingsParts()
+      const estate = estateFittingsParts()
       return WALK_INS.flatMap((def) => {
         // the shell and what stands in it and on it, as one model: the sign, the awning and the window hold on to the
         // walls, the till to the counter, the computer to the desk; the sliding door's leaves, shut and open, to the
@@ -277,6 +318,7 @@ export const MODEL_CHECKS: ModelCheck[] = [
                 [
                   ...structurePieces(walkInShellModel(def)),
                   ...(def.id === 'market' ? posedPieces(fittings, putMarketFittings) : []),
+                  ...(def.id === 'estate' ? posedPieces(estate, putEstateFittings) : []),
                   ...(leaves && door ? posedPieces(leaves, (pp) => putSlidingDoor(pp, door, open)) : []),
                 ],
                 { ground: 0 },

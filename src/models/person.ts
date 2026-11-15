@@ -578,8 +578,9 @@ export function personParts(max: number): Parts {
     forearmRBare: { geometry: g.forearmRBare, max, material: SKIN },
     thigh: { geometry: g.thigh, max: max * 2, material: CLOTH },
     shin: { geometry: g.shin, max: max * 2, material: CLOTH },
-    thighSeated: { geometry: g.thighSeated, max: 2, material: CLOTH },
-    shinSeated: { geometry: g.shinSeated, max: 2, material: CLOTH },
+    // (the tractor's driver and the estate agent)
+    thighSeated: { geometry: g.thighSeated, max: 4, material: CLOTH },
+    shinSeated: { geometry: g.shinSeated, max: 4, material: CLOTH },
     // the skin is the head's colour, the eyes its second
     head: { geometry: g.head, max, material: { ...SKIN, tint2: true } },
     hairShort: { geometry: g.hairShort, max, material: HAIR },
@@ -613,7 +614,7 @@ export interface PersonLook {
   height: number
   /** a basket on the right arm (the buyers'; the tractor's driver has none) */
   basket?: boolean
-  /** sits (the tractor's driver): legs whose ends are closed, for knees and hips bent far */
+  /** sits (the tractor's driver, the estate agent): legs whose ends are closed, for knees and hips bent far */
   seated?: boolean
   /** the body's build: 'f' a little narrower at the shoulders and wider at the hips */
   sex?: 'f' | 'm'
@@ -718,4 +719,26 @@ export class PersonRig {
     parts.at(0, 0, 0)
     for (const p of this.pieces) parts.putMatrix(p.part, p.node.matrixWorld, p.color, p.color2)
   }
+}
+
+/** Sitting on a chair at a desk (the estate agent), as joint angles: the hips just over the seat, the thighs along it,
+ *  the shins down to the floor, the upper arms forward and the forearms on the desk in front (its top about 0.27 m
+ *  under the shoulders' height less a forearm's thickness). `hips`: how high the hips' joint is over the seat. */
+export const SITTING = { hips: 0.075, forward: 0.02, thigh: -1.5, thighOut: 0.06, knee: 1.42, arm: -0.62, armOut: 0.16, elbow: -0.98 } as const
+
+/** Sits a person at a desk on a seat `seatY` high (in their own frame: their root on the floor under the seat's middle),
+ *  as the estate agent sits behind his. Looks `look` to the side (radians). */
+export function sitAtDesk(rig: PersonRig, seatY: number, look = 0) {
+  const s = SITTING
+  rig.hips.position.set(0, seatY + s.hips, s.forward)
+  rig.hips.rotation.set(0, 0, 0)
+  rig.thighL.rotation.set(s.thigh, 0, s.thighOut)
+  rig.thighR.rotation.set(s.thigh, 0, -s.thighOut)
+  rig.kneeL.rotation.set(s.knee, 0, 0)
+  rig.kneeR.rotation.set(s.knee, 0, 0)
+  rig.armL.rotation.set(s.arm, 0, s.armOut)
+  rig.armR.rotation.set(s.arm, 0, -s.armOut)
+  rig.elbowL.rotation.set(s.elbow, 0, 0)
+  rig.elbowR.rotation.set(s.elbow, 0, 0)
+  rig.head.rotation.set(0.08, look, 0)
 }

@@ -91,6 +91,23 @@ const GLYPHS: Record<Verb, ReactNode> = {
       <path d="M12 9.5 3.4 15.6a1 1 0 0 0 .6 1.8h16a1 1 0 0 0 .6-1.8z" />
     </>
   ),
+  // a speech bubble: someone to talk to (the estate agent)
+  talk: (
+    <>
+      <path d="M5 4.5h14A2.5 2.5 0 0 1 21.5 7v7.5A2.5 2.5 0 0 1 19 17h-8.5l-4.5 3.5V17H5a2.5 2.5 0 0 1-2.5-2.5V7A2.5 2.5 0 0 1 5 4.5z" />
+      <path d="M8 10.8v.01M12 10.8v.01M16 10.8v.01" />
+    </>
+  ),
+  // a car from the side: where it drives you
+  drive: (
+    <>
+      <path d="M4.8 16.5H3.5v-3.1c0-.6.4-1.1 1-1.3l2.6-.8 2.1-3.1A2 2 0 0 1 10.9 7.3h4.3a2 2 0 0 1 1.6.8l2.6 3.4 1.5.5c.6.2 1 .7 1 1.3v3.2h-1.6" />
+      <path d="M9.2 16.5h5.6" />
+      <circle cx="7" cy="16.5" r="2.1" />
+      <circle cx="17" cy="16.5" r="2.1" />
+      <path d="M7.6 11.6h11.6" />
+    </>
+  ),
   wait: (
     <>
       <circle cx="12" cy="12" r="8.5" />
@@ -149,6 +166,8 @@ const VERB_COLOUR: Record<Verb, string> = {
   door: '#8d6e63',
   watch: '#5c6bc0',
   dress: '#c2577a',
+  talk: '#3f7fbf',
+  drive: '#d4402f',
   wait: '#8a94a6',
   drop: '#607d8b',
 }
@@ -166,6 +185,8 @@ const VERB_WORD: Record<Verb, string> = {
   door: 'Door',
   watch: 'Open',
   dress: 'Dress',
+  talk: 'Talk',
+  drive: 'Drive',
   wait: 'Wait',
   drop: 'Put down',
 }

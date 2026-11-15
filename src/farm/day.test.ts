@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { DAY, HOURS, type DayPhase } from './data'
-import { dayOf, hourOf, isOpen, moodAt, phaseDef, phaseOf, untilPhase } from './day'
+import { clockOf, closesAt, dayOf, hourOf, hoursText, isOpen, moodAt, opensAt, phaseDef, phaseOf, sinceTurned, untilHour, untilOpen, untilPhase } from './day'
 
 // The farm's day (src/farm/day.ts): the hour from the seconds since the farm began, the phases and their edges, the
 // day's number (a new day at the morning, not at midnight), the seconds to a phase, the light (never darker than
@@ -158,5 +158,53 @@ describe('who keeps hours', () => {
         for (const t of [e.start, (e.start + e.end) / 2, e.end - 0.01]) expect(isOpen('contractor', t), `${e.id} at ${t}`).toBe(there)
       }
     for (let t = 0; t < 2 * DAY.length; t += 3.7) expect(isOpen('contractor', t)).toBe((HOURS.contractor as readonly DayPhase[]).includes(phaseOf(t)))
+  })
+})
+
+describe('hours by the clock (the estate office: 8:00 to 16:00)', () => {
+  it('open from eight in the morning to four in the afternoon, by the hour, every day; closed the rest', () => {
+    expect(HOURS.estate).toEqual({ from: 8, to: 16 })
+    for (const k of DAYS)
+      for (let h = 0; h < 24; h++) {
+        const open = h >= 8 && h < 16
+        for (const m of [0, 0.25, 0.5, 0.99]) expect(isOpen('estate', at(h + m, k)), `${h}:${String(m * 60).padStart(2, '0')}, day ${k}`).toBe(open)
+      }
+    // its edges, to the moment
+    expect(isOpen('estate', at(8) - 0.01)).toBe(false)
+    expect(isOpen('estate', at(8))).toBe(true)
+    expect(isOpen('estate', at(16) - 0.01)).toBe(true)
+    expect(isOpen('estate', at(16))).toBe(false)
+    // a new farm starts at eight: open from its first second
+    expect(isOpen('estate', 0)).toBe(true)
+  })
+
+  it('when it opens and closes, the seconds until it opens (none while open) and since it turned', () => {
+    expect([opensAt('estate'), closesAt('estate')]).toEqual([8, 16])
+    // the contractor's, from his phases: the morning's first hour to the night's
+    expect([opensAt('contractor'), closesAt('contractor')]).toEqual([5, 21])
+    expect(untilOpen('estate', at(12))).toBe(0)
+    expect(untilOpen('estate', at(16))).toBeCloseTo(16 * HOUR, 6)
+    expect(untilOpen('estate', at(23))).toBeCloseTo(9 * HOUR, 6)
+    expect(untilOpen('estate', at(7.5))).toBeCloseTo(HOUR / 2, 6)
+    expect(untilOpen('contractor', at(22))).toBeCloseTo(7 * HOUR, 6)
+    expect(sinceTurned('estate', at(9))).toBeCloseTo(HOUR, 6)
+    expect(sinceTurned('estate', at(17.5))).toBeCloseTo(1.5 * HOUR, 6)
+    expect(sinceTurned('estate', at(2, 3))).toBeCloseTo(10 * HOUR, 6)
+    // whatever the moment: until it opens lands on its first moment, within a day
+    for (let t = 0; t < 2 * DAY.length; t += 3.7) {
+      const u = untilOpen('estate', t)
+      expect(u >= 0 && u < DAY.length, `${t}: ${u}`).toBe(true)
+      if (u > 0) {
+        expect(isOpen('estate', t + u + 0.01), `${t}: open after ${u}`).toBe(true)
+        expect(isOpen('estate', t + u - 0.05), `${t}: not before`).toBe(false)
+      }
+      expect(untilHour(t, hourOf(t))).toBeCloseTo(0, 6)
+    }
+  })
+
+  it('says its hours as a clock does', () => {
+    expect(hoursText('estate')).toBe('8:00 – 16:00')
+    expect(hoursText('contractor')).toBe('5:00 – 21:00')
+    expect([clockOf(0), clockOf(8), clockOf(16.5), clockOf(23.99), clockOf(24), clockOf(-1)]).toEqual(['0:00', '8:00', '16:30', '23:59', '0:00', '23:00'])
   })
 })

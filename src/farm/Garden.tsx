@@ -98,8 +98,15 @@ import {
   setHour,
   freezeDay,
   marketFill,
+  estateOpen,
+  agentHere,
+  estateAgentNow,
+  buyApartment,
+  driveTo,
 } from './state'
 import { Market } from './Market'
+import { Estate } from './Estate'
+import { Car } from './car/Car'
 import { GardenGate, GateLeaf, useGateExclude } from './GardenGate'
 import { Cows, herd } from './Cows'
 import { Land } from './Land'
@@ -734,6 +741,12 @@ export function FarmClock() {
       setHour,
       freezeDay,
       marketFill,
+      // the estate office, the house and the car (src/farm/Estate.tsx, src/farm/car)
+      estateOpen,
+      agentHere,
+      estateAgentNow,
+      buyApartment,
+      driveTo,
     })
   }, [])
   useFrame(() => {
@@ -811,6 +824,8 @@ export function Garden() {
       <OrderYard />
       <GardenGate />
       <Market />
+      <Estate />
+      <Car place="farm" />
     </group>
   )
 }

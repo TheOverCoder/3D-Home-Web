@@ -1,8 +1,9 @@
 // The farm's day (DAY and HOURS in ./data): 24 farm hours in DAY.length real seconds — morning, noon, evening, night —
-// counted from the seconds since the farm began (farm.day.t, src/farm/state.ts). Who keeps hours is a row in HOURS
-// (the contractor). The light follows the phase (src/scene/Lighting.tsx, moodAt). Pure.
+// counted from the seconds since the farm began (farm.day.t, src/farm/state.ts). Who keeps hours is a row in HOURS:
+// in some of the day's phases (the contractor), or from one hour to another (the estate office, 8:00 to 16:00). The
+// light follows the phase (src/scene/Lighting.tsx, moodAt). Pure.
 
-import { DAY, HOURS, type DayPhase, type Keeper } from './data'
+import { DAY, HOURS, type DayPhase, type Hours, type Keeper } from './data'
 
 type Phase = (typeof DAY.phases)[number]
 const HOUR = DAY.length / 24
@@ -48,5 +49,50 @@ export function moodAt(t: number): { sun: number; warm: number; sky: number } {
   }
 }
 
+const inPhases = (h: Hours): h is readonly DayPhase[] => Array.isArray(h)
+/** Is the hour within from–to (from inclusive, to not; `to` before `from` runs past midnight)? */
+const within = (h: number, from: number, to: number) => (from <= to ? h >= from && h < to : h >= from || h < to)
+
 /** Is someone who keeps hours there now? */
-export const isOpen = (who: Keeper, t: number) => (HOURS[who] as readonly DayPhase[]).includes(phaseOf(t))
+export function isOpen(who: Keeper, t: number): boolean {
+  const h: Hours = HOURS[who]
+  return inPhases(h) ? h.includes(phaseOf(t)) : within(hourOf(t), h.from, h.to)
+}
+
+/** The farm hour someone's hours begin: the first of their phases, or their first hour. */
+export function opensAt(who: Keeper): number {
+  const h: Hours = HOURS[who]
+  return inPhases(h) ? phaseDef(h[0]).from : h.from
+}
+
+/** The farm hour their hours end (the next phase's, after the last of theirs; or their last hour). */
+export function closesAt(who: Keeper): number {
+  const h: Hours = HOURS[who]
+  if (!inPhases(h)) return h.to
+  const last = DAY.phases.findIndex((p) => p.id === h[h.length - 1])
+  return DAY.phases[(last + 1) % DAY.phases.length].from
+}
+
+/** Real seconds until an hour of the day next comes (0 if it is now). */
+export function untilHour(t: number, hour: number): number {
+  const hours = (((hour - hourOf(t)) % 24) + 24) % 24
+  return hours * HOUR
+}
+
+/** Real seconds until someone opens again: 0 while they are open. */
+export const untilOpen = (who: Keeper, t: number) => (isOpen(who, t) ? 0 : untilHour(t, opensAt(who)))
+
+/** Real seconds since they last opened (while open), or since they last closed (while closed). */
+export function sinceTurned(who: Keeper, t: number): number {
+  const at = isOpen(who, t) ? opensAt(who) : closesAt(who)
+  return ((((hourOf(t) - at) % 24) + 24) % 24) * HOUR
+}
+
+/** An hour of the day as a clock says it (8 → "8:00", 16.5 → "16:30"). */
+export function clockOf(hour: number): string {
+  const m = Math.round((((hour % 24) + 24) % 24) * 60)
+  return `${Math.floor(m / 60) % 24}:${String(m % 60).padStart(2, '0')}`
+}
+
+/** Someone's hours as words: "8:00 – 16:00". */
+export const hoursText = (who: Keeper) => `${clockOf(opensAt(who))} – ${clockOf(closesAt(who))}`

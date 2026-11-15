@@ -59,6 +59,7 @@ import {
   LADDERS,
   CONTRACTOR,
   DAY,
+  ESTATE,
   HOURS,
   MANAGER,
   SHOP,
@@ -70,11 +71,14 @@ import { sanitizeXp, seedXp, levelOf, xpAt, unpaidCoins, xpForSale, type Xp } fr
 import { DEFAULT_OUTFIT, garmentById, putOn, sanitizeOutfit, type Outfit } from './outfit'
 import { SHOP_LADDERS, clampLevels, freshMarket, ladderPrice, managerPay, managerPct, placesOpen, rollShopper, sanitizeMarket, shopperEvery, shoppersAtOnce, snapPct, type Market } from './market'
 import { dailyOffers, offersPerDay, piecePrice, sanitizeContractor, shortMaterials, type Contractor } from './contractor'
-import { dayOf, hourOf, isOpen, phaseOf, untilPhase } from './day'
+import { dayOf, hourOf, isOpen, phaseOf, sinceTurned, untilOpen, untilPhase } from './day'
 import type { PersonLook } from '../models/person'
-import { CONTRACTOR_LOOK, MANAGER_LOOK, rollLook, sanitizeLook } from '../models/look'
+import { CONTRACTOR_LOOK, ESTATE_LOOK, MANAGER_LOOK, rollLook, sanitizeLook } from '../models/look'
+import { AGENT_SEAT } from '../data/estate'
 import { BROWSE_SPOTS, CONTRACTOR_SPOT, LOT, MANAGER_SPOT, SCREEN, TILL } from '../data/market'
 import {
+  agentComes,
+  agentLeaves,
   contractorComes,
   contractorLeaves,
   hallStands,
@@ -1948,7 +1952,8 @@ export interface Walking {
 type Person = Walker & Walking
 
 /** The most shoppers about at a time, in the shop and on the lane (the crowd's guest places: GUEST_SLOTS in
- *  src/farm/Visitors.tsx, less the contractor's and the tractor driver's; the manager walks out in one of these). As
+ *  src/farm/Visitors.tsx, less the contractor's, the estate agent's and the tractor driver's; the manager walks out in
+ *  one of these). As
  *  many as the top of both ladders has about at once (group 3, pace 4: up to 14), so the shop keeps the ladders' pace. */
 export const MOST_SHOPPERS = 14
 /** The most of them ever inside the market at once (its rooms and its doorway), at the top of both ladders: measured by
@@ -2239,6 +2244,72 @@ export function contractorNow(): Walking | null {
   const done = stepScript(contractorWalk.who, since - contractorWalk.at, VISITOR.speed)
   contractorWalk.at = since
   return going && done ? null : contractorWalk.who
+}
+
+// ───────────────────────────── the estate agent ─────────────────────────────
+
+const AGENT_ID = -3
+const AGENT_DRESS = steadyLook(4271, ESTATE_LOOK)
+const sittingAgent: Person = { id: AGENT_ID, ...walker(AGENT_SEAT.x, AGENT_SEAT.z, AGENT_SEAT.heading, []), pose: 'sit', look: AGENT_DRESS }
+/** How long his walk in takes in the morning (from the lane's west end to his chair), and out at four. */
+const AGENT_COMES = scriptSeconds(LANE_ENDS[0], WALK_Z, agentComes(), VISITOR.speed)
+const AGENT_GOES = scriptSeconds(AGENT_SEAT.x, AGENT_SEAT.z, agentLeaves(), VISITOR.speed)
+/** Where the crystals fly up from when the house is bought: his desk. */
+const AT_AGENT: At = { x: AGENT_SEAT.x, y: 1.2, z: AGENT_SEAT.z - 0.4 }
+
+/** The estate office is open (HOURS.estate: 8:00 to 16:00): its door opens for you (he may still be on his way in). */
+export const estateOpen = () => isOpen('estate', farm.day.t)
+/** The seconds until it opens (0 while it is open). */
+export const estateOpensIn = () => untilOpen('estate', farm.day.t)
+/** The estate agent is at his desk: in the office's hours, once he has walked in from the lane. */
+export function agentHere(): boolean {
+  const t = farm.day.t
+  return isOpen('estate', t) && sinceTurned('estate', t) >= AGENT_COMES
+}
+/** The seconds until he is at his desk again (0 while he is): walking in now, or away until the office opens and then
+ *  the walk. */
+export function agentBackIn(): number {
+  if (agentHere()) return 0
+  const t = farm.day.t
+  return isOpen('estate', t) ? AGENT_COMES - sinceTurned('estate', t) : untilOpen('estate', t) + AGENT_COMES
+}
+
+/** The estate agent as the day's clock has him, a function of the clock alone: walking in from the lane as the
+ *  office opens, sitting at his desk through its hours, walking out (a wave first) as it closes, away the rest. */
+let agentWalk: { key: string; at: number; who: Person } | null = null
+export function estateAgentNow(): Walking | null {
+  const t = farm.day.t
+  const open = isOpen('estate', t)
+  const since = sinceTurned('estate', t)
+  const coming = open && since < AGENT_COMES
+  const going = !open && since < AGENT_GOES
+  if (!coming && !going) {
+    agentWalk = null
+    return open ? sittingAgent : null
+  }
+  const key = `${dayOf(t)} ${open ? 'in' : 'out'}`
+  if (agentWalk?.key !== key || since < agentWalk.at) {
+    const start = coming ? { x: LANE_ENDS[0], z: WALK_Z, heading: Math.PI / 2 } : AGENT_SEAT
+    agentWalk = { key, at: 0, who: { id: AGENT_ID, ...walker(start.x, start.z, start.heading, coming ? agentComes() : agentLeaves()), look: AGENT_DRESS } }
+    if (!coming) agentWalk.who.pose = 'sit'
+  }
+  const done = stepScript(agentWalk.who, since - agentWalk.at, VISITOR.speed)
+  agentWalk.at = since
+  return going && done ? null : agentWalk.who
+}
+
+/** Buys the house from the estate agent, at his desk in the office's hours, for ESTATE.price; whether it was bought.
+ *  The car then drives you there (src/farm/car). */
+export function buyApartment(): boolean {
+  if (farm.apartment.owned || !agentHere() || !(farm.coins >= ESTATE.price)) return false
+  farm.coins -= ESTATE.price
+  farm.apartment.owned = true
+  gainXp('home', 1, AT_AGENT)
+  toast('The house is yours', 'key')
+  farmSound('keys')
+  bump()
+  save()
+  return true
 }
 
 // ───────────────────────────── the day ─────────────────────────────

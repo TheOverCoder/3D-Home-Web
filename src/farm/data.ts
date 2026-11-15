@@ -525,7 +525,7 @@ export const NAMES = ['Maya', 'Noa', 'Daniel', 'Yael', 'Omer', 'Tamar', 'Eitan',
 /** XP for each thing a player does (src/farm/state.ts, gainXp): for every bed, good or batch it touched. A sale is
  *  worth its coins instead (`xpForSale`, src/farm/xp.ts: one for every five coins, at least one). Nothing that can be
  *  undone for free gives any (furniture, moving places, stocking shelves, prices, declining). */
-export const XP_FOR = { plant: 1, water: 1, harvest: 2, collect: 1, load: 1, make: 2, build: 5, goal: 5, shop: 25, order: 5 } as const
+export const XP_FOR = { plant: 1, water: 1, harvest: 2, collect: 1, load: 1, make: 2, build: 5, goal: 5, shop: 25, order: 5, home: 40 } as const
 export type XpAction = keyof typeof XP_FOR
 /** From level L to the next takes `step · L` XP, so each level takes longer than the one before; reaching level L pays
  *  `reward · L` coins (claimed in the level's card). `max` is the top level: past it XP still counts, the level stays. */
@@ -557,6 +557,10 @@ export const SHOP = {
 /** The contractor behind the market: he buys building materials at `buys` coins each, and sells `offers` pieces a day
  *  (the `stock` ladder adds more) at `sells` coins each (the `discount` ladder takes 10 off a step). */
 export const CONTRACTOR = { buys: 10, sells: 100, offers: 3, discountStep: 10 } as const
+
+/** The estate office in the market's parking lot (src/data/estate.ts): its agent sells you the house for `price`, and
+ *  then the car drives you there (src/farm/car). He keeps the office's hours (HOURS.estate). */
+export const ESTATE = { price: 4000 } as const
 
 // ───────────────────────────── upgrade ladders ─────────────────────────────
 
@@ -600,6 +604,9 @@ export const DAY = {
   ],
   minLight: 0.35,
 } as const satisfies { length: number; start: number; phases: readonly { id: DayPhase; from: number; art: ArtId; mood: { sun: number; warm: number; sky: number } }[]; minLight: number }
-/** Who keeps hours, and in which phases they are there. */
-export const HOURS = { contractor: ['morning', 'noon', 'evening'] } as const satisfies Record<string, readonly DayPhase[]>
+/** When someone keeps hours: in some of the day's phases (the contractor), or from one hour to another, farm hours
+ *  from 0 to 24 (the estate office: 8:00 to 16:00; `to` before `from` runs past midnight). */
+export type Hours = readonly DayPhase[] | { readonly from: number; readonly to: number }
+/** Who keeps hours, and when they are there. */
+export const HOURS = { contractor: ['morning', 'noon', 'evening'], estate: { from: 8, to: 16 } } as const satisfies Record<string, Hours>
 export type Keeper = keyof typeof HOURS

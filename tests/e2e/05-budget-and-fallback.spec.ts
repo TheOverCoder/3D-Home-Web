@@ -2,6 +2,7 @@
 import type { Page } from '@playwright/test'
 import { countingTest as test, expect, bootApp, emptyFarm, fillFarm, marketDoorStill, onMap, watchErrors, BASE, NULL_GL, type MapId } from './helpers'
 import { FRONT_DOOR, HALL } from '../../src/data/market'
+import { AGENT_SEAT, AGENT_STAND } from '../../src/data/estate'
 
 // The budget, measured the way phones meet the game: a walk through the house and its garden (the home map), then over
 // the farm and into the supermarket (the farm's map: src/scene/Maps.tsx), at its fullest (every room filled with the
@@ -131,6 +132,11 @@ const WALK: View[] = [
   { map: 'farm', name: 'lane, the market, its shoppers', x: (FRONT_DOOR.x0 + FRONT_DOOR.x1) / 2, z: FRONT_DOOR.z0 - 2.4, yaw: P, pitch: -0.03, marketDoor: 1, fill: { shoppers: true } },
   { map: 'farm', name: 'market, the shelves', x: FRONT_DOOR.x1 - 0.3, z: HALL.z0 + 0.6, yaw: -P + (36 * P) / 180, pitch: -0.12, marketDoor: 1, fill: { shoppers: true } },
   { map: 'farm', name: 'market, the shelves, mixed', x: FRONT_DOOR.x1 - 0.3, z: HALL.z0 + 0.6, yaw: -P + (36 * P) / 180, pitch: -0.12, marketDoor: 1, fill: { shoppers: true, mixed: true } },
+  // the parking lot west of the gate with the car in its bay, and the estate office's front beside the market's: from
+  // the lane east of the gate, looking west along it (the gate and the market's doors shut: you are more than 1.8 m and
+  // 2 m from them); and inside the office, before the agent's desk, looking at him (its door open behind you)
+  { map: 'farm', name: 'lane, the parking lot and the estate office', x: 7.4, z: 14.4, yaw: 1.9, pitch: -0.06 },
+  { map: 'farm', name: 'estate office, the agent at his desk', x: AGENT_STAND.x, z: AGENT_STAND.z, yaw: Math.atan2(-(AGENT_SEAT.x - AGENT_STAND.x), -(AGENT_SEAT.z - AGENT_STAND.z)), pitch: -0.12 },
 ]
 
 interface Count {
