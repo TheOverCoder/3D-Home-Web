@@ -33,7 +33,7 @@ import {
 } from './decorate'
 import { ROOM_WEIGHT, canMoveOpening, canPlacePiece, findFreeSpot, footprint, hangOf, pieceBoxes, pieceRoom, roomWeight, snapPiece, unreachable, type HomeFit, type HomePiece } from './layout'
 import { FLOORS, PAINTS, openingById, openingsOf, runById, type OpeningAt } from './shell'
-import { floorRoom, moveOpening, paintRoom } from '../farm/state'
+import { floorRoom, moveOpening, paintRoom, restoreHome } from '../farm/state'
 
 // The house's decorate mode, in the scene: the view over a room, and the hand that moves its furniture. The camera
 // flies up from your eyes to look down on the room you are in (north at the top; the ceiling goes, and the walls on
@@ -536,6 +536,8 @@ export function DecorateMode() {
       move: movePieceTo,
       turn: turnPiece,
       putAway,
+      // the house as it was a moment ago (decorating's undo; the specs put a changed house back)
+      restore: restoreHome,
       placeStored,
       buy: buyPiece,
       decorate: { useDecorate, start: startDecorating, stop: stopDecorating, undo, camera: decorateCamera, view },

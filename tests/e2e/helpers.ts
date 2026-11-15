@@ -309,4 +309,100 @@ export async function emptyFarm(page: Page) {
   )
 }
 
+/**
+ * The house changed every way decorating can change its shell (05-budget, 16-view; src/home/shell.ts): the living room's
+ * west window and the garden door on its west wall (its two pictures put away), the kitchen's north window round the
+ * corner on its east wall, the doorway between the living room and the bedroom closed, the kitchen's door moved along
+ * its wall (the bedroom's switch put away) and the studio's doorway to the kitchen too, the bedroom's south window
+ * along its wall; every room painted and floored. Through the game's own rules (what fits): whatever was refused
+ * comes back, with why (nothing, when all went). `restoreHouse` puts the house back as it was.
+ */
+export async function changeHouse(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const h = (window as any).__home.home
+    h.__before ??= JSON.parse(JSON.stringify(h.layout))
+    const out: string[] = []
+    for (const id of ['picture-living-wide', 'picture-living-tall', 'switch-bedroom']) if (h.layout.pieces.some((p: any) => p.id === id) && !h.putAway(id)) out.push(`${id}: not put away`)
+    const moves: [string, string, number, boolean][] = [
+      ['win-living-west', 'w-living', 1.1, false],
+      ['garden-door', 'w-living', 3.9, false],
+      ['win-kitchen-north', 'e-kitchen', -4.4, false],
+      ['livingBedroom', 'mid-s', 3, true],
+      ['kitchenBedroom', 'mid-e', 2.0, false],
+      ['officeKitchen', 'mid-n', -4.3, false],
+      ['win-bedroom-south', 's-bedroom', 5.2, false],
+    ]
+    for (const [id, run, centre, closed] of moves) {
+      const fit = h.moveOpening(id, { run, centre, closed })
+      if (!fit.ok) out.push(`${id}: ${fit.reason}`)
+    }
+    const paint: Record<string, string> = { living: 'sage', office: 'slate', kitchen: 'butter', bedroom: 'blush' }
+    const floors: Record<string, string> = { living: 'limestone', office: 'slate-stone', kitchen: 'terracotta', bedroom: 'walnut' }
+    for (const room of Object.keys(paint)) if (!h.paint(room, paint[room]) || !h.floor(room, floors[room])) out.push(`${room}: not painted or floored`)
+    return out
+  })
+}
+
+/** The house back as it was before `changeHouse`. */
+export async function restoreHouse(page: Page) {
+  await page.evaluate(() => {
+    const h = (window as any).__home.home
+    if (h.__before) h.restore(h.__before)
+    delete h.__before
+  })
+}
+
+/** A view of the house made from one of its openings (`openingViews`). */
+export interface OpeningView {
+  name: string
+  kind: 'doorway' | 'window' | 'garden'
+  x: number
+  z: number
+  yaw: number
+  pitch?: number
+  /** the kitchen's door open or shut (the hinged doorway's views) */
+  door?: boolean
+  /** a view to compare the sun's map in too */
+  shadow?: boolean
+}
+
+/**
+ * The house's views made from its openings as the save has them (`__home.home.openings()`), so a moved, closed or
+ * opened one is looked at where it is: each open doorway from 1.2 m out on both sides looking through it, and standing
+ * in it (the kitchen's, with its door shut and open, from the bedroom 2.2 m out, clear of the door's swing); each open
+ * window from 1.6 m into its room, looking at it; the garden door from 2.4 m in looking out, standing in it, and from
+ * 2.5 m out looking in. Yaw 0 looks north (−z), π/2 west.
+ */
+export function openingViews(openings: any[]): OpeningView[] {
+  const P = Math.PI
+  const out: OpeningView[] = []
+  const at = (o: any, across: number, along = 0) => (o.axis === 'x' ? { x: o.centre + along, z: o.at + across } : { x: o.at + across, z: o.centre + along })
+  // looking across the wall towards its higher side (+z or +x), or its lower
+  const look = (o: any, high: boolean) => (o.axis === 'x' ? (high ? P : 0) : high ? -P / 2 : P / 2)
+  const name = (o: any) => (o.kind === 'garden' ? 'the garden door' : o.kind === 'window' ? `window ${o.id}` : `doorway ${o.sides.join(' ↔ ')}`)
+  for (const o of openings) {
+    if (o.closed) continue
+    if (o.kind === 'doorway') {
+      for (const door of o.hinged ? [false, true] : [undefined]) {
+        const tag = door === undefined ? '' : door ? ', the door open' : ', the door shut'
+        out.push({ name: `${name(o)}${tag}, from the ${o.sides[0]}`, kind: 'doorway', ...at(o, -1.2), yaw: look(o, true), door, shadow: door !== undefined })
+        out.push({ name: `${name(o)}${tag}, from the ${o.sides[1]}`, kind: 'doorway', ...at(o, o.hinged ? 2.2 : 1.2), yaw: look(o, false), door })
+      }
+      out.push({ name: `${name(o)}, standing in it`, kind: 'doorway', ...at(o, 0.05, 0.1), yaw: look(o, false) - 0.6, door: o.hinged ? true : undefined })
+    } else if (o.kind === 'window') {
+      const inward = o.at > 0 ? -1 : 1
+      out.push({ name: `${name(o)}, from its room`, kind: 'window', ...at(o, inward * 1.6), yaw: look(o, inward < 0), pitch: -0.05 })
+    } else {
+      const inward = o.at > 0 ? -1 : 1
+      out.push({ name: `${name(o)}, looking out`, kind: 'garden', ...at(o, inward * 2.4), yaw: look(o, inward < 0), pitch: -0.05, shadow: true })
+      out.push({ name: `${name(o)}, standing in it`, kind: 'garden', ...at(o, 0), yaw: look(o, inward < 0) - 0.3 })
+      out.push({ name: `${name(o)}, looking in`, kind: 'garden', ...at(o, -inward * 2.5), yaw: look(o, inward > 0), pitch: -0.05 })
+    }
+  }
+  return out
+}
+
+/** The house's openings as the game has them now. */
+export const openingsNow = (page: Page) => page.evaluate(() => JSON.parse(JSON.stringify((window as any).__home.home.openings())))
+
 export { expect }

@@ -1269,7 +1269,7 @@ button.farm-chip-item:focus-visible { outline: 3px solid var(--sun); outline-off
 .deco-tabs .btn { flex: 1 1 0; min-width: 0; min-height: 44px; padding-inline: 6px; gap: 5px; }
 .deco-hint { margin-top: 10px !important; }
 .edit-card .fit-warn { color: var(--sun-lip); }
-.deco-where { font-size: 14px !important; }
+.deco-where { font-size: 15px !important; }
 .deco-glyph { flex: none; width: 56px; height: 56px; display: grid; place-items: center; border-radius: 16px; background: var(--paper-2); box-shadow: 0 3px 0 var(--paper-3); color: var(--edge); }
 .deco-glyph svg { width: 34px; height: 34px; }
 /* paints and floors: round swatches in a row that scrolls sideways on a narrow screen */

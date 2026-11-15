@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { DOOR, LAMPS } from '../data/layout'
 import { farm } from '../farm/state'
 import { hingedDoorOf } from '../home/shell'
+import { HOSTED, onHost } from '../home/layout'
 import { debugSet } from '../lib/debug'
 import { useSettings } from '../settings'
 import { useHome } from '../store'
@@ -69,7 +70,10 @@ export function SoundDirector() {
       if (s.lamps !== p.lamps) {
         for (const lamp of LAMPS) {
           if (s.lamps[lamp.id] === p.lamps[lamp.id]) continue
-          const { pan, near } = place(lamp.position[0], lamp.position[2])
+          // where the lamp is now (one on a piece, or the standing lamp, goes where its piece goes)
+          const host = HOSTED[lamp.id]
+          const [lx, lz] = (host && onHost(farm.home, host, lamp.position[0], lamp.position[2])) || [lamp.position[0], lamp.position[2]]
+          const { pan, near } = place(lx, lz)
           lampSwitch(s.lamps[lamp.id], pan, near)
         }
       }
