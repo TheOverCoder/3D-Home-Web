@@ -528,12 +528,14 @@ export function snapWall(p: HomePiece, x: number, z: number, room?: RoomId): Hom
 }
 
 /** Where a piece lands for a point the finger puts it at: on a 0.25 m grid, and flush with a wall it comes within 0.3 m
- *  of (one that hangs: on the nearest wall). */
-export function snapPiece(p: HomePiece, x: number, z: number): HomePiece {
+ *  of (one that hangs: on the nearest wall) — but where it stands in a doorway's opening, clear of its walls (`shell`:
+ *  the house's), it stays there. */
+export function snapPiece(p: HomePiece, x: number, z: number, shell?: HomeShell): HomePiece {
   if (onWall(p.type)) return snapWall(p, x, z, PIECES[p.type].keep ? (pieceRoom(p) ?? undefined) : undefined)
   const q = { ...p, x: Math.round(x * 4) / 4, z: Math.round(z * 4) / 4 }
   const room = roomAt(q.x, q.z)
   if (!room) return q
+  if (shell && !inside(footprint(q), roomFloor(room)) && !shellProblem(shell, q)) return q
   const f = roomFloor(room)
   const r = footprint(q)
   const gw = r.minX - f.minX

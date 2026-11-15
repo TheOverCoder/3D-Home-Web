@@ -128,7 +128,7 @@ export function dragPiece(id: string, x: number, z: number) {
   if (openingOf(id)) return dragOpening(openingOf(id)!, x, z)
   const p = pieceById(id)
   if (!p) return
-  const at = snapPiece(p, x, z)
+  const at = snapPiece(p, x, z, farm.home.shell)
   const last = useDecorate.getState().drag
   if (last && last.id === id && last.at && last.at.x === at.x && last.at.z === at.z && last.at.rot === at.rot) return
   useDecorate.getState().setDrag({ id, at, fit: canPlacePiece(farm.home, at) })

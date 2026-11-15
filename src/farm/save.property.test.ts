@@ -101,7 +101,9 @@ const anything = (original: unknown) =>
     // a long list of odd things (kept small: forty at most)
     { weight: 1, arbitrary: fc.array(fc.oneof(fc.constantFrom(...NUMBERS), fc.anything({ maxDepth: 1 })), { maxLength: 40 }) },
     // a list grown long with its own items (forty buyers, beds, pieces, counts…)
-    ...(Array.isArray(original) && original.length ? [{ weight: 2, arbitrary: fc.array(fc.constantFrom(...original), { minLength: original.length + 1, maxLength: 40 }) }] : []),
+    ...(Array.isArray(original) && original.length
+      ? [{ weight: 2, arbitrary: fc.array(fc.constantFrom(...original), { minLength: original.length + 1, maxLength: Math.max(40, original.length + 1) }) }]
+      : []),
   )
 
 /** JSON text as a hand-edited save can hold it: -0 stays -0 and ±Infinity is written ±1e999 (JSON.parse reads it as
