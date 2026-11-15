@@ -25,6 +25,8 @@ export { Minus } from '@phosphor-icons/react/dist/csr/Minus'
 export { Plus } from '@phosphor-icons/react/dist/csr/Plus'
 export { CarProfile } from '@phosphor-icons/react/dist/csr/CarProfile'
 export { LockSimple } from '@phosphor-icons/react/dist/csr/LockSimple'
+// a machine's queue: a hand that carries a recipe into a place (src/farm/machine)
+export { HandGrabbing } from '@phosphor-icons/react/dist/csr/HandGrabbing'
 // decorating the house's shell (src/home/DecoratePanel.tsx): its doorways and windows, its paint and its floors
 export { Door } from '@phosphor-icons/react/dist/csr/Door'
 export { DoorOpen } from '@phosphor-icons/react/dist/csr/DoorOpen'

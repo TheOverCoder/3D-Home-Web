@@ -37,6 +37,9 @@ if (params.has('gallery')) {
       ;(window as unknown as { __gainmap: Record<string, string> }).__gainmap = await hdrToGainmap()
     })
     .catch(failed('gain map'))
+} else if (import.meta.env.DEV && params.get('preview') === 'machine') {
+  // a machine's panel on its own, fed with sample data (src/farm/machine/Preview.tsx): while developing only
+  import('./farm/machine/Preview').then(({ MachinePreview }) => root.render(<MachinePreview />)).catch(failed('machine preview'))
 } else if (params.has('items')) {
   // the item pictures drawn from the models (src/models/ItemArtPage.tsx), to look at and to save
   import('./models/ItemArtPage').then(({ ItemArtPage }) => root.render(<ItemArtPage />)).catch(failed('item pictures'))

@@ -1,0 +1,272 @@
+/* ───────── a machine's panel (src/farm/machine/MachinePanelView.tsx) ─────────
+   A paper sheet: the queue as a tray of wells at the top (the jobs sit in them; empty ones wait for a recipe; the next
+   one to buy is dashed, with its price), one sun-yellow Collect under it, and the recipes as raised cards to pick up
+   (a lip under each, like the game's buttons: a thing to take, where the wells are things to fill). Upright a sheet
+   at the bottom; sideways on the right, the queue and the recipes side by side; on a computer in the middle.
+   Motion moves it (Motion for React): no CSS animation of the sheet here; loops (a glow, a bob) only for whoever
+   does not prefer less motion, and never on an element Motion moves (they would fight over its transform). */
+
+.mp-root { position: fixed; inset: 0; z-index: 42; display: grid; overflow: hidden; }
+.mp-shade { position: absolute; inset: 0; background: rgba(40, 24, 10, 0.4); }
+.mp-sheet { position: relative; z-index: 1; display: flex; flex-direction: column; min-height: 0; color: var(--ink); background: var(--paper); border: 3px solid #fff; box-shadow: var(--shadow-sheet); overflow: hidden; outline: none; }
+.mp-sheet img { -webkit-user-drag: none; -webkit-touch-callout: none; user-select: none; }
+.mp-bottom { place-items: end center; }
+.mp-bottom .mp-sheet { width: 100%; max-height: 92dvh; border-radius: var(--r-sheet) var(--r-sheet) 0 0; border-bottom: 0; }
+.mp-right { place-items: stretch end; }
+.mp-right .mp-sheet { width: min(610px, 76vw); height: 100dvh; border-radius: var(--r-sheet) 0 0 var(--r-sheet); border-right: 0; }
+.mp-middle { place-items: center; padding: 16px; }
+.mp-middle .mp-sheet { width: min(620px, 100%); max-height: calc(100dvh - 32px); border-radius: var(--r-sheet); }
+
+/* the top: the machine's picture, its name, the level chip and how long the queue still works; ✕. It is where a
+   swipe takes the sheet away (the grabber says so) */
+.mp-head { position: relative; display: flex; align-items: center; gap: 12px; padding: 16px 16px 10px; touch-action: none; flex: none; }
+.mp-grab { position: absolute; top: 6px; left: 50%; width: 40px; height: 5px; margin-left: -20px; border-radius: 3px; background: var(--paper-3); pointer-events: none; }
+.mp-middle .mp-grab { display: none; }
+.mp-head-art { width: 56px; height: 56px; margin: -6px 0 -4px; }
+.mp-head-text { flex: 1; min-width: 0; }
+.mp-head h2 { margin: 0; font: 600 25px/1.1 var(--font-display); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mp-sub { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 5px; min-height: 30px; }
+.mp-total { gap: 4px; font-variant-numeric: tabular-nums; }
+.mp-total svg { width: 15px; height: 15px; }
+.mp-round { flex: none; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%; background: var(--paper-2); color: var(--ink); box-shadow: 0 3px 0 var(--paper-3); }
+.mp-round svg { width: 22px; height: 22px; }
+
+/* the level chip: a small ring of the way to the next level round the number, and the word */
+.mp-level-wrap { display: inline-flex; }
+.mp-level { position: relative; display: inline-flex; align-items: center; gap: 6px; min-height: 34px; margin-block: -2px; padding: 2px 2px 2px 12px; border: 0; border-radius: 999px; background: #fff; color: var(--ink); font: 600 15px/1 var(--font-display); box-shadow: 0 2px 0 var(--paper-3), 0 0 0 1.5px var(--edge-soft); }
+/* a finger's worth of room round it */
+.mp-level::before { content: ''; position: absolute; inset: -6px -4px; }
+.mp-level-ring { position: relative; display: grid; place-items: center; width: 30px; height: 30px; }
+.mp-level-ring svg { position: absolute; inset: 0; }
+.mp-level-ring b { position: relative; font: 800 14px/1 var(--font-text); }
+.mp-ring-track { stroke: color-mix(in srgb, var(--paper-3) 80%, var(--edge-soft)); }
+.mp-ring-fill { stroke: var(--sun-lip); }
+.mp-ring-ghost { stroke: var(--sun); opacity: 0.75; }
+
+/* ── the queue: a tray of wells ── */
+.mp-body { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+.mp-queue { position: relative; flex: none; margin: 0 16px; padding: 10px; border-radius: 22px; background: var(--paper-2); box-shadow: inset 0 2px 0 rgba(158, 123, 87, 0.16); transition: background 0.2s; }
+/* a waiting job dragged out of the queue: the tray says it is leaving */
+.mp-queue.out { background: color-mix(in srgb, var(--berry) 10%, var(--paper-2)); }
+.mp-places { position: relative; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 7px; }
+.mp-place { position: relative; aspect-ratio: 1; min-width: 0; border-radius: 16px; background: color-mix(in srgb, var(--paper-3) 55%, var(--paper-2)); box-shadow: inset 0 3px 0 rgba(110, 84, 64, 0.13); }
+.mp-place > svg { pointer-events: none; }
+.mp-place-btn { position: absolute; inset: 0; display: grid; place-items: center; padding: 0; border: 0; border-radius: inherit; background: none; color: inherit; touch-action: none; user-select: none; -webkit-touch-callout: none; }
+.mp-place .art { width: 62%; height: 62%; margin-top: -10%; }
+.mp-place .mp-pop { display: grid; place-items: center; width: 100%; height: 100%; }
+.mp-time { position: absolute; left: 0; right: 0; bottom: 4%; text-align: center; font: 800 13px/1 var(--font-text); font-variant-numeric: tabular-nums; color: var(--ink-2); pointer-events: none; }
+
+/* empty: a faint +; while a recipe is carried, every empty well's rim lights and breathes */
+.mp-place.empty { display: grid; place-items: center; color: color-mix(in srgb, var(--ink-2) 35%, transparent); }
+.mp-place.empty svg { width: 34%; height: 34%; }
+.mp-place.empty::after { content: ''; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 2.5px var(--sun-lip); opacity: 0; transition: opacity 0.15s; pointer-events: none; }
+.mp-places.inviting .mp-place.empty { color: var(--sun-lip); }
+.mp-places.inviting .mp-place.empty::after { opacity: 0.6; }
+
+/* waiting: its picture and its time, a step back from the one at work; tapped, it is ringed red with its ✕ */
+.mp-place.waiting .art { opacity: 0.92; }
+.mp-place.waiting.picked { z-index: 2; background: #fff; box-shadow: 0 0 0 2.5px var(--berry), 0 6px 12px rgba(40, 24, 10, 0.18); }
+.mp-remove { position: absolute; z-index: 3; top: -9px; right: -9px; display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 2px solid #fff; border-radius: 50%; background: var(--berry); color: #fff; box-shadow: 0 2px 0 var(--berry-lip); }
+.mp-remove::before { content: ''; position: absolute; inset: -9px; border-radius: 50%; }
+.mp-remove svg { width: 15px; height: 15px; }
+
+/* at work: a warm well, a fuse round its edge filling clockwise, the picture bobbing as it works */
+.mp-place.working { background: radial-gradient(circle at 50% 40%, #fff6dc, color-mix(in srgb, var(--sun) 38%, var(--paper))); box-shadow: inset 0 3px 0 rgba(211, 154, 28, 0.2), 0 0 14px color-mix(in srgb, var(--sun) 45%, transparent); }
+.mp-fuse { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.mp-fuse path { fill: none; stroke-width: 8.5; stroke-linecap: round; }
+.mp-fuse-track { stroke: color-mix(in srgb, var(--sun-lip) 24%, transparent); }
+.mp-fuse-fill { stroke: var(--sun-lip); }
+.mp-place.working .mp-time { color: var(--ink); }
+.mp-bob .art { width: 62%; height: 62%; }
+
+/* done: green, glowing, a ✓ on its corner; a tap (or Collect) takes them all */
+.mp-place.done { background: radial-gradient(circle at 50% 40%, #fff, #e3f5d8); box-shadow: inset 0 0 0 2.5px #8fd18a; }
+.mp-place.done::after { content: ''; position: absolute; inset: -3px; border-radius: 19px; box-shadow: 0 0 16px 3px color-mix(in srgb, var(--sun) 65%, transparent); opacity: 0.55; pointer-events: none; }
+.mp-place.done .art { margin-top: 0; width: 66%; height: 66%; }
+.mp-check { position: absolute; top: -6px; right: -6px; display: grid; place-items: center; width: 22px; height: 22px; border: 2px solid #fff; border-radius: 50%; background: var(--leaf); color: #fff; box-shadow: 0 2px 0 var(--leaf-lip); }
+.mp-check svg { width: 13px; height: 13px; }
+/* a job just finished: a light sweeps over it once */
+.mp-pop.shine { position: relative; overflow: hidden; border-radius: 16px; }
+.mp-pop.shine::after { content: ''; position: absolute; inset: 0; background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.85) 48%, transparent 66%); transform: translateX(-120%); pointer-events: none; }
+
+/* where the dragged thing would land: a dashed sun well, its picture faint (out of the queue: red) */
+.mp-place.hole { display: grid; place-items: center; background: color-mix(in srgb, var(--sun) 20%, var(--paper)); box-shadow: inset 0 0 0 2.5px var(--sun-lip); }
+.mp-place.hole .art { opacity: 0.35; margin-top: 0; }
+.mp-place.hole.out { background: color-mix(in srgb, var(--berry) 12%, var(--paper)); box-shadow: inset 0 0 0 2.5px color-mix(in srgb, var(--berry) 55%, transparent); }
+.mp-place.hole.out .art { opacity: 0.15; }
+
+/* the next place, for its price */
+.mp-place.buy { background: none; box-shadow: inset 0 0 0 2px var(--edge-soft); }
+.mp-place.buy .mp-place-btn { display: flex; flex-direction: column; justify-content: center; gap: 3px; color: var(--ink-2); touch-action: manipulation; }
+.mp-place.buy .mp-place-btn > svg { width: 30%; height: 30%; opacity: 0.6; }
+.mp-place.buy .farm-coins { font-size: 13.5px; color: var(--ink); }
+.mp-place.buy .farm-coins img { width: 17px; height: 17px; }
+.mp-place.buy .short .farm-coins { color: var(--berry); }
+
+/* under the tray: one sun-yellow Collect, or a line that says what is going on */
+.mp-foot { position: relative; display: grid; margin-top: 10px; min-height: 52px; }
+.mp-foot > * { grid-area: 1 / 1; }
+.mp-collect { position: relative; width: 100%; min-height: 52px; padding: 0 16px; }
+.mp-collect-in { display: inline-flex; align-items: center; gap: 10px; }
+.mp-collect-pics { display: inline-flex; }
+.mp-collect-pics .art { width: 34px; height: 34px; margin-block: -6px; }
+.mp-collect-pics .art + .art { margin-left: -14px; }
+.mp-collect-n { display: grid; place-items: center; min-width: 28px; height: 28px; padding: 0 7px; border-radius: 999px; background: var(--ink); color: var(--sun); font: 800 15px/1 var(--font-text); font-variant-numeric: tabular-nums; }
+.mp-collect::after { content: ''; position: absolute; inset: -4px; border-radius: inherit; box-shadow: 0 0 18px 4px color-mix(in srgb, var(--sun) 70%, transparent); opacity: 0; pointer-events: none; }
+.mp-note { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 52px; margin: 0; padding: 6px 14px; border-radius: 999px; font: 700 15px/1.2 var(--font-text); color: var(--ink-2); text-align: center; }
+.mp-note .art { width: 30px; height: 30px; }
+.mp-note svg { width: 18px; height: 18px; flex: none; }
+.mp-note.hint { color: var(--ink-2); }
+.mp-note.hint svg { width: 22px; height: 22px; color: var(--sun-lip); }
+.mp-note.calm { background: #fff; color: var(--ink); box-shadow: 0 2px 0 var(--paper-3); }
+.mp-count { font: 800 16px/1 var(--font-text); font-variant-numeric: tabular-nums; }
+.mp-note.bad { background: color-mix(in srgb, var(--berry) 12%, var(--paper)); color: var(--berry-lip); }
+.mp-note.good { background: color-mix(in srgb, var(--leaf) 13%, var(--paper)); color: var(--leaf-lip); }
+.mp-note.xp { background: color-mix(in srgb, var(--xp) 14%, var(--paper)); color: var(--xp-lip); }
+.mp-note.float { position: absolute; z-index: 2; left: 8px; right: 8px; bottom: calc(100% + 6px); min-height: 40px; box-shadow: 0 6px 16px rgba(40, 24, 10, 0.18); }
+.mp-xp-pic { filter: hue-rotate(48deg) saturate(1.3) brightness(1.08) drop-shadow(0 0 2px var(--sun)); }
+
+/* ── the recipes: raised cards to pick up ── */
+.mp-recipes { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 14px 16px calc(16px + env(safe-area-inset-bottom)); }
+.mp-recipes-in { display: grid; gap: 10px; container-type: inline-size; }
+.mp-recipe { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto; align-items: center; gap: 4px 12px; width: 100%; min-height: 64px; padding: 8px 12px 8px 8px; border: 0; border-radius: var(--r-card); background: #fff; color: var(--ink); text-align: left; box-shadow: 0 4px 0 var(--paper-3), 0 6px 14px rgba(40, 24, 10, 0.08); user-select: none; -webkit-touch-callout: none; cursor: grab; }
+.mp-recipe:focus-visible { outline: 3px solid var(--sun); outline-offset: 2px; }
+.mp-recipe-pic { grid-row: 1 / span 2; display: grid; place-items: center; width: 60px; height: 60px; border-radius: 18px; background: color-mix(in srgb, var(--sun) 16%, var(--paper)); }
+.mp-recipe-pic .item-pic .art { width: 50px; height: 50px; }
+.mp-recipe-pic .item-pic .qty { min-width: 20px; height: 20px; font-size: 13px; inset-inline-end: -8px; bottom: -6px; }
+.mp-recipe-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+.mp-recipe-top b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 17px/1.2 var(--font-display); }
+.mp-recipe-time { flex: none; gap: 3px; padding: 1px 8px 1px 5px; background: var(--paper-2); font-variant-numeric: tabular-nums; }
+.mp-recipe-time svg { width: 14px; height: 14px; }
+.mp-recipe-needs { display: flex; flex-wrap: wrap; gap: 2px 6px; }
+.mp-need { display: flex; flex-direction: column; align-items: center; gap: 0; min-width: 36px; }
+.mp-need .item-pic .art { width: 28px; height: 28px; }
+.mp-need-count { font: 700 13px/1.1 var(--font-text); color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mp-need-count b { display: inline-block; font-weight: 800; color: var(--ink); }
+.mp-need.lack .art { opacity: 0.45; }
+.mp-need.lack .mp-need-count, .mp-need.lack .mp-need-count b { color: var(--berry); }
+/* too little in store: the card steps back (what is short is red); the queue full: it waits */
+.mp-recipe.short { background: var(--paper-2); box-shadow: 0 3px 0 var(--paper-3); cursor: default; }
+.mp-recipe.short .mp-recipe-pic { background: var(--paper-3); }
+.mp-recipe.short .mp-recipe-pic .art { filter: grayscale(0.7); opacity: 0.7; }
+.mp-recipe.full { cursor: not-allowed; opacity: 0.72; }
+.mp-recipe.full .mp-recipe-pic { background: var(--paper-2); }
+/* being carried: its picture is the one in the air */
+.mp-recipe.carried { box-shadow: 0 0 0 2.5px var(--sun), 0 4px 0 var(--sun-lip); }
+.mp-recipe.carried .mp-recipe-pic .item-pic { opacity: 0.25; }
+/* ── the thing being dragged: its picture on a round plate, riding above the finger ── */
+.mp-ghost { position: fixed; left: 0; top: 0; z-index: 80; display: grid; place-items: center; border-radius: 50%; background: radial-gradient(circle, #fff 0 52%, color-mix(in srgb, var(--sun) 45%, #fff) 100%); box-shadow: 0 0 0 3px var(--sun), 0 16px 28px rgba(40, 24, 10, 0.35); pointer-events: none; transition: box-shadow 0.15s, background 0.15s; }
+.mp-ghost img { width: 75%; height: 75%; object-fit: contain; filter: drop-shadow(0 3px 2px rgba(60, 35, 10, 0.25)); }
+.mp-ghost.out { background: radial-gradient(circle, #fff 0 52%, color-mix(in srgb, var(--berry) 30%, #fff) 100%); box-shadow: 0 0 0 3px var(--berry), 0 16px 28px rgba(40, 24, 10, 0.35); }
+.mp-ghost.out img { opacity: 0.6; filter: grayscale(0.6); }
+.mp-ghost.lost { box-shadow: 0 0 0 3px var(--paper-3), 0 16px 28px rgba(40, 24, 10, 0.3); }
+.mp-ghost-x { position: absolute; top: -4px; right: -4px; display: grid; place-items: center; width: 24px; height: 24px; border: 2px solid #fff; border-radius: 50%; background: var(--berry); color: #fff; }
+.mp-ghost-x svg { width: 13px; height: 13px; }
+/* the first time: a hand carrying a recipe's picture into the queue */
+.mp-coach { position: fixed; z-index: 79; width: 56px; height: 56px; margin: -28px 0 0 -28px; pointer-events: none; }
+.mp-coach img { width: 100%; height: 100%; object-fit: contain; opacity: 0.85; filter: drop-shadow(0 6px 6px rgba(40, 24, 10, 0.3)); }
+.mp-coach svg { position: absolute; right: -14px; bottom: -16px; width: 38px; height: 38px; color: #fff; filter: drop-shadow(0 0 1.5px var(--ink)) drop-shadow(0 3px 3px rgba(40, 24, 10, 0.4)); }
+/* goods flying (to the Collect button, to the barn's chip, into a place) */
+.mp-fly { position: fixed; z-index: 81; pointer-events: none; object-fit: contain; filter: drop-shadow(0 4px 3px rgba(60, 35, 10, 0.3)); will-change: transform, opacity; }
+
+/* the card that asks before a place is bought */
+.mp-buy-card { z-index: 90; width: min(280px, calc(100vw - 24px)); padding: 12px 14px 14px; border-radius: var(--r-card); color: var(--ink); }
+.mp-buy-head { display: flex; align-items: center; gap: 10px; }
+.mp-buy-head > span:last-child { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+.mp-buy-head strong { font: 600 18px/1.1 var(--font-display); }
+.mp-buy-icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 14px; background: var(--paper-2); box-shadow: inset 0 0 0 2px var(--edge-soft); color: var(--ink-2); }
+.mp-buy-icon svg { width: 22px; height: 22px; }
+.mp-buy-actions { display: flex; gap: 8px; margin-top: 12px; }
+.mp-buy-actions .btn { flex: 1; padding: 0 12px; }
+.mp-buy-go { transition: opacity 0.2s, box-shadow 0.1s; }
+.mp-buy-go.arming { opacity: 0.55; }
+.mp-buy-short { margin: 8px 0 0; font-size: 13.5px; color: var(--berry-lip); text-align: center; }
+
+/* ── the level's page: the ring, the stations, what it gives now and next ── */
+.mp-body.level { overflow-y: auto; }
+.mp-lv { display: grid; gap: 14px; padding: 2px 16px calc(18px + env(safe-area-inset-bottom)); }
+.mp-lv-hero { display: flex; align-items: center; gap: 16px; }
+.mp-lv-ring { position: relative; flex: none; width: 124px; height: 124px; }
+.mp-lv-ring svg { position: absolute; inset: 0; }
+.mp-lv-ring .mp-ring-fill { filter: drop-shadow(0 0 4px color-mix(in srgb, var(--sun) 70%, transparent)); }
+.mp-lv-n { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; line-height: 1; }
+.mp-lv-n small { font: 700 13px/1 var(--font-text); color: var(--ink-2); }
+.mp-lv-n b { font: 600 46px/1 var(--font-display); color: var(--ink); }
+.mp-lv-words { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
+.mp-lv-big { font: 600 19px/1.15 var(--font-display); color: var(--ink); }
+.mp-lv-big strong { font-weight: 700; color: var(--sun-lip); }
+.mp-lv-line { font-size: 15px; color: var(--ink-2); }
+.mp-lv-facts { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.mp-lv-ghost { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--ink-2); }
+.mp-lv-ghost i { width: 14px; height: 8px; border-radius: 4px; background: var(--sun); opacity: 0.75; }
+.mp-lv-stations { position: relative; display: flex; justify-content: space-between; margin: 0; padding: 0 4px; list-style: none; }
+.mp-lv-stations::before { content: ''; position: absolute; left: 20px; right: 20px; top: 50%; height: 4px; margin-top: -2px; border-radius: 2px; background: var(--paper-3); }
+.mp-lv-station { position: relative; display: grid; place-items: center; }
+.mp-lv-station > span { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--paper-2); color: var(--ink-2); font: 800 15px/1 var(--font-text); box-shadow: 0 0 0 3px var(--paper); }
+.mp-lv-station.past > span { background: var(--sun-lip); color: #fff; }
+.mp-lv-station.past svg { width: 16px; height: 16px; }
+.mp-lv-station.here > span { width: 40px; height: 40px; background: var(--sun); color: var(--ink); font-size: 18px; box-shadow: 0 0 0 3px var(--paper), 0 0 0 5px var(--sun-lip); }
+.mp-lv-station.next > span { background: #fff; color: var(--ink); box-shadow: 0 0 0 3px var(--paper), inset 0 0 0 2.5px var(--sun-lip); }
+.mp-lv-boosts { display: grid; gap: 6px; }
+.mp-lv-row { display: grid; grid-template-columns: minmax(0, 1fr) 64px 18px 84px; align-items: center; gap: 8px; min-height: 48px; padding: 4px 10px; border-radius: 16px; background: var(--paper-2); }
+.mp-lv-boosts.top .mp-lv-row { grid-template-columns: minmax(0, 1fr) 92px; }
+.mp-lv-row.head { min-height: 0; padding-block: 0; background: none; font: 700 13px/1.2 var(--font-text); color: var(--ink-2); }
+.mp-lv-row.head > span { text-align: center; }
+.mp-lv-what { display: flex; align-items: center; gap: 8px; font: 700 15px/1.2 var(--font-text); }
+.mp-lv-what .art { width: 30px; height: 30px; }
+.mp-lv-now, .mp-lv-next { justify-self: center; font: 800 15px/1 var(--font-text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mp-lv-now.none { color: var(--ink-2); font-weight: 700; }
+.mp-lv-next.up { padding: 7px 10px; border-radius: 999px; background: var(--sun); color: var(--ink); box-shadow: 0 2px 0 var(--sun-lip); }
+.mp-lv-arrow { display: grid; place-items: center; color: var(--ink-2); }
+.mp-lv-arrow svg { width: 16px; height: 16px; }
+
+/* ── a phone on its side: the sheet on the right, the queue and the recipes side by side ── */
+.mp-right .mp-head { padding: calc(8px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) 8px 22px; gap: 10px; }
+.mp-right .mp-grab { top: 50%; left: 8px; width: 5px; height: 40px; margin: -20px 0 0; }
+.mp-right .mp-head-art { width: 42px; height: 42px; margin: -4px 0; }
+.mp-right .mp-head h2 { font-size: 21px; }
+.mp-right .mp-sub { margin-top: 3px; }
+.mp-right .mp-body { display: grid; grid-template-columns: 246px minmax(0, 1fr); align-items: start; }
+.mp-right .mp-queue { margin: 0 0 0 16px; padding: 8px; }
+.mp-right .mp-places { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.mp-right .mp-foot { margin-top: 8px; min-height: 48px; }
+.mp-right .mp-collect, .mp-right .mp-note { min-height: 48px; }
+.mp-right .mp-note { font-size: 14px; padding: 4px 10px; }
+.mp-right .mp-note.float { min-height: 36px; }
+.mp-right .mp-recipes { align-self: stretch; padding: 0 calc(12px + env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) 12px; }
+.mp-right .mp-recipes-in { gap: 8px; padding-bottom: 4px; }
+.mp-right .mp-body.level { display: block; }
+.mp-right .mp-lv { grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr); grid-template-areas: 'hero boosts' 'stations boosts'; align-items: start; gap: 14px 16px; padding: 2px calc(14px + env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) 22px; }
+.mp-right .mp-lv-hero { grid-area: hero; gap: 12px; }
+.mp-right .mp-lv-ring { width: 96px; height: 96px; }
+.mp-right .mp-lv-ring svg { width: 96px; height: 96px; }
+.mp-right .mp-lv-n b { font-size: 36px; }
+.mp-right .mp-lv-big { font-size: 17px; }
+.mp-right .mp-lv-line { font-size: 14px; }
+.mp-right .mp-lv-ghost { font-size: 13.5px; }
+.mp-right .mp-lv-stations { grid-area: stations; padding: 0; }
+.mp-right .mp-lv-stations::before { left: 14px; right: 14px; }
+.mp-right .mp-lv-boosts { grid-area: boosts; }
+.mp-right .mp-lv-row { grid-template-columns: minmax(0, 1fr) 58px 14px 74px; gap: 6px; min-height: 46px; padding: 4px 8px; }
+.mp-right .mp-lv-what { gap: 6px; }
+.mp-right .mp-lv-what .art { width: 26px; height: 26px; }
+.mp-right .mp-lv-next.up { padding: 6px 8px; }
+.mp-right .mp-lv-station > span { width: 28px; height: 28px; font-size: 13px; }
+.mp-right .mp-lv-station.here > span { width: 34px; height: 34px; font-size: 16px; }
+
+/* ── on a computer or a tablet: in the middle, six places a row ── */
+.mp-middle .mp-places { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+
+/* ── loops, for whoever does not prefer less motion ── */
+@media (prefers-reduced-motion: no-preference) {
+  .mp-place.working .mp-bob .art { animation: mp-bob 1.6s ease-in-out infinite; }
+  .mp-place.done::after { animation: mp-glow 1.8s ease-in-out infinite; }
+  .mp-places.inviting .mp-place.empty::after { animation: mp-glow 1.1s ease-in-out infinite; }
+  .mp-collect::after { animation: mp-glow 1.8s ease-in-out infinite; }
+  .mp-pop.shine::after { animation: mp-shine 0.7s 0.15s ease-out both; }
+  .mp-lv-station.next > span { animation: mp-next 1.8s ease-in-out infinite; }
+}
+@keyframes mp-bob { 0%, 100% { transform: translateY(0) rotate(0); } 30% { transform: translateY(-3px) rotate(-3deg); } 65% { transform: translateY(-1px) rotate(2deg); } }
+@keyframes mp-glow { 0%, 100% { opacity: 0.25; } 50% { opacity: 0.85; } }
+@keyframes mp-shine { to { transform: translateX(120%); } }
+@keyframes mp-next { 0%, 100% { box-shadow: 0 0 0 3px var(--paper), inset 0 0 0 2.5px var(--sun-lip); } 50% { box-shadow: 0 0 0 3px var(--paper), inset 0 0 0 2.5px var(--sun-lip), 0 0 12px 3px color-mix(in srgb, var(--sun) 70%, transparent); } }
