@@ -16,7 +16,7 @@ import { DRIVER, putTractor, seatDriver, tractorParts } from './tractor'
 import { MARKET_MIDDLE, MARKET_SCREEN, MARKET_SIGN, marketFittingsParts, marketShellParts } from './market'
 import { putSlidingDoor, slidingDoorParts } from './slidingDoor'
 import { BROWSE_SPOTS, CONTRACTOR_SPOT, MANAGER_SPOT, MARKET_WALKIN, PAY_SPOT } from '../data/market'
-import { carParts, putCar } from './car'
+import { carParts, putCar, putRollingCar, rollingCarParts } from './car'
 import { ESTATE_MIDDLE, estateFittingsParts, parkingLotParts } from './estate'
 import { walkInShellParts } from './market'
 import { AGENT_SEAT, ESTATE_HOURS, ESTATE_SIGN, ESTATE_WALKIN, ESTATE_WINDOW, SALE_BOARD, SEAT_Y } from '../data/estate'
@@ -381,6 +381,27 @@ export const GALLERY: GalleryEntry[] = [
           parts.begin()
           // three quarters on, turning slowly
           putCar(parts, 0, 0, -2.4 + Math.sin(t * 0.4) * 0.5)
+          parts.end()
+        },
+      }
+    },
+  },
+  {
+    id: 'car-road',
+    label: 'Car on the road',
+    name: "The car on the road, in the drive's film: its wheels apart, rolling, its body swaying on its springs as it pulls away and brakes",
+    make() {
+      const parts = rollingCarParts()
+      return {
+        object: parts.group,
+        width: 4.2,
+        height: 1.6,
+        triangles: () => parts.triangles(),
+        update(t) {
+          parts.begin()
+          // side on, rolling to and fro, squatting as it sets off and dipping as it stops
+          const k = Math.sin(t * 0.9)
+          putRollingCar(parts, 0, 0, -Math.PI / 2 - 0.5, k * 2.4, { pitch: Math.cos(t * 0.9) * 0.03, lift: Math.sin(t * 5) * 0.006 })
           parts.end()
         },
       }

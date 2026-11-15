@@ -2,9 +2,10 @@ import { ARRIVE } from '../data/maps'
 import { driveTo, farm, type Place } from '../farm/state'
 import { changeMap, changingMap } from './maps'
 
-// A drive to the other map, as the car's talk starts it (src/farm/car): the screen goes dark, the drive happens (in the
-// save, `driveTo`; and, in a later phase, its film), the other map comes into the scene with you out of the car where
-// `ARRIVE` says, facing its heading, and the screen comes back (./maps.ts, `changeMap`: its shaders compile meanwhile).
+// A drive to the other map, as the car's talk starts it (src/farm/car): the screen goes dark, the drive's film plays
+// (src/film/DriveFilm.tsx sets it from the scene's start), the drive happens in the save (`driveTo`), the other map comes
+// into the scene with you out of the car where `ARRIVE` says, facing its heading, and the screen comes back (./maps.ts,
+// `changeMap`: its shaders compile meanwhile).
 
 /** A drive under way, for the film: from where, to where. */
 export interface Trip {
@@ -12,15 +13,17 @@ export interface Trip {
   to: Place
 }
 
-/** The drive's film, played while the screen is dark (none yet: a later phase sets it). It resolves when the film is
- *  over; the map changes after it. */
-let film: ((trip: Trip) => Promise<void>) | null = null
+/** The drive's films, the last set the one played (while the screen is dark: it resolves when the film is over, and
+ *  the map changes after it). */
+const films: ((trip: Trip) => Promise<void>)[] = []
 
-/** Sets the drive's film (null: none); the returned function takes it away again. */
+/** Sets the drive's film; the returned function takes it away again (the one set before it plays again: a test's own
+ *  film over the game's). */
 export function setDriveFilm(play: (trip: Trip) => Promise<void>): () => void {
-  film = play
+  films.push(play)
   return () => {
-    if (film === play) film = null
+    const i = films.lastIndexOf(play)
+    if (i >= 0) films.splice(i, 1)
   }
 }
 
@@ -34,6 +37,7 @@ export function travel(to: Place): boolean {
   const trip: Trip = { from: farm.place, to }
   void changeMap(to, ARRIVE[to], async () => {
     try {
+      const film = films[films.length - 1]
       if (film) await film(trip)
     } catch (e) {
       console.warn('[travel] the drive film failed', e)

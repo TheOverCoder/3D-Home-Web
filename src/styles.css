@@ -628,6 +628,26 @@ a:focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; border-rad
 /* ───────── the curtain: the screen dark while the map changes (a drive, another farm loaded) ───────── */
 .curtain { position: fixed; inset: 0; z-index: 50; background: var(--bg); opacity: 0; pointer-events: none; transition: opacity 400ms ease; }
 .curtain.down { opacity: 1; pointer-events: auto; }
+/* the drive's film (src/film, in the game's canvas under it): the curtain gives way to it; its own veil fades the
+   picture in and out, thin letterbox bars, Skip; a tap anywhere skips. The rest of the interface is hidden meanwhile. */
+.drive-film { position: fixed; inset: 0; z-index: 51; touch-action: none; user-select: none; -webkit-user-select: none; cursor: pointer;
+  --bar-top: max(5vh, calc(env(safe-area-inset-top, 0px) + 4px)); --bar-bottom: max(5vh, calc(env(safe-area-inset-bottom, 0px) + 4px)); }
+.drive-film::before { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 50%, transparent 58%, rgba(8, 10, 14, 0.38) 100%); }
+.drive-film-veil { position: absolute; inset: 0; background: var(--bg); opacity: 1; transition: opacity 400ms ease; }
+.drive-film.lifted .drive-film-veil { opacity: 0; }
+.drive-film-bars i { position: absolute; left: 0; right: 0; background: #000; transition: transform 0.6s var(--ease-sheet); }
+.drive-film-bars i:first-child { top: 0; height: var(--bar-top); }
+.drive-film-bars i:last-child { bottom: 0; height: var(--bar-bottom); }
+.drive-film:not(.lifted) .drive-film-bars i:first-child { transform: translateY(-100%); }
+.drive-film:not(.lifted) .drive-film-bars i:last-child { transform: translateY(100%); }
+.drive-film-skip { position: absolute; top: calc(var(--bar-top) + 10px); right: calc(env(safe-area-inset-right, 0px) + 12px); gap: 6px; opacity: 0.92; box-shadow: 0 2px 0 var(--paper-3), 0 6px 16px rgba(0, 0, 0, 0.35); transition: opacity 0.3s; }
+.drive-film:not(.lifted) .drive-film-skip { opacity: 0; }
+.drive-film.still .drive-film-bars i { transition: none; }
+@media (prefers-reduced-motion: reduce) { .drive-film-bars i { transition: none; } }
+/* (everything in the page — the interface, what it puts at the top, any sheet, the curtain — but the game's canvas and
+   the film's layer, at once both ways) */
+:root[data-film] body > * { visibility: hidden; }
+:root[data-film] body canvas[data-engine], :root[data-film] .drive-film { visibility: visible; }
 
 /* ───────── graphics reset notice ───────── */
 .graphics-notice {

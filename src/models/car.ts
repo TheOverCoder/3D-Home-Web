@@ -9,7 +9,8 @@ import { mix, slab } from './structures'
 // the windscreen raked, the hatch steep), the windows a band round it with the pillars left in red, and the wheel
 // arches dark round each wheel (each pattern's edge crisp). The bumpers, the grille, the lamps, the mirrors and the
 // number plates are pieces of their own pressed into it; the wheels stand a little proud of its sides on their axles.
-// One part — it stands still, its wheels in it: one draw, casting — and a soft shadow under it.
+// Parked on a map it is one part — it stands still, its wheels in it: one draw, casting — and a soft shadow under it.
+// On the road (the drive's film, src/film) the same car is its body and its four wheels apart, so they roll.
 
 const RED = rgb(0xd4402f)
 const PLASTIC = rgb(0x2b2e31)
@@ -116,6 +117,9 @@ function cabin(): Shape {
   return merge(glass, ...pillars)
 }
 
+/** How many sides a wheel has round its axle (a corner of its tread straight down when it stands still). */
+const WHEEL_SEG = 16
+
 /** A wheel round its axle (along x, at the origin): a tyre on a silver rim with a darker hub. */
 function wheel(): Shape {
   const r = W.r
@@ -132,7 +136,7 @@ function wheel(): Shape {
       [rim, w * 0.8],
       [0, w * 0.7],
     ],
-    { seg: 16, steps: 1 },
+    { seg: WHEEL_SEG, steps: 1 },
   )
     .paint((x, _y, z) => {
       const d = Math.hypot(x, z)
@@ -191,9 +195,12 @@ function fittings(): Shape {
 
 let made: ReturnType<Shape['geometry']> | null = null
 
+/** Where its four wheels' axles are, in its frame (across, up, along). */
+const WHEELS: V3[] = [-1, 1].flatMap((sx) => [-1, 1].map((sz): V3 => [sx * W.x, W.r, sz * W.z]))
+
 /** The car in one piece: its body, its cabin, its fittings, its axles and its four wheels. */
 export function carShape(): Shape {
-  const wheels = [-1, 1].flatMap((sx) => [-1, 1].map((sz) => wheel().place([sx * W.x, W.r, sz * W.z])))
+  const wheels = WHEELS.map((at) => wheel().place(at))
   return merge(lowerBody(), cabin(), fittings(), axles(), ...wheels)
 }
 
@@ -202,6 +209,11 @@ export function carGeometry() {
   made ??= carShape().geometry()
   return made
 }
+
+/** The car without its wheels: the body, the cabin, the fittings and the axles (on the road its wheels roll apart). */
+export const carBodyShape = (): Shape => merge(lowerBody(), cabin(), fittings(), axles())
+/** One wheel round its axle (along x) at the origin. */
+export const carWheelShape = (): Shape => wheel()
 
 export type CarPart = 'car' | 'shadow'
 
@@ -224,6 +236,67 @@ export function putCar(parts: Parts<CarPart>, x: number, z: number, yaw: number)
   parts.put('car', 0, 0, 0)
   parts.put('shadow', 0, 0.012, 0, 0, 0, 0, SHADOW)
 }
+
+// ───────────────────────────── on the road ─────────────────────────────
+
+export type RollingCarPart = 'body' | 'wheel' | 'shadow'
+
+let rolling: { body: ReturnType<Shape['geometry']>; wheel: ReturnType<Shape['geometry']> } | null = null
+
+/** The car on the road (the drive's film): its body and its four wheels as parts of their own, and the soft shadow under
+ *  it; the same car as `carParts` draws, in three draws. */
+export function rollingCarParts(): Parts<RollingCarPart> {
+  rolling ??= { body: carBodyShape().geometry(), wheel: carWheelShape().geometry() }
+  const material = { roughness: 0.38, metalness: 0.1 }
+  const defs: Record<RollingCarPart, PartDef> = {
+    body: { geometry: rolling.body, max: 1, material, castShadow: true },
+    wheel: { geometry: rolling.wheel, max: 4, material, castShadow: true },
+    shadow: shadowPart(1, 0.32),
+  }
+  return new Parts<RollingCarPart>(defs, 'car')
+}
+
+/** How the body sits on its springs as it drives: its nose up (+) or down (radians: it squats as it pulls away and dips
+ *  as it brakes), and how far up it bobs (m). */
+export interface CarSway {
+  pitch: number
+  lift: number
+}
+
+/** Puts the car on the road at (x, z), its bonnet pointing `yaw` (the player's yaw: 0 north, along −z), its wheels turned
+ *  for having rolled `roll` metres, the body swaying on its springs over them. */
+export function putRollingCar(parts: Parts<RollingCarPart>, x: number, z: number, yaw: number, roll: number, sway: CarSway = { pitch: 0, lift: 0 }) {
+  parts.at(x, 0, z, yaw + Math.PI)
+  // (the body turns round the middle of its wheelbase at the axles' height, so its wheels stay in their arches)
+  parts.put('body', 0, sway.lift + W.r * (1 - Math.cos(sway.pitch)), W.r * Math.sin(sway.pitch), -sway.pitch)
+  // a wheel of so many sides, turned, stands on the corner nearest straight down: its axle drops a few millimetres
+  // between two corners, so it keeps touching the road
+  const turn = roll / W.r
+  const side = (Math.PI * 2) / WHEEL_SEG
+  const off = (((turn % side) + side) % side) / side
+  const down = W.r * Math.cos(Math.min(off, 1 - off) * side)
+  for (const [ax, , az] of WHEELS) parts.put('wheel', ax, down, az, turn)
+  parts.put('shadow', 0, 0.012, 0, 0, 0, 0, SHADOW)
+}
+
+/** Its lamps' lenses in its frame (facing +z): the headlamps at the front, the tail lamps at the back (each its middle
+ *  and its half size), for the film's glow at night and the brake lights. */
+export const CAR_LAMPS = {
+  head: [-1, 1].map((sx) => ({ x: sx * 0.52, y: 0.64, z: HALF_L - 0.05 - 0.04, half: [0.14, 0.07, 0.07] as const })),
+  tail: [-1, 1].map((sx) => ({ x: sx * 0.58, y: 0.7, z: -(HALF_L - 0.05) + 0.02, half: [0.1, 0.08, 0.07] as const })),
+}
+
+/** The cabin's inside, in its frame (facing +z), for a view from the driver's seat (the drive's film): the windscreen's
+ *  foot (where it meets the bonnet) and its top (under the roof's front), how high the roof is, and how wide the cabin
+ *  is at the beltline. */
+export const CAR_CABIN = {
+  screenFoot: { y: GLASS_Y[0], z: CABIN.zc + CABIN.half * CABIN.front((GLASS_Y[0] - CABIN.y0) / (CABIN.y1 - CABIN.y0)) },
+  screenTop: { y: GLASS_Y[1], z: CABIN.zc + CABIN.half * CABIN.front((GLASS_Y[1] - CABIN.y0) / (CABIN.y1 - CABIN.y0)) },
+  roof: CABIN.y1,
+  halfWidth: CABIN.width(0),
+  /** the driver's seat's middle, across (on its left: it keeps to the right of the road) */
+  driver: 0.36,
+} as const
 
 /** Its footprint round its middle, half its size each way, turned to `yaw` (only a quarter turn or none: x and z). */
 export function carHalf(yaw: number): { x: number; z: number } {

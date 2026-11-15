@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { DAY, HOURS, type DayPhase } from './data'
-import { clockOf, closesAt, dayOf, hourOf, hoursText, isOpen, moodAt, opensAt, phaseDef, phaseOf, sinceTurned, untilHour, untilOpen, untilPhase } from './day'
+import { clockFace, clockOf, closesAt, dayOf, hourOf, hoursText, isOpen, moodAt, opensAt, phaseDef, phaseOf, sinceTurned, untilHour, untilOpen, untilPhase } from './day'
 
 // The farm's day (src/farm/day.ts): the hour from the seconds since the farm began, the phases and their edges, the
 // day's number (a new day at the morning, not at midnight), the seconds to a phase, the light (never darker than
@@ -206,5 +206,16 @@ describe('hours by the clock (the estate office: 8:00 to 16:00)', () => {
     expect(hoursText('estate')).toBe('8:00 – 16:00')
     expect(hoursText('contractor')).toBe('5:00 – 21:00')
     expect([clockOf(0), clockOf(8), clockOf(16.5), clockOf(23.99), clockOf(24), clockOf(-1)]).toEqual(['0:00', '8:00', '16:30', '23:59', '0:00', '23:00'])
+  })
+
+  it("the farm's clocks (the day chip, the car's dashboard) show the hour to its ten minutes, two digits each", () => {
+    expect([0, 8, 12, 17.55, 23.99, 24, 9 + 1 / 6, 9 + 1 / 6 - 1e-9].map(clockFace)).toEqual(['00:00', '08:00', '12:00', '17:30', '23:50', '00:00', '09:10', '09:10'])
+    // the hour the farm's clock is at: what the chip says
+    expect(clockFace(hourOf(at(21.25)))).toBe('21:10')
+    expect(clockFace(hourOf(at(5)))).toBe('05:00')
+    // every ten minutes of the day, once each
+    const faces = Array.from({ length: 144 }, (_, k) => clockFace(k / 6))
+    expect(new Set(faces).size).toBe(144)
+    expect(faces.every((f) => /^\d\d:\d0$/.test(f))).toBe(true)
   })
 })

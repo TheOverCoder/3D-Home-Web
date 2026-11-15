@@ -13,7 +13,7 @@ import { GOODS, type GoodsId } from './goods'
 import { barnModel, crateModel, deskModel, farmGateModel, officeModel, palletModel, siloModel } from './buildings'
 import { DRIVER, putTractor, seatDriver, tractorParts } from './tractor'
 import { marketFittingsParts, putMarketFittings, walkInShellModel } from './market'
-import { carParts, putCar } from './car'
+import { carParts, putCar, putRollingCar, rollingCarParts } from './car'
 import { estateFittingsParts, parkingLotModel, putEstateFittings } from './estate'
 import { AGENT_SEAT, ESTATE_WALKIN, SEAT_Y } from '../data/estate'
 import { ESTATE_LOOK } from './look'
@@ -268,7 +268,18 @@ export const MODEL_CHECKS: ModelCheck[] = [
     name: 'The car',
     run() {
       const parts = carParts(1)
-      return checkPose('car', parts, (pp) => putCar(pp, 0, 0, 0), { ground: 0, open: openParts(parts) })
+      const road = rollingCarParts()
+      // on the road (the drive's film): its wheels rolled, its body squatting, dipping and bobbing on its springs
+      const sways: [string, number, number, number][] = [
+        ['still', 0, 0, 0],
+        ['pulling away', 0.4, 0.035, 0],
+        ['braking', 1.3, -0.035, -0.01],
+        ['bobbing', 2.2, 0.01, 0.02],
+      ]
+      return [
+        ...checkPose('car', parts, (pp) => putCar(pp, 0, 0, 0), { ground: 0, open: openParts(parts) }),
+        ...sways.flatMap(([name, roll, pitch, lift]) => checkPose(`car on the road, ${name}`, road, (pp) => putRollingCar(pp, 0, 0, 0, roll, { pitch, lift }), { ground: 0, open: openParts(road) })),
+      ]
     },
   },
   {

@@ -14,6 +14,7 @@ import { useHome, type Quality } from '../store'
 import { FarmClock } from '../farm/Garden'
 import { EditMode } from '../farm/EditMode'
 import { farm } from '../farm/state'
+import { DriveFilm } from '../film/DriveFilm'
 import { FarmFx } from '../fx/FarmFx'
 import { Effects } from './Effects'
 import { LightDirector } from './LightDirector'
@@ -200,6 +201,8 @@ export default function Experience() {
         {/* compile every shader and upload every texture up front, so turning round or entering a room never stalls */}
         <Warmup />
         <RenderPause />
+        {/* the drive's film, played between the maps on this same canvas (src/scene/travel.ts) */}
+        <DriveFilm />
       </Suspense>
       {Tune && (
         <Suspense fallback={null}>

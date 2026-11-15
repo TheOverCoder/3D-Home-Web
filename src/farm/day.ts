@@ -94,5 +94,14 @@ export function clockOf(hour: number): string {
   return `${Math.floor(m / 60) % 24}:${String(m % 60).padStart(2, '0')}`
 }
 
+/** The hour as the farm's clocks show it (the day chip, the car's dashboard: src/film), to the farm's ten minutes: a
+ *  farm day is DAY.length real seconds, so it moves on every few seconds, never a flicker of digits. 8.0 → "08:00",
+ *  17.55 → "17:30". */
+export function clockFace(hour: number): string {
+  const tens = ((Math.floor(hour * 6 + 1e-6) % 144) + 144) % 144 // (a hair over: a clock set to 12 reads 12:00, never 11:50)
+  const h = Math.floor(tens / 6)
+  return `${String(h).padStart(2, '0')}:${(tens % 6) * 10 || '00'}`
+}
+
 /** Someone's hours as words: "8:00 – 16:00". */
 export const hoursText = (who: Keeper) => `${clockOf(opensAt(who))} – ${clockOf(closesAt(who))}`

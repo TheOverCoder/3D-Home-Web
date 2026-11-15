@@ -47,7 +47,7 @@ function DaylightProbe() {
 }
 
 /** How much the environment lights the scene at noon: the real HDRI's, or the generated probe's. */
-const envIntensity = () => (assets.hdri && profile.hdri ? 0.75 : 0.4)
+export const envIntensity = () => (assets.hdri && profile.hdri ? 0.75 : 0.4)
 
 /** Image-based lighting: the real HDRI if one was dropped in, otherwise a generated daylight probe. */
 function Ibl() {
@@ -264,16 +264,17 @@ export const sunLight = { current: null as DirectionalLight | null }
 
 // ───────────────────────────── the day's light ─────────────────────────────
 
-/** The light at noon, as it always was: the sun's, the sky's and the ground's colours, the haze and the background. */
-const NOON = { sun: 2.5, sunColor: '#ffd9a0', hemi: 0.24, sky: '#dfe9ff', ground: '#4a3d32', fog: '#aab4c0', background: '#a9c4e0' } as const
+/** The light at noon, as it always was: the sun's, the sky's and the ground's colours, the haze and the background (the
+ *  drive's film lights its own little world the same way: src/film). */
+export const NOON = { sun: 2.5, sunColor: '#ffd9a0', hemi: 0.24, sky: '#dfe9ff', ground: '#4a3d32', fog: '#aab4c0', background: '#a9c4e0' } as const
 /** What each colour turns towards as the day goes, and how far: orange at sunrise and sunset (by `k[0]` of the mood's
  *  `warm`, above 0), moonlit blue at night (by `k[1]` of it, below 0) — the sun most, the haze least. */
-interface Tint {
+export interface Tint {
   warm: Color
   cool: Color
   k: readonly [number, number]
 }
-const TINT: Record<'sun' | 'sky' | 'haze', Tint> = {
+export const TINT: Record<'sun' | 'sky' | 'haze', Tint> = {
   sun: { warm: new Color('#ff8a3c'), cool: new Color('#8fa8ff'), k: [0.55, 1] },
   sky: { warm: new Color('#ffc58f'), cool: new Color('#6f86d0'), k: [0.5, 0.9] },
   haze: { warm: new Color('#e8a774'), cool: new Color('#4f5d84'), k: [0.45, 0.7] },
@@ -293,7 +294,7 @@ const base = {
   background: new Color(NOON.background),
 }
 /** A colour turned by the day's warmth. */
-function tint(out: Color, from: Color, warm: number, to: Tint) {
+export function tint(out: Color, from: Color, warm: number, to: Tint) {
   out.copy(from)
   if (warm > 0) out.lerp(to.warm, warm * to.k[0])
   else if (warm < 0) out.lerp(to.cool, -warm * to.k[1])
@@ -330,14 +331,18 @@ function DayLight({ sun, hemi, sky }: { sun: { current: DirectionalLight | null 
     if (bg?.isColor) tint(bg, base.background, m.warm, TINT.haze).multiplyScalar(m.sky)
     // the sky's own sun (a copy of SUN, lowered towards the horizon as the light goes: a sunset sky, a night sky)
     const uniform = (sky.current?.material as ShaderMaterial | undefined)?.uniforms?.sunPosition
-    if (uniform) {
-      const k = Math.max(0, Math.min(1, (m.sun - DAY_MIN) / (1 - DAY_MIN)))
-      const up = SUN_LOW + (SUN_UP - SUN_LOW) * k * k * k
-      const flat = Math.hypot(SUN[0], SUN[2])
-      ;(uniform.value as Vector3).set(SUN[0], k >= 1 ? SUN[1] : flat * Math.tan((up * Math.PI) / 180), SUN[2])
-    }
+    if (uniform) skySun(m.sun, uniform.value as Vector3)
   })
   return null
+}
+
+/** The sun in the sky you see for the day's light (`sun`: the mood's): SUN's own at noon, lowered towards the horizon as
+ *  the light goes — a sunset sky, a night sky (the drive's film shows the same sky: src/film). */
+export function skySun(sun: number, out: Vector3): Vector3 {
+  const k = Math.max(0, Math.min(1, (sun - DAY_MIN) / (1 - DAY_MIN)))
+  const up = SUN_LOW + (SUN_UP - SUN_LOW) * k * k * k
+  const flat = Math.hypot(SUN[0], SUN[2])
+  return out.set(SUN[0], k >= 1 ? SUN[1] : flat * Math.tan((up * Math.PI) / 180), SUN[2])
 }
 
 // shadow map resolution per tier comes from the device profile (low: half, and the cheaper filter comes from
