@@ -9,6 +9,7 @@ import { ContractorPanel } from './ContractorPanel'
 import { EstatePanel, HouseBuyPanel } from './EstatePanel'
 import { CarPanel } from './car/CarPanel'
 import { LadderCard } from './Ladder'
+import { MachinePanel, MachineSlotCard } from './MachinePanel'
 import './Xp.css'
 import './MarketPanel.css'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
@@ -558,6 +559,8 @@ export function FarmUI() {
       {panel?.kind === 'estate' && <EstatePanel />}
       {panel?.kind === 'house-buy' && <HouseBuyPanel />}
       {panel?.kind === 'ladder' && <LadderCard id={panel.id} />}
+      {panel?.kind === 'machine' && <MachinePanel id={panel.id} />}
+      {panel?.kind === 'machine-slot' && <MachineSlotCard id={panel.id} />}
       {panel?.kind === 'level' && <LevelPanel />}
       {panel?.kind === 'wardrobe' && <WardrobePanel />}
       <LevelUp />

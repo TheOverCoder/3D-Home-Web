@@ -1,4 +1,5 @@
 import { ITEM_ODDS, ORDERS, produceById, type ProduceId } from './data'
+import { priceOf } from './prices'
 
 // The orders that come in on the office's computer, as data: what one asks for, what it pays, and how many crates it
 // fills on the tractor. src/farm/state.ts keeps the board (`farm.orders`) and moves the goods; this only makes and
@@ -32,8 +33,9 @@ export const orderKey = () => ++seq
 /** How many of a good an order may ask for: up to half as many again as a buyer would. */
 export const mostAsked = (good: ProduceId) => Math.max(1, Math.round(produceById(good).maxAsk * 1.5))
 
-/** What an order of these goods pays: a quarter over their fair price. */
-export const orderPay = (lines: { good: ProduceId; want: number }[]) => Math.max(1, Math.round(lines.reduce((sum, l) => sum + produceById(l.good).price * l.want, 0) * ORDERS.markup))
+/** What an order of these goods pays: a quarter over their fair price (src/farm/prices.ts: more for what a machine of
+ *  a higher level makes). */
+export const orderPay = (lines: { good: ProduceId; want: number }[]) => Math.max(1, Math.round(lines.reduce((sum, l) => sum + priceOf(l.good) * l.want, 0) * ORDERS.markup))
 
 /**
  * A new order, from the goods the farm grows and makes (`known`, never a building material): one to nine kinds of them

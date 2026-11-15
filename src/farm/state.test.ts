@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defaultHome, ROOM_WEIGHT, roomWeight, type HomePiece } from '../home/layout'
 import { useHome } from '../store'
 import {
+  addJob,
   buy,
   collect,
   collectMachine,
@@ -10,7 +11,6 @@ import {
   exportSlot,
   farm,
   importSlot,
-  loadMachine,
   machineSecondsLeft,
   machineStage,
   resetFarm,
@@ -92,11 +92,14 @@ describe('a save from before the tables', () => {
     p.cows.timer.forEach((t, i) => expect(t).toBeCloseTo([10.5, 44, 0.75][i], 1))
     p.sheep.timer.forEach((t, i) => expect(t).toBeCloseTo([30.5, 0, 59][i], 1))
     expect(p.sheep.timer[1]).toBe(0) // a full fleece: its clock held at 0
+    // the mill's five sheaves, 7.5 s into the batch: five jobs, the first done and the second 3.5 s in (all five done
+    // when the batch would have been); the loom's three rolls and the oven's cake done jobs; three places each
     expect([machineStage('mill'), machineStage('loom'), machineStage('oven')]).toEqual(['working', 'done', 'done'])
-    expect(farm.machines.mill).toMatchObject({ recipe: 'wheat', count: 5, ready: 0 })
-    expect(farm.machines.mill.progress).toBeCloseTo(7.5, 1)
-    expect(farm.machines.loom).toEqual({ recipe: 'wool', count: 0, progress: 0, ready: 3 })
-    expect(farm.machines.oven).toEqual({ recipe: 'strawberry_cake', count: 0, progress: 0, ready: 1 })
+    expect(farm.machines.mill).toMatchObject({ jobs: ['wheat', 'wheat', 'wheat', 'wheat', 'wheat'], done: 1, capacity: 3 })
+    expect(farm.machines.mill.progress).toBeCloseTo(3.5, 1)
+    expect(machineSecondsLeft('mill')).toBeCloseTo(5 * 4 - 7.5, 1)
+    expect(farm.machines.loom).toEqual({ jobs: ['wool', 'wool', 'wool'], done: 3, progress: 0, capacity: 3, worked: 0 })
+    expect(farm.machines.oven).toEqual({ jobs: ['strawberry_cake'], done: 1, progress: 0, capacity: 3, worked: 0 })
     expect([farm.coins, farm.inv.wheat, farm.stats.baked, farm.beds[0].crop, waiting().map((v) => v.name)]).toEqual([321, 2, 2, 'lettuce', ['Omer']])
     // saved again: the new shape, none of the old fields
     saveFarm()
@@ -115,10 +118,13 @@ describe('a save from before the tables', () => {
     expect([p.hens.animals, p.cows.animals, p.sheep.animals]).toEqual([6, 1, 4])
     expect([p.sheep.timer[0], p.sheep.timer[1]]).toEqual([0, 0])
     expect(p.sheep.timer[3]).toBeCloseTo(1.5, 1)
-    expect(farm.machines.mill).toEqual({ recipe: 'sugarcane', count: 0, progress: 0, ready: 4 })
-    expect(farm.machines.oven).toMatchObject({ recipe: 'carrot_cake', count: 1, ready: 0 })
+    // four bags of sugar done: four done jobs, past the three places (none is lost; no new job until one is collected)
+    expect(farm.machines.mill).toEqual({ jobs: ['sugarcane', 'sugarcane', 'sugarcane', 'sugarcane'], done: 4, progress: 0, capacity: 3, worked: 0 })
+    farm.inv.sugarcane = 1
+    expect(addJob('mill', 'sugarcane')).toBe(false)
+    expect(farm.machines.oven).toMatchObject({ jobs: ['carrot_cake'], done: 0 })
     expect(farm.machines.oven.progress).toBeCloseTo(12.25, 1)
-    expect(farm.machines.loom).toMatchObject({ recipe: 'wool', count: 2, ready: 0 })
+    expect(farm.machines.loom).toMatchObject({ jobs: ['wool', 'wool'], done: 0 })
     expect(farm.machines.loom.progress).toBeCloseTo(5.5, 1)
     expect([machineStage('mill'), machineStage('oven'), machineStage('loom')]).toEqual(['done', 'working', 'working'])
   })
@@ -186,42 +192,44 @@ describe('the machines (MACHINES)', () => {
     resetFarm()
   })
 
-  it('the mill takes as much wheat or cane as it has room for, works on it, and gives flour or sugar', () => {
+  it('the mill takes a job for each sheaf or cane, three at a time; the first starts at once and the next as it is done', () => {
     Object.assign(farm.inv, { wheat: 8, sugarcane: 3 })
-    expect(loadMachine('mill', 'wheat')).toBe(6)
-    expect(farm.inv.wheat).toBe(2)
-    expect(machineSecondsLeft('mill')).toBe(24) // six sheaves, 4 s each
-    expect(loadMachine('mill', 'sugarcane')).toBe(0) // busy: nothing more goes in
-    tick(23.5)
-    expect(machineStage('mill')).toBe('working')
+    expect([addJob('mill', 'wheat'), addJob('mill', 'wheat'), addJob('mill', 'wheat'), addJob('mill', 'wheat')]).toEqual([true, true, true, false])
+    expect(farm.inv.wheat).toBe(5)
+    expect(machineSecondsLeft('mill')).toBe(12) // three sheaves, 4 s each, one after another
+    tick(3.5)
+    expect(farm.machines.mill.done).toBe(0)
     tick(0.5)
-    expect(machineStage('mill')).toBe('done')
-    expect(collectMachine('mill')).toBe(6)
-    expect(machineStage('mill')).toBe('idle')
-    expect(loadMachine('mill', 'sugarcane')).toBe(3)
+    expect([farm.machines.mill.done, machineStage('mill')]).toEqual([1, 'working'])
+    // the one done keeps its place until it is collected
+    expect(addJob('mill', 'sugarcane')).toBe(false)
+    expect(collectMachine('mill')).toBe(1)
+    expect(addJob('mill', 'sugarcane')).toBe(true)
     tick(12)
+    expect(machineStage('mill')).toBe('done')
     expect(collectMachine('mill')).toBe(3)
-    expect([farm.inv.flour, farm.inv.sugar, farm.inv.sugarcane]).toEqual([6, 3, 0])
+    expect(machineStage('mill')).toBe('idle')
+    expect([farm.inv.flour, farm.inv.sugar, farm.inv.sugarcane]).toEqual([3, 1, 2])
   })
 
-  it('the loom weaves up to four fleeces at a time into cloth', () => {
+  it('the loom weaves a fleece a job, one after another', () => {
     farm.inv.wool = 5
-    expect(loadMachine('loom', 'wool')).toBe(4)
-    tick(24)
-    expect(collectMachine('loom')).toBe(4)
-    expect([farm.inv.cloth, farm.inv.wool]).toEqual([4, 1])
+    for (let k = 0; k < 3; k++) addJob('loom', 'wool')
+    tick(18)
+    expect(collectMachine('loom')).toBe(3)
+    expect([farm.inv.cloth, farm.inv.wool]).toEqual([3, 2])
   })
 
-  it('the oven bakes a cake only with everything for it, and the farm counts the cakes baked', () => {
-    Object.assign(farm.inv, { flour: 1, sugar: 1, egg: 2, milk: 1, lemon: 1 })
-    expect(loadMachine('oven', 'lemon_cake')).toBe(0) // a lemon short
+  it('the oven bakes a cake only with everything for it, three kinds in a row, and the farm counts the cakes baked', () => {
+    Object.assign(farm.inv, { flour: 3, sugar: 3, egg: 6, milk: 2, lemon: 1, carrot: 3, strawberry: 4 })
+    expect(addJob('oven', 'lemon_cake')).toBe(false) // a lemon short
     farm.inv.lemon = 2
-    expect(loadMachine('oven', 'lemon_cake')).toBe(1)
-    expect([farm.inv.flour, farm.inv.sugar, farm.inv.egg, farm.inv.milk, farm.inv.lemon]).toEqual([0, 0, 0, 0, 0])
-    tick(30)
+    expect([addJob('oven', 'lemon_cake'), addJob('oven', 'carrot_cake'), addJob('oven', 'strawberry_cake')]).toEqual([true, true, true])
+    expect([farm.inv.flour, farm.inv.sugar, farm.inv.egg, farm.inv.milk, farm.inv.lemon, farm.inv.carrot, farm.inv.strawberry]).toEqual([0, 0, 0, 0, 0, 0, 0])
+    tick(30 + 35 + 35)
     expect(machineStage('oven')).toBe('done')
-    expect(collectMachine('oven')).toBe(1)
-    expect([farm.inv.lemon_cake, farm.stats.baked]).toEqual([1, 1])
+    expect(collectMachine('oven')).toBe(3)
+    expect([farm.inv.lemon_cake, farm.inv.carrot_cake, farm.inv.strawberry_cake, farm.stats.baked]).toEqual([1, 1, 1, 3])
     expect(collectMachine('oven')).toBe(0)
   })
 
@@ -229,10 +237,11 @@ describe('the machines (MACHINES)', () => {
     tick(0.1) // with coins: the neighbour may give again
     farm.coins = 0
     farm.inv.wool = 1
-    expect(loadMachine('loom', 'wool')).toBe(1)
+    expect(addJob('loom', 'wool')).toBe(true)
     tick(0.1)
     expect(farm.coins).toBe(0) // cloth on its way
     tick(6)
+    expect(farm.coins).toBe(0) // done in the loom: still the farm's
     expect(collectMachine('loom')).toBe(1)
     farm.inv.cloth = 0
     tick(0.1)

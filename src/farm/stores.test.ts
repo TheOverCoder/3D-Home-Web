@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { BEDS, ITEMS, PRODUCERS, cropById } from './data'
-import { acceptOffer, bedsToHarvest, capacity, collect, collectMachine, farm, harvestBeds, loadMachine, resetFarm, room, sellAll, setRandom, spawnVisitor, tick, upgradeStore, used } from './state'
+import { acceptOffer, addJob, bedsToHarvest, capacity, collect, collectMachine, farm, harvestBeds, resetFarm, room, sellAll, setRandom, spawnVisitor, tick, upgradeStore, used } from './state'
 import { OLD_SAVE, justSaved, startFrom } from './testSaves'
 
 // The silo and the barn in play (src/farm/state.ts): what is collected goes in only while there is room — what does
@@ -67,18 +67,21 @@ describe('what is collected only goes in while there is room', () => {
     expect(farm.inv.milk).toBe(3)
   })
 
-  it('a machine gives out what fits, and keeps the rest to take out later', () => {
-    farm.inv.wheat = 6
-    expect(loadMachine('mill', 'wheat')).toBe(6)
+  it('a machine gives out what fits, and keeps the rest done in its places to take out later', () => {
+    farm.inv.wheat = 3
+    for (let k = 0; k < 3; k++) expect(addJob('mill', 'wheat')).toBe(true)
     tick(30)
-    farm.inv.egg = 47
-    expect(collectMachine('mill')).toBe(3)
-    expect(farm.machines.mill.ready).toBe(3)
+    farm.inv.egg = 49
+    expect(collectMachine('mill')).toBe(1)
+    expect(farm.machines.mill).toMatchObject({ jobs: ['wheat', 'wheat'], done: 2 })
     expect(collectMachine('mill')).toBe(0)
+    // the two still done hold their places: one more job only
+    farm.inv.wheat = 2
+    expect([addJob('mill', 'wheat'), addJob('mill', 'wheat')]).toEqual([true, false])
     farm.inv.egg = 0
-    expect(collectMachine('mill')).toBe(3)
-    expect(farm.machines.mill.ready).toBe(0)
-    expect(farm.inv.flour).toBe(6)
+    expect(collectMachine('mill')).toBe(2)
+    expect(farm.machines.mill).toMatchObject({ jobs: ['wheat'], done: 0 })
+    expect(farm.inv.flour).toBe(3)
   })
 
   it('a farm saved before the silo and the barn keeps everything it had, even past 50, and takes no more until there is room', () => {

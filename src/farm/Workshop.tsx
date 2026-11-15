@@ -6,7 +6,7 @@ import { loadSolids, solidsReady } from '../lib/sculpt'
 import { mouthGlowMaterial, mouthGlowShape, ovenModel, structureParts } from '../models/structures'
 import { B } from '../scene/Furnishings'
 import { MACHINES, type CakeId, type MachineId } from './data'
-import { farm, machineRecipe, machineStage, useFarm } from './state'
+import { farm, machineDone, machineProgress, machineStage, useFarm } from './state'
 import { useMachine } from './useMachine'
 
 // The farm's kitchen in the yard's south-east corner: a mill that presses sugar cane into sugar and grinds wheat
@@ -19,8 +19,8 @@ import { useMachine } from './useMachine'
 
 const WOOD = '#8a6440'
 const WOOD_DARK = '#5e4630'
-/** What a machine has ready to take out (null while it works or is idle). */
-const done = (id: MachineId) => (machineStage(id) === 'done' ? (machineRecipe(id)?.makes ?? null) : null)
+/** What a machine has ready to take out: the first of its done jobs (null while none is done). */
+const done = (id: MachineId) => machineDone(id)[0]?.item ?? null
 
 let smokeTex: CanvasTexture | undefined
 function smokeTexture() {
@@ -308,7 +308,7 @@ function Loom() {
     t.colorSpace = SRGBColorSpace
     return t
   }, [])
-  const ready = farm.machines.loom.ready
+  const ready = farm.machines.loom.done
 
   useFrame((_, rawDt) => {
     const dt = Math.min(rawDt, 0.1)
@@ -321,11 +321,9 @@ function Loom() {
     heddles.current.forEach((h, i) => {
       if (h) h.position.y = 0.98 + (i ? 1 : -1) * Math.sign(Math.sin(pick * Math.PI)) * 0.03 * k
     })
-    // the cloth beam fattens a little as the cloth rolls onto it
+    // the cloth beam fattens a little as the cloth rolls onto it (each roll in turn)
     if (roll.current) {
-      const m = farm.machines.loom
-      const recipe = machineRecipe('loom')
-      const r = 1 + (m.count && recipe ? (m.progress / (m.count * recipe.seconds)) * 0.5 : ready ? 0.5 : 0)
+      const r = 1 + (machineStage('loom') === 'working' ? machineProgress('loom') * 0.5 : ready ? 0.5 : 0)
       roll.current.scale.set(r, 1, r)
     }
   })
