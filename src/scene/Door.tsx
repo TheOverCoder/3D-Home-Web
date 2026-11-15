@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { CuboidCollider, RigidBody, type RapierRigidBody } from '@react-three/rapier'
 import { MathUtils, Quaternion, Vector3, type Group } from 'three'
-import { DOOR } from '../data/layout'
+import { hingedDoorOf, type HingedDoor, type HomeShell } from '../home/shell'
 import { useInteractable } from '../lib/interaction'
 import { playGesture } from '../lib/gestures'
 import { useHome } from '../store'
@@ -24,8 +24,14 @@ export function doorAngle() {
   return Math.abs(Math.atan2(-e[2], e[0]))
 }
 
-/** Hinged door in the kitchen/bedroom doorway: swings on a kinematic body so the player is pushed, not clipped. */
-export function Door() {
+/** Hinged door in the kitchen/bedroom doorway, where the house's shell has that doorway (none while it is closed):
+ *  swings on a kinematic body so the player is pushed, not clipped. */
+export function Door({ shell }: { shell: HomeShell }) {
+  const door = hingedDoorOf(shell)
+  return door ? <Leaf key={door.hinge.join(',')} door={door} /> : null
+}
+
+function Leaf({ door: DOOR }: { door: HingedDoor }) {
   const body = useRef<RapierRigidBody>(null)
   const angle = useRef(0)
   const open = useHome((s) => s.doors[DOOR.id])

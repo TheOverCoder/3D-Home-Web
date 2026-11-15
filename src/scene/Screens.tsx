@@ -7,6 +7,9 @@ import { SCREENS, type ScreenDef } from '../data/screens'
 import { useInteractable } from '../lib/interaction'
 import { playGesture } from '../lib/gestures'
 import { useHome } from '../store'
+import { farm, useFarm } from '../farm/state'
+import { useDecorate } from '../home/decorate'
+import { placedScreen } from '../home/layout'
 import { loadScreenFonts } from './screens/fonts'
 import { Hologram } from './screens/Holograms'
 import { createWallScreen } from './screens/wallScreen'
@@ -100,18 +103,22 @@ function Pedestal({ def, active }: { def: ScreenDef; active: boolean }) {
   )
 }
 
-function Screen({ def }: { def: ScreenDef }) {
+/** A screen where its piece hangs (`at`: src/home/layout.ts, placedScreen; it slides along its room's walls while
+ *  decorating, its hologram's stand going along), its content `def`'s. */
+function Screen({ def, at }: { def: ScreenDef; at: ScreenDef }) {
   const active = useHome((s) => s.room === def.room)
+  // while it is dragged it hides (the decorate mode draws it where the finger is)
+  const dragged = useDecorate((s) => s.drag?.id === def.id)
   const openScreen = useHome((s) => s.openScreen)
-  const nx = Math.sin(def.rotationY)
-  const nz = Math.cos(def.rotationY)
+  const nx = Math.sin(at.rotationY)
+  const nz = Math.cos(at.rotationY)
 
   useInteractable({
     id: def.id,
     label: `Open “${def.title}”`,
     icon: { verb: 'watch' },
-    position: [def.position[0] + nx * 1.1, 1.0, def.position[2] + nz * 1.1],
-    aim: def.position,
+    position: [at.position[0] + nx * 1.1, 1.0, at.position[2] + nz * 1.1],
+    aim: at.position,
     radius: 1.5,
     run: () => {
       playGesture('interact')
@@ -120,19 +127,19 @@ function Screen({ def }: { def: ScreenDef }) {
   })
 
   return (
-    <>
-      <group position={def.position} rotation-y={def.rotationY}>
+    <group name={`screen-${def.id}`} visible={!dragged}>
+      <group position={at.position} rotation-y={at.rotationY}>
         <ScreenPanel def={def} active={active} />
       </group>
-      <Pedestal def={def} active={active} />
-    </>
+      <Pedestal key={at.holo.join(',')} def={at} active={active} />
+    </group>
   )
 }
 
 /** One light shared by all screens: it sits in front of whichever screen belongs to the current room. */
-function ScreenGlow() {
+function ScreenGlow({ placed }: { placed: ScreenDef[] }) {
   const room = useHome((s) => s.room)
-  const def = SCREENS.find((s) => s.room === room)
+  const def = placed.find((s) => s.room === room)
   const nx = def ? Math.sin(def.rotationY) : 0
   const nz = def ? Math.cos(def.rotationY) : 0
   return (
@@ -147,11 +154,13 @@ function ScreenGlow() {
 }
 
 export function Screens() {
+  const home = useFarm(() => farm.home)
+  const placed = useMemo(() => SCREENS.map((def) => placedScreen(home, def)), [home])
   return (
     <>
-      <ScreenGlow />
-      {SCREENS.map((def) => (
-        <Screen key={def.id} def={def} />
+      <ScreenGlow placed={placed} />
+      {SCREENS.map((def, i) => (
+        <Screen key={def.id} def={def} at={placed[i]} />
       ))}
     </>
   )

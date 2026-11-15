@@ -1284,6 +1284,25 @@ button.farm-chip-item:focus-visible { outline: 3px solid var(--sun); outline-off
 .deco-stored-piece .item-pic .qty { min-width: 20px; height: 20px; font-size: 13px; inset-inline-end: -10px; bottom: -8px; }
 .deco-shop-group h3 { margin: 12px 0 8px; font: 600 18px/1.2 var(--font-display); color: var(--ink-2); }
 .deco-shop-group:first-of-type h3 { margin-top: 2px; }
+/* the room's sides (its things, its walls' paint, its floor) on one row beside the shop */
+.deco-tabs { flex: 1; flex-wrap: nowrap; gap: 6px; margin-top: 0; }
+.deco-tabs .btn { flex: 1 1 0; min-width: 0; min-height: 44px; padding-inline: 6px; gap: 5px; }
+.deco-hint { margin-top: 10px !important; }
+.edit-card .fit-warn { color: var(--sun-lip); }
+.deco-where { font-size: 15px !important; }
+.deco-glyph { flex: none; width: 56px; height: 56px; display: grid; place-items: center; border-radius: 16px; background: var(--paper-2); box-shadow: 0 3px 0 var(--paper-3); color: var(--edge); }
+.deco-glyph svg { width: 34px; height: 34px; }
+/* paints and floors: round swatches in a row that scrolls sideways on a narrow screen */
+.deco-swatches { display: flex; gap: 8px; margin-top: 10px; padding: 4px 2px 6px; overflow-x: auto; scrollbar-width: none; }
+.deco-swatches::-webkit-scrollbar { display: none; }
+.deco-swatch { flex: none; width: 44px; height: 44px; padding: 0; border: 3px solid #fff; border-radius: 50%; box-shadow: 0 2px 0 var(--paper-3), 0 0 0 1px var(--edge-soft); cursor: pointer; }
+.deco-swatch[aria-pressed='true'] { box-shadow: 0 0 0 3px var(--leaf), 0 2px 0 var(--paper-3); }
+.deco-swatch:active { transform: translateY(2px); }
+.deco-floor { border-radius: 12px; }
+.deco-floor.wood { background-image: repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.12) 0 1px, transparent 1px 9px), linear-gradient(0deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.08)); }
+.deco-floor.tile { background-image: linear-gradient(90deg, rgba(255, 255, 255, 0.55) 0 1px, transparent 1px), linear-gradient(0deg, rgba(255, 255, 255, 0.55) 0 1px, transparent 1px); background-size: 13px 13px; }
+.deco-floor.carpet { background-image: radial-gradient(rgba(255, 255, 255, 0.18) 1px, transparent 1.5px); background-size: 5px 5px; }
+.deco-floor.stone { background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.16) 0 1px, transparent 1px), linear-gradient(0deg, rgba(0, 0, 0, 0.16) 0 1px, transparent 1px); background-size: 19px 13px; }
 /* the four rooms on one row */
 .deco-rooms { flex-wrap: nowrap; gap: 6px; }
 .deco-rooms .btn { flex: 1 1 0; min-width: 0; padding-inline: 6px; }

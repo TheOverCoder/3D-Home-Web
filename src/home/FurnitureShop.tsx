@@ -21,6 +21,7 @@ const GROUPS: { id: PieceDef['group']; name: string }[] = [
   { id: 'beds', name: 'Beds' },
   { id: 'plants', name: 'Plants' },
   { id: 'rugs', name: 'Rugs' },
+  { id: 'walls', name: 'On the walls' },
 ]
 
 const metres = (n: number) => `${Math.round(n * 10) / 10} m`

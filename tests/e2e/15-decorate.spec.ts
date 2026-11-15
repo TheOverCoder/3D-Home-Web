@@ -55,7 +55,7 @@ test.describe('decorating the house', () => {
     await until(game, () => (window as any).__home.useHome.getState().room === 'living')
     await page.keyboard.press('KeyB')
     await until(game, () => (window as any).__home.useHome.getState().decorating && (window as any).__home.home.decorate.camera.blend >= 1)
-    await expect(page.locator('.edit-card')).toContainText('Decorate')
+    await expect(page.locator('.edit-card [role=tab][aria-selected=true]')).toHaveText('Things')
     expect(await page.evaluate(() => (window as any).__home.camera.position.y)).toBeGreaterThan(4)
     // the ceiling goes
     await until(game, () => {
@@ -87,7 +87,7 @@ test.describe('decorating the house', () => {
         [-5.0, 1.25],
         [-2.0, 1.25],
       ])
-        if (h.canPlace({ ...p, x, z }).ok) return [x, z]
+        if (h.canPlace({ ...p, x, z }).ok && !h.canPlace({ ...p, x, z }).warn) return [x, z]
       return null
     })
     expect(spot).not.toBeNull()

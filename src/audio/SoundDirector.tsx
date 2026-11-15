@@ -1,5 +1,8 @@
 import { useEffect } from 'react'
 import { DOOR, LAMPS } from '../data/layout'
+import { farm } from '../farm/state'
+import { hingedDoorOf } from '../home/shell'
+import { HOSTED, onHost } from '../home/layout'
 import { debugSet } from '../lib/debug'
 import { useSettings } from '../settings'
 import { useHome } from '../store'
@@ -67,12 +70,17 @@ export function SoundDirector() {
       if (s.lamps !== p.lamps) {
         for (const lamp of LAMPS) {
           if (s.lamps[lamp.id] === p.lamps[lamp.id]) continue
-          const { pan, near } = place(lamp.position[0], lamp.position[2])
+          // where the lamp is now (one on a piece, or the standing lamp, goes where its piece goes)
+          const host = HOSTED[lamp.id]
+          const [lx, lz] = (host && onHost(farm.home, host, lamp.position[0], lamp.position[2])) || [lamp.position[0], lamp.position[2]]
+          const { pan, near } = place(lx, lz)
           lampSwitch(s.lamps[lamp.id], pan, near)
         }
       }
-      if (s.doors[DOOR.id] !== p.doors[DOOR.id]) {
-        const { pan, near } = place(DOOR.hinge[0] + DOOR.width / 2, DOOR.hinge[2])
+      // the kitchen's door where its doorway is now (none while that doorway is closed)
+      const door = hingedDoorOf(farm.home.shell)
+      if (door && s.doors[DOOR.id] !== p.doors[DOOR.id]) {
+        const { pan, near } = place(door.hinge[0] + door.width / 2, door.hinge[2])
         doorSound(s.doors[DOOR.id], pan, near)
       }
       if (s.carrying !== p.carrying) {

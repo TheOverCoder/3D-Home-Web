@@ -11,7 +11,8 @@
 //
 // Pure numbers (no renderer): the unit tests run it in Node (portals.test.ts).
 
-import { DOORWAYS, HOUSE, ROOMS, WINDOWS, roomAt, type RoomId } from '../../data/layout'
+import { HOUSE, ROOMS, roomAt, type RoomId } from '../../data/layout'
+import { OPENINGS, defaultShell, openingsOf, type HomeShell } from '../../home/shell'
 
 export type Cell = RoomId | 'outside'
 export const CELLS: readonly Cell[] = ['living', 'office', 'kitchen', 'bedroom', 'outside']
@@ -46,13 +47,27 @@ function portal(id: string, axis: 'x' | 'z', at: number, centre: number, width: 
   return { id, a, b, axis, at, lo: centre - width / 2 - PAD, hi: centre + width / 2 + PAD, y0: y0 - PAD, y1: y1 + PAD, door }
 }
 
-export const PORTALS: readonly Portal[] = [
-  ...Object.entries(DOORWAYS).map(([id, d]) => portal(id, d.axis, d.at, d.centre, d.width, 0, HOUSE.doorHeight, id === 'kitchenBedroom')),
-  ...WINDOWS.map((w) => portal(w.id, w.axis, w.at, w.centre, w.width, w.sill, w.top, false)),
-]
+/** The portals of a house's shell (src/home/shell.ts): its open doorways (the hinged door's closes one while it is
+ *  shut), its open windows and the garden door, wherever they are along their walls. A closed one is wall. */
+export function portalsOf(shell: HomeShell): Portal[] {
+  return openingsOf(shell)
+    .filter((o) => !o.closed)
+    .map((o) => portal(o.id, o.axis, o.at, o.centre, o.width, o.kind === 'doorway' ? 0 : o.sill, o.kind === 'doorway' ? HOUSE.doorHeight : o.top, !!o.hinged))
+}
 
+/** The most portals a house has: one per opening (none is ever added). */
+export const MOST_PORTALS = OPENINGS.length
+
+/** The house's portals as its shell has them now (setHousePortals: House.tsx, as the save's shell changes). */
+export let PORTALS: readonly Portal[] = portalsOf(defaultShell())
 /** The portals between the house and the outside (the windows and the garden door): the only way sunlight gets in. */
-export const OUTER_PORTALS: readonly Portal[] = PORTALS.filter((p) => p.a === OUTSIDE || p.b === OUTSIDE)
+export let OUTER_PORTALS: readonly Portal[] = PORTALS.filter((p) => p.a === OUTSIDE || p.b === OUTSIDE)
+
+/** The house's openings moved, closed or opened: the portals follow (from the next render on). */
+export function setHousePortals(shell: HomeShell) {
+  PORTALS = portalsOf(shell)
+  OUTER_PORTALS = PORTALS.filter((p) => p.a === OUTSIDE || p.b === OUTSIDE)
+}
 
 /** The world box of a portal's rectangle (it has no thickness across its wall). */
 export function portalBox(p: Portal, out: Float64Array) {
@@ -93,8 +108,8 @@ export class Portals {
   private slack = 0
   private doorOpen = true
   /** each portal's rectangle on the screen this update (and whether it is anywhere on it) */
-  private readonly portalRects = new Float64Array(PORTALS.length * 4)
-  private readonly portalSeen = new Uint8Array(PORTALS.length)
+  private readonly portalRects = new Float64Array(MOST_PORTALS * 4)
+  private readonly portalSeen = new Uint8Array(MOST_PORTALS)
   /** the rectangle at each depth of the walk through the portals */
   private readonly stack = new Float64Array((MAX_DEPTH + 1) * 4)
   // a portal's corners in view space, and the polygon left after cutting it at the near plane

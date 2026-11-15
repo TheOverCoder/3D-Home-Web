@@ -209,6 +209,12 @@ export function footstep(kind: FloorKind, strength = 1, run = false) {
     burst(e, t, { type: 'bandpass', freq: rnd(3100, 3900), q: 5, gain: 0.1 * v, attack: 0.001, decay: 0.07 })
     burst(e, t, { type: 'lowpass', freq: 520, q: 0.7, gain: 0.28 * v, attack: 0.003, decay: 0.05 })
     tone(e, t, { type: 'sine', f0: 150, f1: 85, gain: 0.12 * v, attack: 0.002, decay: 0.05 })
+  } else if (kind === 'stone') {
+    // stone: a dull, solid knock with a short gritty scrape, lower and drier than tiles
+    burst(e, t, { type: 'lowpass', freq: rnd(380, 460), q: 0.8, gain: 0.32 * v, attack: 0.002, decay: 0.06 })
+    burst(e, t, { type: 'bandpass', freq: rnd(1500, 1900), q: 1.2, gain: 0.08 * v, attack: 0.001, decay: 0.035 })
+    burst(e, t + 0.004, { type: 'highpass', freq: 3200, q: 0.6, gain: 0.05 * v, attack: 0.002, decay: 0.02 })
+    tone(e, t, { type: 'sine', f0: 120, f1: 70, gain: 0.14 * v, attack: 0.002, decay: 0.05 })
   } else if (kind === 'grass') {
     // grass: a soft thud into turf and the swish of blades
     burst(e, t, { type: 'lowpass', freq: rnd(300, 380), q: 0.6, gain: 0.3 * v, attack: 0.012, decay: 0.1 })

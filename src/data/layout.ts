@@ -3,7 +3,7 @@
 // When a real `house.glb` is added, tune the coordinates here to match it.
 
 export type RoomId = 'living' | 'office' | 'kitchen' | 'bedroom'
-export type FloorKind = 'wood' | 'tile' | 'carpet' | 'grass'
+export type FloorKind = 'wood' | 'tile' | 'carpet' | 'stone' | 'grass'
 export type Vec3 = [number, number, number]
 
 export interface Mood {

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import fs from 'node:fs'
 import path from 'node:path'
-import { test, expect, emptyFarm, fillFarm, marketDoorStill, onMap, type Game, type MapId } from './helpers'
+import { test, expect, changeHouse, emptyFarm, fillFarm, marketDoorStill, onMap, openingViews, openingsNow, restoreHouse, type Game, type MapId } from './helpers'
 import { WALK_INS, type Rect, type WalkIn, type WalkInRoom } from '../../src/data/buildings'
 import { GARDEN, GATE } from '../../src/data/layout'
 import { FRONT_DOOR, HALL, ISLAND, SHELF_RUN } from '../../src/data/market'
@@ -510,22 +510,10 @@ const ROOMS: Pose[] = [
   { name: 'living room, the left edge (known pixel)', x: -3.5, z: 0.6, yaw: P, pitch: -0.05 },
   { name: 'kitchen, the left edge (known pixel)', x: 1.5, z: -3, yaw: P / 2, pitch: -0.05 },
 ]
-const DOORWAYS: Pose[] = [
-  { name: 'living ↔ studio doorway, from the living room', x: -3.5, z: 1.2, yaw: 0 },
-  { name: 'living ↔ studio doorway, standing in it', x: -3.5, z: 0.05, yaw: -0.6 },
-  { name: 'studio ↔ kitchen doorway', x: -1.2, z: -3, yaw: -P / 2 },
-  { name: 'living ↔ bedroom doorway', x: -1.2, z: 3, yaw: -P / 2 },
-  { name: 'kitchen ↔ bedroom, the door shut, from the kitchen', x: 3.5, z: -1.3, yaw: P, door: false, shadow: true },
-  { name: 'kitchen ↔ bedroom, the door shut, from the bedroom', x: 3.5, z: 2.2, yaw: 0, door: false },
-  { name: 'kitchen ↔ bedroom, the door open, from the kitchen', x: 3.5, z: -1.3, yaw: P, door: true, shadow: true },
-  { name: 'kitchen ↔ bedroom, the door open, from the bedroom', x: 3.5, z: 2.2, yaw: 0, door: true },
-  { name: 'kitchen ↔ bedroom, the door open, standing in it', x: 3.6, z: 0, yaw: 0.4, door: true },
-]
 /** The house's own garden round it (the home map: src/data/home.ts), and the countryside past its fence. */
+// (the garden door both ways, the doorways from both sides and standing in them, and each window from its room are made
+// from the house's openings as the save has them: openingViews in helpers.ts)
 const GARDEN_POSES: Pose[] = [
-  { name: 'garden door, looking out', x: -1.2, z: 3.6, yaw: P, pitch: -0.05, shadow: true },
-  { name: 'garden door, standing in it', x: -1.2, z: 6, yaw: P - 0.3 },
-  { name: 'garden door, looking in', x: -1.2, z: 8.5, yaw: 0, pitch: -0.05 },
   { name: 'the garden, back at the house', x: 0, z: 12.5, yaw: 0, pitch: 0.02, shadow: true },
   { name: 'the garden, behind the house', x: 0, z: -9, yaw: P, pitch: 0.05 },
   { name: 'the garden, over the fence to the west', x: -9.5, z: 2, yaw: P / 2, pitch: 0.02 },
@@ -788,17 +776,43 @@ test.describe('the drawing pass leaves out only what cannot be seen', () => {
     console.log(log.join('\n'))
   })
 
-  test('640×360: each doorway, the door shut and open', async ({ game }) => {
+  test('640×360: each doorway from both sides and standing in it, the kitchen’s door shut and open (from the house’s openings)', async ({ game }) => {
     await setUp(game)
     const log: string[] = []
-    for (const p of DOORWAYS) await compareAt(game, p, log)
+    for (const p of openingViews(await openingsNow(game.page)).filter((v) => v.kind === 'doorway')) await compareAt(game, p, log)
+    console.log(log.join('\n'))
+  })
+
+  test('640×360: each window from its room', async ({ game }) => {
+    await setUp(game)
+    const log: string[] = []
+    for (const p of openingViews(await openingsNow(game.page)).filter((v) => v.kind === 'window')) await compareAt(game, p, log)
     console.log(log.join('\n'))
   })
 
   test('640×360: the garden door both ways, the house’s garden and the countryside past it', async ({ game }) => {
     await setUp(game)
     const log: string[] = []
-    for (const p of GARDEN_POSES) await compareAt(game, p, log)
+    for (const p of [...openingViews(await openingsNow(game.page)).filter((v) => v.kind === 'garden'), ...GARDEN_POSES]) await compareAt(game, p, log)
+    console.log(log.join('\n'))
+  })
+
+  // The house changed every way decorating can (changeHouse in helpers.ts: windows and the garden door moved, one round
+  // its room's corner, a doorway closed, the kitchen's door moved with its doorway, every room painted and floored): its
+  // rooms, and its doorways, windows and garden door where they are now, made from its openings.
+  test('640×360: a changed house — its rooms, and each doorway, window and the garden door where they are now', async ({ game }) => {
+    test.setTimeout(900_000)
+    await setUp(game)
+    const log: string[] = []
+    expect(await changeHouse(game.page), 'every change fits').toEqual([])
+    try {
+      // the walls built and merged again, the rooms' portals where the openings are now
+      await game.page.waitForTimeout(3000)
+      const views = [...ROOMS.slice(0, 8), ...openingViews(await openingsNow(game.page))]
+      for (const p of views) await compareAt(game, { ...p, name: `changed: ${p.name}` }, log)
+    } finally {
+      await restoreHouse(game.page)
+    }
     console.log(log.join('\n'))
   })
 
@@ -1111,7 +1125,10 @@ test.describe('the drawing pass leaves out only what cannot be seen', () => {
     try {
       await page.waitForFunction(() => (window as any).__home.gl.domElement.height > (window as any).__home.gl.domElement.width, null, { timeout: 30_000 })
       await page.waitForTimeout(1500)
-      const house = [ROOMS[0], ROOMS[2], ROOMS[4], ROOMS[6], DOORWAYS[4], DOORWAYS[6], GARDEN_POSES[0], GARDEN_POSES[2], GARDEN_POSES[3]]
+      const made = openingViews(await openingsNow(page))
+      const door = made.filter((v) => v.door !== undefined && v.shadow)
+      const garden = made.filter((v) => v.kind === 'garden')
+      const house = [ROOMS[0], ROOMS[2], ROOMS[4], ROOMS[6], ...door, garden[0], garden[2], GARDEN_POSES[0]]
       for (const p of house) await compareAt(game, { ...p, name: `phone: ${p.name}`, shadow: p === ROOMS[0] }, log)
       // and on the farm
       await onMap(page, 'farm')

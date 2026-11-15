@@ -4,13 +4,14 @@ import { CuboidCollider, RigidBody, type RapierRigidBody } from '@react-three/ra
 import { BoxGeometry, DoubleSide, MathUtils, Vector3 } from 'three'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import { doorSound, placeSound } from '../audio/sound'
-import { GARDEN_DOOR as D } from '../data/layout'
+import { GARDEN_DOOR } from '../data/layout'
+import { gardenDoorOf, type HomeShell } from '../home/shell'
 import { debugSet } from '../lib/debug'
 import { playerState } from '../lib/playerState'
 import { useHome } from '../store'
 
-const LEAF_W = D.width / 2 - 0.03 // two leaves, overlapping a little in the middle
-const LEAF_H = D.top - 0.06
+const LEAF_W = GARDEN_DOOR.width / 2 - 0.03 // two leaves, overlapping a little in the middle (its size never changes)
+const LEAF_H = GARDEN_DOOR.top - 0.06
 const LEAF_T = 0.035
 const RAIL = 0.045
 const OPEN_NEAR = 2.6 // opens when you come this close…
@@ -22,11 +23,22 @@ export const gardenDoor = { open: 0 }
 const target = new Vector3()
 
 /**
- * The glass garden door in the living room's south wall: two leaves that slide apart into the wall (pocket
- * doors) as you walk up to it, inside or out, and close behind you. Each leaf rides a kinematic body, so a
- * closing leaf pushes rather than clips.
+ * The glass garden door in the living room's wall, where the house's shell has it (src/home/shell.ts: south or west):
+ * two leaves that slide apart into the wall (pocket doors) as you walk up to it, inside or out, and close behind you.
+ * Each leaf rides a kinematic body, so a closing leaf pushes rather than clips.
  */
-export function GardenDoor() {
+export function GardenDoor({ shell }: { shell: HomeShell }) {
+  const d = gardenDoorOf(shell)
+  return <Leaves key={`${d.axis}${d.at}${d.centre}`} D={d} />
+}
+
+function Leaves({ D }: { D: ReturnType<typeof gardenDoorOf> }) {
+  // a point along the wall at a height, in the world
+  const onX = D.axis === 'x'
+  const world = (along: number, y: number): [number, number, number] => (onX ? [along, y, D.at] : [D.at, y, along])
+  const cx = onX ? D.centre : D.at
+  const cz = onX ? D.at : D.centre
+  const turn = onX ? 0 : -Math.PI / 2
   const left = useRef<RapierRigidBody>(null)
   const right = useRef<RapierRigidBody>(null)
   const wanted = useRef(false)
@@ -47,13 +59,13 @@ export function GardenDoor() {
 
   useFrame((_, dt) => {
     const p = playerState.position
-    const d = Math.hypot(p.x - D.centre, p.z - D.at)
+    const d = Math.hypot(p.x - cx, p.z - cz)
     const playing = useHome.getState().phase === 'playing'
     const before = wanted.current
     if (playing && d < OPEN_NEAR) wanted.current = true
     else if (!playing || d > CLOSE_FAR) wanted.current = false
     if (wanted.current !== before) {
-      const { pan, near } = placeSound(D.centre, D.at)
+      const { pan, near } = placeSound(cx, cz)
       doorSound(wanted.current, pan, near)
     }
     gardenDoor.open = MathUtils.damp(gardenDoor.open, wanted.current ? 1 : 0, 8, dt)
@@ -64,13 +76,13 @@ export function GardenDoor() {
       [right.current, 1],
     ] as const) {
       if (!body) continue
-      target.set(D.centre + side * (LEAF_W / 2 - 0.015 + slide), LEAF_H / 2 + 0.012, D.at)
+      target.set(...world(D.centre + side * (LEAF_W / 2 - 0.015 + slide), LEAF_H / 2 + 0.012))
       body.setNextKinematicTranslation(target)
     }
   })
 
   const leaf = (side: -1 | 1, ref: typeof left) => (
-    <RigidBody ref={ref} type="kinematicPosition" colliders={false} position={[D.centre + side * (LEAF_W / 2 - 0.015), LEAF_H / 2 + 0.012, D.at]}>
+    <RigidBody ref={ref} type="kinematicPosition" colliders={false} position={world(D.centre + side * (LEAF_W / 2 - 0.015), LEAF_H / 2 + 0.012)} rotation={[0, turn, 0]}>
       <CuboidCollider args={[LEAF_W / 2, LEAF_H / 2, LEAF_T / 2]} />
       <group rotation={[0, side < 0 ? 0 : Math.PI, 0]}>
         <mesh geometry={frame} castShadow receiveShadow>

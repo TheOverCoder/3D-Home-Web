@@ -3,6 +3,8 @@ import { CanvasTexture, DoubleSide, LatheGeometry, SRGBColorSpace, Vector2 } fro
 import { HOUSE } from '../data/layout'
 import { surface } from '../lib/proceduralTextures'
 import { B, GlbDecor, OnPiece } from './Furnishings'
+import { farm, useFarm } from '../farm/state'
+import { windowsOf } from '../home/shell'
 
 // Small things that make rooms look lived in. Purely decorative (no colliders) and tiny, so the
 // player walks "through" them only where nobody can reach — they all sit on furniture, walls or ceilings.
@@ -119,57 +121,6 @@ function Vase({ stems = true }: { stems?: boolean }) {
   )
 }
 
-function WallClock() {
-  const face = useMemo(() => {
-    const c = document.createElement('canvas')
-    c.width = c.height = 256
-    const g = c.getContext('2d')!
-    g.fillStyle = '#f2eee6'
-    g.fillRect(0, 0, 256, 256)
-    g.strokeStyle = '#2a2a2c'
-    g.lineCap = 'round'
-    for (let i = 0; i < 12; i++) {
-      const a = (i / 12) * Math.PI * 2
-      g.lineWidth = i % 3 === 0 ? 9 : 4
-      g.beginPath()
-      g.moveTo(128 + Math.sin(a) * (i % 3 === 0 ? 92 : 100), 128 - Math.cos(a) * (i % 3 === 0 ? 92 : 100))
-      g.lineTo(128 + Math.sin(a) * 114, 128 - Math.cos(a) * 114)
-      g.stroke()
-    }
-    const hand = (a: number, len: number, w: number, color: string) => {
-      g.strokeStyle = color
-      g.lineWidth = w
-      g.beginPath()
-      g.moveTo(128 - Math.sin(a) * 14, 128 + Math.cos(a) * 14)
-      g.lineTo(128 + Math.sin(a) * len, 128 - Math.cos(a) * len)
-      g.stroke()
-    }
-    hand(-0.9, 62, 9, '#2a2a2c')
-    hand(1.9, 92, 6, '#2a2a2c')
-    hand(3.6, 100, 3, '#b4543a')
-    g.fillStyle = '#2a2a2c'
-    g.beginPath()
-    g.arc(128, 128, 8, 0, Math.PI * 2)
-    g.fill()
-    const t = new CanvasTexture(c)
-    t.colorSpace = SRGBColorSpace
-    t.anisotropy = 8
-    return t
-  }, [])
-  return (
-    <group>
-      <mesh rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[0.2, 0.2, 0.04, 40]} />
-        <meshStandardMaterial color="#222224" roughness={0.45} metalness={0.4} />
-      </mesh>
-      <mesh position={[0, 0, 0.0215]}>
-        <circleGeometry args={[0.178, 40]} />
-        <meshStandardMaterial map={face} roughness={0.35} />
-      </mesh>
-    </group>
-  )
-}
-
 function LivingRoom() {
   return (
     <>
@@ -185,15 +136,12 @@ function LivingRoom() {
         </At>
         <GlbDecor id="teacup" position={[-3.45, 0.425, 3.8]} rotationY={0.6} size={[0.15, 0.07, 0.155]} shadow={false} />
       </OnPiece>
-      {/* a vase on the console, wall clock opposite the sofa */}
+      {/* a vase on the console */}
       <OnPiece id="tv-console">
         <At position={[-2.85, 0.48, 5.7]}>
           <Vase />
         </At>
       </OnPiece>
-      <At position={[-0.1, 2.05, 1.15]} rotationY={-Math.PI / 2}>
-        <WallClock />
-      </At>
     </>
   )
 }
@@ -366,13 +314,32 @@ function TilePanel({ x0, x1, top }: { x0: number; x1: number; top: number }) {
   )
 }
 
-/** Wall tiles behind the counter; the kitchen window (x 4.55–5.45, sill 1.2) keeps its view. */
+/** Wall tiles behind the counter (x 1.0–5.6), up to 1.5 m; under a window in that wall only up to its sill, so it keeps
+ *  its view (as the kitchen's north window, 4.55–5.45 with its sill at 1.2, always had it; wherever the house's shell
+ *  has the kitchen's windows now). */
 function Backsplash() {
+  const shell = useFarm(() => farm.home.shell)
+  const panels = useMemo(() => {
+    const cuts = windowsOf(shell)
+      .filter((w) => w.axis === 'x' && w.at === HOUSE.minZ && w.sill < 1.5 && w.centre + w.width / 2 > 1.0 && w.centre - w.width / 2 < 5.6)
+      .sort((a, b) => a.centre - b.centre)
+    const out: { x0: number; x1: number; top: number }[] = []
+    let x = 1.0
+    for (const w of cuts) {
+      const lo = Math.max(1.0, w.centre - w.width / 2)
+      const hi = Math.min(5.6, w.centre + w.width / 2)
+      if (lo > x + 1e-3) out.push({ x0: x, x1: lo, top: 1.5 })
+      if (w.sill > 0.92) out.push({ x0: lo, x1: hi, top: w.sill })
+      x = hi
+    }
+    if (x < 5.6 - 1e-3) out.push({ x0: x, x1: 5.6, top: 1.5 })
+    return out
+  }, [shell])
   return (
     <>
-      <TilePanel x0={1.0} x1={4.55} top={1.5} />
-      <TilePanel x0={4.55} x1={5.45} top={1.2} />
-      <TilePanel x0={5.45} x1={5.6} top={1.5} />
+      {panels.map((p) => (
+        <TilePanel key={`${p.x0}-${p.x1}-${p.top}`} x0={p.x0} x1={p.x1} top={p.top} />
+      ))}
     </>
   )
 }
@@ -432,18 +399,6 @@ function BedsideClock() {
   )
 }
 
-function Mirror() {
-  return (
-    <group>
-      <B size={[0.62, 1.4, 0.035]} color="#2a2522" roughness={0.5} radius={0.01} mat="veneer" tile={0.8} />
-      <mesh position={[0, 0, 0.019]}>
-        <planeGeometry args={[0.54, 1.32]} />
-        <meshStandardMaterial color="#d8e0e6" metalness={1} roughness={0.05} envMapIntensity={1.6} />
-      </mesh>
-    </group>
-  )
-}
-
 function Slippers() {
   return (
     <group>
@@ -465,9 +420,6 @@ function Bedroom() {
           <BedsideClock />
         </At>
       </OnPiece>
-      <At position={[0.1, 1.45, 1.3]} rotationY={Math.PI / 2}>
-        <Mirror />
-      </At>
       <OnPiece id="bed">
         <At position={[3.25, 0.012, 3.55]} rotationY={0.3}>
           <Slippers />
@@ -478,39 +430,6 @@ function Bedroom() {
 }
 
 // ───────────────────────────── whole house ─────────────────────────────
-
-function SwitchPlate({ position, rotationY }: { position: V3; rotationY: number }) {
-  return (
-    <At position={position} rotationY={rotationY}>
-      <B size={[0.08, 0.125, 0.01]} color="#ece9e2" roughness={0.4} radius={0.003} />
-      <B size={[0.026, 0.05, 0.008]} position={[0, 0, 0.007]} color="#f6f4ee" roughness={0.35} radius={0.003} />
-    </At>
-  )
-}
-
-function Outlet({ position, rotationY }: { position: V3; rotationY: number }) {
-  return (
-    <At position={position} rotationY={rotationY}>
-      <B size={[0.08, 0.08, 0.01]} color="#ece9e2" roughness={0.4} radius={0.003} />
-      {[-0.012, 0.012].map((x) => (
-        <B key={x} size={[0.006, 0.016, 0.004]} position={[x, 0.008, 0.006]} color="#2a2a2c" roughness={0.8} radius={0.001} />
-      ))}
-    </At>
-  )
-}
-
-function Radiator({ width = 1.0 }: { width?: number }) {
-  const n = Math.round(width / 0.07)
-  return (
-    <group>
-      {Array.from({ length: n }, (_, i) => (
-        <B key={i} size={[0.05, 0.46, 0.07]} position={[(i - (n - 1) / 2) * 0.07, 0.3, 0]} color="#f1efe9" roughness={0.45} radius={0.018} />
-      ))}
-      <B size={[width + 0.04, 0.03, 0.08]} position={[0, 0.55, 0]} color="#f1efe9" roughness={0.45} radius={0.008} />
-      <B size={[width + 0.04, 0.03, 0.06]} position={[0, 0.05, 0]} color="#f1efe9" roughness={0.45} radius={0.008} />
-    </group>
-  )
-}
 
 function SmokeDetector() {
   return (
@@ -527,19 +446,6 @@ function SmokeDetector() {
 function House() {
   return (
     <>
-      {/* switches at the doorways (light side of each wall), a few outlets near the floor */}
-      <SwitchPlate position={[-2.35, 1.25, 0.087]} rotationY={0} />
-      <SwitchPlate position={[-0.087, 1.25, 4.05]} rotationY={-Math.PI / 2} />
-      <SwitchPlate position={[0.087, 1.25, -2.0]} rotationY={Math.PI / 2} />
-      <SwitchPlate position={[2.35, 1.25, 0.087]} rotationY={0} />
-      <Outlet position={[-5.2, 0.32, 5.915]} rotationY={Math.PI} />
-      <Outlet position={[-6.915, 0.32, -1.4]} rotationY={Math.PI / 2} />
-      <Outlet position={[6.915, 0.32, 3.0]} rotationY={-Math.PI / 2} />
-      <Outlet position={[5.6, 1.0, -5.915]} rotationY={0} />
-      {/* a radiator under the bedroom's south window (the living room's became the garden door) */}
-      <At position={[1.7, 0, 5.875]}>
-        <Radiator width={1.0} />
-      </At>
       {/* smoke detectors */}
       {[
         [-3.5, -3.0],

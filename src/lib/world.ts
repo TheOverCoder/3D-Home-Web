@@ -1,4 +1,5 @@
-import { APRON, ROOMS, insideHouse, roomAt, type FloorKind, type RoomId } from '../data/layout'
+import { APRON, insideHouse, roomAt, type FloorKind, type RoomId } from '../data/layout'
+import { floorOf } from '../home/shell'
 import { DRIVE, PLOT } from '../data/home'
 import { spaceAt, walkInRoomAt, type WalkIn, type WalkInRoom } from '../data/buildings'
 import { reachRects, type Rect } from '../farm/layout'
@@ -42,7 +43,7 @@ const WALK_IN_FLOOR: Record<WalkIn['floor'], FloorKind> = { tile: 'tile', boards
 export function floorHere(x: number, z: number): FloorKind {
   if (houseHere()) {
     const room = roomAt(x, z)
-    if (room) return ROOMS[room].floor
+    if (room) return floorOf(farm.home.shell, room).kind
     return insideHouse(x, z, APRON) || inArea(DRIVE, x, z) ? 'tile' : 'grass'
   }
   const inside = walkInRoomAt(x, z)

@@ -19,6 +19,8 @@ import { farm, useFarm } from '../farm/state'
 import { useDecorate } from '../home/decorate'
 import type { HomeLayout, HomePiece } from '../home/layout'
 import '../home/actions' // the decorating actions (and their test hook)
+import { shellKey } from '../home/shell'
+import { setHousePortals } from '../lib/visibility/portals'
 
 /**
  * Merges the never-moving placeholder geometry into a few draws (see lib/batch). A part inside (`userData.part`) can be
@@ -117,6 +119,11 @@ function useFurnitureBatch(home: HomeLayout, decorating: boolean) {
 export function House() {
   // where the furniture stands: the merged furniture is made again when it moves
   const home = useFarm(() => farm.home)
+  // the walls as the shell has them: built and merged again when an opening moves or a room is painted
+  const shell = home.shell
+  const shellRev = useMemo(() => shellKey(shell), [shell])
+  // the drawing pass's rooms and portals follow the openings (src/lib/visibility/portals.ts)
+  useLayoutEffect(() => setHousePortals(shell), [shell])
   const decorating = useHome((s) => s.decorating)
   const furniture = useFurnitureBatch(home, decorating)
   if (assets.house) {
@@ -137,12 +144,12 @@ export function House() {
     <>
       <group userData={{ cell: 'always' }}>
         <Floors />
-        <StaticBatch>
-          <Walls />
+        <StaticBatch rev={shellRev}>
+          <Walls key={shellRev} shell={shell} />
         </StaticBatch>
         <Ceilings />
-        <Door />
-        <GardenDoor />
+        <Door shell={shell} />
+        <GardenDoor shell={shell} />
       </group>
       <group userData={{ cell: 'outside' }}>
         <StaticBatch>
@@ -151,7 +158,8 @@ export function House() {
         <ExteriorColliders />
         <Countryside />
       </group>
-      <StaticBatch rev={furniture.rev} exclude={furniture.exclude}>
+      {/* merged again when the shell changes too: the kitchen's tiles follow its windows (Dressing.tsx) */}
+      <StaticBatch rev={`${furniture.rev}#${shellRev}`} exclude={furniture.exclude}>
         <Furnishings />
         <Dressing />
       </StaticBatch>

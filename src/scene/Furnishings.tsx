@@ -9,7 +9,8 @@ import { assets } from '../assets/registry'
 import { fitModelTextures } from '../lib/textureBudget'
 import { farm, useFarm } from '../farm/state'
 import { PIECES, type PieceType } from '../home/catalogue'
-import { hostMove, type HomePiece } from '../home/layout'
+import { hangOf, hostMove, type HomePiece } from '../home/layout'
+import { FloorLampStand, Mirror, Outlet, PictureSmall, PictureTall, PictureWide, Radiator, ScreenShape, SwitchPlate, WallClock } from './WallThings'
 import { useDecorate } from '../home/decorate'
 
 type V3 = [number, number, number]
@@ -438,16 +439,6 @@ function Rug({ size, color }: { size: [number, number]; color: string }) {
   )
 }
 
-function Frame({ size, color, accent }: { size: [number, number]; color: string; accent: string }) {
-  return (
-    <group>
-      <B size={[size[0], size[1], 0.04]} color="#1f1f21" roughness={0.5} radius={0.006} />
-      <B size={[size[0] - 0.1, size[1] - 0.1, 0.045]} color={color} roughness={0.9} radius={0} />
-      <B size={[(size[0] - 0.1) * 0.5, (size[1] - 0.1) * 0.5, 0.05]} position={[0.04, -0.02, 0]} color={accent} roughness={0.9} radius={0} />
-    </group>
-  )
-}
-
 // ───────────────────────────── the house's furniture, from the farm's save ─────────────────────────────
 
 /** The model of each kind of piece (built round its middle, its back towards −z). */
@@ -494,6 +485,26 @@ export function PieceModel({ type }: { type: PieceType }) {
       return <Rug size={[2.4, 1.6]} color="#4f5f6b" />
     case 'rug-bedroom':
       return <Rug size={[2.8, 3.0]} color="#7d8a96" />
+    case 'floor-lamp':
+      return <FloorLampStand />
+    case 'picture-wide':
+      return <PictureWide />
+    case 'picture-tall':
+      return <PictureTall />
+    case 'picture-small':
+      return <PictureSmall />
+    case 'mirror':
+      return <Mirror />
+    case 'wall-clock':
+      return <WallClock />
+    case 'radiator':
+      return <Radiator />
+    case 'switch':
+      return <SwitchPlate />
+    case 'outlet':
+      return <Outlet />
+    case 'screen':
+      return <ScreenShape />
   }
 }
 
@@ -504,10 +515,12 @@ const modelId = (p: Pick<HomePiece, 'id' | 'type'>) => (assets.props[p.id] ? p.i
 /** The real model dropped in for a piece, if there is one (its URL). */
 export const pieceModelUrl = (p: Pick<HomePiece, 'id' | 'type'>) => (PIECES[p.type].layer === 'rug' ? undefined : assets.props[modelId(p)])
 
-/** How a piece looks, with nothing solid about it (the one being dragged in the decorate mode). */
-export function PieceLook({ p }: { p: Pick<HomePiece, 'id' | 'type'> }) {
+/** How a piece looks, with nothing solid about it (the one being dragged in the decorate mode; `whole`: with what goes
+ *  along with it drawn by others, the standing lamp's shade, for its picture). */
+export function PieceLook({ p, whole = false }: { p: Pick<HomePiece, 'id' | 'type'>; whole?: boolean }) {
   const def = PIECES[p.type]
   const url = pieceModelUrl(p)
+  if (whole && p.type === 'floor-lamp') return <FloorLampStand shade />
   if (!url) return <PieceModel type={p.type} />
   return (
     <Suspense fallback={<PieceModel type={p.type} />}>
@@ -524,6 +537,15 @@ export function Placed({ p }: { p: HomePiece }) {
   const dragged = useDecorate((s) => s.drag?.id === p.id)
   const rotationY = (p.rot * Math.PI) / 2
   // `part`: the furniture's merged meshes can leave it out and draw it on its own (src/lib/batch.ts, House.tsx)
+  // on the wall, at its height (a screen is drawn by src/scene/Screens.tsx where its piece hangs)
+  if (def.layer === 'wall')
+    return p.type === 'screen' ? null : (
+      <group name={`piece-${p.id}`} userData={{ part: p.id }} visible={!dragged}>
+        <Decor position={[p.x, hangOf(p), p.z]} rotationY={rotationY}>
+          <PieceModel type={p.type} />
+        </Decor>
+      </group>
+    )
   if (def.layer === 'rug')
     return (
       <group name={`piece-${p.id}`} userData={{ part: p.id }} visible={!dragged}>
@@ -557,9 +579,9 @@ export function OnPiece({ id, children }: { id: string; children: ReactNode }) {
   )
 }
 
-/** All room furniture, where the farm's save has it (src/home/layout.ts), and the pictures on the walls. A moved
- *  piece is drawn afresh (its collider is made where it stands). Every piece can be replaced by dropping
- *  `props/<id>.glb` (or `props/<kind>.glb`). */
+/** All room furniture and what hangs on the walls, where the farm's save has it (src/home/layout.ts). A moved piece
+ *  is drawn afresh (its collider is made where it stands). Every piece can be replaced by dropping `props/<id>.glb`
+ *  (or `props/<kind>.glb`). */
 export function Furnishings() {
   const home = useFarm(() => farm.home)
   return (
@@ -567,16 +589,6 @@ export function Furnishings() {
       {home.pieces.map((p) => (
         <Placed key={`${p.id}|${p.x}|${p.z}|${p.rot}`} p={p} />
       ))}
-      {/* pictures on the walls */}
-      <Decor position={[-6.88, 1.65, 3.4]} rotationY={Math.PI / 2}>
-        <Frame size={[1.1, 0.75]} color="#c9b79c" accent="#3d6a8a" />
-      </Decor>
-      <Decor position={[-6.88, 1.6, 4.7]} rotationY={Math.PI / 2}>
-        <Frame size={[0.6, 0.8]} color="#d9d0c0" accent="#b4543a" />
-      </Decor>
-      <Decor position={[3.5, 1.7, 5.9]} rotationY={Math.PI}>
-        <Frame size={[0.8, 0.6]} color="#cfd6dc" accent="#4d7a58" />
-      </Decor>
     </group>
   )
 }

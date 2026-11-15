@@ -1,6 +1,22 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { Page } from '@playwright/test'
-import { countingTest as test, expect, bootApp, emptyFarm, fillFarm, marketDoorStill, onMap, watchErrors, BASE, NULL_GL, type MapId } from './helpers'
+import {
+  countingTest as test,
+  expect,
+  bootApp,
+  changeHouse,
+  emptyFarm,
+  fillFarm,
+  marketDoorStill,
+  onMap,
+  openingViews,
+  openingsNow,
+  restoreHouse,
+  watchErrors,
+  BASE,
+  NULL_GL,
+  type MapId,
+} from './helpers'
 import { FRONT_DOOR, HALL } from '../../src/data/market'
 import { AGENT_SEAT, AGENT_STAND } from '../../src/data/estate'
 
@@ -345,16 +361,17 @@ function judge(row: Row) {
 }
 
 /** The walk at each size, on a page with the farm at its fullest: the house's views, then the farm's. */
-async function walk(page: Page, farm: string, sizes: typeof SIZES, check: boolean, whole = true) {
+async function walk(page: Page, farm: string, sizes: typeof SIZES, check: boolean, whole = true, views: View[] = WALK) {
   try {
     for (const size of sizes) {
       await resize(page, size.width === 640 ? null : size)
       for (const map of ['home', 'farm'] as const) {
+        if (!views.some((w) => w.map === map)) continue
         await onMap(page, map)
         // the farm at its fullest again on its map (the shelves, quiet), the animals and the buyers in their places
         await fillFarm(page)
         await page.waitForTimeout(6000)
-        for (const v of WALK.filter((w) => w.map === map)) {
+        for (const v of views.filter((w) => w.map === map)) {
           const row = await measure(page, v, farm, whole)
           expect(row.size, `${v.name}: the canvas at ${size.name}`).toBe(size.name)
           // the rooms and the sun's windows are used in first person in the house (the wardrobe's camera too), and not in
@@ -403,6 +420,8 @@ test.describe('performance budget', () => {
       const h = (window as any).__home
       const out: string[] = []
       for (const p of h.home.layout.pieces) {
+        // (a screen is drawn by src/scene/Screens.tsx with the hologram of the room you are in: measured in the walk)
+        if (p.type === 'screen') continue
         const group = h.scene.getObjectByName(`piece-${p.id}`)
         if (!group) {
           out.push(`${p.id}: not in the scene`)
@@ -445,6 +464,25 @@ test.describe('performance budget', () => {
       await game.ready()
       await fillFarm(game.page)
       await walk(game.page, 'fullest', [size], !MEASURE_ONLY)
+    })
+
+  // The house changed every way decorating can change its shell (changeHouse in helpers.ts: windows and the garden door
+  // moved, one round its room's corner, a doorway closed, the kitchen's door moved, every room painted and floored), the
+  // rooms as full: the house's walk again, its doorways and windows and the garden door where they are now (made from its
+  // openings: openingViews), to the same limits and debts.
+  for (const size of SIZES)
+    test(`a changed house at ${size.name}: under the budget, or a listed debt no higher than it was`, async ({ game }) => {
+      test.setTimeout(1_800_000)
+      await game.ready()
+      await fillFarm(game.page)
+      expect(await changeHouse(game.page), 'every change fits').toEqual([])
+      try {
+        const house = WALK.filter((w) => w.map === 'home' && !/doorway|garden door/.test(w.name))
+        const made = openingViews(await openingsNow(game.page)).map((v): View => ({ map: 'home', name: `changed: ${v.name}`, x: v.x, z: v.z, yaw: v.yaw, pitch: v.pitch, door: v.door ?? false }))
+        await walk(game.page, 'changed house', [size], !MEASURE_ONLY, false, [...house, ...made])
+      } finally {
+        await restoreHouse(game.page)
+      }
     })
 })
 
