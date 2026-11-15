@@ -12,9 +12,9 @@ import { workTime } from './queue'
 // lighter piece after it), the levels as stations, and what this level gives and the next will.
 
 /** The chip: tap it for what the level gives. */
-export function LevelChip({ level, onOpen }: { level: LevelView; onOpen: () => void }) {
+export function LevelChip({ level, name, onOpen }: { level: LevelView; name: string; onOpen: () => void }) {
   return (
-    <m.button className="mp-level" onClick={onOpen} aria-label={`Level ${level.n} — what it gives`} {...PRESS}>
+    <m.button className="mp-level" onClick={onOpen} aria-label={`${name}, level ${level.n} — what it gives`} {...PRESS}>
       <span className="mp-level-word">Level</span>
       <m.span className="mp-level-ring" layoutId="mp-level-ring" transition={SPRING.sheet}>
         <Ring size={30} stroke={4} value={level.next === null ? 1 : level.progress} />
@@ -63,7 +63,13 @@ export function LevelPage({ level, queued, name }: { level: LevelView; queued: n
           ) : level.progress < 0.5 ? (
             // below half: what is done; past it, what is left (the smaller part reads best)
             <span className="mp-lv-big">
-              <strong>{workTime(into)}</strong> worked
+              {into < 1 ? (
+                <strong>Just started</strong>
+              ) : (
+                <>
+                  <strong>{workTime(into)}</strong> worked
+                </>
+              )}
             </span>
           ) : (
             <span className="mp-lv-big">

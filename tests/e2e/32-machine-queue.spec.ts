@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { test, expect, type Game } from './helpers'
 
-// A machine's queue in the game (src/farm/machines.ts; its panel, src/farm/MachinePanel.tsx, until the designed one
-// replaces it): the oven's button opens its queue; three different cakes go in from there and bake one after another,
-// a waiting one moved up; the level chip says what the level gives; another place is bought (its card asks first) and
-// a fourth cake fits; once all are done the button collects every one at a press. Time is fast-forwarded with
+// A machine's queue in the game (src/farm/machines.ts; its panel, src/farm/MachinePanel.tsx and src/farm/machine): the
+// oven's button opens its queue; three different cakes go in from there (a tap on each card) and bake one after
+// another, a waiting one dragged before another; the level chip opens what the level gives; another place is bought
+// (its card asks first) and a fourth cake fits; once all are done the button collects every one at a press. Time is fast-forwarded with
 // __home.farm.tick, and what it did is read in the same call (the farm runs on in real time between two calls).
 
 const until = (game: Game, fn: () => boolean, timeout = 30_000) => game.page.waitForFunction(fn, null, { timeout, polling: 200 })
@@ -30,31 +30,37 @@ test.describe("a machine's queue", () => {
     await expect(page.locator('.farm-panel h2')).toHaveText('Oven')
 
     // three different cakes, each a tap on its card: the first bakes, the others wait
-    for (const name of ['Lemon cake', 'Carrot cake', 'Strawberry cake']) await page.locator('.machine-recipes .farm-card', { hasText: name }).click()
+    for (const name of ['Lemon cake', 'Carrot cake', 'Strawberry cake']) await page.locator('.mp-recipe', { hasText: name }).click()
     await until(game, () => (window as any).__home.farm.state.machines.oven.jobs.length === 3)
     expect(await queue(game)).toEqual(['lemon_cake:working', 'carrot_cake:waiting', 'strawberry_cake:waiting'])
-    await expect(page.locator('.machine-queue .machine-slot')).toHaveCount(3)
-    await expect(page.locator('.machine-queue .machine-slot.working')).toHaveCount(1)
+    await expect(page.locator('.mp-places .mp-place.job')).toHaveCount(3)
+    await expect(page.locator('.mp-places .mp-place.working')).toHaveCount(1)
     // three places, all taken: nothing more goes in
-    await expect(page.locator('.machine-recipes .farm-card:not(:disabled)')).toHaveCount(0)
-    // the strawberry cake moved up, before the carrot cake
-    await page.locator('.machine-queue .machine-slot').nth(2).getByRole('button', { name: 'Sooner' }).click()
+    await expect(page.locator('.mp-recipe[aria-disabled="false"]')).toHaveCount(0)
+    // the strawberry cake dragged before the carrot cake (a mouse: it lifts as it moves, and drops where it is let go)
+    const from = (await page.locator('.mp-places .mp-place.job').nth(2).boundingBox())!
+    const to = (await page.locator('.mp-places .mp-place.job').nth(1).boundingBox())!
+    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 8 })
+    await page.mouse.up()
     await until(game, () => (window as any).__home.farm.state.machines.oven.jobs[1] === 'strawberry_cake')
 
-    // the level: tapped, what it gives and what the next one will
-    await page.locator('.farm-sub .tag.level').click()
-    await expect(page.locator('.machine-boost')).toContainText('level 2 after')
+    // the level: its chip opens what it gives and what the next one will; back to the queue
+    await page.getByRole('button', { name: /^Oven, level 1/ }).click()
+    await expect(page.locator('.mp-lv')).toContainText('to level 2')
+    await expect(page.locator('.mp-lv-boosts')).toContainText('+20 %')
+    await page.getByRole('button', { name: 'Back to the oven' }).click()
 
     // another place: its card asks first, Buy (armed after a moment) pays for it
     const coins = await page.evaluate(() => (window as any).__home.farm.state.coins)
     const price = await page.evaluate(() => (window as any).__home.machines.view('oven').upgrade.price)
-    await page.getByRole('button', { name: /^Another place in the queue/ }).click()
-    await until(game, () => (window as any).__home.useHome.getState().panel?.kind === 'machine-slot')
-    await page.locator('.farm-buy:not(.arming)').click()
-    await until(game, () => (window as any).__home.useHome.getState().panel?.kind === 'machine')
+    await page.getByRole('button', { name: /^One more place/ }).click()
+    await page.locator('.mp-buy-go:not(.arming)').click()
+    await until(game, () => (window as any).__home.farm.state.machines.oven.capacity === 4)
     expect(await page.evaluate(() => [(window as any).__home.farm.state.machines.oven.capacity, (window as any).__home.farm.state.coins])).toEqual([4, coins - price])
     // a fourth cake fits now: the pumpkin pie
-    await page.locator('.machine-recipes .farm-card', { hasText: 'Pumpkin pie' }).click()
+    await page.locator('.mp-recipe', { hasText: 'Pumpkin pie' }).click()
     await until(game, () => (window as any).__home.farm.state.machines.oven.jobs.length === 4)
     await page.keyboard.press('Escape')
     await until(game, () => (window as any).__home.useHome.getState().panel === null)

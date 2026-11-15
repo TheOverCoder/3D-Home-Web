@@ -32,6 +32,8 @@ export interface MachinePanelProps {
   /** the player's coins (the next place's price is shown short of them); the view does not carry them */
   coins?: number
   onClose: () => void
+  /** opens with the card that asks for the next place already open */
+  buying?: boolean
 }
 
 /** The panel, with the game's motion round it (it may be the first thing in the game to use Motion). */
@@ -131,7 +133,7 @@ interface Note {
   tone: 'bad' | 'good' | 'xp'
 }
 
-function Panel({ v, act, coins, onClose }: MachinePanelProps) {
+function Panel({ v, act, coins, onClose, buying }: MachinePanelProps) {
   const mode = useMode()
   const still = useReducedMotion()
   const [page, setPageNow] = useState<'queue' | 'level'>('queue')
@@ -374,17 +376,25 @@ function Panel({ v, act, coins, onClose }: MachinePanelProps) {
     return () => ro.disconnect()
   }, [page])
 
-  // ── Esc: back from the level's page, else close ──
+  // ── Esc: back from the level's page, else the way out (before the game's own Esc, which would close it at once);
+  // on a computer, a recipe's number puts it in (as a tap on its card) ──
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape' || drag.lifted) return
-      e.stopPropagation()
-      if (page === 'level') setPage('queue')
-      else setLeaving(true)
+      if (e.key === 'Escape') {
+        if (drag.lifted) return
+        e.stopPropagation()
+        if (page === 'level') setPageNow('queue')
+        else setLeaving(true)
+        return
+      }
+      const n = Number(e.key)
+      const r = page === 'queue' && !e.repeat && n >= 1 && n <= 9 ? v.recipes[n - 1] : undefined
+      if (!r || (e.target as Element | null)?.closest?.('input, select, textarea')) return
+      tap(r, document.querySelector<HTMLElement>(`[data-recipe="${r.id}"] .mp-recipe-pic`))
     }
-    window.addEventListener('keydown', key)
-    return () => window.removeEventListener('keydown', key)
-  }, [page, drag.lifted])
+    window.addEventListener('keydown', key, true)
+    return () => window.removeEventListener('keydown', key, true)
+  })
 
   const letGo = (_: unknown, i: PanInfo) => {
     const far = mode === 'right' ? i.offset.x : i.offset.y
@@ -403,7 +413,7 @@ function Panel({ v, act, coins, onClose }: MachinePanelProps) {
       <m.div className="mp-shade" aria-hidden="true" initial={{ opacity: 0 }} animate={{ opacity: leaving ? 0 : 1 }} transition={{ duration: leaving ? 0.18 : 0.24 }} onClick={close} />
       <m.div
         ref={sheet}
-        className="mp-sheet"
+        className="mp-sheet farm-panel"
         role="dialog"
         aria-modal="true"
         aria-label={`${v.name}, level ${v.level.n}`}
@@ -466,7 +476,7 @@ function Panel({ v, act, coins, onClose }: MachinePanelProps) {
               {page === 'queue' ? (
                 <>
                   <span ref={chip} className="mp-level-wrap">
-                    <LevelChip level={v.level} onOpen={() => setPage('level')} />
+                    <LevelChip level={v.level} name={v.name} onOpen={() => setPage('level')} />
                   </span>
                   {total > 0 && (
                     <span className="tag mp-total" aria-label={`All done in ${clock(total)}`}>
@@ -502,6 +512,7 @@ function Panel({ v, act, coins, onClose }: MachinePanelProps) {
                   nudge={nudge}
                   opening={opening}
                   arriving={arriving}
+                  buying={buying}
                 />
                 <div className="mp-foot">
                   <AnimatePresence mode="popLayout" initial={false}>

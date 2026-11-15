@@ -10,10 +10,13 @@
 .mp-shade { position: absolute; inset: 0; background: rgba(40, 24, 10, 0.4); }
 .mp-sheet { position: relative; z-index: 1; display: flex; flex-direction: column; min-height: 0; color: var(--ink); background: var(--paper); border: 3px solid #fff; box-shadow: var(--shadow-sheet); overflow: hidden; outline: none; }
 .mp-sheet img { -webkit-user-drag: none; -webkit-touch-callout: none; user-select: none; }
+/* it is one of the game's panels (.farm-panel: what the game and its tests know a panel by), drawn its own way */
+.mp-sheet.farm-panel { padding: 0; overflow: hidden; animation: none; }
+.mp-sheet .mp-head { margin: 0; }
 .mp-bottom { place-items: end center; }
 .mp-bottom .mp-sheet { width: 100%; max-height: 92dvh; border-radius: var(--r-sheet) var(--r-sheet) 0 0; border-bottom: 0; }
 .mp-right { place-items: stretch end; }
-.mp-right .mp-sheet { width: min(610px, 76vw); height: 100dvh; border-radius: var(--r-sheet) 0 0 var(--r-sheet); border-right: 0; }
+.mp-right .mp-sheet { width: min(610px, max(76vw, 520px)); height: 100dvh; max-height: none; border-radius: var(--r-sheet) 0 0 var(--r-sheet); border-right: 0; }
 .mp-middle { place-items: center; padding: 16px; }
 .mp-middle .mp-sheet { width: min(620px, 100%); max-height: calc(100dvh - 32px); border-radius: var(--r-sheet); }
 
@@ -24,7 +27,7 @@
 .mp-middle .mp-grab { display: none; }
 .mp-head-art { width: 56px; height: 56px; margin: -6px 0 -4px; }
 .mp-head-text { flex: 1; min-width: 0; }
-.mp-head h2 { margin: 0; font: 600 25px/1.1 var(--font-display); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mp-sheet .mp-head h2 { margin: 0; font: 600 25px/1.1 var(--font-display); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mp-sub { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 5px; min-height: 30px; }
 .mp-total { gap: 4px; font-variant-numeric: tabular-nums; }
 .mp-total svg { width: 15px; height: 15px; }
@@ -154,6 +157,17 @@
 /* being carried: its picture is the one in the air */
 .mp-recipe.carried { box-shadow: 0 0 0 2.5px var(--sun), 0 4px 0 var(--sun-lip); }
 .mp-recipe.carried .mp-recipe-pic .item-pic { opacity: 0.25; }
+/* a narrow card (a small phone on its side, beside the queue): its time under its name, what it takes under both */
+@container (max-width: 300px) {
+  .mp-recipe { gap: 6px 8px; padding: 8px; }
+  .mp-recipe-pic { grid-row: auto; width: 48px; height: 48px; border-radius: 14px; }
+  .mp-recipe-pic .item-pic .art { width: 40px; height: 40px; }
+  .mp-recipe-top { flex-direction: column; align-items: flex-start; gap: 3px; }
+  .mp-recipe-top b { font-size: 16px; max-width: 100%; }
+  .mp-recipe-needs { grid-column: 1 / -1; gap: 2px 3px; }
+  .mp-need { min-width: 32px; }
+}
+
 /* ── the thing being dragged: its picture on a round plate, riding above the finger ── */
 .mp-ghost { position: fixed; left: 0; top: 0; z-index: 80; display: grid; place-items: center; border-radius: 50%; background: radial-gradient(circle, #fff 0 52%, color-mix(in srgb, var(--sun) 45%, #fff) 100%); box-shadow: 0 0 0 3px var(--sun), 0 16px 28px rgba(40, 24, 10, 0.35); pointer-events: none; transition: box-shadow 0.15s, background 0.15s; }
 .mp-ghost img { width: 75%; height: 75%; object-fit: contain; filter: drop-shadow(0 3px 2px rgba(60, 35, 10, 0.25)); }
@@ -224,13 +238,17 @@
 .mp-right .mp-head { padding: calc(8px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) 8px 22px; gap: 10px; }
 .mp-right .mp-grab { top: 50%; left: 8px; width: 5px; height: 40px; margin: -20px 0 0; }
 .mp-right .mp-head-art { width: 42px; height: 42px; margin: -4px 0; }
-.mp-right .mp-head h2 { font-size: 21px; }
+.mp-right .mp-sheet .mp-head h2 { font-size: 21px; }
 .mp-right .mp-sub { margin-top: 3px; }
-.mp-right .mp-body { display: grid; grid-template-columns: 246px minmax(0, 1fr); align-items: start; }
+.mp-right .mp-body { display: grid; grid-template-columns: clamp(230px, 32vw, 262px) minmax(0, 1fr); align-items: start; }
 .mp-right .mp-queue { margin: 0 0 0 16px; padding: 8px; }
 .mp-right .mp-places { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 .mp-right .mp-foot { margin-top: 8px; min-height: 48px; }
 .mp-right .mp-collect, .mp-right .mp-note { min-height: 48px; }
+.mp-right .mp-collect { min-width: 0; padding: 0 10px; }
+.mp-right .mp-collect-in { gap: 8px; }
+.mp-right .mp-collect-pics .art { width: 28px; height: 28px; }
+.mp-right .mp-collect-pics .art + .art { margin-left: -15px; }
 .mp-right .mp-note { font-size: 14px; padding: 4px 10px; }
 .mp-right .mp-note.float { min-height: 36px; }
 .mp-right .mp-recipes { align-self: stretch; padding: 0 calc(12px + env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) 12px; }

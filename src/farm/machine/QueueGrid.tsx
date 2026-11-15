@@ -40,6 +40,7 @@ export function QueueGrid({
   nudge,
   opening,
   arriving,
+  buying,
 }: {
   cells: Cell[]
   lifted: Lifted<Payload> | null
@@ -59,6 +60,8 @@ export function QueueGrid({
   opening: boolean
   /** the job whose picture is flying into its place (it shows as the picture lands) */
   arriving: string | null
+  /** the card that asks for the next place opens at once */
+  buying?: boolean
 }) {
   const recipeOver = lifted?.payload.kind === 'recipe'
   return (
@@ -78,7 +81,7 @@ export function QueueGrid({
             delay={opening ? 0.06 + i * 0.03 : 0}
           />
         ))}
-        {upgrade && <BuyPlace key={`buy-${upgrade.capacity}`} upgrade={upgrade} coins={coins} onBuy={onBuy} nudge={nudge} delay={opening ? 0.06 + cells.length * 0.03 : 0.12} />}
+        {upgrade && <BuyPlace key={`buy-${upgrade.capacity}`} asking={!!buying} upgrade={upgrade} coins={coins} onBuy={onBuy} nudge={nudge} delay={opening ? 0.06 + cells.length * 0.03 : 0.12} />}
       </AnimatePresence>
     </div>
   )
@@ -134,7 +137,7 @@ function Place({
   if (!s) return null
   if (c.kind === 'done')
     return (
-      <m.div className="mp-place done" {...common}>
+      <m.div className="mp-place job done" {...common}>
         <m.button className="mp-place-btn" aria-label={`${cap(name(s))}, ready — collect`} onClick={h.collect} {...PRESS}>
           <m.span className={`mp-pop${justDone ? ' shine' : ''}`} initial={justDone ? { scale: 0.5, rotate: -14 } : false} animate={{ scale: 1, rotate: 0 }} transition={SPRING.soft}>
             <img className="art" src={iconUrl(s.makes)} alt="" draggable={false} data-pic />
@@ -147,7 +150,7 @@ function Place({
     )
   if (c.kind === 'working')
     return (
-      <m.div className="mp-place working" {...common} aria-label={`${cap(name(s))}, at work: ${clock(s.left)} to go`}>
+      <m.div className="mp-place job working" {...common} aria-label={`${cap(name(s))}, at work: ${clock(s.left)} to go`}>
         <Working s={s} arriving={arriving} />
       </m.div>
     )
@@ -161,7 +164,7 @@ function Place({
     e.preventDefault()
   }
   return (
-    <m.div className={`mp-place waiting${picked ? ' picked' : ''}`} {...common}>
+    <m.div className={`mp-place job waiting${picked ? ' picked' : ''}`} {...common}>
       <button
         className="mp-place-btn"
         aria-label={`${cap(name(s))}, ${nth(i + 1)} in the queue, ${clock(s.seconds)} — drag to move, or out to take out`}
@@ -233,8 +236,22 @@ const cap = (t: string) => t[0].toUpperCase() + t.slice(1)
 
 /** The next place of the queue, for its price: a tap asks first (a small card: the place, its price, Cancel and Buy;
  *  Buy wakes a moment after it shows, so a second tap does not buy). */
-function BuyPlace({ upgrade, coins, onBuy, nudge, delay }: { upgrade: { capacity: number; price: number }; coins?: number; onBuy: () => boolean; nudge: number; delay: number }) {
-  const [open, setOpen] = useState(false)
+function BuyPlace({
+  asking,
+  upgrade,
+  coins,
+  onBuy,
+  nudge,
+  delay,
+}: {
+  asking: boolean
+  upgrade: { capacity: number; price: number }
+  coins?: number
+  onBuy: () => boolean
+  nudge: number
+  delay: number
+}) {
+  const [open, setOpen] = useState(asking)
   const [armed, setArmed] = useState(false)
   const [scope, wiggle] = useAnimate()
   const short = coins !== undefined && coins < upgrade.price
