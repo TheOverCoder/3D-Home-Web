@@ -40,6 +40,20 @@ The README has the overview; `tests/README.md` what each test guards.
 - Tests must not read a value that runs on in real time across separate `page.evaluate` calls (the farm ticks
   every frame): advance and read in the same call.
 
+## Two maps (src/scene/Maps.tsx, maps.ts, travel.ts, src/lib/world.ts, src/data/maps.ts)
+
+- The farm and the house are two maps, each a world of its own round the origin; only the one you are on is in the
+  scene (`useHome.map`, following `farm.place` in the save). The farm runs on while you are in the house (`FarmClock`
+  is mounted on both). A new farm starts on the farm at `FARM_START`; the house is bought from the estate agent by the
+  market (`buyApartment`, 4000 coins) and a farm from before the two maps owns it and starts in it.
+- The car drives between them: `travel(to)` drops a curtain, plays the drive's film if one is set (`setDriveFilm`),
+  moves the save, mounts the other map, compiles it, and puts you out at `ARRIVE`. A loaded or switched slot follows
+  its own place.
+- Every rule that differs by map asks `src/lib/world.ts` (rooms and outdoors, the action button's spaces, what is
+  underfoot, the camera's limits, the route's area, the drawing pass's sources, the edit and decorate modes). Something
+  new on one map is mounted in that map only; its interactables are then offered only there. Tests choose their map:
+  `game.ready('farm' | 'home')` (`tests/e2e/helpers.ts`, `onMap`).
+
 ## What is drawn (src/lib/visibility)
 
 - A drawing pass leaves out of each frame what cannot be seen, and never changes the picture. First person: the four
@@ -49,13 +63,14 @@ The README has the overview; `tests/README.md` what each test guards.
   everything that moved is out of it (`src/scene/Lighting.tsx`). Third person, decorating, the edit mode and first
   person outdoors: the crowds' view test, and the house's walls hide what lies wholly behind one opaque piece of them
   (`walls.ts`; a wall fading hides nothing; a thing drawn without the depth test is never hidden). In first person in
-  the house the walls still judge what is outdoors (what the portals let in through a window). A walk-in building adds
+  the house the walls still judge what is outdoors (what the portals let in through a window). The rooms, portals and
+  the sun's culling are the house's map's; on the farm only the walk-ins' walls hide things. A walk-in building adds
   its walls as another source, and while its doors are shut it hides everything wholly inside its rooms from an eye
   outside (its `enclosure`).
 - The house's shell (walls, floors, ceilings, doors) is drawn always: it is under `userData.cell = 'always'`
   (`House.tsx`), as is your own body for the camera (the sun judges it like anything in a room: `userData.sun =
-  'room'`). What is outdoors is under `cell: 'outside'` (the farm, the garden round the
-  house). Anything else stands in a room and is judged each frame by where it is now: a new thing in the house needs
+  'room'`). What is outdoors is under `cell: 'outside'` (the farm on its map; the house's own garden and
+  countryside on the house's). Anything else stands in a room and is judged each frame by where it is now: a new thing in the house needs
   nothing. A new opening is a row in `layout.ts`; a new door that shuts must close its portal.
 - A crowd's model is everything put after one `at`: each animal, person or plant gets its own. Parts that cast a
   shadow are drawn whole.
@@ -131,7 +146,7 @@ The README has the overview; `tests/README.md` what each test guards.
   makes its poses from the row.
 - A new character is a roll of the people engine (`rollLook`, `src/models/look.ts`; one who always looks the same:
   overrides) and a movement script (`src/farm/script.ts`). A look is saved as its traits, never as the roll.
-- What keeps hours is a row in `HOURS`; the day's phases and their light are `DAY`. The light changes only the colour
+- What keeps hours is a row in `HOURS` (day phases, or hours from and to: the estate office's 8–16); the day's phases and their light are `DAY`. The light changes only the colour
   and strength of the lights there are. Tests stand at noon with the clock stopped (`helpers.ts`, `ready()`).
 
 ## The wardrobe and the levels' rewards (src/farm/outfit.ts, src/home/Wardrobe.tsx, src/farm/LevelPanel.tsx)
