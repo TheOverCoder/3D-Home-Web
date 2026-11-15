@@ -22,6 +22,7 @@ import { Plants } from './Plants'
 import {
   acceptOffer,
   bedProgress,
+  bedSpot,
   bedStage,
   bedsForSeeds,
   bedsNear,
@@ -103,6 +104,17 @@ import {
   estateAgentNow,
   buyApartment,
   driveTo,
+  moveBed,
+  sendBedHome,
+  buyDecor,
+  placeDecor,
+  moveDecor,
+  storeDecor,
+  decorPrice,
+  decorOwned,
+  shopView,
+  freeDecorSpot,
+  plantOf,
 } from './state'
 import { Market } from './Market'
 import { Estate } from './Estate'
@@ -112,12 +124,13 @@ import { Cows, herd } from './Cows'
 import { Land } from './Land'
 import { dragTo, drop, turn, useEdit } from './edit'
 import { editCamera } from './EditMode'
-import { PARCELS, PLACES, boundary, canPlace, footprint, type PlaceId, type Placement } from './layout'
+import { PARCELS, PLACES, boundary, canPlace, canPlaceThing, footprint, turnOf, type PlaceId, type Placement, type Thing } from './layout'
 import { Places, WOOD, WOOD_DARK } from './Places'
 import { Sheep, flock } from './Sheep'
 import { Visitors } from './Visitors'
 import { Workshop } from './Workshop'
 import { OrderYard } from './OrderYard'
+import { Decor, glowLevel } from './decorScene'
 
 const mmss = (seconds: number) => {
   const t = Math.max(0, Math.ceil(seconds))
@@ -296,6 +309,10 @@ function Bed({ index }: { index: number }) {
   const def = BEDS[index]
   useFarm((s) => s.rev)
   const bed = farm.beds[index]
+  // where it stands (its body and its offers), and where it is drawn: where the edit mode drags it, if it is
+  const spot = useFarm(() => farm.layout.beds[index])
+  const dragged = useEdit((s) => (s.drag?.id === `bed-${index}` ? s.drag.at : null))
+  const shown = dragged ?? spot
   const soilTex = useMemo(() => surface('soil', BED.w / 0.55, BED.d / 0.55), [])
   const soil = useRef<MeshStandardMaterial>(null)
   const icon = useRef<Sprite>(null)
@@ -337,10 +354,11 @@ function Bed({ index }: { index: number }) {
 
   useInteractable({
     id: `farm-bed-${index}`,
-    position: [def.x, 0.5, def.z],
-    aim: [def.x, 0.42, def.z],
-    // reach is measured from the frame's edge: a long bed is as near from its end as from its side
-    box: BED_BOX,
+    position: [spot.x, 0.5, spot.z],
+    aim: [spot.x, 0.42, spot.z],
+    // reach is measured from the frame's edge: a long bed is as near from its end as from its side (turned a quarter,
+    // its length runs along z)
+    box: spot.rot % 2 ? { x: BED_BOX.z, z: BED_BOX.x } : BED_BOX,
     radius: BED_REACH,
     // a plot to build or a field to buy offers nothing on the button: only its price tag, on the plot you look at
     enabled: () => !forSale(index),
@@ -392,7 +410,7 @@ function Bed({ index }: { index: number }) {
     },
     run: () => {
       const stage = bedStage(index)
-      const { pan, near } = placeSound(def.x, def.z)
+      const { pan, near } = placeSound(spot.x, spot.z)
       if (forSale(index)) return // (never on offer: its price tag asks)
       if (stage === 'empty') {
         // a bed set to grow one crop: its seeds, in every empty bed within reach set the same; otherwise the packets
@@ -407,7 +425,7 @@ function Bed({ index }: { index: number }) {
         waterBeds(beds)
         playGesture('interact')
         farmSound('water', pan, near)
-        for (const i of beds) farmFx('water', BEDS[i].x, BED.h + 0.03, BEDS[i].z)
+        for (const i of beds) farmFx('water', bedSpot(i).x, BED.h + 0.03, bedSpot(i).z)
       } else if (stage === 'ripe') {
         const beds = bedsInReach(index, 'ripe')
         if (!beds.length) return
@@ -415,7 +433,7 @@ function Bed({ index }: { index: number }) {
         harvestBeds(beds)
         playGesture('interact')
         farmSound('harvest', pan, near)
-        beds.forEach((i, k) => farmFx('harvest', BEDS[i].x, BED.h + 0.12, BEDS[i].z, { good: crops[k] }))
+        beds.forEach((i, k) => farmFx('harvest', bedSpot(i).x, BED.h + 0.12, bedSpot(i).z, { good: crops[k] }))
       } else {
         const b = farm.beds[index]
         const crop = cropById(b.crop!)
@@ -425,7 +443,7 @@ function Bed({ index }: { index: number }) {
     // looked at: a plot to build or a field to buy carries its price tag (it opens a card that asks, with the price
     // and a Build button), a built bed a gear for what it always grows
     tag: () => {
-      const at = { x: def.x, y: BED.h + 0.25, z: def.z }
+      const at = { x: spot.x, y: BED.h + 0.25, z: spot.z }
       const open = () => openPanel({ kind: forSale(index) ? 'build' : 'bed', bed: index })
       return forSale(index) ? { kind: 'price', label: priceLabel(index), price: priceOf(index), at, open } : { kind: 'gear', label: 'What this bed grows', at, open }
     },
@@ -433,49 +451,54 @@ function Bed({ index }: { index: number }) {
 
   const { w, d, h } = BED
   return (
-    <group position={[def.x, 0, def.z]}>
-      {bed.built ? (
-        <>
-          <mesh geometry={geo.frame} castShadow receiveShadow>
-            <meshStandardMaterial color={WOOD} map={wood.map} normalMap={wood.normalMap} roughnessMap={wood.roughnessMap} roughness={0.85} />
-          </mesh>
-          <mesh position={[0, (h - 0.05) / 2, 0]} receiveShadow>
-            <boxGeometry args={[w, h - 0.05, d]} />
-            <meshStandardMaterial ref={soil} map={soilTex.map} normalMap={soilTex.normalMap} roughnessMap={soilTex.roughnessMap} normalScale={[1.4, 1.4]} roughness={1} />
-          </mesh>
-          <RigidBody type="fixed" colliders={false}>
-            <CuboidCollider args={[w / 2 + 0.06, h / 2, d / 2 + 0.06]} position={[0, h / 2, 0]} />
-          </RigidBody>
-        </>
-      ) : (
-        <>
-          {/* a plot marked out with stakes and string, waiting to be built */}
-          <mesh geometry={geo.plot} castShadow>
-            <meshStandardMaterial color="#c9ad86" roughness={0.9} />
-          </mesh>
-          {sign && (
-            <>
-              <B size={[0.05, 0.8, 0.05]} position={[-def.side * (w / 2 - 0.25), 0.4, -d / 2 - 0.08]} color={WOOD_DARK} radius={0.006} />
-              <mesh position={[-def.side * (w / 2 - 0.25), 0.72, -d / 2 - 0.05]} rotation={[0, 0, 0]}>
-                <boxGeometry args={[0.5, 0.25, 0.02]} />
-                <meshStandardMaterial map={sign} roughness={0.85} />
-              </mesh>
-            </>
-          )}
-        </>
+    <>
+      {/* its body where it stands (made again when it is moved; not while it is only dragged) */}
+      {bed.built && (
+        <RigidBody key={`${spot.x}|${spot.z}|${spot.rot}`} type="fixed" colliders={false} position={[spot.x, 0, spot.z]} rotation={[0, turnOf(spot), 0]}>
+          <CuboidCollider args={[w / 2 + 0.06, h / 2, d / 2 + 0.06]} position={[0, h / 2, 0]} />
+        </RigidBody>
       )}
-      <sprite ref={icon} position={[0, 1.05, 0]} scale={[0.26, 0.26, 1]} visible={false}>
-        <spriteMaterial transparent depthWrite={false} />
-      </sprite>
-      {bed.built && bed.fixed && (
-        <group position={[-def.side * (w / 2 - 0.25), 0, -d / 2 - 0.08]}>
-          <B size={[0.035, 0.5, 0.035]} position={[0, 0.25, 0]} color={WOOD_DARK} radius={0.005} />
-          <sprite position={[0, 0.6, 0]} scale={[0.24, 0.24, 1]}>
-            <spriteMaterial map={markerTexture(bed.fixed)} transparent={false} alphaTest={0.5} />
-          </sprite>
-        </group>
-      )}
-    </group>
+      <group name={`bed-${index}`} position={[shown.x, 0, shown.z]} rotation-y={turnOf(shown)}>
+        {bed.built ? (
+          <>
+            <mesh geometry={geo.frame} castShadow receiveShadow>
+              <meshStandardMaterial color={WOOD} map={wood.map} normalMap={wood.normalMap} roughnessMap={wood.roughnessMap} roughness={0.85} />
+            </mesh>
+            <mesh position={[0, (h - 0.05) / 2, 0]} receiveShadow>
+              <boxGeometry args={[w, h - 0.05, d]} />
+              <meshStandardMaterial ref={soil} map={soilTex.map} normalMap={soilTex.normalMap} roughnessMap={soilTex.roughnessMap} normalScale={[1.4, 1.4]} roughness={1} />
+            </mesh>
+          </>
+        ) : (
+          <>
+            {/* a plot marked out with stakes and string, waiting to be built */}
+            <mesh geometry={geo.plot} castShadow>
+              <meshStandardMaterial color="#c9ad86" roughness={0.9} />
+            </mesh>
+            {sign && (
+              <>
+                <B size={[0.05, 0.8, 0.05]} position={[-def.side * (w / 2 - 0.25), 0.4, -d / 2 - 0.08]} color={WOOD_DARK} radius={0.006} />
+                <mesh position={[-def.side * (w / 2 - 0.25), 0.72, -d / 2 - 0.05]} rotation={[0, 0, 0]}>
+                  <boxGeometry args={[0.5, 0.25, 0.02]} />
+                  <meshStandardMaterial map={sign} roughness={0.85} />
+                </mesh>
+              </>
+            )}
+          </>
+        )}
+        <sprite ref={icon} position={[0, 1.05, 0]} scale={[0.26, 0.26, 1]} visible={false}>
+          <spriteMaterial transparent depthWrite={false} />
+        </sprite>
+        {bed.built && bed.fixed && (
+          <group position={[-def.side * (w / 2 - 0.25), 0, -d / 2 - 0.08]}>
+            <B size={[0.035, 0.5, 0.035]} position={[0, 0.25, 0]} color={WOOD_DARK} radius={0.005} />
+            <sprite position={[0, 0.6, 0]} scale={[0.24, 0.24, 1]}>
+              <spriteMaterial map={markerTexture(bed.fixed)} transparent={false} alphaTest={0.5} />
+            </sprite>
+          </group>
+        )}
+      </group>
+    </>
   )
 }
 
@@ -694,6 +717,21 @@ export function FarmClock() {
       sendHome,
       buyLand,
       canPlace: (id: PlaceId, p: Placement) => canPlace(farm.layout, id, p),
+      canPlaceThing: (t: Thing, p: Placement) => canPlaceThing(farm.layout, t, p),
+      // the beds where they stand, and the decoration and fruit plants of the edit mode's shop (src/farm/decor.ts)
+      moveBed,
+      sendBedHome,
+      bedSpot,
+      buyDecor,
+      placeDecor,
+      moveDecor,
+      storeDecor,
+      decorPrice,
+      decorOwned,
+      shopView,
+      freeDecorSpot,
+      plantOf,
+      glowLevel,
       footprint,
       boundary: () => boundary(farm.layout),
       places: PLACES,
@@ -780,8 +818,8 @@ function SeedKeys() {
       if (!crop || bedStage(index) !== 'empty') return
       const beds = bedsForSeeds(index, crop.id, playerState.position.x, playerState.position.z)
       if (plantBeds(beds, crop.id)) {
-        const def = BEDS[index]
-        const { pan, near } = placeSound(def.x, def.z)
+        const at = bedSpot(index)
+        const { pan, near } = placeSound(at.x, at.z)
         playGesture('interact')
         farmSound('plant', pan, near)
       } else useHome.getState().showToast(`${crop.plural[0].toUpperCase()}${crop.plural.slice(1)} seeds cost ${crop.seedCost} coins — you have ${farm.coins}`)
@@ -816,6 +854,7 @@ export function Garden() {
       ))}
       <ShopDoor />
       <Plants />
+      <Decor />
       <Chickens />
       <Cows />
       <Sheep />

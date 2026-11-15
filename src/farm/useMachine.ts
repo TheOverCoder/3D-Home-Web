@@ -8,7 +8,8 @@ import { registerInteractable, type ActionIcon, type InteractableDef } from '../
 import type { Point3 } from '../lib/playerState'
 import { useHome } from '../store'
 import { MACHINES, count, inputOf, produceById, type MachineId, type ProduceId, type Recipe } from './data'
-import { batches, clockText, collectMachine, farm, loadMachine, machineCollectable, machineRecipe, machineSecondsLeft, machineStage } from './state'
+import { usePlacement } from './edit'
+import { batches, clockText, collectMachine, farm, loadMachine, machineCollectable, machinePoint, machineRecipe, machineSecondsLeft, machineStage } from './state'
 
 // A machine on the action button (MACHINES in src/farm/data.ts): the mill, the loom and the oven. Its main action takes
 // out what it made, or says how long it still works; with nothing to work on, a status says what it wants. A recipe it
@@ -19,8 +20,10 @@ import { batches, clockText, collectMachine, farm, loadMachine, machineCollectab
 /** Whole seconds to go, rounded as the clock in the labels is. */
 const whole = (seconds: number) => Math.max(0, Math.ceil(seconds))
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1)
-/** A point round where a machine stands, in the world. */
-const around = (id: MachineId, [x, y, z]: [number, number, number]): Point3 => ({ x: MACHINES[id].x + x, y, z: MACHINES[id].z + z })
+/** A point round where a machine stands (in its own frame: it turns with its place), in the world. */
+const around = (id: MachineId, at: [number, number, number]): Point3 => machinePoint(id, at)
+/** Where a machine's sounds come from: its middle, where it stands now. */
+const middle = (id: MachineId) => machinePoint(id, [0, 0, 0])
 
 /** What a recipe still lacks, and how many of each (shown as pictures on the status line). */
 const lacking = (needs: Partial<Record<ProduceId, number>>) =>
@@ -51,7 +54,7 @@ function ask(id: MachineId, action: string, r: Recipe) {
     word: def.words.word,
     go: () => {
       if (!loadMachine(id, r.id)) return
-      const { pan, near } = placeSound(def.x, def.z)
+      const { pan, near } = placeSound(middle(id).x, middle(id).z)
       farmSound(def.sounds.load, pan, near)
       playGesture('interact')
     },
@@ -115,13 +118,14 @@ function main(id: MachineId): InteractableDef {
     ready: () => (machineStage(id) === 'done' && machineCollectable(id) ? { item: machineRecipe(id)!.makes, count: machineCollectable(id) } : null),
     run: () => {
       const s = machineStage(id)
-      const { pan, near } = placeSound(def.x, def.z)
+      const { pan, near } = placeSound(middle(id).x, middle(id).z)
       if (s === 'done') {
         const good = machineRecipe(id)?.makes
         if (!collectMachine(id)) return
         playGesture('interact')
         farmSound('harvest', pan, near)
-        farmFx('harvest', def.x + def.sparkle[0], def.sparkle[1], def.z + def.sparkle[2], { good })
+        const at = around(id, def.sparkle)
+        farmFx('harvest', at.x, at.y, at.z, { good })
       } else if (s === 'working') useHome.getState().showToast(def.words.busy(machineRecipe(id)!, clockText(machineSecondsLeft(id))))
       else {
         // what goes in only goes in once asked
@@ -139,11 +143,13 @@ export function useMachine(id: MachineId, ease = 0) {
   const noise = useRef(0)
   const work = useRef(0)
 
+  // on the button where it stands (again when it is moved)
+  const placed = usePlacement(id)
   useEffect(() => {
     const recipes = MACHINES[id].recipes
     const offs = [main(id), ...(recipes.length > 1 ? recipes.map((r) => offer(id, r)) : [])].map(registerInteractable)
     return () => offs.forEach((off) => off())
-  }, [id])
+  }, [id, placed])
 
   useFrame((_, rawDt) => {
     const dt = Math.min(rawDt, 0.1)
@@ -152,7 +158,7 @@ export function useMachine(id: MachineId, ease = 0) {
     const was = stage.current
     stage.current = s
     if (was === 'working' && s === 'done') {
-      const { pan, near } = placeSound(def.x, def.z)
+      const { pan, near } = placeSound(middle(id).x, middle(id).z)
       farmSound('ding', pan, Math.max(0.6, near))
     }
     const working = s === 'working'
@@ -165,7 +171,7 @@ export function useMachine(id: MachineId, ease = 0) {
       noise.current -= dt
       if (noise.current <= 0) {
         noise.current = sound.every + Math.random() * sound.spread
-        const { pan, near } = placeSound(def.x, def.z)
+        const { pan, near } = placeSound(middle(id).x, middle(id).z)
         if (near > 0.15) farmSound(sound.sound, pan, near)
       }
     }

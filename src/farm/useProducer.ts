@@ -50,7 +50,7 @@ export function producerOffer(id: ProducerId, i: number, at: { stand: Point3; ai
 
 /** A producer that stands in its place (the lemon tree, the nest box): its offer, where the place stands now. */
 export function useProducer(id: ProducerId) {
-  const p = usePlacement(PRODUCERS[id].place)
+  const p = usePlacement(PRODUCERS[id].place!)
   useEffect(() => {
     const point = ([x, y, z]: [number, number, number]): Point3 => {
       const [wx, wz] = toWorld(p, x, z)

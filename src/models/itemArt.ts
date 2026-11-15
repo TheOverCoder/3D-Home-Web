@@ -20,6 +20,8 @@ import {
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import type { Garment } from '../farm/outfit'
 import type { PictureId } from '../farm/icons'
+import { DECOR_KINDS, FRUIT_KINDS, type ShopKind } from '../farm/decor'
+import { STAND_IN_GOODS, decorModel, fruitPlantModel, goodModel } from '../farm/decorModels'
 import { sculptMaterial, type SculptMaterialOptions } from '../lib/sculpt'
 import { barnModel, siloModel } from './buildings'
 import { GOODS } from './goods'
@@ -63,8 +65,14 @@ const VIEWS: Partial<Record<PictureId, Item>> = {
   barn: { az: -38, el: 14 },
 }
 
-/** Every picture drawn from a model: the goods (src/models/goods.ts), the silo and the barn. */
-const MODELS: Record<PictureId, () => Structure> = { ...GOODS, silo: siloModel, barn: barnModel }
+/** Every picture drawn from a model: the goods (src/models/goods.ts; a fruit with no model yet, its stand-in:
+ *  src/farm/decorModels.ts), the silo and the barn. */
+const MODELS: Record<PictureId, () => Structure> = {
+  ...(Object.fromEntries(STAND_IN_GOODS.map((id) => [id, () => goodModel(id)])) as Record<(typeof STAND_IN_GOODS)[number], () => Structure>),
+  ...GOODS,
+  silo: siloModel,
+  barn: barnModel,
+}
 
 export const ITEM_IDS = Object.keys(MODELS) as PictureId[]
 
@@ -98,6 +106,30 @@ function getStudio(px: number) {
 export function renderItemArt(id: PictureId, size = 256): string {
   const item = structureParts(MODELS[id](), `item-${id}`)
   const url = shoot(item.group, VIEWS[id] ?? {}, size)
+  item.dispose()
+  return url
+}
+
+/** How each kind of the farm's shop is seen (src/farm/decor.ts): from the front left, a little above; the flat ones
+ *  from higher up, a fence and a hedge more from the front. */
+const SHOP_VIEWS: Partial<Record<ShopKind, Item>> = {
+  path: { el: 55 },
+  stones: { el: 55 },
+  flowers: { el: 40 },
+  fence: { az: -22, el: 16 },
+  hedge: { az: -22, el: 18 },
+  bench: { az: -30, el: 18 },
+}
+
+/** The kinds of the farm's shop with a picture of their own (drawn from their models). */
+export const SHOP_ART_KINDS: ShopKind[] = [...DECOR_KINDS, ...FRUIT_KINDS]
+
+/** A kind of the farm's shop as a picture (its card in the edit mode's shop), `size` pixels square: drawn from its model
+ *  as the goods are. `scripts/render-item-art.mjs` saves them in src/assets/decor, which src/farm/icons.ts serves. */
+export function renderShopArt(kind: ShopKind, size = 192): string {
+  const model = (DECOR_KINDS as string[]).includes(kind) ? decorModel(kind as (typeof DECOR_KINDS)[number]) : fruitPlantModel(kind as (typeof FRUIT_KINDS)[number])
+  const item = structureParts(model, `shop-${kind}`)
+  const url = shoot(item.group, SHOP_VIEWS[kind] ?? {}, size)
   item.dispose()
   return url
 }

@@ -54,7 +54,7 @@ export interface HerdKind<A extends HerdAgent> {
 }
 
 export function Herd<A extends HerdAgent>({ kind, agents }: { kind: HerdKind<A>; agents: A[] }) {
-  const place = PRODUCERS[kind.id].place
+  const place = PRODUCERS[kind.id].place!
   const count = useFarm(() => farm.producers[kind.id].animals)
   // every coat or face can be worn by every one of them (a herd is small): one draw per part
   const parts = useMemo(() => kind.parts(mostAnimals(kind.id)), [kind])

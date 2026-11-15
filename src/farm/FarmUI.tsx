@@ -1,3 +1,4 @@
+import { BuyDecor, DecorShop } from './DecorShop'
 import { GoalsPanel, useGoalsReady } from './GoalsPanel'
 import { AwayPanel, AwayWatcher } from './AwayPanel'
 import { LevelUp, XpChip } from './XpChip'
@@ -541,6 +542,8 @@ export function FarmUI() {
       {panel?.kind === 'bed' && <BedPanel bed={panel.bed} />}
       {panel?.kind === 'furniture' && <FurnitureShop />}
       {panel?.kind === 'buy-piece' && <BuyPiece type={panel.type} />}
+      {panel?.kind === 'decor-shop' && <DecorShop tab={panel.tab} />}
+      {panel?.kind === 'decor-buy' && <BuyDecor item={panel.item} />}
       {panel?.kind === 'queue' && <QueuePanel />}
       {panel?.kind === 'shop' && <ShopPanel />}
       {panel?.kind === 'store' && <StorePanel store={panel.store} />}

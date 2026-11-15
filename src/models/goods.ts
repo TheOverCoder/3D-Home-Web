@@ -1,4 +1,5 @@
 import type { ProduceId } from '../farm/data'
+import type { FruitId } from '../farm/decor'
 import { blade, blob, fbm3, lathe, loft, merge, noise3, rgb, smoothstep, squircle, tube, type Shape, type V3 } from '../lib/sculpt'
 import { around, leaflet } from './crops'
 import { woodpile, type Structure, type StructurePart } from './structures'
@@ -902,7 +903,8 @@ function logs(): Structure<'logs'> {
   return grounded({ logs: { shape: pile, material: { roughness: 0.9, surface: { kind: 'bark', size: 0.3, turn: true } } } })
 }
 
-export type GoodsId = ProduceId
+// (the fruit of the trees and bushes are drawn by stand-ins until their models are here: src/farm/decorModels.ts)
+export type GoodsId = Exclude<ProduceId, FruitId>
 
 /** Every good's model, by the produce id it stands for. */
 export const GOODS: Record<GoodsId, () => Structure> = {

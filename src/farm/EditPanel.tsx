@@ -4,14 +4,19 @@ import { coarsePointer } from '../lib/device'
 import { busy, useHome } from '../store'
 import { art } from '../ui/art'
 import { ArrowsOutCardinal } from '../ui/glyphs'
+import { SHOP, type ShopKind } from './decor'
+import { putDown } from './DecorShop'
 import { turn, useEdit } from './edit'
-import { PARCELS, PLACES, canBuyParcel, samePlacement, type ParcelId, type PlaceId } from './layout'
-import { buyLand, farm, sendHome, useFarm } from './state'
+import { shopArtUrl } from './icons'
+import { PARCELS, PLACES, bedHome, canBuyParcel, isPlant, samePlacement, type ParcelId, type PlaceId } from './layout'
+import { buyLand, farm, plantOf, sendBedHome, sendHome, stockOf, storeDecor, useFarm } from './state'
 import { editHere, openEdit } from '../home/decorate'
 
 // The edit mode's controls on the screen: the button that opens it (beside the settings), and while it is open a
-// card along the bottom that says what to do, or about what is picked — turn a place, send it back to where it
-// started, buy a field — and a Done button where the settings were.
+// card along the bottom that says what to do, or about what is picked — turn a place, a bed or a piece of decoration,
+// send it back to where it started or put a piece away into the farm's store, buy a field — with the shop (the bag:
+// decoration and fruit plants, src/farm/DecorShop.tsx) and what waits in the store to be put down; and a Done button
+// where the settings were.
 
 /** Opens the edit mode for where you are (B): on the farm the farm's, in the house its own (its furniture); none in the
  *  house's garden. */
@@ -21,7 +26,7 @@ export function EditButton() {
   const mode = useHome(editHere)
   if (phase !== 'playing' || occupied || !mode) return null
   const farmEdit = mode === 'farm'
-  const label = farmEdit ? 'Edit the farm: move things, buy land' : 'Decorate: move, turn and put away the furniture'
+  const label = farmEdit ? 'Edit the farm: move things, buy land and decoration' : 'Decorate: move, turn and put away the furniture'
   return (
     <button className="gear edit-open" onClick={() => openEdit()} aria-label={`${label} (B)`} title={`${farmEdit ? 'Edit the farm' : 'Decorate'} (B)`}>
       <ArrowsOutCardinal weight="bold" />
@@ -71,6 +76,133 @@ function PlaceCard({ id }: { id: PlaceId }) {
   )
 }
 
+/** What the drag says: green where it fits, red and why where it does not. */
+function useFitLine(key: string, idle: string) {
+  const drag = useEdit((s) => (s.drag?.id === key ? s.drag : null))
+  const note = useEdit((s) => s.note)
+  if (drag) return drag.fit.ok ? <p className="fit-ok">It fits here — let go to put it down.</p> : <p className="fit-bad">{drag.fit.reason}</p>
+  if (note) return <p className="fit-bad">{note}</p>
+  return <p>{idle}</p>
+}
+
+const TurnButton = ({ onTurn }: { onTurn: () => void }) => (
+  <button
+    className="btn soft small"
+    onClick={() => {
+      uiClick()
+      onTurn()
+    }}
+  >
+    ↻ Turn{!coarsePointer && <kbd>R</kbd>}
+  </button>
+)
+
+function BedCard({ index }: { index: number }) {
+  useFarm(() => farm.layout.beds[index])
+  const status = useFitLine(`bed-${index}`, 'Drag it to a free spot, what grows in it and all.')
+  const atHome = samePlacement(farm.layout.beds[index], bedHome(index))
+  return (
+    <>
+      <h3>Raised bed</h3>
+      {status}
+      <div className="edit-actions">
+        <TurnButton onTurn={() => turn({ kind: 'bed', index })} />
+        {!atHome && (
+          <button
+            className="btn soft small"
+            onClick={() => {
+              uiClick()
+              const fit = sendBedHome(index)
+              useEdit.getState().setNote(fit.ok ? null : `Its first spot is taken: ${fit.reason?.toLowerCase()}`)
+            }}
+          >
+            Back to its first spot
+          </button>
+        )}
+      </div>
+    </>
+  )
+}
+
+/** Puts a piece away into the farm's store: the pick goes, or the card says why it stays. */
+function putAway(id: number) {
+  const fit = storeDecor(id)
+  if (fit.ok) {
+    uiClick()
+    useEdit.getState().pick(null)
+  } else useEdit.getState().setNote(fit.reason ?? null)
+}
+
+function DecorCard({ id }: { id: number }) {
+  useFarm((s) => s.rev)
+  const d = farm.layout.decor.find((x) => x.id === id)
+  const status = useFitLine(`decor-${id}`, 'Drag it to a free spot.')
+  if (!d) return null
+  const plant = plantOf(id)
+  const fruit = plant ? stockOf(plant.kind, plant.index) : 0
+  return (
+    <>
+      <div className="deco-head">
+        <img className="decor-pic" src={shopArtUrl(d.kind)} alt="" />
+        <div>
+          <h3>{SHOP[d.kind].name}</h3>
+          {status}
+        </div>
+      </div>
+      <div className="edit-actions">
+        <TurnButton onTurn={() => turn({ kind: 'decor', id })} />
+        <button className="btn soft small" onClick={() => putAway(id)}>
+          Put away{isPlant(d.kind) && fruit > 0 ? ' · picks its fruit' : ''}
+          {!coarsePointer && <kbd>Del</kbd>}
+        </button>
+      </div>
+    </>
+  )
+}
+
+/** What waits in the farm's store: tap one to put it down in view. */
+function Stored() {
+  useFarm((s) => s.rev)
+  const kinds = (Object.keys(farm.layout.stored) as ShopKind[]).filter((k) => farm.layout.stored[k] > 0)
+  if (!kinds.length) return null
+  return (
+    <div className="deco-stored" role="group" aria-label="In your store: tap one to put it down">
+      <img className="deco-box" src={art('package')} alt="" />
+      {kinds.map((kind) => (
+        <button
+          key={kind}
+          className="deco-stored-piece"
+          aria-label={`${SHOP[kind].name} (${farm.layout.stored[kind]}): put it down`}
+          title={SHOP[kind].name}
+          onClick={() => {
+            uiClick()
+            putDown(kind)
+          }}
+        >
+          <span className="item-pic">
+            <img className="art" src={shopArtUrl(kind)} alt="" draggable={false} />
+            <b className="qty">{farm.layout.stored[kind]}</b>
+          </span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/** The bag that opens the shop (decoration and fruit plants). */
+const ShopButton = () => (
+  <button
+    className="btn soft deco-shop"
+    aria-label="Shop: decoration and fruit trees"
+    onClick={() => {
+      uiClick()
+      useHome.getState().openPanel({ kind: 'decor-shop', tab: 'decor' })
+    }}
+  >
+    <img className="edit-coin" src={art('shopping-bags')} alt="" />
+  </button>
+)
+
 function ParcelCard({ id }: { id: ParcelId }) {
   useFarm((s) => s.rev)
   const def = PARCELS[id]
@@ -113,15 +245,17 @@ function ParcelCard({ id }: { id: ParcelId }) {
 export function EditPanel() {
   const editing = useHome((s) => s.editing)
   const picked = useEdit((s) => s.picked)
-  // R turns the picked place
+  const note = useEdit((s) => s.note)
+  // R turns what is picked; Delete puts a piece of decoration away
   useEffect(() => {
     if (!editing) return
     const onKey = (e: KeyboardEvent) => {
       const p = useEdit.getState().picked
-      if (e.code === 'KeyR' && !e.repeat && p?.kind === 'place') {
+      if (e.repeat || !p || useHome.getState().panel) return
+      if (e.code === 'KeyR' && p.kind !== 'parcel') {
         uiClick()
-        turn(p.id)
-      }
+        turn(p.kind === 'place' ? p.id : p.kind === 'bed' ? { kind: 'bed', index: p.index } : { kind: 'decor', id: p.id })
+      } else if ((e.code === 'Delete' || e.code === 'Backspace') && p.kind === 'decor') putAway(p.id)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -137,10 +271,20 @@ export function EditPanel() {
           <PlaceCard id={picked.id} />
         ) : picked?.kind === 'parcel' ? (
           <ParcelCard id={picked.id} />
+        ) : picked?.kind === 'bed' ? (
+          <BedCard index={picked.index} />
+        ) : picked?.kind === 'decor' ? (
+          <DecorCard id={picked.id} />
         ) : (
           <>
-            <h3>Edit the farm</h3>
-            <p>Drag the hen run, the pasture, the sheep fold or a tree to a free spot. Tap a meadow beyond the hedge to buy it.</p>
+            <div className="deco-head">
+              <div>
+                <h3>Edit the farm</h3>
+                {note ? <p className="fit-bad">{note}</p> : <p>Drag anything to a free spot. Tap a meadow beyond the hedge to buy it.</p>}
+              </div>
+              <ShopButton />
+            </div>
+            <Stored />
             <p className="edit-how">{coarsePointer ? 'Drag the ground to look round · pinch to come closer' : 'Drag the ground to look round · scroll to come closer · R turns what you picked'}</p>
           </>
         )}

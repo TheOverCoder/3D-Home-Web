@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { CuboidCollider, RigidBody } from '@react-three/rapier'
 import { CanvasTexture, DoubleSide, SRGBColorSpace, type Group, type Mesh, type Sprite } from 'three'
 import { loadSolids, solidsReady } from '../lib/sculpt'
 import { mouthGlowMaterial, mouthGlowShape, ovenModel, structureParts } from '../models/structures'
 import { B } from '../scene/Furnishings'
-import { MACHINES, type CakeId, type MachineId } from './data'
+import { type CakeId, type MachineId } from './data'
+import { Body, Placed, type Box } from './Places'
 import { farm, machineRecipe, machineStage, useFarm } from './state'
 import { useMachine } from './useMachine'
 
-// The farm's kitchen in the yard's south-east corner: a mill that presses sugar cane into sugar and grinds wheat
+// The farm's kitchen, each machine a movable place of the edit mode (src/farm/layout.ts: drawn where it stands or is
+// dragged, its body where it stands), on a new farm in the yard's south-east corner: a mill that presses sugar cane into sugar and grinds wheat
 // into flour (its wheel and rollers turn while it works), and a wood-fired clay oven (sculpted with the kit, see
 // src/models/structures.ts) that bakes cakes from what the farm makes (its mouth glows and its chimney smokes while
 // it bakes; the cake waits on the table beside it). And in the
@@ -161,41 +162,45 @@ function Oven() {
   })
 
   return (
-    <group position={[MACHINES.oven.x, 0, MACHINES.oven.z]}>
-      {/* stone plinth, clay dome, the mouth facing the yard, a chimney, firewood behind and the peel */}
-      {model && <primitive object={model.group} />}
-      {/* the fire, at the back of the mouth */}
-      <mesh geometry={glowShape} material={glow} />
-      {Array.from({ length: 6 }, (_, k) => (
-        <sprite
-          key={k}
-          ref={(s) => {
-            smoke.current[k] = s
-          }}
-          visible={false}
-        >
-          <spriteMaterial map={tex} transparent depthWrite={false} opacity={0.4} />
-        </sprite>
-      ))}
-      {/* the table beside it, where a finished cake waits */}
-      <group position={[0, 0, -1.05]}>
-        <B size={[0.9, 0.05, 0.55]} position={[0, 0.78, 0]} color={WOOD} mat="veneer" tile={0.8} radius={0.008} />
-        {[-1, 1].flatMap((sx) => [-1, 1].map((sz) => <B key={`${sx}${sz}`} size={[0.05, 0.78, 0.05]} position={[sx * 0.4, 0.39, sz * 0.22]} color={WOOD_DARK} radius={0.006} />))}
-        {ready && (
-          <group position={[0, 0.805, 0]}>
-            <Cake id={ready} />
-          </group>
-        )}
-      </group>
-      <RigidBody type="fixed" colliders={false}>
-        <CuboidCollider args={[0.68, 0.75, 0.62]} position={[0, 0.75, 0]} />
-        <CuboidCollider args={[0.47, 0.42, 0.3]} position={[0, 0.42, -1.05]} />
-        {/* the firewood behind it */}
-        <CuboidCollider args={[0.24, 0.2, 0.42]} position={[0.915, 0.2, 0]} />
-      </RigidBody>
-    </group>
+    <>
+      <Placed id="oven">
+        {/* stone plinth, clay dome, the mouth facing the yard, a chimney, firewood behind and the peel */}
+        {model && <primitive object={model.group} />}
+        {/* the fire, at the back of the mouth */}
+        <mesh geometry={glowShape} material={glow} />
+        {Array.from({ length: 6 }, (_, k) => (
+          <sprite
+            key={k}
+            ref={(s) => {
+              smoke.current[k] = s
+            }}
+            visible={false}
+          >
+            <spriteMaterial map={tex} transparent depthWrite={false} opacity={0.4} />
+          </sprite>
+        ))}
+        {/* the table beside it, where a finished cake waits */}
+        <group position={[0, 0, -1.05]}>
+          <B size={[0.9, 0.05, 0.55]} position={[0, 0.78, 0]} color={WOOD} mat="veneer" tile={0.8} radius={0.008} />
+          {[-1, 1].flatMap((sx) => [-1, 1].map((sz) => <B key={`${sx}${sz}`} size={[0.05, 0.78, 0.05]} position={[sx * 0.4, 0.39, sz * 0.22]} color={WOOD_DARK} radius={0.006} />))}
+          {ready && (
+            <group position={[0, 0.805, 0]}>
+              <Cake id={ready} />
+            </group>
+          )}
+        </group>
+      </Placed>
+      {/* the plinth and the dome, the table, and the firewood behind it */}
+      <Body id="oven" boxes={OVEN_BODY} />
+    </>
   )
 }
+
+const OVEN_BODY = [
+  { half: [0.68, 0.75, 0.62], at: [0, 0.75, 0] },
+  { half: [0.47, 0.42, 0.3], at: [0, 0.42, -1.05] },
+  { half: [0.24, 0.2, 0.42], at: [0.915, 0.2, 0] },
+] satisfies Box[]
 
 function Mill() {
   useFarm((s) => s.rev)
@@ -214,75 +219,77 @@ function Mill() {
   })
 
   return (
-    <group position={[MACHINES.mill.x, 0, MACHINES.mill.z]}>
-      <B size={[1.6, 0.12, 1.3]} position={[0, 0.06, 0]} color={WOOD_DARK} mat="veneer" tile={0.9} radius={0.01} />
-      {[-1, 1].map((sz) => (
-        <B key={sz} size={[0.13, 1.5, 0.13]} position={[0.1, 0.81, sz * 0.46]} color={WOOD} mat="veneer" tile={0.9} radius={0.01} />
-      ))}
-      <B size={[0.15, 0.13, 1.12]} position={[0.1, 1.5, 0]} color={WOOD} mat="veneer" tile={0.9} radius={0.01} />
-      <mesh position={[0.02, 1.5, 0]} rotation-y={-Math.PI / 2}>
-        <planeGeometry args={[0.62, 0.19]} />
-        <meshStandardMaterial map={sign} roughness={0.85} />
-      </mesh>
-      {/* two iron rollers press the cane (or grind the grain) between them */}
-      {[-1, 1].map((sz, k) => (
-        <mesh
-          key={sz}
-          ref={(m) => {
-            rollers.current[k] = m
-          }}
-          position={[0.1, 0.62, sz * 0.13]}
-          castShadow
-        >
-          <cylinderGeometry args={[0.12, 0.12, 0.8, 14]} />
-          <meshStandardMaterial color="#4a4d50" metalness={0.8} roughness={0.4} />
+    <>
+      <Placed id="mill">
+        <B size={[1.6, 0.12, 1.3]} position={[0, 0.06, 0]} color={WOOD_DARK} mat="veneer" tile={0.9} radius={0.01} />
+        {[-1, 1].map((sz) => (
+          <B key={sz} size={[0.13, 1.5, 0.13]} position={[0.1, 0.81, sz * 0.46]} color={WOOD} mat="veneer" tile={0.9} radius={0.01} />
+        ))}
+        <B size={[0.15, 0.13, 1.12]} position={[0.1, 1.5, 0]} color={WOOD} mat="veneer" tile={0.9} radius={0.01} />
+        <mesh position={[0.02, 1.5, 0]} rotation-y={-Math.PI / 2}>
+          <planeGeometry args={[0.62, 0.19]} />
+          <meshStandardMaterial map={sign} roughness={0.85} />
         </mesh>
-      ))}
-      {/* the hopper above them */}
-      <mesh position={[0.1, 1.18, 0]}>
-        <cylinderGeometry args={[0.3, 0.16, 0.26, 14, 1, true]} />
-        <meshStandardMaterial color="#9a7040" roughness={0.9} side={DoubleSide} />
-      </mesh>
-      {/* the big wheel on the side, with a crank */}
-      <group ref={wheel} position={[0.1, 0.86, 0.62]}>
-        <mesh>
-          <torusGeometry args={[0.55, 0.035, 8, 32]} />
-          <meshStandardMaterial color={WOOD_DARK} roughness={0.8} />
-        </mesh>
-        {Array.from({ length: 6 }, (_, k) => (
-          <mesh key={k} rotation-z={(k / 6) * Math.PI}>
-            <boxGeometry args={[1.08, 0.04, 0.03]} />
-            <meshStandardMaterial color={WOOD} roughness={0.8} />
+        {/* two iron rollers press the cane (or grind the grain) between them */}
+        {[-1, 1].map((sz, k) => (
+          <mesh
+            key={sz}
+            ref={(m) => {
+              rollers.current[k] = m
+            }}
+            position={[0.1, 0.62, sz * 0.13]}
+            castShadow
+          >
+            <cylinderGeometry args={[0.12, 0.12, 0.8, 14]} />
+            <meshStandardMaterial color="#4a4d50" metalness={0.8} roughness={0.4} />
           </mesh>
         ))}
-        <mesh rotation-x={Math.PI / 2}>
-          <cylinderGeometry args={[0.07, 0.07, 0.1, 12]} />
-          <meshStandardMaterial color="#3b3f42" metalness={0.7} roughness={0.4} />
+        {/* the hopper above them */}
+        <mesh position={[0.1, 1.18, 0]}>
+          <cylinderGeometry args={[0.3, 0.16, 0.26, 14, 1, true]} />
+          <meshStandardMaterial color="#9a7040" roughness={0.9} side={DoubleSide} />
         </mesh>
-        <mesh position={[0.45, 0, 0.08]} rotation-x={Math.PI / 2}>
-          <cylinderGeometry args={[0.025, 0.025, 0.18, 8]} />
-          <meshStandardMaterial color="#3b3f42" metalness={0.7} roughness={0.4} />
-        </mesh>
-      </group>
-      {/* what comes out: a sack of sugar or flour, waiting to be collected */}
-      {output && (
-        <group position={[-0.48, 0.12, 0]}>
-          <mesh position={[0, 0.2, 0]} scale={[1, 1.3, 0.85]} castShadow>
-            <sphereGeometry args={[0.2, 14, 10]} />
-            <meshStandardMaterial color={output === 'sugar' ? '#f2efe6' : '#e2d2b0'} roughness={0.95} />
+        {/* the big wheel on the side, with a crank */}
+        <group ref={wheel} position={[0.1, 0.86, 0.62]}>
+          <mesh>
+            <torusGeometry args={[0.55, 0.035, 8, 32]} />
+            <meshStandardMaterial color={WOOD_DARK} roughness={0.8} />
           </mesh>
-          <mesh position={[0, 0.46, 0]}>
-            <cylinderGeometry args={[0.06, 0.09, 0.08, 10]} />
-            <meshStandardMaterial color="#b89a6a" roughness={0.95} />
+          {Array.from({ length: 6 }, (_, k) => (
+            <mesh key={k} rotation-z={(k / 6) * Math.PI}>
+              <boxGeometry args={[1.08, 0.04, 0.03]} />
+              <meshStandardMaterial color={WOOD} roughness={0.8} />
+            </mesh>
+          ))}
+          <mesh rotation-x={Math.PI / 2}>
+            <cylinderGeometry args={[0.07, 0.07, 0.1, 12]} />
+            <meshStandardMaterial color="#3b3f42" metalness={0.7} roughness={0.4} />
+          </mesh>
+          <mesh position={[0.45, 0, 0.08]} rotation-x={Math.PI / 2}>
+            <cylinderGeometry args={[0.025, 0.025, 0.18, 8]} />
+            <meshStandardMaterial color="#3b3f42" metalness={0.7} roughness={0.4} />
           </mesh>
         </group>
-      )}
-      <RigidBody type="fixed" colliders={false}>
-        <CuboidCollider args={[0.82, 0.78, 0.72]} position={[0, 0.78, 0.1]} />
-      </RigidBody>
-    </group>
+        {/* what comes out: a sack of sugar or flour, waiting to be collected */}
+        {output && (
+          <group position={[-0.48, 0.12, 0]}>
+            <mesh position={[0, 0.2, 0]} scale={[1, 1.3, 0.85]} castShadow>
+              <sphereGeometry args={[0.2, 14, 10]} />
+              <meshStandardMaterial color={output === 'sugar' ? '#f2efe6' : '#e2d2b0'} roughness={0.95} />
+            </mesh>
+            <mesh position={[0, 0.46, 0]}>
+              <cylinderGeometry args={[0.06, 0.09, 0.08, 10]} />
+              <meshStandardMaterial color="#b89a6a" roughness={0.95} />
+            </mesh>
+          </group>
+        )}
+      </Placed>
+      <Body id="mill" boxes={MILL_BODY} />
+    </>
   )
 }
+
+const MILL_BODY = [{ half: [0.82, 0.78, 0.72], at: [0, 0.78, 0.1] }] satisfies Box[]
 
 /** A floor loom: the warp runs from the back beam over the frame to the cloth beam at the front, where the woven
  * cloth rolls up; while it works the shuttle flies across, the beater swings and the heddles rise and fall. */
@@ -331,92 +338,96 @@ function Loom() {
   })
 
   return (
-    <group position={[MACHINES.loom.x, 0, MACHINES.loom.z]}>
-      {/* the frame: four posts, side rails, a top bar that carries the heddles */}
-      {[-1, 1].flatMap((sx) =>
-        [-1, 1].map((sz) => (
-          <B key={`${sx}${sz}`} size={[0.08, sz < 0 ? 1.55 : 0.95, 0.08]} position={[sx * 0.72, sz < 0 ? 0.775 : 0.475, sz * 0.42]} color={WOOD} mat="veneer" tile={0.9} radius={0} />
-        )),
-      )}
-      {[-1, 1].map((sx) => (
-        <B key={sx} size={[0.07, 0.07, 0.92]} position={[sx * 0.72, 0.9, 0]} color={WOOD_DARK} mat="veneer" tile={0.9} radius={0} />
-      ))}
-      <B size={[1.52, 0.08, 0.08]} position={[0, 1.52, -0.42]} color={WOOD_DARK} mat="veneer" tile={0.9} radius={0} />
-      <B size={[1.52, 0.07, 0.07]} position={[0, 1.25, -0.05]} color={WOOD_DARK} radius={0} />
-      <mesh position={[0, 1.66, -0.42]}>
-        <planeGeometry args={[0.6, 0.19]} />
-        <meshStandardMaterial map={sign} roughness={0.85} />
-      </mesh>
-      {/* the warp: from the back beam, up over the frame and down to the cloth at the front */}
-      <mesh position={[0, 0.95, -0.21]} rotation-x={-Math.PI / 2 + 0.25}>
-        <planeGeometry args={[1.3, 0.44]} />
-        <meshStandardMaterial map={warp} roughness={0.95} side={DoubleSide} />
-      </mesh>
-      <mesh position={[0, 0.93, 0.2]} rotation-x={-Math.PI / 2 - 0.1}>
-        <planeGeometry args={[1.3, 0.4]} />
-        <meshStandardMaterial map={warp} roughness={0.95} side={DoubleSide} />
-      </mesh>
-      {/* two heddle frames, rising and falling in turn */}
-      {[0, 1].map((i) => (
-        <mesh
-          key={i}
-          ref={(m) => {
-            heddles.current[i] = m
-          }}
-          position={[0, 0.98, -0.08 + i * 0.07]}
-        >
-          <boxGeometry args={[1.36, 0.3, 0.02]} />
-          <meshStandardMaterial color="#b3a58a" roughness={0.8} transparent opacity={0.55} />
-        </mesh>
-      ))}
-      {/* the beater swings against the cloth; the shuttle flies across in front of it */}
-      <group ref={beater} position={[0, 1.25, 0.12]}>
-        <B size={[1.4, 0.06, 0.05]} position={[0, -0.33, 0]} color={WOOD} radius={0} />
+    <>
+      <Placed id="loom">
+        {/* the frame: four posts, side rails, a top bar that carries the heddles */}
+        {[-1, 1].flatMap((sx) =>
+          [-1, 1].map((sz) => (
+            <B key={`${sx}${sz}`} size={[0.08, sz < 0 ? 1.55 : 0.95, 0.08]} position={[sx * 0.72, sz < 0 ? 0.775 : 0.475, sz * 0.42]} color={WOOD} mat="veneer" tile={0.9} radius={0} />
+          )),
+        )}
         {[-1, 1].map((sx) => (
-          <B key={sx} size={[0.04, 0.36, 0.04]} position={[sx * 0.68, -0.15, 0]} color={WOOD} radius={0} />
+          <B key={sx} size={[0.07, 0.07, 0.92]} position={[sx * 0.72, 0.9, 0]} color={WOOD_DARK} mat="veneer" tile={0.9} radius={0} />
         ))}
-      </group>
-      <mesh ref={shuttle} position={[0, 0.93, 0.22]} rotation-z={Math.PI / 2}>
-        <capsuleGeometry args={[0.025, 0.2, 3, 8]} />
-        <meshStandardMaterial color="#6b4a2e" roughness={0.6} />
-      </mesh>
-      {/* the cloth beam at the front, with the cloth rolled onto it */}
-      <mesh ref={roll} position={[0, 0.88, 0.42]} rotation-z={Math.PI / 2} castShadow>
-        <cylinderGeometry args={[0.07, 0.07, 1.36, 14]} />
-        <meshStandardMaterial color="#5b7fb8" roughness={0.9} />
-      </mesh>
-      {/* the weaver's bench, and the finished cloth on it */}
-      <B size={[0.9, 0.06, 0.32]} position={[0, 0.48, 0.92]} color={WOOD} mat="veneer" tile={0.9} radius={0} />
-      {[-1, 1].map((sx) => (
-        <B key={sx} size={[0.06, 0.45, 0.28]} position={[sx * 0.38, 0.225, 0.92]} color={WOOD_DARK} radius={0} />
-      ))}
-      {ready > 0 &&
-        Array.from({ length: Math.min(3, ready) }, (_, i) => (
-          <mesh key={i} position={[-0.22 + i * 0.22, 0.58, 0.92]} rotation-x={Math.PI / 2} castShadow>
-            <cylinderGeometry args={[0.07, 0.07, 0.26, 12]} />
-            <meshStandardMaterial color={['#5b7fb8', '#c9573f', '#5c8a4a'][i]} roughness={0.9} />
+        <B size={[1.52, 0.08, 0.08]} position={[0, 1.52, -0.42]} color={WOOD_DARK} mat="veneer" tile={0.9} radius={0} />
+        <B size={[1.52, 0.07, 0.07]} position={[0, 1.25, -0.05]} color={WOOD_DARK} radius={0} />
+        <mesh position={[0, 1.66, -0.42]}>
+          <planeGeometry args={[0.6, 0.19]} />
+          <meshStandardMaterial map={sign} roughness={0.85} />
+        </mesh>
+        {/* the warp: from the back beam, up over the frame and down to the cloth at the front */}
+        <mesh position={[0, 0.95, -0.21]} rotation-x={-Math.PI / 2 + 0.25}>
+          <planeGeometry args={[1.3, 0.44]} />
+          <meshStandardMaterial map={warp} roughness={0.95} side={DoubleSide} />
+        </mesh>
+        <mesh position={[0, 0.93, 0.2]} rotation-x={-Math.PI / 2 - 0.1}>
+          <planeGeometry args={[1.3, 0.4]} />
+          <meshStandardMaterial map={warp} roughness={0.95} side={DoubleSide} />
+        </mesh>
+        {/* two heddle frames, rising and falling in turn */}
+        {[0, 1].map((i) => (
+          <mesh
+            key={i}
+            ref={(m) => {
+              heddles.current[i] = m
+            }}
+            position={[0, 0.98, -0.08 + i * 0.07]}
+          >
+            <boxGeometry args={[1.36, 0.3, 0.02]} />
+            <meshStandardMaterial color="#b3a58a" roughness={0.8} transparent opacity={0.55} />
           </mesh>
         ))}
-      {/* a basket of fleece waiting to be woven, when there is some */}
-      {farm.inv.wool > 0 && (
-        <group position={[1.05, 0, 0.35]}>
-          <mesh position={[0, 0.16, 0]}>
-            <cylinderGeometry args={[0.22, 0.17, 0.32, 14, 1, true]} />
-            <meshStandardMaterial color="#b88a52" roughness={0.9} side={DoubleSide} />
-          </mesh>
-          <mesh position={[0, 0.3, 0]} scale={[1, 0.55, 1]}>
-            <icosahedronGeometry args={[0.2, 1]} />
-            <meshStandardMaterial color="#f1ebdc" roughness={1} />
-          </mesh>
+        {/* the beater swings against the cloth; the shuttle flies across in front of it */}
+        <group ref={beater} position={[0, 1.25, 0.12]}>
+          <B size={[1.4, 0.06, 0.05]} position={[0, -0.33, 0]} color={WOOD} radius={0} />
+          {[-1, 1].map((sx) => (
+            <B key={sx} size={[0.04, 0.36, 0.04]} position={[sx * 0.68, -0.15, 0]} color={WOOD} radius={0} />
+          ))}
         </group>
-      )}
-      <RigidBody type="fixed" colliders={false}>
-        <CuboidCollider args={[0.8, 0.78, 0.5]} position={[0, 0.78, 0]} />
-        <CuboidCollider args={[0.47, 0.26, 0.18]} position={[0, 0.26, 0.92]} />
-      </RigidBody>
-    </group>
+        <mesh ref={shuttle} position={[0, 0.93, 0.22]} rotation-z={Math.PI / 2}>
+          <capsuleGeometry args={[0.025, 0.2, 3, 8]} />
+          <meshStandardMaterial color="#6b4a2e" roughness={0.6} />
+        </mesh>
+        {/* the cloth beam at the front, with the cloth rolled onto it */}
+        <mesh ref={roll} position={[0, 0.88, 0.42]} rotation-z={Math.PI / 2} castShadow>
+          <cylinderGeometry args={[0.07, 0.07, 1.36, 14]} />
+          <meshStandardMaterial color="#5b7fb8" roughness={0.9} />
+        </mesh>
+        {/* the weaver's bench, and the finished cloth on it */}
+        <B size={[0.9, 0.06, 0.32]} position={[0, 0.48, 0.92]} color={WOOD} mat="veneer" tile={0.9} radius={0} />
+        {[-1, 1].map((sx) => (
+          <B key={sx} size={[0.06, 0.45, 0.28]} position={[sx * 0.38, 0.225, 0.92]} color={WOOD_DARK} radius={0} />
+        ))}
+        {ready > 0 &&
+          Array.from({ length: Math.min(3, ready) }, (_, i) => (
+            <mesh key={i} position={[-0.22 + i * 0.22, 0.58, 0.92]} rotation-x={Math.PI / 2} castShadow>
+              <cylinderGeometry args={[0.07, 0.07, 0.26, 12]} />
+              <meshStandardMaterial color={['#5b7fb8', '#c9573f', '#5c8a4a'][i]} roughness={0.9} />
+            </mesh>
+          ))}
+        {/* a basket of fleece waiting to be woven, when there is some */}
+        {farm.inv.wool > 0 && (
+          <group position={[1.05, 0, 0.35]}>
+            <mesh position={[0, 0.16, 0]}>
+              <cylinderGeometry args={[0.22, 0.17, 0.32, 14, 1, true]} />
+              <meshStandardMaterial color="#b88a52" roughness={0.9} side={DoubleSide} />
+            </mesh>
+            <mesh position={[0, 0.3, 0]} scale={[1, 0.55, 1]}>
+              <icosahedronGeometry args={[0.2, 1]} />
+              <meshStandardMaterial color="#f1ebdc" roughness={1} />
+            </mesh>
+          </group>
+        )}
+      </Placed>
+      <Body id="loom" boxes={LOOM_BODY} />
+    </>
   )
 }
+
+const LOOM_BODY = [
+  { half: [0.8, 0.78, 0.5], at: [0, 0.78, 0] },
+  { half: [0.47, 0.26, 0.18], at: [0, 0.26, 0.92] },
+] satisfies Box[]
 
 /** The oven, the mill and the loom. */
 export function Workshop() {

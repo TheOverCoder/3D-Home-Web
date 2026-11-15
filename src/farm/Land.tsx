@@ -132,6 +132,6 @@ function Boundary({ layout }: { layout: FarmLayout }) {
 export function Land() {
   const key = useFarm(() => farm.layout.land.join(','))
   const land = useMemo(() => key.split(',').filter(Boolean) as ParcelId[], [key])
-  const layout = useMemo<FarmLayout>(() => ({ places: farm.layout.places, land }), [land])
+  const layout = useMemo<FarmLayout>(() => ({ ...farm.layout, land }), [land])
   return <Boundary key={key} layout={layout} />
 }
