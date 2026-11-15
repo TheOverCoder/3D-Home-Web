@@ -1,7 +1,33 @@
 {
   "board": "level",
   "read": "2026-11-14",
-  "verdicts": { "a": "no", "b": "yes", "c": "yes" },
-  "notes": [],
-  "requests": ["action", "edit", "goals", "intro", "loading", "market", "orders", "saves", "seeds", "shop", "store", "tag", "top", "touch"]
+  "verdicts": {
+    "a": "no",
+    "b": "yes",
+    "c": "yes"
+  },
+  "notes": [
+    {
+      "variant": "b",
+      "state": "gift",
+      "kind": "sideways",
+      "text": "דורש שיפור איפה שאפשר ונראה שחסר שירגיש משחק יותר ממכר עיצוב שהרמה ברור כמה בסגרל מלא יש סימונים לסרגל משהו שיתן למשתמש להרגיש התקדמות פה זה חלון חשוב ההרגשה של ההתקדמות פה צריכה להיות גם מעליה קטנה למשתמש אז הסימונים בסרגל צריך חכמים ועוד עקרונות של הרגשת התקדמות לפי מקורות פסיכולוגים של גיימינג מוכחים מדעית לשאר העיצובים"
+    }
+  ],
+  "requests": [
+    "action",
+    "edit",
+    "goals",
+    "intro",
+    "loading",
+    "market",
+    "orders",
+    "saves",
+    "seeds",
+    "shop",
+    "store",
+    "tag",
+    "top",
+    "touch"
+  ]
 }

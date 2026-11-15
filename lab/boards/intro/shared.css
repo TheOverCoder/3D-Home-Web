@@ -124,3 +124,25 @@
 .v-intro-ask span { flex: 1; font: 600 16px/1.2 var(--font-display); color: var(--berry-lip); }
 .v-intro-done { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; border-radius: 999px; background: #dff3d8; color: #24622f; font: 700 15px var(--font-text); }
 .v-intro-done svg { width: 18px; height: 18px; }
+
+/* the menu of an opening screen: four tiles, a picture over its word; music lit while it plays */
+.v-intro-menu { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.v-intro-tile { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 60px; padding: 6px 4px; border: 0; border-radius: 18px; background: var(--paper-2); color: var(--ink); box-shadow: 0 3px 0 var(--paper-3); font: 600 15px/1.1 var(--font-display); }
+.v-intro-tile svg { width: 26px; height: 26px; color: var(--ink-2); }
+.v-intro-tile.on { background: color-mix(in srgb, var(--sun) 40%, var(--paper)); box-shadow: 0 3px 0 color-mix(in srgb, var(--sun-lip) 60%, var(--paper-3)); }
+.v-intro-tile.on svg { color: var(--ink); }
+.v-intro-tile .v-intro-eq { right: 6px; top: 5px; bottom: auto; height: 14px; }
+.v-intro-tile.on .v-intro-eq { display: flex; }
+.v-intro-tile-n { position: absolute; top: -6px; right: -4px; display: grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; background: var(--sun); font: 800 13px/1 var(--font-text); }
+/* on the scene (no card round it): translucent paper */
+.v-intro-menu.glass .v-intro-tile { background: rgba(255, 247, 232, 0.9); box-shadow: 0 3px 0 rgba(40, 24, 10, 0.35), 0 8px 16px rgba(40, 24, 10, 0.2); }
+.v-intro-menu.glass .v-intro-tile.on { background: color-mix(in srgb, var(--sun) 70%, var(--paper)); }
+
+/* the credits: who made what, each with its licence */
+.v-intro-credit-list { display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+.v-intro-credit-lead { margin: 0; font: 600 16px/1.35 var(--font-display); color: var(--ink-2); }
+.v-intro-credit-list ul { display: flex; flex-direction: column; gap: 8px; max-height: min(56dvh, 420px); margin: 0; padding: 0 4px 0 0; overflow: auto; list-style: none; }
+.v-intro-credit-list li { display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border-radius: 14px; background: var(--paper-2); }
+.v-intro-credit-list li b { font: 700 15px/1.25 var(--font-text); color: var(--ink); }
+.v-intro-credit-list li span { font: 600 13px/1.3 var(--font-text); color: var(--ink-2); }
+@media (orientation: landscape) and (max-height: 560px) { .v-intro-credit-list ul { max-height: calc(100dvh - 150px); } }

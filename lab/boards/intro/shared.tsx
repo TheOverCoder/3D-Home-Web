@@ -1,11 +1,14 @@
 import { ArrowCounterClockwise } from '@phosphor-icons/react/dist/csr/ArrowCounterClockwise'
 import { DotsThree } from '@phosphor-icons/react/dist/csr/DotsThree'
 import { DownloadSimple } from '@phosphor-icons/react/dist/csr/DownloadSimple'
+import { FloppyDisk } from '@phosphor-icons/react/dist/csr/FloppyDisk'
+import { Heart } from '@phosphor-icons/react/dist/csr/Heart'
 import { MusicNotes } from '@phosphor-icons/react/dist/csr/MusicNotes'
 import { UploadSimple } from '@phosphor-icons/react/dist/csr/UploadSimple'
 import { AnimatePresence, m, useReducedMotion } from 'motion/react'
 import { Switch, ToggleGroup } from 'radix-ui'
 import { useEffect, useState, type ReactNode } from 'react'
+import { CREDITS } from '../../../src/data/credits'
 import type { Slot } from '../../../src/farm/state'
 import { art } from '../../../src/ui/art'
 import { Check, GearSix, X } from '../../../src/ui/glyphs'
@@ -73,6 +76,59 @@ export function MusicButton({ className = '' }: { className?: string }) {
         <i />
       </span>
     </m.button>
+  )
+}
+
+/** The opening screen's menu: what a title screen has besides its big button — the farms, the settings, the music and
+ *  the credits — each a tile with its picture and its word (a symbol alone is a guess). Music is a switch: it says
+ *  whether it plays, and its bars dance while it does. */
+export type Menu = 'farms' | 'settings' | 'credits'
+export function MenuTiles({ onOpen, farms, className = '' }: { onOpen: (m: Menu) => void; farms?: number; className?: string }) {
+  const [music, setMusic] = useState(true)
+  return (
+    <div className={`v-intro-menu ${className}`} role="group" aria-label="Menu">
+      <m.button className="v-intro-tile" onClick={() => onOpen('farms')} {...PRESS}>
+        <FloppyDisk weight="fill" />
+        <span>Farms</span>
+        {farms && farms > 1 ? <b className="v-intro-tile-n">{farms}</b> : null}
+      </m.button>
+      <m.button className={`v-intro-tile${music ? ' on' : ''}`} onClick={() => setMusic(!music)} aria-pressed={music} aria-label={music ? 'Music on' : 'Music off'} {...PRESS}>
+        <MusicNotes weight="fill" />
+        <span>Music</span>
+        <span className="v-intro-eq" aria-hidden="true">
+          <i />
+          <i />
+          <i />
+        </span>
+      </m.button>
+      <m.button className="v-intro-tile" onClick={() => onOpen('settings')} {...PRESS}>
+        <GearSix weight="fill" />
+        <span>Settings</span>
+      </m.button>
+      <m.button className="v-intro-tile" onClick={() => onOpen('credits')} {...PRESS}>
+        <Heart weight="fill" />
+        <span>Credits</span>
+      </m.button>
+    </div>
+  )
+}
+
+/** Who made what the game is built from (src/data/credits.ts): a short list, each with its licence. */
+export function CreditsBody() {
+  return (
+    <div className="v-intro-credit-list">
+      <p className="v-intro-credit-lead">Made with love, and with the work of these people:</p>
+      <ul>
+        {CREDITS.map((c) => (
+          <li key={c.what}>
+            <b>{c.what}</b>
+            <span>
+              {c.by} · {c.license}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }
 
@@ -158,7 +214,7 @@ export function SettingsBody() {
           ))}
         </ToggleGroup.Root>
       </div>
-      <p className="v-intro-credits">Credits · Kept on this device</p>
+      <p className="v-intro-credits">Your farms are kept on this device</p>
     </div>
   )
 }

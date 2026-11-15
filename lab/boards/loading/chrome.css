@@ -1,0 +1,61 @@
+/* What the six looks of the loading screen share (./Chrome.tsx): the line and the share, the bar, the time left, the tip
+   or Play. `plain`: on a light scene; `card`: a paper card; `glass`: frosted paper on a busy one; `ink`: light words on a dark sky. */
+.v-loading-chrome { width: min(360px, 100%); display: grid; gap: 12px; color: var(--ink); }
+.v-loading-chrome .lc-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.v-loading-chrome .lc-head strong { display: inline-flex; align-items: center; gap: 6px; font: 600 20px/1.25 var(--font-display); }
+.v-loading-chrome .lc-head strong svg { width: 20px; height: 20px; color: var(--leaf); }
+.v-loading-chrome .lc-pct { font: 800 16px/1 var(--font-text); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.v-loading-chrome .lc-bar { position: relative; height: 16px; border-radius: 999px; overflow: hidden; background: var(--paper-3); box-shadow: inset 0 2px 0 rgba(60, 35, 10, 0.12); }
+.v-loading-chrome .lc-bar > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  overflow: hidden;
+  border-radius: 999px;
+  background: linear-gradient(to bottom, #ffd96b, var(--sun) 55%, #f4b52a);
+  box-shadow: inset 0 -2px 0 rgba(160, 100, 0, 0.25);
+  transition:
+    width 0.45s ease-out,
+    background 0.3s;
+}
+/* ribs drifting backwards: a bar that seems to go faster (Harrison et al., 2010); near the end they hurry */
+.v-loading-chrome .lc-bar i { position: absolute; inset: 0; background: repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.34) 0 7px, transparent 7px 14px); background-size: 19.8px 100%; animation: lc-ribs 1s linear infinite; }
+.v-loading-chrome.near .lc-bar i { animation-duration: 0.55s; }
+.v-loading-chrome.near .lc-bar > span { box-shadow: inset 0 -2px 0 rgba(160, 100, 0, 0.25), 0 0 12px 2px color-mix(in oklab, var(--sun) 70%, transparent); }
+.v-loading-chrome.ready .lc-bar > span { background: linear-gradient(to bottom, #5fc272, var(--leaf)); }
+.v-loading-chrome.ready .lc-bar i { display: none; }
+.v-loading-chrome .lc-left { display: flex; align-items: center; gap: 5px; margin: -4px 0 0; font: 700 15px/1.2 var(--font-text); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.v-loading-chrome .lc-left svg { width: 16px; height: 16px; }
+
+.v-loading-chrome .lc-slot { position: relative; min-height: 64px; display: grid; align-items: center; }
+.v-loading-chrome .lc-tip { display: grid; grid-template-columns: 44px 1fr; align-items: center; gap: 12px; min-height: 64px; padding: 8px 14px; border: 2px solid #fff; border-radius: 18px; background: var(--paper); box-shadow: 0 3px 0 var(--edge-soft); }
+.v-loading-chrome .lc-tip img { width: 44px; height: 44px; }
+.v-loading-chrome .lc-tip p { margin: 0; font: 600 15px/1.35 var(--font-text); color: var(--ink); }
+.v-loading-chrome .lc-tip.again { background: color-mix(in oklab, var(--leaf) 10%, var(--paper)); }
+.v-loading-chrome .lc-play { position: relative; width: 100%; overflow: hidden; min-height: 60px; font-size: 22px; animation: lc-glow 2.6s ease-in-out 1.4s infinite; }
+.v-loading-chrome .lc-play svg { width: 22px; height: 22px; }
+/* one shine across it as it lands, then a calm glow that asks for the press */
+.v-loading-chrome .lc-play::after { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.7) 50%, transparent 70%); translate: -110% 0; animation: lc-shine 0.8s ease-out 0.55s both; pointer-events: none; }
+
+/* a paper card */
+.v-loading-chrome.card { padding: 14px 16px 16px; border: 3px solid #fff; border-radius: 26px; background: var(--paper); box-shadow: 0 6px 0 var(--paper-3), 0 16px 34px rgba(60, 35, 10, 0.18); }
+/* frosted paper over a busy picture */
+.v-loading-chrome.glass { padding: 14px 16px 16px; border: 2px solid rgba(255, 255, 255, 0.85); border-radius: 26px; background: color-mix(in srgb, var(--paper) 82%, transparent); -webkit-backdrop-filter: blur(14px) saturate(1.2); backdrop-filter: blur(14px) saturate(1.2); box-shadow: 0 10px 30px rgba(30, 18, 8, 0.28); }
+/* light words over a dark sky; the tip stays paper */
+.v-loading-chrome.ink { color: #fff8ec; }
+.v-loading-chrome.ink .lc-head strong { text-shadow: 0 2px 8px rgba(20, 12, 40, 0.6); }
+.v-loading-chrome.ink .lc-pct,
+.v-loading-chrome.ink .lc-left { color: rgba(255, 248, 236, 0.85); }
+.v-loading-chrome.ink .lc-bar { background: rgba(255, 255, 255, 0.18); box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.35); }
+
+/* the game's name, white in its thick ink line */
+.v-loading-logo { margin: 0; font: 700 46px/1 var(--font-display); color: #fff; -webkit-text-stroke: 6px var(--ink); paint-order: stroke fill; text-shadow: 0 5px 0 rgba(40, 24, 10, 0.25); white-space: nowrap; }
+.v-loading-logo.small { font-size: 34px; -webkit-text-stroke-width: 5px; }
+
+@keyframes lc-ribs { to { background-position: -19.8px 0; } }
+@keyframes lc-shine { to { translate: 110% 0; } }
+@keyframes lc-glow { 50% { box-shadow: 0 4px 0 var(--sun-lip), 0 8px 16px rgba(40, 24, 10, 0.2), 0 0 0 8px color-mix(in oklab, var(--sun) 30%, transparent); } }
+@media (prefers-reduced-motion: reduce) {
+  .v-loading-chrome .lc-bar i,
+  .v-loading-chrome .lc-play,
+  .v-loading-chrome .lc-play::after { animation: none; }
+}

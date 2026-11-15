@@ -93,6 +93,53 @@ the way of the next press.
   a page turn gets nothing.
 - **Reduced motion**: the same result without travel: fades instead of slides, the end state at once, no bursts.
 
+## The feeling of progress
+
+What makes a bar or a reward give a small high, from studies that measured it, and what each means on a screen. It
+applies to every board: a level, a goal, an order, a store filling, a timer, a loading bar. Used ethically (the last
+point): the player should leave happier, never trapped.
+
+- **The goal gradient: effort rises as the goal comes near** (Hull 1932; Kivetz, Urminsky & Zheng 2006, a café's
+  stamp card: people bought coffee faster the fewer stamps were left). → The last stretch of a bar is the hottest:
+  make it look it (the fill warms, a glow at its tip, "only 2 more!"), and keep the goal in view at the bar's end.
+- **Endowed progress: a bar that starts with something in it is finished more often** (Nunes & Drèze 2006, a car
+  wash card with 2 of 10 stamps already given: 34 % redeemed against 19 %). → Never show an empty bar after a
+  reward: a new level starts with what the player carried over, or with the first step already ticked ("you're
+  on your way"). Show the real numbers: the gift must be true (a step already done), never a lie.
+- **Proximal sub-goals beat one far goal** (Bandura & Schunk 1981: children with small near goals learned faster and
+  liked the subject more; Locke & Latham 2002, goal setting: specific near goals). → Cut a long bar into stations
+  (ticks, notches) and give each a small reward or a mark when passed; the next station is always near. One long
+  empty bar is the opposite.
+- **The small area: show the smaller part** (Koo & Fishbach 2012: early on, "done so far" motivates more; near the
+  end, "left to go" does). → Below half the label says what is done ("+40 XP so far", the ticks passed); past half it
+  says what is left ("72 XP to go", "2 more sales"). The bar's own label can switch at the middle.
+- **Make the next press visible on the bar** (the action→feedback link of Hodent 2017, _The Gamer's Brain_; the
+  "little bursts of feedback" of progression bars, Lewis-Evans, GDC 2017). → Mark on the bar how far one ordinary
+  action moves it (a ghost segment: "one sale ≈ this much"): the goal becomes "3 more of these", not a number.
+- **Small, frequent wins** (Amabile & Kramer 2011, _The Progress Principle_: of everything that lifts a day, small
+  visible progress lifts it most). → Every press that adds progress shows it at once where the eye is: the bar
+  jumps with a bright head, a "+12" floats off it, the number counts. Never a silent fill.
+- **Unfinished pulls** (Zeigarnik 1927, Ovsiankina 1928: an interrupted task is remembered and wants finishing;
+  the effect is weaker in replications, so use it lightly). → A nearly full bar is shown nearly full on the way
+  out (the chip's ring), so the player leaves with "almost" in mind, not "nothing".
+- **Anticipation is half the reward** (Schultz, Dayan & Montague 1997: dopamine answers to the _expected_ reward and
+  to a better-than-expected one, not to a fully predicted one). → Show the prize before it is earned (the next
+  level's picture at the bar's end), let it wind up before it opens (a shake, gathering light), and give a small
+  honest surprise now and then (a bonus coin, a rare garment) on top of the promised one: the surprise is the
+  high, the promise is the reason.
+- **Variable rewards, with limits** (Ferster & Skinner 1957, variable schedules; Eyal 2014, _Hooked_: trigger →
+  action → variable reward → investment). → Variety in what comes (which buyer, which surprise), never in whether
+  effort counts: the bar always moves by what was done. Investment shows: what you built and wore stays in view.
+- **Competence, not compulsion** (Ryan, Rigby & Przybylski 2006, self-determination theory: games are enjoyed for
+  competence, autonomy and relatedness; Csikszentmihalyi 1990, flow). → Progress says what the player did ("you
+  sold 5 crates"), the next goal is just reachable, and the player chooses when to claim.
+- **End on a peak** (Kahneman, Fredrickson et al. 1993, the peak-end rule: an experience is remembered by its best
+  and last moments). → A card's last moment is its high (the claim's burst, the full bar), not a scroll of fine print.
+- **Ethics** (Eyal's _Manipulation Matrix_; Hodent 2017 on dark patterns; Clark et al. 2009 on how near-misses
+  drive gambling; Zendle & Cairns 2018 on loot boxes). Never a fake near-miss, a fake "almost", a bar that slows to
+  keep you, a reward that rots if not claimed, a countdown to pressure a purchase, or a random box for money. Progress
+  is true, every reward can wait for the player, and a session can end on a good note.
+
 ## Accessibility
 
 Contrast 4.5:1 for text (3:1 for big numbers and icons); never colour alone (a ✓ and a colour); every control named

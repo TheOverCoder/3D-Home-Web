@@ -1,67 +1,84 @@
 {
- "at": "2026-11-14T21:39:14.541Z",
+ "at": "2026-11-15T01:21:16.808Z",
  "devices": [
   "upright",
   "sideways"
  ],
  "boards": {
-  "top": {
-   "screens": 40,
+  "saves": {
+   "screens": 24,
    "errors": [],
    "blank": [],
    "scroll": [],
-   "small": [
-    "c/early/upright · Silo: 4 of 50 42×42",
-    "c/early/upright · Barn: 0 of 50 42×42",
-    "c/early/upright · Line at the gate: 0 of 5 42×42",
-    "c/early/upright · Goals: 0 42×42",
-    "b/mid/upright · Goals reached2 187×40",
-    "c/mid/upright · Silo: 38 of 100 42×42",
-    "c/mid/upright · Barn: 21 of 50 42×42",
-    "c/mid/upright · Line at the gate: 3 of 6 42×42",
-    "c/mid/upright · Goals: 2 42×42",
-    "b/attention/upright · Silo full 114×40",
-    "b/attention/upright · Buyers waiting6 193×40",
-    "c/attention/upright · Silo: 100 of 100, full 42×42",
-    "c/attention/upright · Barn: 33 of 50 42×42",
-    "c/attention/upright · Line at the gate: 6 of 6 42×42",
-    "c/early/sideways · Silo: 4 of 50 42×42",
-    "c/early/sideways · Barn: 0 of 50 42×42",
-    "c/early/sideways · Line at the gate: 0 of 5 42×42",
-    "c/early/sideways · Goals: 0 42×42",
-    "b/mid/sideways · Goals reached2 187×40",
-    "c/mid/sideways · Silo: 38 of 100 42×42",
-    "c/mid/sideways · Barn: 21 of 50 42×42",
-    "c/mid/sideways · Line at the gate: 3 of 6 42×42",
-    "c/mid/sideways · Goals: 2 42×42",
-    "b/attention/sideways · Silo full 114×40",
-    "b/attention/sideways · Buyers waiting6 193×40",
-    "c/attention/sideways · Silo: 100 of 100, full 42×42",
-    "c/attention/sideways · Barn: 33 of 50 42×42",
-    "c/attention/sideways · Line at the gate: 6 of 6 42×42"
-   ],
-   "tiny": [
-    "a/early/upright · דוגמה 11px",
-    "b/early/upright · דוגמה 11px",
-    "c/early/upright · דוגמה 11px",
-    "a/early/sideways · דוגמה 11px",
-    "b/early/sideways · דוגמה 11px",
-    "c/early/sideways · דוגמה 11px"
-   ],
+   "small": [],
+   "tiny": [],
+   "under": [],
+   "off": [
+    "b/one/upright · Place 2, empty",
+    "b/one/upright · Place 3, empty",
+    "b/three/upright · Farm 1, level 4",
+    "b/three/upright · Farm 3, level 7",
+    "b/one/sideways · Place 3, empty",
+    "b/three/sideways · Farm 3, level 7"
+   ]
+  },
+  "orders": {
+   "screens": 24,
+   "errors": [],
+   "blank": [],
+   "scroll": [],
+   "small": [],
+   "tiny": [],
    "under": [
-    "a/mid-compass/upright · 12 lettuce ready — walk there",
-    "a/mid-compass/upright · 6 egg ready — walk there",
-    "a/mid-compass/upright · 3 milk ready — walk there",
-    "b/mid-compass/upright · 12 lettuce ready — walk there",
-    "b/mid-compass/upright · 6 egg ready — walk there",
-    "b/mid-compass/upright · 3 milk ready — walk there",
-    "a/attention-compass/upright · The silo is full: 8 waiting for room — w",
-    "a/attention-compass/upright · 8 lemon ready — walk there",
-    "a/attention-compass/upright · 4 wool ready — walk there",
-    "b/attention-compass/upright · The silo is full: 8 waiting for room — w",
-    "b/attention-compass/upright · 8 lemon ready — walk there",
-    "b/attention-compass/upright · 4 wool ready — walk there"
+    "a/big/upright · Decline this order",
+    "b/big/upright · Decline this order"
    ],
+   "off": [
+    "a/big/upright · Put in 4",
+    "a/big/upright · Put in 2",
+    "a/big/upright · Decline this order",
+    "b/big/upright · Put in 4",
+    "b/big/upright · Decline this order",
+    "b/big/upright · Put in 2",
+    "b/fresh/sideways · Decline this order",
+    "b/fresh/sideways · Put in 9",
+    "a/big/sideways · Send this order for 15 coins",
+    "a/big/sideways · Put in 4",
+    "a/big/sideways · Put in 2",
+    "a/big/sideways · Decline this order",
+    "b/big/sideways · Send this order for 15 coins",
+    "b/big/sideways · Put in 4",
+    "b/big/sideways · Put in 2"
+   ]
+  },
+  "goals": {
+   "screens": 32,
+   "errors": [],
+   "blank": [],
+   "scroll": [],
+   "small": [],
+   "tiny": [],
+   "under": [],
+   "off": []
+  },
+  "film-supermarket": {
+   "screens": 8,
+   "errors": [],
+   "blank": [],
+   "scroll": [],
+   "small": [],
+   "tiny": [],
+   "under": [],
+   "off": []
+  },
+  "top": {
+   "screens": 24,
+   "errors": [],
+   "blank": [],
+   "scroll": [],
+   "small": [],
+   "tiny": [],
+   "under": [],
    "off": []
   },
   "intro": {
@@ -75,7 +92,7 @@
    "off": []
   },
   "loading": {
-   "screens": 40,
+   "screens": 70,
    "errors": [],
    "blank": [],
    "scroll": [],
@@ -85,7 +102,7 @@
    "off": []
   },
   "level": {
-   "screens": 24,
+   "screens": 30,
    "errors": [],
    "blank": [],
    "scroll": [],

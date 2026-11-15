@@ -7,14 +7,15 @@ import { ItemPic } from '../../../src/ui/ItemPic'
 import { EASE, PRESS, SPRING } from '../../../src/ui/motion'
 import type { Act } from '../../board'
 import { ago, farmOf, type Farm, type IntroState } from './data'
-import { Backdrop, FarmList, GearButton, MusicButton, Sheet, SettingsBody, Star } from './shared'
+import { Backdrop, CreditsBody, FarmList, MenuTiles, Sheet, SettingsBody, Star, type Menu } from './shared'
 import './IntroA.css'
 
-// A · the title: a game's own title screen. The logo is the hero over your farm; at the bottom, under the thumb, one
-// dock: the farm you go back to (its level, its coins, what is ready, in pictures) and the big button. Music and
-// settings are two small round buttons at the top. The farms open from the farm's name. Its moment: the letters of the
-// name drop in one by one and bounce; a press sends the logo up and the dock down while the scene pulls back into
-// play. Every rule of its CSS is under .v-intro-a.
+// A · the title screen, round 3: what a game shows first after loading, before you are in the farm — its name big over
+// a glow with the house, and under the thumb one menu card: your farm (a returning player: its level, coins and what is
+// ready, in pictures), the big button (Play for a new player, Continue for one coming back) and a row of four tiles with
+// words — Farms, Music, Settings, Credits. Sideways the name stands on the left and the menu card on the right. Its
+// moment: the letters drop in one by one and bounce, the sun behind them opens; a press sends the name up and the card
+// down while the scene pulls back into play. Every rule of its CSS is under .v-intro-a.
 
 const NAME = '3D Home'.split('')
 const MOST = 4 // goods shown in the dock; the rest is a "+n"
@@ -30,7 +31,7 @@ function Dock({ f, farms, onFarms }: { f: Farm; farms: number; onFarms: () => vo
   const goods = w?.goods ?? []
   const more = goods.length - MOST
   return (
-    <div className="ia-farm paper">
+    <div className="ia-farm">
       <m.button className="ia-farm-name" onClick={onFarms} aria-label={`Farm ${f.slot}: your farms`} {...PRESS}>
         <Star level={f.level} />
         <span>
@@ -73,7 +74,8 @@ const POP = { hidden: { opacity: 0, scale: 0.4, y: 8 }, shown: { opacity: 1, sca
 export function IntroA({ s, act }: { s: IntroState; act: Act<IntroState> }) {
   const f = farmOf(s)
   const back = f.played
-  const [sheet, setSheet] = useState<'farms' | 'settings' | null>(null)
+  const [sheet, setSheet] = useState<Menu | null>(null)
+  const count = s.farms.filter((x) => x.exists).length
   const [going, setGoing] = useState(false)
   const go = () => {
     if (going) return
@@ -83,10 +85,16 @@ export function IntroA({ s, act }: { s: IntroState; act: Act<IntroState> }) {
   return (
     <div className="v-intro-a">
       <Backdrop />
-      <m.div className="ia-top" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.15 } }} transition={{ delay: 0.5, duration: 0.3 }}>
-        <MusicButton />
-        <GearButton onOpen={() => setSheet('settings')} />
-      </m.div>
+      <m.span
+        className="ia-sun"
+        aria-hidden="true"
+        initial={{ opacity: 0, scale: 0.5 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, transition: { duration: 0.15 } }}
+        transition={{ delay: 0.25, duration: 0.8, ease: EASE.out }}
+      >
+        <i />
+      </m.span>
       <m.div
         className="ia-logo"
         initial="hidden"
@@ -112,17 +120,17 @@ export function IntroA({ s, act }: { s: IntroState; act: Act<IntroState> }) {
           ))}
         </h1>
         <m.p variants={{ hidden: { opacity: 0, y: 6 }, shown: { opacity: 1, y: 0, transition: { duration: 0.35, ease: EASE.out } }, gone: { opacity: 0, transition: { duration: 0.12 } } }}>
-          {back ? 'Welcome back' : 'A cosy house and farm'}
+          {back ? `Welcome back to Farm ${f.slot}` : 'A cosy house and farm'}
         </m.p>
       </m.div>
       <m.div
-        className="ia-dock"
+        className="ia-dock paper"
         initial={{ opacity: 0, y: 70 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 90, transition: { duration: 0.24, ease: 'easeIn' } }}
         transition={{ ...SPRING.sheet, delay: 0.1 }}
       >
-        {back && <Dock f={f} farms={s.farms.filter((x) => x.exists).length} onFarms={() => setSheet('farms')} />}
+        {back && <Dock f={f} farms={count} onFarms={() => setSheet('farms')} />}
         <m.button
           className={`btn primary ia-go${going ? ' going' : ''}`}
           onClick={go}
@@ -134,12 +142,7 @@ export function IntroA({ s, act }: { s: IntroState; act: Act<IntroState> }) {
           <span>{back ? 'Continue' : 'Play'}</span>
           <ArrowRight weight="bold" />
         </m.button>
-        {!back && (
-          <m.button className="ia-quiet" onClick={() => setSheet('farms')} {...PRESS}>
-            <img src={art('floppy-disk')} alt="" />
-            Farms
-          </m.button>
-        )}
+        <MenuTiles onOpen={setSheet} farms={count} />
       </m.div>
       <Sheet open={sheet === 'farms'} title="Your farms" pic={art('house-with-garden')} onClose={() => setSheet(null)}>
         <FarmList
@@ -153,6 +156,9 @@ export function IntroA({ s, act }: { s: IntroState; act: Act<IntroState> }) {
       </Sheet>
       <Sheet open={sheet === 'settings'} title="Settings" pic={art('gear')} onClose={() => setSheet(null)}>
         <SettingsBody />
+      </Sheet>
+      <Sheet open={sheet === 'credits'} title="Credits" pic={art('sparkles')} onClose={() => setSheet(null)}>
+        <CreditsBody />
       </Sheet>
     </div>
   )

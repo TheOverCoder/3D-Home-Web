@@ -38,6 +38,8 @@ export function TopC({ s, set }: { s: TopState; set: (s: TopState) => void }) {
   })
   const all = s.hud === 'all'
   const k = lv.into / lv.need
+  // the last quarter of a level: the road warms and the prize at its end wiggles now and then (the goal gradient)
+  const near = !lv.top && !lv.unpaid && k >= 0.75
   return (
     <div className={`v-top-c hud-${s.hud}`} ref={root}>
       <div className="v-top-c-row">
@@ -52,7 +54,7 @@ export function TopC({ s, set }: { s: TopState; set: (s: TopState) => void }) {
         )}
         {all && (
           <m.button
-            className={`v-top-c-road${lv.unpaid ? ' ready' : ''}`}
+            className={`v-top-c-road${lv.unpaid ? ' ready' : ''}${near ? ' near' : ''}`}
             initial={{ opacity: 0, y: -14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ ...SPRING.pop, delay: 0.1 }}
@@ -65,11 +67,15 @@ export function TopC({ s, set }: { s: TopState; set: (s: TopState) => void }) {
               <b>{lv.level}</b>
             </span>
             <span className="v-top-c-way">
-              <span className="v-top-c-togo">{lv.top ? 'Top level' : lv.unpaid ? 'Claim!' : `${lv.need - lv.into} XP to go`}</span>
+              <span className="v-top-c-togo">{lv.top ? 'Top level' : lv.unpaid ? 'Claim!' : near ? `Only ${lv.need - lv.into} XP!` : `${lv.need - lv.into} XP to go`}</span>
               <span className="v-top-c-track" role="progressbar" aria-valuemin={0} aria-valuemax={lv.need} aria-valuenow={lv.into}>
                 <m.i className="v-top-c-fill" initial={{ width: still ? `${k * 100}%` : '0%' }} animate={{ width: `${k * 100}%` }} transition={{ delay: 0.3, duration: 0.7, ease: EASE.out }}>
                   <span className="v-top-c-head" />
                 </m.i>
+                {/* the quarters: near goals on the way, each lit once passed */}
+                {[0.25, 0.5, 0.75].map((q) => (
+                  <i key={q} className={`v-top-c-notch${k >= q ? ' passed' : ''}`} style={{ left: `${q * 100}%` }} />
+                ))}
               </span>
             </span>
             {lv.unpaid ? (
@@ -80,7 +86,13 @@ export function TopC({ s, set }: { s: TopState; set: (s: TopState) => void }) {
             ) : lv.top ? null : (
               <span className="v-top-c-next">
                 <i>{lv.level + 1}</i>
-                <span className="v-top-c-prize">{lv.gift ? <GarmentPic g={lv.gift} /> : <img className="art" src={art('coin')} alt="" />}</span>
+                <m.span
+                  className="v-top-c-prize"
+                  animate={near && !still ? { rotate: [0, -12, 10, -6, 0], scale: [1, 1.15, 1] } : undefined}
+                  transition={{ delay: 1.1, duration: 0.6, repeat: Infinity, repeatDelay: 3 }}
+                >
+                  {lv.gift ? <GarmentPic g={lv.gift} /> : <img className="art" src={art('coin')} alt="" />}
+                </m.span>
               </span>
             )}
           </m.button>
@@ -93,7 +105,12 @@ export function TopC({ s, set }: { s: TopState; set: (s: TopState) => void }) {
                 <Gauge pic={<ItemPic id="barn" />} name="Barn" n={v.barn.n} of={v.barn.cap} k={v.barn.k} full={v.barn.full} onOpen={() => setOpens('האסם')} />
               </m.div>
             )}
-            <m.div className="v-top-c-mid" initial={{ opacity: 0, scaleX: 0.6 }} animate={{ opacity: 1, scaleX: 1 }} transition={SPRING.sheet}>
+            <m.div
+              className="v-top-c-mid"
+              initial={{ opacity: 0, clipPath: 'inset(-40% 50% -40% 50% round 999px)' }}
+              animate={{ opacity: 1, clipPath: 'inset(-40% -6% -40% -6% round 999px)' }}
+              transition={{ duration: 0.45, ease: EASE.out }}
+            >
               <Compass heading={s.heading} marks={s.marks} span={70} scale={{ letters: true, mid: true, nums: false }} className="v-top-c-strip">
                 <span className="v-top-c-hour">
                   <img src={art(v.phaseArt)} alt="" />

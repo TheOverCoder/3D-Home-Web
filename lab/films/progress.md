@@ -1,0 +1,10 @@
+- 23:53 UTC — started: reading the project (CLAUDE.md, lab, people engine, market)
+- 23:54 UTC — read the project: the people engine (rollLook, PersonRig), the market's models and the manager (MANAGER_LOOK, shop 1500 coins), the lab. Now: researching the technology
+- 00:00 UTC — technology researched (Remotion: licence needs a paid company licence at 4+ people; Theatre.js: studio AGPL, no release since 2024; video: can't follow the game's looks). Decided: a small in-house player on the game's own models (three.js/R3F) with a Motion overlay and the game's procedural sound. Now: the craft research → lab/FILM.md
+- 00:02 UTC — finished lab/FILM.md (the checklist, with its sources). Now: the film format and the player
+- 00:17 UTC — format, set, poses, stage, camera, score and the 3D stage written; now: the player (overlay) and the film's script
+- 00:24 UTC — the film's script (lab/films/supermarket.ts) and its board (lab/boards/film-supermarket) written; now: checking it in pictures and fixing
+- 00:34 UTC — checking the film shot by shot in pictures (3 rounds of fixes: framing for phones upright, walls left out per shot, the light-up from the ground)
+- 00:41 UTC — sound checked offline (levels balanced: muzak < tension < beat, the drop the loudest); walls in the camera's way now left out by the player itself; feet planted on the ground when walking
+- 00:48 UTC — the lab's audit of the board is clean (8 screens, 0 findings); tsc, the unit tests and the format check pass (oxlint stops on lab/boards/goals/data.tsx, the designer's board in progress, not mine). Now: the role file and a picture tool
+- 00:51 UTC — finished: the role file (.claude/agents/film-director.md), the picture tool (lab/films/moments.mjs), interactions checked (sound, Skip, Watch again, Continue), reduced motion checked. Ready for review in the lab: board film-supermarket

@@ -119,6 +119,11 @@
   border-radius: inherit;
   background: linear-gradient(to bottom, color-mix(in srgb, var(--xp) 50%, #fff), var(--xp) 60%, var(--xp-lip));
 }
+.v-top-c-notch { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: rgba(0, 0, 0, 0.45); }
+.v-top-c-notch.passed { background: rgba(255, 255, 255, 0.75); }
+/* the last quarter: the road warms toward the sun */
+.v-top-c-road.near .v-top-c-fill { background: linear-gradient(to bottom, rgba(255, 255, 255, 0.35), transparent 50%), linear-gradient(90deg, var(--xp) 0 40%, color-mix(in oklab, var(--xp) 45%, var(--berry)) 78%, color-mix(in oklab, var(--berry) 35%, var(--sun)) 100%); }
+.v-top-c-road.near .v-top-c-togo { color: var(--sun); }
 .v-top-c-head {
   position: absolute;
   right: -6px;
@@ -216,8 +221,8 @@
   position: relative;
   display: grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   border-radius: 14px;
   border: 2px solid var(--night-line);

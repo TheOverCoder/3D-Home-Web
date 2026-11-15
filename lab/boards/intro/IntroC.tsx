@@ -6,8 +6,9 @@ import { ItemPic } from '../../../src/ui/ItemPic'
 import { EASE, PRESS, SPRING } from '../../../src/ui/motion'
 import type { Act } from '../../board'
 import { ago, farmOf, isCrop, type Farm, type IntroState } from './data'
+import { Heart } from '@phosphor-icons/react/dist/csr/Heart'
 import { MusicNotes } from '@phosphor-icons/react/dist/csr/MusicNotes'
-import { Backdrop, FarmList, Sheet, SettingsBody, Star } from './shared'
+import { Backdrop, CreditsBody, FarmList, Sheet, SettingsBody, Star, type Menu } from './shared'
 import './IntroC.css'
 
 // C · the road: a short road across a card, from where you left to the big button. A returning player's road has what
@@ -113,7 +114,7 @@ function Road({ f, going }: { f: Farm; going: boolean }) {
 export function IntroC({ s, act }: { s: IntroState; act: Act<IntroState> }) {
   const f = farmOf(s)
   const back = f.played
-  const [sheet, setSheet] = useState<'farms' | 'settings' | null>(null)
+  const [sheet, setSheet] = useState<Menu | null>(null)
   const [going, setGoing] = useState(false)
   const [music, setMusic] = useState(false)
   const go = () => {
@@ -184,6 +185,10 @@ export function IntroC({ s, act }: { s: IntroState; act: Act<IntroState> }) {
             <GearSix weight="fill" />
             Settings
           </m.button>
+          <m.button onClick={() => setSheet('credits')} {...PRESS}>
+            <Heart weight="fill" />
+            Credits
+          </m.button>
         </nav>
       </m.div>
       <Sheet open={sheet === 'farms'} title="Your farms" pic={art('house-with-garden')} onClose={() => setSheet(null)}>
@@ -198,6 +203,9 @@ export function IntroC({ s, act }: { s: IntroState; act: Act<IntroState> }) {
       </Sheet>
       <Sheet open={sheet === 'settings'} title="Settings" pic={art('gear')} onClose={() => setSheet(null)}>
         <SettingsBody />
+      </Sheet>
+      <Sheet open={sheet === 'credits'} title="Credits" pic={art('sparkles')} onClose={() => setSheet(null)}>
+        <CreditsBody />
       </Sheet>
     </div>
   )

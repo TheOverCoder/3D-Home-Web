@@ -1,0 +1,69 @@
+/* E · the emblem builds itself (./LoadingE.tsx): melting blobs of colour, the emblem with its ring, the name, and the
+   shared line and tip (./chrome.css; the ring is its bar). Ready, every shape takes its ink outline: the logo. */
+.v-loading-e {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  justify-items: center;
+  padding: calc(env(safe-area-inset-top) + 18px) 20px calc(env(safe-area-inset-bottom) + 16px);
+  overflow: hidden;
+  background: var(--paper);
+  user-select: none;
+}
+.v-loading-e > :not(.le-blobs) { position: relative; z-index: 1; }
+
+/* blobs of the game's colours, big and soft, drifting and melting into each other */
+.v-loading-e .le-blobs { position: absolute; inset: -20%; filter: blur(46px); opacity: 0.75; }
+.v-loading-e .le-blobs i { position: absolute; width: 55%; aspect-ratio: 1; border-radius: 50%; animation: le-drift 16s ease-in-out infinite alternate; }
+.v-loading-e .le-blobs i:nth-child(1) { left: 0; top: 5%; background: color-mix(in oklab, var(--sun) 80%, transparent); }
+.v-loading-e .le-blobs i:nth-child(2) { right: 0; top: 20%; background: color-mix(in oklab, var(--berry) 40%, transparent); animation-duration: 21s; animation-delay: -5s; }
+.v-loading-e .le-blobs i:nth-child(3) { left: 20%; bottom: 0; background: color-mix(in oklab, var(--leaf) 30%, transparent); animation-duration: 19s; animation-delay: -9s; }
+.v-loading-e .le-blobs i:nth-child(4) { right: 15%; bottom: 15%; width: 34%; background: color-mix(in oklab, var(--xp) 20%, transparent); animation-duration: 24s; animation-delay: -3s; }
+
+.v-loading-e .le-hero { align-self: center; display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
+.v-loading-e .le-emblem { width: min(300px, 78vw, 46dvh); height: auto; overflow: visible; }
+.v-loading-e .le-track { fill: rgba(255, 255, 255, 0.6); stroke: color-mix(in oklab, var(--paper-3) 80%, var(--edge)); stroke-width: 10; }
+.v-loading-e .le-fill { fill: none; stroke: var(--sun); stroke-width: 10; stroke-linecap: round; filter: drop-shadow(0 0 6px color-mix(in oklab, var(--sun) 70%, transparent)); }
+.v-loading-e.ready .le-fill { stroke: var(--leaf); }
+.v-loading-e .le-mark { fill: var(--paper); stroke: color-mix(in oklab, var(--edge) 70%, var(--paper)); stroke-width: 2; }
+.v-loading-e .le-mark.lit { fill: #fff; stroke: var(--sun-lip); stroke-width: 3; }
+.v-loading-e .le-spark { fill: #fff; filter: drop-shadow(0 0 6px var(--sun)) drop-shadow(0 0 12px var(--sun)); animation: le-spark 0.9s ease-in-out infinite alternate; }
+.v-loading-e .le-rays rect { fill: color-mix(in oklab, var(--sun) 80%, #fff); }
+
+/* the shapes: flat colour while they come, the ink outline when ready (the logo) */
+.v-loading-e .le-house :is(circle, rect, path) { stroke: transparent; stroke-width: 4; stroke-linejoin: round; transition: stroke 0.35s ease-out; }
+.v-loading-e.ready .le-house :is(circle, rect, path) { stroke: var(--ink); }
+.v-loading-e .le-sun { fill: var(--sun); }
+.v-loading-e .le-hill { fill: color-mix(in oklab, var(--leaf) 75%, var(--sun)); }
+.v-loading-e .le-wall { fill: var(--paper); }
+.v-loading-e.ready .le-wall { fill: #fff; }
+.v-loading-e .le-roof { fill: var(--berry); }
+.v-loading-e .le-door { fill: color-mix(in oklab, var(--edge) 70%, var(--ink)); }
+.v-loading-e .le-window { fill: color-mix(in oklab, var(--sun) 50%, #fff); }
+.v-loading-e .le-chimney { fill: color-mix(in oklab, var(--paper-3) 50%, var(--edge)); }
+.v-loading-e .le-smoke circle { fill: #fff; stroke: transparent !important; opacity: 0.85; animation: le-puff 2.4s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+.v-loading-e .le-smoke circle:nth-child(2) { animation-delay: -1.2s; }
+
+/* the name: letters pop in, then ripple one after another */
+.v-loading-e .le-name { display: flex; margin: 0; font: 700 50px/1 var(--font-display); color: #fff; -webkit-text-stroke: 6px var(--ink); paint-order: stroke fill; text-shadow: 0 5px 0 rgba(40, 24, 10, 0.25); white-space: pre; }
+.v-loading-e .le-name span { display: inline-block; animation: le-ripple 2.8s ease-in-out infinite; }
+
+.v-loading-e .le-low { width: min(360px, 100%); }
+
+/* sideways: the emblem and the name on the left, the card on the right */
+.v-loading-e.wide { grid-template-columns: minmax(0, 1fr) minmax(300px, 360px); grid-template-rows: 1fr; align-items: center; column-gap: 24px; padding: 10px calc(env(safe-area-inset-right) + 20px) calc(env(safe-area-inset-bottom) + 10px) calc(env(safe-area-inset-left) + 20px); }
+.v-loading-e.wide .le-hero { flex-direction: column; gap: 4px; }
+.v-loading-e.wide .le-emblem { width: min(250px, 62dvh); }
+.v-loading-e.wide .le-name { font-size: 40px; -webkit-text-stroke-width: 5px; }
+
+@keyframes le-drift { from { transform: translate(-8%, -6%) scale(1); } to { transform: translate(10%, 8%) scale(1.2); } }
+@keyframes le-spark { to { r: 9; } }
+@keyframes le-puff { 0% { transform: translateY(6px) scale(0.6); opacity: 0; } 30% { opacity: 0.9; } 100% { transform: translateY(-14px) scale(1.3); opacity: 0; } }
+@keyframes le-ripple { 0%, 70%, 100% { transform: translateY(0); } 80% { transform: translateY(-7px); } 90% { transform: translateY(1px); } }
+@media (prefers-reduced-motion: reduce) {
+  .v-loading-e .le-blobs i,
+  .v-loading-e .le-spark,
+  .v-loading-e .le-smoke circle,
+  .v-loading-e .le-name span { animation: none; }
+}

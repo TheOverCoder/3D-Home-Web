@@ -80,7 +80,7 @@
 .v-level-b .lv-sticker .art { width: 30px; height: 30px; }
 .v-level-b .lv-sticker b { font: 900 19px/1 var(--font-text); color: var(--ink); font-variant-numeric: tabular-nums; }
 /* only coins: the coin is the prize, its number beside it */
-.v-level-b .lv-coins { grid-area: prize; display: flex; align-items: center; gap: 14px; padding: 8px 0 4px; }
+.v-level-b .lv-coins { grid-area: prize; display: flex; align-items: center; gap: 24px; padding: 8px 0 4px; }
 .v-level-b .lv-coins .art { width: 72px; height: 72px; }
 .v-level-b .lv-coins .lv-floor { width: 70px; margin-left: -35px; bottom: -4px; }
 .v-level-b .lv-coins > span { display: flex; flex-direction: column; gap: 2px; }
@@ -90,13 +90,57 @@
 /* the top level: a trophy on the stage, nothing further to win */
 .v-level-b .lv-stage:not(.level-next) { min-height: 200px; }
 
-/* how far: the bar, and the XP still needed */
-.v-level-b .lv-meter { display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 16px; }
-.v-level-b .lv-bar { position: relative; flex: 1; height: 12px; border-radius: 999px; background: var(--paper-3); overflow: hidden; box-shadow: inset 0 1px 2px rgba(60, 35, 10, 0.12); }
-.v-level-b .lv-bar span { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: linear-gradient(to bottom, color-mix(in srgb, var(--xp) 55%, #fff), var(--xp) 60%, var(--xp-lip)); }
-.v-level-b .top .lv-bar span { background: linear-gradient(to bottom, color-mix(in srgb, var(--sun) 55%, #fff), var(--sun) 60%, var(--sun-lip)); }
-.v-level-b .lv-meter .farm-sub { margin: 0; flex: none; }
-.v-level-b .lv-meter .tag { font-size: 15px; padding: 3px 12px; font-variant-numeric: tabular-nums; }
+/* how far (round 3): the big number and what it means, the bar cut in four with what you gained brighter and the ghost
+   of what is ready, the next level at its end; under it, the next press */
+.v-level-b .lv-meter { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px 12px 16px; }
+.v-level-b .lv-read { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.v-level-b .lv-pct { font: 900 30px/1 var(--font-text); color: var(--xp-lip); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.v-level-b .warm .lv-pct { color: color-mix(in srgb, var(--berry) 70%, var(--sun-lip)); }
+.v-level-b .done .lv-pct { color: var(--sun-lip); }
+.v-level-b .lv-say { flex: 1; min-width: 0; font: 700 15px/1.2 var(--font-text); color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.v-level-b .lv-say b { color: var(--ink); font-weight: 900; }
+.v-level-b .lv-new { align-self: center; display: inline-flex; align-items: center; gap: 3px; padding: 3px 10px 3px 5px; border-radius: 999px; background: var(--xp); color: #fff; font: 800 14px/1 var(--font-text); white-space: nowrap; box-shadow: 0 2px 0 var(--xp-lip), 0 0 12px var(--xp-glow); }
+.v-level-b .lv-new .art { width: 20px; height: 20px; }
+
+/* the bar and the next level at its end */
+.v-level-b .lv-track-row { display: flex; align-items: center; }
+.v-level-b .lv-track { position: relative; flex: 1; height: 22px; margin-inline-end: -10px; border-radius: 999px; background: var(--paper-3); box-shadow: inset 0 2px 3px rgba(60, 35, 10, 0.16); overflow: hidden; }
+.v-level-b .lv-fill { position: absolute; inset: 0 auto 0 0; border-radius: 999px; background: linear-gradient(to bottom, color-mix(in srgb, var(--xp) 50%, #fff) 0, var(--xp) 55%, var(--xp-lip) 100%); box-shadow: inset 0 -2px 0 rgba(40, 20, 120, 0.25); }
+.v-level-b .warm .lv-fill { background: linear-gradient(to bottom, rgba(255, 255, 255, 0.35), transparent 45%, rgba(40, 20, 90, 0.18)), linear-gradient(90deg, var(--xp) 0 40%, color-mix(in oklab, var(--xp) 45%, var(--berry)) 78%, color-mix(in oklab, var(--berry) 35%, var(--sun)) 100%); }
+.v-level-b .done .lv-fill { background: linear-gradient(to bottom, color-mix(in srgb, var(--sun) 55%, #fff), var(--sun) 60%, var(--sun-lip)); }
+/* a shine runs along the fill now and then: it is alive */
+.v-level-b .lv-fill::before { content: ''; position: absolute; inset: 3px 8px auto; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.45); }
+.v-level-b .lv-tip { position: absolute; top: 50%; right: 2px; width: 16px; height: 16px; margin-top: -8px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 3px color-mix(in srgb, var(--xp) 60%, #fff), 0 0 12px 5px var(--xp-glow); }
+.v-level-b .done .lv-tip { display: none; }
+/* what you gained since you last looked: the same fill, lit */
+.v-level-b .lv-gain { position: absolute; top: 0; bottom: 0; border-radius: 0 999px 999px 0; background: linear-gradient(to bottom, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.15)); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.35); pointer-events: none; }
+/* what is ready on the farm: a striped ghost past the head */
+.v-level-b .lv-ghost { position: absolute; top: 3px; bottom: 3px; border-radius: 0 999px 999px 0; background: repeating-linear-gradient(-45deg, color-mix(in srgb, var(--xp) 38%, transparent) 0 5px, color-mix(in srgb, var(--xp) 14%, transparent) 5px 10px); }
+.v-level-b .warm .lv-ghost,
+.v-level-b .lv-meter:has(.enough) .lv-ghost { background: repeating-linear-gradient(-45deg, color-mix(in srgb, var(--sun) 80%, transparent) 0 5px, color-mix(in srgb, var(--sun) 35%, transparent) 5px 10px); }
+/* the quarters: a join in the bar, a dot under it that lights once passed, a ring that pings as the fill passes */
+.v-level-b .lv-notch { position: absolute; top: 0; bottom: 0; width: 3px; margin-left: -1.5px; background: var(--paper-2); }
+.v-level-b .lv-notch.passed { background: color-mix(in srgb, var(--paper-2) 70%, var(--xp)); }
+.v-level-b .lv-notch i { position: absolute; top: 50%; left: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; border: 3px solid #fff; }
+/* the quarters' marks on the bar: a white spark once passed, a ring pulsing on the next one, a dot on the rest */
+.v-level-b .lv-notch::after { content: ''; position: absolute; top: 50%; left: 50%; width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; border-radius: 50%; background: color-mix(in srgb, var(--paper-3) 50%, var(--ink-2)); opacity: 0.5; }
+.v-level-b .lv-notch.passed::after { width: 13px; height: 13px; margin: -6.5px 0 0 -6.5px; border-radius: 0; background: #fff; opacity: 1; clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.9)); }
+.v-level-b .lv-notch.next::after { width: 10px; height: 10px; margin: -5px 0 0 -5px; background: none; opacity: 1; box-shadow: inset 0 0 0 2.5px var(--xp); }
+/* the next level: a ring the bar runs into (sun when it brings a garment); it wiggles when close */
+.v-level-b .lv-goal { position: relative; z-index: 1; display: grid; place-items: center; flex: none; width: 46px; height: 46px; border-radius: 50%; background: var(--paper); box-shadow: inset 0 0 0 4px var(--paper-3), 0 3px 0 var(--paper-3); }
+.v-level-b .lv-goal.gift { background: #fff8dc; box-shadow: inset 0 0 0 4px var(--sun), 0 3px 0 var(--sun-lip), 0 0 14px 2px color-mix(in srgb, var(--sun) 45%, transparent); }
+.v-level-b .lv-goal b { font: 600 21px/1 var(--font-display); color: var(--ink); font-variant-numeric: tabular-nums; }
+.v-level-b .lv-goal .art { width: 34px; height: 34px; }
+.v-level-b .done .lv-goal { background: #fff8dc; box-shadow: inset 0 0 0 4px var(--sun), 0 3px 0 var(--sun-lip); }
+
+/* the next press: what is ready on the farm and what it is worth */
+.v-level-b .lv-next-press { display: flex; align-items: center; gap: 8px; margin: 0; font: 700 15px/1.25 var(--font-text); color: var(--ink-2); }
+.v-level-b .lv-next-press b { color: var(--ink); font-weight: 900; }
+.v-level-b .lv-next-press > .art { width: 28px; height: 28px; flex: none; }
+.v-level-b .lv-ready-pic { position: relative; flex: none; width: 34px; height: 34px; }
+.v-level-b .lv-ready-pic img { width: 100%; height: 100%; object-fit: contain; }
+.v-level-b .lv-ready-pic b { position: absolute; right: -6px; bottom: -4px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; background: var(--ink); color: #fff; font: 800 13px/20px var(--font-text); text-align: center; }
+.v-level-b .lv-next-press.enough .lv-enough { color: color-mix(in srgb, var(--berry) 75%, var(--ink)); }
 
 /* the next garment, further off */
 .v-level-b .level-later { display: flex; align-items: center; gap: 10px; margin: 0; padding: 0 4px; color: var(--ink-2); font: 600 15px/1.3 var(--font-text); }
@@ -109,7 +153,13 @@
 /* once the light is on, its rays turn slowly */
 @media (prefers-reduced-motion: no-preference) {
   .v-level-b .lv-rays { animation: v-level-b-turn 30s linear infinite; }
+  .v-level-b .lv-fill::before { animation: v-level-b-shine 3.2s ease-in-out 1.6s infinite; }
+  .v-level-b .lv-ghost { animation: v-level-b-breathe 1.8s ease-in-out 1.6s infinite alternate; }
+  .v-level-b .lv-notch.next::after { animation: v-level-b-next 1.4s ease-in-out 1.6s infinite alternate; }
 }
+@keyframes v-level-b-shine { 0%, 60% { opacity: 0.45; } 75% { opacity: 0.9; } 100% { opacity: 0.45; } }
+@keyframes v-level-b-breathe { to { opacity: 0.55; } }
+@keyframes v-level-b-next { to { transform: scale(1.35); } }
 @keyframes v-level-b-turn { to { transform: rotate(1turn); } }
 
 /* a phone on its side: the stage lies down — the prize on the left, the ribbon and its name beside it — and takes the
@@ -126,19 +176,25 @@
     justify-items: start;
     align-content: center;
     column-gap: 16px;
-    min-height: 140px;
-    padding: 12px 16px;
+    min-height: 0;
+    padding: 8px 16px;
   }
   .v-level-b .level-next h3.lv-ribbon { align-self: end; }
   .v-level-b .lv-caption { align-self: start; align-items: flex-start; }
   .v-level-b .lv-prize { justify-self: center; }
   .v-level-b .lv-sticker { grid-area: auto; position: absolute; top: 12px; inset-inline-end: 12px; }
-  .v-level-b .lv-prize .garment-pic .art { width: 96px; height: 96px; }
+  .v-level-b .lv-prize .garment-pic .art { width: 78px; height: 78px; }
+  .v-level-b .lv-caption .tag { display: none; }
   .v-level-b .lv-light { width: 300px; height: 300px; margin: -150px 0 0 -150px; }
   .v-level-b .lv-stage:has(.lv-coins) { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'ribbon' 'prize'; justify-items: center; }
   .v-level-b .lv-coins .art { width: 60px; height: 60px; }
   .v-level-b .lv-coins b { font-size: 32px; }
   .v-level-b .lv-trophy { width: 120px; height: 120px; }
   .v-level-b .lv-stage:not(.level-next) { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'prize'; justify-items: center; }
-  .v-level-b .lv-meter { padding: 8px 12px 8px 16px; }
+  .v-level-b .lv-meter { gap: 6px; padding: 8px 12px 8px 16px; }
+  .v-level-b .lv-pct { font-size: 26px; }
+  .v-level-b .farm-panel { gap: 8px; padding-top: 12px; }
+  .v-level-b .lv-star { width: 42px; height: 42px; }
+  .v-level-b .lv-next-press { font-size: 14px; }
+  .v-level-b .lv-ready-pic { width: 28px; height: 28px; }
 }

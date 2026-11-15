@@ -10,7 +10,7 @@ import { ItemPic } from '../../../src/ui/ItemPic'
 import { EASE, PRESS, SPRING } from '../../../src/ui/motion'
 import type { Act } from '../../board'
 import { ago, farmOf, type Farm, type IntroState } from './data'
-import { Backdrop, FarmList, GearButton, MusicButton, Sheet, SettingsBody, Star } from './shared'
+import { Backdrop, CreditsBody, FarmList, MenuTiles, Sheet, SettingsBody, Star, type Menu } from './shared'
 import './IntroB.css'
 
 // B · the showcase: what waits for you is the hero. A sheet at the bottom (sideways on the right) holds a sunny stage
@@ -119,7 +119,7 @@ export function IntroB({ s, act }: { s: IntroState; act: Act<IntroState> }) {
   const f = farmOf(s)
   const back = f.played
   const any = s.farms.some((x) => x.exists)
-  const [sheet, setSheet] = useState<'farms' | 'settings' | null>(null)
+  const [sheet, setSheet] = useState<Menu | null>(null)
   const [going, setGoing] = useState(false)
   const go = () => {
     if (going) return
@@ -141,8 +141,6 @@ export function IntroB({ s, act }: { s: IntroState; act: Act<IntroState> }) {
           <img className="art" src={art('house-with-garden')} alt="" />
           <h1 aria-hidden="true">3D Home</h1>
         </div>
-        <MusicButton />
-        <GearButton onOpen={() => setSheet('settings')} />
       </m.header>
       <m.div
         className="ib-sheet paper"
@@ -196,6 +194,7 @@ export function IntroB({ s, act }: { s: IntroState; act: Act<IntroState> }) {
           <span>{back ? 'Continue' : 'Play'}</span>
           <ArrowRight weight="bold" />
         </m.button>
+        <MenuTiles onOpen={setSheet} farms={s.farms.filter((x) => x.exists).length} className="ib-menu" />
       </m.div>
       <Sheet open={sheet === 'farms'} title="Your farms" pic={art('house-with-garden')} onClose={() => setSheet(null)}>
         <FarmList
@@ -209,6 +208,9 @@ export function IntroB({ s, act }: { s: IntroState; act: Act<IntroState> }) {
       </Sheet>
       <Sheet open={sheet === 'settings'} title="Settings" pic={art('gear')} onClose={() => setSheet(null)}>
         <SettingsBody />
+      </Sheet>
+      <Sheet open={sheet === 'credits'} title="Credits" pic={art('sparkles')} onClose={() => setSheet(null)}>
+        <CreditsBody />
       </Sheet>
     </div>
   )

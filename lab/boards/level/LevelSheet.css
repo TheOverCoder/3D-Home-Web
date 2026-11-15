@@ -4,7 +4,7 @@
 .v-level-sheet.farm-backdrop { background: none; animation: none; overflow: hidden; }
 .v-level-sheet .lv-shade { position: absolute; inset: 0; }
 .v-level-sheet .lv-shade > span { position: absolute; inset: 0; background: rgba(40, 24, 10, 0.4); }
-.v-level-sheet .lv-sheet { position: relative; z-index: 1; display: flex; width: min(560px, 100%); }
+.v-level-sheet .lv-sheet { position: relative; z-index: 1; display: flex; width: min(560px, 100%); min-width: 0; }
 .v-level-sheet .lv-sheet > .farm-panel { position: relative; width: 100%; animation: none; }
 .v-level-sheet .farm-panel:focus { outline: none; }
 /* a finger held on a picture brings up no menu of its own: the sheet is swiped from anywhere */

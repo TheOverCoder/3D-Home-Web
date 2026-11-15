@@ -1,110 +1,120 @@
-import { AnimatePresence, m, useReducedMotion, type PanInfo } from 'motion/react'
-import { useState } from 'react'
-import { Check, Play } from '../../../src/ui/glyphs'
-import { EASE, PRESS, SPRING } from '../../../src/ui/motion'
-import { loadView, TIPS, useLive, useTip, useWide, type LoadingState } from './load'
+import { m, useReducedMotion } from 'motion/react'
+import { useEffect, useRef, type CSSProperties } from 'react'
+import { burst } from '../../../src/ui/burst'
+import { SPRING } from '../../../src/ui/motion'
+import { Chrome, Logo } from './Chrome'
+import { loadView, useLive, useTip, useWide, type LoadingState } from './load'
 import poster from './poster.jpg'
 import './LoadingC.css'
 
-// C · a window onto the house: the screen is the house itself, out of focus at first and coming into focus as it loads
-// (a picture of the game, sharper the further the bar has come), with the logo over it. A paper sheet at the bottom
-// (sideways: on the right) holds what is coming, as cards you can swipe, and a slim bar with its friendly line. Its
-// moment: ready, the house is sharp and the bar itself grows into the Play button.
+// C · a window onto the house, round 3: a film's first shot. The house itself fills the screen (a picture of the game),
+// out of focus and coming into focus as it loads, the camera pushing in slowly; beams of afternoon light fall through
+// the window and turn, dust floats in them at three depths (far specks sharp and slow, near ones big, soft and quick: a
+// lens's depth of field), the edges breathe dark, and black bars top and bottom say "the film is about to start". A
+// shine runs across the logo now and then. Its moment: ready, the picture snaps into focus, a flare crosses the light,
+// the black bars slide away as the curtain does, a burst of confetti, and Play. The bar and the tip are frosted glass.
+
+/** Dust in the light, at three depths: how many, how big (px), how soft (blur px), how long one rise takes (s). */
+const DUST = [
+  { n: 14, size: 3, blur: 0, time: 26, depth: 'far' },
+  { n: 9, size: 6, blur: 1.5, time: 18, depth: 'mid' },
+  { n: 5, size: 16, blur: 5, time: 11, depth: 'near' },
+] as const
 
 export function LoadingC({ s: start, onPlay }: { s: LoadingState; onPlay: () => void }) {
   const s = useLive(start)
   const v = loadView(s)
   const wide = useWide()
   const still = useReducedMotion()
-  const [tip, turn] = useTip(6000)
-  const [dir, setDir] = useState(1)
-  const swipe = (_: unknown, info: PanInfo) => {
-    const d = info.offset.x < -36 || info.velocity.x < -300 ? 1 : info.offset.x > 36 || info.velocity.x > 300 ? -1 : 0
-    if (!d) return
-    setDir(d)
-    turn((n) => n + d)
-    // the cards turn on by themselves forwards again
-    setTimeout(() => setDir(1), 500)
-  }
-  const ready = v.ready
-  // the house comes into focus over the last part of the way, and the last of it is the moment it is ready
-  const sharp = ready ? 1 : Math.max(0, Math.min(1, (v.p - 0.35) / 0.65)) ** 2.5 * 0.6
-  const t = TIPS[tip]
-
+  const [tip] = useTip(6000)
+  const box = useRef<HTMLDivElement>(null)
+  // the picture comes into focus over the way, the last of it the moment it is ready
+  const blur = v.ready ? 0 : 3 + (1 - v.p) * 13
+  useEffect(() => {
+    if (!v.ready || still) return
+    const t = setTimeout(() => box.current && burst(box.current, { count: 60, spread: 100, power: 28 }), 650)
+    return () => clearTimeout(t)
+  }, [v.ready, still])
   return (
     <m.div
-      className={`v-loading-c${wide ? ' wide' : ''}${ready ? ' ready' : ''}`}
+      className={`v-loading-c${wide ? ' wide' : ''}${v.ready ? ' ready' : ''}`}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0, transition: { duration: 0.32, ease: [0.4, 0, 1, 1] } }}
-      transition={{ duration: 0.3 }}
+      exit={{ opacity: 0, scale: 1.04, transition: { duration: 0.32, ease: [0.4, 0, 1, 1] } }}
+      transition={{ duration: 0.4 }}
     >
-      <div className="lc-view" aria-hidden="true">
-        <img className="lc-soft" src={poster} alt="" />
-        <img className="lc-sharp" src={poster} alt="" style={{ opacity: sharp }} />
-        <span className="lc-shade" />
+      <div className="lc3-shot" aria-hidden="true">
+        <img className="lc3-pic" src={poster} alt="" style={{ filter: `blur(${blur}px) saturate(${0.75 + v.p * 0.35})` }} />
       </div>
-
-      <m.header className="lc-logo" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ ...SPRING.soft, delay: 0.05 }}>
-        <h1>3D Home</h1>
+      {/* beams of light through the window, turning slowly */}
+      <div className="lc3-beams" aria-hidden="true">
+        <i />
+        <i />
+        <i />
+      </div>
+      {/* dust in the light, at three depths */}
+      <div className="lc3-dust" aria-hidden="true">
+        {DUST.map((d) =>
+          Array.from({ length: d.n }, (_, i) => (
+            <i
+              key={`${d.depth}${i}`}
+              className={d.depth}
+              style={
+                {
+                  left: `${(i * 37 + d.size * 11) % 100}%`,
+                  top: `${(i * 53 + d.size * 7) % 100}%`,
+                  width: d.size,
+                  height: d.size,
+                  filter: d.blur ? `blur(${d.blur}px)` : undefined,
+                  animationDuration: `${d.time + (i % 4) * 2}s`,
+                  animationDelay: `${-((i * 3.7) % d.time)}s`,
+                } as CSSProperties
+              }
+            />
+          )),
+        )}
+      </div>
+      {/* the flare as the picture comes sharp */}
+      {v.ready && (
+        <div className="lc3-flare" aria-hidden="true">
+          <i />
+          <i />
+          <i />
+          <i />
+        </div>
+      )}
+      <span className="lc3-vignette" aria-hidden="true" />
+      {/* the black bars of a film, until it starts */}
+      <m.span
+        className="lc3-bar top"
+        aria-hidden="true"
+        initial={{ scaleY: 1 }}
+        animate={{ scaleY: v.ready ? 0 : 1 }}
+        transition={{ duration: 0.7, ease: [0.65, 0, 0.35, 1], delay: v.ready ? 0.25 : 0 }}
+      />
+      <m.span
+        className="lc3-bar bottom"
+        aria-hidden="true"
+        initial={{ scaleY: 1 }}
+        animate={{ scaleY: v.ready ? 0 : 1 }}
+        transition={{ duration: 0.7, ease: [0.65, 0, 0.35, 1], delay: v.ready ? 0.25 : 0 }}
+      />
+      <m.header
+        className="lc3-logo"
+        ref={box}
+        initial={{ opacity: 0, scale: 0.9, filter: 'blur(8px)' }}
+        animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+        transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1], delay: 0.2 }}
+      >
+        <Logo />
+        <span className="lc3-shine" aria-hidden="true">
+          3D Home
+        </span>
         <p>A cosy house and farm</p>
       </m.header>
-
-      <m.section className="lc-sheet paper" initial={wide ? { x: 60, opacity: 0 } : { y: 80, opacity: 0 }} animate={{ x: 0, y: 0, opacity: 1 }} transition={{ ...SPRING.sheet, delay: 0.08 }}>
-        <m.div className="lc-cards" drag="x" dragConstraints={{ left: 0, right: 0 }} dragElastic={0.35} onDragEnd={swipe} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
-          <AnimatePresence mode="popLayout" initial={false} custom={dir}>
-            <m.div
-              key={tip}
-              className="lc-card"
-              custom={dir}
-              variants={{ in: (d: number) => ({ opacity: 0, x: 60 * d }), on: { opacity: 1, x: 0 }, out: (d: number) => ({ opacity: 0, x: -60 * d }) }}
-              initial="in"
-              animate="on"
-              exit="out"
-              transition={{ ...SPRING.sheet }}
-            >
-              <img className="art" src={t.pic} alt="" draggable={false} />
-              <div>
-                <strong>{t.title}</strong>
-                <p>{t.text}</p>
-              </div>
-            </m.div>
-          </AnimatePresence>
-        </m.div>
-        <div className="lc-dots" aria-hidden="true">
-          {TIPS.map((_, i) => (
-            <i key={i} className={i === tip ? 'on' : undefined} />
-          ))}
-        </div>
-
-        <div className="lc-head">
-          <AnimatePresence mode="popLayout" initial={false}>
-            <m.strong key={v.line} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.22, ease: EASE.out }}>
-              {ready && <Check weight="bold" aria-hidden="true" />}
-              {v.line}
-            </m.strong>
-          </AnimatePresence>
-          {!ready && <span className="lc-pct">{v.left ?? `${v.pct}%`}</span>}
-        </div>
-        {v.again && <p className="lc-again">Lighter graphics this time: they suit this phone.</p>}
-
-        {/* the bar itself grows into the button once the game can be played: its box opens from the bar's height to the
-            button's, the sheet rising with it, and the word pops in */}
-        <m.div className="lc-go" initial={false} animate={{ height: ready ? 60 : 12 }} transition={still ? { duration: 0 } : SPRING.soft}>
-          {ready ? (
-            <m.button className="primary lc-play" {...PRESS} onClick={onPlay} initial={{ opacity: 0.6 }} animate={{ opacity: 1 }}>
-              <m.span className="lc-play-in" initial={{ opacity: 0, scale: 0.6 }} animate={{ opacity: 1, scale: 1 }} transition={{ ...SPRING.pop, delay: 0.16 }}>
-                <Play weight="fill" aria-hidden="true" />
-                {v.press}
-              </m.span>
-            </m.button>
-          ) : (
-            <div className="lc-bar" role="progressbar" aria-label={v.line} aria-valuemin={0} aria-valuemax={100} aria-valuenow={v.pct}>
-              <span style={{ width: `${Math.max(3, v.p * 100)}%` }} />
-            </div>
-          )}
-        </m.div>
-      </m.section>
+      <m.div className="lc3-low" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ ...SPRING.sheet, delay: 0.35 }}>
+        <Chrome v={v} tip={tip} onPlay={onPlay} tone="glass" />
+      </m.div>
     </m.div>
   )
 }

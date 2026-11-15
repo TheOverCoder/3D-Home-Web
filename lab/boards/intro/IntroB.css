@@ -99,3 +99,17 @@
   .v-intro-b .ib-house { width: 104px; height: 104px; }
   .v-intro-b .ib-go { min-height: 58px; }
 }
+
+/* round 3: the menu (Farms, Music, Settings, Credits) under the big button, in the sheet */
+.v-intro-b .ib-menu .v-intro-tile { min-height: 56px; }
+@media (orientation: landscape) and (max-height: 560px) {
+  .v-intro-b .ib-menu { gap: 6px; }
+  .v-intro-b .ib-menu .v-intro-tile { min-height: 46px; flex-direction: row; gap: 5px; font-size: 14px; }
+  .v-intro-b .ib-sheet { gap: 8px; padding: 10px 12px 12px; }
+  .v-intro-b .ib-stage { min-height: 84px; }
+  .v-intro-b .ib-goods { padding-bottom: 12px; }
+  .v-intro-b .ib-goods .item-pic .art { width: 42px; height: 42px; }
+  .v-intro-b .ib-house { width: 84px; height: 84px; }
+  .v-intro-b .ib-go { min-height: 52px; }
+  .v-intro-b .ib-menu .v-intro-tile svg { width: 20px; height: 20px; }
+}

@@ -1,0 +1,42 @@
+/* B · a sticker book (./GoalsB.tsx): six tiles in a grid; a reached one lifts and has a Claim strip. The sheet and its
+   motion: ../level/LevelSheet. */
+.v-goals-b .farm-panel { display: flex; flex-direction: column; gap: 12px; padding-top: 20px; }
+.v-goals-b .gb-head { display: flex; align-items: center; gap: 10px; }
+.v-goals-b .gb-head > .art { width: 40px; height: 40px; }
+.v-goals-b .gb-head h2 { margin: 0; font: 600 25px/1.1 var(--font-display); color: var(--ink); }
+.v-goals-b .gb-head .tag { margin-inline-end: auto; font-size: 15px; padding: 3px 12px; }
+.v-goals-b .gb-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.v-goals-b .gb-grid > li { display: grid; }
+
+.v-goals-b .gb-tile { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 168px; padding: 10px 6px 12px; border-radius: 20px; background: var(--paper-2); box-shadow: 0 3px 0 var(--paper-3); text-align: center; }
+.v-goals-b .gb-tile.done { background: #fff; box-shadow: 0 6px 0 color-mix(in oklab, var(--leaf) 40%, var(--paper-3)), 0 10px 18px rgba(40, 90, 40, 0.18), 0 0 0 2px color-mix(in oklab, var(--leaf) 45%, transparent); padding-bottom: 54px; }
+.v-goals-b .gb-lift { display: block; }
+.v-goals-b .gb-pic { position: relative; display: grid; place-items: center; width: 70px; height: 70px; }
+.v-goals-b .gb-pic .item-pic .art { width: 40px; height: 40px; }
+.v-goals-b .gb-words { font: 700 14px/1.2 var(--font-text); color: var(--ink); }
+.v-goals-b .gb-far { padding: 1px 8px; border-radius: 999px; background: color-mix(in oklab, var(--xp) 12%, var(--paper)); color: var(--xp-lip); font: 800 13px/1.4 var(--font-text); white-space: nowrap; }
+.v-goals-b .warm .gb-far { background: color-mix(in oklab, var(--sun) 45%, var(--paper)); color: color-mix(in oklab, var(--berry) 75%, var(--ink)); }
+.v-goals-b .gb-far.done { background: var(--leaf); color: #fff; }
+/* what it gives: a sticker on the tile's corner */
+.v-goals-b .gb-sticker { position: absolute; top: 6px; right: 6px; display: inline-flex; align-items: center; gap: 2px; padding: 2px 7px 2px 3px; border-radius: 999px; background: var(--paper); box-shadow: 0 2px 0 var(--paper-3); font: 900 13px/1 var(--font-text); color: var(--ink); rotate: 8deg; }
+.v-goals-b .gb-sticker img { width: 18px; height: 18px; }
+/* reached: a Claim strip across the tile's foot */
+.v-goals-b .gb-claim { position: absolute; left: 6px; right: 6px; bottom: 6px; display: flex; align-items: center; justify-content: center; gap: 4px; min-height: 44px; border: 0; border-radius: 14px; background: var(--leaf); color: #fff; box-shadow: 0 3px 0 var(--leaf-lip); font: 600 16px/1 var(--font-display); }
+.v-goals-b .gb-claim svg { width: 18px; height: 18px; }
+
+/* a phone upright and narrow: two across, a little shorter */
+@media (max-width: 420px) {
+  .v-goals-b .gb-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .v-goals-b .gb-tile { min-height: 0; padding-top: 8px; }
+}
+/* a phone on its side: three across, tight */
+@media (orientation: landscape) and (max-height: 560px) {
+  .v-goals-b .farm-panel { gap: 8px; padding-top: 12px; }
+  .v-goals-b .gb-head > .art { width: 32px; height: 32px; }
+  .v-goals-b .gb-head h2 { font-size: 22px; }
+  .v-goals-b .gb-tile { min-height: 0; padding: 6px 4px 8px; gap: 2px; }
+  .v-goals-b .gb-tile.done { padding-bottom: 50px; }
+  .v-goals-b .gb-pic { width: 54px; height: 54px; }
+  .v-goals-b .gb-pic .item-pic .art { width: 30px; height: 30px; }
+  .v-goals-b .gb-words { font-size: 13px; }
+}

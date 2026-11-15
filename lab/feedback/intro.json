@@ -1,0 +1,29 @@
+{
+  "board": "intro",
+  "read": "2026-11-14",
+  "verdicts": {},
+  "notes": [
+    {
+      "variant": "a",
+      "state": "new",
+      "kind": "sideways",
+      "text": "כתבתה שזה מסך פתיחה זה לא נראה כמו מסך פתיחה התיאורים של מה העיצוב הזה לא ברורים צריך שזה יהיה ברור מה זה ואם זה מסך פתיחה חסר דברים אם לא שיהיה ברור איזה מסך פתיחה זה"
+    }
+  ],
+  "requests": [
+    "action",
+    "edit",
+    "goals",
+    "intro",
+    "loading",
+    "market",
+    "orders",
+    "saves",
+    "seeds",
+    "shop",
+    "store",
+    "tag",
+    "top",
+    "touch"
+  ]
+}

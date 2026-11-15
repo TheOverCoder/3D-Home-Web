@@ -56,7 +56,7 @@ const farm = (slot: Slot, points: number, o: Pick<SlotSummary, 'coins' | 'earned
 
 /** The first farm after an evening away: two beds of tomatoes and one of strawberries ripe, the nest, the cow and the
  *  two sheep full, four buyers at the gate and an order on the board. */
-const evening = farm(
+export const evening = farm(
   1,
   xpAt(7) + 40,
   { coins: 284, earned: 1460, sold: 132, growing: 6, animals: 5 },
@@ -75,7 +75,7 @@ const evening = farm(
 )
 
 /** A bigger farm left for a short break, and an older one left for two days. */
-const big = farm(
+export const big = farm(
   2,
   xpAt(12) + 90,
   { coins: 1180, earned: 4850, sold: 640, growing: 8, animals: 9 },
@@ -91,7 +91,7 @@ const big = farm(
     orders: 2,
   },
 )
-const small = farm(
+export const small = farm(
   1,
   xpAt(4) + 20,
   { coins: 64, earned: 210, sold: 31, growing: 2, animals: 5 },
@@ -108,9 +108,9 @@ const small = farm(
 )
 
 export const STATES: { id: string; name: string; data: IntroState }[] = [
-  { id: 'new', name: 'שחקן חדש: אין עדיין חווה', data: { slot: 1, farms: [emptyFarm(1), emptyFarm(2), emptyFarm(3)] } },
-  { id: 'back', name: 'שחקן חוזר: דברים מחכים בחווה', data: { slot: 1, farms: [evening, emptyFarm(2), emptyFarm(3)] } },
-  { id: 'many', name: 'כמה חוות: לבחור באיזו לשחק', data: { slot: 2, farms: [small, big, emptyFarm(3)] } },
+  { id: 'new', name: 'שחקן חדש – פותח את המשחק בפעם הראשונה, עוד אין לו חווה', data: { slot: 1, farms: [emptyFarm(1), emptyFarm(2), emptyFarm(3)] } },
+  { id: 'back', name: 'שחקן חוזר – חזר אחרי 3 שעות, ובחווה מחכים לו דברים', data: { slot: 1, farms: [evening, emptyFarm(2), emptyFarm(3)] } },
+  { id: 'many', name: 'שחקן עם שתי חוות שמורות – בוחר באיזו לשחק', data: { slot: 2, farms: [small, big, emptyFarm(3)] } },
 ]
 
 /** A farm started afresh (the save list's Clear): empty, and the button plays a new one. */

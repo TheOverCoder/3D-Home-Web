@@ -1,0 +1,6 @@
+/* What the order board's looks share: the head. The sheet and its motion: ../level/LevelSheet. Every rule under .v-orders. */
+.v-orders .farm-panel { display: flex; flex-direction: column; gap: 12px; padding-top: 20px; }
+.v-orders .item-pic .qty { font-variant-numeric: tabular-nums; }
+@media (orientation: landscape) and (max-height: 560px) {
+  .v-orders .farm-panel { gap: 8px; padding-top: 12px; }
+}

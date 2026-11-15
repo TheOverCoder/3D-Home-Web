@@ -304,6 +304,16 @@
   }
 }
 
+/* many proposals (six letters or more, today with them): upright, the switch takes a row of its own under the close and
+   the state, so every letter keeps a finger's width instead of sliding under the state */
+.play:not(.wide) .dock:not(.idle):has(.d-seg > .d-var:nth-child(6)) {
+  grid-template-columns: 46px minmax(0, 1fr);
+  grid-template-areas:
+    'close state'
+    'seg seg'
+    'judge judge';
+}
+
 /* nothing open: the list, and what to do */
 .dock.idle {
   grid-template-columns: auto minmax(0, 1fr);

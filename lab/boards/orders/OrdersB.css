@@ -1,0 +1,44 @@
+/* B · crates to pack (./OrdersB.tsx): a crate for each order with a place per good; sideways, a row that slides */
+.v-orders-b .ob-head { display: flex; align-items: center; gap: 10px; }
+.v-orders-b .ob-head > .art { width: 40px; height: 40px; }
+.v-orders-b .ob-head h2 { margin: 0; font: 600 25px/1.1 var(--font-display); color: var(--ink); }
+.v-orders-b .ob-head .tag { margin-inline-end: auto; font-size: 15px; }
+.v-orders-b .ob-row { display: flex; flex-direction: column; gap: 10px; }
+
+/* the crate: a label, the wooden box with its places, the press */
+.v-orders-b .ob-crate { --wood: color-mix(in oklab, var(--edge) 70%, var(--sun)); --wood-lip: color-mix(in oklab, var(--edge) 80%, var(--ink)); display: flex; flex-direction: column; gap: 6px; padding: 6px 10px 8px; border-radius: 20px; background: var(--paper-2); box-shadow: 0 3px 0 var(--paper-3); }
+.v-orders-b .ob-label { display: flex; align-items: center; gap: 8px; }
+.v-orders-b .ob-count { padding: 2px 10px; border-radius: 999px; background: var(--paper); font: 900 15px/1.4 var(--font-text); color: var(--ink); font-variant-numeric: tabular-nums; }
+.v-orders-b .done .ob-count { background: var(--leaf); color: #fff; }
+.v-orders-b .ob-pay { display: inline-flex; align-items: center; gap: 4px; margin-inline-end: auto; }
+.v-orders-b .ob-pay .farm-coins { font: 900 17px/1 var(--font-text); }
+.v-orders-b .ob-pay .art { width: 26px; height: 26px; }
+.v-orders-b .ob-no { display: grid; place-items: center; width: 44px; height: 44px; margin: -6px -6px -6px 0; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--ink-2); }
+.v-orders-b .ob-no svg { width: 18px; height: 18px; }
+.v-orders-b .ob-box { position: relative; padding: 6px; border-radius: 12px; background: repeating-linear-gradient(0deg, var(--wood) 0 14px, var(--wood-lip) 14px 16px); box-shadow: inset 0 0 0 3px var(--wood-lip), 0 3px 0 var(--wood-lip); overflow: hidden; }
+.v-orders-b .ob-cells { display: grid; grid-template-columns: repeat(auto-fill, minmax(28px, 1fr)); gap: 3px; }
+.v-orders-b .ob-cell { display: grid; place-items: center; aspect-ratio: 1; border-radius: 8px; background: rgba(60, 35, 10, 0.28); box-shadow: inset 0 2px 3px rgba(40, 24, 10, 0.3); }
+.v-orders-b .ob-cell img { width: 80%; height: 80%; object-fit: contain; opacity: 0.28; filter: grayscale(0.6); }
+.v-orders-b .ob-cell.full { background: color-mix(in oklab, var(--paper) 85%, var(--sun)); box-shadow: 0 2px 0 rgba(60, 35, 10, 0.25); }
+.v-orders-b .ob-cell.full img { opacity: 1; filter: none; }
+/* the lid: slides down over the crate once it is all in */
+.v-orders-b .ob-lid { position: absolute; inset: 0; display: grid; place-items: center; border-radius: 12px; background: repeating-linear-gradient(90deg, var(--wood) 0 26px, var(--wood-lip) 26px 28px); box-shadow: inset 0 0 0 3px var(--wood-lip); }
+.v-orders-b .ob-lid b { padding: 4px 14px; border-radius: 6px; background: var(--leaf); color: #fff; font: 600 18px/1.2 var(--font-display); letter-spacing: 0.04em; rotate: -4deg; box-shadow: 0 2px 0 var(--leaf-lip); }
+.v-orders-b .ob-send,
+.v-orders-b .ob-put { min-height: 46px; }
+.v-orders-b .ob-send { font-size: 19px; gap: 8px; }
+.v-orders-b .ob-wait { display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 0 16px; border-radius: 20px; border: 2px dashed var(--paper-3); color: var(--ink-2); font: 700 15px/1.2 var(--font-text); }
+.v-orders-b .ob-wait svg { width: 22px; height: 22px; }
+.v-orders-b .ob-foot { display: flex; align-items: center; gap: 8px; margin: 0; font: 700 15px/1.2 var(--font-text); color: var(--ink-2); }
+.v-orders-b .ob-foot .art { width: 28px; height: 28px; }
+
+/* a phone on its side: the crates in a row that slides, each a column */
+@media (orientation: landscape) and (max-height: 560px) {
+  .v-orders-b .ob-head > .art { width: 32px; height: 32px; }
+  .v-orders-b .ob-head h2 { font-size: 22px; }
+  .v-orders-b .ob-row { flex-direction: row; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 4px; }
+  .v-orders-b .ob-crate,
+  .v-orders-b .ob-wait { flex: 0 0 min(220px, 46%); scroll-snap-align: start; }
+  .v-orders-b .ob-cells { grid-template-columns: repeat(auto-fill, minmax(26px, 1fr)); }
+  .v-orders-b .ob-foot { display: none; }
+}
