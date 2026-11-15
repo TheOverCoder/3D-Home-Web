@@ -2,11 +2,17 @@
 import { test, expect, type Game } from './helpers'
 
 // The rest of the farm: milking a cow, the mill (wheat → flour), the oven (a lemon cake), buying more land,
-// sugar cane from the seed panel and a buyer for a cake. Time is fast-forwarded with __home.farm.tick.
+// sugar cane from the seed panel and a buyer for a cake. Time is fast-forwarded with __home.farm.tick. (A machine's
+// queue as a whole — jobs of different kinds, one after another, another place bought — is 32-machine-queue's.)
 
 const until = (game: Game, fn: () => boolean, timeout = 30_000) => game.page.waitForFunction(fn, null, { timeout, polling: 200 })
 const nearbyIs = (game: Game, id: string) => game.page.waitForFunction((want) => (window as any).__home.useHome.getState().nearby?.id === want, id, { timeout: 60_000, polling: 250 })
 const label = (game: Game) => game.page.evaluate(() => (window as any).__home.useHome.getState().nearby?.label as string | undefined)
+const panelIs = (game: Game, id: string) =>
+  game.page.waitForFunction((want) => (window as any).__home.useHome.getState().panel?.kind === 'machine' && (window as any).__home.useHome.getState().panel.id === want, id, {
+    timeout: 30_000,
+    polling: 200,
+  })
 const inv = (game: Game) => game.page.evaluate(() => ({ ...(window as any).__home.farm.state.inv }))
 const reset = (game: Game, extra: Record<string, number> = {}, coins?: number) =>
   game.page.evaluate(
@@ -37,36 +43,36 @@ test.describe('farm kitchen and animals', () => {
     expect(await page.evaluate(() => (window as any).__home.farm.state.producers.cows.stock[0])).toBe(0)
   })
 
-  test('the mill grinds wheat into flour, once asked: a second press by mistake uses nothing', async ({ game }) => {
+  test('the mill grinds wheat into flour: the button opens its queue (nothing goes in on the button), a sheaf a job', async ({ game }) => {
     await game.ready('farm')
     const { page } = game
     await reset(game, { wheat: 3 })
     await game.teleport(10.9, 1.4, 10.6, -Math.PI / 2, -0.45)
-    await nearbyIs(game, 'farm-mill-wheat')
-    expect(await label(game)).toMatch(/^Mill 3 /)
-    // one press asks first: a card names what goes in, and how many
+    await nearbyIs(game, 'farm-mill')
+    expect(await page.evaluate(() => (window as any).__home.useHome.getState().nearby)).toMatchObject({ label: 'Mill · add to the queue', icon: { verb: 'make', item: 'flour', word: 'Mill' } })
+    // one press opens the mill's queue: nothing goes in yet
     await page.keyboard.press('KeyE')
-    await until(game, () => (window as any).__home.useHome.getState().confirm?.id === 'farm-mill-wheat')
-    expect(await page.evaluate(() => (window as any).__home.useHome.getState().confirm.inputs)).toEqual([{ item: 'wheat', count: 3 }])
-    await expect(page.locator('.confirm-card .confirm-inputs .qty')).toHaveText(['3'])
-    // the button again only closes it
-    await page.keyboard.press('KeyE')
-    await until(game, () => (window as any).__home.useHome.getState().confirm === null)
+    await panelIs(game, 'mill')
+    expect(await page.evaluate(() => (window as any).__home.useHome.getState().panel)).toEqual({ kind: 'machine', id: 'mill' })
     expect((await inv(game)).wheat).toBe(3)
     expect(await page.evaluate(() => (window as any).__home.farm.millStage())).toBe('idle')
-    // asked again, Enter goes ahead
-    await page.keyboard.press('KeyE')
-    await until(game, () => (window as any).__home.useHome.getState().confirm !== null)
-    await page.keyboard.press('Enter')
-    await until(game, () => (window as any).__home.farm.millStage() === 'working')
+    // wheat is its second recipe: key 2 puts a sheaf in, three times (three places)
+    for (let k = 1; k <= 3; k++) {
+      await page.keyboard.press('Digit2')
+      await page.waitForFunction((n) => (window as any).__home.farm.state.machines.mill.jobs.length === n, k, { timeout: 10_000, polling: 100 })
+    }
+    await expect(page.locator('.machine-queue .machine-slot')).toHaveCount(3)
     expect((await inv(game)).wheat).toBe(0)
+    expect(await page.evaluate(() => (window as any).__home.farm.millStage())).toBe('working')
+    await page.keyboard.press('Escape')
+    await until(game, () => (window as any).__home.useHome.getState().panel === null)
     await page.evaluate(() => (window as any).__home.farm.tick(15))
     await until(game, () => ((window as any).__home.useHome.getState().nearby?.label ?? '').startsWith('Collect 3 bags of flour'))
     await page.keyboard.press('KeyE')
     await until(game, () => (window as any).__home.farm.state.inv.flour === 3)
   })
 
-  test('the oven offers a cake only with everything for it, says what is missing, and asks before it bakes', async ({ game }) => {
+  test('the oven offers a cake only with everything for it, says what is missing, and bakes it from its queue', async ({ game }) => {
     await game.ready('farm')
     const { page } = game
     // short of a pumpkin for the pie (the cake nearest to ready): nothing to press, a status that shows what is missing
@@ -79,20 +85,25 @@ test.describe('farm kitchen and animals', () => {
     })
     expect(state.actions).toEqual([])
     expect(state.status).toMatchObject({ label: 'Oven · a pumpkin pie needs', needs: [{ item: 'pumpkin', count: 1 }] })
-    // with two lemons, the lemon cake is on offer: one press shows the card with all five things it takes
+    // with two lemons, the lemon cake can go in: the button opens the oven's queue, where the cake shows its five
+    // ingredients, and a tap on it puts it in
     await page.evaluate(() => {
       const f = (window as any).__home.farm
       f.state.inv.lemon = 2
     })
-    await nearbyIs(game, 'farm-oven-lemon_cake')
-    expect(await label(game)).toBe('Bake a lemon cake')
+    await nearbyIs(game, 'farm-oven')
+    expect(await label(game)).toBe('Bake · add to the queue')
     await page.keyboard.press('KeyE')
-    await until(game, () => (window as any).__home.useHome.getState().confirm?.item === 'lemon_cake')
-    await expect(page.locator('.confirm-card .confirm-inputs .item-pic')).toHaveCount(5)
-    await page.locator('.confirm-card .btn.leaf').click()
+    await panelIs(game, 'oven')
+    const cake = page.locator('.machine-recipes .farm-card', { hasText: 'Lemon cake' })
+    await expect(cake.locator('.farm-card-tags .tag.ok')).toHaveCount(5)
+    await expect(page.locator('.machine-recipes .farm-card:not(:disabled)')).toHaveCount(1)
+    await cake.click()
     await until(game, () => (window as any).__home.farm.ovenStage() === 'baking')
     const used = await inv(game)
     expect([used.flour, used.sugar, used.egg, used.milk, used.lemon]).toEqual([0, 0, 0, 0, 0])
+    await page.keyboard.press('Escape')
+    await until(game, () => (window as any).__home.useHome.getState().panel === null)
     await page.evaluate(() => (window as any).__home.farm.tick(31))
     await until(game, () => ((window as any).__home.useHome.getState().nearby?.label ?? '').startsWith('Take out the lemon cake'))
     await page.keyboard.press('KeyE')

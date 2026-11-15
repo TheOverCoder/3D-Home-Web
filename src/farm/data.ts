@@ -146,23 +146,25 @@ export const inputOf = (r: Recipe) => Object.keys(r.needs)[0] as ProduceId
 
 export type MachineId = 'mill' | 'loom' | 'oven'
 
-/** What a machine's button says, about `n` batches of a recipe (`left`: the time to go, as 1:05). */
+/** What a machine's button says, about `n` jobs of a recipe (`left`: the time to go, as 1:05). */
 export interface MachineWords {
-  /** the word on the button, and on the card that asks before anything goes in (Bake, Mill, Weave) */
+  /** the word on the button that opens its queue, and on the queue's buttons that add a job (Bake, Mill, Weave) */
   word: string
-  load: (r: Recipe, n: number) => string
+  /** `n` jobs under way or waiting, all done in `left` */
   working: (r: Recipe, n: number, left: string) => string
+  /** `n` jobs done, to collect */
   done: (r: Recipe, n: number) => string
-  /** with nothing to load (`nearest`: the recipe nearest to ready) */
+  /** with nothing to work on (`nearest`: the recipe nearest to ready) */
   idle: (nearest: Recipe) => string
-  /** pressed while it works */
-  busy: (r: Recipe, left: string) => string
 }
 
 /** Something that takes ingredients, works on them a while, then has what it made to take out: the mill, the loom and
- *  the oven. src/farm/state.ts runs them all the same way and src/farm/useMachine.ts puts them on the action button;
- *  everything that differs between them is here. */
+ *  the oven. Each works through a queue of jobs, one good each (src/farm/machines.ts); src/farm/state.ts runs them all
+ *  the same way and src/farm/useMachine.ts puts them on the action button; everything that differs between them is
+ *  here. */
 export interface MachineDef {
+  /** what it is called, on its panel (Mill, Loom, Oven) */
+  name: string
   /** where it stands on a new farm: it is a movable place of the edit mode (src/farm/layout.ts, PLACES), and where it
    *  stands now is the farm's layout's */
   x: number
@@ -173,19 +175,17 @@ export interface MachineDef {
   aim: [number, number, number]
   sparkle: [number, number, number]
   reach: number
-  /** how many batches it takes at once: as many as it has room for and the basket gives */
-  capacity: number
-  /** with more than one, each has its own offer on the button (a cake, wheat or cane) */
+  /** what it makes, each a job of its own in the queue (a cake, flour from wheat, sugar from cane) */
   recipes: Recipe[]
   words: MachineWords
   /** with nothing to load, its status shows this good and what it makes from what (the mill: flour from wheat, sugar
    *  from cane); without one, the recipe nearest to ready and what it still needs (the oven) */
   picture?: ProduceId
-  /** as it is loaded, and now and then while it works (every `every` seconds and up to `spread` more, the first one
-   *  that long after it is loaded) if you are near. Every machine dings as it is done, and rustles as you take out
-   *  what it made. */
+  /** as a job goes into its queue, and now and then while it works (every `every` seconds and up to `spread` more, the
+   *  first one that long after it starts) if you are near. Every machine dings as each job is done, and rustles as you
+   *  take out what it made. */
   sounds: { load: FarmSound; work?: { sound: FarmSound; every: number; spread: number } }
-  /** what the farm's stats count of it, one for each batch taken out (the cakes baked) */
+  /** what the farm's stats count of it, one for each job taken out (the cakes baked) */
   counts?: 'baked'
 }
 
@@ -194,13 +194,13 @@ export const MACHINES: Record<MachineId, MachineDef> = {
   // grinds wheat into flour (each of the two is in reach on its own side: a little short of the 2.57 m between where
   // you stand at the mill and at the oven)
   mill: {
+    name: 'Mill',
     x: 12.3,
     z: 10.6,
     stand: [-1.25, 1.0, 0],
     aim: [-0.15, 0.95, 0],
     sparkle: [-0.15, 1.07, 0],
     reach: 2.5,
-    capacity: 6,
     recipes: [
       { id: 'sugarcane', needs: { sugarcane: 1 }, makes: 'sugar', seconds: 4 },
       { id: 'wheat', needs: { wheat: 1 }, makes: 'flour', seconds: 4 },
@@ -208,52 +208,46 @@ export const MACHINES: Record<MachineId, MachineDef> = {
     picture: 'flour',
     words: {
       word: 'Mill',
-      load: (r, n) => `Mill ${count(inputOf(r), n)}`,
       working: (r, n, left) => `Milling ${count(inputOf(r), n)} · ${left}`,
       done: (r, n) => `Collect ${count(r.makes, n)}`,
       idle: () => 'Mill · bring wheat for flour or sugar cane for sugar',
-      busy: (_r, left) => `${left} to go`,
     },
     sounds: { load: 'creak', work: { sound: 'creak', every: 1.1, spread: 0.6 } },
   },
   // the loom stands beside the sheep fold, facing the house: fleeces go in, cloth comes out
   loom: {
+    name: 'Loom',
     x: 4.9,
     z: -10.3,
     stand: [0, 1.0, 1.25],
     aim: [0, 0.95, 0.2],
     sparkle: [0, 1.05, 0.2],
     reach: 2.5,
-    capacity: 4,
     recipes: [{ id: 'wool', needs: { wool: 1 }, makes: 'cloth', seconds: 6 }],
     picture: 'cloth',
     words: {
       word: 'Weave',
-      load: (r, n) => `Weave ${count(inputOf(r), n)} into cloth`,
       working: (r, n, left) => `Weaving ${count(r.makes, n)} · ${left}`,
       done: (r, n) => `Take ${count(r.makes, n)} off the loom`,
       idle: () => 'Loom · shear the sheep for fleeces to weave',
-      busy: (_r, left) => `${left} to go`,
     },
     sounds: { load: 'loom', work: { sound: 'loom', every: 1.4, spread: 0.5 } },
   },
   // beside the mill, the clay oven bakes one cake at a time from the farm's flour, sugar, eggs, milk and fruit
   oven: {
+    name: 'Oven',
     x: 9.9,
     z: 11.75,
     stand: [-1.15, 1.0, 0],
     aim: [-0.72, 0.92, 0],
     sparkle: [-0.72, 1.04, 0],
     reach: 2.4,
-    capacity: 1,
     recipes: RECIPES,
     words: {
       word: 'Bake',
-      load: (r) => `Bake a ${produceById(r.makes).name}`,
-      working: (r, _n, left) => `Baking a ${produceById(r.makes).name} · ready in ${left}`,
-      done: (r) => `Take out the ${produceById(r.makes).name}`,
+      working: (r, n, left) => `Baking ${n === 1 ? `a ${produceById(r.makes).name}` : count(r.makes, n)} · ready in ${left}`,
+      done: (r, n) => `Take out ${n === 1 ? `the ${produceById(r.makes).name}` : count(r.makes, n)}`,
       idle: (nearest) => `Oven · a ${produceById(nearest.makes).name} needs`,
-      busy: (r, left) => `The ${produceById(r.makes).name} needs ${left} more`,
     },
     sounds: { load: 'oven' },
     counts: 'baked',
@@ -585,10 +579,12 @@ export const NAMES = ['Maya', 'Noa', 'Daniel', 'Yael', 'Omer', 'Tamar', 'Eitan',
 
 // ───────────────────────────── levels: what each thing you do is worth ─────────────────────────────
 
-/** XP for each thing a player does (src/farm/state.ts, gainXp): for every bed, good or batch it touched. A sale is
+/** XP for each thing a player does (src/farm/state.ts, gainXp): for every bed, good or job it touched. A sale is
  *  worth its coins instead (`xpForSale`, src/farm/xp.ts: one for every five coins, at least one). Nothing that can be
- *  undone for free gives any (furniture, moving places, stocking shelves, prices, declining). */
-export const XP_FOR = { plant: 1, water: 1, harvest: 2, collect: 1, load: 1, make: 2, build: 5, goal: 5, shop: 25, order: 5, home: 40 } as const
+ *  undone for free gives any (furniture, moving places, stocking shelves, prices, declining, a job put into a machine's
+ *  queue: it can be taken out again with its ingredients; a machine's job gives its XP as it is collected, more at a
+ *  higher level of the machine). */
+export const XP_FOR = { plant: 1, water: 1, harvest: 2, collect: 1, make: 2, build: 5, goal: 5, shop: 25, order: 5, home: 40 } as const
 export type XpAction = keyof typeof XP_FOR
 /** From level L to the next takes `step · L` XP, so each level takes longer than the one before; reaching level L pays
  *  `reward · L` coins (claimed in the level's card). `max` is the top level: past it XP still counts, the level stays. */

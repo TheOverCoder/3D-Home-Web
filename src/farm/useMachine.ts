@@ -2,25 +2,24 @@ import { useEffect, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { MathUtils } from 'three'
 import { farmSound, placeSound } from '../audio/sound'
-import { farmFx } from '../fx/fx'
 import { playGesture } from '../lib/gestures'
 import { registerInteractable, type ActionIcon, type InteractableDef } from '../lib/interaction'
 import type { Point3 } from '../lib/playerState'
 import { useHome } from '../store'
-import { MACHINES, count, inputOf, produceById, type MachineId, type ProduceId, type Recipe } from './data'
+import { MACHINES, STORES, count, inputOf, storeOf, type MachineId, type ProduceId, type Recipe } from './data'
 import { usePlacement } from './edit'
-import { batches, clockText, collectMachine, farm, loadMachine, machineCollectable, machinePoint, machineRecipe, machineSecondsLeft, machineStage } from './state'
+import { canAddJob, clockText, collectMachine, farm, machineCollectable, machineDone, machinePoint, machineSecondsLeft, machineStage, machineToDo } from './state'
 
-// A machine on the action button (MACHINES in src/farm/data.ts): the mill, the loom and the oven. Its main action takes
-// out what it made, or says how long it still works; with nothing to work on, a status says what it wants. A recipe it
-// can make now is an offer of its own (each cake, wheat or cane; a machine of one recipe offers it on the main action):
-// one press asks first — a card over the button with what goes in — and only then loads it. It dings when it is done
-// and makes its working sound now and then; the work level it gives back (0 … 1, eased) drives its moving parts.
+// A machine on the action button (MACHINES in src/farm/data.ts): the mill, the loom and the oven, each working through
+// a queue of jobs. The button takes out what is done; otherwise, while something can go into the queue, it opens the
+// machine's panel (its queue, what it makes, its level): nothing goes in on the button itself. With nothing to add, a
+// status says how long the queue still works, that the barn is full, or what the machine wants. A gear on it opens the
+// panel whenever you look at it. It dings as each job is done and makes its working sound now and then; the work
+// level it gives back (0 … 1, eased) drives its moving parts.
 
 /** Whole seconds to go, rounded as the clock in the labels is. */
 const whole = (seconds: number) => Math.max(0, Math.ceil(seconds))
-const cap = (s: string) => s[0].toUpperCase() + s.slice(1)
-/** A point round where a machine stands (in its own frame: it turns with its place), in the world. */
+/** A point round where a machine stands (in its own frame: it turns with its place, src/farm/layout.ts), in the world. */
 const around = (id: MachineId, at: [number, number, number]): Point3 => machinePoint(id, at)
 /** Where a machine's sounds come from: its middle, where it stands now. */
 const middle = (id: MachineId) => machinePoint(id, [0, 0, 0])
@@ -38,136 +37,100 @@ function nearest(id: MachineId) {
   return MACHINES[id].recipes.reduce((best, r) => (short(r) < short(best) ? r : best))
 }
 
-/** The card over the button that asks before anything goes in: what comes out and how many, how long, what it takes. */
-function ask(id: MachineId, action: string, r: Recipe) {
-  const def = MACHINES[id]
-  const n = batches(id, r)
-  const made = produceById(r.makes)
-  useHome.getState().setConfirm({
-    id: action,
-    item: r.makes,
-    count: n,
-    // one at a time (a cake): its name; else what it makes, many of
-    title: cap(def.capacity === 1 ? made.name : made.plural),
-    seconds: n * r.seconds,
-    inputs: Object.entries(r.needs).map(([item, k]) => ({ item, count: (k ?? 0) * n })),
-    word: def.words.word,
-    go: () => {
-      if (!loadMachine(id, r.id)) return
-      const { pan, near } = placeSound(middle(id).x, middle(id).z)
-      farmSound(def.sounds.load, pan, near)
-      playGesture('interact')
-    },
-  })
+/** The first recipe that can go into the queue now (null: none). */
+const addable = (id: MachineId) => MACHINES[id].recipes.find((r) => canAddJob(id, r)) ?? null
+
+/** Goods with how many, in words: "3 lemon cakes, 1 carrot cake". */
+const listed = (goods: { item: ProduceId; count: number }[]) => goods.map((g) => count(g.item, g.count)).join(', ')
+
+/** What collecting takes now: the first good done (the picture), how many in all that fit, and the others. */
+function collectIcon(id: MachineId): ActionIcon {
+  const [first, ...rest] = machineDone(id)
+  const n = machineCollectable(id)
+  return { verb: 'pick', item: first.item, count: rest.length ? first.count : n, also: rest.length ? rest.map((g) => ({ item: g.item, count: g.count })) : undefined }
 }
 
-/** A recipe the machine can make now, from what is in the basket: its own offer (a machine of several recipes). */
-function offer(id: MachineId, r: Recipe): InteractableDef {
-  const def = MACHINES[id]
-  const action = `farm-${id}-${r.id}`
-  return {
-    id: action,
-    position: around(id, def.stand),
-    aim: around(id, def.aim),
-    radius: def.reach,
-    enabled: () => machineStage(id) === 'idle' && batches(id, r) > 0,
-    label: () => def.words.load(r, batches(id, r)),
-    // what comes out, and how many
-    icon: () => ({ verb: 'make', item: r.makes, word: def.words.word, count: batches(id, r) }),
-    run: () => ask(id, action, r),
-  }
-}
-
-/** The machine's own action: take out what it made, how long it still works, or (a machine of one recipe) load it. */
 function main(id: MachineId): InteractableDef {
   const def = MACHINES[id]
   const action = `farm-${id}`
-  // a machine of one recipe loads it from here; one of several has an offer for each (above)
-  const loadable = () => {
-    const r = def.recipes.length === 1 ? def.recipes[0] : null
-    return r && machineStage(id) === 'idle' && batches(id, r) > 0 ? r : null
-  }
+  const open = () => useHome.getState().openPanel({ kind: 'machine', id })
   return {
     id: action,
     position: around(id, def.stand),
     aim: around(id, def.aim),
     radius: def.reach,
-    // idle with something to make, each recipe's own offer is on the button instead
-    enabled: def.recipes.length === 1 ? undefined : () => machineStage(id) !== 'idle' || !def.recipes.some((r) => batches(id, r) > 0),
     label: () => {
-      const s = machineStage(id)
-      const m = farm.machines[id]
-      if (s === 'done') return machineCollectable(id) ? def.words.done(machineRecipe(id)!, machineCollectable(id)) : `Barn full · ${count(machineRecipe(id)!.makes, m.ready)} waiting`
-      if (s === 'working') return def.words.working(machineRecipe(id)!, m.count, clockText(machineSecondsLeft(id)))
-      const r = loadable()
-      return r ? def.words.load(r, batches(id, r)) : def.words.idle(nearest(id))
+      const done = machineDone(id)
+      if (machineCollectable(id)) return done.length === 1 ? def.words.done(done[0].recipe, machineCollectable(id)) : `Collect ${listed(done)}`
+      if (addable(id)) return `${def.words.word} · add to the queue`
+      const todo = machineToDo(id)
+      const left = clockText(machineSecondsLeft(id))
+      if (todo.length === 1) return def.words.working(todo[0].recipe, todo[0].count, left)
+      if (todo.length) return `${def.name} · ${listed(todo)} · ${left}`
+      if (done.length) return `${STORES[storeOf(done[0].item)].name} full · ${listed(done)} waiting`
+      return def.words.idle(nearest(id))
     },
-    needs: () => (machineStage(id) === 'idle' && !def.picture ? lacking(nearest(id).needs) : null),
+    needs: () => (machineStage(id) === 'idle' && !addable(id) && !def.picture ? lacking(nearest(id).needs) : null),
     icon: (): ActionIcon => {
-      const s = machineStage(id)
-      const m = farm.machines[id]
-      if (s === 'done')
-        return machineCollectable(id) ? { verb: 'pick', item: machineRecipe(id)!.makes, count: machineCollectable(id) } : { verb: 'wait', item: machineRecipe(id)!.makes, count: m.ready, full: 'barn' }
-      if (s === 'working') return { verb: 'wait', item: machineRecipe(id)!.makes, count: m.count, seconds: whole(machineSecondsLeft(id)) }
-      const r = loadable()
-      if (r) return { verb: 'make', item: r.makes, word: def.words.word, count: batches(id, r) }
+      if (machineCollectable(id)) return collectIcon(id)
+      const r = addable(id)
+      // what one of its jobs makes: the press opens the queue, nothing goes in yet
+      if (r) return { verb: 'make', item: r.makes, word: def.words.word }
+      const todo = machineToDo(id)
+      if (todo.length) return { verb: 'wait', item: todo[0].item, count: todo.reduce((n, g) => n + g.count, 0), seconds: whole(machineSecondsLeft(id)) }
+      const done = machineDone(id)
+      if (done.length) return { verb: 'wait', item: done[0].item, count: done.reduce((n, g) => n + g.count, 0), full: storeOf(done[0].item) }
       // nothing to work on: a status that says what is missing (or what it makes from what), never a button
       if (def.picture) return { verb: 'wait', item: def.picture, makes: def.recipes.map((x) => ({ from: inputOf(x), to: x.makes })) }
       return { verb: 'wait', item: nearest(id).makes }
     },
-    ready: () => (machineStage(id) === 'done' && machineCollectable(id) ? { item: machineRecipe(id)!.makes, count: machineCollectable(id) } : null),
-    run: () => {
-      const s = machineStage(id)
-      const { pan, near } = placeSound(middle(id).x, middle(id).z)
-      if (s === 'done') {
-        const good = machineRecipe(id)?.makes
-        if (!collectMachine(id)) return
-        playGesture('interact')
-        farmSound('harvest', pan, near)
-        const at = around(id, def.sparkle)
-        farmFx('harvest', at.x, at.y, at.z, { good })
-      } else if (s === 'working') useHome.getState().showToast(def.words.busy(machineRecipe(id)!, clockText(machineSecondsLeft(id))))
-      else {
-        // what goes in only goes in once asked
-        const r = loadable()
-        if (r) ask(id, action, r)
-      }
+    // on the compass once the whole queue is done (and what is done fits)
+    ready: () => {
+      if (machineStage(id) !== 'done') return null
+      const n = machineCollectable(id)
+      return n ? { item: machineDone(id)[0].item, count: n } : null
     },
+    run: () => {
+      if (machineCollectable(id)) {
+        if (collectMachine(id)) playGesture('interact')
+      } else if (addable(id)) open()
+    },
+    // its queue and its level, whenever you look at it
+    tag: () => ({ kind: 'gear', label: `${def.name}: its queue and level`, at: { ...around(id, def.aim), y: def.aim[1] + 0.5 }, open }),
   }
 }
 
 /** Puts a machine on the action button, with its sounds: what the scene's model needs back is how hard it works, 0 … 1,
  *  eased at rate `ease` (its moving parts get going and wind down). */
 export function useMachine(id: MachineId, ease = 0) {
-  const stage = useRef(machineStage(id))
+  const working = useRef(machineStage(id) === 'working')
+  const done = useRef(farm.machines[id].done)
   const noise = useRef(0)
   const work = useRef(0)
 
-  // on the button where it stands (again when it is moved)
+  // on the button where it stands (again when the edit mode moves it)
   const placed = usePlacement(id)
-  useEffect(() => {
-    const recipes = MACHINES[id].recipes
-    const offs = [main(id), ...(recipes.length > 1 ? recipes.map((r) => offer(id, r)) : [])].map(registerInteractable)
-    return () => offs.forEach((off) => off())
-  }, [id, placed])
+  useEffect(() => registerInteractable(main(id)), [id, placed])
 
   useFrame((_, rawDt) => {
     const dt = Math.min(rawDt, 0.1)
     const def = MACHINES[id]
-    const s = machineStage(id)
-    const was = stage.current
-    stage.current = s
-    if (was === 'working' && s === 'done') {
+    const m = farm.machines[id]
+    // a ding for each job done (as many done as before, or fewer: some were collected)
+    if (m.done > done.current) {
       const { pan, near } = placeSound(middle(id).x, middle(id).z)
       farmSound('ding', pan, Math.max(0.6, near))
     }
-    const working = s === 'working'
-    work.current = MathUtils.damp(work.current, working ? 1 : 0, ease, dt)
+    done.current = m.done
+    const was = working.current
+    const now = machineStage(id) === 'working'
+    working.current = now
+    work.current = MathUtils.damp(work.current, now ? 1 : 0, ease, dt)
     // its working sound now and then, if you are near enough to hear it; the first one a while after it starts, as it
-    // has just made its sound on being loaded (not twice at once)
+    // has just made its sound as the job went in (not twice at once)
     const sound = def.sounds.work
-    if (was === 'idle' && working && sound) noise.current = sound.every + Math.random() * sound.spread
-    if (working && sound) {
+    if (!was && now && sound) noise.current = sound.every + Math.random() * sound.spread
+    if (now && sound) {
       noise.current -= dt
       if (noise.current <= 0) {
         noise.current = sound.every + Math.random() * sound.spread

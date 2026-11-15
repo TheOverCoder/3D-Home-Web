@@ -47,9 +47,15 @@ import {
   orderAt,
   setRandom,
   gateX,
-  loadMachine,
-  machineRecipe,
+  addJob,
+  removeJob,
+  moveJob,
+  buySlot,
+  machineActions,
+  machineLevelOf,
+  machineSecondsLeft,
   machineStage,
+  machineView,
   plant,
   plantBeds,
   resetFarm,
@@ -684,25 +690,16 @@ export function FarmClock() {
       herd,
       flock,
       buy,
-      // the producers and the machines (src/farm/data.ts: PRODUCERS, MACHINES)
+      // the producers and the machines (src/farm/data.ts: PRODUCERS, MACHINES; each machine's queue: __home.machines)
       collect,
-      loadMachine,
+      addJob,
       collectMachine,
       machineStage,
       // the names the tests have always used, on top of them
       milkCow: (i: number) => collect('cows', i),
       shear: (i: number) => collect('sheep', i),
-      millLoad: (input: string) => loadMachine('mill', input),
-      millCollect: () => collectMachine('mill'),
       millStage: () => machineStage('mill'),
-      bake: (cake: string) => loadMachine('oven', cake) > 0,
-      takeOut: () => {
-        const cake = machineRecipe('oven')?.makes ?? null
-        return collectMachine('oven') ? cake : null
-      },
       ovenStage: () => ({ idle: 'idle', working: 'baking', done: 'done' })[machineStage('oven')],
-      loomLoad: () => loadMachine('loom', 'wool'),
-      loomCollect: () => collectMachine('loom'),
       loomStage: () => machineStage('loom'),
       waiting,
       inLine,
@@ -785,6 +782,19 @@ export function FarmClock() {
       estateAgentNow,
       buyApartment,
       driveTo,
+    })
+    // the machines' queues, as their panel sees and works them (src/farm/machineView.ts), and their levels
+    debugSet('machines', {
+      view: machineView,
+      actions: machineActions,
+      level: machineLevelOf,
+      stage: machineStage,
+      secondsLeft: machineSecondsLeft,
+      add: addJob,
+      remove: removeJob,
+      move: moveJob,
+      collect: collectMachine,
+      buySlot,
     })
   }, [])
   useFrame(() => {

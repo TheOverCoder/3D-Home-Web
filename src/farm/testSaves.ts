@@ -1,6 +1,7 @@
 import { vi } from 'vitest'
 import {
   acceptOffer,
+  addJob,
   buildBed,
   buy,
   buyLand,
@@ -10,6 +11,7 @@ import {
   buyDecor,
   buyOffice,
   buyPiece,
+  buySlot,
   claimLevel,
   collect,
   collectMachine,
@@ -22,14 +24,15 @@ import {
   fixBed,
   freeSpotFor,
   harvestBeds,
-  loadMachine,
   moveBed,
+  moveJob,
   movePiece,
   movePlace,
   orderAt,
   placeDecor,
   placeStored,
   plant,
+  removeJob,
   resetFarm,
   saveFarm,
   sellToContractor,
@@ -175,8 +178,9 @@ export function seeded(seed: number) {
 /** A farm played for a while, as the game saves it: something in every part of the save. The east beds, the west field
  *  and two meadows bought, the lemon tree moved out onto one; three cows, three sheep, four hens; beds growing (two
  *  watered, the rest dry), two set to a crop, a staked-out one built; things sold, declined, harvested and baked; the
- *  oven and the loom done, the mill at work; five buyers in a line of seven; the barn made bigger once, a building
- *  material or two kept; four orders on the board, one half filled, one sent (its crates out on the tractor) and one
+ *  machines' queues: the oven's second cake done (the first collected), the loom's three rolls done, the mill a place
+ *  bigger, a bag of flour done, wheat under way and cane waiting (a sheaf taken out again, the cane moved down); five
+ *  buyers in a line of seven; the barn made bigger once, a building material or two kept; four orders on the board, one half filled, one sent (its crates out on the tractor) and one
  *  declined (a new one on its way); the pouf moved, a plant put away, a stool bought and stood in the kitchen, a plant
  *  bought and waiting in storage; XP from all of it, a level's coins claimed and more waiting; the manager's rate at its
  *  top and the shop bought, a place and a quicker pace more, four places stocked (one dearer), a shopper's coins in the
@@ -213,14 +217,20 @@ export function playedSave(): Record<string, unknown> {
     collect('sheep', 0)
     acceptOffer(spawnVisitor({ want: 'lettuce', qty: 2, offer: 9, queued: true }).id)
     declineOffer(spawnVisitor({ want: 'cloth', qty: 2, offer: 40, queued: true }).id)
-    Object.assign(farm.inv, { flour: 3, sugar: 3, egg: 6, milk: 3, strawberry: 8, lemon: 4, wool: 3, wheat: 9 })
-    loadMachine('oven', 'strawberry_cake')
-    loadMachine('loom', 'wool')
+    Object.assign(farm.inv, { flour: 3, sugar: 3, egg: 6, milk: 3, strawberry: 8, lemon: 4, wool: 3, wheat: 9, sugarcane: 2 })
+    addJob('oven', 'strawberry_cake')
+    addJob('oven', 'lemon_cake')
+    for (let k = 0; k < 3; k++) addJob('loom', 'wool')
     tick(36)
     collectMachine('oven')
-    loadMachine('oven', 'lemon_cake')
     tick(31)
-    loadMachine('mill', 'wheat')
+    buySlot('mill')
+    addJob('mill', 'wheat')
+    addJob('mill', 'wheat')
+    addJob('mill', 'sugarcane')
+    addJob('mill', 'wheat')
+    removeJob('mill', 1)
+    moveJob('mill', 2, 1)
     tick(5)
     water(1)
     water(9)

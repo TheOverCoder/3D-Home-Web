@@ -10,6 +10,7 @@ import { ContractorPanel } from './ContractorPanel'
 import { EstatePanel, HouseBuyPanel } from './EstatePanel'
 import { CarPanel } from './car/CarPanel'
 import { LadderCard } from './Ladder'
+import { MachinePanel, MachineSlotCard } from './MachinePanel'
 import './Xp.css'
 import './MarketPanel.css'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
@@ -34,6 +35,7 @@ import {
   acceptOffer,
   animals,
   arrivalSeconds,
+  bedSpot,
   bedsForSeeds,
   bedsNear,
   buildBed,
@@ -178,8 +180,8 @@ function SeedsPanel({ bed }: { bed: number }) {
   const beds = useMemo(() => bedsNear(bed, 'empty', playerState.position.x, playerState.position.z).filter((i) => i === bed || !farm.beds[i].fixed), [bed])
   const choose = (crop: CropId) => {
     if (!plantBeds(bedsForSeeds(bed, crop, playerState.position.x, playerState.position.z), crop)) return
-    const def = BEDS[bed]
-    const { pan, near } = placeSound(def.x, def.z)
+    const at = bedSpot(bed)
+    const { pan, near } = placeSound(at.x, at.z)
     farmSound('plant', pan, near)
     playGesture('interact')
     close()
@@ -561,6 +563,8 @@ export function FarmUI() {
       {panel?.kind === 'estate' && <EstatePanel />}
       {panel?.kind === 'house-buy' && <HouseBuyPanel />}
       {panel?.kind === 'ladder' && <LadderCard id={panel.id} />}
+      {panel?.kind === 'machine' && <MachinePanel id={panel.id} />}
+      {panel?.kind === 'machine-slot' && <MachineSlotCard id={panel.id} />}
       {panel?.kind === 'level' && <LevelPanel />}
       {panel?.kind === 'wardrobe' && <WardrobePanel />}
       <LevelUp />

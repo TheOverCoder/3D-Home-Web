@@ -81,7 +81,7 @@ export default function Tune() {
     }
     const prices = farmF.addFolder('Prices (a fair price each)')
     for (const p of PRODUCE) bind(prices, p, 'price', `PRODUCE.${p.id}`, 1, 100, 1).name(p.plural)
-    // the tables (src/farm/data.ts): a producer's clock and the most that waits; a machine's room and each recipe's time
+    // the tables (src/farm/data.ts): a producer's clock and the most that waits; each recipe's time in a machine
     const animals = farmF.addFolder('Animals and the lemon tree')
     for (const id of PRODUCER_IDS) {
       bind(animals, PRODUCERS[id], 'every', `PRODUCERS.${id}`, 5, 300, 1).name(`${id} every (s)`)
@@ -89,7 +89,6 @@ export default function Tune() {
     }
     const machines = farmF.addFolder('Mill, loom and oven')
     for (const id of MACHINE_IDS) {
-      bind(machines, MACHINES[id], 'capacity', `MACHINES.${id}`, 1, 20, 1).name(`${id} capacity`)
       for (const r of MACHINES[id].recipes) bind(machines, r, 'seconds', `MACHINES.${id}.recipes.${r.id}`, 1, 300, 1).name(`${id}: ${produceById(r.makes).name} (s)`)
     }
     const buyers = farmF.addFolder('Buyers')

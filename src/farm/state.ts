@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { farmSound, placeSound } from '../audio/sound'
-import { coinsFx, itemFx, xpFx } from '../fx/fx'
+import { coinsFx, farmFx, itemFx, xpFx } from '../fx/fx'
 import { dampAngle } from '../lib/damp'
 import { groundDistance } from '../lib/interaction'
 import { useHome } from '../store'
@@ -68,6 +68,23 @@ import {
   type XpAction,
 } from './data'
 import { sanitizeXp, seedXp, levelOf, xpAt, unpaidCoins, xpForSale, type Xp } from './xp'
+import { QUEUE, machineLevel, queuePrice, type MachineActions, type MachineView, type QueueSlot } from './machineView'
+import {
+  boostOf,
+  freshMachine,
+  hasPlace,
+  insertJob,
+  isWorking,
+  jobSeconds,
+  moveWaiting,
+  recipeOf,
+  runQueue,
+  secondsLeft as queueSecondsLeft,
+  takeDone,
+  takeWaiting,
+  type MachineState,
+} from './machines'
+import { priceBoosts, priceOf } from './prices'
 import { DEFAULT_OUTFIT, garmentById, putOn, sanitizeOutfit, type Outfit } from './outfit'
 import { SHOP_LADDERS, clampLevels, freshMarket, ladderPrice, managerPay, managerPct, placesOpen, rollShopper, sanitizeMarket, shopperEvery, shoppersAtOnce, snapPct, type Market } from './market'
 import { dailyOffers, offersPerDay, piecePrice, sanitizeContractor, shortMaterials, type Contractor } from './contractor'
@@ -181,14 +198,9 @@ export interface ProducerState {
   timer: number[]
 }
 
-/** A machine (MACHINES in src/farm/data.ts): working on `count` batches of `recipe` (`progress` seconds in), or done
- *  with `ready` of what it makes waiting to be taken out; idle, no recipe. */
-export interface MachineState {
-  recipe: string | null
-  count: number
-  progress: number
-  ready: number
-}
+/** A machine (MACHINES in src/farm/data.ts): its queue of jobs, its places and how long it has worked
+ *  (src/farm/machines.ts). */
+export type { MachineState }
 
 export interface FarmData {
   coins: number
@@ -278,8 +290,6 @@ function freshProducer(id: ProducerId): ProducerState {
   const n = stocksFor(id, animals)
   return { animals, stock: Array.from({ length: n }, () => PRODUCERS[id].fresh), timer: Array.from({ length: n }, () => 0) }
 }
-const freshMachine = (): MachineState => ({ recipe: null, count: 0, progress: 0, ready: 0 })
-
 /** A board of empty places: a new order comes in each straight away. */
 const emptyBoard = (n: number): OrderSlot[] => Array.from({ length: n }, () => ({ wait: 0 }))
 
@@ -396,17 +406,50 @@ function oldMachine(id: MachineId, raw: Record<string, unknown>): Record<string,
   return { recipe: recipes[0].id, count: m.count, progress: m.progress, ready: m.ready }
 }
 
-/** A machine as saved (or as a save from before the tables kept it), made safe: at work, done, or idle. */
+/** A machine's job as a save from before the queue kept it — one recipe, `count` of it at work (`progress` seconds
+ *  into them all) or `ready` of it done — as the same jobs in a queue: nothing lost. The done ones are done jobs, the
+ *  ones at work jobs one after another, the time they had been at it spent on them in turn (the last is done when the
+ *  batch would have been). Three places, and a machine that has not worked yet; one that held more jobs than three
+ *  keeps them all and takes no more until there is a place. */
+function batchMachine(id: MachineId, m: Record<string, unknown>): MachineState {
+  const r = recipeOf(id, m.recipe)
+  if (!r) return freshMachine()
+  const count = int(m.count, 0, 0, QUEUE.max)
+  if (count) {
+    const spent = span(m.progress, count * r.seconds)
+    const done = Math.min(count, Math.floor(spent / r.seconds))
+    return { ...freshMachine(), jobs: Array.from({ length: count }, () => r.id), done, progress: done < count ? spent - done * r.seconds : 0 }
+  }
+  const ready = int(m.ready, 0, 0, QUEUE.max)
+  return { ...freshMachine(), jobs: Array.from({ length: ready }, () => r.id), done: ready }
+}
+
+/** A machine as saved (or as a save from before the queue or the tables kept it), made safe: only jobs of its own
+ *  recipes, no more than the most places a queue has; the done ones first (as many as were done of those kept), the
+ *  one under way no further into it than it takes; its places from three to twelve; the seconds it has worked from 0. */
 function savedMachine(id: MachineId, raw: Record<string, unknown>): MachineState {
-  const def = MACHINES[id]
   const saved = field(raw.machines, id)
   const m = isObject(saved) ? saved : oldMachine(id, raw)
-  const recipe = def.recipes.find((r) => r.id === m.recipe)
-  if (!recipe) return freshMachine()
-  const n = int(m.count, 0, 0, def.capacity)
-  if (n) return { recipe: recipe.id, count: n, progress: span(m.progress, n * recipe.seconds), ready: 0 }
-  const ready = int(m.ready, 0, 0, def.capacity)
-  return ready ? { recipe: recipe.id, count: 0, progress: 0, ready } : freshMachine()
+  if (!('jobs' in m)) return batchMachine(id, m)
+  const list: unknown[] = Array.isArray(m.jobs) ? m.jobs : []
+  const savedDone = int(m.done, 0, 0, list.length)
+  const jobs: string[] = []
+  let done = 0
+  list.forEach((job, i) => {
+    const r = recipeOf(id, job)
+    if (!r || jobs.length >= QUEUE.max) return
+    jobs.push(r.id)
+    if (i < savedDone) done++
+  })
+  const worked = span(m.worked, Number.MAX_SAFE_INTEGER)
+  const working = done < jobs.length ? recipeOf(id, jobs[done]) : undefined
+  return {
+    jobs,
+    done,
+    progress: working ? span(m.progress, jobSeconds(working, machineLevel(worked).boost)) : 0,
+    capacity: int(m.capacity, QUEUE.start, QUEUE.start, QUEUE.max),
+    worked,
+  }
 }
 
 function savedBuyer(raw: unknown): SavedBuyer | null {
@@ -564,6 +607,9 @@ function readRaw(key: string): string | null {
 
 const loaded = load()
 export const farm: FarmData = loaded.data
+// what a machine makes sells for more at its level (every sale asks src/farm/prices.ts); only once the farm is here: a
+// save that loads before it asks nothing of it
+priceBoosts((id) => machineLevel(farm.machines[id].worked).boost.coins)
 
 /** Revision counter: bumped whenever something the interface shows has changed. */
 export const useFarm = create<{ rev: number }>(() => ({ rev: 0 }))
@@ -629,7 +675,7 @@ export function waitingFor(id: StoreId) {
   let n = 0
   if (id === 'silo') farm.beds.forEach((b, i) => (n += bedStage(i) === 'ripe' && b.crop ? yieldOf(b.crop) : 0))
   for (const p of PRODUCER_IDS) if (storeOf(PRODUCERS[p].good) === id) n += farm.producers[p].stock.reduce((a, b) => a + b, 0)
-  if (id === 'barn') for (const m of MACHINE_IDS) n += farm.machines[m].ready
+  for (const m of MACHINE_IDS) for (const g of machineDone(m)) if (storeOf(g.item) === id) n += g.count
   return n
 }
 
@@ -933,20 +979,58 @@ function growProducer(id: ProducerId, dt: number) {
 
 // ───────────────────────────── the mill, the loom and the oven ─────────────────────────────
 
+// Each machine works through a queue of jobs, one good each (src/farm/machines.ts has its rules): a job goes in with
+// its ingredients, the first one waiting starts as soon as the machine is free, and a done job keeps its place until
+// it is collected. The machine's level (from how long it has worked) makes its jobs quicker, the XP for them more and
+// what it makes dearer wherever it is sold (src/farm/prices.ts).
+
 export type MachineStage = 'idle' | 'working' | 'done'
 
-export const machineStage = (id: MachineId): MachineStage => (farm.machines[id].count > 0 ? 'working' : farm.machines[id].ready > 0 ? 'done' : 'idle')
-
-/** What a machine is working on, or has ready to take out (null while it is idle). */
-export const machineRecipe = (id: MachineId): Recipe | null => MACHINES[id].recipes.find((r) => r.id === farm.machines[id].recipe) ?? null
-
-export function machineSecondsLeft(id: MachineId) {
+/** Working while a job is under way (whatever is done before it); done while only done jobs wait; idle with an empty
+ *  queue. */
+export function machineStage(id: MachineId): MachineStage {
   const m = farm.machines[id]
-  const r = machineRecipe(id)
-  return m.count && r ? m.count * r.seconds - m.progress : 0
+  return isWorking(m) ? 'working' : m.done > 0 ? 'done' : 'idle'
 }
 
-/** A point of a machine's own frame (MACHINES: its stand, aim and sparkle), where it stands now (it is a movable place). */
+/** What a machine is working on, or else the first thing it has done (null with nothing in its queue). */
+export function machineRecipe(id: MachineId): Recipe | null {
+  const m = farm.machines[id]
+  return recipeOf(id, m.jobs[isWorking(m) ? m.done : 0]) ?? null
+}
+
+/** Seconds until every job in a machine's queue is done. */
+export const machineSecondsLeft = (id: MachineId) => queueSecondsLeft(id, farm.machines[id])
+
+/** How far the job under way is, 0 to 1 (0 with none). */
+export function machineProgress(id: MachineId) {
+  const m = farm.machines[id]
+  const r = isWorking(m) ? recipeOf(id, m.jobs[m.done]) : undefined
+  return r ? Math.min(1, m.progress / jobSeconds(r, boostOf(m))) : 0
+}
+
+/** A machine's level now, from how long it has worked (src/farm/machineView.ts). */
+export const machineLevelOf = (id: MachineId) => machineLevel(farm.machines[id].worked)
+
+/** Jobs of a machine's queue as the goods they make, each with how many, in the order they come. */
+function goodsOf(id: MachineId, jobs: readonly string[]) {
+  const out: { recipe: Recipe; item: ProduceId; count: number }[] = []
+  for (const job of jobs) {
+    const r = recipeOf(id, job)
+    if (!r) continue
+    const same = out.find((g) => g.recipe === r)
+    if (same) same.count++
+    else out.push({ recipe: r, item: r.makes, count: 1 })
+  }
+  return out
+}
+/** The goods a machine has done, waiting to be collected (the first done first). */
+export const machineDone = (id: MachineId) => goodsOf(id, farm.machines[id].jobs.slice(0, farm.machines[id].done))
+/** The jobs it has still to do (the one under way first), as the goods they make. */
+export const machineToDo = (id: MachineId) => goodsOf(id, farm.machines[id].jobs.slice(farm.machines[id].done))
+
+/** A point of a machine's own frame (MACHINES: its stand, aim and sparkle), where it stands now (it is a movable place
+ *  of the edit mode: src/farm/layout.ts). */
 export function machinePoint(id: MachineId, [x, y, z]: readonly [number, number, number]) {
   const [wx, wz] = toWorld(farm.layout.places[id], x, z)
   return { x: wx, y, z: wz }
@@ -954,63 +1038,171 @@ export function machinePoint(id: MachineId, [x, y, z]: readonly [number, number,
 
 /** Where a machine's crystals fly up from: where its sparkles pop. */
 const machineAt = (id: MachineId) => machinePoint(id, MACHINES[id].sparkle)
-
-/** How many batches of a recipe a machine would take now: as many as it has room for and the basket gives. */
-export function batches(id: MachineId, r: Recipe) {
-  return Object.entries(r.needs).reduce((n, [k, per]) => (per ? Math.min(n, Math.floor(farm.inv[k as ProduceId] / per)) : n), MACHINES[id].capacity)
+/** A machine's sound, from where it stands. */
+function machineSound(id: MachineId, sound: Parameters<typeof farmSound>[0]) {
+  const at = machinePoint(id, [0, 0, 0])
+  const { pan, near } = placeSound(at.x, at.z)
+  farmSound(sound, pan, near)
 }
 
-/** Loads an idle machine with as many batches of a recipe as it takes (the button asked first): how many. */
-export function loadMachine(id: MachineId, recipe: string) {
-  const r = MACHINES[id].recipes.find((x) => x.id === recipe)
-  if (!r || machineStage(id) !== 'idle') return 0
-  const n = batches(id, r)
-  if (!n) return 0
-  for (const [k, per] of Object.entries(r.needs)) farm.inv[k as ProduceId] -= (per ?? 0) * n
-  farm.machines[id] = { recipe: r.id, count: n, progress: 0, ready: 0 }
-  gainXp('load', 1, machineAt(id))
+/** A recipe's ingredients are all in store. */
+const hasNeeds = (r: Recipe) => Object.entries(r.needs).every(([k, per]) => farm.inv[k as ProduceId] >= (per ?? 0))
+
+/** A job of a recipe could go into a machine's queue now: a place is free and its ingredients are in store. */
+export const canAddJob = (id: MachineId, r: Recipe) => hasPlace(farm.machines[id]) && hasNeeds(r)
+
+/** A job into a machine's queue, at the end or at a waiting place: its ingredients are taken now, and it starts as
+ *  soon as the machine is free. No XP for it (it can be taken out again, its ingredients back): its job's comes as it
+ *  is collected. */
+export function addJob(id: MachineId, recipe: string, at?: number): boolean {
+  const r = recipeOf(id, recipe)
+  if (!r || !hasNeeds(r) || !insertJob(farm.machines[id], r.id, at)) return false
+  for (const [k, per] of Object.entries(r.needs)) farm.inv[k as ProduceId] -= per ?? 0
+  machineSound(id, MACHINES[id].sounds.load)
   bump()
   save()
+  return true
+}
+
+/** A waiting job taken out of a machine's queue: its ingredients go back into store (even past full: they were the
+ *  farm's). The job under way and the done ones cannot be. */
+export function removeJob(id: MachineId, index: number): boolean {
+  const r = recipeOf(id, takeWaiting(farm.machines[id], index))
+  if (!r) return false
+  for (const [k, per] of Object.entries(r.needs)) putBack(k as ProduceId, per ?? 0)
+  bump()
+  save()
+  return true
+}
+
+/** A waiting job moved to another waiting place in the queue. */
+export function moveJob(id: MachineId, from: number, to: number): boolean {
+  if (!moveWaiting(farm.machines[id], from, to)) return false
+  bump()
+  save()
+  return true
+}
+
+/** How many of a machine's done jobs would go into store now (the rest would wait in it for room). */
+export function machineCollectable(id: MachineId) {
+  const m = farm.machines[id]
+  const left: Partial<Record<StoreId, number>> = {}
+  let n = 0
+  for (const job of m.jobs.slice(0, m.done)) {
+    const r = recipeOf(id, job)
+    if (!r) continue
+    const where = storeOf(r.makes)
+    const k = left[where] ?? room(where)
+    if (k > 0) n++
+    left[where] = k - 1
+  }
   return n
 }
 
-/** How many of what a machine made would go into the barn now. */
-export const machineCollectable = (id: MachineId) => {
-  const r = machineRecipe(id)
-  return r ? Math.min(farm.machines[id].ready, roomFor(r.makes)) : 0
-}
-
-/** Takes out what a machine has made, into the barn, as much as it has room for (the rest waits in the machine): how
- *  many. */
+/** Takes every done job out of a machine into store, as many as there is room for (the rest keep their places, done):
+ *  how many. Each is worth its XP, more at a higher level of the machine; sparkles, a rustle and a word say what came
+ *  out. */
 export function collectMachine(id: MachineId) {
   const m = farm.machines[id]
-  const r = machineRecipe(id)
-  if (!r || !m.ready) return 0
-  const n = store(r.makes, m.ready)
-  if (!n) {
-    toast('The barn is full', 'barn')
+  if (!m.done) return 0
+  const first = recipeOf(id, m.jobs[0])
+  const taken = takeDone(m, (job) => {
+    const r = recipeOf(id, job)
+    return !!r && store(r.makes, 1) === 1
+  })
+  if (!taken.length) {
+    const where = first ? storeOf(first.makes) : 'barn'
+    toast(`The ${STORES[where].name.toLowerCase()} is full`, where)
     return 0
   }
+  const goods = goodsOf(id, taken)
   const counts = MACHINES[id].counts
-  if (counts) farm.stats[counts] += n
-  farm.got[r.makes] += n
-  if (n < m.ready) farm.machines[id] = { ...m, ready: m.ready - n }
-  else farm.machines[id] = freshMachine()
-  gainXp('make', n, machineAt(id))
-  toast(`+ ${count(r.makes, n)}${farm.machines[id].ready ? ' · the barn is full' : ''}`, r.makes)
+  if (counts) farm.stats[counts] += taken.length
+  for (const g of goods) farm.got[g.item] += g.count
+  const at = machineAt(id)
+  gainXp('make', taken.length, at, boostOf(m).xp)
+  machineSound(id, 'harvest')
+  farmFx('harvest', at.x, at.y, at.z, { good: goods[0].item })
+  const full = m.done ? recipeOf(id, m.jobs[0]) : undefined
+  toast(`+ ${goods.map((g) => count(g.item, g.count)).join(', ')}${full ? ` · the ${STORES[storeOf(full.makes)].name.toLowerCase()} is full` : ''}`, goods[0].item)
   bump()
   save()
-  return n
+  return taken.length
 }
 
-/** Works on: once the batches' time is up, what they make waits to be taken out. */
+/** What the next place in a machine's queue costs (null: it has all twelve). */
+export const slotPrice = (id: MachineId) => queuePrice(farm.machines[id].capacity + 1)
+
+/** One more place in a machine's queue, for its price (its card asked first): true when it was bought. */
+export function buySlot(id: MachineId): boolean {
+  const m = farm.machines[id]
+  const price = slotPrice(id)
+  if (price === null || m.capacity >= QUEUE.max || farm.coins < price) return false
+  farm.coins -= price
+  m.capacity++
+  gainXp('build', 1, machineAt(id))
+  toast(`${MACHINES[id].name}: ${m.capacity} places in its queue`)
+  bump()
+  save()
+  return true
+}
+
+const percent = (share: number) => `${Math.round(share * 100)}%`
+
+/** What a level reached gives, in a few words: "Oven: level 2 · +20% XP, +20% coins". */
+function levelWords(id: MachineId, level: ReturnType<typeof machineLevel>) {
+  const b = level.boost
+  return `${MACHINES[id].name}: level ${level.n} · +${percent(b.xp)} XP, +${percent(b.coins)} coins${b.speed > 0 ? `, ${percent(b.speed)} quicker` : ''}`
+}
+
+/** Works on through the queue, job after job; a level reached is told (once: a level is never lost). */
 function growMachine(id: MachineId, dt: number) {
   const m = farm.machines[id]
-  const r = machineRecipe(id)
-  if (!m.count || !r) return
-  m.progress += dt
-  if (m.progress >= m.count * r.seconds) farm.machines[id] = { recipe: r.id, count: 0, progress: 0, ready: m.count }
+  if (!isWorking(m)) return
+  const before = machineLevel(m.worked).n
+  runQueue(id, m, dt)
+  const level = machineLevel(m.worked)
+  if (level.n > before) toast(levelWords(id, level), MACHINES[id].picture ?? MACHINES[id].recipes[0].makes)
 }
+
+/** What a machine's panel shows (src/farm/machineView.ts): its level, its queue as places, what it can make and whether
+ *  each can go in now, and the next place's price. */
+export function machineView(id: MachineId): MachineView {
+  const def = MACHINES[id]
+  const m = farm.machines[id]
+  const level = machineLevel(m.worked)
+  const slots = m.jobs.map((job, i): QueueSlot => {
+    const r = recipeOf(id, job) ?? def.recipes[0]
+    const seconds = jobSeconds(r, level.boost)
+    const state = i < m.done ? 'done' : i === m.done ? 'working' : 'waiting'
+    return { recipe: r.id, makes: r.makes, state, seconds, left: state === 'done' ? 0 : state === 'working' ? Math.max(0, seconds - m.progress) : seconds }
+  })
+  const recipes = def.recipes.map((r) => ({
+    id: r.id,
+    makes: r.makes,
+    needs: { ...r.needs },
+    have: Object.fromEntries(Object.keys(r.needs).map((k) => [k, farm.inv[k as ProduceId]])),
+    seconds: jobSeconds(r, level.boost),
+    can: canAddJob(id, r),
+  }))
+  const price = slotPrice(id)
+  return { id, name: def.name, level, capacity: m.capacity, slots, recipes, upgrade: price === null ? null : { capacity: m.capacity + 1, price } }
+}
+
+/** What a machine's panel can do, the same functions every time for each machine. */
+const ACTIONS = Object.fromEntries(
+  MACHINE_IDS.map((id): [MachineId, MachineActions] => [
+    id,
+    {
+      add: (recipe, at) => addJob(id, recipe, at),
+      remove: (index) => removeJob(id, index),
+      move: (from, to) => moveJob(id, from, to),
+      collect: () => collectMachine(id),
+      buySlot: () => buySlot(id),
+    },
+  ]),
+) as Record<MachineId, MachineActions>
+export const machineActions = (id: MachineId): MachineActions => ACTIONS[id]
 
 // ───────────────────────────── the shop ─────────────────────────────
 
@@ -1402,10 +1594,11 @@ function chooseRequest(): { want: ProduceId; qty: number } {
 function priceFor(want: ProduceId, qty: number) {
   const r = Math.random()
   const factor = r < 0.15 ? 0.6 : r < 0.38 ? 0.85 : r < 0.66 ? 1 : r < 0.86 ? 1.25 : 1.6
-  return Math.max(1, Math.round(produceById(want).price * qty * factor))
+  return Math.max(1, Math.round(priceOf(want) * qty * factor))
 }
 
-export const fairPrice = (want: ProduceId, qty: number) => produceById(want).price * qty
+/** What `qty` of a good are worth (src/farm/prices.ts: more for what a machine of a higher level makes). */
+export const fairPrice = (want: ProduceId, qty: number) => Math.round(priceOf(want) * qty)
 
 /** Everyone in line or on their way to it, the front first. */
 export const inLine = () => farm.visitors.filter((v) => v.phase !== 'leaving')
@@ -1693,7 +1886,8 @@ const stageKey = () =>
   [
     ...farm.beds.map((_, i) => bedStage(i)),
     ...PRODUCER_IDS.map((id) => farm.producers[id].stock.join(',')),
-    ...MACHINE_IDS.map(machineStage),
+    // each job a machine finishes (its ding, the button that collects it) and each one that goes in or comes out
+    ...MACHINE_IDS.map((id) => `${farm.machines[id].done}/${farm.machines[id].jobs.length}`),
     farm.orders.map((slot) => ('order' in slot ? 'o' : 'w')).join(''),
     farm.dispatch.trip < 0 ? `home ${farm.dispatch.waiting}` : `trip ${farm.dispatch.aboard}`,
     // the shop's shelves and till (a shopper bought), the day's phase and number (the light, the contractor's pieces)
@@ -1804,7 +1998,7 @@ function neverStuck() {
   const nothing =
     farm.beds.every((b) => !b.crop) &&
     SELLABLE.every((id) => farm.inv[id] === 0) &&
-    MACHINE_IDS.every((id) => machineStage(id) === 'idle') &&
+    MACHINE_IDS.every((id) => farm.machines[id].jobs.length === 0) &&
     farm.orders.every((slot) => !('order' in slot) || slot.order.lines.every((l) => !l.have)) &&
     // goods on the shelves are the farm's too (they sell, or come back), and coins in the till are coins
     shelvesEmpty() &&
@@ -1863,10 +2057,13 @@ export const xpEventCount = () => xpEvents
 
 type At = { x: number; y: number; z: number }
 
-/** XP for something the player did: `n` times the action's worth (XP_FOR), or for a sale `n` coins (xpForSale). `at` is
+/** XP for something the player did: `n` times the action's worth (XP_FOR), or for a sale `n` coins (xpForSale); `more`
+ *  a share more (a machine's level: 0.2 is a fifth more, rounded up so that it is never lost to rounding). `at` is
  *  where the crystals fly up from. Only from a player's action: never in tick, goOn or cameBack. The XP gained. */
-export function gainXp(action: XpAction | 'sale', n = 1, at?: At): number {
-  const xp = action === 'sale' ? (n > 0 ? xpForSale(n) : 0) : n > 0 ? XP_FOR[action] * n : 0
+export function gainXp(action: XpAction | 'sale', n = 1, at?: At, more = 0): number {
+  // (a hair under, so that 2 · 5 · 1.2 = 12.000000000000002 is 12)
+  const boosted = (xp: number) => (more > 0 ? Math.ceil(xp * (1 + more) - 1e-9) : xp)
+  const xp = action === 'sale' ? (n > 0 ? xpForSale(n) : 0) : n > 0 ? boosted(XP_FOR[action] * n) : 0
   if (!(xp > 0)) return 0
   farm.xp.points = Math.min(Number.MAX_SAFE_INTEGER, farm.xp.points + xp)
   xpEvents++
@@ -1934,7 +2131,7 @@ const AT_CONTRACTOR: At = { x: CONTRACTOR_SPOT.x, y: 1.6, z: CONTRACTOR_SPOT.z }
 /** What the manager pays for the whole stack of a good now (0: he does not buy it, or it comes to nothing). */
 export function managerPays(item: ProduceId): number {
   if (farm.market.owned || !isSellable(item)) return 0
-  return managerPay(produceById(item).price, farm.inv[item], managerPct(farm.ladders.rate))
+  return managerPay(priceOf(item), farm.inv[item], managerPct(farm.ladders.rate))
 }
 
 /** Sells him a good's whole stack, without a word: the coins (0: nothing sold). */
@@ -2615,7 +2812,8 @@ export const AWAY_TELLS = 120
 interface Snapshot {
   ripe: boolean[]
   stock: Record<ProducerId, number>
-  ready: Record<MachineId, number>
+  /** what each machine has done, each good with how many */
+  made: Record<MachineId, { item: ProduceId; count: number }[]>
   line: number
   orders: number
   trip: boolean
@@ -2626,7 +2824,7 @@ interface Snapshot {
 const snapshot = (): Snapshot => ({
   ripe: farm.beds.map((_, i) => bedStage(i) === 'ripe'),
   stock: Object.fromEntries(PRODUCER_IDS.map((id) => [id, farm.producers[id].stock.reduce((a, b) => a + b, 0)])) as Record<ProducerId, number>,
-  ready: Object.fromEntries(MACHINE_IDS.map((id) => [id, farm.machines[id].ready])) as Record<MachineId, number>,
+  made: Object.fromEntries(MACHINE_IDS.map((id) => [id, machineDone(id).map(({ item, count }) => ({ item, count }))])) as Snapshot['made'],
   line: inLine().length,
   orders: farm.orders.filter((slot) => 'order' in slot).length,
   trip: farm.dispatch.trip >= 0,
@@ -2661,15 +2859,14 @@ function awayReport(before: Snapshot, seconds: number, counted: number): AwayRep
     if (after.ripe[i] && !before.ripe[i] && b.crop) add(b.crop, yieldOf(b.crop))
   })
   for (const id of PRODUCER_IDS) add(PRODUCERS[id].good, after.stock[id] - before.stock[id])
-  for (const id of MACHINE_IDS) {
-    const r = machineRecipe(id)
-    if (r) add(r.makes, after.ready[id] - before.ready[id])
-  }
+  // what the machines finished: every job done now that was not done before (none is collected while away)
+  const doneOf = (made: Snapshot['made'][MachineId], item: ProduceId) => made.find((g) => g.item === item)?.count ?? 0
+  for (const id of MACHINE_IDS) for (const g of after.made[id]) add(g.item, g.count - doneOf(before.made[id], g.item))
   // a building is full while something waits that it has no room for
   const waiting = (store: StoreId) =>
     farm.beds.some((b, i) => after.ripe[i] && b.crop && storeOf(b.crop) === store) ||
     PRODUCER_IDS.some((id) => after.stock[id] > 0 && storeOf(PRODUCERS[id].good) === store) ||
-    MACHINE_IDS.some((id) => after.ready[id] > 0 && machineRecipe(id) && storeOf(machineRecipe(id)!.makes) === store)
+    MACHINE_IDS.some((id) => after.made[id].some((g) => storeOf(g.item) === store))
   return {
     seconds,
     counted,
