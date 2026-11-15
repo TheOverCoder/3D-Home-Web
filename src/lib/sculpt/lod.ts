@@ -264,7 +264,15 @@ const queue: { making: Making; cache: WeakMap<BufferGeometry, Lod[]>; g: BufferG
 /** The most a slice of idle time is used for (ms) when the page gives no deadline of its own. */
 const SLICE = 6
 let pumping = false
+/** Held while a map loads (src/scene/ViewPass.tsx): the copies are made once it can be played, never on its way. */
+let held = false
 const waiting: (() => void)[] = []
+
+/** Holds the making of copies (while a map loads), or lets it go on. */
+export function holdCopies(on: boolean) {
+  held = on
+  if (!on) pump()
+}
 
 /** Runs a making to its end now, and keeps what it made. */
 function finish(making: Making, cache: WeakMap<BufferGeometry, Lod[]>, g: BufferGeometry): Lod[] {
@@ -290,10 +298,11 @@ function later(making: Making, cache: WeakMap<BufferGeometry, Lod[]>, g: BufferG
 }
 
 function pump() {
-  if (pumping || !queue.length) return
+  if (pumping || held || !queue.length) return
   pumping = true
   const run = (deadline?: IdleDeadline) => {
     pumping = false
+    if (held) return
     const until = performance.now() + (deadline && !deadline.didTimeout ? Math.max(1, deadline.timeRemaining()) : SLICE)
     const t0 = performance.now()
     while (queue.length) {

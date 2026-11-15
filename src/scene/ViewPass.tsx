@@ -4,7 +4,7 @@ import { assets } from '../assets/registry'
 import { editCamera } from '../farm/EditMode'
 import { decorateCamera } from '../home/DecorateMode'
 import { debugSet } from '../lib/debug'
-import { copyTime } from '../lib/sculpt/lod'
+import { copyTime, holdCopies } from '../lib/sculpt/lod'
 import { installViewPass, portalCells, view } from '../lib/visibility/pass'
 import { useHome } from '../store'
 import { ceilingsUp } from './Ceilings'
@@ -24,6 +24,16 @@ const SHUT = 0.002
 export function ViewPass() {
   const scene = useThree((s) => s.scene)
   const camera = useThree((s) => s.camera)
+  // the lighter copies are made in idle time once a map can be played: none while one loads or is behind the curtain
+  useEffect(() => {
+    const hold = (s: ReturnType<typeof useHome.getState>) => holdCopies(!(s.phase === 'playing' && s.mapReady && !s.curtain))
+    hold(useHome.getState())
+    const stop = useHome.subscribe(hold)
+    return () => {
+      stop()
+      holdCopies(false)
+    }
+  }, [])
   useEffect(() => {
     debugSet('view', view)
     debugSet('viewCells', portalCells)
