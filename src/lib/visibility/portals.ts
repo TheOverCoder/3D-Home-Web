@@ -1,4 +1,5 @@
-// Rooms and portals: what the first-person camera can see of the house and the farm, worked out on the screen.
+// Rooms and portals: what the first-person camera can see of the house and the plot round it (the home map: the farm is
+// a map of its own, with no house), worked out on the screen.
 //
 // Five cells: the four rooms and the outside. Twelve portals: the four doorways (the kitchen's door closes one), the
 // seven windows and the glass garden door, each a rectangle in its wall's middle plane (src/data/layout.ts), a few
@@ -264,8 +265,8 @@ export class Portals {
   }
 
   /**
-   * Whether a world box can be seen: `outside` true for a thing of the outside (the farm, the garden round the
-   * house), else the cells it stands in by where it is — the rooms it overlaps, and the outside if it reaches past
+   * Whether a world box can be seen: `outside` true for a thing of the outside (the garden round the house, the
+   * countryside), else the cells it stands in by where it is — the rooms it overlaps, and the outside if it reaches past
    * the walls' middle lines, above the ceiling or under the floor.
    */
   seesBox(minX: number, minY: number, minZ: number, maxX: number, maxY: number, maxZ: number, outside: boolean): boolean {

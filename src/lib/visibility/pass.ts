@@ -3,8 +3,9 @@
 // or (for the sun) under the ceiling where no sunlight reaches it. Three parts, each for the render of the game's
 // scene by the game's camera (the hooks `scene.onBeforeRender` / `onAfterRender`, where every matrix is final):
 //
-//   portals — first person, the house whole round you: the rooms and the outside are seen only through the doorways,
-//             the windows and the garden door (portals.ts). Three asks every mesh, sprite, line and points object
+//   portals — first person, the house whole round you (the home map: the farm has no house, src/scene/Maps.tsx): the
+//             rooms and the outside are seen only through the doorways, the windows and the garden door (portals.ts).
+//             Three asks every mesh, sprite, line and points object
 //             whether it meets the camera's frustum; for this camera's pass the answer also asks the portals. The
 //             house's shell (walls, floors, ceilings, doors: `userData.cell = 'always'`) is always drawn; what is
 //             outside (`'outside'`) is seen through the outside's rectangle; everything else by where it stands now

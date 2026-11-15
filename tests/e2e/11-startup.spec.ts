@@ -125,7 +125,7 @@ test.describe('starting up', () => {
   })
 
   test('farms: three slots — save one as a file, load it into another, play it, clear it', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     const r = await page.evaluate(() => {
       const h = (window as any).__home

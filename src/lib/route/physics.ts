@@ -1,6 +1,7 @@
 import type { RapierContext, RapierRigidBody } from '@react-three/rapier'
-import { DOOR, GARDEN_DOOR, insideHouse } from '../../data/layout'
+import { DOOR, GARDEN_DOOR } from '../../data/layout'
 import { BODY } from '../playerState'
+import { inHouse, houseHere } from '../world'
 import { makeGrid, type Grid } from './grid'
 
 // Where the body can stand, asked of the physics world itself (src/lib/route): for a cell's middle, does a capsule the
@@ -41,7 +42,7 @@ export interface PhysicsGrid extends Grid {
 /**
  * The grid over `area` (cells CELL across), each cell worked out from the physics world the first time a search asks
  * about it. A cell is free when the player's capsule (a little wider) stands there touching no fixed collider and not
- * the kitchen's door as it is (`doorShut`), and its middle is on the land. Each block of 8 × 8 cells first asks once
+ * the kitchen's door as it is (`doorShut`; the home map's only), and its middle is on the land. Each block of 8 × 8 cells first asks once
  * for a box round all their capsules: when nothing is there, all of them are free at once.
  */
 export function physicsGrid(world: World, rapier: Rapier, area: Area, doorShut: boolean): PhysicsGrid {
@@ -52,6 +53,8 @@ export function physicsGrid(world: World, rapier: Rapier, area: Area, doorShut: 
   const a = doorShut ? 0 : -DOOR.openAngle
   const leafAt = { x: DOOR.hinge[0] + (Math.cos(a) * DOOR.width) / 2, y: DOOR.hinge[1] + DOOR.height / 2, z: DOOR.hinge[2] - (Math.sin(a) * DOOR.width) / 2 }
   const leafRot = { x: 0, y: Math.sin(a / 2), z: 0, w: Math.cos(a / 2) }
+  // the kitchen's door is the house's: on the farm map there is none
+  const door = houseHere()
   const at = { x: 0, y: Y, z: 0 }
   const stats = { blocks: 0, empty: 0, capsules: 0, ms: 0 }
   // per block: 0 not asked yet, 1 nothing there, 2 something there (ask cell by cell)
@@ -69,7 +72,7 @@ export function physicsGrid(world: World, rapier: Rapier, area: Area, doorShut: 
       stats.capsules++
       at.x = x
       at.z = z
-      free = !world.intersectionWithShape(at, IDENT, capsule, flags) && !capsule.intersectsShape(at, IDENT, leaf, leafAt, leafRot)
+      free = !world.intersectionWithShape(at, IDENT, capsule, flags) && !(door && capsule.intersectsShape(at, IDENT, leaf, leafAt, leafRot))
     }
     stats.ms += performance.now() - t0
     return free
@@ -88,7 +91,7 @@ export function physicsGrid(world: World, rapier: Rapier, area: Area, doorShut: 
     const half = { x: ((i1 - i0 - 1) * CELL) / 2 + PROBE_RADIUS, y: HALF + PROBE_RADIUS, z: ((j1 - j0 - 1) * CELL) / 2 + PROBE_RADIUS }
     const box = new rapier.Cuboid(half.x, half.y, half.z)
     const mid = { x: area.minX + ((i0 + i1) / 2) * CELL, y: Y, z: area.minZ + ((j0 + j1) / 2) * CELL }
-    const empty = !world.intersectionWithShape(mid, IDENT, box, flags) && !box.intersectsShape(mid, IDENT, leaf, leafAt, leafRot)
+    const empty = !world.intersectionWithShape(mid, IDENT, box, flags) && !(door && box.intersectsShape(mid, IDENT, leaf, leafAt, leafRot))
     if (empty) stats.empty++
     return empty
   }
@@ -137,8 +140,8 @@ export function movingBlocked(world: World, rapier: Rapier, grid: Grid, x: numbe
     for (let i = Math.max(0, ci - r); i <= Math.min(grid.w - 1, ci + r); i++) {
       at.x = grid.x0 + (i + 0.5) * grid.cell
       at.z = grid.z0 + (j + 0.5) * grid.cell
-      if (Math.hypot(at.x - x, at.z - z) > radius || insideHouse(at.x, at.z, 0.6)) continue
-      if (Math.abs(at.x - GARDEN_DOOR.centre) < GARDEN_DOOR.width && Math.abs(at.z - GARDEN_DOOR.at) < 1.2) continue
+      if (Math.hypot(at.x - x, at.z - z) > radius || inHouse(at.x, at.z, 0.6)) continue
+      if (houseHere() && Math.abs(at.x - GARDEN_DOOR.centre) < GARDEN_DOOR.width && Math.abs(at.z - GARDEN_DOOR.at) < 1.2) continue
       if (world.intersectionWithShape(at, IDENT, capsule, flags, undefined, undefined, body ?? undefined)) out.add(j * grid.w + i)
     }
   return out

@@ -117,11 +117,7 @@ describe('which space a point is in', () => {
     expect(insideWalkIn(7, 15)).toBeNull()
   })
 
-  it('in the house: its room', () => {
-    for (const room of Object.values(ROOMS)) {
-      const b = room.bounds
-      expect(spaceAt((b.minX + b.maxX) / 2, (b.minZ + b.maxZ) / 2), room.id).toBe(room.id)
-      expect(isWalkInSpace(room.id)).toBe(false)
-    }
+  it('no walk-in shares a space with the house (the home map: src/lib/world.test.ts)', () => {
+    for (const room of Object.values(ROOMS)) expect(isWalkInSpace(room.id)).toBe(false)
   })
 })

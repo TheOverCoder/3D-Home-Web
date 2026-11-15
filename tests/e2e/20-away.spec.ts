@@ -11,7 +11,7 @@ const panel = (page: any) => page.evaluate(() => (window as any).__home.useHome.
 test.describe('welcome back', () => {
   test('the page hidden for two minutes: the hens laid, the card says how many, and takes you there', async ({ game }) => {
     test.setTimeout(600_000)
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     // empty nests, their clocks at 0, and an empty barn: what the hens lay while away is what the card counts
     await page.evaluate(() => {

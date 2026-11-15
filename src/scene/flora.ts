@@ -1,5 +1,6 @@
 import { BoxGeometry, BufferGeometry, CylinderGeometry, IcosahedronGeometry, Vector3 } from 'three'
 import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js'
+import { SHRUB_SPOTS } from '../data/garden'
 import { boxProject } from '../lib/boxProject'
 
 // The garden's greenery and timber, made from a seed: clipped hedges, shrubs, broadleaf trees and slatted fences.
@@ -56,6 +57,16 @@ export function hedgeRun(axis: 'x' | 'z', at: number, from: number, to: number, 
     a += len
   }
   return out
+}
+
+/** The shrubs at SHRUB_SPOTS[from, to) as one geometry, each as it always was: its size from the same seed in the same
+ *  order (src/data/garden.ts: the house's along its walls, the farm's by its west boundary). */
+export function shrubs(from: number, to: number): BufferGeometry {
+  const r = mulberry(9)
+  const sizes = SHRUB_SPOTS.map(() => 0.55 + r() * 0.35)
+  const bushes: BufferGeometry[] = []
+  for (let i = from; i < to; i++) bushes.push(shrub(SHRUB_SPOTS[i][0], SHRUB_SPOTS[i][1], sizes[i], 100 + i))
+  return mergeGeometries(bushes.map((g) => (g.index ? g.toNonIndexed() : g)))!
 }
 
 export function shrub(x: number, z: number, size: number, seed: number): BufferGeometry {

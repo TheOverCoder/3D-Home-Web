@@ -3,7 +3,8 @@ import { test, expect, type Game } from './helpers'
 
 // The farm's layout and the edit mode: B flies the camera up over the farm; a meadow beyond the hedge is bought
 // and the hedge moves out round it; the hen run is dragged onto it with the mouse (its hens and its nest come
-// along), a drag onto the house goes back; the pasture is moved with its herd; Done flies back down.
+// along), a drag onto the beds goes back, and where the house stood before it had a map of its own is free land; the
+// pasture is moved with its herd; Done flies back down.
 
 const until = (game: Game, fn: () => boolean, timeout = 30_000) => game.page.waitForFunction(fn, null, { timeout, polling: 200 })
 
@@ -34,7 +35,7 @@ async function drag(game: Game, from: [number, number], to: [number, number]) {
 
 test.describe('farm layout and the edit mode', () => {
   test('B: buy a meadow, drag the hen run onto it, move the pasture with its herd, and back down', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     await page.evaluate(() => {
       const f = (window as any).__home.farm
@@ -42,7 +43,7 @@ test.describe('farm layout and the edit mode', () => {
       f.state.coins = 1000
       f.state.producers.hens.stock[0] = 2
     })
-    // up: the edit mode (B outdoors: indoors it decorates the house), the camera over the farm looking down
+    // up: the edit mode (B on the farm: in the house it decorates), the camera over the farm looking down
     await game.teleport(-1.2, 1.4, 9.0, Math.PI / 2, -0.1)
     await until(game, () => (window as any).__home.useHome.getState().outdoors)
     await page.keyboard.press('KeyB')
@@ -60,14 +61,20 @@ test.describe('farm layout and the edit mode', () => {
     expect(edges.some((e: any) => e.axis === 'z' && e.at === 26)).toBe(true)
     expect(edges.some((e: any) => e.axis === 'z' && e.at === 14)).toBe(false)
 
-    // the hen run over the house: red, and it goes back where it was
-    const bad = await drag(game, [11.6, 6.7], [3, 0])
+    // the hen run over the beds: red, and it goes back where it was
+    const bad = await drag(game, [11.6, 6.7], [-1.2, 9.6])
     expect(bad?.fit.ok).toBe(false)
     expect(await page.evaluate(() => (window as any).__home.farm.state.layout.places.hens)).toEqual({ x: 11.6, z: 6.7, rot: 0 })
-    await expect(page.locator('.edit-card')).toContainText('On the house')
+    await expect(page.locator('.edit-card')).toContainText('On a garden bed')
+
+    // where the house stood (it has a map of its own now): free land, the run fits and stays there
+    const there = await drag(game, [11.6, 6.7], [2, 0])
+    expect(there?.fit.ok).toBe(true)
+    const moved = await page.evaluate(() => (window as any).__home.farm.state.layout.places.hens)
+    expect(Math.hypot(moved.x - 2, moved.z)).toBeLessThanOrEqual(1)
 
     // onto the new meadow: it stays there
-    const good = await drag(game, [11.6, 6.7], [20.5, 6.5])
+    const good = await drag(game, [moved.x, moved.z], [20.5, 6.5])
     expect(good?.fit.ok).toBe(true)
     const hens = await page.evaluate(() => (window as any).__home.farm.state.layout.places.hens)
     expect(Math.abs(hens.x - 20.5)).toBeLessThanOrEqual(1)

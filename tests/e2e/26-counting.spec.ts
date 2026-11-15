@@ -1,20 +1,21 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { test, expect, fillFarm, openGame, NULL_GL } from './helpers'
+import { test, expect, fillFarm, onMap, openGame, NULL_GL, type MapId } from './helpers'
 
 // The budget's counting without a GPU (tests/e2e/nullgl.js, used by 05-budget): one scene, at the same instant,
 // counted by the game's own renderer on a real (software) context and by a second renderer on the drawing-free one —
-// the camera's pass and the sun's, with the drawing pass on and off, at the farm's fullest, in the house, at the gate,
-// over the yard, in the market and on the lane, at two sizes. Every count the same: three.js keeps them on the CPU,
+// the camera's pass and the sun's, with the drawing pass on and off, at the farm's fullest, in the house and its garden
+// (the home map), at the gate, over the yard, in the market and on the lane (the farm), at two sizes. Every count the same: three.js keeps them on the CPU,
 // whatever the context does. (Each renderer draws each view once before it is counted: a renderer's first frame of a
 // view starts with nothing kept from the one before.)
 
-const POSES: [string, number, number, number, number][] = [
-  ['living room', -3.5, 1.3, Math.PI, -0.04],
-  ['kitchen', 3.5, -3, 0, 0],
-  ['gate, the line', 5.6, 11.8, Math.PI, 0],
-  ['yard, over the farm', -1, 8, 0, -0.1],
-  ['market, the shelves', 7.4, 17.75, Math.PI + 0.6, -0.12],
-  ['lane, the market', 10, 13.4, Math.PI, 0.02],
+const POSES: [MapId, string, number, number, number, number][] = [
+  ['home', 'living room', -3.5, 1.3, Math.PI, -0.04],
+  ['home', 'kitchen', 3.5, -3, 0, 0],
+  ['home', 'the garden, back at the house', 0, 12.5, 0, 0.02],
+  ['farm', 'gate, the line', 5.6, 11.8, Math.PI, 0],
+  ['farm', 'yard, over the farm', -1, 8, 0, -0.1],
+  ['farm', 'market, the shelves', 7.4, 17.75, Math.PI + 0.6, -0.12],
+  ['farm', 'lane, the market', 10, 13.4, Math.PI, 0.02],
 ]
 
 test('the drawing-free context counts what a real one counts, view by view @boot', { tag: '@full' }, async ({ browser }) => {
@@ -28,13 +29,16 @@ test('the drawing-free context counts what a real one counts, view by view @boot
     await game.ready()
     await fillFarm(page)
     const differ: string[] = []
-    for (const size of [
-      { width: 640, height: 360 },
-      { width: 1055, height: 487 },
-    ]) {
+    for (const [map, size] of (['home', 'farm'] as const).flatMap((map) =>
+      [
+        { width: 640, height: 360 },
+        { width: 1055, height: 487 },
+      ].map((size) => [map, size] as const),
+    )) {
+      await onMap(page, map)
       await page.setViewportSize(size)
       await page.waitForTimeout(2500)
-      for (const [name, x, z, yaw, pitch] of POSES) {
+      for (const [, name, x, z, yaw, pitch] of POSES.filter((p) => p[0] === map)) {
         const r = await page.evaluate(
           ([x, z, yaw, pitch]) => {
             const w = window as any

@@ -38,9 +38,9 @@ export function Floors() {
       {(Object.keys(ROOMS) as (keyof typeof ROOMS)[]).map((id) => (
         <RoomFloor key={id} id={id} />
       ))}
+      {/* (the ground round the house is its plot's: src/scene/Exterior.tsx) */}
       <RigidBody type="fixed" colliders={false}>
         <CuboidCollider args={[w / 2 + 0.5, 0.25, d / 2 + 0.5]} position={[0, -0.25, 0]} />
-        <CuboidCollider args={[60, 0.25, 60]} position={[0, -0.27, 0]} />
       </RigidBody>
     </group>
   )

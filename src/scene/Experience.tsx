@@ -11,21 +11,19 @@ import { profile } from '../lib/profile'
 import { setSculptDetail } from '../lib/sculpt'
 import { onGraphicsRestart } from '../lib/startup'
 import { useHome, type Quality } from '../store'
-import { Garden } from '../farm/Garden'
+import { FarmClock } from '../farm/Garden'
 import { EditMode } from '../farm/EditMode'
+import { farm } from '../farm/state'
 import { FarmFx } from '../fx/FarmFx'
 import { Effects } from './Effects'
-import { House } from './House'
 import { LightDirector } from './LightDirector'
-import { LightShafts } from './LightShafts'
 import { Lighting } from './Lighting'
-import { Pickups } from './Pickups'
+import { Maps } from './Maps'
 import { ThingTag } from '../ui/ThingTag'
 import { DecorateMode } from '../home/DecorateMode'
 import { Wardrobes } from '../home/Wardrobe'
 import { RenderPause } from './RenderPause'
 import { Player } from './Player'
-import { Screens } from './Screens'
 import { ViewPass } from './ViewPass'
 import { Warmup } from './Warmup'
 
@@ -82,6 +80,9 @@ function initialQuality(): { quality: Quality; auto: boolean } {
 
 const start = initialQuality()
 useHome.setState({ quality: start.quality, qualityAuto: start.auto })
+// the map the scene starts on: where the save was left (a new farm on the farm); from then on the scene follows the save
+// (src/scene/maps.ts), and a restart of the graphics keeps the map it was on
+if (useHome.getState().map === null) useHome.setState({ map: farm.place })
 
 // pixel ratio per tier comes from the device profile (src/lib/profile.ts): retina/4K at 2× is far too heavy for
 // the post chain, and shedding pixels is the cheapest win
@@ -137,6 +138,7 @@ function QualityGovernor({ onLastResort }: { onLastResort: () => void }) {
 }
 
 export default function Experience() {
+  const map = useHome((s) => s.map)
   const quality = useHome((s) => s.quality)
   const qualityAuto = useHome((s) => s.qualityAuto)
   const progress = useProgress((s) => s.progress)
@@ -177,19 +179,19 @@ export default function Experience() {
       <Lighting />
       <Suspense fallback={null}>
         <Physics gravity={[0, -9.81, 0]}>
-          <House />
-          <Garden />
-          <LightShafts />
+          {/* the map you are on, the farm or the house (only one in the scene: src/scene/Maps.tsx) */}
+          <Maps />
+          {/* the farm goes on while you are in the house */}
+          <FarmClock />
           <LightDirector />
-          <Screens />
-          <Pickups />
           <ThingTag />
           <Player />
-          {/* after the player: the edit mode's camera runs after the player's own */}
+          {/* after the player: the edit mode's camera runs after the player's own (the farm's mode opens on the farm
+              only, decorating in the house only: src/home/decorate.ts) */}
           <EditMode />
           <DecorateMode />
-          {/* the wardrobes, and the camera that films you while one is open (after the player's own too) */}
-          <Wardrobes />
+          {/* the house's wardrobes, and the camera that films you while one is open (after the player's own too) */}
+          {map === 'home' && <Wardrobes />}
           <Ready />
         </Physics>
         {/* the farm's small effects: water, sparkles and dust (three.quarks, loaded once playing) and flying coins */}

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { DOOR, LAMPS, PICKUPS, type RoomId, type Vec3 } from './data/layout'
 import type { ActionIcon } from './lib/interaction'
+import type { Place } from './farm/state'
 
 /** Picture quality tier: high = full film look, medium = the look without the costliest passes, low = plain and fast. */
 export type Quality = 'high' | 'medium' | 'low'
@@ -100,6 +101,13 @@ interface HomeState {
   hintShown: boolean
   room: RoomId | null
   outdoors: boolean // in the garden
+  /** the map in the scene, the farm or the house (src/scene/Maps.tsx: it follows the save's `place`); null until the
+   *  scene has started */
+  map: Place | null
+  /** the map is in the scene and you stand in it: false while it changes, behind the curtain */
+  mapReady: boolean
+  /** the screen gone dark: a drive, or the map changing as another farm loads (src/ui/Curtain.tsx) */
+  curtain: boolean
   nearby: Nearby | null // the action E (or the big touch button) runs
   actions: Nearby[] // everything on offer, `nearby` first
   status: Nearby | null // nothing to do here: what is on its way (a growing bed, the oven baking) — shown, not pressed
@@ -163,6 +171,9 @@ export const useHome = create<HomeState>()((set, get) => ({
   hintShown: false,
   room: null,
   outdoors: false,
+  map: null,
+  mapReady: false,
+  curtain: false,
   nearby: null,
   actions: [],
   status: null,

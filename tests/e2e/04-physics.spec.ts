@@ -158,4 +158,33 @@ test.describe('physics & geometry guards', () => {
       expect((await body()).y).toBeGreaterThan(0)
     }
   })
+
+  test('on the farm a body thrown out of the world comes back to the farm’s start', async ({ game }) => {
+    await game.ready('farm')
+    const { page } = game
+    const body = () => page.evaluate(() => ({ ...(window as any).__home.ecctrl().body.translation() }))
+    // each time from the far end of the yard, so being back where a new farm starts can only come from the safety net
+    for (const [x, y, z] of [
+      [0, -12, 0],
+      [-60, 8, -10],
+    ]) {
+      await game.teleport(8, 1.4, 11.5)
+      await page.waitForFunction(() => Math.hypot((window as any).__home.playerState.position.x - 8, (window as any).__home.playerState.position.z - 11.5) < 0.5, null, {
+        timeout: 30_000,
+        polling: 250,
+      })
+      await page.evaluate(([x, y, z]) => (window as any).__home.teleport(x, y, z), [x, y, z])
+      await page.waitForFunction(
+        () => {
+          const p = (window as any).__home.ecctrl().body.translation()
+          return Math.hypot(p.x + 1.2, p.z - 6.8) < 0.5 && p.y > 0 && p.y < 3
+        },
+        null,
+        { timeout: 30_000, polling: 250 },
+      )
+      expect((await body()).y).toBeGreaterThan(0)
+      // and still on the farm, outdoors
+      expect(await page.evaluate(() => (window as any).__home.useHome.getState().map)).toBe('farm')
+    }
+  })
 })

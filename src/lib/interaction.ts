@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { insideHouse, roomAt } from '../data/layout'
-import { LANE, isWalkInSpace, spaceAt } from '../data/buildings'
+import { LANE, isWalkInSpace } from '../data/buildings'
 import { useSettings } from '../settings'
 import { busy, useHome, type Nearby } from '../store'
 import type { ArtId } from '../ui/art'
@@ -10,6 +9,7 @@ import { playerState, type Point3 } from './playerState'
 import { stopWalk } from './route/walking'
 import { useStick } from './stick'
 import { debugSet } from './debug'
+import { inHouse, roomHere, spaceHere } from './world'
 
 /** What an action does — drawn as a glyph on the action button. (Nothing that spends coins is one: building and buying
  *  are a price tag on the thing itself, see `Tag`.) */
@@ -166,12 +166,12 @@ function sameSpace(def: InteractableDef, here: string) {
   if (def.spaces?.includes(here)) return true
   // a walk-in building's room (src/data/buildings.ts) is its own space, and so is the lane: nothing in it is in reach
   // from outside, nor anything outside from in it, however near through the wall or over the fence
-  const there = spaceAt(p.x, p.z)
+  const there = spaceHere(p.x, p.z)
   if (apart(here) || apart(there)) return there === here
-  const inside = insideHouse(p.x, p.z)
+  const inside = inHouse(p.x, p.z)
   if (here === 'out') return !inside
   if (!inside) return false
-  const room = roomAt(p.x, p.z)
+  const room = roomHere(p.x, p.z)
   return room === null || here === 'house' || room === here
 }
 
@@ -179,7 +179,7 @@ function sameSpace(def: InteractableDef, here: string) {
  *  never into or out of a walk-in building's room, nor over the garden's fence (unless it says so: `spaces`). */
 function seenFrom(def: InteractableDef, here: string) {
   if (def.spaces?.includes(here)) return true
-  const there = spaceAt(def.position.x, def.position.z)
+  const there = spaceHere(def.position.x, def.position.z)
   return apart(here) || apart(there) ? there === here : true
 }
 
@@ -187,7 +187,7 @@ function seenFrom(def: InteractableDef, here: string) {
  *  edge, and in the same room or both outdoors), with `margin` metres to spare. */
 export function inReach(def: InteractableDef, from: { x: number; z: number }, margin = 0) {
   if (reachOf(def, { x: from.x, y: 0, z: from.z }) > def.radius - margin) return false
-  const here = spaceAt(from.x, from.z)
+  const here = spaceHere(from.x, from.z)
   return sameSpace(def, here)
 }
 
@@ -226,7 +226,7 @@ function describe(c: Candidate, reach: boolean, view?: ViewRay): Nearby {
 export function findActions(from: Point3, view?: ViewRay, opts: { reach?: boolean; max?: number } = {}): Nearby[] {
   const max = opts.max ?? 3
   const reach = opts.reach ?? true
-  const here = spaceAt(from.x, from.z)
+  const here = spaceHere(from.x, from.z)
   let aimed: Candidate | null = null
   let aimedScore = Infinity
   const near: Candidate[] = []
@@ -279,7 +279,7 @@ export function findActions(from: Point3, view?: ViewRay, opts: { reach?: boolea
  * growing bed, the oven baking), or else the nearest such thing within reach — shown as a status, not a button.
  */
 export function findStatus(from: Point3, view?: ViewRay): Nearby | null {
-  const here = spaceAt(from.x, from.z)
+  const here = spaceHere(from.x, from.z)
   let best: { def: InteractableDef; score: number } | null = null
   for (const def of registry.values()) {
     if (def.enabled && !def.enabled()) continue
@@ -305,7 +305,7 @@ export function findStatus(from: Point3, view?: ViewRay): Nearby | null {
 export function findTag(from: Point3, view?: ViewRay): { id: string; tag: Tag } | null {
   let best: InteractableDef | null = null
   let bestScore = Infinity
-  const here = spaceAt(from.x, from.z)
+  const here = spaceHere(from.x, from.z)
   for (const def of registry.values()) {
     if (!def.tag && def.enabled && !def.enabled()) continue
     if (!seenFrom(def, here)) continue
@@ -343,7 +343,7 @@ export interface FarMark {
  * (it is left off the compass until you walk away from it again, still not taken).
  */
 export function findFar(from: Point3): FarMark[] {
-  const here = spaceAt(from.x, from.z)
+  const here = spaceHere(from.x, from.z)
   const byItem = new Map<string, FarMark>()
   for (const def of registry.values()) {
     if (!def.ready || (def.enabled && !def.enabled())) continue

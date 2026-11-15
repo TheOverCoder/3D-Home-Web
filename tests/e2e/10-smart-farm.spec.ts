@@ -11,7 +11,7 @@ const nearby = (game: Game) => game.page.evaluate(() => (window as any).__home.u
 
 test.describe('smart actions, sheep and the line at the gate', () => {
   test('a ripe bed behind you is offered by reach, with a hand and a lettuce; E turns you round to it and harvests', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     await page.evaluate(() => {
       const f = (window as any).__home.farm
@@ -42,7 +42,7 @@ test.describe('smart actions, sheep and the line at the gate', () => {
   })
 
   test('reach is measured on the ground from the edge of a bed: from its end as far as from its side', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     await page.evaluate(() => {
       const f = (window as any).__home.farm
@@ -63,7 +63,7 @@ test.describe('smart actions, sheep and the line at the gate', () => {
   })
 
   test('sheep: shear one for her fleece; the loom weaves fleeces into cloth', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     await page.evaluate(() => {
       const h = (window as any).__home
@@ -100,7 +100,7 @@ test.describe('smart actions, sheep and the line at the gate', () => {
   })
 
   test('the line: five places and a buyer every two minutes, upgrades to fifteen and every thirty seconds, sell to all', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     // buyers walk up the lane: tick in small steps so they get to their places. The line is read in the same step:
     // the farm also runs on in real time between two calls from here (and a slow machine takes a while over them)

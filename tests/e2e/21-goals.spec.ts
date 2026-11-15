@@ -17,7 +17,7 @@ const fresh = (page: any) =>
 
 test.describe('the goals board', () => {
   test('the trophy counts the goals reached; the board shows them first, and Claim pays and moves the goal on', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     // outdoors, where the chips at the top are
     await game.teleport(-1.2, 1.4, 8.5, 0, 0)
@@ -63,7 +63,7 @@ test.describe('the goals board', () => {
   })
 
   test('on a phone held upright the board fits: every card on screen width, its Claim button 44 px high', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     await page.setViewportSize({ width: 390, height: 844 })
     try {

@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useThree } from '@react-three/fiber'
 import { useProgress } from '@react-three/drei'
-import type { Material, Object3D, Texture } from 'three'
+import type { Camera, Material, Object3D, Scene, Texture, WebGLRenderer } from 'three'
 import { setLoadPhase, useLoader } from '../lib/loader'
 import { useHome } from '../store'
 
@@ -31,6 +31,47 @@ function texturesOf(root: Object3D): Texture[] {
   return [...found]
 }
 
+/** Compiles every material in the scene, hidden things too (garden icons, bubbles, the held item…): in parallel where
+ *  the browser can. Nothing may be drawn meanwhile (the hidden things are shown while it runs): the frame loop stopped. */
+export async function compileScene(gl: WebGLRenderer, scene: Scene, camera: Camera) {
+  const hidden: Object3D[] = []
+  scene.traverse((o) => {
+    if (!o.visible) {
+      hidden.push(o)
+      o.visible = true
+    }
+  })
+  try {
+    // in parallel where the browser can; elsewhere compileAsync would only warn and do the same as compile
+    if (gl.extensions.has('KHR_parallel_shader_compile')) await gl.compileAsync(scene, camera)
+    else gl.compile(scene, camera)
+  } catch (e) {
+    console.warn('[warmup] could not precompile', e)
+  } finally {
+    for (const o of hidden) o.visible = false
+  }
+}
+
+/** Puts every texture in the scene onto the graphics card, in slices of about 12 ms (`progress` after each, 0 to 1). */
+export async function uploadTextures(gl: WebGLRenderer, scene: Scene, progress?: (k: number) => void, cancelled = () => false) {
+  const textures = texturesOf(scene)
+  if (scene.environment) textures.push(scene.environment)
+  let slice = performance.now()
+  for (let i = 0; i < textures.length; i++) {
+    if (cancelled() || gl.getContext().isContextLost()) return
+    try {
+      gl.initTexture(textures[i])
+    } catch {
+      /* a texture still decoding uploads on first use instead */
+    }
+    if (performance.now() - slice > 12) {
+      progress?.(i / textures.length)
+      await breathe()
+      slice = performance.now()
+    }
+  }
+}
+
 export function Warmup() {
   const gl = useThree((s) => s.gl)
   const scene = useThree((s) => s.scene)
@@ -57,42 +98,17 @@ export function Warmup() {
         if (cancelled) return
         setLoadPhase('compile')
         useLoader.setState({ compile: 0.05 })
-        // hidden things (garden icons, bubbles, the held item…) are compiled too
-        const hidden: Object3D[] = []
-        scene.traverse((o) => {
-          if (!o.visible) {
-            hidden.push(o)
-            o.visible = true
-          }
-        })
-        try {
-          // in parallel where the browser can; elsewhere compileAsync would only warn and do the same as compile
-          if (gl.extensions.has('KHR_parallel_shader_compile')) await gl.compileAsync(scene, camera)
-          else gl.compile(scene, camera)
-        } catch (e) {
-          console.warn('[warmup] could not precompile', e)
-        } finally {
-          for (const o of hidden) o.visible = false
-        }
+        await compileScene(gl, scene, camera)
         if (cancelled) return
         useLoader.setState({ compile: 0.3 })
-        const textures = texturesOf(scene)
-        if (scene.environment) textures.push(scene.environment)
-        // in slices of about 12 ms, so the loading card keeps moving
-        let slice = performance.now()
-        for (let i = 0; i < textures.length; i++) {
-          if (cancelled || gl.getContext().isContextLost()) return
-          try {
-            gl.initTexture(textures[i])
-          } catch {
-            /* a texture still decoding uploads on first use instead */
-          }
-          if (performance.now() - slice > 12) {
-            useLoader.setState({ compile: 0.3 + (0.7 * i) / textures.length })
-            await breathe()
-            slice = performance.now()
-          }
-        }
+        // in slices, so the loading card keeps moving
+        await uploadTextures(
+          gl,
+          scene,
+          (k) => useLoader.setState({ compile: 0.3 + 0.7 * k }),
+          () => cancelled,
+        )
+        if (cancelled) return
       } finally {
         if (!cancelled) setFrameloop('always')
       }

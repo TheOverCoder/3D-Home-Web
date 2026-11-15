@@ -42,6 +42,9 @@ test.describe('decorating the house', () => {
     await page.evaluate(() => {
       const f = (window as any).__home.farm
       f.reset()
+      // (a new farm starts on the farm: this one stays in the house, its own)
+      f.state.apartment.owned = true
+      f.state.place = 'home'
       f.state.coins = 500
     })
     // today's house fits every rule where it stands

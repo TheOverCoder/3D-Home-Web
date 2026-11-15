@@ -18,10 +18,9 @@ const fx = (game: Game) =>
 const fxReady = (game: Game) => until(game, () => (window as any).__home.fx?.stats.loaded === true, 60_000)
 
 test.describe('garden', () => {
-  test('the glass door opens as you come, and you can walk out into the garden', async ({ game }) => {
+  test('the glass door opens as you come, and you can walk out into the house’s own garden', async ({ game }) => {
     await game.ready()
     const { page } = game
-    await page.evaluate(() => (window as any).__home.farm.reset())
     // inside the living room, a few steps from the door, facing it (south)
     await game.teleport(-1.2, 1.4, 4.2, Math.PI, 0)
     await until(game, () => (window as any).__home.gardenDoor.open > 0.9)
@@ -33,10 +32,14 @@ test.describe('garden', () => {
     }
     // the eyes came out with the body (the camera is not held back behind the wall)
     expect(await page.evaluate(() => (window as any).__home.camera.position.z)).toBeGreaterThan(6.5)
+    // out in the house's garden, on its own map (the farm is a drive away): no bed, no buyer, nothing of the farm here
+    expect(await page.evaluate(() => (window as any).__home.useHome.getState().map)).toBe('home')
+    const ids: string[] = await page.evaluate(() => (window as any).__home.interactables().map((d: any) => d.id))
+    expect(ids.filter((id) => id.startsWith('farm-'))).toEqual([])
   })
 
   test('beds from seed to harvest: what is in reach is done in one press; a growing bed is a status, not an action', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     await page.evaluate(() => {
       const f = (window as any).__home.farm
@@ -120,7 +123,7 @@ test.describe('garden', () => {
   })
 
   test('buyers queue at the gate: Sell only with something they want (2/2), Enter sells to the first you can, N sends the first away and someone new comes', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     await page.evaluate(() => {
       const f = (window as any).__home.farm
@@ -179,7 +182,7 @@ test.describe('garden', () => {
   })
 
   test('a staked-out bed carries a price tag, not an action; its card builds it, and the farm is saved', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     await page.evaluate(() => {
       const f = (window as any).__home.farm

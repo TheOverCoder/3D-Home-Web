@@ -19,7 +19,7 @@ test.describe('far copies', () => {
   test("the crowds' lighter copies of far parts change nothing a player can see, and draw fewer triangles", async ({ game }) => {
     test.setTimeout(900_000)
     const { page } = game
-    await game.ready()
+    await game.ready('farm')
     await fillFarm(page)
     let saved = 0
     for (const size of [

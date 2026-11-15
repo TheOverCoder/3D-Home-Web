@@ -9,14 +9,15 @@
 // console). Soak runs ten minutes as it is, work per minute (does the phone slow down as it warms up?).
 
 import { WebGLRenderTarget, type Camera, type Scene, type WebGLRenderer } from 'three'
-import { roomAt } from '../data/layout'
 import { PRODUCER_IDS } from '../farm/data'
-import { buy, buyPiece, currentSlot, farm, inLine, placeStored, placesInLine, plant, spawnVisitor } from '../farm/state'
+import { buy, buyPiece, currentSlot, driveTo, farm, inLine, placeStored, placesInLine, plant, spawnVisitor, type Place } from '../farm/state'
 import { PIECES, type PieceType } from '../home/catalogue'
 import { startDecorating, stopDecorating } from '../home/decorate'
 import { findFreeSpot } from '../home/layout'
 import { look } from '../lib/look'
 import { playerState } from '../lib/playerState'
+import { mapNow, roomHere } from '../lib/world'
+import { changeMap } from '../scene/maps'
 import { profile } from '../lib/profile'
 import { view } from '../lib/visibility/pass'
 import { useHome } from '../store'
@@ -125,7 +126,7 @@ export function createMeter(gl: WebGLRenderer, scene: Scene, camera: Camera): Me
   const info = () => {
     const s = useHome.getState()
     const p = playerState.position
-    const room = roomAt(p.x, p.z)
+    const room = roomHere(p.x, p.z)
     const animals = PRODUCER_IDS.map((id) => farm.producers[id]?.animals ?? 0)
       .filter((n) => n > 0)
       .join('/')
@@ -136,29 +137,38 @@ export function createMeter(gl: WebGLRenderer, scene: Scene, camera: Camera): Me
       canvas: `${ctx.drawingBufferWidth}×${ctx.drawingBufferHeight} @ ${gl.getPixelRatio().toFixed(2)}`,
       tier: `${s.quality}${s.qualityAuto ? ' (auto)' : ''} · shadow ${profile.shadowMap[s.quality]}`,
       view: s.decorating ? 'decorate' : s.editing ? 'edit' : s.view,
-      place: `${room ?? 'outdoors'} (${p.x.toFixed(1)}, ${p.z.toFixed(1)})`,
+      place: `${mapNow() === 'home' ? 'the house' : 'the farm'}: ${room ?? 'outdoors'} (${p.x.toFixed(1)}, ${p.z.toFixed(1)})`,
       content: `farm ${currentSlot()} · ${farm.home.pieces.length} pieces · animals ${animals || 0} · line ${inLine().length}`,
       battery: battery ? `${Math.round(battery.level * 100)}%${battery.charging ? ' charging' : ''}` : 'n/a',
     }
   }
 
-  // ── go to ──
-  const PLACES: Record<string, { x: number; z: number; yaw: number; door?: boolean; third?: boolean; decorate?: boolean }> = {
-    'Living room': { x: -3.5, z: 1.3, yaw: Math.PI },
-    'Kitchen (door shut)': { x: 3.5, z: -3, yaw: Math.PI, door: false },
-    Bedroom: { x: 3.5, z: 1, yaw: Math.PI },
-    Gate: { x: 4.2, z: 10.8, yaw: Math.PI - 0.5 },
-    'Yard NW': { x: -12, z: -10.5, yaw: (-3 * Math.PI) / 4 },
-    'Third person': { x: -3.5, z: 2.5, yaw: Math.PI, third: true },
-    Decorate: { x: -3.5, z: 2.5, yaw: Math.PI, decorate: true },
+  // ── go to ── (on its map: the house's places at home, the farm's on the farm; another map is a drive away)
+  const PLACES: Record<string, { map: Place; x: number; z: number; yaw: number; door?: boolean; third?: boolean; decorate?: boolean }> = {
+    'Living room': { map: 'home', x: -3.5, z: 1.3, yaw: Math.PI },
+    'Kitchen (door shut)': { map: 'home', x: 3.5, z: -3, yaw: Math.PI, door: false },
+    Bedroom: { map: 'home', x: 3.5, z: 1, yaw: Math.PI },
+    Gate: { map: 'farm', x: 4.2, z: 10.8, yaw: Math.PI - 0.5 },
+    'Yard NW': { map: 'farm', x: -12, z: -10.5, yaw: (-3 * Math.PI) / 4 },
+    'Third person': { map: 'home', x: -3.5, z: 2.5, yaw: Math.PI, third: true },
+    Decorate: { map: 'home', x: -3.5, z: 2.5, yaw: Math.PI, decorate: true },
   }
-  const goTo = (name: string) => {
+  const goTo = async (name: string) => {
     const at = PLACES[name]
     const teleport = (window as unknown as { __home?: { teleport?: (x: number, y: number, z: number) => void } }).__home?.teleport
     if (!at) return
     if (!teleport) {
       lines.status = 'Go to needs ?debug'
       return
+    }
+    if (mapNow() !== at.map) {
+      if (at.map === 'home' && !farm.apartment.owned) {
+        lines.status = 'The house is not yours on this farm'
+        return
+      }
+      // a drive there (no film), out of the car where the place is
+      lines.status = `driving to ${name}…`
+      await changeMap(at.map, { x: at.x, z: at.z, heading: at.yaw }, async () => driveTo(at.map))
     }
     const s = useHome.getState()
     if (s.decorating) stopDecorating()

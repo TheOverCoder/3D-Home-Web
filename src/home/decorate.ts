@@ -71,10 +71,15 @@ export function startDecorating() {
   useHome.getState().setDecorating(true)
 }
 
-/** The edit mode for where you are (the ✥ button, B): indoors this one, outdoors the farm's. */
+/** Which edit mode there is where you are: on the farm the farm's, in the house decorating it; none in its garden. */
+export const editHere = (s: { map: 'farm' | 'home' | null; outdoors: boolean }): 'farm' | 'house' | null => (s.map === 'home' ? (s.outdoors ? null : 'house') : 'farm')
+
+/** The edit mode for where you are (the ✥ button, B): on the farm the farm's, in the house this one. */
 export function openEdit() {
-  if (useHome.getState().outdoors) useHome.getState().setEditing(true)
-  else startDecorating()
+  const s = useHome.getState()
+  const mode = editHere(s)
+  if (mode === 'farm') s.setEditing(true)
+  else if (mode === 'house') startDecorating()
 }
 
 /** Leaves it: you step out of anything that now stands where you were. */

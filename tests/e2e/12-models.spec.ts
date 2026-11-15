@@ -28,7 +28,7 @@ test.describe('sculpted models', () => {
   })
 
   test('the farm is drawn with the sculpted animals, people and crops', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     await page.evaluate(() => {
       const f = (window as any).__home.farm
@@ -49,8 +49,8 @@ test.describe('sculpted models', () => {
     // look at the garden from the path, so every group has been drawn
     await game.teleport(3.0, 1.4, 7.6, Math.PI, -0.1)
     await page.waitForTimeout(2000)
-    // each crowd draws only the models in view (src/lib/visibility), and the sheep's fold is behind the house: count
-    // what every crowd puts, the drawing pass off for a frame
+    // each crowd draws only the models in view (src/lib/visibility), and the sheep's fold is behind you: count what every
+    // crowd puts, the drawing pass off for a frame
     await page.evaluate(() => ((window as any).__home.view.on = false))
     await page.waitForFunction(
       () => (window as any).__home.view.stats.renders > 0 && (window as any).__home.scene.getObjectByName('sheep')?.children.some((m: any) => m.isInstancedMesh && m.count > 0),

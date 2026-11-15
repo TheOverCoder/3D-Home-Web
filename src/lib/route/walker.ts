@@ -1,7 +1,5 @@
 import type { RapierContext, RapierRigidBody } from '@react-three/rapier'
 import { DOOR } from '../../data/layout'
-import { reachBounds, reachRects } from '../../farm/layout'
-import { farm } from '../../farm/state'
 import { useHome } from '../../store'
 import { groundDistance, guideTo, inReach, interactable, type InteractableDef } from '../interaction'
 import { lookedAt, turnTowards } from '../look'
@@ -10,6 +8,7 @@ import { toCells, withBlocked } from './grid'
 import { Search, lineClear, nearestFree, pullString, type Field } from './path'
 import { movingBlocked, physicsGrid, staticSignature, type Area, type PhysicsGrid } from './physics'
 import { stopWalk, useWalk, walkHeading, walkStats, walkStick } from './walking'
+import { groundBounds, groundKey, groundRects } from '../world'
 
 // Walking by yourself to a mark tapped on the compass (src/lib/route): the way is found on a grid worked out from the
 // physics world (physics.ts) with A* and the string pulled tight (path.ts), then walked with the stick — the same input
@@ -45,12 +44,12 @@ interface Route {
   field: Field
 }
 
-/** The ground the player can be on: the garden and the fields bought, the lot beyond the gate and the walk-in buildings
- *  (src/farm/layout.ts, reachRects). */
+/** The ground the player can be on, on the map in the scene (src/lib/world.ts): on the farm the garden and the fields
+ *  bought, the lot beyond the gate and the walk-in buildings; at home the plot round the house. */
 function landArea(): Area & { key: string } {
-  const b = reachBounds(farm.layout)
-  const rs = reachRects(farm.layout)
-  return { ...b, key: `${b.minX},${b.maxX},${b.minZ},${b.maxZ}|${farm.layout.land.join(',')}`, on: (x, z) => rs.some((r) => x >= r.minX && x <= r.maxX && z >= r.minZ && z <= r.maxZ) }
+  const b = groundBounds()
+  const rs = groundRects()
+  return { ...b, key: `${b.minX},${b.maxX},${b.minZ},${b.maxZ}|${groundKey()}`, on: (x, z) => rs.some((r) => x >= r.minX && x <= r.maxX && z >= r.minZ && z <= r.maxZ) }
 }
 
 /** One walk at a time, for the player's body; `frame` runs every frame. */

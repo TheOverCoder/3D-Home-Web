@@ -14,7 +14,6 @@ import { boxProject } from '../lib/boxProject'
 import { material, surface } from '../lib/proceduralTextures'
 import { B } from '../scene/Furnishings'
 import { StaticBatch } from '../scene/House'
-import { SHRUB_SPOTS } from '../data/garden'
 import { busy, useHome } from '../store'
 import { BED, BEDS, BED_BOX, BED_REACH, CROPS, EXPANSIONS, PATH_X, SHED, STAND, count, cropById, type CropDef, type CropId } from './data'
 import { iconUrl } from './icons'
@@ -620,8 +619,8 @@ function Yard() {
   return <StaticBatch exclude={exclude}>{structures}</StaticBatch>
 }
 
-/** What is solid in the yard and never moves: the shed, the stand and the shrubs (the boundary is the land's, the
- *  runs, pastures and trees are the places', see Land.tsx and Places.tsx). */
+/** What is solid in the yard and never moves: the shed and the stand (the shrubs are the ground's, the boundary the
+ *  land's, the runs, pastures and trees the places', see Ground.tsx, Land.tsx and Places.tsx). */
 function Colliders() {
   return (
     <RigidBody type="fixed" colliders={false}>
@@ -630,16 +629,13 @@ function Colliders() {
       <CylinderCollider args={[0.45, 0.3]} position={[SHED.x + 0.95, 0.45, SHED.z - 1.05]} />
       {/* the farm stand */}
       <CuboidCollider args={[0.68, 0.45, 0.32]} position={[STAND.x, 0.45, STAND.z]} />
-      {/* the shrubs */}
-      {SHRUB_SPOTS.map(([x, z]) => (
-        <CylinderCollider key={`s${x}${z}`} args={[0.6, 0.45]} position={[x, 0.6, z]} />
-      ))}
     </RigidBody>
   )
 }
 
-/** Advances the farm on the wall clock (growth keeps up even if rendering paused for a while). */
-function FarmClock() {
+/** Advances the farm on the wall clock (growth keeps up even if rendering paused for a while). On both maps: the farm
+ *  goes on while you are in the house (src/scene/Experience.tsx mounts it beside the map). */
+export function FarmClock() {
   const last = useRef(performance.now())
   useEffect(() => {
     debugSet('farm', {
@@ -797,7 +793,6 @@ export function Garden() {
           <Stress k={stressK} />
         </Suspense>
       )}
-      <FarmClock />
       <SeedKeys />
       <Yard />
       <Colliders />

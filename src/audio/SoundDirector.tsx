@@ -8,6 +8,7 @@ import {
   doorSound,
   dropSound,
   duckAmbient,
+  hearWalkIns,
   lampSwitch,
   pickupSound,
   placeSound as place,
@@ -80,10 +81,12 @@ export function SoundDirector() {
       }
       if (s.screen !== p.screen) screenSound(!!s.screen)
       if (s.room !== p.room) setRoomTone(s.room)
+      if (s.map !== p.map) hearWalkIns(s.map !== 'home')
       if (s.outdoors !== p.outdoors) setOutdoors(s.outdoors)
       if (!!s.screen !== !!p.screen || s.settingsOpen !== p.settingsOpen) duckAmbient(!!s.screen || s.settingsOpen)
     })
     setRoomTone(useHome.getState().room)
+    hearWalkIns(useHome.getState().map !== 'home')
 
     return () => {
       unsubSettings()

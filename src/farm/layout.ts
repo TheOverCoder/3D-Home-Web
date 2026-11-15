@@ -1,5 +1,5 @@
-import { APRON, GARDEN, GATE, HOUSE } from '../data/layout'
-import { SHRUB_SPOTS, CORNER_TREES } from '../data/garden'
+import { GARDEN, GATE } from '../data/layout'
+import { FARM_SHRUBS, CORNER_TREES } from '../data/garden'
 import { WALK_INS, bounds } from '../data/buildings'
 import { CABIN, LOT } from '../data/market'
 import { BED, BEDS, MACHINES, OFFICE, PATH_X, SHED, STAND, TRACTOR } from './data'
@@ -184,14 +184,15 @@ export interface Blocker {
   walkable?: boolean
 }
 
-/** What never moves: the house and its paving, the beds and their paths, the shed, the stand, the gate, the
- *  workshop (oven, mill, loom), the order office and the tractor's track out through the west hedge (as far as the
- *  west meadow reaches), and the shrubs. */
+/** Where the path among the beds starts (it ran on from the house's paving when the house stood on the farm). */
+const PATH_FROM = 7.6
+
+/** What never moves: the beds and their paths, the shed, the stand, the gate, the workshop (oven, mill, loom), the
+ *  order office and the tractor's track out through the west hedge (as far as the west meadow reaches), and the shrubs
+ *  by the boundary. (The house is on a map of its own: where it stood is free land.) */
 export const BLOCKERS: Blocker[] = [
-  { name: 'the house', rect: rect(HOUSE.minX, HOUSE.maxX, HOUSE.minZ, HOUSE.maxZ) },
-  { name: 'the paving round the house', rect: rect(HOUSE.minX - APRON, HOUSE.maxX + APRON, HOUSE.minZ - APRON, HOUSE.maxZ + APRON), walkable: true },
   ...BEDS.map((b) => ({ name: 'a garden bed', rect: around(b.x, b.z, BED.w / 2 + 0.35, BED.d / 2 + 0.35) })),
-  { name: 'the path', rect: rect(PATH_X - 0.75, PATH_X + 0.75, HOUSE.maxZ, GARDEN.maxZ), walkable: true },
+  { name: 'the path', rect: rect(PATH_X - 0.75, PATH_X + 0.75, PATH_FROM, GARDEN.maxZ), walkable: true },
   { name: 'the path', rect: rect(PATH_X, GATE.x + 0.8, 11.95, GARDEN.maxZ), walkable: true },
   { name: 'the shed', rect: rect(SHED.x - 1.2, SHED.x + 1.8, SHED.z - 1.45, SHED.z + 0.95) },
   { name: 'the farm stand', rect: around(STAND.x, STAND.z, 0.85, 0.55) },
@@ -201,7 +202,7 @@ export const BLOCKERS: Blocker[] = [
   { name: 'the loom', rect: around(MACHINES.loom.x, MACHINES.loom.z, 1.0, 0.85) },
   { name: 'the order office', rect: around(OFFICE.x, OFFICE.z, OFFICE.half.x, OFFICE.half.z) },
   { name: "the tractor's track", rect: rect(GARDEN.minX - 12.5, OFFICE.x + OFFICE.half.x, TRACTOR.z - 0.75, TRACTOR.z + 0.75), walkable: true },
-  ...SHRUB_SPOTS.map(([x, z]) => ({ name: 'a shrub', rect: around(x, z, 0.45, 0.45) })),
+  ...FARM_SHRUBS.map(([x, z]) => ({ name: 'a shrub', rect: around(x, z, 0.45, 0.45) })),
 ]
 
 export interface Fit {

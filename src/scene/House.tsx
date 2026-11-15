@@ -8,7 +8,7 @@ import { buildTrimesh } from '../lib/collision'
 import { Ceilings } from './Ceilings'
 import { Door } from './Door'
 import { Dressing } from './Dressing'
-import { Exterior } from './Exterior'
+import { Countryside, Exterior, ExteriorColliders } from './Exterior'
 import { Floors } from './Floors'
 import { Furnishings } from './Furnishings'
 import { GardenDoor } from './GardenDoor'
@@ -124,13 +124,15 @@ export function House() {
       <>
         <GltfHouse url={assets.house} collisionUrl={assets.houseCollision} />
         <Exterior />
+        <ExteriorColliders />
+        <Countryside />
         <Lamps fixtures={false} />
       </>
     )
   }
   // what the drawing pass may leave out (src/lib/visibility): the shell — walls, floors, ceilings, doors — is always
-  // drawn; the garden round the house is the outside, seen from indoors only through a window or the garden door; the
-  // furniture and everything else in a room is drawn where its room can be seen
+  // drawn; the plot round the house and the countryside are the outside, seen from indoors only through a window or the
+  // garden door; the furniture and everything else in a room is drawn where its room can be seen
   return (
     <>
       <group userData={{ cell: 'always' }}>
@@ -146,6 +148,8 @@ export function House() {
         <StaticBatch>
           <Exterior />
         </StaticBatch>
+        <ExteriorColliders />
+        <Countryside />
       </group>
       <StaticBatch rev={furniture.rev} exclude={furniture.exclude}>
         <Furnishings />

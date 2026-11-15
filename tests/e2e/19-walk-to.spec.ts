@@ -1,12 +1,18 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { test, expect, bootApp, watchErrors, SPAWN, BASE } from './helpers'
+import { test, expect, bootApp, watchErrors, BASE } from './helpers'
 import type { Page } from '@playwright/test'
+import { FRONT_DOOR, HALL } from '../../src/data/market'
 
 // Take me there: a mark tapped on the compass walks you to the thing by yourself, on a way found round what is in the
-// way (src/lib/route) — out of the house through its doorways and the garden door, round the beds, the pens and the
-// buildings — with the stick's own walking (never put there), until the thing is within reach and the action button
-// offers it; the view turns to it. Anything you do yourself takes over at once: a key, the stick, a panel, the mark
-// again. The kitchen's door shut is a wall. Every number is read in the same call that waits for it (the farm ticks).
+// way (src/lib/route) — out of the market through its doors, across the lane and through the garden's gate, round the
+// beds, the pens and the buildings — with the stick's own walking (never put there), until the thing is within reach and
+// the action button offers it; the view turns to it. Anything you do yourself takes over at once: a key, the stick, a
+// panel, the mark again. A way stays on its map (src/scene/Maps.tsx): the farm's marks on the farm; in the house, its
+// doorways, and the kitchen's door shut is a wall. Every number is read in the same call that waits for it (the farm
+// ticks).
+
+/** Inside the market by its front door (src/data/market.ts): its hall. */
+const IN_MARKET = { x: FRONT_DOOR.x1 - 0.3, z: HALL.z0 + 0.6 }
 
 /** Only the nest is ready: six eggs (its most), every other producer empty. */
 const onlyEggs = (page: Page) =>
@@ -40,14 +46,16 @@ function crosses(pts: { x: number; z: number }[], axis: 'x' | 'z', at: number, l
   }
   return false
 }
-/** Keeps, inside the page, every room the player is in from now until the next walk has started and ended. */
+/** Keeps, inside the page, every space the player is in (a room of the house, a walk-in's room, the lane, out) from now
+ *  until the next walk has started and ended. */
 const watchRooms = (page: Page) =>
   page.evaluate(() => {
     const h = (window as any).__home
     h.__rooms = new Set()
     let started = false
     const f = () => {
-      h.__rooms.add(h.useHome.getState().room ?? 'out')
+      const p = h.playerState.position
+      h.__rooms.add(h.maps.space(p.x, p.z))
       if (h.walk.state().id) started = true
       if (!started || h.walk.state().id) requestAnimationFrame(f)
     }
@@ -55,14 +63,17 @@ const watchRooms = (page: Page) =>
   })
 
 test.describe('take me there', () => {
-  test('from the living room, the eggs on the compass walk you out through the garden door to the nest; there the button offers them', async ({ game }) => {
-    await game.ready()
+  test('from inside the market, the eggs on the compass walk you out through its doors, across the lane and through the gate to the nest; there the button offers them', async ({ game }) => {
+    await game.ready('farm')
     const { page } = game
     await onlyEggs(page)
-    // indoors, the compass shows what is ready outside
+    await game.teleport(IN_MARKET.x, 1.4, IN_MARKET.z, 0, 0)
+    // in the market, the compass shows what is ready outside
     const mark = page.getByRole('button', { name: /^6 eggs ready/ })
     await expect(mark).toBeVisible()
-    expect(await page.evaluate(() => (window as any).__home.useHome.getState().room)).toBe('living')
+    await page.waitForFunction(
+      () => (window as any).__home.walk && (window as any).__home.maps.space((window as any).__home.playerState.position.x, (window as any).__home.playerState.position.z) === 'market',
+    )
     await watchRooms(page)
     await mark.click()
     // on the way: the mark ringed (and pressed), its arrow over the nest
@@ -77,8 +88,8 @@ test.describe('take me there', () => {
     expect(w.stats.walked).toBeGreaterThan(w.stats.length * 0.9)
     expect(w.stats.longestStep).toBeLessThan(2.4)
     expect(w.stats.turns).toBeGreaterThanOrEqual(1)
-    // out through the garden door: from the living room to the garden, through no other room
-    expect(await page.evaluate(() => ([...(window as any).__home.__rooms] as string[]).sort((a, b) => a.localeCompare(b)))).toEqual(['living', 'out'])
+    // out through its door: from the market's hall onto the lane and into the garden, through no other room
+    expect(await page.evaluate(() => ([...(window as any).__home.__rooms] as string[]).sort((a, b) => a.localeCompare(b)))).toEqual(['lane', 'market', 'out'])
     // the view turned towards where it went, never faster than about 80° a second; finding the way never held a frame
     expect(w.stats.fastestTurn).toBeLessThan(1.5)
     expect(w.stats.slowestFrameMs).toBeLessThan(30)
@@ -95,14 +106,17 @@ test.describe('take me there', () => {
   })
 
   test('a key, the mark again or a panel takes over at once', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     await onlyEggs(page)
+    // in the west yard, a long way from the nest
+    await game.teleport(-8, 1.4, 9, 0, 0)
+    const start = { x: -8, z: 9 }
     const mark = page.getByRole('button', { name: /^6 eggs ready/ })
     await expect(mark).toBeVisible()
     // a step of your own (W): it stops, the mark is no longer ringed, and the body comes to rest
     await mark.click()
-    await movedFrom(page, SPAWN, 0.4)
+    await movedFrom(page, start, 0.4)
     await page.keyboard.press('KeyW')
     await ended(page, 30_000)
     expect((await walk(page)).ended).toBe('key')
@@ -112,7 +126,8 @@ test.describe('take me there', () => {
     const here = await page.evaluate(() => ({ ...(window as any).__home.playerState.position }))
     await mark.click()
     await movedFrom(page, here, 0.4)
-    await mark.click()
+    // (tapped while it slides along the compass: the view turns with the way, so the mark is never still)
+    await mark.dispatchEvent('click')
     await ended(page, 30_000)
     expect(await walk(page)).toMatchObject({ ended: 'again', guide: null })
     // a panel opening (the farm shop's, as from its door)
@@ -133,11 +148,11 @@ test.describe('take me there', () => {
   })
 
   test('held up by something that moves, it plans again round it once; held up again, it stops', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     await onlyEggs(page)
-    // something that moves (a kinematic body, as the animals are) across the lawn, on the way from the garden door to
-    // the nest: the way is found without it, so the walk runs into it
+    // something that moves (a kinematic body, as the animals are) across the lawn where the house stood, on the way from
+    // the farm's start to the nest: the way is found without it, so the walk runs into it
     await page.evaluate(() => {
       const { world, rapier } = (window as any).__home.physics
       const body = world.createRigidBody(rapier.RigidBodyDesc.kinematicPositionBased().setTranslation(3.5, 0.9, 6.6))
@@ -187,37 +202,39 @@ test.describe('take me there', () => {
     expect(game.errors, game.errors.join('\n')).toEqual([])
   })
 
-  test('the kitchen door shut is a wall: from the kitchen the way goes round through the studio; open, through the bedroom', async ({ game }) => {
+  test('in the house the kitchen door shut is a wall: from the kitchen to the bedside lamp the way goes round through the studio; open, through its doorway', async ({ game }) => {
     await game.ready()
     const { page } = game
-    await onlyEggs(page)
+    // the house has no marks on the compass (nothing in it is ready to take): the farm's are a drive away
+    await page.waitForTimeout(1000)
+    expect(await page.evaluate(() => (window as any).__home.useHome.getState().compass)).toEqual([])
     await game.teleport(3.5, 1.4, -3, Math.PI)
     const plan = (open: boolean) =>
       page.evaluate((open) => {
         const h = (window as any).__home
         h.useHome.setState({ doors: { ...h.useHome.getState().doors, 'door-kitchen-bedroom': open } })
-        return h.walk.plan('farm-nest', { x: 3.5, z: -3 })
+        return h.walk.plan('lamp-bedside', { x: 3.5, z: -3 })
       }, open)
     const open = await plan(true)
     expect(open.found).toBe(true)
-    // the door open: through its doorway (the wall z = 0, x 2.7–4.3) and on through the living room
+    // the door open: through its doorway (the wall z = 0, x 2.7–4.3)
     expect(crosses(open.pts, 'x', 0, 2.7, 4.3)).toBe(true)
     const shut = await plan(false)
     expect(shut.found).toBe(true)
     // shut: never through the wall between the kitchen and the bedroom, but into the studio (the wall x = 0, z −3.8 to
-    // −2.2) and from there into the living room (the wall z = 0, x −4.3 to −2.7)
+    // −2.2), from there into the living room (the wall z = 0, x −4.3 to −2.7) and on into the bedroom (the wall x = 0,
+    // z 2.2 to 3.8)
     expect(crosses(shut.pts, 'x', 0, 0, 7)).toBe(false)
     expect(crosses(shut.pts, 'z', 0, -3.8, -2.2)).toBe(true)
     expect(crosses(shut.pts, 'x', 0, -4.3, -2.7)).toBe(true)
-    // and walked that way, the long way round, to the nest
-    const mark = page.getByRole('button', { name: /^6 eggs ready/ })
-    await expect(mark).toBeVisible()
+    expect(crosses(shut.pts, 'z', 0, 2.2, 3.8)).toBe(true)
+    // and walked that way, the long way round, to the lamp
     await watchRooms(page)
-    await mark.click()
+    await page.evaluate(() => (window as any).__home.walk.to('lamp-bedside'))
     await ended(page)
     expect((await walk(page)).ended).toBe('arrived')
-    expect(await page.evaluate(() => ([...(window as any).__home.__rooms] as string[]).sort((a, b) => a.localeCompare(b)))).toEqual(['kitchen', 'living', 'office', 'out'])
-    await page.waitForFunction(() => (window as any).__home.useHome.getState().nearby?.id === 'farm-nest', null, { timeout: 30_000, polling: 200 })
+    expect(await page.evaluate(() => ([...(window as any).__home.__rooms] as string[]).sort((a, b) => a.localeCompare(b)))).toEqual(['bedroom', 'kitchen', 'living', 'office'])
+    await page.waitForFunction(() => (window as any).__home.useHome.getState().actions.some((a: any) => a.id === 'lamp-bedside'), null, { timeout: 30_000, polling: 200 })
     expect(game.errors, game.errors.join('\n')).toEqual([])
   })
 })
@@ -231,14 +248,16 @@ test.describe('take me there on a phone', { tag: ['@boot', '@full'] }, () => {
     const page = await context.newPage()
     const errors: string[] = []
     watchErrors(page, errors)
+    // a new farm starts on the farm: in its west yard, a long way from the nest
     await bootApp(page)
     await onlyEggs(page)
-    await page.evaluate(() => {
+    const start = { x: -8, z: 9 }
+    await page.evaluate((s) => {
       const h = (window as any).__home
-      h.teleport(-3.5, 1.4, 1.3)
-      h.look.yaw = Math.PI
+      h.teleport(s.x, 1.4, s.z)
+      h.look.yaw = 0
       h.look.pitch = 0
-    })
+    }, start)
     const mark = page.getByRole('button', { name: /^6 eggs ready/ })
     await expect(mark).toBeVisible()
     // the compass at the top keeps clear of the touch controls
@@ -254,7 +273,7 @@ test.describe('take me there on a phone', { tag: ['@boot', '@full'] }, () => {
     await mark.tap()
     await expect(walkOn).toHaveAttribute('aria-pressed', 'true')
     await expect(mark).toHaveClass(/going/)
-    await movedFrom(page, SPAWN, 0.4)
+    await movedFrom(page, start, 0.4)
     // the thumb on the stick takes over
     const cdp = await context.newCDPSession(page)
     const zone = (await page.locator('.stick-zone').boundingBox())!

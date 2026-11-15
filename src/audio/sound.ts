@@ -635,10 +635,16 @@ let isNight = () => false
 let walledIn = false
 let walledTimer: number | undefined
 
+/** The walk-in buildings are the farm's: on the house's map there are none (SoundDirector says which map you are on). */
+let walkIns = true
+export function hearWalkIns(on: boolean) {
+  walkIns = on
+}
+
 /** Whether you have stepped into or out of a walk-in building; its room tone follows. */
 function checkWalledIn() {
   const at = playerState.position
-  const now = outdoors && insideWalkIn(at.x, at.z) !== null
+  const now = outdoors && walkIns && insideWalkIn(at.x, at.z) !== null
   if (now === walledIn) return
   walledIn = now
   setRoomTone(wantedRoom)
