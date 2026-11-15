@@ -96,7 +96,7 @@ const SUN_DEBT: Debt = {
   size: 'every size',
   pass: 'shadow',
   draws: 275,
-  why: 'the silo, the barn, the office and the tractor cast shadows of their own (242 → 261), and so does your body in the sun: outdoors, and indoors where a window’s sunlight falls on you (215 → 252)',
+  why: 'the silo, the barn, the office, the tractor, the car and the estate office cast shadows of their own (242 → 264), and so does your body in the sun: outdoors, and indoors where a window’s sunlight falls on you (215 → 252)',
   pays: ['their static parts drawn into the map together', 'your body drawn in fewer pieces'],
 }
 
