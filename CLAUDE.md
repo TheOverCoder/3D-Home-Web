@@ -58,7 +58,8 @@ The README has the overview; `tests/README.md` what each test guards.
 ## What is drawn (src/lib/visibility)
 
 - A drawing pass leaves out of each frame what cannot be seen, and never changes the picture. First person: the four
-  rooms and the outside are cells seen only through the doorways, windows and garden door of `src/data/layout.ts`
+  rooms and the outside are cells seen only through the doorways, windows and garden door where the house's shell has
+  them (`src/home/shell.ts`, the save's; as built: `src/data/layout.ts`)
   (the kitchen's door shut closes its doorway); every `Parts` crowd draws only its models in view; the sun's shadow
   map leaves out the casters under the ceilings that no window lets sunlight reach, and is kept between frames while
   everything that moved is out of it (`src/scene/Lighting.tsx`). Third person, decorating, the edit mode and first
@@ -72,7 +73,8 @@ The README has the overview; `tests/README.md` what each test guards.
   (`House.tsx`), as is your own body for the camera (the sun judges it like anything in a room: `userData.sun =
   'room'`). What is outdoors is under `cell: 'outside'` (the farm on its map; the house's own garden and
   countryside on the house's). Anything else stands in a room and is judged each frame by where it is now: a new thing in the house needs
-  nothing. A new opening is a row in `layout.ts`; a new door that shuts must close its portal.
+  nothing. A new opening is a row in `layout.ts` (where it is built; where it is now is the save's, `shell.ts`); a new
+  door that shuts must close its portal.
 - A crowd's model is everything put after one `at`: each animal, person or plant gets its own. Parts that cast a
   shadow are drawn whole.
 - Far parts of a crowd are drawn as lighter copies (`src/lib/sculpt/lod.ts`, meshoptimizer's simplifier): each part of
@@ -89,7 +91,9 @@ The README has the overview; `tests/README.md` what each test guards.
   compares them (`window.__home.land.whole`). A light thing (the fence, the trunks: a few hundred triangles) stays
   one mesh, a draw costs more than it saves.
 - `16-view` draws the same frames with the pass on and off and requires every pixel, depth and shadow-map texel to
-  match (a difference there is a culling bug): a new room, opening or kind of view gets a pose there; a walk-in gets
+  match (a difference there is a culling bug): a new room or kind of view gets a pose there; the house's doorways,
+  windows and garden door are posed from its openings as the save has them (`openingViews`), a changed house too
+  (`changeHouse`, also measured in `05`); a walk-in gets
   its poses from its row. `window.__home.view` (?debug) turns the
   pass and its parts off and counts what it left out.
 
@@ -225,7 +229,20 @@ The README has the overview; `tests/README.md` what each test guards.
   kind's `weight` is its model's triangle count and `05-budget` fails when a model draws more: keep a piece under its
   weight — slim a heavy model (`simplify` in `scripts/assets.manifest.json`, then `npm run assets:optimize`) rather
   than raise the weight; if a weight or the limit must change, measure again.
-- Things that stand on a piece follow it: `OnPiece` for the small ones, `HOSTED` for lamps and pickups.
+- Things that stand on a piece follow it: `OnPiece` for the small ones, `HOSTED` for lamps and pickups (the standing
+  lamp is a piece of its own, its light `HOSTED` by it: the house keeps as many lights as it always had).
+- What hangs on the walls is a piece on the `wall` layer (pictures, the mirror, the clock, the radiator, the switches,
+  the sockets, the screens: its x and z the point of the wall's face, its turn the way it faces, its height the kind's
+  `hang`); it slides along the walls of a room, clear of corners and openings, and a tall piece keeps from under it.
+- The house's shell is the save's too (`src/home/shell.ts`, `farm.home.shell`): where each doorway, window and the
+  garden door is along the walls it may be in (a window round its room's corner, a doorway only between its two rooms),
+  which are closed (wall), each room's paint (its own side of each wall) and floor. Decorating slides, closes and opens
+  them, paints and lays floors (free, with undo); the number of openings never changes, so `05`'s worst case holds.
+  Everything built from the openings follows the save's: the walls (built and merged again by colour), their
+  colliders, the doors, the light shafts, the portals and the sun's windows, the camera's limits, the route, the rules.
+- Blocking the way is the player's choice: a piece that leaves a doorway, a room, a screen or a lamp out of reach fits
+  with a word (`warn`, amber), never a refusal; what stands or hangs must still not go through a wall or another piece,
+  nor where the kitchen's door shuts and swings. Decorating ends with `keepPlayerClear` (never inside a wall or a piece).
 
 ## Making models (src/lib/sculpt, examples in src/models)
 
