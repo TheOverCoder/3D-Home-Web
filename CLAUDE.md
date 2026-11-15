@@ -46,7 +46,8 @@ The README has the overview; `tests/README.md` what each test guards.
   scene (`useHome.map`, following `farm.place` in the save). The farm runs on while you are in the house (`FarmClock`
   is mounted on both). A new farm starts on the farm at `FARM_START`; the house is bought from the estate agent by the
   market (`buyApartment`, 4000 coins) and a farm from before the two maps owns it and starts in it.
-- The car drives between them: `travel(to)` drops a curtain, plays the drive's film if one is set (`setDriveFilm`),
+- The car drives between them: `travel(to)` drops a curtain, plays the drive's film (`src/film`: a few seconds in the
+  game's own canvas, its light and the dashboard's clock from the farm's hour, a tap skips it; `setDriveFilm`),
   moves the save, mounts the other map, compiles it, and puts you out at `ARRIVE`. A loaded or switched slot follows
   its own place.
 - Every rule that differs by map asks `src/lib/world.ts` (rooms and outdoors, the action button's spaces, what is
