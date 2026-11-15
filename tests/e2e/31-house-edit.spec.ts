@@ -198,4 +198,29 @@ test.describe('decorating the house’s shell', () => {
     })
     expect(game.errors).toEqual([])
   })
+
+  test('standing in a doorway that is closed while decorating, you step out of the new wall as it ends', async ({ game }) => {
+    await game.ready()
+    const { page } = game
+    await game.teleport(-3.5, 1.4, 0.0, 0, 0)
+    await until(game, () => Math.abs((window as any).__home.playerState.position.z) < 0.2)
+    await decorate(game)
+    await page.evaluate(() => (window as any).__home.home.toggleOpening('livingOffice'))
+    await until(game, () => (window as any).__home.home.shell().openings.livingOffice.closed === true)
+    await page.keyboard.press('KeyB')
+    await until(game, () => !(window as any).__home.useHome.getState().decorating)
+    // clear of the wall's thickness (its faces at ±0.08) by the body's radius, on one side or the other
+    await until(game, () => Math.abs((window as any).__home.playerState.position.z) > 0.3)
+    await page.waitForTimeout(1000)
+    expect(Math.abs(await page.evaluate(() => (window as any).__home.playerState.position.z))).toBeGreaterThan(0.3)
+    // the doorway open again, as the house was
+    await page.evaluate(() =>
+      (window as any).__home.home.restore({
+        ...(window as any).__home.home.layout,
+        shell: { ...(window as any).__home.home.shell(), openings: { ...(window as any).__home.home.shell().openings, livingOffice: { run: 'mid-w', centre: -3.5, closed: false } } },
+      }),
+    )
+    await until(game, () => (window as any).__home.home.shell().openings.livingOffice.closed === false)
+    expect(game.errors).toEqual([])
+  })
 })

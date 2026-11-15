@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { CuboidCollider, RigidBody } from '@react-three/rapier'
 import { HOUSE, ROOMS, type FloorKind, type RoomId } from '../data/layout'
 import { farm, useFarm } from '../farm/state'
@@ -18,6 +18,7 @@ function RoomFloor({ id, finish }: { id: RoomId; finish: string }) {
   const d = maxZ - minZ
   const t = TILE[floor.kind]
   const tex = useMemo(() => surface(floor.kind, w / t, d / t), [floor.kind, w, d, t])
+  useEffect(() => () => [tex.map, tex.normalMap, tex.roughnessMap].forEach((x) => x.dispose()), [tex])
   return (
     <mesh rotation-x={-Math.PI / 2} position={[(minX + maxX) / 2, 0, (minZ + maxZ) / 2]} receiveShadow>
       <planeGeometry args={[w, d]} />

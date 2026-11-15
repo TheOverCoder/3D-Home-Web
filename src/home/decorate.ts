@@ -339,27 +339,30 @@ export function undo() {
 export function keepPlayerClear() {
   const me = playerState.position
   const BODY = 0.4
+  // a wall that was not there (a doorway closed or moved): the body inside it, not merely against it
+  const IN_WALL = 0.2
   const solids = shellSolids(farm.home.shell)
   const inHouse = me.x > HOUSE.minX && me.x < HOUSE.maxX && me.z > HOUSE.minZ && me.z < HOUSE.maxZ
-  const blocked = (x: number, z: number) =>
+  const blocked = (x: number, z: number, wall = IN_WALL) =>
     farm.home.pieces.some((p) => {
       if (PIECES[p.type].layer !== 'floor') return false
       const r = footprint(p)
       return x > r.minX - BODY && x < r.maxX + BODY && z > r.minZ - BODY && z < r.maxZ + BODY
     }) ||
     (inHouse &&
-      (x < HOUSE.minX + 0.45 ||
-        x > HOUSE.maxX - 0.45 ||
-        z < HOUSE.minZ + 0.45 ||
-        z > HOUSE.maxZ - 0.45 ||
-        solids.some((b) => b[1] < 0.5 && x > b[0] - BODY && x < b[3] + BODY && z > b[2] - BODY && z < b[5] + BODY)))
+      (x < HOUSE.minX + 0.28 ||
+        x > HOUSE.maxX - 0.28 ||
+        z < HOUSE.minZ + 0.28 ||
+        z > HOUSE.maxZ - 0.28 ||
+        solids.some((b) => b[1] < 0.5 && x > b[0] - wall && x < b[3] + wall && z > b[2] - wall && z < b[5] + wall)))
   if (!blocked(me.x, me.z)) return
   for (let d = 0.25; d <= 4; d += 0.25)
     for (let k = 0; k < 16; k++) {
       const a = (k / 16) * Math.PI * 2
       const x = me.x + Math.cos(a) * d
       const z = me.z + Math.sin(a) * d
-      if (!blocked(x, z)) {
+      // (somewhere the whole body stands clear of the walls)
+      if (!blocked(x, z, BODY)) {
         playerState.moveTo = { x, y: me.y + 0.2, z }
         return
       }

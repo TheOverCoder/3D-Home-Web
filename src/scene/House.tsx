@@ -158,7 +158,8 @@ export function House() {
         <ExteriorColliders />
         <Countryside />
       </group>
-      <StaticBatch rev={furniture.rev} exclude={furniture.exclude}>
+      {/* merged again when the shell changes too: the kitchen's tiles follow its windows (Dressing.tsx) */}
+      <StaticBatch rev={`${furniture.rev}#${shellRev}`} exclude={furniture.exclude}>
         <Furnishings />
         <Dressing />
       </StaticBatch>

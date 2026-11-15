@@ -74,6 +74,15 @@ export function Walls({ shell }: { shell: HomeShell }) {
     () => segs.map((s) => (s.kind === 'wall' ? halves(s).map(([size, , at]) => boxProject(new BoxGeometry(size[0], size[1], size[2]), 2.2, at[0] * 0.73 + at[2] * 1.31)) : null)),
     [segs],
   )
+  // built again whenever an opening moves or a room is painted: what this build made goes with it
+  useEffect(
+    () => () => {
+      for (const g of geometries) g?.dispose()
+      for (const f of faces) f?.forEach((g) => g.dispose())
+      for (const t of textures) if (t !== plaster) [t.map, t.normalMap, t.roughnessMap].forEach((x) => x.dispose())
+    },
+    [geometries, faces, textures, plaster],
+  )
   const mats = useRef<(MeshStandardMaterial | null)[][]>(segs.map(() => []))
   const boxes = useMemo(() => segs.map((s) => new Box3().setFromCenterAndSize(new Vector3(...s.center), new Vector3(...s.size)).expandByScalar(0.02)), [segs])
   const fade = useRef<number[]>(segs.map(() => 1))

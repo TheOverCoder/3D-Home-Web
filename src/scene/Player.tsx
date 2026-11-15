@@ -147,7 +147,7 @@ function keepCameraInBounds(p: Vector3, body: Vector3) {
   if (house && insideHouse(body.x, body.z)) {
     p.y = Math.min(p.y, HOUSE.wallHeight - 0.12)
     // through the open garden door the eyes may lean out past its wall
-    const out = (axis: 'x' | 'z', high: boolean) => inOpening && g.axis !== axis && g.at > 0 === high
+    const out = (axis: 'x' | 'z', high: boolean) => inOpening && g.axis === axis && g.at > 0 === high
     p.x = MathUtils.clamp(p.x, out('z', false) ? HOUSE.minX - 3 : HOUSE.minX + CLEAR, out('z', true) ? HOUSE.maxX + 3 : HOUSE.maxX - CLEAR)
     p.z = MathUtils.clamp(p.z, out('x', false) ? HOUSE.minZ - 3 : HOUSE.minZ + CLEAR, out('x', true) ? HOUSE.maxZ + 3 : HOUSE.maxZ - CLEAR)
     return
