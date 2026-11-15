@@ -1,4 +1,4 @@
-import { HOUSE, LAMPS, ROOMS, SPAWN, roomAt, type RoomId } from '../data/layout'
+import { HOUSE, LAMPS, ROOMS, roomAt, type RoomId } from '../data/layout'
 import { SCREENS, type ScreenDef } from '../data/screens'
 import { carry, rectToWorld, type Fit, type Placement, type Rect } from '../farm/layout'
 import { debugFlag } from '../lib/debug'
@@ -377,7 +377,6 @@ export function canMoveOpening(layout: HomeLayout, id: string, at: OpeningAt): H
   if (problem) return { ok: false, reason: problem }
   const shell = withOpening(layout.shell, id, at)
   for (const p of layout.pieces) {
-    if (PIECES[p.type].fitted) continue
     if (shellProblem(layout.shell, p)) continue // already as it was (a save from before: put away as it loads)
     const why = shellProblem(shell, p)
     if (why) return { ok: false, reason: `The ${lowerName(p.type)} is in the way` }
@@ -396,21 +395,10 @@ const cellOf = (x: number, z: number) => [Math.floor((x - HOUSE.minX) / CELL), M
 
 const ROOM_NAME: Record<RoomId, string> = { living: 'the living room', office: 'the studio', kitchen: 'the kitchen', bedroom: 'the bedroom' }
 
-/** What must stay reachable: the open doorways, the garden door, the floor near each screen's stand and each lamp. */
+/** What must stay reachable besides the rooms and their doorways (unreachable): the floor near each screen's stand and
+ *  each lamp. */
 function goals(layout: HomeLayout): { x: number; z: number; within: number; name: string }[] {
   const out: { x: number; z: number; within: number; name: string }[] = []
-  for (const o of openingsOf(layout.shell)) {
-    if (o.closed || o.kind === 'window') continue
-    if (o.kind === 'doorway') {
-      // named by the room on its far side from where you come in
-      const name = ROOM_NAME[o.sides[1] === 'living' ? o.sides[0]! : o.sides[1]!]
-      out.push(o.axis === 'x' ? { x: o.centre, z: o.at, within: 0.3, name } : { x: o.at, z: o.centre, within: 0.3, name })
-    } else {
-      const g = gardenDoorOf(layout.shell)
-      const n = g.at > 0 ? -0.5 : 0.5
-      out.push(g.axis === 'x' ? { x: g.centre, z: g.at + n, within: 0.4, name: 'the garden' } : { x: g.at + n, z: g.centre, within: 0.4, name: 'the garden' })
-    }
-  }
   for (const s of SCREENS) {
     const def = placedScreen(layout, s)
     const a = def.rotationY
@@ -447,42 +435,67 @@ export function unreachable(layout: HomeLayout): string | null {
       const cz = HOUSE.minZ + (z + 0.5) * CELL
       if (cx < HOUSE.minX + WALL + BODY || cx > HOUSE.maxX - WALL - BODY || cz < HOUSE.minZ + WALL + BODY || cz > HOUSE.maxZ - WALL - BODY) blocked[z * GX + x] = 1
     }
-  // flood from where you come in
-  const seen = new Uint8Array(GX * GZ)
-  const [sx, sz] = cellOf(SPAWN[0], SPAWN[2])
-  const queue: number[] = []
-  const push = (x: number, z: number) => {
-    if (x < 0 || z < 0 || x >= GX || z >= GZ) return
-    const k = z * GX + x
-    if (seen[k] || blocked[k]) return
-    seen[k] = 1
-    queue.push(k)
+  /** The cells reached from these, by steps between free cells (only within `box`: min and max cell x and z). */
+  const flood = (seeds: number[], box = [0, 0, GX - 1, GZ - 1]) => {
+    const seen = new Uint8Array(GX * GZ)
+    const queue: number[] = []
+    const push = (x: number, z: number) => {
+      if (x < box[0] || z < box[1] || x > box[2] || z > box[3]) return
+      const k = z * GX + x
+      if (seen[k] || blocked[k]) return
+      seen[k] = 1
+      queue.push(k)
+    }
+    for (const k of seeds) push(k % GX, Math.floor(k / GX))
+    for (let i = 0; i < queue.length; i++) {
+      const k = queue[i]
+      const x = k % GX
+      const z = (k - x) / GX
+      push(x + 1, z)
+      push(x - 1, z)
+      push(x, z + 1)
+      push(x, z - 1)
+    }
+    return { seen, queue }
   }
-  push(sx, sz)
-  for (let i = 0; i < queue.length; i++) {
-    const k = queue[i]
-    const x = k % GX
-    const z = (k - x) / GX
-    push(x + 1, z)
-    push(x - 1, z)
-    push(x, z + 1)
-    push(x, z - 1)
-  }
-  for (const g of goals(layout)) {
-    const r = Math.ceil(g.within / CELL)
-    const [gx, gz] = cellOf(g.x, g.z)
-    let ok = false
-    // only the house's cells round it: counting from the cell of a lamp carried far off with its piece never ended
-    // (from −∞, or past 2^53, one more is the same number)
-    for (let z = Math.max(0, gz - r); z <= Math.min(GZ - 1, gz + r) && !ok; z++)
-      for (let x = Math.max(0, gx - r); x <= Math.min(GX - 1, gx + r) && !ok; x++) {
+  /** The cells of `seen` within `within` of a point (only the house's cells round it: counting from the cell of a lamp
+   *  carried far off with its piece never ended — from −∞, or past 2^53, one more is the same number). */
+  const near = (seen: Uint8Array, px: number, pz: number, within: number) => {
+    const out: number[] = []
+    const r = Math.ceil(within / CELL)
+    const [gx, gz] = cellOf(px, pz)
+    for (let z = Math.max(0, gz - r); z <= Math.min(GZ - 1, gz + r); z++)
+      for (let x = Math.max(0, gx - r); x <= Math.min(GX - 1, gx + r); x++) {
         if (!seen[z * GX + x]) continue
-        const cx = HOUSE.minX + (x + 0.5) * CELL
-        const cz = HOUSE.minZ + (z + 0.5) * CELL
-        if (Math.hypot(cx - g.x, cz - g.z) <= g.within) ok = true
+        if (Math.hypot(HOUSE.minX + (x + 0.5) * CELL - px, HOUSE.minZ + (z + 0.5) * CELL - pz) <= within) out.push(z * GX + x)
       }
-    if (!ok) return g.name
+    return out
   }
+  // flood from where you come in: just inside the garden door
+  const g = gardenDoorOf(layout.shell)
+  const inward = g.at > 0 ? -0.5 : 0.5
+  const [sx, sz] = g.axis === 'x' ? cellOf(g.centre, g.at + inward) : cellOf(g.at + inward, g.centre)
+  const everywhere = flood(near(new Uint8Array(GX * GZ).fill(1), g.axis === 'x' ? g.centre : g.at + inward, g.axis === 'x' ? g.at + inward : g.centre, 0.4))
+  if (!everywhere.queue.length || !Number.isFinite(sx + sz)) return 'the garden'
+  const { seen } = everywhere
+  // a whole room shut away (its doorways closed or blocked) is said as the room
+  const reached = new Set<RoomId>()
+  for (const k of everywhere.queue) reached.add(roomAt(HOUSE.minX + ((k % GX) + 0.5) * CELL, HOUSE.minZ + (Math.floor(k / GX) + 0.5) * CELL)!)
+  for (const room of Object.keys(ROOM_NAME) as RoomId[]) if (!reached.has(room)) return ROOM_NAME[room]
+  // each open doorway can be walked up to from both sides, and through (a lamp in its opening, a sofa across it)
+  for (const o of openingsOf(layout.shell)) {
+    if (o.kind !== 'doorway' || o.closed) continue
+    const side = (s: 0 | 1): [number, number] => {
+      const off = s ? 0.45 : -0.45
+      return o.axis === 'x' ? [o.centre, o.at + off] : [o.at + off, o.centre]
+    }
+    for (const s of [0, 1] as const) if (!near(seen, ...side(s), 0.45).length) return ROOM_NAME[o.sides[1 - s]!]
+    const [ax, az] = cellOf(...side(0))
+    const span = Math.ceil(1.3 / CELL)
+    const through = flood(near(seen, ...side(0), 0.45), [ax - span, az - span, ax + span, az + span])
+    if (!near(through.seen, ...side(1), 0.45).length) return ROOM_NAME[o.sides[1] === 'living' ? o.sides[0]! : o.sides[1]!]
+  }
+  for (const goal of goals(layout)) if (!near(seen, goal.x, goal.z, goal.within).length) return goal.name
   return null
 }
 
@@ -613,8 +626,8 @@ export function sanitizeHome(raw: unknown): HomeLayout {
     if (out.pieces.length < MOST_PIECES) out.pieces.push(q)
     else out.stored.push(q.type)
   }
-  // a fitted piece (or a screen) missing from the save comes back
-  for (const d of base.pieces) if ((PIECES[d.type].fitted || PIECES[d.type].keep) && !out.pieces.some((p) => p.id === d.id)) out.pieces.push(d)
+  // a fitted piece (or a screen) missing from the save comes back (a save from before the screens moved: with the rest, below)
+  for (const d of base.pieces) if ((PIECES[d.type].fitted || (PIECES[d.type].keep && !older)) && !out.pieces.some((p) => p.id === d.id)) out.pieces.push(d)
   // the next piece taken out of storage is numbered past every id there is (`stool-1`): with `next` lost or edited, a
   // second stool-1 came, and putting one away put both away
   for (const p of out.pieces) {

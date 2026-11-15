@@ -2,7 +2,8 @@
 import fc from 'fast-check'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { PIECES, PIECE_TYPES } from '../home/catalogue'
-import { ROOM_WEIGHT, canPlacePiece, defaultHome, roomWeight, unreachable } from '../home/layout'
+import { ROOM_WEIGHT, canPlacePiece, defaultHome, pieceRoom, roomWeight } from '../home/layout'
+import { OPENINGS, floorById, openingProblem, paintById } from '../home/shell'
 import { ROOMS, type RoomId } from '../data/layout'
 import { endsWithin } from '../lib/endsWithin'
 import {
@@ -162,6 +163,8 @@ const OLD_PARTS: Record<string, string> = {
  *  - that countdown → the line: a buyer due as the farm loads joins it, and the countdown starts again
  *  - the time it was saved → all that grows while away (the beds, the producers, the machines) and the buyers who came
  *  - the furniture → storage (a piece that does not fit is put away) and the number for new pieces (past every id's)
+ *  - the house's shell (its doorways, windows, paint and floors) → the furniture as above (a piece where a doorway was
+ *    closed is put away; a save with no shell, from before it, gets the things on the walls and the standing lamp)
  *  - the layout is one part: a field not bought sends the places on it home, and one place sent home can send all home;
  *    the west meadow bought or not moves the tractor's gate, and so how long its trip is (dispatch)
  *  - the office's upgrades → the order board: as many places, and no wait longer than the office's
@@ -180,6 +183,7 @@ function alsoChanges(part: string): RegExp | null {
   if (part === 'paceLevel') return /^nextVisitorIn$/
   if (part === 'time') return /^(beds|producers|machines)\.|^nextVisitorIn$|^queue$|^orders$|^dispatch$|^(market|contractor|day)$/
   if (part === 'home.pieces') return /^home\.(stored|next)$/
+  if (part === 'home.shell' || part.startsWith('home.shell.')) return /^home\.(pieces|stored|next)$/
   // you are in the house only while it is yours (src/farm/state.ts, load)
   if (part === 'apartment' || part.startsWith('apartment.')) return /^place$/
   // the ladders decide how many places the shop has and how often shoppers come, and how many pieces the contractor brings
@@ -362,7 +366,28 @@ function placeProblems(): string[] {
   const standing = new Set(pieces.map(json))
   for (const d of built.values()) if (PIECES[d.type].fitted) bad(`home: the ${d.id} stands`, standing.has(json(d)))
   for (const room of Object.keys(ROOMS) as RoomId[]) bad(`home: ${room} within what it may draw`, roomWeight(farm.home, room) <= ROOM_WEIGHT)
-  bad('home: everything within reach', unreachable(farm.home) === null)
+  // blocking the way is the player's choice (a word, never a refusal): nothing about reach here
+  // the shell: every opening on a wall it may be on, apart from the rest, the garden door open; known paints and floors
+  const { shell } = farm.home
+  bad(
+    'home.shell: every opening',
+    sameKeys(
+      shell.openings,
+      OPENINGS.map((o) => o.id),
+    ),
+  )
+  for (const o of OPENINGS) bad(`home.shell.openings.${o.id} fits`, !!shell.openings[o.id] && openingProblem(shell, o.id, shell.openings[o.id]) === null)
+  for (const room of Object.keys(ROOMS) as RoomId[]) {
+    bad(`home.shell.paint.${room}: a paint or as built`, shell.paint[room] === null || !!paintById(shell.paint[room]))
+    bad(`home.shell.floors.${room}: a floor`, !!floorById(shell.floors[room]))
+  }
+  // each screen on a wall of its own room
+  for (const d of built.values())
+    if (PIECES[d.type].keep)
+      bad(
+        `home: the ${d.id} hangs`,
+        pieces.some((p) => p.id === d.id && pieceRoom(p) === pieceRoom(d)),
+      )
   bad('home.stored: kinds of the catalogue', stored.every(isKind))
   bad('home.next counts', isCount(next) && next >= 1)
   // the next piece taken out of storage gets an id of its own
@@ -391,7 +416,7 @@ function check(name: string, path: Key[], value: unknown) {
   const parts = loadedParts(toJson(put(base.save, path, value)))
   expect(farmProblems(), 'as loaded').toEqual([])
   // where things stand is checked again where it differs from the save as it was (which keeps the rules: the first test)
-  if (['layout', 'home.pieces', 'home.stored', 'home.next'].some((n) => json(parts.get(n)) !== json(base.parts.get(n)))) expect(placeProblems(), 'as loaded').toEqual([])
+  if (['layout', 'home.pieces', 'home.stored', 'home.next', 'home.shell'].some((n) => json(parts.get(n)) !== json(base.parts.get(n)))) expect(placeProblems(), 'as loaded').toEqual([])
   const names = [...new Set([...base.parts.keys(), ...parts.keys()])]
   const mayChange = free(base, path, names)
   const changed = names.filter((n) => !mayChange(n) && json(parts.get(n)) !== json(base.parts.get(n)))

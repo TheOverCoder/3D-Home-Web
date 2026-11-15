@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { ROOMS, type RoomId } from '../data/layout'
 import { endsWithin } from '../lib/endsWithin'
 import { PIECES, PIECE_TYPES, isPieceType, type PieceType } from './catalogue'
-import { ROOM_WEIGHT, canPlacePiece, defaultHome, findFreeSpot, roomFull, roomWeight, sanitizeHome, snapPiece, unreachable, type HomeLayout, type HomePiece } from './layout'
+import { ROOM_WEIGHT, canMoveOpening, canPlacePiece, defaultHome, findFreeSpot, pieceRoom, roomFull, roomWeight, sanitizeHome, snapPiece, unreachable, type HomeLayout, type HomePiece } from './layout'
+import { withOpening } from './shell'
 import { pieceUrl } from './pictures'
 
 const ROOM_IDS = Object.keys(ROOMS) as RoomId[]
@@ -201,5 +202,99 @@ describe('what a room may draw', () => {
     expect(out.pieces.length + out.stored.length).toBe(old.pieces.length)
     expect(out.stored.length).toBeGreaterThan(0)
     expect(out.stored.every((t) => t === 'plant-tall')).toBe(true)
+  })
+})
+
+describe('blocking the way, the doors and windows, and what hangs on the walls', () => {
+  const at = (home: HomeLayout, id: string, x: number, z: number, rot = 0): HomePiece => ({ ...home.pieces.find((p) => p.id === id)!, x, z, rot })
+  const pouf = (x: number, z: number): HomePiece => ({ id: 'pouf', type: 'pouf', x, z, rot: 0 })
+  const shut = (home: HomeLayout, id: string) => ({ ...home, shell: withOpening(home.shell, id, { ...home.shell.openings[id], closed: true }) })
+
+  it('the standing lamp may stand in a doorway and a sofa block one: they fit, with a word', () => {
+    const home = defaultHome()
+    const lamp = canPlacePiece(home, at(home, 'floor-lamp', -3.5, 0))
+    expect(lamp.ok).toBe(true)
+    expect(lamp.warn).toBe('Blocks the way to the studio')
+    const sofa = canPlacePiece(home, at(home, 'sofa', -3.5, 0.6))
+    expect(sofa).toMatchObject({ ok: true, warn: 'Blocks the way to the studio' })
+    // standing aside, nothing to say
+    expect(canPlacePiece(home, pouf(-2.0, 1.0))).toEqual({ ok: true })
+  })
+
+  it('nothing stands through a wall, under a doorway’s lintel if taller, or where the kitchen’s door shuts and swings', () => {
+    const home = defaultHome()
+    expect(canPlacePiece(home, at(home, 'wardrobe', -3.5, 0))).toMatchObject({ ok: false, reason: 'Through the wall' })
+    expect(canPlacePiece(home, pouf(-3.5, 0))).toMatchObject({ ok: true })
+    expect(canPlacePiece(home, pouf(3.5, 0))).toEqual({ ok: false, reason: "In the door's way" })
+    expect(canPlacePiece(home, pouf(3.0, 0.8))).toEqual({ ok: false, reason: "In the door's way" })
+    // its doorway closed, the door is gone with it, and that floor is free (its wall is not)
+    expect(canPlacePiece(shut(home, 'kitchenBedroom'), pouf(3.0, 0.8)).ok).toBe(true)
+    expect(canPlacePiece(shut(home, 'kitchenBedroom'), pouf(3.5, 0))).toEqual({ ok: false, reason: 'Through the wall' })
+  })
+
+  it('a doorway or a window moves only where nothing stands or hangs in its way; closing one may shut a room away, with a word', () => {
+    const home = defaultHome()
+    expect(canMoveOpening(home, 'livingOffice', { run: 'mid-w', centre: -2.3, closed: false })).toEqual({ ok: false, reason: 'The light switch is in the way' })
+    expect(canMoveOpening(home, 'livingOffice', { run: 'mid-w', centre: -4.6, closed: false }).ok).toBe(true)
+    // the studio's west window behind the bookshelf
+    expect(canMoveOpening(home, 'win-office-west', { run: 'w-office', centre: -3.0, closed: false })).toEqual({ ok: false, reason: 'The bookshelf is in the way' })
+    // a pouf in a doorway: it cannot close there
+    const inIt = { ...home, pieces: home.pieces.map((p) => (p.id === 'pouf' ? pouf(-3.5, 0) : p)) }
+    expect(canMoveOpening(inIt, 'livingOffice', { run: 'mid-w', centre: -3.5, closed: true })).toEqual({ ok: false, reason: 'The pouf is in the way' })
+    expect(canMoveOpening(home, 'livingOffice', { run: 'mid-w', centre: -3.5, closed: true })).toEqual({ ok: true })
+    const one = shut(home, 'livingOffice')
+    expect(canMoveOpening(one, 'officeKitchen', { run: 'mid-n', centre: -3, closed: true })).toEqual({ ok: true, warn: 'Shuts the way to the studio' })
+  })
+
+  it('what hangs on a wall keeps off its openings and round its corners, and a tall piece keeps from under it', () => {
+    const home = defaultHome()
+    const picture = at(home, 'picture-living-wide', -6.92, 1.9, 1)
+    expect(canPlacePiece(home, picture)).toEqual({ ok: false, reason: 'On the window' })
+    expect(canPlacePiece(home, at(home, 'picture-living-wide', -6.92, 0.3, 1))).toEqual({ ok: false, reason: 'Round the corner' })
+    expect(canPlacePiece(home, at(home, 'bookshelf', -6.7, 3.4, 1))).toEqual({ ok: false, reason: 'Under the blue picture' })
+    // a low cabinet stands under it
+    expect(canPlacePiece(home, at(home, 'tv-console', -6.685, 4.0, 1)).ok).toBe(true)
+    // dragged near the bedroom's east wall, a picture hangs on it, facing in
+    const hung = snapPiece(at(home, 'picture-bedroom', 0, 0), 6.6, 2.4)
+    expect([hung.x, hung.z, hung.rot, pieceRoom(hung)]).toEqual([6.92, 2.4, 3, 'bedroom'])
+    // a screen stays in its own room, wherever it is dragged
+    expect(pieceRoom(snapPiece(at(home, 'screen-living', -3.5, 5.92, 2), -3.5, -3))).toBe('living')
+    // one bought hangs on a free stretch of the room's walls
+    const spot = findFreeSpot(home, 'picture-wide', 'kitchen')
+    expect(spot && canPlacePiece(home, spot).ok && pieceRoom(spot)).toBe('kitchen')
+  })
+
+  it('a save from before the walls’ things moved has them where they always were (its own furniture first)', () => {
+    const built = defaultHome()
+    const old = { pieces: built.pieces.filter((p) => !/^(floor-lamp|picture|mirror|wall-clock|radiator|switch|outlet|screen)/.test(p.id)), stored: [], next: 1 }
+    expect(sanitizeHome(JSON.parse(JSON.stringify(old)))).toEqual(built)
+    // a bookshelf where a picture always hung keeps its place; the picture waits in storage
+    const shelf = { ...old, pieces: old.pieces.map((p) => (p.id === 'bookshelf' ? { ...p, x: -6.7, z: 3.4 } : p)).filter((p) => p.id !== 'armchair' && p.id !== 'pouf') }
+    const out = sanitizeHome(JSON.parse(JSON.stringify(shelf)))
+    expect(out.pieces.find((p) => p.id === 'bookshelf')).toMatchObject({ x: -6.7, z: 3.4 })
+    expect(out.pieces.some((p) => p.id === 'picture-living-wide')).toBe(false)
+    expect(out.stored).toContain('picture-wide')
+    // a screen saved in another room, or as another kind, hangs where it was built
+    const moved = { ...built, pieces: built.pieces.map((p) => (p.id === 'screen-office' ? { ...p, x: 3.5, z: -5.92 } : p.id === 'screen-bedroom' ? { ...p, type: 'picture-wide' } : p)) }
+    const back = sanitizeHome(JSON.parse(JSON.stringify(moved)))
+    for (const id of ['screen-office', 'screen-bedroom']) expect(back.pieces.find((p) => p.id === id)).toEqual(built.pieces.find((p) => p.id === id))
+  })
+
+  it('a changed house (windows moved, a doorway closed, the garden door on the west wall, rooms painted) fits, and loads as saved', () => {
+    let home = defaultHome()
+    const move = (id: string, run: string, centre: number, closed = false) => {
+      const fit = canMoveOpening(home, id, { run: run as never, centre, closed })
+      expect(fit.ok, `${id}: ${fit.reason}`).toBe(true)
+      home = { ...home, shell: withOpening(home.shell, id, { run: run as never, centre, closed }) }
+    }
+    move('win-living-west', 'w-living', 1.1)
+    home = { ...home, pieces: home.pieces.filter((p) => !['picture-living-wide', 'picture-living-tall'].includes(p.id)), stored: ['picture-wide', 'picture-tall'] }
+    move('garden-door', 'w-living', 3.9)
+    move('win-kitchen-north', 'e-kitchen', -4.4)
+    move('livingBedroom', 'mid-s', 3, true)
+    move('officeKitchen', 'mid-n', -4.3)
+    home = { ...home, shell: { ...home.shell, paint: { ...home.shell.paint, living: 'sage', kitchen: 'butter' }, floors: { ...home.shell.floors, living: 'limestone', bedroom: 'walnut' } } }
+    expect(home.pieces.filter((p) => !canPlacePiece(home, p).ok).map((p) => p.id)).toEqual([])
+    expect(sanitizeHome(JSON.parse(JSON.stringify(home)))).toEqual(home)
   })
 })

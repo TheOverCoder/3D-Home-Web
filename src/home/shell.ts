@@ -318,22 +318,27 @@ export function sanitizeShell(raw: unknown): HomeShell {
     const centre = typeof s.centre === 'number' && Number.isFinite(s.centre) ? Math.round(s.centre * 1000) / 1000 : NaN
     if (isRunId(s.run) && o.runs.includes(s.run) && Number.isFinite(centre)) wanted[o.id] = { run: s.run, centre, closed: s.closed === true && o.kind !== 'garden' }
   }
-  // each as saved where that fits beside those taken so far (the rest where they were built), then again with all of
-  // them: one that no longer fits beside the rest goes back where it was built; if even that fails, today's house
-  for (let pass = 0; pass < 2; pass++) {
-    for (const o of OPENINGS) {
-      const want = wanted[o.id]
-      if (!want) continue
-      const trial = withOpening(out, o.id, want)
-      if (!openingProblem(trial, o.id, want)) out.openings[o.id] = want
-      else {
-        out.openings[o.id] = base.openings[o.id]
-        delete wanted[o.id]
+  // all of them as saved; then, while one does not fit, a moved one that does not goes back where it was built (or, when
+  // only openings where they were built are in the way of each other, every moved one in that wall); if even that fails,
+  // today's house
+  out.openings = { ...base.openings, ...wanted }
+  const moved = (id: string) => JSON.stringify(out.openings[id]) !== JSON.stringify(base.openings[id])
+  for (let round = 0; round <= OPENINGS.length; round++) {
+    const bad = OPENINGS.filter((o) => openingProblem(withOpening(out, o.id, out.openings[o.id]), o.id, out.openings[o.id]))
+    if (!bad.length) return { ...out }
+    const back = bad.find((o) => moved(o.id))
+    if (back) out.openings = { ...out.openings, [back.id]: base.openings[back.id] }
+    else {
+      const run = runById(out.openings[bad[0].id].run)!
+      for (const o of OPENINGS) {
+        const r = runById(out.openings[o.id].run)!
+        if (moved(o.id) && r.axis === run.axis && r.at === run.at) out.openings = { ...out.openings, [o.id]: base.openings[o.id] }
       }
     }
   }
-  if (OPENINGS.some((o) => openingProblem(out, o.id, out.openings[o.id]))) out.openings = base.openings
-  return out
+  // (a new object each time: what is worked out from a shell is kept by the shell object, so it is never changed after)
+  const tried = { ...out }
+  return OPENINGS.some((o) => openingProblem(tried, o.id, tried.openings[o.id])) ? { ...out, openings: base.openings } : { ...out }
 }
 
 // ───────────────────────────── the pieces the walls are built of ─────────────────────────────

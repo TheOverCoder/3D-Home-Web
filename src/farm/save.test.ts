@@ -7,6 +7,8 @@ import { buyPiece, collect, farm, freeSpotFor, gateX, inLine, placeStored, store
 import { levelOf, seedXp } from './xp'
 import { tripSeconds } from './tractorRoute'
 import { OLD_SAVE, playedSave, savedNow, startFrom } from './testSaves'
+import { defaultHome } from '../home/layout'
+import { defaultShell } from '../home/shell'
 
 // Saves broken or edited by hand (a file imported in src/ui/SavesPanel.tsx, the browser's storage changed by hand):
 // what is broken loads made safe, and the rest of the farm as it was. None of this happens in play; two of these
@@ -136,6 +138,38 @@ describe('a save broken or edited by hand', () => {
     expect(storePiece(placed.id!)).toBe(true)
     expect(stools()).toBe(before)
     expect(farm.home.pieces.some((p) => p.id === 'stool-1')).toBe(true)
+  })
+
+  it("the house's shell saved broken (openings off their walls, over each other, as text; paints and floors unknown) loads made safe; the rest as it was", () => {
+    const home = played.home as Record<string, unknown>
+    const shell = {
+      openings: {
+        livingOffice: { run: 'mid-w', centre: 1e308, closed: false },
+        'win-kitchen-north': { run: 'e-kitchen', centre: -2.6, closed: false },
+        'garden-door': { run: 'w-living', centre: 'here', closed: true },
+        livingBedroom: { run: 'mid-s', centre: 2.4, closed: true },
+        constructor: { run: 'mid-w', centre: -3.5 },
+      },
+      paint: { living: 'sage', office: '__proto__', kitchen: 12 },
+      floors: { bedroom: 'walnut', kitchen: 'lava' },
+    }
+    startFrom({ ...played, home: { ...home, shell } })
+    const built = defaultShell()
+    expect(farm.home.shell.openings).toEqual({ ...built.openings, livingBedroom: { run: 'mid-s', centre: 2.4, closed: true } })
+    expect(farm.home.shell.paint).toEqual({ ...built.paint, living: 'sage' })
+    expect(farm.home.shell.floors).toEqual({ ...built.floors, bedroom: 'walnut' })
+    // the furniture, the coins, the farm as saved
+    expect(farm.home.pieces).toEqual((loaded.home as { pieces: unknown }).pieces)
+    expect(without(savedNow(), 'home')).toEqual(without(loaded, 'home'))
+    // a shell that is not one: the house as it was built
+    for (const bad of [null, 'walls', [], 7]) {
+      startFrom({ ...played, home: { ...home, shell: bad } })
+      expect(farm.home.shell).toEqual(defaultShell())
+    }
+    // a farm from before the shell: the house as it was built, with what hangs on its walls and its standing lamp
+    startFrom({ ...played, home: { ...home, shell: undefined, pieces: defaultHome().pieces.filter((p) => !/^(floor-lamp|picture|mirror|wall-clock|radiator|switch|outlet|screen)/.test(p.id)) } })
+    expect(farm.home.pieces).toEqual(defaultHome().pieces)
+    expect(farm.home.shell).toEqual(defaultShell())
   })
 
   it('a place saved far off (±1.79e308, 1e16) goes back where it starts; the others stay where they were moved', () => {

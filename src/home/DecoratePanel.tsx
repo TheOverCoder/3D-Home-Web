@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { uiClick } from '../audio/sound'
 import { ROOMS, type RoomId } from '../data/layout'
 import { farm, useFarm } from '../farm/state'
@@ -178,11 +178,19 @@ function OpeningCard({ id }: { id: string }) {
 }
 
 /** A row of choices that scrolls sideways on a narrow screen. */
-const Row = ({ label, children }: { label: string; children: ReactNode }) => (
-  <div className="deco-swatches" role="group" aria-label={label}>
-    {children}
-  </div>
-)
+function Row({ label, children }: { label: string; children: ReactNode }) {
+  // the one chosen in view (it may be past the edge of a phone's screen)
+  const row = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const on = row.current?.querySelector<HTMLElement>('[aria-pressed="true"]')
+    if (on && row.current) row.current.scrollLeft = Math.max(0, on.offsetLeft - (row.current.clientWidth - on.offsetWidth) / 2)
+  }, [label])
+  return (
+    <div ref={row} className="deco-swatches" role="group" aria-label={label}>
+      {children}
+    </div>
+  )
+}
 
 /** The room in view's walls: as built, or one of the paints (free; undo goes back). */
 function Paints({ room }: { room: RoomId }) {
