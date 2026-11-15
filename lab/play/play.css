@@ -3,13 +3,44 @@
    right); on a computer a phone stands in the middle with the bar under it. The lab's tokens (../lab.css). */
 
 .play {
+  /* the colours of an answer, only there to read it at a glance: grey waiting, green approved, red turned down */
+  --said-none: #eeeef0;
+  --said-yes: #dcf0e0;
+  --said-yes-ink: #0f3a1c;
+  --said-yes-mark: #23803a;
+  --said-no: #fbe0db;
+  --said-no-ink: #4a140d;
+  --said-no-mark: #c23a24;
+  --chosen: #8c8c92;
   position: fixed;
   inset: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  background: #15171b;
+  background: #0c0c0d;
   color: var(--ink);
   font: 400 16px/1.4 var(--text);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .play {
+    --said-none: #1f1f21;
+    --said-yes: #163821;
+    --said-yes-ink: #e4f6e8;
+    --said-yes-mark: #7fd495;
+    --said-no: #431a17;
+    --said-no-ink: #fde8e4;
+    --said-no-mark: #ff9a87;
+    --chosen: #a6a6ab;
+  }
+}
+:root[data-theme='dark'] .play {
+  --said-none: #1f1f21;
+  --said-yes: #163821;
+  --said-yes-ink: #e4f6e8;
+  --said-yes-mark: #7fd495;
+  --said-no: #431a17;
+  --said-no-ink: #fde8e4;
+  --said-no-mark: #ff9a87;
+  --chosen: #a6a6ab;
 }
 /* a computer: the sidebar beside the screen (on the right, the page is right to left) */
 .play.beside {
@@ -266,8 +297,8 @@
   font-size: 15px;
 }
 .d-var.on {
-  background: var(--accent);
-  color: var(--accent-ink);
+  background: var(--ink);
+  color: var(--card);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 .mark {
@@ -521,8 +552,8 @@
   cursor: pointer;
 }
 .option.on {
-  border-color: var(--accent);
-  box-shadow: inset 0 0 0 2px var(--accent);
+  border-color: var(--chosen);
+  box-shadow: inset 0 0 0 2px var(--chosen);
   font-weight: 700;
 }
 
@@ -658,8 +689,8 @@ button.row-main {
 }
 .pref.on,
 .prefs .seg button.on {
-  border-color: var(--accent);
-  box-shadow: inset 0 0 0 1px var(--accent);
+  border-color: var(--chosen);
+  box-shadow: inset 0 0 0 1px var(--chosen);
   font-weight: 700;
 }
 .prefs .seg {
@@ -679,19 +710,19 @@ button.row-main {
   translate: -50% 0;
 }
 .d-var.said-yes:not(.on) {
-  background: #e3f3e6;
-  color: #1c5c2b;
+  background: var(--said-yes);
+  color: var(--said-yes-ink);
 }
 .d-var.said-no:not(.on) {
-  background: #fbe4df;
-  color: #98301f;
+  background: var(--said-no);
+  color: var(--said-no-ink);
 }
 .d-var.said-yes::after,
 .d-var.said-note::after {
-  background: #2c8540;
+  background: var(--said-yes-mark);
 }
 .d-var.said-no::after {
-  background: #d2452f;
+  background: var(--said-no-mark);
 }
 .d-var.said-note::after {
   opacity: 0.6;
@@ -711,14 +742,14 @@ button.row-main {
   padding: 0 18px;
 }
 
-/* the sidebar: every design, coloured by the answer */
+/* the sidebar: two lists (the designs, ready to send), each design a card coloured by its answer */
 .side {
   display: flex;
   flex-direction: column;
   gap: 10px;
   min-height: 0;
   overflow-y: auto;
-  padding: max(14px, env(safe-area-inset-top, 0px)) 12px max(14px, env(safe-area-inset-bottom, 0px));
+  padding: max(12px, env(safe-area-inset-top, 0px)) 12px max(14px, env(safe-area-inset-bottom, 0px));
   background: var(--card);
   border-left: 1px solid var(--line);
 }
@@ -751,120 +782,206 @@ button.row-main {
   position: fixed;
   inset: 0;
   z-index: 14;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.5);
 }
 .side-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
 }
-.side-head h2 {
-  font-size: 22px;
+.side-tabs {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 14px;
+  background: var(--wall);
 }
-.legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 14px;
+.side-tabs button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink-2);
+  font: 600 15px/1.1 var(--display);
+  cursor: pointer;
+}
+.side-tabs button.on {
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+.side-tabs .count {
+  position: static;
+  font-size: 12px;
+}
+.side-x {
+  flex: none;
+  font-size: 18px;
+}
+.side-line {
   margin: 0;
   color: var(--ink-2);
   font-size: 14px;
-}
-.legend span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.dot {
-  display: inline-block;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: #b9c0c8;
-  flex: none;
-}
-.dot.yes {
-  background: #2c8540;
-}
-.dot.no {
-  background: #d2452f;
 }
 .side-list {
   display: grid;
   gap: 8px;
 }
-.side-row {
-  display: grid;
-  grid-template-columns: 12px 36px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-  min-height: 60px;
-  padding: 6px 10px;
+/* a card: grey and numbered while it waits; green or red, with its answer in words and a button, once answered */
+.card {
+  position: relative;
+  display: flex;
+  align-items: stretch;
   border: 1px solid var(--line);
   border-radius: 14px;
-  background: var(--card);
+  background: var(--said-none);
   color: var(--ink);
+}
+.card.a-yes,
+.card.a-note {
+  background: var(--said-yes);
+  color: var(--said-yes-ink);
+  border-color: transparent;
+}
+.card.a-no {
+  background: var(--said-no);
+  color: var(--said-no-ink);
+  border-color: transparent;
+}
+.card.on {
+  border-color: var(--chosen);
+  box-shadow: inset 0 0 0 1px var(--chosen);
+}
+.card-open,
+.card.home {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 64px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 14px;
+  background: none;
+  color: inherit;
   font: inherit;
   text-align: start;
   cursor: pointer;
 }
-.side-row.home {
-  grid-template-columns: 36px minmax(0, 1fr);
+.card.home {
+  min-height: 52px;
+  border: 1px solid var(--line);
 }
-.side-row.a-yes {
-  background: #f1faf2;
+.card.home.on {
+  border-color: var(--chosen);
+  box-shadow: inset 0 0 0 1px var(--chosen);
 }
-.side-row.a-no {
-  background: #fdf1ee;
-}
-.side-row.on {
-  border-color: var(--accent);
-  box-shadow: inset 0 0 0 2px var(--accent);
-}
-.side-row:focus-visible,
+.card-open:focus-visible,
+.card.home:focus-visible,
+.card-act:focus-visible,
+.side-tabs button:focus-visible,
 .side-more summary:focus-visible {
-  outline: 3px solid var(--accent);
+  outline: 3px solid var(--chosen);
   outline-offset: 2px;
 }
-.side-thumb {
+.card-no {
+  flex: none;
   display: grid;
   place-items: center;
-  width: 36px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--card);
+  border: 1px solid var(--line);
+  font: 700 15px/1 var(--text);
+}
+.card-pic {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 38px;
   height: 54px;
+  border-radius: 8px;
+  background: var(--wall);
+  font-size: 22px;
+}
+.card.home .card-pic {
+  height: 38px;
+}
+.card-pic img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   border-radius: 8px;
   object-fit: cover;
   object-position: top;
-  background: var(--wall);
-  font-size: 20px;
 }
-.side-text {
+/* the kind's icon on the picture's corner: a film, a piece of the interface, a 3D element */
+.card-kind {
+  position: absolute;
+  bottom: -5px;
+  left: -7px;
   display: grid;
-  gap: 2px;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--card);
+  font-size: 14px;
+  box-shadow: 0 0 0 2px var(--card);
+}
+.card-text {
+  display: grid;
+  gap: 3px;
   min-width: 0;
 }
-.side-text b {
-  font: 600 16px/1.2 var(--display);
-}
-.side-text small {
+.card-title {
   overflow: hidden;
-  color: var(--ink-2);
-  font-size: 13px;
-  white-space: nowrap;
+  font: 600 16px/1.2 var(--display);
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.side-tag {
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: #2c8540;
-  color: #fff;
-  font: 600 12px/1 var(--display);
+.card-said {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: 700 14px/1 var(--text);
 }
-.side-done {
-  margin: 0;
-  padding: 8px 12px;
-  border-radius: 12px;
-  background: #e3f3e6;
-  color: #1c5c2b;
-  font-size: 14px;
+.a-yes .card-said,
+.a-note .card-said {
+  color: var(--said-yes-mark);
+}
+.a-no .card-said {
+  color: var(--said-no-mark);
+}
+/* send (to the outbox) and return (to the designs): a round button at the card's end */
+.card-act {
+  flex: none;
+  align-self: center;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-inline-end: 8px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--card);
+  color: var(--ink);
+  font-size: 20px;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 .side-more summary {
   display: flex;
@@ -919,10 +1036,12 @@ button.row-main {
   justify-self: start;
 }
 .notes li.said-yes {
-  background: #e3f3e6;
+  background: var(--said-yes);
+  color: var(--said-yes-ink);
 }
 .notes li.said-no {
-  background: #fbe4df;
+  background: var(--said-no);
+  color: var(--said-no-ink);
 }
 .notes li b {
   margin-inline-end: 4px;

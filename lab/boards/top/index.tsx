@@ -68,6 +68,8 @@ const attention: TopState = {
 export const topBoard: Board<TopState> = {
   id: 'top',
   title: 'החלק העליון של המסך',
+  kind: 'ui',
+  added: '2026-11-14T05:28',
   ask: 'החלק העליון לוקח רבע מהמסך לאורך: שורה אחת קטנה, המטבעות במרכז, הרמה מראה כמה נשאר ומה מקבלים, מצפן קריא, וכפתורים עם משמעות ברורה.',
   status: 'chosen',
   chosen: 'c',

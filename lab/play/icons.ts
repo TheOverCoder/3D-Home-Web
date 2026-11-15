@@ -1,0 +1,10 @@
+// The sandbox's glyphs (Phosphor, as the game's: one module per icon, so only these are bundled).
+export { FilmSlate } from '@phosphor-icons/react/dist/csr/FilmSlate'
+export { AppWindow } from '@phosphor-icons/react/dist/csr/AppWindow'
+export { Cube } from '@phosphor-icons/react/dist/csr/Cube'
+export { PaperPlaneTilt } from '@phosphor-icons/react/dist/csr/PaperPlaneTilt'
+export { ArrowUUpLeft } from '@phosphor-icons/react/dist/csr/ArrowUUpLeft'
+export { Check } from '@phosphor-icons/react/dist/csr/Check'
+export { X } from '@phosphor-icons/react/dist/csr/X'
+export { ChatCircle } from '@phosphor-icons/react/dist/csr/ChatCircle'
+export { House } from '@phosphor-icons/react/dist/csr/House'

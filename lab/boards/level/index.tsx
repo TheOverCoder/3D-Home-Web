@@ -42,6 +42,8 @@ const at = (points: number, paid: number, gain: number, ready?: LevelState['read
 export const levelBoard: Board<LevelState> = {
   id: 'level',
   title: 'חלון הרמה',
+  kind: 'ui',
+  added: '2026-11-13T17:28',
   ask: 'הפופאפ של הרמה לא נראה מקצועי לעיצוב · ובסיבוב 2: "שירגיש משחק ממכר – שיהיה ברור כמה הסרגל מלא, סימונים חכמים על הסרגל, והרגשה של התקדמות שנותנת היי קטן"',
   status: 'choose',
   spot: 'level',

@@ -19,6 +19,8 @@ const at = (shot: number) => timeline(SUPERMARKET).shots[shot].start
 export const filmSupermarketBoard: Board<FilmSupermarketState> = {
   id: 'film-supermarket',
   title: 'סרט: קונים את הסופר',
+  kind: 'film',
+  added: '2026-11-15T01:36',
   ask: 'משימות שפותחות סרט של הדמויות מדברות: זוויות מצלמה, מה יגידו – במאי אמיתי לסרטים הקצרים. הסרט הראשון: קניית הסופר מהמנהל. מוזיקת רקע, העסקה, רואים את הכסף, עובד עם המזוודה, צילום מלמטה של הסופר, המוזיקה עולה לביט גנגסטרי, הסופר נראה מבריק – זה הרגע שקנית אותו.',
   status: 'choose',
   still: 'yard',

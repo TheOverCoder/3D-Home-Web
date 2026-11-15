@@ -1,19 +1,23 @@
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
-import type { Board } from '../board'
+import type { Board, BoardKind } from '../board'
 import { BOARDS } from '../boards'
 import { DEVICES } from '../devices'
 import { AREAS, MAP, type Screen } from '../map'
 import { StatusView } from '../status/Status'
+import { AppWindow, ArrowUUpLeft, ChatCircle, Check, Cube, FilmSlate, House, PaperPlaneTilt, X } from './icons'
 import { useReviews, type Note, type Review } from './reviews'
 
-// The sandbox, the lab's one view: the game's screen, full screen, with the designs in it. A sidebar lists every
-// design, coloured by what the user said — green answered, red turned down, grey still waiting — and opens one in the
-// game's screen; "next" goes to the next one waiting. The bar under the thumb goes between today and the proposals
-// (a tap on the one shown plays it again) and the states, and takes the answer: ✓ or ✗ on a proposal, a note on it, or
-// a note pinned to one point of it; ℹ︎ shows what the design is, what is new in it and every answer given. The
-// screens of the game with no design yet are in the sidebar too, to be asked for, and so is the lab's status. On a
-// phone the screen is the phone's own; on a computer a phone at its size beside the sidebar. A board needs nothing to
-// be here: its `spot` rings it on the game's screen, its `screen` gives it its picture.
+// The sandbox, the lab's one view: the game's screen, full screen, with the designs in it. A sidebar has two lists:
+// the designs (each card coloured by what the user said — grey waiting, numbered 1 for the oldest; green approved; red
+// turned down — with its kind's icon: a film, a piece of the interface, a 3D element) and "ready to send", the outbox
+// for the designer: an answered card goes there with its send button and comes back with its return button. A card
+// opens its design in the game's screen; "next" goes to the next one waiting. The bar under the thumb goes between
+// today and the proposals (a tap on the one shown plays it again) and the states, and takes the answer: ✓ or ✗ on a
+// proposal, a note on it, or a note pinned to one point of it; ℹ︎ shows what the design is, what is new in it and every
+// answer given. The screens of the game with no design yet are in the sidebar too, to be asked for, and so is the lab's
+// status. On a phone the screen is the phone's own; on a computer a phone at its size beside the sidebar. A board
+// needs nothing to be here: its `kind` gives its icon, its `added` its place, its `spot` rings it on the game's
+// screen, its `screen` gives it its picture.
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type AnyBoard = Board<any>
@@ -25,21 +29,24 @@ const MAP_PICS = import.meta.glob('../map/*.{jpg,png,webp}', { eager: true, impo
 const thumbOf = (id?: string) => (id ? (MAP_PICS[`../map/${id}-upright.jpg`] ?? MAP_PICS[`../map/${id}-sideways.jpg`]) : undefined)
 const GRADE = { good: 'טוב כמו שהוא', fix: 'לשפר', redo: 'לעצב מחדש', missing: 'חסר' } as const
 
-/** What the user said of a design: answered (a ✓, or notes), turned down (only ✗), or nothing yet. */
-type Answer = 'yes' | 'no' | 'none'
+/** What the user said of a design: approved (a ✓), turned down (only ✗), only notes, or nothing yet. */
+type Answer = 'yes' | 'no' | 'note' | 'none'
 function answerOf(rv: Review): Answer {
   const v = Object.values(rv.verdicts)
   if (v.includes('yes')) return 'yes'
   if (v.includes('no')) return 'no'
-  return rv.notes.length ? 'yes' : 'none'
+  return rv.notes.length ? 'note' : 'none'
 }
-const notesWord = (n: number) => (n === 1 ? 'הערה אחת' : `${n} הערות`)
-function summaryOf(rv: Review): string {
-  const yes = Object.keys(rv.verdicts).filter((k) => rv.verdicts[k] === 'yes')
-  const no = Object.keys(rv.verdicts).filter((k) => rv.verdicts[k] === 'no')
-  const parts = [yes.length ? `✓ ${yes.map(letter).join(', ')}` : '', no.length ? `✗ ${no.map(letter).join(', ')}` : '', rv.notes.length ? notesWord(rv.notes.length) : '']
-  return parts.filter(Boolean).join(' · ') || 'מחכה לתשובה שלך'
+const SAID = { yes: { word: 'אושר', Icon: Check }, no: { word: 'נדחה', Icon: X }, note: { word: 'הערות', Icon: ChatCircle } } as const
+
+/** A board's kind, as its icon and in words. */
+const KIND: Record<BoardKind, { name: string; Icon: typeof Cube }> = {
+  film: { name: 'סרטון', Icon: FilmSlate },
+  ui: { name: 'עיצוב ממשק', Icon: AppWindow },
+  '3d': { name: 'אלמנט תלת־ממד', Icon: Cube },
 }
+/** Every board, the oldest first (by when its round was put before the user). */
+const BY_AGE = [...BOARDS].sort((a, b) => a.added.localeCompare(b.added))
 
 // the viewer's own settings of the sandbox (a convenience: it works the same without them)
 interface Prefs {
@@ -174,13 +181,14 @@ export function Play({ start }: { start?: string }) {
     const it = board.variants.find((x) => x.id === v)
     if (it) say(`${letter(v)} · ${it.name}`)
   }
-  // the next design waiting for an answer, after the one open (in the sidebar's order), else simply the next one
+  // waiting: not answered and not sent; "next" is the next of them after the one open, in the sidebar's order
+  const isWaiting = (b: AnyBoard) => !r.sent(b.id) && answerOf(r.review(b.id)) === 'none'
   const nextId = () => {
-    const at = board ? BOARDS.indexOf(board) : -1
-    const order = [...BOARDS.slice(at + 1), ...BOARDS.slice(0, at + 1)]
-    return (order.find((b) => b.id !== openId && answerOf(r.review(b.id)) === 'none') ?? order.find((b) => b.id !== openId))?.id
+    const at = board ? BY_AGE.indexOf(board) : -1
+    const order = [...BY_AGE.slice(at + 1), ...BY_AGE.slice(0, at + 1)]
+    return order.find((b) => b.id !== openId && isWaiting(b))?.id
   }
-  const waiting = BOARDS.filter((b) => answerOf(r.review(b.id)) === 'none').length
+  const waiting = BY_AGE.filter(isWaiting).length
 
   // what the screen asks: open a board, it closed, a touch where nothing opens
   useEffect(() => {
@@ -231,9 +239,14 @@ export function Play({ start }: { start?: string }) {
     setPinning(false)
     setSheet({ kind: 'note', x, y })
   }
+  // to the next design waiting; with none left, the list (what is answered waits there to be sent)
   const toNext = () => {
     const id = nextId()
     if (id) open(id)
+    else {
+      setSideOpen(true)
+      say('אין עוד עיצובים שמחכים')
+    }
   }
 
   return (
@@ -253,7 +266,7 @@ export function Play({ start }: { start?: string }) {
         prefs={prefs}
         setPrefs={setPrefs}
         real={real}
-        waiting={waiting}
+        isWaiting={isWaiting}
       />
 
       <main className="main">
@@ -345,7 +358,7 @@ export function Play({ start }: { start?: string }) {
               ☰ <span>כל העיצובים</span>
             </button>
             <button className="d-btn d-next primary" onClick={toNext}>
-              {waiting ? `${waiting} מחכים לך · לפתוח ←` : 'לפתוח עיצוב ←'}
+              {waiting ? `${waiting} מחכים לך · לפתוח ←` : 'אין עיצובים שמחכים · לרשימה'}
             </button>
           </div>
         )}
@@ -426,7 +439,8 @@ export function Play({ start }: { start?: string }) {
   )
 }
 
-/** Every design, coloured by what was said of it, then the screens with no design yet, the lab's status, the view. */
+/** Two lists: the designs (waiting ones numbered, the oldest 1; answered ones coloured, with a send button) and the
+ *  outbox ready to send to the designer (with a return button); then the screens with no design yet, the settings. */
 function Side({
   r,
   openId,
@@ -439,7 +453,7 @@ function Side({
   prefs,
   setPrefs,
   real,
-  waiting,
+  isWaiting,
 }: {
   r: ReturnType<typeof useReviews>
   openId: string | null
@@ -452,60 +466,89 @@ function Side({
   prefs: Prefs
   setPrefs: (p: Partial<Prefs>) => void
   real: boolean
-  waiting: number
+  isWaiting: (b: AnyBoard) => boolean
 }) {
+  const [tab, setTab] = useState<'designs' | 'outbox'>('designs')
   const designed = new Set(BOARDS.map((b) => b.screen).filter(Boolean))
   const rest = MAP.screens.filter((s) => !designed.has(s.id))
-  const answers = BOARDS.map((b) => answerOf(r.review(b.id)))
-  const count = (a: Answer) => answers.filter((x) => x === a).length
+  const designs = BY_AGE.filter((b) => !r.sent(b.id))
+  const outbox = BY_AGE.filter((b) => r.sent(b.id))
+  const waiting = designs.filter(isWaiting)
+  const shown = tab === 'designs' ? designs : outbox
   return (
     <>
       {floating && open && <div className="side-back" onClick={onClose} />}
       <aside className={`side${open ? ' open' : ''}${floating ? ' floating' : ''}`} aria-label="העיצובים" aria-hidden={!open}>
         <header className="side-head">
-          <h2>עיצובים</h2>
+          <div className="side-tabs" role="tablist" aria-label="רשימות">
+            <button role="tab" aria-selected={tab === 'designs'} className={tab === 'designs' ? 'on' : ''} onClick={() => setTab('designs')}>
+              עיצובים {waiting.length > 0 && <i className="count">{waiting.length}</i>}
+            </button>
+            <button role="tab" aria-selected={tab === 'outbox'} className={tab === 'outbox' ? 'on' : ''} onClick={() => setTab('outbox')}>
+              מוכן לשליחה {outbox.length > 0 && <i className="count">{outbox.length}</i>}
+            </button>
+          </div>
           {floating && (
-            <button className="d-btn" onClick={onClose} aria-label="סגור">
-              ✕
+            <button className="d-btn side-x" onClick={onClose} aria-label="סגור">
+              <X weight="bold" />
             </button>
           )}
         </header>
-        <p className="legend">
-          <span>
-            <i className="dot none" /> מחכה ({count('none')})
-          </span>
-          <span>
-            <i className="dot yes" /> ענית ({count('yes')})
-          </span>
-          <span>
-            <i className="dot no" /> דחית ({count('no')})
-          </span>
-        </p>
-        <button className={`side-row home${openId ? '' : ' on'}`} onClick={onHome}>
-          <span className="side-thumb">🏠</span>
-          <span className="side-text">
-            <b>המסך של המשחק</b>
-            <small>הטבעות הצהובות מסמנות מה עוצב</small>
-          </span>
-        </button>
-        <nav className="side-list" aria-label="עיצובים לבחירה">
-          {BOARDS.map((b, i) => {
-            const a = answers[i]
-            const rv = r.review(b.id)
+        {tab === 'designs' && (
+          <button className={`card home${openId ? '' : ' on'}`} onClick={onHome}>
+            <span className="card-pic">
+              <House weight="fill" />
+            </span>
+            <b className="card-title">המסך של המשחק</b>
+          </button>
+        )}
+        {tab === 'outbox' && <p className="side-line">{outbox.length ? 'אלה יגיעו לסוכן בסבב הבא' : 'כאן יהיה מה ששלחת לסוכן. ענית על עיצוב? לחצו ✈ בכרטיס שלו'}</p>}
+        <nav className="side-list" aria-label={tab === 'designs' ? 'עיצובים לבחירה' : 'מוכן לשליחה'}>
+          {shown.map((b) => {
+            const a = answerOf(r.review(b.id))
+            const no = waiting.indexOf(b) + 1
+            const said = a === 'none' ? null : SAID[a]
+            const kind = KIND[b.kind]
+            const thumb = thumbOf(b.screen)
             return (
-              <button key={b.id} className={`side-row a-${a}${openId === b.id ? ' on' : ''}`} onClick={() => onOpen(b.id)} aria-current={openId === b.id ? 'true' : undefined}>
-                <i className={`dot ${a}`} aria-hidden="true" />
-                {thumbOf(b.screen) ? <img className="side-thumb" src={thumbOf(b.screen)} alt="" /> : <span className="side-thumb">🎬</span>}
-                <span className="side-text">
-                  <b>{b.title}</b>
-                  <small>{summaryOf(rv)}</small>
-                </span>
-                {b.status === 'live' && <span className="side-tag">במשחק</span>}
-              </button>
+              <div key={b.id} className={`card a-${a}${openId === b.id ? ' on' : ''}`}>
+                <button
+                  className="card-open"
+                  onClick={() => onOpen(b.id)}
+                  aria-current={openId === b.id ? 'true' : undefined}
+                  aria-label={`${no ? `${no}. ` : ''}${b.title}, ${kind.name}${said ? `, ${said.word}` : ''}`}
+                >
+                  {no > 0 && <span className="card-no">{no}</span>}
+                  <span className="card-pic">
+                    {thumb ? <img src={thumb} alt="" /> : <kind.Icon weight="bold" />}
+                    <span className="card-kind" title={kind.name}>
+                      <kind.Icon weight="bold" />
+                    </span>
+                  </span>
+                  <span className="card-text">
+                    <b className="card-title">{b.title}</b>
+                    {said && (
+                      <span className="card-said">
+                        <said.Icon weight="bold" /> {said.word}
+                      </span>
+                    )}
+                  </span>
+                </button>
+                {tab === 'designs' && said && (
+                  <button className="card-act send" onClick={() => r.send(b.id)} aria-label={`להעביר את ${b.title} למוכן לשליחה`} title="למוכן לשליחה">
+                    <PaperPlaneTilt weight="bold" />
+                  </button>
+                )}
+                {tab === 'outbox' && (
+                  <button className="card-act back" onClick={() => r.unsend(b.id)} aria-label={`להחזיר את ${b.title} לעיצובים`} title="להחזיר לעיצובים">
+                    <ArrowUUpLeft weight="bold" />
+                  </button>
+                )}
+              </div>
             )
           })}
         </nav>
-        {waiting === 0 && <p className="side-done">✓ ענית על הכל. אפשר לשלוח למעצב בצ'אט</p>}
+        {tab === 'designs' && waiting.length === 0 && <p className="side-line">✓ אין עיצובים שמחכים לך</p>}
         <details className="side-more">
           <summary>מסכים שעוד אין להם עיצוב ({rest.length})</summary>
           {AREAS.map((area) => {
@@ -530,7 +573,7 @@ function Side({
           })}
         </details>
         <footer className="side-foot">
-          <p className={`keeping ${r.keeping}`}>{r.keeping === 'shared' ? '✓ מה שתסמנו נשמר ומגיע למעצב' : r.keeping === 'local' ? 'נשמר רק בדפדפן הזה' : 'מתחבר…'}</p>
+          <p className={`keeping ${r.keeping}`}>{r.keeping === 'shared' ? '✓ נשמר בקישור' : r.keeping === 'local' ? 'נשמר רק בדפדפן הזה' : 'מתחבר…'}</p>
           <div className="prefs">
             {!real && (
               <div className="seg" role="radiogroup" aria-label="הטלפון">

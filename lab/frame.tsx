@@ -170,7 +170,18 @@ function Frame() {
 }
 
 // what the lab holds, for the scripts (scripts/lab-shots.mjs, scripts/lab-film.mjs)
-hooks.__lab = { boards: BOARDS.map((b) => ({ id: b.id, variants: b.variants.map((v) => v.id), states: b.states.map((s) => s.id), devices: b.devices ?? ['upright', 'sideways'] })), devices: DEVICES }
+hooks.__lab = {
+  boards: BOARDS.map((b) => ({
+    id: b.id,
+    title: b.title,
+    kind: b.kind,
+    added: b.added,
+    variants: b.variants.map((v) => v.id),
+    states: b.states.map((s) => s.id),
+    devices: b.devices ?? ['upright', 'sideways'],
+  })),
+  devices: DEVICES,
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

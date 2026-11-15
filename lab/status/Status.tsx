@@ -172,6 +172,7 @@ export function StatusView({ onPage }: { onPage: (hash: string) => void }) {
                       </span>
                     ))}
                     {rv.notes.length > 0 && <span className="mark-chip">💬 {rv.notes.length}</span>}
+                    {r.sent(b.id) && <span className="mark-chip ok">✈ מוכן לשליחה</span>}
                   </>
                 )}
               </span>
@@ -203,7 +204,8 @@ export function StatusView({ onPage }: { onPage: (hash: string) => void }) {
       <h3 className="status-h">איך מה שסימנת מגיע למעצב</h3>
       <ol className="limits">
         <li>מה שמסמנים בארגז החול (✓, ✗, הערות, נקודות, בקשות) נשמר במאגר של הקישור.</li>
-        <li>אני קורא אותו ושם אותו בקובץ למעצב (lab/feedback), לפני כל סבב.</li>
+        <li>עיצוב שענית עליו עובר ב־✈ ל"מוכן לשליחה". את מה שיש שם אני מעביר לסוכן (lab/feedback), לפני כל סבב.</li>
+        <li>סבב חדש של עיצוב חוזר לרשימת העיצובים כממתין.</li>
         <li>המעצב עונה על כל הערה בשורה "מה חדש" של הלוח, ולא משאיר ✗ בלי תשובה.</li>
       </ol>
     </section>

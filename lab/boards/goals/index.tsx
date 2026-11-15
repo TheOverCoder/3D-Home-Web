@@ -21,6 +21,8 @@ const ChipCoin = () => (
 export const goalsBoard: Board<GoalsState> = {
   id: 'goals',
   title: 'מטרות',
+  kind: 'ui',
+  added: '2026-11-15T01:37',
   ask: 'ביקשת לעצב את זה (🙋). מהמפה: שש שורות דומות, כולן ב־0, אף אחת לא "הבאה בתור"; הפרס קטן בצד; כשמטרה מושגת יש רק כפתור Claim ירוק – אין רגע.',
   status: 'choose',
   still: 'yard',

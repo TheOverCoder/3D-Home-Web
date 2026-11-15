@@ -77,7 +77,8 @@ or a kind of shot when a film needs it, once, for every film.
 
 1. **Log** each step's start and end, with the time, in `lab/films/progress.md` (one line each).
 2. Write the turn, the logline and the beats (FILM.md); then the shots in a film file (`lab/films/<film>.ts`).
-3. **A board** in the lab: `node scripts/lab-new.mjs film-<name> "סרט: …" --screen <map screen>`; its states are
+3. **A board** in the lab: `node scripts/lab-new.mjs film-<name> "סרט: …" --kind film --screen <map screen>` (its
+   `kind` is `film`, its icon in the sandbox; a new round sets its `added` to now, so it waits for the user again); its states are
    moments to start from (`{ from: seconds }`, e.g. the whole film, the reveal, the ending); a variant a take (two
    scripts, two styles) when that helps the user choose. The variant renders `<FilmPlayer film={…} from={s.from} />`.
    The board's `motion` line is the plot in brief, in Hebrew; `note` what is different.

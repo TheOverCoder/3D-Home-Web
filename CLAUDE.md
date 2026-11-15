@@ -172,8 +172,10 @@ The README has the overview; `tests/README.md` what each test guards.
   frames (phones upright and sideways, with their safe areas) over a still of the game, published as a link of its own
   (`npm run lab:build`, then the Artifact tool with `capabilities: {db: {}}`: seconds, no CI). It opens on a sandbox,
   the game's screen where what has designs is ringed where it opens from: the user opens it there and marks ✓ / ✗ and
-  notes (pinned to a point or not), kept in the lab's database for the designer (`lab/feedback`). Only the variant the
-  user chose goes into the game. A
+  notes (pinned to a point or not), kept in the lab's database; what they answered and sent ("ready to send") goes to
+  its designer (`lab/feedback`). Every board has its kind, its icon there: `ui` (the interface designer), `film` (the
+  film director), `3d` (the 3D designer, `.claude/agents/3d-designer.md`: the game's models proposed the same way). Only
+  the variant the user chose goes into the game. A
   panel's look is a component of its own fed with data (`LevelCard` from `levelView`; `LevelPanel` reads the farm), so
   the lab shows it as it is. Motion is Motion for React through `src/ui/motion.tsx` (`m.*`, the game's springs,
   reduced motion respected), a celebration `burst` (`src/ui/burst.ts`), form controls Radix primitives.

@@ -31,6 +31,8 @@ const withCoin = (Look: (p: { s: OrdersState; act: Parameters<Board<OrdersState>
 export const ordersBoard: Board<OrdersState> = {
   id: 'orders',
   title: 'לוח ההזמנות',
+  kind: 'ui',
+  added: '2026-11-15T01:38',
   ask: 'ביקשת לעצב את זה (🙋). מהמפה: שלושה כפתורי Put in צהובים; כל מוצר מראה שני מספרים; השדרוגים מתחת לגלילה; לרוחב רואים הזמנה וחצי.',
   status: 'choose',
   still: 'yard',

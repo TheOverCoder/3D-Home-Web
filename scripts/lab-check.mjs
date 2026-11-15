@@ -1,9 +1,10 @@
 // The design lab used end to end, as the user uses it, on a phone upright and sideways and on a computer: the sandbox
-// opens with every design in its sidebar, coloured by the answer; each design opens from it, with every proposal and
-// every state; ✓ / ✗, a note and a note pinned to a point are kept across a reload and turn its row green; "next" goes
-// to the next design waiting; ℹ︎ shows the answers given; a screen can be asked for; the game's screen shows its
-// rings; the lab's status opens. Writes lab/check.json (the lab's status shows it) and prints each step. With the lab
-// served (`npm run lab`, port 5180, or the build on another port: --base):
+// opens with every design in its sidebar, the oldest first, each with its kind's icon and those waiting numbered; each
+// design opens from it, with every proposal and every state; ✓ / ✗, a note and a note pinned to a point are kept across
+// a reload and turn its card green; an answered card goes to "ready to send" and comes back; "next" goes to the next
+// design waiting; ℹ︎ shows the answers given; a screen can be asked for; the game's screen shows its rings; the lab's
+// status opens. Writes lab/check.json (the lab's status shows it) and prints each step. With the lab served
+// (`npm run lab`, port 5180, or the build on another port: --base):
 //
 //   node scripts/lab-check.mjs [--base http://localhost:5180/]
 import { writeFile } from 'node:fs/promises'
@@ -28,6 +29,8 @@ const step = (screen, what, ok, detail = '') => {
 }
 try {
   const lab = await labOf(browser, base)
+  // the sidebar's order: the oldest first
+  const boards = [...lab.boards].sort((x, y) => x.added.localeCompare(y.added))
   for (const s of SCREENS) {
     const ctx = await browser.newContext(s.ctx)
     const p = await ctx.newPage()
@@ -48,16 +51,25 @@ try {
       if (await p.locator('.side.floating.open').count()) await p.keyboard.press('Escape')
       await p.waitForTimeout(300)
     }
+    const cards = p.locator('.side-list .card')
+    const tab = (n) => press(p.locator('.side-tabs [role=tab]').nth(n))
     try {
       await p.goto(base)
       await p.waitForTimeout(2500)
       await side()
-      const rows = await p.locator('.side-list .side-row').count()
-      const colours = await p.locator('.side-list .side-row .dot').count()
-      step(s.name, 'ארגז החול נפתח עם רשימת כל העיצובים, כל אחד עם הצבע של התשובה', rows === lab.boards.length && colours === rows, `${rows} עיצובים`)
-      for (const [i, b] of lab.boards.entries()) {
+      const n = await cards.count()
+      const kinds = await p.locator('.side-list .card .card-kind').count()
+      const numbers = (await p.locator('.side-list .card-no').allInnerTexts()).map((x) => x.trim()).join(',')
+      const titles = (await p.locator('.side-list .card-title').allInnerTexts()).map((x) => x.trim())
+      step(
+        s.name,
+        'ארגז החול נפתח עם כל העיצובים, מהישן לחדש, כל אחד עם אייקון של הסוג שלו, והממתינים ממוספרים',
+        n === boards.length && kinds === n && numbers === boards.map((_, i) => i + 1).join(',') && titles.join('|') === boards.map((b) => b.title).join('|'),
+        `${n} עיצובים`,
+      )
+      for (const [i, b] of boards.entries()) {
         await side()
-        await press(p.locator('.side-list .side-row').nth(i))
+        await press(cards.nth(i).locator('.card-open'))
         await p.waitForTimeout(1500)
         const opened = (await drawn()) > 0
         let all = true
@@ -71,12 +83,12 @@ try {
         const options = await p.locator('.option').count()
         await press(p.locator('.option').last())
         await p.waitForTimeout(900)
-        const title = (await p.locator('.side-list .side-row b').nth(i).innerText()).trim()
-        step(s.name, `${title}: נפתח מהרשימה, כל ההצעות וכל המצבים מוצגים`, opened && all && (await drawn()) > 0 && options === b.states.length, `${b.variants.length} הצעות · ${options} מצבים`)
+        step(s.name, `${b.title}: נפתח מהרשימה, כל ההצעות וכל המצבים מוצגים`, opened && all && (await drawn()) > 0 && options === b.states.length, `${b.variants.length} הצעות · ${options} מצבים`)
       }
-      // the answer: ✓ on the first design, a note and a pinned note; its row turns green; kept across a reload
+      // the answer: ✓ on the oldest design, a note and a pinned note; its card turns green, loses its number and gets a
+      // send button; kept across a reload
       await side()
-      await press(p.locator('.side-list .side-row').first())
+      await press(cards.first().locator('.card-open'))
       await p.waitForTimeout(1200)
       await press(p.locator('.d-yes'))
       await press(p.locator('.d-note'))
@@ -95,23 +107,37 @@ try {
       const shown = await p.locator('.sheet .notes li').count()
       await p.keyboard.press('Escape')
       await side()
-      const green = await p
-        .locator('.side-list .side-row')
-        .first()
-        .evaluate((el) => el.classList.contains('a-yes'))
+      const first = cards.first()
+      const green = (await first.evaluate((el) => el.classList.contains('a-yes'))) && (await first.locator('.card-said').innerText()).includes('אושר')
+      const unnumbered = (await first.locator('.card-no').count()) === 0 && (await first.locator('.card-act.send').count()) === 1
       await shut()
       await p.reload()
       await p.waitForTimeout(2500)
-      const kept = await p.evaluate((id) => JSON.parse(localStorage.getItem('lab-reviews') ?? '{}').reviews?.[id], lab.boards[0].id)
-      step(s.name, '✓, הערה והערה על נקודה: נשמרים, מופיעים ב־ℹ︎, והשורה ברשימה נצבעת בירוק', pins === 1 && shown >= 3 && green && !!kept && kept.notes.length === 2)
-      // "next": to the next design waiting
+      const kept = await p.evaluate((id) => JSON.parse(localStorage.getItem('lab-reviews') ?? '{}').reviews?.[id], boards[0].id)
+      step(s.name, '✓, הערה והערה על נקודה: נשמרים, מופיעים ב־ℹ︎, והכרטיס נצבע בירוק עם "אושר" וכפתור שליחה', pins === 1 && shown >= 3 && green && unnumbered && !!kept && kept.notes.length === 2)
+      // to "ready to send" and back
       await side()
-      await press(p.locator('.side-list .side-row').first())
+      await press(cards.first().locator('.card-act.send'))
+      await p.waitForTimeout(300)
+      const left = await cards.count()
+      await tab(1)
+      await p.waitForTimeout(300)
+      const inbox = (await cards.count()) === 1 && (await cards.first().locator('.card-title').innerText()).trim() === boards[0].title
+      const sentKept = await p.evaluate((id) => JSON.parse(localStorage.getItem('lab-reviews') ?? '{}').outbox?.[id]?.sent === true, boards[0].id)
+      await press(cards.first().locator('.card-act.back'))
+      await p.waitForTimeout(300)
+      const emptied = (await cards.count()) === 0
+      await tab(0)
+      await p.waitForTimeout(300)
+      const back = (await cards.count()) === boards.length
+      step(s.name, 'כרטיס שנענה עובר ל"מוכן לשליחה" בכפתור השליחה, וחוזר בכפתור החזרה', left === boards.length - 1 && inbox && sentKept && emptied && back)
+      // "next": from the answered one to the next design waiting
+      await press(cards.first().locator('.card-open'))
       await p.waitForTimeout(1000)
       await press(p.locator('.d-next'))
       await p.waitForTimeout(1000)
       await side()
-      const moved = await p.locator('.side-list .side-row.on').evaluate((el) => !el.classList.contains('a-yes'))
+      const moved = await p.locator('.side-list .card.on').evaluate((el) => el.classList.contains('a-none'))
       step(s.name, '"הבא" עובר לעיצוב הבא שמחכה לתשובה', moved)
       // a screen with no design yet, asked for
       await p.locator('.side-more summary').click()
@@ -121,7 +147,7 @@ try {
       await press(ask)
       step(s.name, 'אפשר לבקש עיצוב למסך שעוד אין לו', asked)
       // the game's screen and its rings, then the lab's status
-      await press(p.locator('.side-row.home'))
+      await press(p.locator('.card.home'))
       await p.waitForTimeout(900)
       const rings = await frame.locator('.lab-spot').count()
       step(s.name, 'המסך של המשחק עם טבעות על מה שעוצב', rings > 0, `${rings} טבעות`)

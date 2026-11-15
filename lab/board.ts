@@ -25,9 +25,20 @@ export interface Variant<S> {
   render: (s: S, act: Act<S>) => ReactElement
 }
 
+/** What a board shows the user, one of three, always given (its icon in the sandbox's list): a film (characters and
+ *  shots, lab/films), a piece of the interface (a sheet, a screen, a card: the interface designer's), or a 3D element of
+ *  the game (a model, a building, a material: the 3D designer's). */
+export type BoardKind = 'film' | 'ui' | '3d'
+
 export interface Board<S> {
   id: string
   title: string
+  /** a film, a piece of the interface or a 3D element: its icon in the sandbox's list (always one) */
+  kind: BoardKind
+  /** when this round of it was put before the user (ISO date and time, as `new Date().toISOString().slice(0, 16)`):
+   *  the sandbox numbers the designs waiting by it, 1 the oldest. A new round gives it a new time, so it waits again
+   *  and what was said about the round before no longer colours it. */
+  added: string
   /** the request, in the user's words */
   ask: string
   /** where it stands: waiting for the user's choice, chosen (and which), or in the game */

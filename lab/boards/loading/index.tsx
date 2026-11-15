@@ -19,6 +19,8 @@ const base: LoadingState = { phase: 'download', total: TOTAL, loaded: 0, fromDev
 export const loadingBoard: Board<LoadingState> = {
   id: 'loading',
   title: 'מסך הטעינה',
+  kind: 'ui',
+  added: '2026-11-14T05:26',
   ask: 'ביקשת לעצב את מסך הטעינה (🙋). מהמפה: היום הוא מדבר כמו מפתח (MB, decoding), יש בו שני אחוזים, והדבר הכי בולט בו הוא כפתור אפור שאי אפשר ללחוץ.',
   status: 'choose',
   round:

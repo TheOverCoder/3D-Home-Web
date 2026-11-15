@@ -11,8 +11,9 @@ It is the game's own interface with no game round it: the panels' presentational
 …), the game's CSS and tokens, its fonts and pictures, its motion kit, and the data its pure code makes (`levelView`).
 No 3D, no farm state, no CI: it builds in a second and is published as a link of its own in a few more.
 
-- `node scripts/lab-new.mjs <id> "<title>" [--spot level] [--screen level]` — a new board, ready to fill (its folder, a
-  first variant, listed in `lab/boards.ts`): in the sandbox at once.
+- `node scripts/lab-new.mjs <id> "<title>" --kind ui|film|3d [--spot level] [--screen level]` — a new board, ready to
+  fill (its folder, a first variant, listed in `lab/boards.ts`, its kind and the time it was put before the user): in
+  the sandbox at once.
 - `npm run lab` — the lab as you work on it (port 5180, live reload).
 - `npm run lab:build` — `dist-lab/`, ready to publish (`scripts/lab-finish.mjs` makes its page the link's main page and
   lists its files in `files.json`).
@@ -25,7 +26,7 @@ No 3D, no farm state, no CI: it builds in a second and is published as a link of
   off the screen → `lab/audit.json`.
 - `node scripts/lab-check.mjs` — the lab used end to end as the user uses it (the sandbox: its list, every board, every
   variant and state, ✓ / ✗, notes and pins kept and the row turning green, "next", a request, the game's screen, the
-  status) on a phone upright and sideways and a computer → `lab/check.json`. Both show in the lab's status (the
+  status, a card sent and brought back) on a phone upright and sideways and a computer → `lab/check.json`. Both show in the lab's status (the
   sidebar's 📋): run them after a change, before publishing.
 - `node scripts/lab-stills.mjs` — the game stills behind the frames again (`lab/stills/<place>-upright.jpg` and
   `-sideways.jpg`, the dev server up; if the game never starts for it, the dev server's dependency cache is stale:
@@ -36,10 +37,14 @@ No 3D, no farm state, no CI: it builds in a second and is published as a link of
 `lab/play/Play.tsx` is the lab's one view, full screen like the game: a sidebar of every design, the screen, and a bar
 under the thumb.
 
-- **The sidebar** (always beside the screen on a computer; on a phone it slides over it, ☰) lists every board with its
-  picture and a dot by its answer: **gray** waiting, **green** answered (a ✓, or only notes), **red** turned down (only
-  ✗). Each row says what was said ("✓ B · ✗ A · 2 הערות"). Under it: the game's screen, the screens with no design yet
-  (🙋 to ask for one), and the settings (the screen on a computer, 🐢 slow, 🧘 less motion, 📋 the lab's status).
+- **The sidebar** (always beside the screen on a computer; on a phone it slides over it, ☰) has two lists. **Designs**:
+  every board, the oldest first, as a card with its picture and its kind's icon (🎬 a film, a window a piece of the
+  interface, a cube a 3D element: every board has one, its `kind`). A card waiting is grey and numbered (1 the oldest,
+  by its `added`), with its title only; answered, it turns **green** ("אושר", a ✓, or "הערות", only notes) or **red**
+  ("נדחה", only ✗) and gets a send button (✈) that moves it to **ready to send**, the outbox for the designer, where a
+  return button brings it back. A new round of a board (a later `added`) waits again: what was said and sent about the
+  round before no longer counts for it. Under them: the game's screen, the screens with no design yet (🙋 to ask for
+  one), and the settings (the screen on a computer, 🐢 slow, 🧘 less motion, 📋 the lab's status).
 - **The screen**: the game's screen with nothing of the game in it but its look — a still of the game (the frame,
   `?play=1`) on which every chip or button that has designs is ringed in yellow and named. A touch opens it there, as
   the game would. On a phone the screen is the phone's own, at its size; on a computer a phone stands beside the list.
@@ -53,9 +58,9 @@ A board is in it by itself: its `spot` (a chip or button of the game's screen, a
 screen, its `screen` (an id of `lab/map.ts`) gives it its picture and place in the list.
 
 **What the user said** is kept in the published lab's database (the artifact's `db` capability: `reviews/<board>` —
-`verdicts` by variant, `notes` with the variant, state, the phone's way round and the point — and `requests/screens`).
-The main agent reads it (`ArtifactData`, `list` of `reviews` with `out_dir`) into `lab/feedback/<board>.json` for the
-designer. Where there is no database (`npm run lab`), it is kept in that browser.
+`verdicts` by variant, `notes` with the variant, state, the phone's way round and the point, `at` — `outbox/<board>` —
+`sent`, `at` — and `requests/screens`). The main agent reads it (`ArtifactData`, `list` of `reviews` and `outbox` with
+`out_dir`) and hands what is **ready to send** to its designer as `lab/feedback/<board>.json`. Where there is no database (`npm run lab`), it is kept in that browser.
 
 ## The side by side and the map (for the designer)
 

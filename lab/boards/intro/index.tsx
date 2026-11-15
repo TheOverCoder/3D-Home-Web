@@ -13,6 +13,8 @@ import { Today } from './Today'
 export const introBoard: Board<IntroState> = {
   id: 'intro',
   title: 'מסך הפתיחה',
+  kind: 'ui',
+  added: '2026-11-14T05:27',
   ask: 'עיצובים למסך הפתיחה ולחוות השמורות (🙋): להיכנס לשחק בלחיצה אחת, ולשחקן שחוזר – לראות מה מחכה לו בחווה.',
   status: 'choose',
   round:

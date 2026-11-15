@@ -60,7 +60,7 @@ variants.
 **The sandbox** is what the user opens first: the game's screen where your designs wait, ringed on the chip or button
 they open from (your board's `spot`), and listed by their screen of the map (its `screen`). The user opens one there,
 goes between today and your proposals with a thumb, and marks ✓ / ✗, writes a note, or pins a note to one point of a
-variant. Those come back to you as `lab/feedback/<board>.json` (verdicts by variant; notes with the variant, the state,
+variant, and sends what they answered to you (the sandbox's "ready to send"). That comes back to you as `lab/feedback/<board>.json` (verdicts by variant; notes with the variant, the state,
 `upright`/`sideways` and, for a pinned one, `x`/`y` as parts of the screen's width and height): read it before a new
 round, answer each note in the round's `round` line, and never leave a ✗ unanswered.
 
@@ -94,8 +94,10 @@ phone: the real size under their own finger).
 2. **Research** (above), then **think before drawing**: who is on this screen and why, the one thing they must see, the one press that matters,
    its feedback, its empty / full / locked / error states, how it agrees with the other screens. Write it down as the
    board's states.
-3. **Build a board**: `node scripts/lab-new.mjs <id> "<title>" --spot <chip> --screen <map id>` makes
-   `lab/boards/<id>/` with a first variant and lists it (see `lab/boards/level` for a full one). Give it the
+3. **Build a board**: `node scripts/lab-new.mjs <id> "<title>" --kind ui --spot <chip> --screen <map id>` makes
+   `lab/boards/<id>/` with a first variant and lists it (see `lab/boards/level` for a full one). Every board has its
+   `kind` (`ui` for yours: its icon in the sandbox) and `added`, the time it was put before the user: a new round of a
+   board sets `added` to now, so it waits for the user again. Give it the
    request, `status: 'choose'`, its states made by the game's own pure code (never numbers the game cannot produce), and
    "today" beside **two or three variants** (`a`, `b`, `c`). Each variant is its own component and CSS file, every rule
    under a class of its own (`.v-<board>-a …`), so nothing leaks. Variants differ in what matters — hierarchy, layout,

@@ -12,6 +12,8 @@ import { Today } from './Today'
 export const savesBoard: Board<SavesState> = {
   id: 'saves',
   title: 'חוות שמורות',
+  kind: 'ui',
+  added: '2026-11-15T01:39',
   ask: 'ביקשת לעצב את זה (🙋). מהמפה: ארבעה כפתורים לכל חווה באותו משקל ו־Clear ממש ליד Play; מחיקה בלי כרטיס; שורת פרטים ארוכה במילים; הרשימה יורדת מתחת למסך.',
   status: 'choose',
   still: 'yard',

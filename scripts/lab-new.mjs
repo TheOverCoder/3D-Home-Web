@@ -2,7 +2,9 @@
 // component and CSS file), listed in lab/boards.ts. It shows at once in the sandbox — ringed on the game's screen when
 // it names a spot, and in the list of screens when it names its map screen — and side by side (#<id>).
 //
-//   node scripts/lab-new.mjs <id> "<title, in Hebrew>" [--spot level] [--screen level] [--ask "<the user's words>"]
+//   node scripts/lab-new.mjs <id> "<title, in Hebrew>" --kind ui|film|3d [--spot level] [--screen level] [--ask "<the user's words>"]
+//
+// Its kind is always given (its icon in the sandbox: a film, a piece of the interface, a 3D element); its time is now.
 //
 // Spots are the game's chips and buttons in lab/stills/<still>.json (coins, line, store, goals, day, level, settings…);
 // screens are the ids of lab/map.ts.
@@ -14,7 +16,8 @@ import { args } from './lab-tools.mjs'
 
 const a = args()
 const [id, title] = a._
-if (!id || !title || !/^[a-z][a-z0-9-]*$/.test(id)) throw new Error('usage: node scripts/lab-new.mjs <id: lower-case-words> "<title>" [--spot s] [--screen s] [--ask "…"]')
+if (!id || !title || !/^[a-z][a-z0-9-]*$/.test(id) || !['ui', 'film', '3d'].includes(a.kind))
+  throw new Error('usage: node scripts/lab-new.mjs <id: lower-case-words> "<title>" --kind ui|film|3d [--spot s] [--screen s] [--ask "…"]')
 const lab = join(dirname(fileURLToPath(import.meta.url)), '../lab')
 const dir = join(lab, 'boards', id)
 if (existsSync(dir)) throw new Error(`lab/boards/${id} is there already`)
@@ -39,6 +42,8 @@ export interface ${Name}State {
 export const ${name}Board: Board<${Name}State> = {
   id: ${q(id)},
   title: ${q(title)},
+  kind: ${q(a.kind)},
+  added: ${q(new Date().toISOString().slice(0, 16))},
   ask: ${q(a.ask ?? 'הבקשה, במילים של המשתמש')},
   status: 'choose',
   still: 'yard',${a.spot ? `\n  spot: ${q(a.spot)},` : ''}${a.screen ? `\n  screen: ${q(a.screen)},` : ''}
