@@ -2,6 +2,7 @@
 import type { Page } from '@playwright/test'
 import { countingTest as test, expect, bootApp, emptyFarm, fillFarm, marketDoorStill, watchErrors, BASE, NULL_GL } from './helpers'
 import { FRONT_DOOR, HALL } from '../../src/data/market'
+import { AGENT_SEAT, AGENT_STAND } from '../../src/data/estate'
 
 // The budget, measured the way phones meet the game: a walk through the house, out over the farm and into the
 // supermarket, at its fullest (every room filled with the heaviest piece until full, every animal the shop sells,
@@ -79,7 +80,17 @@ const DEBTS: Debt[] = [
  *  triangles stay under the budget). Indoors it is paid while no window's sunlight falls on you (215-220 draws: the
  *  walls drawn merged, your body out of the map); where it does, your body is drawn into the map — 37 draws of its 52
  *  meshes, 6.9k triangles — and the same debt holds (the office, 0.8 m from where the walk stands: 252). */
-const OUTDOORS = ['gate, the line', 'yard, over the farm', 'yard, back at the house', 'lane, the market', 'lane, the market, its shoppers', 'market, the shelves', 'market, the shelves, mixed']
+const OUTDOORS = [
+  'gate, the line',
+  'yard, over the farm',
+  'yard, back at the house',
+  'lane, the market',
+  'lane, the market, its shoppers',
+  'market, the shelves',
+  'market, the shelves, mixed',
+  'lane, the parking lot and the estate office',
+  'estate office, the agent at his desk',
+]
 const SUN_DEBT: Debt = {
   view: 'first person outdoors, and indoors in a window’s sunlight',
   size: 'every size',
@@ -147,6 +158,11 @@ const WALK: View[] = [
   { name: 'lane, the market, its shoppers', x: (FRONT_DOOR.x0 + FRONT_DOOR.x1) / 2, z: FRONT_DOOR.z0 - 2.4, yaw: P, pitch: -0.03, marketDoor: 1, fill: { shoppers: true } },
   { name: 'market, the shelves', x: FRONT_DOOR.x1 - 0.3, z: HALL.z0 + 0.6, yaw: -P + (36 * P) / 180, pitch: -0.12, marketDoor: 1, fill: { shoppers: true } },
   { name: 'market, the shelves, mixed', x: FRONT_DOOR.x1 - 0.3, z: HALL.z0 + 0.6, yaw: -P + (36 * P) / 180, pitch: -0.12, marketDoor: 1, fill: { shoppers: true, mixed: true } },
+  // the parking lot west of the gate with the car in its bay, and the estate office's front beside the market's: from
+  // the lane east of the gate, looking west along it (the gate and the market's doors shut: you are more than 1.8 m and
+  // 2 m from them); and inside the office, before the agent's desk, looking at him (its door open behind you)
+  { name: 'lane, the parking lot and the estate office', x: 7.4, z: 14.4, yaw: 1.9, pitch: -0.06 },
+  { name: 'estate office, the agent at his desk', x: AGENT_STAND.x, z: AGENT_STAND.z, yaw: Math.atan2(-(AGENT_SEAT.x - AGENT_STAND.x), -(AGENT_SEAT.z - AGENT_STAND.z)), pitch: -0.12 },
   { name: 'third person, the living room', x: -3.5, z: 2.5, yaw: P, mode: 'third', door: false },
   { name: 'decorating the living room', x: -3.5, z: 2.5, yaw: P, mode: 'decorate', door: false },
   { name: 'the wardrobe open, you filmed', x: 5.8, z: 1.75, yaw: 0, mode: 'wardrobe', door: false },

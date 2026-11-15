@@ -6,6 +6,7 @@
 const files = import.meta.glob('../assets/art/*.webp', { eager: true, query: '?url', import: 'default' }) as Record<string, string>
 
 export type ArtId =
+  | 'automobile'
   | 'basket'
   | 'building-construction'
   | 'check-mark-button'
@@ -26,7 +27,10 @@ export type ArtId =
   | 'glowing-star'
   | 'hammer'
   | 'hourglass-done'
+  | 'house'
   | 'house-with-garden'
+  | 'key'
+  | 'man-office-worker'
   | 'musical-notes'
   | 'office-worker'
   | 'package'

@@ -8,6 +8,7 @@
 // must lie inside the sun's shadow box (SUN_SHADOW in ./layout): outside it a surface is drawn as if nothing shaded it,
 // and a room would look roofless. src/data/buildings.test.ts checks every row.
 
+import { ESTATE_WALKIN } from './estate'
 import { LOT, MARKET_WALKIN } from './market'
 import { insideHouse, roomAt } from './layout'
 
@@ -52,6 +53,8 @@ export interface AutoDoor extends Rect {
   height: number
   thick: number
   travel: number
+  /** the leaves' paint (the market's green when none is given) */
+  color?: string
 }
 
 export interface WalkIn {
@@ -66,13 +69,16 @@ export interface WalkIn {
   doors: Rect[]
   /** what is underfoot inside */
   floor: 'tile' | 'boards'
+  /** what its outer walls are: brick (the market, and any row that says nothing), or painted weatherboards */
+  look?: 'brick' | 'boards'
   /** a light in each room, there from the start (no shader is compiled again when you walk in); no shadow */
   lights: WalkInLight[]
-  /** sliding doors in a doorway of its outer wall, opening by themselves for whoever comes near */
+  /** sliding doors in a doorway of its outer wall, opening by themselves for whoever comes near (and, for a building
+   *  that keeps hours, staying shut out of them: src/scene/WalkIn.tsx, `locked`) */
   autoDoor?: AutoDoor
 }
 
-export const WALK_INS: readonly WalkIn[] = [MARKET_WALKIN]
+export const WALK_INS: readonly WalkIn[] = [MARKET_WALKIN, ESTATE_WALKIN]
 
 /** The whole walk-in's extent on the ground (walls included). */
 export function bounds(w: WalkIn): Rect {
@@ -117,8 +123,9 @@ export function insideWalkIn(x: number, z: number, margin = 0): WalkIn | null {
   return null
 }
 
-/** The lane outside the garden's fence (the lot before the market and the contractor's corner): a space of its own, so
- *  nothing in the garden is in reach from it over the fence, nor the other way. */
+/** The lane outside the garden's fence (the lot before the market and the estate office, the parking lot and the
+ *  contractor's corner): a space of its own, so nothing in the garden is in reach from it over the fence, nor the other
+ *  way. */
 export const LANE = 'lane'
 
 /** Which space a point is in, for the action button (src/lib/interaction.ts): a room of the house (or 'house' in its

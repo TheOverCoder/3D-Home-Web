@@ -1,7 +1,9 @@
-import { Parts, Shape, lathe, merge, rgb, tube, type PartDef, type V3 } from '../lib/sculpt'
+import { Parts, lathe, merge, rgb, tube, type PartDef, type SculptSurface, type Shape, type V3 } from '../lib/sculpt'
 import type { Box, Rect, WalkIn } from '../data/buildings'
 import { BAYS, BAY_WIDTH, CABIN, CONTRACTOR_SPOT, COUNTER, DESK, FRONT_DOOR, HALL, ISLAND, ISLAND_PANEL, MARKET_WALKIN, SCREEN, SHELF_RUN, SHELF_YS, TILL } from '../data/market'
 import { grain, mix, structureParts, type Structure } from './structures'
+import { FACES, around, box, cuboid, type Paint } from './boxes'
+import { parkingSignShape } from './estate'
 
 // The supermarket and the contractor's cabin, sculpted from their rows (src/data/market.ts), in world metres: put them
 // at the origin.
@@ -43,112 +45,18 @@ const BLACK = rgb(0x2a2c2f)
 const GLASS = rgb(0x26394a)
 const GLASS_TOP = rgb(0x5f7f96)
 
-// ───────────────────────────── boxes ─────────────────────────────
-
-/** How a face of a box is painted: its colour, below `band.y` another (a plinth, a dado), and how much of the
- *  material's surface pattern shows on it (0 plain, the default; 1 the brick). */
-interface Paint {
-  color: V3
-  band?: { y: number; color: V3 }
-  surface?: number
-}
-
-/** The six faces of a box, each its outward normal and its corners in order round it (counter-clockwise seen from
- *  outside). */
-const FACES: { n: V3; corners: (b: Box) => V3[] }[] = [
-  {
-    n: [1, 0, 0],
-    corners: (b) => [
-      [b.x1, b.y0, b.z1],
-      [b.x1, b.y0, b.z0],
-      [b.x1, b.y1, b.z0],
-      [b.x1, b.y1, b.z1],
-    ],
-  },
-  {
-    n: [-1, 0, 0],
-    corners: (b) => [
-      [b.x0, b.y0, b.z0],
-      [b.x0, b.y0, b.z1],
-      [b.x0, b.y1, b.z1],
-      [b.x0, b.y1, b.z0],
-    ],
-  },
-  {
-    n: [0, 1, 0],
-    corners: (b) => [
-      [b.x0, b.y1, b.z0],
-      [b.x0, b.y1, b.z1],
-      [b.x1, b.y1, b.z1],
-      [b.x1, b.y1, b.z0],
-    ],
-  },
-  {
-    n: [0, -1, 0],
-    corners: (b) => [
-      [b.x0, b.y0, b.z0],
-      [b.x1, b.y0, b.z0],
-      [b.x1, b.y0, b.z1],
-      [b.x0, b.y0, b.z1],
-    ],
-  },
-  {
-    n: [0, 0, 1],
-    corners: (b) => [
-      [b.x0, b.y0, b.z1],
-      [b.x1, b.y0, b.z1],
-      [b.x1, b.y1, b.z1],
-      [b.x0, b.y1, b.z1],
-    ],
-  },
-  {
-    n: [0, 0, -1],
-    corners: (b) => [
-      [b.x1, b.y0, b.z0],
-      [b.x0, b.y0, b.z0],
-      [b.x0, b.y1, b.z0],
-      [b.x1, b.y1, b.z0],
-    ],
-  },
-]
-
-/** A closed box with flat faces, each painted by `paint` (from its outward normal and its middle). */
-function cuboid(b: Box, paint: Paint | ((n: V3, middle: V3) => Paint), hidden?: (corners: V3[], n: V3) => boolean): Shape {
-  const s = new Shape()
-  for (const f of FACES) {
-    const corners = f.corners(b)
-    if (hidden?.(corners, f.n)) continue
-    const middle: V3 = [(b.x0 + b.x1) / 2 + (f.n[0] * (b.x1 - b.x0)) / 2, (b.y0 + b.y1) / 2 + (f.n[1] * (b.y1 - b.y0)) / 2, (b.z0 + b.z1) / 2 + (f.n[2] * (b.z1 - b.z0)) / 2]
-    const p = typeof paint === 'function' ? paint(f.n, middle) : paint
-    const first = s.count
-    for (const [x, y, z] of corners) {
-      const k = s.vertex(x, y, z, p.color, 0)
-      if (p.band) {
-        // the band's colour shows below its line: the pattern crosses 0.5 there, exactly, whatever the face's size
-        s.m[k] = 0.5 + (p.band.y - y) * 50
-        s.c2[k * 3] = p.band.color[0]
-        s.c2[k * 3 + 1] = p.band.color[1]
-        s.c2[k * 3 + 2] = p.band.color[2]
-      }
-      s.s[k] = p.surface ?? 0
-    }
-    s.tri(first, first + 1, first + 2)
-    s.tri(first, first + 2, first + 3)
-  }
-  return s
-}
-
-/** A box from its two corners, x y z each. */
-const box = (x0: number, x1: number, y0: number, y1: number, z0: number, z1: number): Box => ({ x0, x1, y0, y1, z0, z1 })
-/** A box round a middle point, by half-sizes. */
-const around = (x: number, y: number, z: number, hx: number, hy: number, hz: number): Box => box(x - hx, x + hx, y - hy, y + hy, z - hz, z + hz)
+// The boxes everything here is made of (cuboid, box, around): ./boxes.ts.
 
 const inRect = (r: { x0: number; x1: number; z0: number; z1: number }, x: number, z: number) => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1
 
 // ───────────────────────────── the shell ─────────────────────────────
 
-/** Brick outside (with a darker plinth), plaster inside (with a dado): a face is inside when just in front of it is a
- *  room, or a doorway between two rooms, under the roof. */
+/** Painted weatherboards (a walk-in whose row says `look: 'boards'`: the estate office), over a slate plinth. */
+const CLADDING = rgb(0xe9e1cf)
+const PLINTH = rgb(0x4b5866)
+
+/** Brick outside (with a darker plinth) or painted boards (`look`), plaster inside (with a dado): a face is inside when
+ *  just in front of it is a room, or a doorway between two rooms, under the roof. */
 function wallPaint(def: WalkIn) {
   const near = (a: Rect, b: Rect) => a.x0 <= b.x1 + 0.2 && a.x1 >= b.x0 - 0.2 && a.z0 <= b.z1 + 0.2 && a.z1 >= b.z0 - 0.2
   const within = [...def.rooms, ...def.doors.filter((d) => def.rooms.filter((r) => near(r, d)).length > 1)]
@@ -156,7 +64,8 @@ function wallPaint(def: WalkIn) {
     const x = m[0] + n[0] * 0.05
     const z = m[2] + n[2] * 0.05
     const inside = n[1] <= 0 && m[1] + n[1] * 0.05 > 0 && m[1] < def.roof.y && within.some((r) => inRect(r, x, z))
-    return inside ? { color: PLASTER, band: { y: 0.9, color: DADO } } : { color: BRICK, band: { y: 0.32, color: BRICK_LOW }, surface: 1 }
+    if (inside) return { color: PLASTER, band: { y: 0.9, color: DADO } }
+    return def.look === 'boards' ? { color: CLADDING, band: { y: 0.3, color: PLINTH }, surface: 1 } : { color: BRICK, band: { y: 0.32, color: BRICK_LOW }, surface: 1 }
   }
 }
 
@@ -209,7 +118,9 @@ export function shellModel(def: WalkIn, also: Shape[] = []): Structure<'shell'> 
     ...copings.map((b) => cuboid(b, { color: COPING }, joint)),
     ...roofs.map((b) => cuboid(b, (n) => ({ color: n[1] > 0 ? ROOFING : CEILING }), joint)),
   ]
-  return { shell: { shape: merge(...pieces, ...also), material: { roughness: 0.9, surface: { kind: 'brick', size: 0.9, joint: MORTAR, tone: 0.45 } }, castShadow: true } }
+  // brick in running bond, mortar in its joints; or weatherboards 15 cm a board
+  const surface: SculptSurface = def.look === 'boards' ? { kind: 'boards', size: 0.6, tone: 0.25 } : { kind: 'brick', size: 0.9, joint: MORTAR, tone: 0.45 }
+  return { shell: { shape: merge(...pieces, ...also), material: { roughness: 0.9, surface }, castShadow: true } }
 }
 
 /** The contractor's cabin: a doorway in its north side (the way he comes and goes, about x 15.15: src/farm/script.ts),
@@ -250,8 +161,9 @@ export function cabinShape(): Shape {
   return merge(...walls, roof)
 }
 
-/** A walk-in's shell with what stands with it (by its id: the market's cabin), as the one casting part. */
-const SHELL_EXTRAS: Record<string, () => Shape[]> = { market: () => [cabinShape()] }
+/** A walk-in's shell with what stands with it (by its id: the market's cabin, the estate office's parking sign), as the
+ *  one casting part. */
+const SHELL_EXTRAS: Record<string, () => Shape[]> = { market: () => [cabinShape()], estate: () => [parkingSignShape()] }
 
 export function walkInShellModel(def: WalkIn): Structure<'shell'> {
   return shellModel(def, SHELL_EXTRAS[def.id]?.() ?? [])

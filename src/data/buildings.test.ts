@@ -3,6 +3,9 @@ import { describe, expect, it } from 'vitest'
 import { WALK_INS, insideWalkIn, isWalkInSpace, spaceAt } from './buildings'
 import { ROOMS, SUN, SUN_SHADOW } from './layout'
 import { BACK, CABIN, CONTRACTOR_STAND, FRONT_DOOR, HALL, INNER_DOOR, MARKET_PATH } from './market'
+import { AGENT_STAND, ESTATE_DOOR, ESTATE_PATH, ESTATE_ROOM, PARKING } from './estate'
+import { ARRIVE, CAR_SPOT } from './maps'
+import { CAR_SHAPE, carHalf } from '../models/car'
 
 // Walk-in buildings (src/data/buildings.ts) against the sun's shadow box: outside the box three lights a surface as if
 // nothing shaded it, so every floor, and the inside of every wall the sun shines at, must stand inside it (and the
@@ -66,6 +69,17 @@ describe('every walk-in stands in the sun’s shadow box', () => {
       })
     }
 
+  it('the car in its bay on the farm: its footprint on the ground and at its roof (its shadow falls where it is drawn)', () => {
+    const c = CAR_SPOT.farm
+    const h = carHalf(c.heading)
+    for (const y of [0, CAR_SHAPE.height])
+      for (const x of [c.x - h.x, c.x + h.x])
+        for (const z of [c.z - h.z, c.z + h.z]) {
+          const m = inside(x, y, z)
+          expect(m, `car corner ${x}, ${y}, ${z}: ${m.toFixed(3)} m inside`).toBeGreaterThanOrEqual(MARGIN)
+        }
+  })
+
   it("the contractor's cabin: its footprint on the ground and at its top", () => {
     for (const y of [0, CABIN.y1])
       for (const x of [CABIN.x0, CABIN.x1])
@@ -115,6 +129,20 @@ describe('which space a point is in', () => {
     // and the garden inside it is outdoors, as the farm is
     expect(spaceAt(5.6, 12.4)).toBe('out')
     expect(insideWalkIn(7, 15)).toBeNull()
+  })
+
+  it('the estate office is its own space, its doorway in it; the way in, its front and the parking lot are the lane', () => {
+    expect(spaceAt((ESTATE_ROOM.x0 + ESTATE_ROOM.x1) / 2, (ESTATE_ROOM.z0 + ESTATE_ROOM.z1) / 2)).toBe('estate')
+    expect(spaceAt(AGENT_STAND.x, AGENT_STAND.z)).toBe('estate')
+    expect(spaceAt(ESTATE_PATH[2].x, ESTATE_PATH[2].z), 'inside its door').toBe('estate')
+    for (const x of along(ESTATE_DOOR.x0 + 0.01, ESTATE_DOOR.x1 - 0.01))
+      for (const z of along(ESTATE_DOOR.z0 + 0.01, ESTATE_DOOR.z1 - 0.01)) expect(spaceAt(x, z), `its door at ${x}, ${z}`).toBe('estate')
+    expect(spaceAt(ESTATE_PATH[1].x, ESTATE_PATH[1].z), 'outside its door').toBe('lane')
+    expect(spaceAt(ESTATE_PATH[0].x, ESTATE_PATH[0].z), 'on the lane').toBe('lane')
+    for (const x of along(PARKING.x0 + 0.05, PARKING.x1 - 0.05)) for (const z of along(PARKING.z0 + 0.05, PARKING.z1 - 0.05)) expect(spaceAt(x, z), `the parking lot at ${x}, ${z}`).toBe('lane')
+    expect(spaceAt(CAR_SPOT.farm.x, CAR_SPOT.farm.z), 'the car').toBe('lane')
+    expect(spaceAt(ARRIVE.farm.x, ARRIVE.farm.z), 'where the drive ends').toBe('lane')
+    expect(insideWalkIn(ARRIVE.farm.x, ARRIVE.farm.z)).toBeNull()
   })
 
   it('in the house: its room', () => {

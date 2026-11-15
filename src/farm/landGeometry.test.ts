@@ -3,6 +3,7 @@ import type { BufferGeometry } from 'three'
 import { WALK_INS, bounds, type Rect as Area } from '../data/buildings'
 import { GARDEN, GATE } from '../data/layout'
 import { CABIN, LOT } from '../data/market'
+import { PARKING } from '../data/estate'
 import { WOODS_CLEAR, build, buildWhole, treeSpots } from './landGeometry'
 import { PARCEL_IDS, defaultLayout, lotEdges, ownedRects, reachRects, type FarmLayout, type ParcelId } from './layout'
 
@@ -88,6 +89,10 @@ describe('beyond the gate', () => {
       const spots = treeSpots(layout)
       expect(spots.length).toBe(14)
       for (const t of spots) for (const b of buildings) expect(away(b, t.x, t.z), `the tree at (${t.x.toFixed(1)}, ${t.z.toFixed(1)})`).toBeGreaterThanOrEqual(WOODS_CLEAR)
+    })
+
+    it(`${name}: no tree of the woods on the lot or the parking lot, nor within ${WOODS_CLEAR} m of them`, () => {
+      for (const t of treeSpots(layout)) for (const r of [...LOT, PARKING]) expect(away(r, t.x, t.z), `the tree at (${t.x.toFixed(1)}, ${t.z.toFixed(1)})`).toBeGreaterThanOrEqual(WOODS_CLEAR)
     })
 
     it(`${name}: the lot's edge is closed all round, but for the gate and the doorways`, () => {

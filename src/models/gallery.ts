@@ -16,6 +16,13 @@ import { DRIVER, putTractor, seatDriver, tractorParts } from './tractor'
 import { MARKET_MIDDLE, MARKET_SCREEN, MARKET_SIGN, marketFittingsParts, marketShellParts } from './market'
 import { putSlidingDoor, slidingDoorParts } from './slidingDoor'
 import { BROWSE_SPOTS, CONTRACTOR_SPOT, MANAGER_SPOT, MARKET_WALKIN, PAY_SPOT } from '../data/market'
+import { carParts, putCar } from './car'
+import { ESTATE_MIDDLE, estateFittingsParts, parkingLotParts } from './estate'
+import { walkInShellParts } from './market'
+import { AGENT_SEAT, ESTATE_HOURS, ESTATE_SIGN, ESTATE_WALKIN, ESTATE_WINDOW, SALE_BOARD, SEAT_Y } from '../data/estate'
+import { CAR_SPOT } from '../data/maps'
+import { ESTATE_LOOK } from './look'
+import { sitAtDesk } from './person'
 
 // Every model the kit makes, posed and moving, for the gallery page (open the site with ?gallery). Add a new
 // model here as soon as it has a shape: it is the quickest way to see it from every side, in the game's light.
@@ -354,6 +361,84 @@ export const GALLERY: GalleryEntry[] = [
           seatDriver(driver, Math.sin(t * 0.5) * 0.4)
           people.begin()
           driver.write(people)
+          people.end()
+        },
+      }
+    },
+  },
+  {
+    id: 'car',
+    label: 'Car',
+    name: 'The car that drives you between the farm and the house: a small hatchback, its wheels in its arches',
+    make() {
+      const parts = carParts(1)
+      return {
+        object: parts.group,
+        width: 4.2,
+        height: 1.6,
+        triangles: () => parts.triangles(),
+        update(t) {
+          parts.begin()
+          // three quarters on, turning slowly
+          putCar(parts, 0, 0, -2.4 + Math.sin(t * 0.4) * 0.5)
+          parts.end()
+        },
+      }
+    },
+  },
+  {
+    id: 'estate',
+    label: 'Estate office',
+    name: 'The estate office (its shell from the walk-in row, weatherboards; the agent sitting at his desk, the house for sale on the wall, the sign, the hours and the window; the sliding door opening and shutting), the parking lot with the car in its bay',
+    make() {
+      const shell = walkInShellParts(ESTATE_WALKIN)
+      const fittings = estateFittingsParts()
+      const door = ESTATE_WALKIN.autoDoor!
+      const leaves = slidingDoorParts(door)
+      const lot = parkingLotParts()
+      const car = carParts(1)
+      car.begin()
+      putCar(car, CAR_SPOT.farm.x, CAR_SPOT.farm.z, CAR_SPOT.farm.heading)
+      car.end()
+      const people = personParts(1)
+      const agent = new PersonRig(rollLook(random(4271), ESTATE_LOOK))
+      agent.root.position.set(AGENT_SEAT.x, 0, AGENT_SEAT.z)
+      agent.root.rotation.y = AGENT_SEAT.heading
+      // (the pictures as the scene draws them: planes where the model leaves room for them)
+      const plane = (p: { x: number; y: number; z: number; half: readonly [number, number] }, color: number, heading = Math.PI) => {
+        const m = new Mesh(new PlaneGeometry(p.half[0] * 2, p.half[1] * 2), new MeshStandardMaterial({ color: 0x0c1a22, emissive: color, emissiveIntensity: 0.5 }))
+        m.position.set(p.x, p.y, p.z)
+        m.rotation.y = heading
+        return m
+      }
+      const world = new Group()
+      world.add(
+        shell.group,
+        fittings.group,
+        leaves.group,
+        lot.group,
+        car.group,
+        people.group,
+        plane({ ...ESTATE_SIGN, z: ESTATE_SIGN.z - 0.047 }, 0x22344f),
+        plane({ ...ESTATE_HOURS, z: ESTATE_HOURS.z - 0.022 }, 0xf6f1e4),
+        plane({ ...ESTATE_WINDOW, z: ESTATE_WINDOW.z - 0.01 }, 0x26394a),
+        plane({ ...SALE_BOARD, x: SALE_BOARD.x + 0.018 }, 0xf6f1e4, Math.PI / 2),
+      )
+      // its front (north, to the lane) turned to the gallery's camera, the lot to its right
+      world.rotation.y = Math.PI
+      world.position.set(ESTATE_MIDDLE.x - 2, 0, ESTATE_MIDDLE.z - 1)
+      const object = new Group()
+      object.add(world)
+      return {
+        object,
+        width: 10,
+        height: 3,
+        triangles: () => shell.triangles() + fittings.triangles() + leaves.triangles() + lot.triangles() + car.triangles() + people.triangles(),
+        update(t) {
+          putSlidingDoor(leaves, door, Math.min(1, Math.max(0, 0.5 + Math.sin(t * 0.8) * 0.8)))
+          sitAtDesk(agent, SEAT_Y, Math.sin(t * 0.6) * 0.4)
+          people.begin()
+          agent.write(people)
           people.end()
         },
       }

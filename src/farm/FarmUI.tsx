@@ -6,6 +6,8 @@ import { WardrobePanel } from '../home/WardrobePanel'
 import { DayChip } from './DayChip'
 import { ManagerPanel, MarketBuyPanel, MarketPanel, MarketPlacePanel } from './MarketPanel'
 import { ContractorPanel } from './ContractorPanel'
+import { EstatePanel, HouseBuyPanel } from './EstatePanel'
+import { CarPanel } from './car/CarPanel'
 import { LadderCard } from './Ladder'
 import './Xp.css'
 import './MarketPanel.css'
@@ -552,6 +554,9 @@ export function FarmUI() {
       {panel?.kind === 'market-place' && <MarketPlacePanel place={panel.place} />}
       {panel?.kind === 'market-buy' && <MarketBuyPanel />}
       {panel?.kind === 'contractor' && <ContractorPanel />}
+      {panel?.kind === 'car' && <CarPanel />}
+      {panel?.kind === 'estate' && <EstatePanel />}
+      {panel?.kind === 'house-buy' && <HouseBuyPanel />}
       {panel?.kind === 'ladder' && <LadderCard id={panel.id} />}
       {panel?.kind === 'level' && <LevelPanel />}
       {panel?.kind === 'wardrobe' && <WardrobePanel />}

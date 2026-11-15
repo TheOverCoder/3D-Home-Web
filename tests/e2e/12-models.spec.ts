@@ -16,7 +16,7 @@ test.describe('sculpted models', () => {
     // every entry draws something once the first frames have posed it
     await page.waitForFunction(() => (window as any).__gallery.entries.every((e: any) => e.triangles > 1000), null, { timeout: 60_000, polling: 250 })
     const entries = await page.evaluate(() => (window as any).__gallery.entries.map((e: any) => e.id))
-    expect(entries).toEqual(['cow', 'sheep', 'chickens', 'people', 'crops', 'farm', 'stores', 'office', 'market', 'tractor', 'goods'])
+    expect(entries).toEqual(['cow', 'sheep', 'chickens', 'people', 'crops', 'farm', 'stores', 'office', 'market', 'tractor', 'car', 'estate', 'goods'])
     // the checks catch a piece a centimetre off its model, and a model two centimetres above the ground
     expect(await page.evaluate(() => (window as any).__gallery.selfTest())).toEqual(['loose', 'open', 'floating'])
     // the kit's checks, on every model in every variant and pose: no piece apart from its model, nothing floating
@@ -76,10 +76,11 @@ test.describe('sculpted models', () => {
       }
       h.view.on = true
       // the market's people are drawn in the same crowd: the manager at his desk, the contractor at his window in his
-      // hours, any shoppers about (read with the counts: they come and go as the farm ticks)
+      // hours, the estate agent at his desk in the office's (seated), any shoppers about (read with the counts: they
+      // come and go as the farm ticks)
       const f = h.farm
-      const guests = [f.managerNow?.(), f.contractorNow?.(), ...(f.shoppersNow?.() ?? [])].filter(Boolean)
-      out.guests = { all: guests.length, bare: guests.filter((w: any) => w.look?.basket === false).length }
+      const guests = [f.managerNow?.(), f.contractorNow?.(), f.estateAgentNow?.(), ...(f.shoppersNow?.() ?? [])].filter(Boolean)
+      out.guests = { all: guests.length, bare: guests.filter((w: any) => w.look?.basket === false).length, seated: guests.filter((w: any) => w.look?.seated).length }
       return out
     })
     // two cows (one in each of two coats), three sheep, three hens and the rooster
@@ -91,12 +92,13 @@ test.describe('sculpted models', () => {
     expect(drawn.chickens?.henBody).toBe(3)
     expect(drawn.chickens?.roosterBody).toBe(1)
     // three buyers, each in one of the hair styles, and the tractor's driver (drawn with them, seated: his legs are
-    // the seated ones, his right hand has no basket); and the market's people
+    // the seated ones, his right hand has no basket); and the market's people (the estate agent's legs seated too)
     const people = 4 + drawn.guests.all
     expect(drawn.people?.torso).toBe(people)
     expect(drawn.people?.head).toBe(people)
     expect(['hairShort', 'hairLong', 'hairBun', 'hairCurly', 'hairPony'].reduce((n, part) => n + (drawn.people?.[part] ?? 0), 0)).toBe(people)
-    expect(drawn.people?.thighSeated).toBe(2)
+    expect(drawn.guests.seated, 'the estate agent at his desk at noon').toBe(1)
+    expect(drawn.people?.thighSeated).toBe(2 + 2 * drawn.guests.seated)
     expect(drawn.people?.forearmL, 'a left forearm for everyone drawn').toBe(people)
     expect((drawn.people?.forearmR ?? 0) + (drawn.people?.forearmRBare ?? 0), 'a right forearm for everyone drawn').toBe(people)
     expect(drawn.people?.forearmRBare).toBe(1 + drawn.guests.bare)

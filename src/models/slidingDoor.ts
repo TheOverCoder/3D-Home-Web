@@ -1,8 +1,9 @@
 import { Parts, Shape, rgb, type V3 } from '../lib/sculpt'
 import type { AutoDoor, Box } from '../data/buildings'
 
-// A walk-in building's automatic sliding door (its row's `autoDoor`, src/data/buildings.ts): two painted leaves that
-// meet in the middle of the doorway and slide apart into the wall at either side (src/scene/WalkIn.tsx opens them).
+// A walk-in building's automatic sliding door (its row's `autoDoor`, src/data/buildings.ts): two painted leaves (the
+// market's green, or the row's `color`) that meet in the middle of the doorway and slide apart into the wall at either
+// side (src/scene/WalkIn.tsx opens them).
 // Each leaf is a closed box with flat faces. Shut, they close the doorway with no gap anywhere: each reaches FIT.pocket
 // into the wall at its side and FIT.up behind the lintel, and the two overlap FIT.meet past the middle, set FIT.stagger
 // apart across the wall so no face lies on another. Open, each is inside the wall. They cast no shadow: they stand in
@@ -59,13 +60,14 @@ const FACES: ((b: Box) => V3[])[] = [
  *  door's top; its thickness along z round the origin. Painted, with a kick plate (the pattern's second colour below
  *  KICK_Y: linear in height, so exact between any two corners). */
 export function leafShape(door: AutoDoor): Shape {
+  const paint = door.color ? rgb(Number.parseInt(door.color.slice(1), 16)) : LEAF
   const w = (Math.max(door.x1 - door.x0, door.z1 - door.z0) / 2 + FIT.meet + FIT.pocket) / 2
   const t = door.thick / 2
   const s = new Shape()
   for (const face of FACES) {
     const first = s.count
     for (const [x, y, z] of face({ x0: -w, x1: w, y0: 0, y1: door.height + FIT.up, z0: -t, z1: t })) {
-      const k = s.vertex(x, y, z, LEAF, 0)
+      const k = s.vertex(x, y, z, paint, 0)
       s.m[k] = 0.5 + (KICK_Y - y) * 50
       s.c2[k * 3] = KICK[0]
       s.c2[k * 3 + 1] = KICK[1]
