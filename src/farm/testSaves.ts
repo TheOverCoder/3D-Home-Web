@@ -7,6 +7,7 @@ import {
   buyFromContractor,
   buyLadder,
   buyMarket,
+  buyDecor,
   buyOffice,
   buyPiece,
   claimLevel,
@@ -22,9 +23,11 @@ import {
   freeSpotFor,
   harvestBeds,
   loadMachine,
+  moveBed,
   movePiece,
   movePlace,
   orderAt,
+  placeDecor,
   placeStored,
   plant,
   resetFarm,
@@ -34,6 +37,7 @@ import {
   sendOrder,
   setPlacePrice,
   spawnVisitor,
+  storeDecor,
   storePiece,
   switchSlot,
   tick,
@@ -176,8 +180,9 @@ export function seeded(seed: number) {
  *  declined (a new one on its way); the pouf moved, a plant put away, a stool bought and stood in the kitchen, a plant
  *  bought and waiting in storage; XP from all of it, a level's coins claimed and more waiting; the manager's rate at its
  *  top and the shop bought, a place and a quicker pace more, four places stocked (one dearer), a shopper's coins in the
- *  till; the contractor's day: a log stack sold to him, one of his pieces bought, his price a step lower. The same every
- *  time (its buyers' looks and names, its orders, the contractor's pieces come from a seed). */
+ *  till; the contractor's day: a log stack sold to him, one of his pieces bought, his price a step lower; the farm's
+ *  decoration standing and in the store, a fruit tree and bush with fruit on them, the oven and a bed moved. The same
+ *  every time (its buyers' looks and names, its orders, the contractor's pieces come from a seed). */
 export function playedSave(): Record<string, unknown> {
   const random = vi.spyOn(Math, 'random').mockImplementation(seeded(7))
   try {
@@ -260,6 +265,19 @@ export function playedSave(): Record<string, unknown> {
     buyPiece('stool')
     placeStored('stool', freeSpotFor('stool', 'kitchen')!)
     buyPiece('plant')
+    // the farm's decoration: a fence of two sections and a lamp standing, a lamp put away into the store and a path
+    // bought and waiting there; an apple tree with apples on it and a raspberry bush; the oven moved out onto the free
+    // land where the house stood, turned; a bed moved with its corn
+    for (const kind of ['fence', 'fence', 'lamp', 'lamp', 'path', 'apple-tree', 'raspberry-bush'] as const) buyDecor(kind)
+    placeDecor('fence', { x: 2, z: -3, rot: 0 })
+    placeDecor('fence', { x: 4, z: -3, rot: 0 })
+    storeDecor(placeDecor('lamp', { x: 1, z: -1, rot: 0 }).id!)
+    placeDecor('lamp', { x: 5.5, z: -1, rot: 0 })
+    placeDecor('apple-tree', { x: -5, z: -3, rot: 1 })
+    placeDecor('raspberry-bush', { x: -2.5, z: -5, rot: 0 })
+    tick(85)
+    movePlace('oven', { x: 2, z: 2, rot: 1 })
+    moveBed(4, { x: 6, z: 3, rot: 1 })
     // the house bought, and the player back on the farm (the two maps)
     farm.apartment.owned = true
     farm.place = 'farm'
