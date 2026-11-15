@@ -260,6 +260,9 @@ export function playedSave(): Record<string, unknown> {
     buyPiece('stool')
     placeStored('stool', freeSpotFor('stool', 'kitchen')!)
     buyPiece('plant')
+    // the house bought, and the player back on the farm (the two maps)
+    farm.apartment.owned = true
+    farm.place = 'farm'
     return savedNow()
   } finally {
     random.mockRestore()

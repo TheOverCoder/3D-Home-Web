@@ -232,6 +232,29 @@ describe('a save broken or edited by hand', () => {
     expect(without(savedNow(), 'day')).toEqual(without(loaded, 'day'))
   })
 
+  it('the two maps: the house yours as saved, the player in it only while it is; a farm from before them has the house and starts in it', () => {
+    expect([farm.apartment.owned, farm.place]).toEqual([true, 'farm'])
+    // a farm from before the two maps: it always had the house, and starts in it as it always did
+    startFrom(without(played, 'apartment', 'place'))
+    expect([farm.apartment.owned, farm.place]).toEqual([true, 'home'])
+    expect(without(savedNow(), 'apartment', 'place')).toEqual(without(loaded, 'apartment', 'place'))
+    // in the house without owning it: on the farm
+    startFrom({ ...played, apartment: { owned: false }, place: 'home' })
+    expect([farm.apartment.owned, farm.place]).toEqual([false, 'farm'])
+    // broken: not owned unless it says so; any place but the house is the farm
+    for (const [apartment, place] of [
+      [{ owned: 'yes' }, 'home'],
+      [{ owned: 1 }, 'moon'],
+      [{}, { x: 1 }],
+    ] as const) {
+      startFrom({ ...played, apartment, place })
+      expect([farm.apartment.owned, farm.place], JSON.stringify([apartment, place])).toEqual([false, 'farm'])
+      expect(without(savedNow(), 'apartment', 'place')).toEqual(without(loaded, 'apartment', 'place'))
+    }
+    startFrom({ ...played, place: 'home' })
+    expect(farm.place).toBe('home')
+  })
+
   it('a buyer in line saved before the people engine (a hat yes or no, three hair styles) loads as they were', () => {
     const queue = played.queue as Save[]
     const look = { shirt: '#5c8a4a', trousers: '#5a4636', skin: '#f1c7a5', hair: '#b9b2a8', hairStyle: 2, hat: true, height: 1.02 }

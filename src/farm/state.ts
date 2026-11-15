@@ -207,7 +207,14 @@ export interface FarmData {
   contractor: Contractor
   /** the farm's day (src/farm/day.ts): seconds of farm time since the farm began (it goes on while you are away) */
   day: { t: number }
+  /** where the player is: the farm or the house, two maps the car drives between (the house only once it is yours) */
+  place: Place
+  /** the house, bought from the estate agent by the market (a farm from before the two maps has always had it) */
+  apartment: { owned: boolean }
 }
+
+/** The two maps: the farm, and the house you buy and drive to. */
+export type Place = 'farm' | 'home'
 
 // Three save slots ("farms"). The first keeps the original key, so saves from before slots load unchanged.
 export const SLOTS = [1, 2, 3] as const
@@ -277,6 +284,8 @@ function fresh(): FarmData {
     market: freshMarket(),
     contractor: { day: -1, offers: [] },
     day: { t: 0 },
+    place: 'farm',
+    apartment: { owned: false },
   }
 }
 
@@ -493,6 +502,12 @@ function load(text: string | null = readRaw(KEY)): { data: FarmData; savedAt: nu
     data.market = sanitizeMarket(raw.market, data.ladders)
     data.contractor = sanitizeContractor(raw.contractor, offersPerDay(data.ladders.stock))
     data.day = { t: dayClock(field(raw.day, 't')) }
+    // the house: yours as saved; a farm from before the two maps always had it, and goes on where it always started,
+    // in the house. You are in the house only while it is yours.
+    const before = !isObject(raw.apartment)
+    data.apartment = { owned: before || field(raw.apartment, 'owned') === true }
+    const place = before ? 'home' : field(raw, 'place')
+    data.place = place === 'home' && data.apartment.owned ? 'home' : 'farm'
     const queue = (Array.isArray(raw.queue) ? raw.queue : []).map(savedBuyer).filter((b): b is SavedBuyer => !!b)
     return { data, savedAt: num(raw.time, 0) || null, queue: queue.slice(0, queuePlaces(data.queueLevel)) }
   } catch {
@@ -1727,6 +1742,16 @@ export function sellAllToManager(): number {
 
 /** The shop is for sale: the manager's rate is at its top and it is not yours yet. */
 export const marketForSale = () => !farm.market.owned && ladderMaxed('rate')
+
+/** Drives to the other map (the farm, or the house once it is yours); whether you went. The scene follows
+ *  `farm.place`: it shows that map and puts you out of the car there (src/data/maps.ts, ARRIVE). */
+export function driveTo(to: Place): boolean {
+  if (to === farm.place || (to === 'home' && !farm.apartment.owned)) return false
+  farm.place = to
+  bump()
+  save()
+  return true
+}
 
 /** Buys the shop from the manager (his rate at its top, MANAGER.shopPrice); whether it was bought. He waves and walks
  *  out, and the computer is yours: the shelves, the till and the shop's own ladders. */

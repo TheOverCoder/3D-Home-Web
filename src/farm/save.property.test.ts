@@ -180,6 +180,8 @@ function alsoChanges(part: string): RegExp | null {
   if (part === 'paceLevel') return /^nextVisitorIn$/
   if (part === 'time') return /^(beds|producers|machines)\.|^nextVisitorIn$|^queue$|^orders$|^dispatch$|^(market|contractor|day)$/
   if (part === 'home.pieces') return /^home\.(stored|next)$/
+  // you are in the house only while it is yours (src/farm/state.ts, load)
+  if (part === 'apartment' || part.startsWith('apartment.')) return /^place$/
   // the ladders decide how many places the shop has and how often shoppers come, and how many pieces the contractor brings
   if (part === 'ladders' || part.startsWith('ladders.')) return /^(market|contractor)(\.|$)/
   // the shop's own ladders count only once the shop is yours (src/farm/market.ts, clampLevels)
