@@ -63,3 +63,22 @@ export function nextPrice(base: number, owned: number): number {
 
 /** Whether a good is one of the new fruit. */
 export const isFruit = (id: string): id is FruitId => Object.values(FRUIT).some((f) => f.fruit === id)
+
+/** One kind as the edit mode's shop shows it: how many the farm has (placed or stored) and the next one's price. */
+export interface ShopItemView {
+  kind: ShopKind
+  tab: DecorTab
+  name: string
+  owned: number
+  price: number
+  /** the farm has the coins for it */
+  can: boolean
+  /** a fruit plant: the fruit it bears */
+  fruit?: FruitId
+}
+
+/** What the edit mode's shop does: buy one (it is then placed by the player, as a place is moved), or put one placed
+ *  away into the farm's store of decoration (placed again later for nothing). */
+export interface ShopActions {
+  buy(kind: ShopKind): boolean
+}
