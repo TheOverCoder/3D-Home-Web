@@ -62,7 +62,7 @@ test.describe('farm layout and the edit mode', () => {
     expect(edges.some((e: any) => e.axis === 'z' && e.at === 14)).toBe(false)
 
     // the hen run over the beds: red, and it goes back where it was
-    const bad = await drag(game, [11.6, 6.7], [-1.2, 10.3])
+    const bad = await drag(game, [11.6, 6.7], [-1.2, 9.6])
     expect(bad?.fit.ok).toBe(false)
     expect(await page.evaluate(() => (window as any).__home.farm.state.layout.places.hens)).toEqual({ x: 11.6, z: 6.7, rot: 0 })
     await expect(page.locator('.edit-card')).toContainText('On a garden bed')

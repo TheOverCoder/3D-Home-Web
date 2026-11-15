@@ -23,6 +23,7 @@ describe('the farm without the house', () => {
   it('the path among the beds and the shrubs by the boundary still keep their ground', () => {
     const layout = defaultLayout()
     expect(canPlace(layout, 'lemon', { x: PATH_X, z: 9.6, rot: 0 }).ok).toBe(false)
+    expect(canPlace(layout, 'hens', { x: PATH_X, z: 9.5, rot: 0 })).toEqual({ ok: false, reason: 'On a garden bed' })
     for (const [x, z] of FARM_SHRUBS) expect(BLOCKERS.some((b) => b.name === 'a shrub' && x > b.rect.minX && x < b.rect.maxX && z > b.rect.minZ && z < b.rect.maxZ)).toBe(true)
     // the path stays where it ran out of the garden door, and the beds with it
     expect(PATH_X).toBe(-1.2)
