@@ -1,6 +1,6 @@
 import { BufferAttribute, BufferGeometry, Color, Euler, Group, InstancedBufferAttribute, InstancedMesh, Matrix4, MeshBasicMaterial, Quaternion, Vector3, type Material, type Plane } from 'three'
 import { sculptMaterial, type SculptMaterialOptions } from './material'
-import { farEnough, lodReady, lodsOf, sunEnough, sunLodsOf, worthDrawing } from './lod'
+import { farEnough, lodReady, lodsLater, sunEnough, sunLodsLater, worthDrawing, type Lod } from './lod'
 import { shadowOnly, sunCopies } from './sun'
 
 // Drawing a crowd of models: one instanced draw per part geometry, whatever the number of animals, people or
@@ -213,51 +213,58 @@ export class Parts<K extends string = string> {
     if (lods) void lodReady().then(() => this.makeLods(defs))
   }
 
-  /** Makes each part's lighter copies (src/lib/sculpt/lod.ts): a mesh each, with the part's material — for the camera,
-   *  and for a part that casts, for the sun. */
+  /** Asks for each part's lighter copies (src/lib/sculpt/lod.ts), made in the page's idle time: a mesh each, with the
+   *  part's material — for the camera, and for a part that casts, for the sun. Until they come, the part is drawn whole. */
   private makeLods(defs: Record<K, PartDef>) {
     for (const k of this.keys) {
-      const sun = this.sun[k]
-      if (!sun) continue
-      for (const c of sunLodsOf(defs[k].geometry)) {
-        const caster = shadowOnly(new InstancedMesh(c.geometry, this.meshes[k].material, defs[k].max))
-        caster.name = `${this.meshes[k].name}-sun${sun.targets.length}`
-        caster.count = 0
-        caster.visible = false
-        this.group.add(caster)
-        sun.targets.push({ mesh: caster, error: c.error, triangles: c.triangles })
-      }
-      const n = sun.targets.length
-      this.sun[k] = { targets: sun.targets, triangles: Float64Array.from(sun.targets, (t) => t.triangles), wanted: new Int32Array(n), use: new Uint8Array(n) }
+      if (this.sun[k]) sunLodsLater(defs[k].geometry, (copies) => this.sunCopies(k, defs[k], copies))
+      lodsLater(defs[k].geometry, (copies) => this.farCopies(k, defs[k], copies))
     }
+  }
+
+  /** A casting part's copies for the sun, each a mesh drawn only into shadow maps. */
+  private sunCopies(k: K, def: PartDef, copies: Lod[]) {
+    const sun = this.sun[k]
+    if (this.disposed || !sun || !copies.length) return
+    for (const c of copies) {
+      const caster = shadowOnly(new InstancedMesh(c.geometry, this.meshes[k].material, def.max))
+      caster.name = `${this.meshes[k].name}-sun${sun.targets.length}`
+      caster.count = 0
+      caster.visible = false
+      this.group.add(caster)
+      sun.targets.push({ mesh: caster, error: c.error, triangles: c.triangles })
+    }
+    const n = sun.targets.length
+    this.sun[k] = { targets: sun.targets, triangles: Float64Array.from(sun.targets, (t) => t.triangles), wanted: new Int32Array(n), use: new Uint8Array(n) }
     this.handSun()
-    for (const k of this.cullable) {
-      const copies = lodsOf(defs[k].geometry)
-      if (!copies.length) continue
-      const main = this.meshes[k]
-      const g = main.geometry
-      const whole = { mesh: main, error: 0, triangles: (g.index ? g.index.count : g.attributes.position.count) / 3, color2: this.color2[k] }
-      const targets: Target[] = [
-        whole,
-        ...copies.map((c, l) => {
-          const second = this.color2[k] ? withColor2(c.geometry, defs[k].max) : null
-          const mesh = new InstancedMesh(second ? second.geometry : c.geometry, main.material, defs[k].max)
-          mesh.name = `${main.name}-lod${l + 1}`
-          mesh.instanceColor = new InstancedBufferAttribute(new Float32Array(defs[k].max * 3).fill(1), 3)
-          mesh.count = 0
-          mesh.visible = false
-          mesh.castShadow = false
-          mesh.receiveShadow = main.receiveShadow
-          // a ray meets the part's own mesh, which knows every model put
-          mesh.raycast = () => {}
-          this.group.add(mesh)
-          return { mesh, error: c.error, triangles: c.triangles, color2: second?.color2 }
-        }),
-      ]
-      const n = targets.length
-      this.lods[k] = { targets, triangles: Float64Array.from(targets, (t) => t.triangles), wanted: new Int32Array(n), use: new Uint8Array(n) }
-      this.hasLods = true
-    }
+  }
+
+  /** A part's copies for the camera far off. */
+  private farCopies(k: K, def: PartDef, copies: Lod[]) {
+    if (this.disposed || !copies.length) return
+    const main = this.meshes[k]
+    const g = main.geometry
+    const whole = { mesh: main, error: 0, triangles: (g.index ? g.index.count : g.attributes.position.count) / 3, color2: this.color2[k] }
+    const targets: Target[] = [
+      whole,
+      ...copies.map((c, l) => {
+        const second = this.color2[k] ? withColor2(c.geometry, def.max) : null
+        const mesh = new InstancedMesh(second ? second.geometry : c.geometry, main.material, def.max)
+        mesh.name = `${main.name}-lod${l + 1}`
+        mesh.instanceColor = new InstancedBufferAttribute(new Float32Array(def.max * 3).fill(1), 3)
+        mesh.count = 0
+        mesh.visible = false
+        mesh.castShadow = false
+        mesh.receiveShadow = main.receiveShadow
+        // a ray meets the part's own mesh, which knows every model put
+        mesh.raycast = () => {}
+        this.group.add(mesh)
+        return { mesh, error: c.error, triangles: c.triangles, color2: second?.color2 }
+      }),
+    ]
+    const n = targets.length
+    this.lods[k] = { targets, triangles: Float64Array.from(targets, (t) => t.triangles), wanted: new Int32Array(n), use: new Uint8Array(n) }
+    this.hasLods = true
     this.drawnModels = -1
   }
 
@@ -693,7 +700,11 @@ export class Parts<K extends string = string> {
     return t
   }
 
+  /** disposed: copies that come later are not added */
+  private disposed = false
+
   dispose() {
+    this.disposed = true
     liveParts.delete(this as unknown as Parts)
     for (const k of this.keys) this.meshes[k].dispose()
     for (const k of this.cullable) for (const t of this.lods[k]?.targets.slice(1) ?? []) t.mesh.dispose()

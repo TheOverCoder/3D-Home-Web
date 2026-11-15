@@ -1,5 +1,5 @@
 import { LightShadow, Mesh, type BufferGeometry, type Frustum, type InstancedMesh, type Material, type Object3D, type SkinnedMesh } from 'three'
-import { lodLoaded, lodReady, sunEnough, sunLodsOf } from './lod'
+import { lodLoaded, lodReady, sunEnough, sunLodsLater } from './lod'
 
 // Casters drawn into the sun's shadow map from lighter copies (lod.ts: `sunLodsOf`, `sunEnough`): a mesh of their own,
 // drawn only into shadow maps and never by a camera, holds the copy, while the mesh seen keeps every triangle and no
@@ -50,8 +50,8 @@ function plain(m: Mesh): boolean {
 /**
  * Casts the meshes under `root` (a model loaded from a file: a piece of furniture) into the sun's map from their lighter
  * copies: each that casts gets a child drawn only into shadow maps, with the coarsest copy that keeps its shadow to the
- * texel at the size it stands (`sunEnough`), and stops casting itself. Call with `root` not yet scaled by a parent
- * (its own scale counts); once the simplifier has loaded if it has not yet.
+ * texel at the size it stands (`sunEnough`), and stops casting itself — once the copy is made, in idle time. Call with
+ * `root` not yet scaled by a parent (its own scale counts).
  */
 export function castFromCopies(root: Object3D) {
   if (!lodLoaded()) {
@@ -66,13 +66,15 @@ export function castFromCopies(root: Object3D) {
   })
   for (const m of meshes) {
     const scale = m.matrixWorld.getMaxScaleOnAxis()
-    const copies = sunLodsOf(m.geometry)
-    let copy = null
-    for (const c of copies) if (sunEnough(c.error, scale)) copy = c
-    if (!copy) continue
-    const caster = shadowOnly(new Mesh(copy.geometry, m.material), m.geometry, copy.geometry)
-    caster.name = `${m.name}-sun`
-    m.castShadow = false
-    m.add(caster)
+    // made in the page's idle time (lod.ts: `later`): until then the mesh casts whole
+    sunLodsLater(m.geometry, (copies) => {
+      let copy = null
+      for (const c of copies) if (sunEnough(c.error, scale)) copy = c
+      if (!copy || !m.castShadow) return
+      const caster = shadowOnly(new Mesh(copy.geometry, m.material), m.geometry, copy.geometry)
+      caster.name = `${m.name}-sun`
+      m.castShadow = false
+      m.add(caster)
+    })
   }
 }

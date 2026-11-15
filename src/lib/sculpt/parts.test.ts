@@ -1,7 +1,7 @@
 import { BoxGeometry, Color, DirectionalLight, Frustum, Group, InstancedMesh, Matrix4, PerspectiveCamera, Raycaster, SphereGeometry, Vector3 } from 'three'
 import { describe, expect, it } from 'vitest'
 import { Parts, liveParts, type ModelTest } from './parts'
-import { lodReady } from './lod'
+import { copiesMade, lodReady } from './lod'
 import { sunCopies } from './sun'
 
 // A crowd draws only the models the view can see (the drawing pass, src/lib/visibility): each model — everything put
@@ -193,9 +193,9 @@ describe('a crowd drawn model by model', () => {
 
   it("a caster's instances go to the sun's copy that keeps their shadow to the texel at their size, whatever the camera", async () => {
     const parts = new Parts({ ball: { geometry: new SphereGeometry(0.4, 64, 32), max: 8, castShadow: true } }, 'balls')
-    // its copies for the sun, once the simplifier has loaded
+    // its copies for the sun, made in idle time once the simplifier has loaded
     await lodReady()
-    await Promise.resolve()
+    await copiesMade()
     parts.begin()
     parts.at(-3, 0, 0)
     parts.put('ball', 0, 1, 0)

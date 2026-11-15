@@ -61,21 +61,22 @@ export const lodLoaded = () => loaded
 
 const cache = new WeakMap<BufferGeometry, Lod[]>()
 
-/** The time spent making copies since the page loaded (ms), and of how many geometries (`__home.copies` with ?debug):
- *  they are made once, as the crowds and models come in. */
-export const copyTime = { ms: 0, geometries: 0 }
+/** Copies being made, and the time spent making them since the page loaded (ms), of how many geometries
+ *  (`__home.copies` with ?debug). They are made a step at a time in the page's idle time (`later`), never while a map
+ *  loads: until its copies are made a part is drawn whole. */
+export const copyTime = { ms: 0, geometries: 0, pending: 0 }
 
-/** The lighter copies of a geometry for the camera, finest first (none for a light one): made once, then kept. Call
- *  after `lodReady()` has resolved. */
+/** The lighter copies of a geometry for the camera, finest first (none for a light one), made now: once, then kept.
+ *  Call after `lodReady()` has resolved. */
 export function lodsOf(g: BufferGeometry): Lod[] {
+  return cache.get(g) ?? finish(make(g), cache, g)
+}
+
+/** The same, made a step at a time in idle time (`later`); `then` gets them once made (at once if they are known). */
+export function lodsLater(g: BufferGeometry, then: (lods: Lod[]) => void) {
   const known = cache.get(g)
-  if (known) return known
-  const t0 = performance.now()
-  const out = make(g)
-  copyTime.ms += performance.now() - t0
-  copyTime.geometries++
-  cache.set(g, out)
-  return out
+  if (known) then(known)
+  else later(make(g), cache, g, then)
 }
 
 /** The geometry's positions and indices as the simplifier takes them (none: it cannot be simplified). */
@@ -109,7 +110,7 @@ function copyOf(g: BufferGeometry, kept: Uint32Array): BufferGeometry {
   return lod
 }
 
-function make(g: BufferGeometry): Lod[] {
+function* make(g: BufferGeometry): Generator<void, Lod[]> {
   const src = source(g)
   if (!src || src.triangles < LOD_SMALLEST) return []
   const { positions, indices, triangles } = src
@@ -133,6 +134,7 @@ function make(g: BufferGeometry): Lod[] {
     // measured, the copy's error is the least of a few times the estimate that it keeps to both ways (none: not kept),
     // and never less than a finer copy's (a copy is drawn wherever a coarser one may be)
     const error = MEASURED.map((k) => Math.max(estimate * k, floor)).find((r) => within(positions, indices, kept, r))
+    yield
     if (error === undefined) continue
     out.push({ geometry: copyOf(g, kept), error, triangles: n })
     last = n
@@ -215,9 +217,17 @@ const sunCache = new WeakMap<BufferGeometry, Lod[]>()
  * only if it holds: its `error` is what was measured, not estimated. Made once, then kept; call after `lodReady()`.
  */
 export function sunLodsOf(g: BufferGeometry): Lod[] {
+  return sunCache.get(g) ?? finish(makeSun(g), sunCache, g)
+}
+
+/** The same, made a step at a time in idle time (`later`); `then` gets them once made (at once if they are known). */
+export function sunLodsLater(g: BufferGeometry, then: (lods: Lod[]) => void) {
   const known = sunCache.get(g)
-  if (known) return known
-  const t0 = performance.now()
+  if (known) then(known)
+  else later(makeSun(g), sunCache, g, then)
+}
+
+function* makeSun(g: BufferGeometry): Generator<void, Lod[]> {
   const out: Lod[] = []
   const src = source(g)
   if (src && src.triangles >= LOD_SMALLEST) {
@@ -231,7 +241,9 @@ export function sunLodsOf(g: BufferGeometry): Lod[] {
       for (const ask of [1, 0.5, 0.25]) {
         const [kept] = MeshoptSimplifier.simplify(indices, positions, 3, 0, step * ask, ['ErrorAbsolute', 'LockBorder'])
         if (kept.length / 3 > last * (1 - WORTH)) break
-        if (within(positions, src.indices, kept, step)) {
+        const holds = within(positions, src.indices, kept, step)
+        yield
+        if (holds) {
           found = kept
           break
         }
@@ -241,11 +253,71 @@ export function sunLodsOf(g: BufferGeometry): Lod[] {
       last = found.length / 3
     }
   }
-  copyTime.ms += performance.now() - t0
-  copyTime.geometries++
-  sunCache.set(g, out)
   return out
 }
+
+// ───────────────────────────── made in idle time ─────────────────────────────
+
+type Making = Generator<void, Lod[]>
+/** The geometries whose copies are being made, a step at a time, in turn. */
+const queue: { making: Making; cache: WeakMap<BufferGeometry, Lod[]>; g: BufferGeometry; done: ((lods: Lod[]) => void)[] }[] = []
+/** The most a slice of idle time is used for (ms) when the page gives no deadline of its own. */
+const SLICE = 6
+let pumping = false
+const waiting: (() => void)[] = []
+
+/** Runs a making to its end now, and keeps what it made. */
+function finish(making: Making, cache: WeakMap<BufferGeometry, Lod[]>, g: BufferGeometry): Lod[] {
+  const t0 = performance.now()
+  let step = making.next()
+  while (!step.done) step = making.next()
+  copyTime.ms += performance.now() - t0
+  copyTime.geometries++
+  cache.set(g, step.value)
+  return step.value
+}
+
+/** Queues a making for idle time (one geometry's twice asked for is made once). */
+function later(making: Making, cache: WeakMap<BufferGeometry, Lod[]>, g: BufferGeometry, then: (lods: Lod[]) => void) {
+  const same = queue.find((q) => q.g === g && q.cache === cache)
+  if (same) {
+    same.done.push(then)
+    return
+  }
+  queue.push({ making, cache, g, done: [then] })
+  copyTime.pending = queue.length
+  pump()
+}
+
+function pump() {
+  if (pumping || !queue.length) return
+  pumping = true
+  const run = (deadline?: IdleDeadline) => {
+    pumping = false
+    const until = performance.now() + (deadline && !deadline.didTimeout ? Math.max(1, deadline.timeRemaining()) : SLICE)
+    const t0 = performance.now()
+    while (queue.length) {
+      const job = queue[0]
+      const step = job.making.next()
+      if (step.done) {
+        queue.shift()
+        copyTime.geometries++
+        job.cache.set(job.g, step.value)
+        for (const done of job.done) done(step.value)
+      }
+      if (performance.now() >= until) break
+    }
+    copyTime.ms += performance.now() - t0
+    copyTime.pending = queue.length
+    if (queue.length) pump()
+    else waiting.splice(0).forEach((done) => done())
+  }
+  if (typeof requestIdleCallback === 'function') requestIdleCallback(run, { timeout: 100 })
+  else setTimeout(run, 0)
+}
+
+/** Resolves once every copy asked for is made (for tests). */
+export const copiesMade = () => (queue.length ? new Promise<void>((done) => waiting.push(done)) : Promise.resolve())
 
 /** Whether a copy keeps to `r` of its whole both ways: every vertex of the whole within `r` of the copy's surface, and
  *  every triangle of the copy (its middle and the middles of its edges) within `r` of the whole's — nothing moved

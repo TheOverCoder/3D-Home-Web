@@ -329,7 +329,13 @@ export async function fillFarm(page: Page): Promise<FullFarm> {
   })
   // the furniture merged again, the animals and the buyers in their places
   if (done.fresh) await page.waitForTimeout(6000)
+  await copiesMade(page)
   return done
+}
+
+/** Until every lighter copy asked for is made (src/lib/sculpt/lod.ts: made in idle time, after a map has loaded). */
+export async function copiesMade(page: Page) {
+  await page.waitForFunction(() => !((window as any).__home.copies?.pending > 0), null, { timeout: 120_000, polling: 250 })
 }
 
 /**

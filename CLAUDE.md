@@ -82,8 +82,10 @@ The README has the overview; `tests/README.md` what each test guards.
   known error in which light and colour weigh (every attribute but the position: where a copy is drawn, a change Δ
   across n pixels only where Δ·n < ½). A copy is drawn only where its error is under half a pixel for the game's camera
   (`farEnough`), and only where it saves a draw's worth (`A_DRAW`) across the crowd's instances in view
-  (`worthDrawing`). Not the pass's: the same with it on or off, so `16-view` still compares equal; `27-far-copies`
-  bounds what they change on screen (`__home.view.lod` switches them). A new crowd part needs nothing.
+  (`worthDrawing`). Each copy is measured against the whole part (the simplifier's estimate can run short), and they
+  are made a step at a time in idle time once a map has loaded (until then a part is drawn whole). Not the pass's: the
+  same with it on or off, so `16-view` still compares equal; `27-far-copies` bounds what they change on screen
+  (`__home.view.lod` switches them). A new crowd part needs nothing.
 - Shadow copies: what casts is drawn into the sun's map by a mesh no camera draws (`src/lib/sculpt/sun.ts`), from a
   copy of its shape measured within half a texel of the sun's sharpest map (`sunLodsOf`, `sunEnough`: well inside the
   shadow's bias), chosen by the sun alone, so the map kept between frames holds. A crowd part that casts needs nothing;
