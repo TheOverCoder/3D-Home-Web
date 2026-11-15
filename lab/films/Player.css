@@ -34,6 +34,10 @@
 .film-name::before { content: ''; position: absolute; left: 50%; top: -5px; width: 10px; height: 10px; margin-left: -5px; background: inherit; border-radius: 2px; transform: rotate(45deg); opacity: 0; }
 .film-bubble[data-tail='on'] .film-name::before { opacity: 1; }
 .film-text { display: block; color: var(--ink); font: 800 19px/1.25 var(--font-text); }
+/* the words come up as they are said (the speaker's voice reads the line); the line keeps its size from the start */
+.film-text > span { transition: opacity 0.1s ease-out; }
+.film-text > .film-unsaid { opacity: 0; }
+@media (prefers-reduced-motion: reduce) { .film-text > span { transition: none; } }
 .film-bubble.mood-smug .film-text { font-style: italic; }
 .film-bubble.mood-shock .film-text { font-size: 22px; letter-spacing: 0.02em; }
 .film-bubble.mood-sad { background: var(--paper-2); }

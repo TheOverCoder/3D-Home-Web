@@ -6,8 +6,9 @@ import { FilmSupermarketA } from './FilmSupermarketA'
 // A film, not a panel: buying the supermarket from the manager (src/farm/state.ts, buyMarket), as the film director
 // made it (.claude/agents/film-director.md, lab/FILM.md). The film is data (lab/films/supermarket.ts) played by the
 // lab's film player (lab/films/Player.tsx) on the game's own models: the market from its row, the manager and the
-// contractor from the people engine. Its states are moments to start from, so each part can be watched again on its
-// own; nothing here is in the game yet.
+// contractor from the people engine, each line said aloud in its speaker's voice (lab/films/voice.ts), round the market
+// the game's own sky, haze, lawn, lane and woods. Its states are moments to start from, so each part can be watched
+// again on its own; nothing here is in the game yet.
 
 export interface FilmSupermarketState {
   /** the second of the film it starts from */
@@ -20,9 +21,12 @@ export const filmSupermarketBoard: Board<FilmSupermarketState> = {
   id: 'film-supermarket',
   title: 'סרט: קונים את הסופר',
   kind: 'film',
-  added: '2026-11-15T01:36',
+  added: '2026-11-15T09:05',
   ask: 'משימות שפותחות סרט של הדמויות מדברות: זוויות מצלמה, מה יגידו – במאי אמיתי לסרטים הקצרים. הסרט הראשון: קניית הסופר מהמנהל. מוזיקת רקע, העסקה, רואים את הכסף, עובד עם המזוודה, צילום מלמטה של הסופר, המוזיקה עולה לביט גנגסטרי, הסופר נראה מבריק – זה הרגע שקנית אותו.',
   status: 'choose',
+  round:
+    'לפי ההערות: (1) כל דמות מדברת עכשיו בקול משלה – "שפת דמויות" כמו באנימל קרוסינג, שנוצרת לבד מהטקסט של השורה (צליל לכל הברה, שריקה ל־s, הפסקה בפסיק, עלייה בסימן שאלה), בלי הקלטות ובלי קבצים: המנהל מהיר ואפי, הקבלן איטי ועמוק, ואת/ה נמוך ורגוע. המילים בבועה עולות בזמן שהן נאמרות, הראש מהנהן עם כל הברה, והמוזיקה יורדת מתחת לדיבור. קול של דמות הוא כמה מספרים (גובה, קצב, גוון). ' +
+    '(2) אין יותר רקע אפור: מסביב לסופר יש את השמיים, האובך, הדשא, הדרך והיער של המשחק עצמו, והמצלמה אף פעם לא מסתובבת אל החווה – כך שלא רואים חווה שהיא לא שלך. הסוף צולם מחדש מול החנות: שניכם עומדים זה לצד זה, והבאנר מעליכם. במשחק הסרט ירוץ בתוך הסצנה החיה, אז כל מה שרואים הוא העולם שלך כמו שהוא באותו רגע.',
   still: 'yard',
   screen: 'market',
   research: [
@@ -61,6 +65,28 @@ export const filmSupermarketBoard: Board<FilmSupermarketState> = {
       from: 'Peak-end במשחקים – CHI 2016',
       url: 'https://www.cs.mcgill.ca/~jeromew/data/COMP766/CHI2016/p5608-gutwin.pdf',
     },
+    {
+      pattern:
+        'באנימל קרוסינג הדמויות "קוראות" את הטקסט עצמו – צליל לכל אות או הברה, בגובה של הדמות; האופי הוא הגובה והקצב (עצבני נמוך, עליז גבוה). לקחנו: הקול נוצר מהשורה עצמה, וכל דמות היא כמה מספרים.',
+      from: 'How to: Animal Crossing Dialogue Sounds',
+      url: 'https://geolojosh.itch.io/goodlands/devlog/314373/how-to-animal-crossing-dialogue-sounds',
+    },
+    {
+      pattern: 'ב־Reigns הג׳יבריש "דטרמיניסטי": אותה שורה תמיד נשמעת אותו דבר, והגובה מבדיל בין דמויות. לקחנו: הקוביות של הקול הן האותיות של השורה – משנים טקסט, והקול משתנה איתו, בלי להקליט.',
+      from: 'Disasterpeace – Reigns: A Thousand Years of Deterministic Babble',
+      url: 'https://disasterpeace.com/blog/tag.Reigns',
+    },
+    {
+      pattern:
+        'בבנג׳ו־קאזואי שמו קולות משובשים במקום דיבוב – ושחקנים התאהבו בהם. תנועה (vowel) היא זמזום שעובר דרך שלוש תהודות של הפה; ככה עושים קול בלי הקלטה: זמזום בגובה של הדמות, ומסננים שזזים מתנועה לתנועה.',
+      from: 'VGFacts – Banjo-Kazooie · University of Delaware – formant synthesis',
+      url: 'https://www.asel.udel.edu/speech/tutorials/synthesis/vspace2.html',
+    },
+    {
+      pattern: 'סרט במנוע של המשחק מראה את העולם של השחקן – הבגדים שלו, החווה שלו. לכן במשחק הסרט ירוץ בסצנה החיה (בלי סט משלו), ובמעבדה המצלמה נשארת בצד של הדרך שזהה בכל חווה.',
+      from: 'Giant Bomb – In-engine cinematics',
+      url: 'https://www.giantbomb.com/in-engine-cinematic/3015-964/',
+    },
   ],
   states: [
     { id: 'whole', name: 'מההתחלה', data: { from: 0 } },
@@ -72,12 +98,14 @@ export const filmSupermarketBoard: Board<FilmSupermarketState> = {
     {
       id: 'a',
       name: 'בהנהלה חדשה',
-      note: 'סרט של 41 שניות ב־18 שוטים, בתלת־ממד של המשחק עצמו: הסופר מהשורה שלו, המנהל והקבלן ממנוע הדמויות, ואת/ה בבגדים שלך. כל שורה עד 38 תווים, אפשר לדלג מהשנייה הראשונה, ובסוף כרטיס עם מה שקיבלת. 🔊 מתחיל עם מוזיקה מההתחלה.',
+      note: 'סרט של 41 שניות ב־18 שוטים, בתלת־ממד של המשחק עצמו: הסופר מהשורה שלו, המנהל והקבלן ממנוע הדמויות, ואת/ה בבגדים שלך, ומסביב השמיים, הדרך והיער של המשחק. כל שורה נאמרת בקול של הדמות (נוצר מהטקסט, בלי הקלטות), עד 38 תווים, אפשר לדלג מהשנייה הראשונה, ובסוף כרטיס עם מה שקיבלת. 🔊 עם קול: מוזיקה וקולות מההתחלה.',
       motion:
         'ערב, סגירה: מוזק מהרמקול של הסופר, והקבלן סוחב מזוודה כבדה לדלת. במשרד המנהל מקליד ולועג: "באת למכור לי גזר, ילד?". את/ה מצביע/ה על המסך – "FOR SALE · 1500" בזום. "עם מה? לפת?" – הוא צוחק, מצולם מלמטה. סנאפ באצבעות: שריטת תקליט, שקט. ' +
         'הקבלן נכנס בהילוך איטי, דופק של מתח: "Heavy one, boss" – הוא קורא לך "בוס". המזוודה נוחתת (רעידה), נפתחת – אור זהב על הפנים של המנהל ומקהלה, ורואים את המטבעות מעבר לכתף שלו. "שעתיים אחר כך": "1,498. 1,499…" ' +
         'לחיצת יד: "1,500. The shop is yours." – עלייה, חצי שנייה שקט, והביט נכנס: האורות נדלקים בקליק והמדפים מתמלאים בסחורה של החווה. בוקר: את/ה יוצא/ת מהחנות בהילוך איטי, מצולם/ת מהרצפה; באנר "UNDER NEW MANAGEMENT" נפרש על השלט, ניצוצות וקונפטי. ' +
-        'הכפתור: המנהל יוצא עם קופסה, ספל ועציץ: "תקנה את הספל שלי? כמו חדש." – "אתן לך 20%." טרומבון עצוב, הוא קופא ומשתרך משם, והקונים נכנסים לחנות. כרטיס: "The shop is yours", ‎+25 XP.',
+        'הכפתור, בשוט מרובע מול החנות: המנהל יוצא עם קופסה, ספל ועציץ, נעמד לידך ומסתובב אלייך: "תקנה את הספל שלי? כמו חדש." את/ה לא מסתובב/ת בכלל, מצולם/ת מלמטה מתחת לבאנר: "אתן לך 20%." טרומבון עצוב, הוא קופא ומשתרך משם, והקונים נכנסים לחנות. כרטיס: "The shop is yours", ‎+25 XP. ' +
+        'כל השורות נשמעות בקולות של הדמויות (המנהל מהיר ואפי, הקבלן איטי ועמוק, את/ה נמוך ורגוע), המילים עולות בבועה כשהן נאמרות, ו"אוּוּ…" של המנהל כשהמזוודה נפתחת.',
+      adds: 'סרט שנפתח כשקונים את הסופר (אין עדיין סרטים במשחק), קולות לדמויות (אין דיבור במשחק), ובאנר "UNDER NEW MANAGEMENT" מעל השלט אחרי הקנייה.',
       render: (s, act) => <FilmSupermarketA s={s} onClose={act.close} />,
     },
   ],

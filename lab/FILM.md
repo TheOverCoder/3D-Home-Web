@@ -42,6 +42,14 @@ against it before it is shown.
   laugh, and it lands because it is the only one.
 - **Always show who speaks**: the bubble points to the speaker, the speaker's name in their colour; the film works
   with the sound off. [Xbox accessibility guideline 104][xag]
+- **Every line is heard, in its speaker's voice, never in words.** A babble made from the line's own text — a sound a
+  syllable, a hiss for an s, a pause at a comma, a rise at a question mark — carries the character and the mood while
+  the bubble carries the meaning. A voice is a few numbers (pitch, pace, the head's size, brightness, rasp): the boss
+  quick and nasal, the big man slow and deep, the player low and level. The same text always sounds the same, so a
+  changed line costs nothing to "record". [Animalese][animalese] · [Reigns' deterministic babble][reigns] ·
+  [Banjo-Kazooie's gibberish][banjo] · [formant synthesis][formant]
+- **The words come up as they are said**, and the speaker's head dips on each syllable: picture, voice and words
+  agree, silent too.
 
 ## 3. The camera
 
@@ -64,6 +72,12 @@ against it before it is shown.
   quarters they fill it. Name the one the shot favours first.
 - **Medium beats close in this game's look.** The people engine's faces are simple and do not move; a medium shot
   lets the body act (a laugh, arms up, a snap). Keep close-ups for things (a screen, the case) and for one line.
+- **Film the side of the world that is the same for every player.** Across the lane is the player's own farm, which
+  grows with play; a film never turns to it (`looksAtFarm`; `moments.mjs` warns), so the lab shows no farm that is not
+  theirs and the film needs no keeping up. Around the set: the game's own sky, haze, lawn, lane and woods, never an
+  empty colour. In the game the film plays in the live scene, so whatever does show is theirs.
+- **For the last word, two side by side beat shot and reverse shot.** Both facing us, square, the shop behind: the
+  one who answers without turning to look is the cool one, and no camera has to look back at the farm.
 - **Walls are a set's, not a prison.** A wall between the camera and its subject is left out (wild walls); never one
   behind the subject, or the outside shows through.
 
@@ -85,6 +99,7 @@ against it before it is shown.
 - **Silence before the drop.** A rise, a short silence, then the hit makes a small reveal feel big. [PC Gamer on
   reveal design][reveal]
 - **Every sting on a cut or an action** (the case lands, the lights come on): picture and sound hit together.
+- **The music steps back under a voice** (about half), in one dip for lines close together, and comes back after.
 
 ## 6. Achievement
 
@@ -117,9 +132,9 @@ end card.
 
 ## How a film is made here
 
-A film is data (`lab/films/format.ts`): its cast (the people engine's looks), its set (the game's own rows), its
-shots (what they frame, from where, how big, at what angle, how the camera moves), its lines, its moves and its
-cues. The player (`lab/films/Player.tsx`) plays any film from that data on the game's own models
+A film is data (`lab/films/format.ts`): its cast (the people engine's looks, and their voices: `lab/films/voice.ts`),
+its set (the game's own rows), its shots (what they frame, from where, how big, at what angle, how the camera moves),
+its lines, its moves and its cues. The player (`lab/films/Player.tsx`) plays any film from that data on the game's own models
 (`src/models/person.ts`, `src/models/market.ts`, `src/models/goods.ts`) and the game's own sound engine, framing each
 shot for the screen it is on, and leaving out the walls in the camera's way. A new film is a new data file; a change
 to the game's people or places needs no change to the films.
@@ -157,3 +172,7 @@ the camera, the people engine for the cast, Motion for the overlay, a procedural
 [engine]: https://www.giantbomb.com/in-engine-cinematic/3015-964/
 [blizzard]: https://www.pcgamer.com/blizzard-cinematic-emotion/
 [skip]: https://feedme.design/the-problem-with-mandatory-cutscenes-in-games
+[animalese]: https://geolojosh.itch.io/goodlands/devlog/314373/how-to-animal-crossing-dialogue-sounds
+[reigns]: https://disasterpeace.com/blog/tag.Reigns
+[banjo]: https://vgfacts.com/franchise/banjokazooie/trivia-11545
+[formant]: https://www.asel.udel.edu/speech/tutorials/synthesis/vspace2.html

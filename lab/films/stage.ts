@@ -69,9 +69,10 @@ export interface PropNow {
   show: string
 }
 
-/** One cast member at world time w. `talking`: a line of theirs is on now. `turning` false: where they are only (the
- *  ones they turn to face are found so, so two who face each other do not ask each other forever). */
-export function memberAt(tl: Timeline, id: string, w: number, talking = false, turning = true): MemberNow {
+/** One cast member at world time w. `talk`: how loud their voice is now while they are saying something (null: they are
+ *  not). `turning` false: where they are only (the ones they turn to face are found so, so two who face each other do
+ *  not ask each other forever). */
+export function memberAt(tl: Timeline, id: string, w: number, talk: number | null = null, turning = true): MemberNow {
   const m = tl.film.cast[id]
   const start = markOf(m.at)
   let x = start.x
@@ -81,7 +82,7 @@ export function memberAt(tl: Timeline, id: string, w: number, talking = false, t
     const thing = THINGS_AT[target]
     if (thing) return Math.atan2(thing.x - from.x, thing.z - from.z)
     if (!turning) return 0
-    const o = memberAt(tl, target, t, false, false)
+    const o = memberAt(tl, target, t, null, false)
     return Math.atan2(o.x - from.x, o.z - from.z)
   }
   let turn: Turn = { from: 0, to: m.face !== undefined ? facing(m.face, start, 0) : (start.heading ?? 0), t0: -99 }
@@ -153,7 +154,7 @@ export function memberAt(tl: Timeline, id: string, w: number, talking = false, t
     z,
     heading: headingOf(turn, w),
     visible,
-    pose: { pose, was, blend: ease((w - poseT) / BLEND), since: w - poseT, wasSince: w - wasT, walk: Math.max(0, walking), phase, talking, frozenAt },
+    pose: { pose, was, blend: ease((w - poseT) / BLEND), since: w - poseT, wasSince: w - wasT, walk: Math.max(0, walking), phase, talking: talk !== null, voice: talk ?? 0, frozenAt },
   }
 }
 

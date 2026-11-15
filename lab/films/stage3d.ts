@@ -2,12 +2,11 @@ import {
   AdditiveBlending,
   BoxGeometry,
   CanvasTexture,
-  CircleGeometry,
   Color,
   CylinderGeometry,
   DirectionalLight,
   DoubleSide,
-  Fog,
+  FogExp2,
   Group,
   HemisphereLight,
   InstancedMesh,
@@ -23,11 +22,19 @@ import {
   SpotLight,
   SRGBColorSpace,
   TorusGeometry,
+  Vector2,
   Vector3,
+  type BufferGeometry,
+  type ShaderMaterial,
 } from 'three'
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
+import { Sky } from 'three-stdlib'
+import { LANE, SUN } from '../../src/data/layout'
 import { BACK, BAYS, HALL, LOT, MANAGER_SPOT, MARKET_WALKIN } from '../../src/data/market'
 import { DAY, LADDERS, MANAGER, SHOP, type ProduceId } from '../../src/farm/data'
+import { treeSpots } from '../../src/farm/landGeometry'
+import { defaultLayout } from '../../src/farm/layout'
 import { managerPct } from '../../src/farm/market'
 import { MarketGoods } from '../../src/farm/marketGoods'
 import { DEFAULT_OUTFIT, outfitLook } from '../../src/farm/outfit'
@@ -37,16 +44,22 @@ import { MARKET_SCREEN, MARKET_SIGN, marketFittingsParts, walkInShellParts } fro
 import { PERSON, PersonRig, personParts, type PersonLook } from '../../src/models/person'
 import { putSlidingDoor, slidingDoorParts } from '../../src/models/slidingDoor'
 import { random } from '../../src/lib/sculpt'
+import { surface } from '../../src/lib/proceduralTextures'
+import { tree } from '../../src/scene/flora'
 import { shotCamera, type Subject } from './camera'
-import { lineAt, shotAt, type Look, type Timeline } from './format'
+import { lineAt, shotAt, type Film, type Look, type Timeline } from './format'
 import { poseRig } from './poses'
-import { THINGS_AT, WILD } from './set'
+import { looksAtFarm, THINGS_AT, WILD } from './set'
 import { memberAt, propAt, type MemberNow, type PropNow } from './stage'
+import { speakingAt, voiceOfLook, VOICES, type Speech, type Voice } from './voice'
 
 // The film's stage in three.js: the market built from the game's own models and rows (its shell, fittings, goods,
 // sliding door and sign), the cast on the people engine's rigs (one crowd, one draw a part), the props, the light of
 // the scene's time of day (the game's DAY table, turned as the game's Lighting.tsx turns it), and the camera of the
-// shot. `frame(t)` puts everything where the film has it at t; it keeps no state of its own between frames but what
+// shot. Round the market, the part of the world that is the same on every farm: the game's sky and haze, its lawn, the
+// lane, and the woods on the market's side of the lane (no field the player buys ever moves them). The player's own
+// farm lies across the lane; the films never turn to it (`looksAtFarm`, ./set.ts), so the lab shows no farm that is
+// not theirs — in the game, a film plays in the scene the game already draws, and whatever is there is theirs. `frame(t)` puts everything where the film has it at t; it keeps no state of its own between frames but what
 // it built, so any moment can be drawn at once.
 
 // ───────────────────────────── the people ─────────────────────────────
@@ -86,10 +99,24 @@ export function lookOf(look: Look): PersonLook {
   return { ...rollLook(random(look.roll)), basket: false }
 }
 
+/** Each cast member's voice (./voice.ts): the game's own for its fixed characters, else one from their look, tuned by
+ *  what the film gives. */
+export function voicesOf(film: Film): Record<string, Voice> {
+  return Object.fromEntries(
+    Object.entries(film.cast).map(([id, m]) => [id, { ...(m.look === 'manager' ? VOICES.manager : m.look === 'contractor' ? VOICES.contractor : voiceOfLook(lookOf(m.look))), ...m.voice }]),
+  )
+}
+
 // ───────────────────────────── light ─────────────────────────────
 
 /** The game's noon light and the way the day turns it (src/scene/Lighting.tsx: NOON, TINT). */
-const NOON = { sun: 2.5, sunColor: '#ffd9a0', hemi: 0.24, sky: '#dfe9ff', ground: '#4a3d32', background: '#a9c4e0' }
+const NOON = { sun: 2.5, sunColor: '#ffd9a0', hemi: 0.24, sky: '#dfe9ff', ground: '#4a3d32', background: '#a9c4e0', fog: '#aab4c0' }
+/** The game's sky (Lighting.tsx: drei's Sky, the same numbers) and its haze (the haze setting on, as it starts). */
+const SKY = { distance: 900, turbidity: 3, rayleigh: 1.3, mieCoefficient: 0.004, mieDirectionalG: 0.85 }
+const HAZE = 0.04
+/** The sun's height in the sky you see, at noon and at its lowest (Lighting.tsx, SUN_UP and SUN_LOW). */
+const SUN_UP = (Math.atan2(SUN[1], Math.hypot(SUN[0], SUN[2])) * 180) / Math.PI
+const SUN_LOW = -1.2
 const TINT = {
   sun: { warm: new Color('#ff8a3c'), cool: new Color('#8fa8ff'), k: [0.55, 1] },
   sky: { warm: new Color('#ffc58f'), cool: new Color('#6f86d0'), k: [0.5, 0.9] },
@@ -329,6 +356,49 @@ function cardboardBox() {
   return group
 }
 
+// ───────────────────────────── round the market ─────────────────────────────
+
+/** The game's leafy and woody materials (src/farm/Land.tsx): its grass picture tinted, its veneer for bark. */
+function leaf(color: string) {
+  const s = surface('grass', 1, 1)
+  return new MeshStandardMaterial({ color, map: s.map, normalMap: s.normalMap, roughnessMap: s.roughnessMap, roughness: 1, normalScale: new Vector2(1.4, 1.4) })
+}
+
+/** What is round the market on every farm: the lawn (src/scene/Exterior.tsx), the lane past the gate, and the woods'
+ *  trees on the market's side of the lane (src/farm/landGeometry.ts, as Land.tsx draws them: three shades of crown,
+ *  the trunks), from the game's own rows and functions. */
+function surroundings() {
+  const group = new Group()
+  const grass = surface('grass', 130, 130)
+  const lawn = new Mesh(new PlaneGeometry(400, 400), new MeshStandardMaterial({ map: grass.map, normalMap: grass.normalMap, roughnessMap: grass.roughnessMap, roughness: 1 }))
+  lawn.rotation.x = -Math.PI / 2
+  lawn.position.y = -0.03
+  lawn.receiveShadow = true
+  const gravel = surface('stone', 64, 1)
+  const lane = new Mesh(
+    new PlaneGeometry(160, LANE.width),
+    new MeshStandardMaterial({ color: '#b3a184', map: gravel.map, normalMap: gravel.normalMap, roughness: 1, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
+  )
+  lane.rotation.x = -Math.PI / 2
+  lane.position.set(0, -0.02, LANE.z)
+  lane.receiveShadow = true
+  group.add(lawn, lane)
+  // the woods: tree i in shade i % 3, as Land.tsx colours them; only those beyond the lane, where no field is ever bought
+  const spots = treeSpots(defaultLayout())
+  const wood: BufferGeometry[] = []
+  const crowns: BufferGeometry[][] = [[], [], []]
+  spots.forEach((t, i) => {
+    if (t.z < LANE.z + LANE.width / 2 + 0.5) return
+    const parts = tree(t.x, t.z, t.height, t.seed)
+    wood.push(parts.wood)
+    crowns[i % 3].push(parts.crown)
+  })
+  const bark = surface('veneer', 1, 1)
+  if (wood.length) group.add(new Mesh(mergeGeometries(wood)!, new MeshStandardMaterial({ color: '#6a5a4c', map: bark.map, normalMap: bark.normalMap, roughness: 0.95 })))
+  ;['#5d7d43', '#6f8a46', '#4f6e3f'].forEach((color, k) => crowns[k].length && group.add(new Mesh(mergeGeometries(crowns[k])!, leaf(color))))
+  return group
+}
+
 // ───────────────────────────── the stage ─────────────────────────────
 
 /** Whether the segment from a to b passes through a box (the slab test). */
@@ -362,6 +432,8 @@ export interface FrameInfo {
   shot: number
   /** the speaker's head on the screen (px from the top left), when on it */
   speaker: { x: number; y: number } | null
+  /** the camera looks across the lane at the farm (which in the lab is not the player's): never in a film */
+  farm: boolean
 }
 
 const HEAD = PERSON.hipsY + PERSON.headY + 0.02
@@ -369,7 +441,8 @@ const HEAD = PERSON.hipsY + PERSON.headY + 0.02
 export class FilmStage {
   readonly root = new Group()
   readonly background = new Color()
-  readonly fog = new Fog('#a9c4e0', 18, 80)
+  readonly fog = new FogExp2(NOON.fog, HAZE)
+  private sky = new Sky()
   private shells = new Map<string, Parts>()
   private cast: { id: string; rig: PersonRig; hipsY: number; seed: number }[] = []
   private people: Parts
@@ -390,14 +463,21 @@ export class FilmStage {
   private light = ''
   private head = new Vector3()
   private hand = new Vector3()
+  private dir = new Vector3()
 
-  constructor(private tl: Timeline) {
+  constructor(
+    private tl: Timeline,
+    private speech: Speech[] = [],
+  ) {
     const film = tl.film
-    // the ground: grass, the lot's gravel, the rooms' tiles
-    const grass = new Mesh(new CircleGeometry(80, 48), new MeshStandardMaterial({ color: '#6f8f4e', roughness: 1 }))
-    grass.rotation.x = -Math.PI / 2
-    grass.receiveShadow = true
-    this.root.add(grass)
+    // the sky, the lawn, the lane and the woods; the lot's gravel, the rooms' tiles
+    this.sky.scale.setScalar(SKY.distance)
+    const u = (this.sky.material as ShaderMaterial).uniforms
+    u.turbidity.value = SKY.turbidity
+    u.rayleigh.value = SKY.rayleigh
+    u.mieCoefficient.value = SKY.mieCoefficient
+    u.mieDirectionalG.value = SKY.mieDirectionalG
+    this.root.add(this.sky, surroundings())
     for (const r of LOT) {
       const lot = new Mesh(new PlaneGeometry(r.x1 - r.x0, r.z1 - r.z0), new MeshStandardMaterial({ color: '#b9ad97', roughness: 0.95 }))
       lot.rotation.x = -Math.PI / 2
@@ -499,7 +579,12 @@ export class FilmStage {
     this.hemi.color.copy(tint(NOON.sky, m.warm, TINT.sky))
     this.hemi.groundColor.set(NOON.ground)
     this.background.copy(tint(NOON.background, m.warm, TINT.haze).multiplyScalar(m.sky))
-    this.fog.color.copy(this.background)
+    this.fog.color.copy(tint(NOON.fog, m.warm, TINT.haze).multiplyScalar(m.sky))
+    // the sky's own sun, lowered towards the horizon as the light goes: a sunset sky, a night sky (Lighting.tsx, DayLight)
+    const k = Math.max(0, Math.min(1, (m.sun - DAY.minLight) / (1 - DAY.minLight)))
+    const up = SUN_LOW + (SUN_UP - SUN_LOW) * k * k * k
+    const flat = Math.hypot(SUN[0], SUN[2])
+    ;((this.sky.material as ShaderMaterial).uniforms.sunPosition.value as Vector3).set(SUN[0], k >= 1 ? SUN[1] : flat * Math.tan((up * Math.PI) / 180), SUN[2])
   }
 
   private subject(name: string, now: Map<string, MemberNow>, props: Map<string, PropNow>, live: boolean): Subject {
@@ -540,7 +625,7 @@ export class FilmStage {
     const now = new Map<string, MemberNow>()
     this.people.begin()
     for (const c of this.cast) {
-      const m = memberAt(tl, c.id, w, line?.item.who === c.id)
+      const m = memberAt(tl, c.id, w, speakingAt(this.speech, c.id, t))
       now.set(c.id, m)
       if (!m.visible) continue
       c.rig.root.position.set(m.x, 0, m.z)
@@ -601,7 +686,8 @@ export class FilmStage {
       const p = this.head.clone().project(camera)
       if (p.z < 1 && Math.abs(p.x) < 1 && Math.abs(p.y) < 1) speaker = { x: ((p.x + 1) / 2) * size.width, y: ((1 - p.y) / 2) * size.height }
     }
-    return { shot: at.index, speaker }
+    camera.getWorldDirection(this.dir)
+    return { shot: at.index, speaker, farm: looksAtFarm(camera.position, this.dir) }
   }
 
   private placeProps(props: Map<string, PropNow>, now: Map<string, MemberNow>, t: number) {

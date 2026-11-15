@@ -1,11 +1,14 @@
 import { audioGraph, farmSound, unlockAudio } from '../../src/audio/sound'
 import type { Sting, Timeline, Track } from './format'
+import type { Speech, Utterance, Voice } from './voice'
 
 // A film's music and stings, composed as it plays, as the game's own music is (src/audio/music.ts): oscillators and
 // noise, nothing downloaded. Three tracks — the shop's muzak (a bossa nova out of a ceiling speaker), a tension pulse
 // (a heartbeat and a clock) and a boom-bap beat — and short stings on the moments. The game's own sounds (coins, the
 // till, a level) are the game's (src/audio/sound.ts, farmSound), so the film sounds like the game; it plays through
-// the game's volume. `Synth` writes into any audio context, so the score can be rendered offline and measured.
+// the game's volume. The characters' voices are made here too, from their lines (./voice.ts: a buzz shaped into vowels,
+// a burst of noise for each consonant), and the music steps back while someone speaks. `Synth` writes into any audio
+// context, so the score can be rendered offline and measured (`render`).
 
 const midi = (n: number) => 440 * 2 ** ((n - 69) / 12)
 
@@ -15,6 +18,8 @@ const GAME: Partial<Record<Sting, Parameters<typeof farmSound>[0]>> = { coins: '
 export class Synth {
   private white: AudioBuffer
   private buses = new Map<Track, GainNode>()
+  /** every track goes through this, so the music can step back under a voice */
+  private musicBus: GainNode
   readonly out: GainNode
 
   constructor(
@@ -24,6 +29,8 @@ export class Synth {
     this.out = ac.createGain()
     this.out.gain.value = 0.9
     this.out.connect(dest)
+    this.musicBus = ac.createGain()
+    this.musicBus.connect(this.out)
     this.white = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate)
     const d = this.white.getChannelData(0)
     let seed = 7
@@ -45,8 +52,8 @@ export class Synth {
       const hi = this.ac.createBiquadFilter()
       hi.type = 'lowpass'
       hi.frequency.value = 3200
-      g.connect(lo).connect(hi).connect(this.out)
-    } else g.connect(this.out)
+      g.connect(lo).connect(hi).connect(this.musicBus)
+    } else g.connect(this.musicBus)
     this.buses.set(track, g)
     return g
   }
@@ -218,6 +225,123 @@ export class Synth {
     for (const dt of [0.012, 0.026]) this.noise(g, t + dt, { type: 'bandpass', f: 1300, q: 1.2, gain: 0.12, decay: 0.06 })
   }
 
+  // ───────────── voices ─────────────
+
+  /** The music a little quieter from a to b (someone is speaking), back over a short fade. */
+  duck(a: number, b: number) {
+    const g = this.musicBus.gain
+    g.setValueAtTime(1, Math.max(0, a - 0.08))
+    g.linearRampToValueAtTime(0.5, a)
+    g.setValueAtTime(0.5, b)
+    g.linearRampToValueAtTime(1, b + 0.25)
+  }
+
+  /** A line said in a voice from `at` (audio seconds): one buzz at the voice's pitch through three resonances of the
+   *  mouth that move from vowel to vowel, a hum through the nose for m and n, and a band of noise for each consonant —
+   *  a dozen nodes a line, whatever its length, every syllable written as automation on them. */
+  speak(u: Utterance, at: number, v: Voice) {
+    const ac = this.ac
+    if (!u.syllables.length) return
+    const end = at + u.length + 0.15
+    const first = u.syllables[0]
+    const size = v.size || 1
+    const out = ac.createGain()
+    out.gain.value = 1
+    out.connect(this.out)
+    // the throat: a buzz at the voice's pitch, darker or brighter; some breath in it
+    const osc = ac.createOscillator()
+    osc.type = 'sawtooth'
+    osc.frequency.setValueAtTime(first.p0, at)
+    const tone = ac.createBiquadFilter()
+    tone.type = 'lowpass'
+    tone.frequency.value = 900 + 4200 * v.bright
+    tone.Q.value = 0.6
+    osc.connect(tone)
+    const sources: AudioScheduledSourceNode[] = [osc]
+    if (v.rasp) {
+      const breath = ac.createBufferSource()
+      breath.buffer = this.white
+      breath.loop = true
+      const rasp = ac.createGain()
+      rasp.gain.value = 0.25 * v.rasp
+      breath.connect(rasp).connect(tone)
+      sources.push(breath)
+    }
+    // the mouth: three resonances (bandwidths of about a tenth of their frequency), and the vowel's loudness after them
+    const env = ac.createGain()
+    env.gain.setValueAtTime(0, at)
+    env.connect(out)
+    const Q = [5.5, 11, 14]
+    const weight = [1, 0.5 + 0.35 * v.bright, 0.22 + 0.2 * v.bright]
+    const bank = Q.map((q, i) => {
+      const f = ac.createBiquadFilter()
+      f.type = 'bandpass'
+      f.Q.value = q
+      f.frequency.setValueAtTime(first.f[i] / size, at)
+      const g = ac.createGain()
+      g.gain.value = weight[i] * 1.5
+      tone.connect(f).connect(g).connect(env)
+      return f
+    })
+    // the nose: the buzz under 380 Hz, for m and n
+    const nose = ac.createBiquadFilter()
+    nose.type = 'lowpass'
+    nose.frequency.value = 380
+    const hum = ac.createGain()
+    hum.gain.setValueAtTime(0, at)
+    osc.connect(nose).connect(hum).connect(out)
+    // the lips and the teeth: noise in a band, for each consonant
+    const air = ac.createBufferSource()
+    air.buffer = this.white
+    air.loop = true
+    const band = ac.createBiquadFilter()
+    band.type = 'bandpass'
+    const hiss = ac.createGain()
+    hiss.gain.setValueAtTime(0, at)
+    air.connect(band).connect(hiss).connect(out)
+    for (const s of u.syllables) {
+      const v0 = at + s.v0
+      const v1 = at + s.v1
+      const dur = v1 - v0
+      // the pitch through the vowel
+      osc.frequency.setValueAtTime(s.p0, v0)
+      osc.frequency.linearRampToValueAtTime(s.p1, v1)
+      // the vowel: from a glide's shape (or the last vowel's) to its own, then to where a diphthong goes
+      bank.forEach((f, i) => {
+        if (s.from) f.frequency.setValueAtTime(s.from[i] / size, at + s.t)
+        f.frequency.linearRampToValueAtTime(s.f[i] / size, v0 + Math.min(0.05, dur * 0.3))
+        f.frequency.linearRampToValueAtTime(s.g[i] / size, v0 + dur * 0.85)
+      })
+      const peak = s.gain
+      env.gain.setValueAtTime(0, v0)
+      env.gain.linearRampToValueAtTime(peak * (s.from ? 0.6 : 1), v0 + Math.min(0.018, dur * 0.2))
+      env.gain.linearRampToValueAtTime(peak, v0 + Math.min(0.06, dur * 0.4))
+      env.gain.linearRampToValueAtTime(peak * 0.8, v1 - Math.min(0.035, dur * 0.3))
+      env.gain.linearRampToValueAtTime(0, v1)
+      for (const [a, b] of s.hums) {
+        hum.gain.setValueAtTime(0, at + a)
+        hum.gain.linearRampToValueAtTime(0.9 * peak, at + a + 0.012)
+        hum.gain.linearRampToValueAtTime(0, at + b)
+      }
+      for (const b of s.bursts) {
+        const t = at + b.t
+        band.frequency.setValueAtTime(b.f, t)
+        band.Q.setValueAtTime(b.q, t)
+        hiss.gain.setValueAtTime(0, t)
+        hiss.gain.linearRampToValueAtTime(b.gain * 1.6, t + Math.min(0.006, b.len * 0.3))
+        hiss.gain.linearRampToValueAtTime(b.gain * 0.7, t + b.len * 0.6)
+        hiss.gain.linearRampToValueAtTime(0, t + b.len)
+      }
+    }
+    sources.push(air)
+    for (const src of sources) {
+      src.start(at)
+      src.stop(end)
+    }
+    // let go of it all once it is said
+    osc.onended = () => out.disconnect()
+  }
+
   // ───────────── stings, at t ─────────────
 
   sting(kind: Sting, t: number) {
@@ -336,7 +460,11 @@ export class Score {
   private origin = 0
   private next = 0
 
-  constructor(private tl: Timeline) {}
+  constructor(
+    private tl: Timeline,
+    private speech: Speech[] = [],
+    private voices: Record<string, Voice> = {},
+  ) {}
 
   get on() {
     return this.synth !== null
@@ -352,12 +480,7 @@ export class Score {
     this.origin = g.ac.currentTime + 0.06 - t
     this.next = this.tl.cues.findIndex((c) => c.t >= t)
     if (this.next < 0) this.next = this.tl.cues.length
-    const music = this.tl.cues.filter((c) => c.item.music)
-    music.forEach((c, i) => {
-      const end = music[i + 1]?.t ?? this.tl.length + 4
-      if (c.item.music === 'stop' || end <= t) return
-      this.synth!.music(c.item.music as Track, this.origin + Math.max(t, c.t), this.origin + end, this.origin + c.t)
-    })
+    plan(this.synth, this.tl, this.speech, this.voices, this.origin, t)
   }
 
   /** The stings the film has passed since the last frame. */
@@ -387,4 +510,44 @@ export class Score {
     setTimeout(() => s.out.disconnect(), 400)
     this.synth = null
   }
+}
+
+/** The music and the voices from film time `from` on, written ahead on the audio clock (film time t is audio time
+ *  origin + t): each track to the next music cue, each line said as its bubble comes up (one already begun is left
+ *  out), the music stepping back under it. */
+function plan(synth: Synth, tl: Timeline, speech: Speech[], voices: Record<string, Voice>, origin: number, from: number) {
+  const music = tl.cues.filter((c) => c.item.music)
+  music.forEach((c, i) => {
+    const end = music[i + 1]?.t ?? tl.length + 4
+    if (c.item.music === 'stop' || end <= from) return
+    synth.music(c.item.music as Track, origin + Math.max(from, c.t), origin + end, origin + c.t)
+  })
+  // (lines close together step it back once: one dip, not a pump)
+  let dip: [number, number] | null = null
+  for (const s of speech) {
+    if (s.t < from - 0.01 || !voices[s.who]) continue
+    synth.speak(s.u, origin + s.t, voices[s.who])
+    if (s.line === null) continue
+    const a = origin + s.t
+    const b = a + s.u.length
+    if (dip && a < dip[1] + 0.5) dip[1] = Math.max(dip[1], b)
+    else {
+      if (dip) synth.duck(...dip)
+      dip = [a, b]
+    }
+  }
+  if (dip) synth.duck(...dip)
+}
+
+/** The whole score rendered offline (the music, the voices and the stings; the game's own sounds are the game's and
+ *  not in it), to be measured or listened to without the film: lab/films/moments.mjs --levels, --wav. */
+export async function render(tl: Timeline, speech: Speech[], voices: Record<string, Voice>, rate = 22050) {
+  const ctx = new OfflineAudioContext(1, Math.ceil(rate * (tl.length + 3)), rate)
+  const synth = new Synth(ctx, ctx.destination)
+  plan(synth, tl, speech, voices, 0, 0)
+  for (const c of tl.cues) {
+    if (c.item.music === 'stop') synth.hush(c.t)
+    if (c.item.sting && !GAME[c.item.sting]) synth.sting(c.item.sting, c.t)
+  }
+  return ctx.startRendering()
 }

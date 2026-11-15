@@ -1,4 +1,5 @@
 import type { DayPhase } from '../../src/farm/data'
+import type { Voice } from './voice'
 
 // A film is data: who is in it (looks from the game's people engine), the scenes it plays in (a place the game has, its
 // light from the game's own day), and in each scene its shots in order — what the camera frames, from where, how big,
@@ -23,6 +24,9 @@ export interface Member {
   face?: string | number
   /** not on stage until an act puts them there */
   off?: boolean
+  /** how they sound (./voice.ts): left out, the game's voice for this character, or one from their look; any number
+   *  given here tunes it */
+  voice?: Partial<Voice>
 }
 
 /** How much a shot shows of its subject: from the eyes or a hand (extreme) to the whole place round it (wide). */
@@ -99,6 +103,10 @@ export interface Cue {
   /** start a track (it plays to the next music cue), or stop the music dead */
   music?: Track | 'stop'
   sting?: Sting
+  /** someone's sound with no bubble (a gasp, a grunt): a cast id, saying `text` in their voice and `mood` */
+  voice?: string
+  text?: string
+  mood?: Mood
 }
 
 /** What the picture does over the scene: a white flash, a glint across the screen, coins and confetti, a gold glow,
@@ -267,6 +275,11 @@ export function lint(film: Film): string[] {
   }
   for (const a of tl.acts) if (!film.cast[a.item.who]) out.push(`an act of "${a.item.who}": no one by that name`)
   for (const p of tl.props) if (!film.props[p.item.prop]) out.push(`a prop "${p.item.prop}" the film does not have`)
+  for (const c of tl.cues)
+    if (c.item.voice !== undefined) {
+      if (!film.cast[c.item.voice]) out.push(`a sound of "${c.item.voice}": no one by that name`)
+      if (!c.item.text) out.push(`a sound of "${c.item.voice}" with nothing to say`)
+    }
   return out
 }
 

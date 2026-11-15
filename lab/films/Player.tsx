@@ -11,19 +11,23 @@ import { ArrowCounterClockwise, SkipForward } from '../../src/ui/glyphs'
 import { PRESS, SPRING } from '../../src/ui/motion'
 import { lineAt, lint, timeline, type Film, type FxAt, type Line, type Timeline } from './format'
 import { Score } from './score'
-import { FilmStage, lookOf } from './stage3d'
+import { FilmStage, lookOf, voicesOf, type FrameInfo } from './stage3d'
+import { lintSpeech, speechOf, wordsBy, type Speech } from './voice'
 import './Player.css'
 
 // The film player: any film (./format.ts) played on the game's own models in a 3D view that fills the screen, with
 // what wraps it in the game's own look — the letterbox, the lines in the game's paper bubbles (the speaker's name in
 // the colour of their shirt, standing over where they are on the screen), a typed caption, the picture's effects (a flash, a
-// glint, coins, confetti), Skip from the first second and, at the end, the card with what the player got. Sound is
-// the game's: it starts with the film when the page has been touched (the game's Buy button is that touch);
-// otherwise the 🔊 button starts the film again with it.
+// glint, coins, confetti), Skip from the first second and, at the end, the card with what the player got. Each line is
+// said aloud in its speaker's voice (./voice.ts), its words coming up in the bubble as they are said. Sound is the
+// game's: it starts with the film when the page has been touched (the game's Buy button is that touch); otherwise the
+// 🔊 button starts the film again with it.
 
 interface Beat {
   shot: number
   line: (Line & { key: number }) | null
+  /** how many of the line's words have been said */
+  said: number
   caption: string | null
   ended: boolean
 }
@@ -43,8 +47,12 @@ export function FilmPlayer({ film, from = 0, sound = true, onClose }: { film: Fi
   const tl = useMemo(() => timeline(film), [film])
   const reduced = !!useReducedMotion()
   const clock = useRef({ origin: null as number | null, base: from, paused: false })
-  const score = useMemo(() => new Score(tl), [tl])
-  const [beat, setBeat] = useState<Beat>({ shot: -1, line: null, caption: null, ended: false })
+  const voices = useMemo(() => voicesOf(film), [film])
+  const speech = useMemo(() => speechOf(tl, voices), [tl, voices])
+  const byLine = useMemo(() => new Map(speech.flatMap((s) => (s.line === null ? [] : [[s.line, s] as const]))), [speech])
+  const score = useMemo(() => new Score(tl, speech, voices), [tl, speech, voices])
+  const view = useRef<FrameInfo | null>(null)
+  const [beat, setBeat] = useState<Beat>({ shot: -1, line: null, said: 0, caption: null, ended: false })
   const [fx, setFx] = useState<Burst[]>([])
   const [soundOn, setSoundOn] = useState(false)
   const heardOnce = useRef(false)
@@ -67,7 +75,7 @@ export function FilmPlayer({ film, from = 0, sound = true, onClose }: { film: Fi
     clock.current = { origin: performance.now(), base: t, paused: false }
     fxNext.current = tl.fx.findIndex((f) => f.t >= t)
     if (fxNext.current < 0) fxNext.current = tl.fx.length
-    setBeat({ shot: -1, line: null, caption: null, ended: false })
+    setBeat({ shot: -1, line: null, said: 0, caption: null, ended: false })
     setFx([])
   }
 
@@ -97,7 +105,11 @@ export function FilmPlayer({ film, from = 0, sound = true, onClose }: { film: Fi
     w.__filmPlayer = {
       length: tl.length,
       timeline: tl,
-      lint: lint(film),
+      lint: [...lint(film), ...lintSpeech(speech)],
+      speech,
+      voices,
+      /** the last frame drawn: its shot, the speaker on the screen, whether the camera looks at the farm */
+      view: () => view.current,
       now,
       seek: (t: number) => {
         restart(t)
@@ -105,10 +117,10 @@ export function FilmPlayer({ film, from = 0, sound = true, onClose }: { film: Fi
       },
       play: () => restart(now()),
     }
-    if (import.meta.env.DEV) for (const problem of lint(film)) console.warn(`[film ${film.id}] ${problem}`)
+    if (import.meta.env.DEV) for (const problem of [...lint(film), ...lintSpeech(speech)]) console.warn(`[film ${film.id}] ${problem}`)
     return () => void delete w.__filmPlayer
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tl])
+  }, [tl, speech])
 
   // the bubble's place, for its tail to point at the speaker
   useLayoutEffect(() => {
@@ -116,14 +128,21 @@ export function FilmPlayer({ film, from = 0, sound = true, onClose }: { film: Fi
     bubbleBox.current = r ? { left: r.left, width: r.width } : null
   }, [beat.line])
 
-  /** Every frame, from the 3D view: the moment's shot and line, the effects passed, the stings, the bubble's tail. */
-  const onFrame = (t: number, speaker: { x: number; y: number } | null, shot: number) => {
+  /** Every frame, from the 3D view: the moment's shot and line (and how much of it has been said), the effects passed,
+   *  the stings, the bubble's tail. */
+  const onFrame = (t: number, info: FrameInfo) => {
+    const { speaker, shot } = info
+    view.current = info
     if (clock.current.origin === null) clock.current.origin = performance.now()
     const line = lineAt(tl, t)
     const caption = tl.captions.find((c) => t >= c.t && t < c.end)?.item ?? null
     const ended = t >= tl.length - 1e-3
     const key = line ? tl.lines.indexOf(line) : -1
-    setBeat((b) => (b.shot === shot && (b.line?.key ?? -1) === key && b.caption === caption && b.ended === ended ? b : { shot, line: line ? { ...line.item, key } : null, caption, ended }))
+    const spoken: Speech | undefined = line ? byLine.get(key) : undefined
+    const said = !line ? 0 : reduced || !spoken ? 99 : wordsBy(spoken.u, t - line.t)
+    setBeat((b) =>
+      b.shot === shot && (b.line?.key ?? -1) === key && b.said === said && b.caption === caption && b.ended === ended ? b : { shot, line: line ? { ...line.item, key } : null, said, caption, ended },
+    )
     while (fxNext.current < tl.fx.length && tl.fx[fxNext.current].t <= t) {
       const key = fxNext.current
       const f = tl.fx[fxNext.current++].item
@@ -183,7 +202,7 @@ export function FilmPlayer({ film, from = 0, sound = true, onClose }: { film: Fi
           gl.toneMapping = AgXToneMapping
         }}
       >
-        <Stage tl={tl} now={now} reduced={reduced} onFrame={onFrame} />
+        <Stage tl={tl} speech={speech} now={now} reduced={reduced} onFrame={onFrame} />
       </Canvas>
       <div className={`film-bars${beat.ended ? ' out' : ''}`} aria-hidden="true">
         <i />
@@ -215,7 +234,14 @@ export function FilmPlayer({ film, from = 0, sound = true, onClose }: { film: Fi
               <span className="film-name" style={{ background: shirt, color: NAME_INK(shirt) }}>
                 {who.name}
               </span>
-              <span className="film-text">{beat.line.text}</span>
+              <span className="film-text">
+                {beat.line.text.split(/\s+/).map((word, i, all) => (
+                  <span key={i} className={i < beat.said ? undefined : 'film-unsaid'}>
+                    {word}
+                    {i < all.length - 1 ? ' ' : ''}
+                  </span>
+                ))}
+              </span>
             </m.div>
           )}
         </AnimatePresence>
@@ -239,9 +265,9 @@ export function FilmPlayer({ film, from = 0, sound = true, onClose }: { film: Fi
 }
 
 /** The 3D view: the stage, played at the film's time every frame. */
-function Stage({ tl, now, reduced, onFrame }: { tl: Timeline; now: () => number; reduced: boolean; onFrame: (t: number, speaker: { x: number; y: number } | null, shot: number) => void }) {
+function Stage({ tl, speech, now, reduced, onFrame }: { tl: Timeline; speech: Speech[]; now: () => number; reduced: boolean; onFrame: (t: number, info: FrameInfo) => void }) {
   const { camera, size, scene } = useThree()
-  const stage = useMemo(() => new FilmStage(tl), [tl])
+  const stage = useMemo(() => new FilmStage(tl, speech), [tl, speech])
   useEffect(() => {
     scene.background = stage.background
     scene.fog = stage.fog
@@ -253,8 +279,7 @@ function Stage({ tl, now, reduced, onFrame }: { tl: Timeline; now: () => number;
   useEffect(() => () => stage.dispose(), [stage])
   useFrame(() => {
     const t = now()
-    const info = stage.frame(t, camera as PerspectiveCamera, size, reduced)
-    onFrame(t, info.speaker, info.shot)
+    onFrame(t, stage.frame(t, camera as PerspectiveCamera, size, reduced))
   })
   return <primitive object={stage.root} />
 }

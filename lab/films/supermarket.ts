@@ -12,6 +12,10 @@ import type { Film } from './format'
 // money · the time-skip count · "The shop is yours" (the game's own words) · silence, then the beat drops and the shop
 // lights up and fills · the hero walk from the ground · the banner · the button: he begs ("Buy my mug?") and gets the
 // 20% he always gave.
+// Voices (./voice.ts): every line is said aloud in its speaker's voice — the manager quick, nasal and up and down, the
+// contractor slow and deep, the farmer low and level — made from the line's own text, nothing recorded.
+// Where: the market's side of the lane, the same on every farm. The camera never turns across the lane to the farm
+// (lab/films/set.ts, looksAtFarm): the last beat is a deadpan two-shot from the lane, the shop and its banner behind.
 
 export const SUPERMARKET: Film = {
   id: 'buy-the-shop',
@@ -136,7 +140,10 @@ export const SUPERMARKET: Film = {
           cam: { on: 'boss', from: -25, size: 'medium', angle: 'low' },
           props: [{ at: 0.15, prop: 'case', open: 1, over: 0.6 }],
           do: [{ at: 0.35, who: 'boss', pose: 'surprise' }],
-          hear: [{ at: 0.15, sting: 'glow' }],
+          hear: [
+            { at: 0.15, sting: 'glow' },
+            { at: 0.45, voice: 'boss', text: 'Ooh…', mood: 'shock' },
+          ],
           fx: [{ at: 0.15, fx: 'glow' }],
         },
         {
@@ -149,7 +156,7 @@ export const SUPERMARKET: Film = {
           cam: { on: 'boss', from: 'you', size: 'medium' },
           caption: 'Two hours later.',
           do: [{ at: 0, who: 'boss', pose: 'count' }],
-          say: [{ at: 0.7, who: 'boss', text: '…1,498. 1,499…' }],
+          say: [{ at: 0.5, who: 'boss', text: '…1,498. 1,499…', hold: 1.9 }],
           hear: [
             { at: 0.9, sting: 'tick' },
             { at: 1.4, sting: 'tick' },
@@ -199,11 +206,12 @@ export const SUPERMARKET: Film = {
     },
     {
       // EXT. THE MARKET — NEXT MORNING. The farmer walks out of their shop, from the ground, in slow motion; the
-      // banner goes up over the sign.
+      // banner goes up over the sign. Then the button, square and deadpan: the two side by side on the lane, facing us,
+      // the shop behind them (the camera stays on the shop's side of the lane, looking at it).
       place: 'market',
       light: 'morning',
       line: ['boss', 'you'],
-      side: -1,
+      side: 1,
       shots: [
         {
           len: 3.4,
@@ -222,7 +230,7 @@ export const SUPERMARKET: Film = {
             { at: 0, who: 'you', to: ['doorstep', 'front'], pace: 1.0 },
             { at: 0, who: 'guy', put: { x: 7.6, z: 18.2, heading: Math.PI } },
             { at: 0, who: 'guy', pose: 'carry' },
-            { at: 0.5, who: 'guy', to: ['doorstep', 'front-left'], pace: 1.0 },
+            { at: 0.5, who: 'guy', to: ['doorstep', 'front-right'], pace: 1.0 },
             { at: 0, who: 'boss', off: true },
           ],
           hear: [{ at: 0.1, sting: 'door' }],
@@ -242,7 +250,8 @@ export const SUPERMARKET: Film = {
           ],
         },
         {
-          // the button: he comes out of the door behind the farmer with his things in a box
+          // the button: he comes out of the door behind the farmer with his things in a box, stops at their side and
+          // turns to them; they keep looking ahead
           len: 2.8,
           cam: { on: ['you', 'boss'], from: 0, size: 'medium' },
           props: [{ at: 0, prop: 'box', on: 'boss' }],
@@ -250,20 +259,21 @@ export const SUPERMARKET: Film = {
             { at: 0, who: 'you', face: 180 },
             { at: 0, who: 'boss', put: 'inside' },
             { at: 0, who: 'boss', pose: 'box' },
-            { at: 0, who: 'boss', to: ['doorstep', 'front-right'], pace: 1.25 },
+            { at: 0, who: 'boss', to: ['doorstep', 'front-left'], pace: 1.25 },
             { at: 1.9, who: 'boss', face: 'you' },
           ],
           say: [{ at: 1.2, who: 'boss', text: 'Buy my mug? Mint condition.', mood: 'sad' }],
         },
         {
+          // the last laugh, from below: the farmer does not even turn, the banner over them
           len: 2.0,
-          cam: { on: 'you', from: 'boss', size: 'close' },
-          do: [{ at: 0.1, who: 'you', face: 'boss' }],
+          cam: { on: 'you', from: 0, size: 'medium', angle: 'low' },
           say: [{ at: 0.75, who: 'you', text: 'I’ll give you 20%.', mood: 'cool' }],
         },
         {
+          // the same square two-shot, wider: he freezes, wilts and trudges off; the first shoppers go in behind them
           len: 2.6,
-          cam: { on: 'boss', from: 'you', size: 'medium' },
+          cam: { on: ['you', 'boss'], from: 0, size: 'full' },
           do: [
             { at: 0.15, who: 'boss', pose: 'freeze' },
             { at: 1.5, who: 'boss', pose: 'slump' },

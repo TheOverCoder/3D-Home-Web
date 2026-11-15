@@ -1,3 +1,4 @@
+import { GARDEN } from '../../src/data/layout'
 import { BACK, BAYS, DESK, FRONT_DOOR, HALL, INNER_DOOR, MANAGER_SPOT, MANAGER_STAND, MARKET_PATH, SCREEN, SHELF_RUN, TILL } from '../../src/data/market'
 import { managerLeaves, shopperIn, type Step } from '../../src/farm/script'
 import { MARKET_SIGN } from '../../src/models/market'
@@ -113,4 +114,39 @@ export const WILD: Record<string, (b: { x0: number; x1: number; z0: number; z1: 
   'office-west': (b) => b.x1 <= BACK.x0 + 0.01 && b.z1 > BACK.z0,
   /** the hall's west wall (a camera at the far end of the aisle) */
   'hall-west': (b) => b.x1 <= HALL.x0 + 0.01 && b.z0 < HALL.z1,
+}
+
+/** Whether a camera outside the market's rooms looks across the lane, north, at the farm: the player's own farm, which
+ *  changes with everything they build and plant. A film never does — it films the market's side of the lane, the same
+ *  on every farm — so it shows no farm that is not theirs (the lab's set has none), and needs no keeping up when the
+ *  farm grows. (Inside the rooms the walls behind the subject are always there.) */
+export function looksAtFarm(eye: { x: number; z: number }, dir: { x: number; y: number; z: number }) {
+  const flat = Math.hypot(dir.x, dir.z)
+  // looking down at the ground at one's feet, or up at the sky, sees no farm
+  if (dir.y < -0.75 || dir.y > 0.6 || flat < 1e-6) return false
+  // more than about 30° north of the lane's line, from this side of the garden's fence
+  if (dir.z / flat > -0.5 || eye.z < GARDEN.maxZ - 1) return false
+  // unless the market is in the way: a camera in its rooms, or behind a wall left out for it, looks through the
+  // rooms at the walls on the far side, which are always there
+  const dx = dir.x / flat
+  const dz = dir.z / flat
+  const hits = (r: { x0: number; x1: number; z0: number; z1: number }) => {
+    let t0 = 0
+    let t1 = 60
+    for (const [p, d, lo, hi] of [
+      [eye.x, dx, r.x0, r.x1],
+      [eye.z, dz, r.z0, r.z1],
+    ]) {
+      if (Math.abs(d) < 1e-9) {
+        if (p < lo || p > hi) return false
+        continue
+      }
+      const a = (lo - p) / d
+      const b = (hi - p) / d
+      t0 = Math.max(t0, Math.min(a, b))
+      t1 = Math.min(t1, Math.max(a, b))
+    }
+    return t0 <= t1
+  }
+  return ![HALL, BACK].some(hits)
 }

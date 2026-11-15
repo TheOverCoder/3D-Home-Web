@@ -194,6 +194,8 @@ export interface PoseNow {
   phase: number
   /** saying a line now: the head nods along */
   talking: boolean
+  /** how loud their voice is this moment, 0..1 (./voice.ts, level): each syllable a small nod */
+  voice: number
   /** the world time a freeze stopped this person at (their pose held there, breath and all) */
   frozenAt?: number
 }
@@ -206,10 +208,11 @@ export function poseRig(rig: PersonRig, hipsY: number, p: PoseNow, w: number, n:
   const amp = 0.55 * p.walk
   const f = p.phase
   const swing = Math.sin(f) * amp
-  // talking: small nods and turns of the head, whatever the pose
+  // talking: the head dips a little on each syllable and turns slowly, whatever the pose
   if (p.talking && p.frozenAt === undefined) {
-    j.headX += 0.06 * Math.sin(w * 7.3 + n)
+    j.headX += 0.02 * Math.sin(w * 7.3 + n) + 0.11 * p.voice
     j.headY += 0.05 * Math.sin(w * 3.1 + n)
+    j.lean += 0.02 * p.voice
   }
   rig.hips.position.y = hipsY + j.lift + (p.walk ? Math.abs(Math.cos(f)) * 0.025 * p.walk : p.frozenAt === undefined ? Math.sin(w * 1.6 + n) * 0.004 : 0)
   rig.hips.rotation.set(j.lean, 0, j.tilt)
