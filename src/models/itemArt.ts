@@ -20,8 +20,8 @@ import {
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import type { Garment } from '../farm/outfit'
 import type { PictureId } from '../farm/icons'
-import { DECOR_KINDS, FRUIT_KINDS, type ShopKind } from '../farm/decor'
-import { STAND_IN_GOODS, decorModel, fruitPlantModel, goodModel } from '../farm/decorModels'
+import { DECOR_KINDS, FRUIT, FRUIT_KINDS, type FruitKind, type ShopKind } from '../farm/decor'
+import { decorModel, fruitParts, fruitPlantModel, fruitSpots, putFruit } from '../farm/decorModels'
 import { sculptMaterial, type SculptMaterialOptions } from '../lib/sculpt'
 import { barnModel, siloModel } from './buildings'
 import { GOODS } from './goods'
@@ -65,14 +65,8 @@ const VIEWS: Partial<Record<PictureId, Item>> = {
   barn: { az: -38, el: 14 },
 }
 
-/** Every picture drawn from a model: the goods (src/models/goods.ts; a fruit with no model yet, its stand-in:
- *  src/farm/decorModels.ts), the silo and the barn. */
-const MODELS: Record<PictureId, () => Structure> = {
-  ...(Object.fromEntries(STAND_IN_GOODS.map((id) => [id, () => goodModel(id)])) as Record<(typeof STAND_IN_GOODS)[number], () => Structure>),
-  ...GOODS,
-  silo: siloModel,
-  barn: barnModel,
-}
+/** Every picture drawn from a model: the goods (src/models/goods.ts), the silo and the barn. */
+const MODELS: Record<PictureId, () => Structure> = { ...GOODS, silo: siloModel, barn: barnModel }
 
 export const ITEM_IDS = Object.keys(MODELS) as PictureId[]
 
@@ -127,9 +121,23 @@ export const SHOP_ART_KINDS: ShopKind[] = [...DECOR_KINDS, ...FRUIT_KINDS]
 /** A kind of the farm's shop as a picture (its card in the edit mode's shop), `size` pixels square: drawn from its model
  *  as the goods are. `scripts/render-item-art.mjs` saves them in src/assets/decor, which src/farm/icons.ts serves. */
 export function renderShopArt(kind: ShopKind, size = 192): string {
-  const model = (DECOR_KINDS as string[]).includes(kind) ? decorModel(kind as (typeof DECOR_KINDS)[number]) : fruitPlantModel(kind as (typeof FRUIT_KINDS)[number])
+  const plant = !(DECOR_KINDS as string[]).includes(kind)
+  const model = plant ? fruitPlantModel(kind as FruitKind) : decorModel(kind as (typeof DECOR_KINDS)[number])
   const item = structureParts(model, `shop-${kind}`)
+  // a fruit tree or bush hung with its fruit, as it is when ripe
+  const fruit = plant ? fruitParts(16) : null
+  if (fruit) {
+    const f = FRUIT[kind as FruitKind].fruit
+    fruit.begin()
+    fruitSpots(kind as FruitKind, 8).forEach(([x, y, z], k) => {
+      fruit.at(0, 0, 0)
+      putFruit(fruit, f, x, y, z, k)
+    })
+    fruit.end()
+    item.group.add(fruit.group)
+  }
   const url = shoot(item.group, SHOP_VIEWS[kind] ?? {}, size)
+  fruit?.dispose()
   item.dispose()
   return url
 }

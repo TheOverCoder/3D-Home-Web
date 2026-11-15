@@ -134,37 +134,42 @@ export function defaultLayout(): FarmLayout {
 
 // ───────────────────────────── the decoration's ground ─────────────────────────────
 
-/** What a kind of decoration (or fruit plant) takes on the ground, in its own frame: half its size across (x) and along
- *  (z). `flat`: it lies on the ground and is walked on (a path, stepping stones): it may lie in front of a way in, and up
- *  to a bed's frame. `run`: a fence or hedge section, 2 m along x, that joins another end to end or at a corner. */
+/** What a kind of decoration (or fruit plant) takes on the ground, in its own frame (src/models/decor.ts,
+ *  src/models/fruit.ts): half its size across (x) and along (z). `flat`: it lies on the ground and is walked on (a path,
+ *  stepping stones): it may lie in front of a way in, and up to a bed's frame. `run`: a fence or hedge section, 2 m
+ *  along x (SECTION_HALF), that meets another end to end or at a corner; `ends`: how far past each end it reaches (a
+ *  fence's post, a hedge's rounded end, hidden in the next section of a run). `tile`: a path tile, laid edge to edge
+ *  with the next (every 1.2 m: PATH_HALF). A tree's crown spreads past its footprint, over what is round it. */
 export interface DecorFoot {
   hx: number
   hz: number
   flat?: boolean
   run?: boolean
+  ends?: number
+  tile?: boolean
 }
 
 export const DECOR_FEET: Record<ShopKind, DecorFoot> = {
-  lamp: { hx: 0.25, hz: 0.25 },
-  lantern: { hx: 0.2, hz: 0.2 },
-  fence: { hx: 1.0, hz: 0.1, run: true },
-  hedge: { hx: 1.0, hz: 0.3, run: true },
-  path: { hx: 0.5, hz: 0.5, flat: true },
-  stones: { hx: 0.5, hz: 0.5, flat: true },
-  bench: { hx: 0.8, hz: 0.35 },
-  tree: { hx: 1.0, hz: 1.0 },
-  pine: { hx: 0.8, hz: 0.8 },
-  bush: { hx: 0.5, hz: 0.5 },
-  roses: { hx: 0.45, hz: 0.45 },
-  flowers: { hx: 0.5, hz: 0.5 },
-  planter: { hx: 0.5, hz: 0.25 },
-  birdbath: { hx: 0.3, hz: 0.3 },
-  well: { hx: 0.8, hz: 0.8 },
-  'apple-tree': { hx: 1.0, hz: 1.0 },
-  'orange-tree': { hx: 1.0, hz: 1.0 },
-  'cherry-tree': { hx: 1.0, hz: 1.0 },
-  'blueberry-bush': { hx: 0.5, hz: 0.5 },
-  'raspberry-bush': { hx: 0.5, hz: 0.5 },
+  lamp: { hx: 0.3, hz: 0.3 },
+  lantern: { hx: 0.32, hz: 0.15 },
+  fence: { hx: 1.0, hz: 0.1, run: true, ends: 0.06 },
+  hedge: { hx: 1.0, hz: 0.32, run: true, ends: 0.27 },
+  path: { hx: 0.6, hz: 0.6, flat: true, tile: true },
+  stones: { hx: 0.3, hz: 0.7, flat: true },
+  bench: { hx: 0.75, hz: 0.35 },
+  tree: { hx: 1.2, hz: 1.2 },
+  pine: { hx: 1.1, hz: 1.1 },
+  bush: { hx: 0.65, hz: 0.5 },
+  roses: { hx: 0.6, hz: 0.45 },
+  flowers: { hx: 0.6, hz: 0.45 },
+  planter: { hx: 0.5, hz: 0.26 },
+  birdbath: { hx: 0.42, hz: 0.38 },
+  well: { hx: 0.8, hz: 0.65 },
+  'apple-tree': { hx: 1.2, hz: 1.2 },
+  'orange-tree': { hx: 1.1, hz: 1.1 },
+  'cherry-tree': { hx: 1.2, hz: 1.2 },
+  'blueberry-bush': { hx: 0.8, hz: 0.8 },
+  'raspberry-bush': { hx: 0.65, hz: 0.6 },
 }
 
 /** Whether a name is a kind the shop sells (never a name every object has: `constructor`, `__proto__`). */
@@ -175,10 +180,11 @@ export const isPlant = (kind: ShopKind) => Object.prototype.hasOwnProperty.call(
  *  farm could pay for. */
 export const mostOf = (kind: ShopKind) => (isPlant(kind) ? MOST_PLANTS : 999)
 
-/** A piece's footprint, in the world. */
+/** A piece's footprint, in the world (a run's ends included). */
 export const decorRect = (d: { kind: ShopKind; x: number; z: number; rot: number }) => {
   const f = DECOR_FEET[d.kind]
-  return rectToWorld(d, rect(-f.hx, f.hx, -f.hz, f.hz))
+  const e = f.ends ?? 0
+  return rectToWorld(d, rect(-f.hx - e, f.hx + e, -f.hz, f.hz))
 }
 
 /** A fence or hedge section's two ends, in the world. */
@@ -447,21 +453,37 @@ export function thingDoor(layout: FarmLayout, thing: Thing, p: Placement): Rect 
 
 const round3 = (v: number) => Math.round(v * 1000) / 1000
 
-/** A fence or hedge section put down near the end of another: moved so the two ends meet, if one is within `reach`
- *  metres (the grid already puts them there when they are laid in line or at a corner; this catches the near misses). */
+/** A piece put down near another it joins, moved so they meet (the grid puts most there already; this catches the near
+ *  misses): a fence or hedge section with an end within `reach` metres of another's end, so the two ends are one; a path
+ *  tile within `reach` of lying edge to edge with another (they are 1.2 m, the grid half a metre), so it does. */
 export function joinRun(layout: FarmLayout, d: DecorPiece, reach = 0.6): DecorPiece {
-  if (!DECOR_FEET[d.kind].run) return d
+  const f = DECOR_FEET[d.kind]
   let best: { dx: number; dz: number; d: number } | null = null
-  const mine = runEnds(d)
-  for (const o of layout.decor) {
-    if (o.id === d.id || !DECOR_FEET[o.kind].run) continue
-    for (const [ox, oz] of runEnds(o))
-      for (const [mx, mz] of mine) {
-        const dist = Math.hypot(ox - mx, oz - mz)
-        if (dist <= reach && (!best || dist < best.d)) best = { dx: ox - mx, dz: oz - mz, d: dist }
-      }
+  const consider = (dx: number, dz: number) => {
+    const dist = Math.hypot(dx, dz)
+    if (dist <= reach && (!best || dist < best.d)) best = { dx, dz, d: dist }
   }
-  return best ? { ...d, x: round3(d.x + best.dx), z: round3(d.z + best.dz) } : d
+  if (f.run) {
+    const mine = runEnds(d)
+    for (const o of layout.decor) {
+      if (o.id === d.id || !DECOR_FEET[o.kind].run) continue
+      for (const [ox, oz] of runEnds(o)) for (const [mx, mz] of mine) consider(ox - mx, oz - mz)
+    }
+  } else if (f.tile) {
+    const step = 2 * f.hx
+    for (const o of layout.decor) {
+      if (o.id === d.id || o.kind !== d.kind) continue
+      for (const [sx, sz] of [
+        [step, 0],
+        [-step, 0],
+        [0, step],
+        [0, -step],
+      ])
+        consider(o.x + sx - d.x, o.z + sz - d.z)
+    }
+  } else return d
+  const b = best as { dx: number; dz: number } | null
+  return b ? { ...d, x: round3(d.x + b.dx), z: round3(d.z + b.dz) } : d
 }
 
 /** A free spot for a new piece of a kind, nearest to (x, z) on the half-metre grid, on your land: its placement, or null

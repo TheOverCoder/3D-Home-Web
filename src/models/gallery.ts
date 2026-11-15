@@ -23,6 +23,10 @@ import { AGENT_SEAT, ESTATE_HOURS, ESTATE_SIGN, ESTATE_WALKIN, ESTATE_WINDOW, SA
 import { CAR_SPOT } from '../data/maps'
 import { ESTATE_LOOK } from './look'
 import { sitAtDesk } from './person'
+import { setSculptGlow } from '../lib/sculpt'
+import { decorModel, PATH_HALF, SECTION_HALF } from './decor'
+import { FRUIT, FRUIT_KINDS, type DecorKind } from '../farm/decor'
+import { fruitParts, fruitPlantModel, fruitSpots, putFruit } from './fruit'
 
 // Every model the kit makes, posed and moving, for the gallery page (open the site with ?gallery). Add a new
 // model here as soon as it has a shape: it is the quickest way to see it from every side, in the game's light.
@@ -480,6 +484,76 @@ export const GALLERY: GalleryEntry[] = [
         return parts
       })
       return { object, width: 4.4, height: 0.8, triangles: () => all.reduce((n, p) => n + p.triangles(), 0), update() {} }
+    },
+  },
+  {
+    id: 'decor',
+    label: 'Decoration',
+    name: "The farm's decoration (its glass lit): a fence and a hedge each three sections round a corner, four path tiles, stepping stones, flowers, a planter, a bush, roses, a bird bath; a bench, a yard lamp, a path lantern, a wishing well; a shade tree and a pine",
+    make() {
+      // the lamps' glass glowing, as at night (the gallery's own page: nothing else glows)
+      setSculptGlow(1)
+      const object = new Group()
+      const all: ReturnType<typeof structureParts>[] = []
+      const put = (kind: DecorKind, x: number, z: number, turn = 0) => {
+        const parts = structureParts(decorModel(kind), `decor-${kind}-${all.length}`)
+        parts.group.position.set(x, 0, z)
+        parts.group.rotation.y = turn
+        object.add(parts.group)
+        all.push(parts)
+      }
+      // runs of sections every 2 m, round a corner: two along x, the third turned to run back along z
+      const run = (kind: DecorKind, x: number, z: number) => {
+        put(kind, x + SECTION_HALF, z)
+        put(kind, x + 3 * SECTION_HALF, z)
+        put(kind, x + 4 * SECTION_HALF, z - SECTION_HALF, Math.PI / 2)
+      }
+      run('fence', -5.2, 1.2)
+      run('hedge', -5.2, -1.4)
+      for (const [i, j] of [
+        [0, 0],
+        [1, 0],
+        [0, 1],
+        [1, 1],
+      ])
+        put('path', -1.4 + i * 2 * PATH_HALF, 1.1 + j * 2 * PATH_HALF)
+      put('stones', 0.6, 1.6)
+      put('flowers', 1.6, 1.9)
+      put('planter', 2.9, 1.9)
+      put('bush', 4.0, 1.7)
+      put('roses', 5.1, 1.7)
+      put('birdbath', 6.2, 1.7)
+      put('bench', 0.4, -0.4, 0.3)
+      put('lamp', 1.8, -0.6)
+      put('lantern', 2.6, -0.2)
+      put('well', 4.0, -0.4, -0.3)
+      put('tree', -2.4, -3.6)
+      put('pine', 6.2, -2.6)
+      return { object, width: 12.4, height: 4.8, triangles: () => all.reduce((n, p) => n + p.triangles(), 0), update() {} }
+    },
+  },
+  {
+    id: 'fruit',
+    label: 'Fruit trees',
+    name: 'Fruit trees and bushes, ten fruit on each: an apple tree, an orange tree, a cherry tree, a blueberry bush, a raspberry bush',
+    make() {
+      const object = new Group()
+      const fruit = fruitParts(10)
+      const plants = FRUIT_KINDS.map((kind, i) => {
+        const parts = structureParts(fruitPlantModel(kind), `fruit-${kind}`)
+        const x = [-4.4, -2.0, 0.4, 2.5, 4.2][i]
+        parts.group.position.x = x
+        object.add(parts.group)
+        return { kind, x, parts }
+      })
+      fruit.begin()
+      for (const p of plants) {
+        fruit.at(p.x, 0, 0)
+        fruitSpots(p.kind, 10).forEach(([x, y, z], k) => putFruit(fruit, FRUIT[p.kind].fruit, x, y, z, k))
+      }
+      fruit.end()
+      object.add(fruit.group)
+      return { object, width: 10.4, height: 3.6, triangles: () => plants.reduce((n, p) => n + p.parts.triangles(), 0) + fruit.triangles(), update() {} }
     },
   },
 ]

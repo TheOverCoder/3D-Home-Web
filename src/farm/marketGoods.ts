@@ -8,7 +8,7 @@
 import { Box3, Group } from 'three'
 import { BAYS, SHELF_YS } from '../data/market'
 import { Parts, type PartDef } from '../lib/sculpt'
-import { goodModel } from './decorModels'
+import { GOODS } from '../models/goods'
 import { BAY_DEPTH } from '../models/market'
 import type { ProduceId } from './data'
 import type { Shelf } from './market'
@@ -37,7 +37,7 @@ interface Good {
 
 /** A good's model as a crowd: one draw per part, up to every shelf's unit. */
 function build(id: ProduceId, castShadow: boolean): Good {
-  const model = goodModel(id)
+  const model = GOODS[id]()
   const keys = Object.keys(model)
   const box = new Box3()
   const defs: Record<string, PartDef> = {}
@@ -132,7 +132,7 @@ export class MarketGoods {
 export function goodsTriangles(ids: readonly ProduceId[]): Record<string, number> {
   const out: Record<string, number> = {}
   for (const id of ids) {
-    const model = goodModel(id)
+    const model = GOODS[id]()
     let n = 0
     for (const k of Object.keys(model)) n += model[k].shape.triangles()
     out[id] = n
