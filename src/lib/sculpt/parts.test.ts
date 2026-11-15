@@ -1,10 +1,13 @@
-import { BoxGeometry, Color, Group, Matrix4, Raycaster, Vector3 } from 'three'
+import { BoxGeometry, Color, DirectionalLight, Frustum, Group, InstancedMesh, Matrix4, PerspectiveCamera, Raycaster, SphereGeometry, Vector3 } from 'three'
 import { describe, expect, it } from 'vitest'
 import { Parts, liveParts, type ModelTest } from './parts'
+import { lodReady } from './lod'
+import { sunCopies } from './sun'
 
 // A crowd draws only the models the view can see (the drawing pass, src/lib/visibility): each model — everything put
 // after one `at` — is tested once by its box, its parts drawn whole or not at all, in the order they were put, with
-// their own colours; parts that cast a shadow stay whole; and `cull(null)` draws everything again.
+// their own colours; a part that casts a shadow is left out like the others, its shadow drawn by a mesh of its own that
+// holds every model put and is drawn only into shadow maps; and `cull(null)` draws everything again.
 
 const ROW = [-20, -10, 0, 10, 20]
 
@@ -42,6 +45,9 @@ function band() {
   return { test, asked }
 }
 
+/** The mesh that draws a casting part into shadow maps (every model put). */
+const casterOf = (parts: Parts, part: string) => parts.group.getObjectByName(`${parts.group.name}-${part}-sun`) as InstancedMesh
+
 const matrices = (parts: Parts, part: string) => Array.from(parts.meshes[part].instanceMatrix.array.slice(0, parts.meshes[part].count * 16))
 const colours = (parts: Parts, part: string) => Array.from(parts.meshes[part].instanceColor!.array.slice(0, parts.meshes[part].count * 3))
 
@@ -61,9 +67,13 @@ describe('a crowd drawn model by model', () => {
     expect(matrices(all, 'leg')).toEqual(full.leg.slice(8 * 16, 12 * 16))
     expect(colours(all, 'body')).toEqual(full.bodyColour.slice(2 * 3, 3 * 3))
     expect(colours(all, 'leg')).toEqual(full.legColour.slice(8 * 3, 12 * 3))
-    // the shadow casters stay whole: the sun's shadow map is drawn from the same meshes
-    expect(all.meshes.pole.count).toBe(ROW.length)
-    expect(all.drawnInstances).toBe(1 + 4 + ROW.length)
+    // a caster is left out like the rest: its shadow is a mesh of its own, every model put, whatever the view
+    expect(all.meshes.pole.count).toBe(1)
+    expect(all.meshes.pole.castShadow).toBe(false)
+    const sun = casterOf(all, 'pole')
+    expect(sun.castShadow).toBe(true)
+    expect(sun.count).toBe(ROW.length)
+    expect(all.drawnInstances).toBe(1 + 4 + 1)
     // every model's box holds its parts: the body (1.6 long, turned) and the legs under it
     const box = asked[2]
     expect(box[0]).toBeLessThanOrEqual(-0.8)
@@ -83,7 +93,8 @@ describe('a crowd drawn model by model', () => {
     expect(all.meshes.body.count).toBe(0)
     expect(all.meshes.leg.count).toBe(0)
     expect(all.meshes.body.visible).toBe(true)
-    expect(all.meshes.pole.count).toBe(ROW.length)
+    expect(all.meshes.pole.count).toBe(0)
+    expect(casterOf(all, 'pole').count).toBe(ROW.length)
     all.cull(() => true)
     expect(all.meshes.body.count).toBe(ROW.length)
   })
@@ -155,6 +166,69 @@ describe('a crowd drawn model by model', () => {
     parts.cull(test)
     expect(asked.length).toBe(1)
     expect(parts.meshes.leaf.count).toBe(2)
+  })
+
+  it("a caster's shadow mesh is drawn only into shadow maps: a light's shadow pass meets it, a camera never, a ray never", () => {
+    const all = herd()
+    all.group.updateMatrixWorld(true)
+    const sun = casterOf(all, 'pole')
+    const light = new DirectionalLight()
+    light.position.set(10, 20, 10)
+    light.updateMatrixWorld(true)
+    light.shadow.camera.left = light.shadow.camera.bottom = -40
+    light.shadow.camera.right = light.shadow.camera.top = 40
+    light.shadow.updateMatrices(light)
+    expect(sun.intersectsFrustum(light.shadow.getFrustum())).toBe(true)
+    // a camera looking straight at it
+    const camera = new PerspectiveCamera(60, 1, 0.1, 100)
+    camera.position.set(0, 1, 30)
+    camera.lookAt(0, 1, 0)
+    camera.updateMatrixWorld(true)
+    const seen = new Frustum().setFromProjectionMatrix(new Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse))
+    expect(all.meshes.pole.intersectsFrustum(seen)).toBe(true)
+    expect(sun.intersectsFrustum(seen)).toBe(false)
+    const hits = new Raycaster(new Vector3(0, 1, 30), new Vector3(0, 0, -1)).intersectObject(sun)
+    expect(hits).toEqual([])
+  })
+
+  it("a caster's instances go to the sun's copy that keeps their shadow to the texel at their size, whatever the camera", async () => {
+    const parts = new Parts({ ball: { geometry: new SphereGeometry(0.4, 64, 32), max: 8, castShadow: true } }, 'balls')
+    // its copies for the sun, once the simplifier has loaded
+    await lodReady()
+    await Promise.resolve()
+    parts.begin()
+    parts.at(-3, 0, 0)
+    parts.put('ball', 0, 1, 0)
+    parts.at(3, 0, 0)
+    parts.put('ball', 0, 1, 0, 0, 0, 0, 3)
+    parts.end()
+    parts.group.updateMatrixWorld(true)
+    const casters = parts.group.children.filter((o) => o.userData.shadowOnly) as InstancedMesh[]
+    const held = () => casters.map((m) => [m.name, m.count, Array.from(m.instanceMatrix.array.slice(0, m.count * 16))])
+    // both cast, from two meshes: the one drawn as built from a copy, the one three times its size finer (or whole)
+    expect(casters.reduce((n, m) => n + m.count, 0)).toBe(2)
+    const big = casters.find((m) => m.count > 0 && m.instanceMatrix.array[0] > 2)!
+    const small = casters.find((m) => m.count > 0 && Math.abs(m.instanceMatrix.array[0] - 1) < 1e-6)!
+    expect(small).not.toBe(big)
+    expect(small.geometry.index!.count).toBeLessThan(big.geometry.index!.count)
+    expect(small.name).not.toBe('balls-ball-sun')
+    // the camera anywhere, near or far, culling or not: the sun's meshes hold the same
+    const before = held()
+    for (const x of [0, 50, 500]) {
+      parts.cull(() => x < 100, { x, y: 1.6, z: 0, pixels: 600 })
+      expect(held()).toEqual(before)
+    }
+    // switched off: every instance whole
+    sunCopies.on = false
+    try {
+      parts.cull(null, null)
+      expect(casterOf(parts, 'ball').count).toBe(2)
+      expect(casters.filter((m) => m !== casterOf(parts, 'ball')).every((m) => m.count === 0)).toBe(true)
+    } finally {
+      sunCopies.on = true
+      parts.cull(null, null)
+    }
+    expect(held()).toEqual(before)
   })
 
   it('is a live crowd while its group is in a scene', () => {

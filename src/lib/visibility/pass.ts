@@ -50,6 +50,7 @@ import {
 } from 'three'
 import { HOUSE } from '../../data/layout'
 import { liveParts, type LodView, type Parts } from '../sculpt/parts'
+import { sunCopies } from '../sculpt/sun'
 import { CELLS, MOST_PORTALS, OUTER_PORTALS, OUTSIDE, Portals, portalBox, type Cell } from './portals'
 import { updateWalls, wallHides } from './walls'
 
@@ -112,6 +113,13 @@ export const view = {
   keep: true,
   /** the crowds' lighter copies of far parts (src/lib/sculpt/lod.ts): not the pass's own, on whether it is or not */
   lod: true,
+  /** casters drawn into the sun's map from their lighter copies (src/lib/sculpt/sun.ts): not the pass's own either */
+  get sunLod() {
+    return sunCopies.on
+  },
+  set sunLod(on: boolean) {
+    sunCopies.on = on
+  },
   /** time every test three asks for (costs a little time itself) */
   timing: false,
   stats,
@@ -441,7 +449,7 @@ function inScene(o: Object3D, scene: Scene) {
 
 /** The eye of the game's own camera render, for the crowds' lighter copies of far parts (src/lib/sculpt/lod.ts): given
  *  pass or no pass, so the picture with the pass and without it is the same; none for any other render. */
-const lodView: LodView = { x: 0, y: 0, z: 0, pixels: 0 }
+const lodView: LodView = { x: 0, y: 0, z: 0, pixels: 0, planes: frustum.planes }
 let lodOn = false
 
 const cullCrowd = (p: Parts) => {

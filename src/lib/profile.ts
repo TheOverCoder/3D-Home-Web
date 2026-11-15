@@ -119,6 +119,10 @@ const MOBILE: typeof DESKTOP = {
   powerPreference: 'default',
 }
 
+/** The sun's shadow map at its sharpest, on any device and tier (texels per side): what the sun's lighter copies of
+ *  casters are made for (src/lib/sculpt/lod.ts). */
+export const FINEST_SHADOW_MAP = Math.max(...Object.values(DESKTOP.shadowMap), ...Object.values(MOBILE.shadowMap))
+
 export function makeProfile(device: DeviceClass, lowMemory: boolean, light: boolean): Profile {
   const base = device === 'desktop' ? DESKTOP : MOBILE
   const startQuality: Quality = light ? 'low' : device === 'desktop' ? 'high' : lowMemory ? 'low' : 'medium'

@@ -4,6 +4,7 @@ import { assets } from '../assets/registry'
 import { editCamera } from '../farm/EditMode'
 import { decorateCamera } from '../home/DecorateMode'
 import { debugSet } from '../lib/debug'
+import { copyTime } from '../lib/sculpt/lod'
 import { installViewPass, portalCells, view } from '../lib/visibility/pass'
 import { useHome } from '../store'
 import { ceilingsUp } from './Ceilings'
@@ -26,6 +27,7 @@ export function ViewPass() {
   useEffect(() => {
     debugSet('view', view)
     debugSet('viewCells', portalCells)
+    debugSet('copies', copyTime)
     const fits = !assets.house
     return installViewPass({
       scene,

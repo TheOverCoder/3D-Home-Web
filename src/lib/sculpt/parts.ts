@@ -1,6 +1,7 @@
-import { BufferAttribute, BufferGeometry, Color, Euler, Group, InstancedBufferAttribute, InstancedMesh, Matrix4, MeshBasicMaterial, Quaternion, Vector3, type Material } from 'three'
+import { BufferAttribute, BufferGeometry, Color, Euler, Group, InstancedBufferAttribute, InstancedMesh, Matrix4, MeshBasicMaterial, Quaternion, Vector3, type Material, type Plane } from 'three'
 import { sculptMaterial, type SculptMaterialOptions } from './material'
-import { farEnough, lodReady, lodsOf } from './lod'
+import { farEnough, lodReady, lodsOf, sunEnough, sunLodsOf, worthDrawing } from './lod'
+import { shadowOnly, sunCopies } from './sun'
 
 // Drawing a crowd of models: one instanced draw per part geometry, whatever the number of animals, people or
 // plants. Each frame, for every model: `at` sets where it stands and which way it faces, then `put` places each of
@@ -48,26 +49,49 @@ function withColor2(g: BufferGeometry, max: number) {
 /** Whether a model can be seen: its box in world space (see `Parts.cull`). */
 export type ModelTest = (minX: number, minY: number, minZ: number, maxX: number, maxY: number, maxZ: number) => boolean
 
-/** The eye a render is drawn for, for the lighter copies of far parts (src/lib/sculpt/lod.ts): where it is, and how many
- *  pixels a unit is at distance one (the drawing buffer's height over 2·tan(fov/2)). */
+/** The eye a render is drawn for, for the lighter copies of far parts (src/lib/sculpt/lod.ts): where it is, how many
+ *  pixels a unit is at distance one (the drawing buffer's height over 2·tan(fov/2)), and its frustum's planes (whether a
+ *  copy is worth its draw is counted over the instances in view; none: over every instance). */
 export interface LodView {
   x: number
   y: number
   z: number
   pixels: number
+  planes?: readonly Plane[] | null
 }
 
-/** A part's lighter copy, drawn where its model is far enough for it to look the same (`farEnough`). */
-interface LodMesh {
+/** Where a part's instances are drawn: its own mesh (level 0), or a lighter copy, drawn where its model is far enough
+ *  for it to look the same (`farEnough`). */
+interface Target {
   mesh: InstancedMesh
   error: number
+  triangles: number
   color2?: InstancedBufferAttribute
+}
+
+/** A part's copies, finest first, and what is worked out with them each render (made once: nothing allocated then). */
+interface Levels {
+  /** the part's own mesh, then its copies */
+  targets: Target[]
+  /** each target's triangles, its instances in view wanting it at the coarsest, and the one they are drawn with */
+  triangles: Float64Array
+  wanted: Int32Array
+  use: Uint8Array
 }
 
 /** Every crowd whose group is in a scene now (added to a parent and not removed since): the drawing pass culls these. */
 export const liveParts = new Set<Parts>()
 
 const IDENTITY = new Matrix4().elements
+
+/** Whether a box meets a frustum (its corner farthest along each plane's normal is inside every plane). */
+function boxInFrustum(planes: readonly Plane[], minX: number, minY: number, minZ: number, maxX: number, maxY: number, maxZ: number) {
+  for (let i = 0; i < 6; i++) {
+    const n = planes[i].normal
+    if (n.x * (n.x > 0 ? maxX : minX) + n.y * (n.y > 0 ? maxY : minY) + n.z * (n.z > 0 ? maxZ : minZ) + planes[i].constant < 0) return false
+  }
+  return true
+}
 
 /** The first `n` numbers of one array into another (no view made, nothing allocated). */
 function copy(from: Float32Array, to: Float32Array, n: number) {
@@ -85,7 +109,7 @@ export class Parts<K extends string = string> {
   drawnInstances = 0
   private n = {} as Record<K, number>
   private keys: K[]
-  /** the parts drawn only where their model is seen: those that cast no shadow (the sun's map keeps every caster) */
+  /** the parts drawn only where their model is seen: every part (a caster's shadow is drawn by meshes of its own) */
   private cullable: K[]
   private root = new Matrix4()
   private local = new Matrix4()
@@ -105,14 +129,22 @@ export class Parts<K extends string = string> {
   /** the meshes hold only the models seen (by `cull`), not everything put */
   private compacted = false
   private drawnModels = -1
-  /** the parts' lighter copies, finest first (made once the simplifier is loaded: those of no cullable part are none) */
-  private lods = {} as Partial<Record<K, LodMesh[]>>
+  /** the parts' lighter copies (made once the simplifier is loaded: those of no cullable part are none) */
+  private lods = {} as Partial<Record<K, Levels>>
   private hasLods = false
-  /** each model's distance from the eye (its box's nearest point), for the copies */
+  /** each model's distance from the eye (its box's nearest point), for the copies, and whether it is in the frustum */
   private dist = new Float32Array(8)
+  private inView = new Uint8Array(8)
   /** the copy each part instance is drawn with (0: whole), as the meshes hold them now, and as this render wants */
   private held = {} as Record<K, Uint8Array>
   private want = {} as Record<K, Uint8Array>
+  /** The parts that cast a shadow, as the sun's map draws them: meshes of their own, drawn only into shadow maps
+   *  (src/lib/sculpt/sun.ts), holding every model put, whatever a camera sees — the part whole, then its copies for the
+   *  sun (lod.ts: `sunLodsOf`); each instance in the coarsest that keeps its shadow to the texel at its size. */
+  private sun = {} as Partial<Record<K, Levels>>
+  private sunWant = {} as Record<K, Uint8Array>
+  /** the switch for the sun's copies, as the casters hold them now */
+  private sunOn = true
 
   constructor(defs: Record<K, PartDef>, name = 'parts', lods = true) {
     this.group.name = name
@@ -127,12 +159,23 @@ export class Parts<K extends string = string> {
       // where an instance's own colour shows
       mesh.instanceColor = new InstancedBufferAttribute(new Float32Array(d.max * 3).fill(1), 3)
       mesh.count = 0
-      mesh.castShadow = d.castShadow ?? false
+      mesh.castShadow = false
       mesh.receiveShadow = d.receiveShadow ?? true
       this.meshes[k] = mesh
       this.n[k] = 0
       this.group.add(mesh)
       const g = d.geometry
+      if (d.castShadow) {
+        // its shadow: a mesh drawn only into shadow maps, every model put (the copies for the sun join it once made)
+        const caster = shadowOnly(new InstancedMesh(g, mesh.material, d.max))
+        caster.name = `${name}-${k}-sun`
+        caster.count = 0
+        caster.visible = false
+        this.group.add(caster)
+        const triangles = (g.index ? g.index.count : g.attributes.position.count) / 3
+        this.sun[k] = { targets: [{ mesh: caster, error: 0, triangles }], triangles: Float64Array.of(triangles), wanted: new Int32Array(1), use: new Uint8Array(1) }
+        this.sunWant[k] = new Uint8Array(d.max)
+      }
       if (!g.boundingSphere) g.computeBoundingSphere()
       const b = g.boundingSphere!
       const matrices = new Float32Array(d.max * 16)
@@ -159,37 +202,60 @@ export class Parts<K extends string = string> {
         }
       }
     }
-    this.cullable = this.keys.filter((k) => !this.meshes[k].castShadow)
+    this.cullable = this.keys
     for (const k of this.keys) {
       this.held[k] = new Uint8Array(defs[k].max)
       this.want[k] = new Uint8Array(defs[k].max)
     }
     this.group.addEventListener('added', () => liveParts.add(this as unknown as Parts))
     this.group.addEventListener('removed', () => liveParts.delete(this as unknown as Parts))
-    // the lighter copies of the parts drawn only where seen (a caster stays whole: the sun's map is drawn from it)
+    // the lighter copies of the parts, for the camera far off and for the sun
     if (lods) void lodReady().then(() => this.makeLods(defs))
   }
 
-  /** Makes each cullable part's lighter copies (src/lib/sculpt/lod.ts): a mesh each, with the part's material. */
+  /** Makes each part's lighter copies (src/lib/sculpt/lod.ts): a mesh each, with the part's material — for the camera,
+   *  and for a part that casts, for the sun. */
   private makeLods(defs: Record<K, PartDef>) {
+    for (const k of this.keys) {
+      const sun = this.sun[k]
+      if (!sun) continue
+      for (const c of sunLodsOf(defs[k].geometry)) {
+        const caster = shadowOnly(new InstancedMesh(c.geometry, this.meshes[k].material, defs[k].max))
+        caster.name = `${this.meshes[k].name}-sun${sun.targets.length}`
+        caster.count = 0
+        caster.visible = false
+        this.group.add(caster)
+        sun.targets.push({ mesh: caster, error: c.error, triangles: c.triangles })
+      }
+      const n = sun.targets.length
+      this.sun[k] = { targets: sun.targets, triangles: Float64Array.from(sun.targets, (t) => t.triangles), wanted: new Int32Array(n), use: new Uint8Array(n) }
+    }
+    this.handSun()
     for (const k of this.cullable) {
       const copies = lodsOf(defs[k].geometry)
       if (!copies.length) continue
       const main = this.meshes[k]
-      this.lods[k] = copies.map((c, l) => {
-        const second = this.color2[k] ? withColor2(c.geometry, defs[k].max) : null
-        const mesh = new InstancedMesh(second ? second.geometry : c.geometry, main.material, defs[k].max)
-        mesh.name = `${main.name}-lod${l + 1}`
-        mesh.instanceColor = new InstancedBufferAttribute(new Float32Array(defs[k].max * 3).fill(1), 3)
-        mesh.count = 0
-        mesh.visible = false
-        mesh.castShadow = false
-        mesh.receiveShadow = main.receiveShadow
-        // a ray meets the part's own mesh, which knows every model put
-        mesh.raycast = () => {}
-        this.group.add(mesh)
-        return { mesh, error: c.error, color2: second?.color2 }
-      })
+      const g = main.geometry
+      const whole = { mesh: main, error: 0, triangles: (g.index ? g.index.count : g.attributes.position.count) / 3, color2: this.color2[k] }
+      const targets: Target[] = [
+        whole,
+        ...copies.map((c, l) => {
+          const second = this.color2[k] ? withColor2(c.geometry, defs[k].max) : null
+          const mesh = new InstancedMesh(second ? second.geometry : c.geometry, main.material, defs[k].max)
+          mesh.name = `${main.name}-lod${l + 1}`
+          mesh.instanceColor = new InstancedBufferAttribute(new Float32Array(defs[k].max * 3).fill(1), 3)
+          mesh.count = 0
+          mesh.visible = false
+          mesh.castShadow = false
+          mesh.receiveShadow = main.receiveShadow
+          // a ray meets the part's own mesh, which knows every model put
+          mesh.raycast = () => {}
+          this.group.add(mesh)
+          return { mesh, error: c.error, triangles: c.triangles, color2: second?.color2 }
+        }),
+      ]
+      const n = targets.length
+      this.lods[k] = { targets, triangles: Float64Array.from(targets, (t) => t.triangles), wanted: new Int32Array(n), use: new Uint8Array(n) }
       this.hasLods = true
     }
     this.drawnModels = -1
@@ -220,6 +286,8 @@ export class Parts<K extends string = string> {
       this.boxes = boxes
       this.shown = new Uint8Array(this.shown.length * 2)
       this.drawn = new Uint8Array(this.drawn.length * 2)
+      this.dist = new Float32Array(this.dist.length * 2)
+      this.inView = new Uint8Array(this.inView.length * 2)
       this.drawnModels = -1
     }
     const o = j * 6
@@ -299,6 +367,7 @@ export class Parts<K extends string = string> {
       mesh.instanceColor!.needsUpdate = true
       mesh.computeBoundingSphere()
     }
+    this.handSun()
     this.hideLods()
     this.compacted = false
     this.drawnModels = -1
@@ -307,15 +376,68 @@ export class Parts<K extends string = string> {
     return this
   }
 
+  /** Hands every model put to the meshes that draw the casting parts into the sun's map: each instance into the
+   *  coarsest of its part's copies for the sun that keeps its shadow to the texel at its size (`sunEnough`), if worth a
+   *  draw across them (`worthDrawing`) — chosen by the sun alone, never by a camera. */
+  private handSun() {
+    this.sunOn = sunCopies.on
+    for (const k of this.keys) {
+      const sun = this.sun[k]
+      if (!sun) continue
+      const { targets, wanted, use } = sun
+      const top = targets.length - 1
+      const st = this.staged[k]
+      const sm = st.matrices
+      const want = this.sunWant[k]
+      const n = this.n[k]
+      wanted.fill(0)
+      for (let i = 0; i < n; i++) {
+        let l = 0
+        if (this.sunOn && top > 0) {
+          const o = i * 16
+          const scale = Math.sqrt(
+            Math.max(
+              sm[o] * sm[o] + sm[o + 1] * sm[o + 1] + sm[o + 2] * sm[o + 2],
+              sm[o + 4] * sm[o + 4] + sm[o + 5] * sm[o + 5] + sm[o + 6] * sm[o + 6],
+              sm[o + 8] * sm[o + 8] + sm[o + 9] * sm[o + 9] + sm[o + 10] * sm[o + 10],
+            ),
+          )
+          for (let c = top; c >= 1; c--)
+            if (sunEnough(targets[c].error, scale)) {
+              l = c
+              break
+            }
+        }
+        want[i] = l
+        wanted[l]++
+      }
+      worthDrawing(wanted, sun.triangles, top, use)
+      const counts = this.counts(targets.length)
+      for (let i = 0; i < n; i++) {
+        const l = use[want[i]]
+        const dm = targets[l].mesh.instanceMatrix.array as Float32Array
+        const q = counts[l]++
+        for (let c = 0, from = i * 16, to = q * 16; c < 16; c++) dm[to + c] = sm[from + c]
+      }
+      for (let l = 0; l < targets.length; l++) {
+        const caster = targets[l].mesh
+        caster.count = counts[l]
+        caster.visible = counts[l] > 0
+        caster.instanceMatrix.needsUpdate = true
+        if (counts[l] > 0) caster.computeBoundingSphere()
+      }
+    }
+  }
+
   /** No lighter copy drawn: every part instance in its own mesh. */
   private hideLods() {
     if (!this.hasLods) return
     for (const k of this.cullable) {
       const copies = this.lods[k]
       if (!copies) continue
-      for (const c of copies) {
-        c.mesh.count = 0
-        c.mesh.visible = false
+      for (let l = 1; l < copies.targets.length; l++) {
+        copies.targets[l].mesh.count = 0
+        copies.targets[l].mesh.visible = false
       }
       this.held[k].fill(0, 0, this.n[k])
     }
@@ -323,15 +445,18 @@ export class Parts<K extends string = string> {
 
   /**
    * Draws only the models `test` passes, each tested once by its box (its parts' bounding spheres, in world space:
-   * the group's place in the world now, whatever moved it); the parts of a model left out are not drawn. Parts that
-   * cast a shadow stay whole: the sun's shadow map is drawn from the same meshes. `null`: every model again. Called
-   * by the drawing pass (src/lib/visibility) right before a render, with that render's camera. Allocates nothing.
+   * the group's place in the world now, whatever moved it); the parts of a model left out are not drawn. A part that
+   * casts a shadow is drawn into the sun's map by meshes of its own, every model put (`handSun`), so it is left out
+   * here like any other. `null`: every model again. Called by the drawing pass (src/lib/visibility) right before a
+   * render, with that render's camera. Allocates nothing.
    *
-   * `view`: the render's eye. A part drawn only where seen is then drawn with its lighter copy (src/lib/sculpt/lod.ts)
-   * where its model is far enough for the copy's difference to be under half a pixel — whether or not the drawing pass
-   * leaves anything out (the copies are not the pass's: the picture with the pass and without it is the same).
+   * `view`: the render's eye. A part is then drawn with its lighter copy (src/lib/sculpt/lod.ts) where its model is far
+   * enough for the copy's difference to be under half a pixel, if the copy is worth its draw across the instances in
+   * view — whether or not the drawing pass leaves anything out (the copies are not the pass's: the picture with the
+   * pass and without it is the same).
    */
   cull(test: ModelTest | null, view: LodView | null = null) {
+    if (this.sunOn !== sunCopies.on) this.handSun()
     const models = this.models
     const far = this.hasLods ? view : null
     if ((test === null && far === null) || models === 0) {
@@ -382,26 +507,33 @@ export class Parts<K extends string = string> {
       this.shown[j] = seen ? 1 : 0
       if (!seen) hidden++
       if (far) {
-        // how far the eye is from the box (its nearest point; inside it: no distance, the part whole)
+        // how far the eye is from the box (its nearest point; inside it: no distance, the part whole), and whether the
+        // box is in the frustum (only those count when a copy's worth is judged: not the pass's, the same with it or not)
         const dx = Math.max(x0 - far.x, 0, far.x - x1)
         const dy = Math.max(y0 - far.y, 0, far.y - y1)
         const dz = Math.max(z0 - far.z, 0, far.z - z1)
         this.dist[j] = Math.sqrt(dx * dx + dy * dy + dz * dz)
+        this.inView[j] = !far.planes || boxInFrustum(far.planes, x0, y0, z0, x1, y1, z1) ? 1 : 0
       }
     }
     this.culledModels = hidden
-    // the copy each instance is drawn with this render (0: whole)
+    // the copy each instance is drawn with this render (0: whole): the coarsest under half a pixel, if worth its draw
     let copies = false
     if (far)
       for (const k of this.cullable) {
         const levels = this.lods[k]
         if (!levels) continue
+        const { targets, wanted, use } = levels
+        const top = targets.length - 1
         const st = this.staged[k]
         const want = this.want[k]
         const sm = st.matrices
-        for (let i = 0, n = this.n[k]; i < n; i++) {
+        wanted.fill(0)
+        const n = this.n[k]
+        for (let i = 0; i < n; i++) {
           let l = 0
-          const d = this.dist[st.model[i]]
+          const j = st.model[i]
+          const d = this.dist[j]
           if (d > 0) {
             // the instance's size (its largest axis), as the copy's error grows with it
             const o = i * 16
@@ -412,12 +544,19 @@ export class Parts<K extends string = string> {
                 sm[o + 8] * sm[o + 8] + sm[o + 9] * sm[o + 9] + sm[o + 10] * sm[o + 10],
               ),
             )
-            for (let c = levels.length; c >= 1; c--)
-              if (farEnough(levels[c - 1].error, scale, d, far.pixels)) {
+            for (let c = top; c >= 1; c--)
+              if (farEnough(targets[c].error, scale, d, far.pixels)) {
                 l = c
                 break
               }
           }
+          want[i] = l
+          if (this.inView[j]) wanted[l]++
+        }
+        // a copy is a draw shared by its instances: drawn only where it saves enough across them (lod.ts)
+        worthDrawing(wanted, levels.triangles, top, use)
+        for (let i = 0; i < n; i++) {
+          const l = use[want[i]]
           want[i] = l
           if (l) copies = true
         }
@@ -445,56 +584,56 @@ export class Parts<K extends string = string> {
       const mesh = this.meshes[k]
       const st = this.staged[k]
       const n = this.n[k]
-      const levels = far ? this.lods[k] : undefined
+      const levels = this.lods[k]
+      // where each copy's instances go: the part's own mesh (0), then its copies
+      const targets = far && levels ? levels.targets : null
       const want = this.want[k]
       const sc2 = st.colors2
       const sm = st.matrices
-      // where each copy's instances go: the part's own mesh (0), then its copies
-      const targets = levels ? [{ mesh, color2: this.color2[k] }, ...levels] : [{ mesh, color2: this.color2[k] }]
-      const counts = this.counts(targets.length)
+      const counts = this.counts(targets ? targets.length : 1)
       for (let i = 0; i < n; i++) {
         if (!this.shown[st.model[i]]) continue
-        const l = levels ? want[i] : 0
-        const t = targets[l]
+        const l = targets ? want[i] : 0
+        const into = targets ? targets[l].mesh : mesh
         const q = counts[l]++
-        const dm = t.mesh.instanceMatrix.array as Float32Array
-        const dc = t.mesh.instanceColor!.array as Float32Array
+        const dm = into.instanceMatrix.array as Float32Array
+        const dc = into.instanceColor!.array as Float32Array
         for (let c = 0, from = i * 16, to = q * 16; c < 16; c++) dm[to + c] = sm[from + c]
         dc[q * 3] = st.colors[i * 3]
         dc[q * 3 + 1] = st.colors[i * 3 + 1]
         dc[q * 3 + 2] = st.colors[i * 3 + 2]
-        const dc2 = t.color2?.array as Float32Array | undefined
+        const dc2 = (targets ? targets[l].color2 : this.color2[k])?.array as Float32Array | undefined
         if (sc2 && dc2) {
           dc2[q * 3] = sc2[i * 3]
           dc2[q * 3 + 1] = sc2[i * 3 + 1]
           dc2[q * 3 + 2] = sc2[i * 3 + 2]
         }
       }
-      for (let l = 0; l < targets.length; l++) {
-        const t = targets[l]
+      for (let l = 0; l < (targets ? targets.length : 1); l++) {
+        const into = targets ? targets[l].mesh : mesh
+        const c2 = targets ? targets[l].color2 : this.color2[k]
         // the part's own mesh stays visible as `end` set it (a ray still meets every model put): a draw of no instances
         // is skipped; a copy is shown only while it holds some, and bounded as the part's mesh is (round every model)
-        t.mesh.count = counts[l]
+        into.count = counts[l]
         if (l > 0) {
-          t.mesh.visible = counts[l] > 0
-          t.mesh.boundingSphere = mesh.boundingSphere
+          into.visible = counts[l] > 0
+          into.boundingSphere = mesh.boundingSphere
         }
-        t.mesh.instanceMatrix.needsUpdate = true
-        t.mesh.instanceColor!.needsUpdate = true
-        if (t.color2) t.color2.needsUpdate = true
+        into.instanceMatrix.needsUpdate = true
+        into.instanceColor!.needsUpdate = true
+        if (c2) c2.needsUpdate = true
         drawn += counts[l]
       }
-      if (this.lods[k]) {
+      if (levels) {
         const held = this.held[k]
-        for (let i = 0; i < n; i++) held[i] = levels ? want[i] : 0
-        if (!levels)
-          for (const c of this.lods[k]!) {
-            c.mesh.count = 0
-            c.mesh.visible = false
+        for (let i = 0; i < n; i++) held[i] = targets ? want[i] : 0
+        if (!targets)
+          for (let l = 1; l < levels.targets.length; l++) {
+            levels.targets[l].mesh.count = 0
+            levels.targets[l].mesh.visible = false
           }
       }
     }
-    for (const k of this.keys) if (this.meshes[k].castShadow) drawn += this.n[k]
     this.drawnInstances = drawn
     for (let j = 0; j < models; j++) this.drawn[j] = this.shown[j]
     this.drawnModels = models
@@ -557,7 +696,8 @@ export class Parts<K extends string = string> {
   dispose() {
     liveParts.delete(this as unknown as Parts)
     for (const k of this.keys) this.meshes[k].dispose()
-    for (const k of this.cullable) for (const c of this.lods[k] ?? []) c.mesh.dispose()
+    for (const k of this.cullable) for (const t of this.lods[k]?.targets.slice(1) ?? []) t.mesh.dispose()
+    for (const k of this.keys) for (const t of this.sun[k]?.targets ?? []) t.mesh.dispose()
   }
 }
 
