@@ -1076,6 +1076,22 @@ button.row-main {
 .info-variant .soft-btn {
   justify-self: start;
 }
+/* ✦ a proposal that adds a feature the game does not have yet */
+.new-mark {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  font-size: 11px;
+  font-style: normal;
+  line-height: 1;
+}
+.info-adds {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--card);
+  border: 1px dashed var(--chosen);
+}
 .info-kind {
   display: grid;
   place-items: center;

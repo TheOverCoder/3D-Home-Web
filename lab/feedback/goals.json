@@ -1,0 +1,19 @@
+{
+  "board": "goals",
+  "for": "ui-designer",
+  "read": "2026-11-15",
+  "sent": "2026-11-15T08:10",
+  "verdicts": {
+    "a": "yes",
+    "b": "yes"
+  },
+  "notes": [
+    {
+      "variant": "b",
+      "state": "ready",
+      "kind": "sideways",
+      "at": "2026-11-15T08:09",
+      "text": "לשלב b a שרואים 2 בשורה פס התקדמות עוד אנימציות שילוב שלהם ושיפור תייצר"
+    }
+  ]
+}

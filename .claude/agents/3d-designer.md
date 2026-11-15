@@ -45,7 +45,9 @@ pattern in simple Hebrew): the user sees it beside the variants.
    `status: 'choose'`, and "today" (the game's own model, imported from `src/`) beside **two or three variants**
    (`a`, `b`, `c`) that differ in what matters — silhouette, proportion, material, how it reads from afar — not only
    in colour. Each gets a `name`, a `note` (what is different and its triangles against the weight) and, if it moves
-   (an animal's walk, a door), a `motion` line, all in simple Hebrew. Proposals live in the board's folder
+   (an animal's walk, a door), a `motion` line, all in simple Hebrew. A proposal that adds something the game does not
+   have (a new element, something new to do with it) says so in its `adds` line (the sandbox marks it ✦ new); its
+   logic is the main agent's, after the user chooses. Proposals live in the board's folder
    (`lab/boards/<id>/models/…`), built with the kit from `src/lib/sculpt`; nothing in `src/` changes before the user
    chooses.
 3. **Show it as the player sees it**: a 3D view in the frame, in the game's own light and sky (as `src/scene` lights the

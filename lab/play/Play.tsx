@@ -192,7 +192,7 @@ export function Play({ start }: { start?: string }) {
     setVariant(v)
     setPrefs({ last: { ...prefs.last, [board.id]: v } })
     const it = board.variants.find((x) => x.id === v)
-    if (it) say(`${letter(v)} · ${it.name}`)
+    if (it) say(`${letter(v)} · ${it.name}${it.adds ? ' · ✦ פיצ׳ר חדש' : ''}`)
   }
   // waiting: not answered and not sent; "next" is the next of them after the one open, in the sidebar's order
   const isWaiting = (b: AnyBoard) => !r.sent(b.id) && answerOf(r.review(b.id)) === 'none'
@@ -357,9 +357,10 @@ export function Play({ start }: { start?: string }) {
                     aria-checked={variant === v.id}
                     className={`d-var${variant === v.id ? ' on' : ''}${v.id === 'today' ? ' today' : ''}${said ? ` said-${said}` : notes ? ' said-note' : ''}`}
                     onClick={() => pick(v.id)}
-                    aria-label={`${letter(v.id)}: ${v.name}${said === 'yes' ? ', אהבת' : said === 'no' ? ', דחית' : ''}`}
+                    aria-label={`${letter(v.id)}: ${v.name}${v.adds ? ', פיצ׳ר חדש' : ''}${said === 'yes' ? ', אהבת' : said === 'no' ? ', דחית' : ''}`}
                   >
                     {letter(v.id)}
+                    {v.adds && <i className="new-mark">✦</i>}
                   </button>
                 )
               })}
@@ -691,8 +692,13 @@ function Info({ board, variant, review, onRemove, onAgain, onClose }: { board: A
           <b>
             {letter(v.id)} · {v.name}
           </b>
+          {v.adds && (
+            <p className="info-adds">
+              <b>✦ פיצ׳ר חדש:</b> {v.adds}
+            </p>
+          )}
           <p>{v.note}</p>
-          {v.motion && <p className="quiet">✦ {v.motion}</p>}
+          {v.motion && <p className="quiet">↻ {v.motion}</p>}
           <button className="soft-btn" onClick={onAgain}>
             ↻ לראות שוב
           </button>

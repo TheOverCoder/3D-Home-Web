@@ -22,6 +22,10 @@ export interface Variant<S> {
   note: string
   /** what moves and when, in plain words (the opening, a press, the moment of the screen) */
   motion?: string
+  /** a feature this proposal adds that the game does not have yet (a new screen, a new way to play), in one line of
+   *  simple Hebrew: the sandbox marks it ✦ new. Shown with sample data; its logic is written in the game only once the
+   *  user chooses it. */
+  adds?: string
   render: (s: S, act: Act<S>) => ReactElement
 }
 

@@ -30,6 +30,14 @@ the motion kit (`src/ui/motion.tsx`, `src/ui/burst.ts`) and the design lab (`lab
 does: no rules, state, saves, data tables, models, physics, lighting or tests' meaning. When a design needs data the game
 does not give, say so in your report instead of inventing it (the main agent adds it).
 
+**New features, not only what is there.** You design the interface the game should have, not only a new look for the
+one it has: a proposal may add a feature the game does not have yet — a new screen or sheet, a new way to reward or to
+show progress, a shortcut, a sort or filter, a new talk with a character, a new step in the opening. Where one would make
+the screen clearly better for the player, propose it (as its own variant, or inside one), never forced. You design it,
+you never write its logic: in the lab it runs on sample data kept in the board's folder (named as such), the variant's
+`adds` line says in one line of simple Hebrew what it adds (the sandbox marks it ✦ new), and your report lists, for
+each, the logic and data the game would need. The main agent writes that logic only after the user chooses it.
+
 ## Your knowledge
 
 `lab/CRAFT.md` is your craft: UX for a phone game (one hero per screen, feedback for every press, states, the first 30
@@ -98,7 +106,8 @@ phone: the real size under their own finger).
    `lab/boards/<id>/` with a first variant and lists it (see `lab/boards/level` for a full one). Every board has its
    `kind` (`ui` for yours: its icon in the sandbox) and `added`, the time it was put before the user: a new round of a
    board sets `added` to now, so it waits for the user again. Give it the
-   request, `status: 'choose'`, its states made by the game's own pure code (never numbers the game cannot produce), and
+   request, `status: 'choose'`, its states made by the game's own pure code (never numbers the game cannot produce; a
+   new feature's own numbers are sample data in the board's folder, its `adds` line saying so), and
    "today" beside **two or three variants** (`a`, `b`, `c`). Each variant is its own component and CSS file, every rule
    under a class of its own (`.v-<board>-a …`), so nothing leaks. Variants differ in what matters — hierarchy, layout,
    motion, gesture, how the key thing reads at a glance — not only in colour. Each gets a name, a `note` (what is

@@ -1,24 +1,10 @@
 {
   "board": "top",
-  "read": "2026-11-14",
+  "for": "ui-designer",
+  "read": "2026-11-15",
+  "sent": "2026-11-15T08:10",
   "verdicts": {
     "c": "yes"
   },
-  "notes": [],
-  "requests": [
-    "action",
-    "edit",
-    "goals",
-    "intro",
-    "loading",
-    "market",
-    "orders",
-    "saves",
-    "seeds",
-    "shop",
-    "store",
-    "tag",
-    "top",
-    "touch"
-  ]
+  "notes": []
 }
