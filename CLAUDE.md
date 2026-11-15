@@ -102,8 +102,8 @@ The README has the overview; `tests/README.md` what each test guards.
 - One context button (E / the round touch button) offers only what one press does here: what only tells you how
   long, or what is missing, is a status (`verb: 'wait'`, `needs` for pictures); nothing far away (what is ready
   to take out of reach goes on the compass at the top: give its interactable a `ready()`, null until full). It
-  never spends coins (building and buying are a price tag, below); a machine's ingredients ask first, with a
-  `setConfirm` card over the button (the button again only closes it). One press does every like thing in reach
+  never spends coins (building and buying are a price tag, below); at a machine it collects what is done, else opens
+  the machine's panel, where jobs are queued (their ingredients go in then). One press does every like thing in reach
   (things whose press does the same share a `same()` key, and only one of them is offered).
 - Reach is measured on the ground, from the edge of a thing's footprint (`box`, half its size each way) or from its
   `position`, within its `radius` (`groundDistance`): a bed is in reach 1.5 m from its frame (`BED_REACH`), and the
@@ -136,6 +136,12 @@ The README has the overview; `tests/README.md` what each test guards.
 - A new animal: its row (and an `UPGRADES` row with `herd` to buy more), its model, and a thin `<Herd>` (`Herd.tsx`) with
   its wander numbers (`wander.ts`), body and pose. A new machine: its row, its model, and its moving parts driven by
   the work level `useMachine(id)` gives back.
+- A machine works a queue of jobs, one good each, of any of its recipes (`src/farm/machines.ts`; `farm.machines[id]`:
+  the jobs, how many are done, the working one's progress, its places, the seconds it has worked): 3 places, bought up
+  to 12 (`QUEUE_PRICES`); done jobs keep their place until collected. Its level comes from the time it has worked
+  (`MACHINE_LEVELS`, `src/farm/machineView.ts`): more XP for each job collected, its goods dearer wherever they are
+  sold (`priceOf` in `src/farm/prices.ts`: every sale prices a good through it), faster jobs. Its panel
+  (`src/farm/machine/`) only draws `machineView(id)` and calls `machineActions(id)`.
 
 ## Levels, the market, the contractor, the day (src/farm/xp.ts, market.ts, contractor.ts, day.ts, src/data/buildings.ts)
 

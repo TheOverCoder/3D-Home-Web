@@ -87,7 +87,8 @@ test.describe("a machine's queue", () => {
     expect(steps).toEqual(['done working waiting waiting', 'done done working waiting', 'done done done done'])
 
     // all done: one press collects all four
-    await until(game, () => ((window as any).__home.useHome.getState().nearby?.label ?? '').startsWith('Collect '))
+    // (the button's offer is worked out a few times a second: wait for the one with all four, not a moment before it)
+    await until(game, () => (window as any).__home.useHome.getState().nearby?.label === 'Collect 1 lemon cake, 1 strawberry cake, 1 carrot cake, 1 pumpkin pie')
     expect(await page.evaluate(() => (window as any).__home.useHome.getState().nearby)).toMatchObject({
       label: 'Collect 1 lemon cake, 1 strawberry cake, 1 carrot cake, 1 pumpkin pie',
       icon: {
