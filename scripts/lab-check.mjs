@@ -95,10 +95,14 @@ try {
       await p.locator('.sheet textarea').fill('בדיקה')
       await press(p.getByRole('button', { name: 'שמירה' }))
       await p.waitForTimeout(300)
-      await press(p.locator('.d-pin'))
-      const box = await p.locator('.pin-catch').boundingBox()
-      await p.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+      // a note on a point: 📍 inside the note, a touch on the screen, the words kept
+      await press(p.locator('.d-note'))
       await p.locator('.sheet textarea').fill('נקודה')
+      await press(p.locator('.note-point'))
+      const box = await p.locator('.pin-catch').boundingBox()
+      await p.mouse.click(box.x + box.width / 2, box.y + box.height * 0.6)
+      await p.waitForTimeout(300)
+      const pointKept = (await p.locator('.sheet textarea').inputValue()) === 'נקודה' && (await p.locator('.note-point.on').count()) === 1
       await press(p.getByRole('button', { name: 'שמירה' }))
       await p.waitForTimeout(300)
       const pins = await p.locator('.pin').count()
@@ -114,7 +118,11 @@ try {
       await p.reload()
       await p.waitForTimeout(2500)
       const kept = await p.evaluate((id) => JSON.parse(localStorage.getItem('lab-reviews') ?? '{}').reviews?.[id], boards[0].id)
-      step(s.name, '✓, הערה והערה על נקודה: נשמרים, מופיעים ב־ℹ︎, והכרטיס נצבע בירוק עם "אושר" וכפתור שליחה', pins === 1 && shown >= 3 && green && unnumbered && !!kept && kept.notes.length === 2)
+      step(
+        s.name,
+        '✓, הערה והערה על נקודה (מתוך כפתור ההערה): נשמרים, מופיעים ב־ℹ︎, והכרטיס נצבע בירוק עם "אושר" וכפתור שליחה',
+        pointKept && pins === 1 && shown >= 3 && green && unnumbered && !!kept && kept.notes.length === 2,
+      )
       // to "ready to send" and back
       await side()
       await press(cards.first().locator('.card-act.send'))
@@ -131,14 +139,45 @@ try {
       await p.waitForTimeout(300)
       const back = (await cards.count()) === boards.length
       step(s.name, 'כרטיס שנענה עובר ל"מוכן לשליחה" בכפתור השליחה, וחוזר בכפתור החזרה', left === boards.length - 1 && inbox && sentKept && emptied && back)
-      // "next": from the answered one to the next design waiting
+      // in the bar: an answered design is sent and the next one waiting opens, in one press
+      const outboxCount = async () =>
+        Number(
+          (await p
+            .locator('.side-tabs [role=tab]')
+            .nth(1)
+            .locator('.count')
+            .innerText()
+            .catch(() => '0')) || 0,
+        )
       await press(cards.first().locator('.card-open'))
       await p.waitForTimeout(1000)
+      await press(p.locator('.d-send'))
+      await p.waitForTimeout(1000)
+      await side()
+      const sentNext = (await p.locator('.side-list .card.on').evaluate((el) => el.classList.contains('a-none'))) && (await outboxCount()) === 1
+      step(s.name, '"שלח" בסרגל: העיצוב שנענה עובר למוכן לשליחה, והבא שמחכה נפתח', sentNext)
+      // "next" on a design waiting: to another one waiting
+      const before = (await p.locator('.side-list .card.on .card-title').innerText()).trim()
+      await shut()
       await press(p.locator('.d-next'))
       await p.waitForTimeout(1000)
       await side()
-      const moved = await p.locator('.side-list .card.on').evaluate((el) => el.classList.contains('a-none'))
+      const on = p.locator('.side-list .card.on')
+      const moved = (await on.evaluate((el) => el.classList.contains('a-none'))) && (await on.locator('.card-title').innerText()).trim() !== before
       step(s.name, '"הבא" עובר לעיצוב הבא שמחכה לתשובה', moved)
+      // two answered: one button sends both
+      await shut()
+      await press(p.locator('.d-yes'))
+      await side()
+      await press(p.locator('.side-list .card.a-none .card-open').first())
+      await p.waitForTimeout(1000)
+      await press(p.locator('.d-yes'))
+      await side()
+      const all = p.locator('.side-send-all')
+      const offered = (await all.count()) === 1 && (await all.innerText()).includes('2')
+      await press(all)
+      await p.waitForTimeout(300)
+      step(s.name, 'כפתור אחד שולח את כל מה שענית', offered && (await outboxCount()) === 3 && (await p.locator('.side-list .card.a-yes').count()) === 0)
       // a screen with no design yet, asked for
       await p.locator('.side-more summary').click()
       const ask = p.locator('.side-ask .ask-btn').first()

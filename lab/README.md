@@ -49,9 +49,12 @@ under the thumb.
   `?play=1`) on which every chip or button that has designs is ringed in yellow and named. A touch opens it there, as
   the game would. On a phone the screen is the phone's own, at its size; on a computer a phone stands beside the list.
 - **The bar** (a rail on the left, sideways): today and the proposals, each letter marked by its answer (tap the open
-  one to see it open again); the state; **✓ / ✗** on the letter shown, a **💬 note**, a **📍 note pinned to one point**,
-  **ℹ︎** (the request, what is new in this round, this letter's note and motion, and every answer given, each one
-  deletable), and **הבא ←** to the next design still waiting. Keys: ← / → letters, N next, Esc closes.
+  one to see it open again); the state; **✓ / ✗** on the letter shown, **💬 a note** (📍 inside it pins the note to one
+  point: a touch on the screen, the words kept), **ℹ︎** (this letter's note and motion and every answer given, each
+  deletable; the request and what is new in the round folded under them), and the last button: **שלח ←** once the
+  design is answered (to "ready to send", and the next one waiting opens: one press) or **הבא ←** to the next one
+  waiting. A design opened says its name for a moment over the screen. Two or more answered and not sent: one button
+  in the list sends them all. Keys: ← / → letters, N next, Esc closes.
 
 A board is in it by itself: its `spot` (a chip or button of the game's screen, as `lab/stills/<still>.json` names it:
 `coins`, `line`, `store`, `goals`, `day`, `level`, `settings`…, recorded by `scripts/lab-stills.mjs`) rings it on the

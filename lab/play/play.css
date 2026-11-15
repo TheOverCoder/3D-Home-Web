@@ -157,14 +157,27 @@
   touch-action: none;
 }
 .pin-catch span {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   margin-top: 14px;
-  padding: 8px 16px;
+  padding: 4px;
+  padding-inline: 16px 4px;
   border-radius: 999px;
   background: #d2452f;
   color: #fff;
   font: 600 15px/1.2 var(--display);
   direction: rtl;
-  pointer-events: none;
+}
+.pin-cancel {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #4a140d;
+  font: 600 15px/1 var(--display);
+  cursor: pointer;
 }
 
 /* the first visit's word, and a passing word */
@@ -229,7 +242,7 @@
 .dock .judge {
   grid-area: judge;
   display: grid;
-  grid-template-columns: 1.5fr 1.1fr 1fr 1fr 1fr 1.4fr;
+  grid-template-columns: 1.3fr 1fr 1.1fr 0.8fr 1.4fr;
   gap: 6px;
 }
 .d-btn {
@@ -321,8 +334,7 @@
   color: #fff;
 }
 .mark.no,
-.d-no.on,
-.d-pin.on {
+.d-no.on {
   background: #d2452f;
   border-color: #d2452f;
   color: #fff;
@@ -342,9 +354,16 @@
   font: 700 12px/1 var(--text);
   font-style: normal;
 }
+/* a glyph keeps its size beside a word */
+.d-btn svg {
+  flex: none;
+}
+.arr {
+  font-style: normal;
+}
 @media (max-width: 400px) {
   .judge .d-note span,
-  .judge .d-pin span {
+  .judge .d-send .arr {
     display: none;
   }
 }
@@ -420,6 +439,13 @@
 }
 .play.wide .judge span {
   display: none;
+}
+/* sideways: the last button (next, or send and next) a row of its own, with its word */
+.play.wide .judge .d-next {
+  grid-column: 1 / -1;
+}
+.play.wide .judge .d-next span {
+  display: inline;
 }
 .play.wide .dock.idle {
   grid-template-columns: 1fr;
@@ -967,6 +993,20 @@ button.row-main {
 .a-no .card-said {
   color: var(--said-no-mark);
 }
+/* every answered design to the outbox at once */
+.side-send-all {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--ink);
+  color: var(--card);
+  font: 600 16px/1 var(--display);
+  cursor: pointer;
+}
 /* send (to the outbox) and return (to the designs): a round button at the card's end */
 .card-act {
   flex: none;
@@ -1036,6 +1076,35 @@ button.row-main {
 .info-variant .soft-btn {
   justify-self: start;
 }
+.info-kind {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin-inline-end: auto;
+  border-radius: 50%;
+  background: var(--wall);
+  font-size: 18px;
+}
+.info-close {
+  min-height: 48px;
+}
+/* 📍 inside the note: pick a point on the screen for it, or take it off */
+.note-point {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  background: none;
+  color: var(--ink);
+  font: 500 15px/1.2 var(--text);
+  text-align: start;
+  cursor: pointer;
+}
+.note-point.on {
+  border-style: solid;
+  border-color: var(--chosen);
+}
 .notes li.said-yes {
   background: var(--said-yes);
   color: var(--said-yes-ink);
@@ -1047,11 +1116,11 @@ button.row-main {
 .notes li b {
   margin-inline-end: 4px;
 }
-.info-research {
+.info-more {
   color: var(--ink-2);
   font-size: 14px;
 }
-.info-research summary {
+.info-more summary {
   min-height: 40px;
   cursor: pointer;
 }

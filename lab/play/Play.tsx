@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import type { Board, BoardKind } from '../board'
 import { BOARDS } from '../boards'
 import { DEVICES } from '../devices'
@@ -48,6 +48,15 @@ const KIND: Record<BoardKind, { name: string; Icon: typeof Cube }> = {
 /** Every board, the oldest first (by when its round was put before the user). */
 const BY_AGE = [...BOARDS].sort((a, b) => a.added.localeCompare(b.added))
 
+/** a short tap felt under the finger for an answer given (phones that can) */
+function buzz() {
+  try {
+    navigator.vibrate?.(12)
+  } catch {
+    // not allowed here: nothing
+  }
+}
+
 // the viewer's own settings of the sandbox (a convenience: it works the same without them)
 interface Prefs {
   device: 'upright' | 'sideways'
@@ -94,6 +103,8 @@ export function Play({ start }: { start?: string }) {
   const [run, setRun] = useState(0)
   const [sheet, setSheet] = useState<Sheet>(null)
   const [pinning, setPinning] = useState(false)
+  // the note being written: kept while a point is picked for it on the screen
+  const [draft, setDraft] = useState('')
   const [toast, setToast] = useState<string | null>(null)
   const [wide, setWide] = useState(() => innerWidth > innerHeight)
   const [beside, setBeside] = useState(roomy)
@@ -153,9 +164,11 @@ export function Play({ start }: { start?: string }) {
     setToast(text)
     window.setTimeout(() => setToast((t) => (t === text ? null : t)), 2600)
   }
-  const open = (id: string) => {
+  /** a design opened: its name a moment over the screen (on a phone nothing else says which one it is) */
+  const open = (id: string, before?: string) => {
     const b = BOARDS.find((x) => x.id === id)
     if (!b) return
+    say(before ? `${before} · ${b.title}` : b.title)
     setSheet(null)
     setPinning(false)
     setSideOpen(false)
@@ -207,8 +220,10 @@ export function Play({ start }: { start?: string }) {
     const key = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement).closest?.('textarea, input, select')) return
       if (e.key === 'Escape') {
-        if (pinning) setPinning(false)
-        else if (sheet) setSheet(null)
+        if (pinning) {
+          setPinning(false)
+          setSheet({ kind: 'note' })
+        } else if (sheet) setSheet(null)
         else if (sideOpen) setSideOpen(false)
         else close()
       } else if (board && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
@@ -232,7 +247,8 @@ export function Play({ start }: { start?: string }) {
   const stateNo = board ? board.states.findIndex((s) => s.id === stateId) + 1 : 0
   const box = real ? { w: room.w, h: room.h } : { w: d.w * k, h: d.h * k }
 
-  const catchPin = (e: PointerEvent<HTMLDivElement>) => {
+  // on the click, not the press: a sheet opened on the press would take the same tap's click and close at once
+  const catchPin = (e: MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect()
     const x = (e.clientX - rect.left) / rect.width
     const y = (e.clientY - rect.top) / rect.height
@@ -240,13 +256,25 @@ export function Play({ start }: { start?: string }) {
     setSheet({ kind: 'note', x, y })
   }
   // to the next design waiting; with none left, the list (what is answered waits there to be sent)
-  const toNext = () => {
+  const toNext = (before?: string) => {
     const id = nextId()
-    if (id) open(id)
+    if (id) open(id, before)
     else {
       setSideOpen(true)
-      say('אין עוד עיצובים שמחכים')
+      say(before ? `${before} · אין עוד עיצובים שמחכים` : 'אין עוד עיצובים שמחכים')
     }
+  }
+  // answered: one press sends it to the outbox and opens the next one waiting
+  const sendNext = () => {
+    if (!board) return
+    r.send(board.id)
+    buzz()
+    toNext('✈ נשלח')
+  }
+  const judge = (v: 'yes' | 'no') => {
+    if (!board) return
+    r.verdict(board.id, variant, v)
+    buzz()
   }
 
   return (
@@ -289,8 +317,20 @@ export function Play({ start }: { start?: string }) {
               </div>
             )}
             {pinning && (
-              <div className="pin-catch" onPointerDown={catchPin} role="button" aria-label="גע בנקודה בעיצוב">
-                <span>גע בנקודה שעליה ההערה</span>
+              <div className="pin-catch" onClick={catchPin} role="button" aria-label="גע בנקודה בעיצוב">
+                <span>
+                  גע בנקודה שעליה ההערה
+                  <button
+                    className="pin-cancel"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setPinning(false)
+                      setSheet({ kind: 'note' })
+                    }}
+                  >
+                    ביטול
+                  </button>
+                </span>
               </div>
             )}
           </div>
@@ -332,24 +372,38 @@ export function Play({ start }: { start?: string }) {
               ▾
             </button>
             <div className="judge">
-              <button className={`d-btn d-yes${review.verdicts[variant] === 'yes' ? ' on' : ''}`} aria-pressed={review.verdicts[variant] === 'yes'} onClick={() => r.verdict(board.id, variant, 'yes')}>
+              <button
+                className={`d-btn d-yes${review.verdicts[variant] === 'yes' ? ' on' : ''}`}
+                aria-pressed={review.verdicts[variant] === 'yes'}
+                onClick={() => judge('yes')}
+                aria-label={`אהבתי את ${letter(variant)}`}
+              >
                 ✓ <span>אהבתי</span>
               </button>
-              <button className={`d-btn d-no${review.verdicts[variant] === 'no' ? ' on' : ''}`} aria-pressed={review.verdicts[variant] === 'no'} onClick={() => r.verdict(board.id, variant, 'no')}>
+              <button
+                className={`d-btn d-no${review.verdicts[variant] === 'no' ? ' on' : ''}`}
+                aria-pressed={review.verdicts[variant] === 'no'}
+                onClick={() => judge('no')}
+                aria-label={`לא את ${letter(variant)}`}
+              >
                 ✗ <span>לא</span>
               </button>
-              <button className="d-btn d-note" onClick={() => setSheet({ kind: 'note' })} aria-label="הערה">
-                💬{notesOnVariant.length > 0 && <i className="count">{notesOnVariant.length}</i>}
-              </button>
-              <button className={`d-btn d-pin${pinning ? ' on' : ''}`} aria-pressed={pinning} onClick={() => setPinning((p) => !p)} aria-label="הערה על נקודה">
-                📍
+              <button className="d-btn d-note" onClick={() => setSheet({ kind: 'note' })} aria-label={`הערה על ${letter(variant)}`}>
+                💬 <span>הערה</span>
+                {notesOnVariant.length > 0 && <i className="count">{notesOnVariant.length}</i>}
               </button>
               <button className="d-btn d-info" onClick={() => setSheet({ kind: 'info' })} aria-label="על העיצוב והתשובות שלך">
                 ℹ︎
               </button>
-              <button className="d-btn d-next" onClick={toNext} aria-label="לעיצוב הבא שמחכה">
-                <span>הבא</span> ←
-              </button>
+              {answerOf(review) !== 'none' && !r.sent(board.id) ? (
+                <button className="d-btn d-next d-send" onClick={sendNext} aria-label="לשלוח למוכן לשליחה ולעבור לעיצוב הבא">
+                  <PaperPlaneTilt weight="bold" /> <span>שלח</span> <i className="arr">←</i>
+                </button>
+              ) : (
+                <button className="d-btn d-next" onClick={() => toNext()} aria-label="לעיצוב הבא שמחכה">
+                  <span>הבא</span> ←
+                </button>
+              )}
             </div>
           </div>
         ) : (
@@ -357,7 +411,7 @@ export function Play({ start }: { start?: string }) {
             <button className="d-btn d-list" onClick={() => setSideOpen(true)}>
               ☰ <span>כל העיצובים</span>
             </button>
-            <button className="d-btn d-next primary" onClick={toNext}>
+            <button className="d-btn d-next primary" onClick={() => toNext()}>
               {waiting ? `${waiting} מחכים לך · לפתוח ←` : 'אין עיצובים שמחכים · לרשימה'}
             </button>
           </div>
@@ -382,13 +436,23 @@ export function Play({ start }: { start?: string }) {
             )}
             {sheet.kind === 'note' && board && (
               <NoteSheet
-                title={sheet.x != null ? `הערה על הנקודה · ${letter(variant)}` : `הערה על ${letter(variant)}`}
+                title={`הערה על ${letter(variant)}`}
+                text={draft}
+                setText={setDraft}
+                point={sheet.x != null}
+                onPoint={() => {
+                  setSheet(null)
+                  setPinning(true)
+                }}
+                onNoPoint={() => setSheet({ kind: 'note' })}
                 notes={notesOnVariant}
                 onRemove={(id) => r.removeNote(board.id, id)}
                 onSave={(text) => {
                   r.addNote(board.id, { variant, state: stateId, kind, x: sheet.x, y: sheet.y, text })
+                  setDraft('')
                   setSheet(null)
-                  say(r.keeping === 'shared' ? 'נשמר. המעצב יקבל את זה' : 'נשמר בדפדפן הזה')
+                  buzz()
+                  say(sheet.x != null ? '📍 ההערה נשמרה על הנקודה' : 'ההערה נשמרה')
                 }}
                 onClose={() => setSheet(null)}
               />
@@ -474,7 +538,12 @@ function Side({
   const designs = BY_AGE.filter((b) => !r.sent(b.id))
   const outbox = BY_AGE.filter((b) => r.sent(b.id))
   const waiting = designs.filter(isWaiting)
+  const answered = designs.filter((b) => answerOf(r.review(b.id)) !== 'none')
   const shown = tab === 'designs' ? designs : outbox
+  const send = (ids: string[]) => {
+    for (const id of ids) r.send(id)
+    buzz()
+  }
   return (
     <>
       {floating && open && <div className="side-back" onClick={onClose} />}
@@ -535,7 +604,7 @@ function Side({
                   </span>
                 </button>
                 {tab === 'designs' && said && (
-                  <button className="card-act send" onClick={() => r.send(b.id)} aria-label={`להעביר את ${b.title} למוכן לשליחה`} title="למוכן לשליחה">
+                  <button className="card-act send" onClick={() => send([b.id])} aria-label={`להעביר את ${b.title} למוכן לשליחה`} title="למוכן לשליחה">
                     <PaperPlaneTilt weight="bold" />
                   </button>
                 )}
@@ -548,6 +617,11 @@ function Side({
             )
           })}
         </nav>
+        {tab === 'designs' && answered.length > 1 && (
+          <button className="side-send-all" onClick={() => send(answered.map((b) => b.id))}>
+            <PaperPlaneTilt weight="bold" /> לשלוח את כל ה־{answered.length} שענית
+          </button>
+        )}
         {tab === 'designs' && waiting.length === 0 && <p className="side-line">✓ אין עיצובים שמחכים לך</p>}
         <details className="side-more">
           <summary>מסכים שעוד אין להם עיצוב ({rest.length})</summary>
@@ -600,20 +674,18 @@ function Side({
   )
 }
 
-/** What a design is, what is new in it, the proposal shown, and every answer given to it. */
+/** The proposal shown and every answer given to the design first (what a phone needs while choosing); the request,
+ *  what is new in this round and the research folded under them. */
 function Info({ board, variant, review, onRemove, onAgain, onClose }: { board: AnyBoard; variant: string; review: Review; onRemove: (id: string) => void; onAgain: () => void; onClose: () => void }) {
   const v = board.variants.find((x) => x.id === variant)
+  const kind = KIND[board.kind]
   return (
     <>
-      <SheetHead title={board.title} onClose={onClose} />
-      <p className="info-line">
-        <b>הבקשה:</b> {board.ask}
-      </p>
-      {board.round && (
-        <p className="info-line">
-          <b>מה חדש:</b> {board.round}
-        </p>
-      )}
+      <SheetHead title={board.title} onClose={onClose}>
+        <span className="info-kind" title={kind.name} aria-label={kind.name}>
+          <kind.Icon weight="bold" />
+        </span>
+      </SheetHead>
       {v && (
         <div className="info-variant">
           <b>
@@ -622,7 +694,7 @@ function Info({ board, variant, review, onRemove, onAgain, onClose }: { board: A
           <p>{v.note}</p>
           {v.motion && <p className="quiet">✦ {v.motion}</p>}
           <button className="soft-btn" onClick={onAgain}>
-            ↻ לראות שוב את הפתיחה
+            ↻ לראות שוב
           </button>
         </div>
       )}
@@ -653,8 +725,19 @@ function Info({ board, variant, review, onRemove, onAgain, onClose }: { board: A
           ))}
         </ul>
       )}
+      <details className="info-more">
+        <summary>{board.round ? 'הבקשה ומה חדש בסבב' : 'הבקשה'}</summary>
+        <p className="info-line">
+          <b>הבקשה:</b> {board.ask}
+        </p>
+        {board.round && (
+          <p className="info-line">
+            <b>מה חדש:</b> {board.round}
+          </p>
+        )}
+      </details>
       {board.research && board.research.length > 0 && (
-        <details className="info-research">
+        <details className="info-more">
           <summary>מה המעצב בדק לפני שעיצב ({board.research.length})</summary>
           <ul>
             {board.research.map((x) => (
@@ -665,6 +748,9 @@ function Info({ board, variant, review, onRemove, onAgain, onClose }: { board: A
           </ul>
         </details>
       )}
+      <button className="primary-btn info-close" onClick={onClose}>
+        סגירה
+      </button>
     </>
   )
 }
@@ -696,14 +782,45 @@ function SheetHead({ title, onClose, children }: { title: string; onClose: () =>
   )
 }
 
-function NoteSheet({ title, notes, onRemove, onSave, onClose }: { title: string; notes: Note[]; onRemove: (id: string) => void; onSave: (text: string) => void; onClose: () => void }) {
-  const [text, setText] = useState('')
+/** A note on the proposal shown, or on one point of it: 📍 hides the sheet until a point is touched, the words kept. */
+function NoteSheet({
+  title,
+  text,
+  setText,
+  point,
+  onPoint,
+  onNoPoint,
+  notes,
+  onRemove,
+  onSave,
+  onClose,
+}: {
+  title: string
+  text: string
+  setText: (t: string) => void
+  point: boolean
+  onPoint: () => void
+  onNoPoint: () => void
+  notes: Note[]
+  onRemove: (id: string) => void
+  onSave: (text: string) => void
+  onClose: () => void
+}) {
   const area = useRef<HTMLTextAreaElement>(null)
   useEffect(() => area.current?.focus({ preventScroll: true }), [])
   return (
     <>
       <SheetHead title={title} onClose={onClose} />
       <textarea ref={area} value={text} onChange={(e) => setText(e.target.value)} placeholder="מה לשנות? למשל: הכפתור קטן מדי, הכוכב צריך להיות גדול יותר…" rows={3} />
+      {point ? (
+        <button className="note-point on" onClick={onNoPoint}>
+          📍 על הנקודה שסימנת · <u>בלי נקודה</u>
+        </button>
+      ) : (
+        <button className="note-point" onClick={onPoint}>
+          📍 לסמן נקודה במסך
+        </button>
+      )}
       <div className="sheet-actions">
         <button className="soft-btn" onClick={onClose}>
           ביטול
