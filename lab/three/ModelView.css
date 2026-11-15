@@ -1,0 +1,89 @@
+/* A 3D board's view (./ModelView.tsx): the scene fills the screen; the triangle chip, the hint and the zoom buttons
+   float over it, clear of the notch and the home bar, in the game's dark chips over the scene. */
+.model-view {
+  position: fixed;
+  inset: 0;
+  background: #a9c4e0;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+/* the game's grade after its tone mapping (src/scene/Effects.tsx: a touch of contrast and colour) */
+.model-view-canvas {
+  position: absolute !important;
+  inset: 0;
+  filter: contrast(1.08) saturate(1.1);
+}
+/* and its vignette */
+.model-view::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 50%, transparent 58%, rgba(20, 14, 8, 0.32) 100%);
+}
+.model-view-chip {
+  position: absolute;
+  z-index: 1;
+  top: calc(env(safe-area-inset-top, 0px) + 10px);
+  right: calc(env(safe-area-inset-right, 0px) + 10px);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--night);
+  color: #fff;
+  font: 800 15px/1.2 var(--font-text);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.model-view-tri {
+  width: 0;
+  height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-bottom: 12px solid var(--sun);
+}
+.model-view-issues {
+  color: var(--sun);
+}
+.model-view-hint {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
+  margin: 0;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--night);
+  color: #fff;
+  font: 700 15px/1.3 var(--font-text);
+  white-space: nowrap;
+  transform: translateX(-50%);
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+.model-view-hint.gone {
+  opacity: 0;
+}
+.model-view-zoom {
+  position: absolute;
+  z-index: 1;
+  right: calc(env(safe-area-inset-right, 0px) + 14px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 66px);
+  display: grid;
+  gap: 10px;
+}
+/* sideways the screen is short: the hint goes to the bottom left, off the middle of the scene */
+@media (orientation: landscape) {
+  .model-view-hint {
+    left: calc(env(safe-area-inset-left, 0px) + 16px);
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .model-view-hint {
+    transition: none;
+  }
+}
