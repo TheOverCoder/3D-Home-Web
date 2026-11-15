@@ -19,4 +19,6 @@ export const playerState = {
   grounded: true,
   /** asked for by the game (something was built where you stand): <Player /> puts you here on its next frame */
   moveTo: null as Point3 | null,
+  /** the map changing behind the curtain (src/scene/maps.ts): <Player /> holds the body here, still, every frame */
+  hold: null as Point3 | null,
 }

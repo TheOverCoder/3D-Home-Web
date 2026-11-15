@@ -625,6 +625,10 @@ a:focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; border-rad
 .ghost:disabled { opacity: 0.4; cursor: default; text-decoration: none; }
 .primary.small { width: auto; min-height: 44px; padding: 0 18px; font-size: 16px; }
 
+/* ───────── the curtain: the screen dark while the map changes (a drive, another farm loaded) ───────── */
+.curtain { position: fixed; inset: 0; z-index: 50; background: var(--bg); opacity: 0; pointer-events: none; transition: opacity 400ms ease; }
+.curtain.down { opacity: 1; pointer-events: auto; }
+
 /* ───────── graphics reset notice ───────── */
 .graphics-notice {
   position: fixed;

@@ -72,7 +72,7 @@ async function brightness(page: Page) {
 
 test.describe('the day', () => {
   test('the chip at the top shows the phase — its picture — and the hour', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     await page.evaluate(() => (window as any).__home.settings.getState().update({ hudMode: 'all' }))
     // outdoors, where the chips at the top are
@@ -94,7 +94,7 @@ test.describe('the day', () => {
   })
 
   test('the contractor keeps his hours: at his window in the morning, at noon and in the evening; at night he walks off and his window says how long until morning', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     await reset(game)
     try {
@@ -182,7 +182,7 @@ test.describe('the day', () => {
   })
 
   test('he buys building materials at 10 coins each, the whole stack, only while he is there; a sale gives XP', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     await reset(game, { brick: 4 }, 100)
     try {
@@ -226,7 +226,7 @@ test.describe('the day', () => {
   })
 
   test("the day's pieces: what the silo and the barn are shortest of first, each bought once at its price with no XP; a new set the next day", async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     // the barn's next level wants two bricks, planks and nails: the planks and the nails are here, the bricks not —
     // the farm's shortest material. The day's pieces are made when the day is first seen
@@ -290,7 +290,7 @@ test.describe('the day', () => {
   })
 
   test('his two ladders, open only while he is there: one more piece today, and 10 coins off each', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     await reset(game, {}, 2000)
     try {
@@ -337,10 +337,10 @@ test.describe('the day', () => {
     }
   })
 
-  test('at night the farm is darker, never black: the canvas is lit above a floor', async ({ game }) => {
+  test('at night it is darker, never black: the canvas is lit above a floor', async ({ game }) => {
+    // at the house (the farm's clock runs there too): in its garden, looking back at it; nothing over the scene
     await game.ready()
     const { page } = game
-    // in the yard, looking back at the house; nothing over the scene
     await game.teleport(0, 1.4, 12.5, 0, 0.02)
     await page.evaluate(() => (window as any).__home.settings.getState().update({ hudMode: 'clean' }))
     try {
@@ -366,7 +366,7 @@ test.describe('the day', () => {
   })
 
   test('another farm switched to shows its own hour and level, with no level-up show; and back', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     await game.teleport(-1.2, 1.4, 8.5, 0, 0)
     const points = xpAt(5) + 3

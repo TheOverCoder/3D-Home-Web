@@ -2,7 +2,8 @@
 import { test, expect, bootApp, watchErrors, BASE } from './helpers'
 
 // The measuring tool for real phones (?tune, the Measure folder: src/debug/measure.ts), in a page of its own: the
-// folder is there with what the device is; Go to puts you in the kitchen with its door shut; the test farm is filled
+// folder is there with what the device is; Go to puts you in the kitchen with its door shut (driving to the house: a
+// new farm starts on the farm); the test farm is filled
 // only on farm 3; Measure still gives six slices (ON, OFF, ON, OFF, ON-sync, OFF-sync) with frames, draws and
 // triangles in each and the work of a frame in the sync ones, the drawing pass drawing less with the door shut, and the
 // switch back as it was; Copy gives the same as JSON. Measure turning with the sun's map kept as the switch: turning in
@@ -33,6 +34,8 @@ test('the measuring tool: six slices with the drawing pass on and off', { tag: '
   await m('fill')
   expect(await page.evaluate(() => (window as any).__home.measure.lines.status)).toBe('Fill only on farm 3')
 
+  // the house is yours on this farm (a new farm starts on the farm without it): Go to drives there
+  await page.evaluate(() => ((window as any).__home.farm.state.apartment.owned = true))
   await m('goTo', 'Kitchen (door shut)')
   await page.waitForFunction(() => (window as any).__home.useHome.getState().room === 'kitchen', null, { timeout: 60_000 })
   await page.waitForTimeout(3000)

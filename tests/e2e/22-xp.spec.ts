@@ -150,7 +150,7 @@ async function slowAnimations(page: Page, rate: number) {
 
 test.describe('levels', () => {
   test('a harvest: crystals fly up from the beds into the level chip, its bar fills with what landed, and it pulses', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     await fresh(game)
     // four beds of ripe lettuce by the path (one press harvests every one in reach), the lemon tree picked
@@ -198,7 +198,7 @@ test.describe('levels', () => {
   })
 
   test('a level reached: shown once, its coins wait on the chip; a tap opens its card, whose Claim pays them — two levels at once in one claim', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     await fresh(game)
     // outdoors, where the chips at the top are
@@ -261,7 +261,7 @@ test.describe('levels', () => {
   })
 
   test("the level's card: what the next level brings — a garment every fifth level, big; otherwise the level of the next one; at the top, no next", async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     await fresh(game)
     await game.teleport(-1.2, 1.4, 8.5, 0, 0)
@@ -294,7 +294,7 @@ test.describe('levels', () => {
   })
 
   test('the top of the screen: hidden, no crystals fly; cleared, no level-up shows; with less motion none fly and the bar fills at once', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     await fresh(game)
     await game.teleport(-1.2, 1.4, 8.5, 0, 0)
@@ -336,7 +336,7 @@ test.describe('levels', () => {
   })
 
   test('XP only for what changed: a bed already watered gives none, a dry one gives one; each bed planted gives one', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const r = await game.page.evaluate(() => {
       const f = (window as any).__home.farm
       f.reset()
@@ -360,7 +360,7 @@ test.describe('levels', () => {
   })
 
   test('a farm saved before levels starts with the XP of what it did, its levels already paid, and no show', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     await fresh(game)
     await game.teleport(-1.2, 1.4, 8.5, 0, 0)

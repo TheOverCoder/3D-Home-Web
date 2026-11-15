@@ -7,21 +7,23 @@ import { ArrowsOutCardinal } from '../ui/glyphs'
 import { turn, useEdit } from './edit'
 import { PARCELS, PLACES, canBuyParcel, samePlacement, type ParcelId, type PlaceId } from './layout'
 import { buyLand, farm, sendHome, useFarm } from './state'
-import { openEdit } from '../home/decorate'
+import { editHere, openEdit } from '../home/decorate'
 
 // The edit mode's controls on the screen: the button that opens it (beside the settings), and while it is open a
 // card along the bottom that says what to do, or about what is picked — turn a place, send it back to where it
 // started, buy a field — and a Done button where the settings were.
 
-/** Opens the edit mode for where you are (B): indoors the house's (its furniture), outdoors the farm's. */
+/** Opens the edit mode for where you are (B): on the farm the farm's, in the house its own (its furniture); none in the
+ *  house's garden. */
 export function EditButton() {
   const phase = useHome((s) => s.phase)
   const occupied = useHome(busy)
-  const outdoors = useHome((s) => s.outdoors)
-  if (phase !== 'playing' || occupied) return null
-  const label = outdoors ? 'Edit the farm: move things, buy land' : 'Decorate: move, turn and put away the furniture'
+  const mode = useHome(editHere)
+  if (phase !== 'playing' || occupied || !mode) return null
+  const farmEdit = mode === 'farm'
+  const label = farmEdit ? 'Edit the farm: move things, buy land' : 'Decorate: move, turn and put away the furniture'
   return (
-    <button className="gear edit-open" onClick={() => openEdit()} aria-label={`${label} (B)`} title={`${outdoors ? 'Edit the farm' : 'Decorate'} (B)`}>
+    <button className="gear edit-open" onClick={() => openEdit()} aria-label={`${label} (B)`} title={`${farmEdit ? 'Edit the farm' : 'Decorate'} (B)`}>
       <ArrowsOutCardinal weight="bold" />
     </button>
   )

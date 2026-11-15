@@ -15,11 +15,12 @@ import { ConfirmCard } from './ConfirmCard'
 import { ArrowRight, Clock } from './glyphs'
 import { ItemPic } from './ItemPic'
 
-/** Room name that fades in when you walk into a new room, like a film title. */
+/** Room name that fades in when you walk into a new room, like a film title: outdoors, the house's garden or the farm. */
 function RoomTitle() {
   const room = useHome((s) => s.room)
   const outdoors = useHome((s) => s.outdoors)
-  const place = outdoors ? 'garden' : room
+  const map = useHome((s) => s.map)
+  const place = outdoors ? (map === 'farm' ? 'farm' : 'garden') : room
   const [shown, setShown] = useState<{ name: string; key: number } | null>(null)
   const seq = useRef(0)
   const last = useRef(place)
@@ -30,7 +31,7 @@ function RoomTitle() {
       return
     }
     last.current = place
-    setShown({ name: place === 'garden' ? 'Garden' : ROOMS[place].name, key: ++seq.current })
+    setShown({ name: place === 'garden' ? 'Garden' : place === 'farm' ? 'Farm' : ROOMS[place].name, key: ++seq.current })
     const t = setTimeout(() => setShown(null), 3200)
     return () => clearTimeout(t)
   }, [place])

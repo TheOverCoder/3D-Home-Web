@@ -11,11 +11,14 @@ import { xpAt } from '../../src/farm/xp'
 /** In front of the bedroom's wardrobe (5.8, 0.45 in src/home/layout.ts; its doors face +z), looking at it. */
 const FRONT = { x: 5.8, z: 1.75 }
 
+/** A new farm whose house is yours, and you still in it (a new farm starts on the farm: src/scene/Maps.tsx). */
 const fresh = (game: Game) =>
   game.page.evaluate(() => {
     const h = (window as any).__home
     h.farm.setRandom(null)
     h.farm.reset()
+    h.farm.state.apartment.owned = true
+    h.farm.state.place = 'home'
     h.farm.useFarm.setState((s: any) => ({ rev: s.rev + 1 }))
   })
 

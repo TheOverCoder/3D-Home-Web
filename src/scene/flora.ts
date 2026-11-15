@@ -1,5 +1,6 @@
 import { BoxGeometry, BufferGeometry, CylinderGeometry, IcosahedronGeometry, Vector3 } from 'three'
 import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js'
+import { SHRUB_SPOTS } from '../data/garden'
 import { boxProject } from '../lib/boxProject'
 
 // The garden's greenery and timber, made from a seed: clipped hedges, shrubs, broadleaf trees and slatted fences.
@@ -58,6 +59,16 @@ export function hedgeRun(axis: 'x' | 'z', at: number, from: number, to: number, 
   return out
 }
 
+/** The shrubs at SHRUB_SPOTS[from, to) as one geometry, each as it always was: its size from the same seed in the same
+ *  order (src/data/garden.ts: the house's along its walls, the farm's by its west boundary). */
+export function shrubs(from: number, to: number): BufferGeometry {
+  const r = mulberry(9)
+  const sizes = SHRUB_SPOTS.map(() => 0.55 + r() * 0.35)
+  const bushes: BufferGeometry[] = []
+  for (let i = from; i < to; i++) bushes.push(shrub(SHRUB_SPOTS[i][0], SHRUB_SPOTS[i][1], sizes[i], 100 + i))
+  return mergeGeometries(bushes.map((g) => (g.index ? g.toNonIndexed() : g)))!
+}
+
 export function shrub(x: number, z: number, size: number, seed: number): BufferGeometry {
   const g = foliage(new IcosahedronGeometry(1, 3), seed, 0.16, 0.7)
   g.scale(size * 1.15, size * 0.8, size)
@@ -70,8 +81,9 @@ export interface TreeParts {
   crown: BufferGeometry
 }
 
-/** A broadleaf tree: tapered, slightly leaning trunk with two limbs and a crown of overlapping leaf masses. */
-export function tree(x: number, z: number, height: number, seed: number): TreeParts {
+/** A broadleaf tree: tapered, slightly leaning trunk with two limbs and a crown of overlapping leaf masses (each an
+ *  icosphere of `detail`: 2 for the garden and the woods, 1 for the countryside far off round the house). */
+export function tree(x: number, z: number, height: number, seed: number, detail = 2): TreeParts {
   const r = mulberry(seed)
   const lean = (r() - 0.5) * 0.12
   const trunkH = height * 0.42
@@ -95,7 +107,7 @@ export function tree(x: number, z: number, height: number, seed: number): TreePa
     const a = (i / masses) * Math.PI * 2 + r() * 0.6
     const rad = height * (0.16 + r() * 0.08)
     const out = i === 0 ? 0 : height * (0.14 + r() * 0.1)
-    const b = foliage(new IcosahedronGeometry(1, 2), seed * 7 + i, 0.2, 0.9)
+    const b = foliage(new IcosahedronGeometry(1, detail), seed * 7 + i, 0.2, 0.9)
     b.scale(rad * 1.1, rad * 0.85, rad * 1.1)
     b.translate(cx + Math.cos(a) * out, crownY + (i === 0 ? height * 0.08 : (r() - 0.4) * height * 0.16), Math.sin(a) * out)
     blobs.push(b.index ? b.toNonIndexed() : b)

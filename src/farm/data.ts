@@ -2,7 +2,7 @@
 // Units are metres and seconds (real time: crops keep growing while you are inside or away).
 import type { FarmSound } from '../audio/sound'
 import type { ArtId } from '../ui/art'
-import { GATE, GARDEN, GARDEN_DOOR, LANE } from '../data/layout'
+import { GATE, GARDEN, LANE } from '../data/layout'
 import type { PlaceId } from './layout'
 
 export type CropId = 'lettuce' | 'carrot' | 'strawberry' | 'tomato' | 'corn' | 'pumpkin' | 'wheat' | 'sugarcane'
@@ -251,8 +251,9 @@ export const MACHINE_IDS = Object.keys(MACHINES) as MachineId[]
 
 // ───────────────────────────── the yard ─────────────────────────────
 
-/** The path runs straight out of the garden door; the beds line both sides of it. */
-export const PATH_X = GARDEN_DOOR.centre
+/** The path among the beds; they line both sides of it. (It ran straight out of the house's garden door when the house
+ *  stood on the farm: the house has a map of its own now, and the path stays where it was.) */
+export const PATH_X = -1.2
 export const BED = { w: 1.7, d: 0.85, h: 0.36 } as const
 /** A bed's frame on the ground, half its size each way: reach to a bed is measured from its edge. */
 export const BED_BOX = { x: BED.w / 2 + 0.05, z: BED.d / 2 + 0.05 } as const

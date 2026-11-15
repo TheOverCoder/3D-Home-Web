@@ -21,7 +21,7 @@ const reset = (game: Game, extra: Record<string, number> = {}, coins?: number) =
 
 test.describe('farm kitchen and animals', () => {
   test('milk a cow in the pasture', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     await reset(game)
     // hold the first cow still beside the pasture's west fence, facing east, and stand next to her
@@ -38,7 +38,7 @@ test.describe('farm kitchen and animals', () => {
   })
 
   test('the mill grinds wheat into flour, once asked: a second press by mistake uses nothing', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     await reset(game, { wheat: 3 })
     await game.teleport(10.9, 1.4, 10.6, -Math.PI / 2, -0.45)
@@ -67,7 +67,7 @@ test.describe('farm kitchen and animals', () => {
   })
 
   test('the oven offers a cake only with everything for it, says what is missing, and asks before it bakes', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     // short of a pumpkin for the pie (the cake nearest to ready): nothing to press, a status that shows what is missing
     await reset(game, { flour: 1, sugar: 1, egg: 2, milk: 1 })
@@ -100,7 +100,7 @@ test.describe('farm kitchen and animals', () => {
   })
 
   test('buying the west field from the price tag on its plot, and planting sugar cane there with key 8', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     await reset(game, {}, 150)
     // between the west field's two columns, facing the western plot: a price tag on it, nothing on the button
@@ -122,7 +122,7 @@ test.describe('farm kitchen and animals', () => {
   })
 
   test('a buyer for a cake: one lemon cake sells for their offer', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     await reset(game, { lemon_cake: 1 })
     await page.evaluate(() => {

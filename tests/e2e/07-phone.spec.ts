@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { test, expect, bootApp, watchErrors, BASE } from './helpers'
+import { test, expect, bootApp, onMap, watchErrors, BASE } from './helpers'
 
 // A phone in portrait, then turned to landscape: its own page with touch emulation (coarse pointer).
 test.describe('phone', { tag: '@boot' }, () => {
@@ -19,6 +19,8 @@ test.describe('phone', { tag: '@boot' }, () => {
     const errors: string[] = []
     watchErrors(page, errors)
     await bootApp(page)
+    // a new farm starts on the farm: into the house first (src/scene/Maps.tsx), its living room
+    await onMap(page, 'home')
     await page.evaluate(() => {
       const h = (window as any).__home
       h.teleport(-3.5, 1.4, 1.3)
@@ -149,12 +151,14 @@ test.describe('phone', { tag: '@boot' }, () => {
         expect(overlaps(box, other), `stick button ${i} clear of the ${name} (landscape)`).toBe(false)
     }
 
-    // in the garden: a ripe bed behind you shows on the round button as a hand with a lettuce; one tap turns you
-    // round to it and harvests — and the smaller buttons beside it offer the next things within reach
+    // on the farm: a ripe bed behind you shows on the round button as a hand with a lettuce; one tap turns you
+    // round to it and harvests — and the smaller buttons beside it offer the next things within reach (a farm started
+    // again starts on the farm: the scene goes there)
+    await page.evaluate(() => (window as any).__home.farm.reset())
+    await onMap(page, 'farm')
     await page.evaluate(() => {
       const h = (window as any).__home
       const f = h.farm
-      f.reset()
       f.plant(0, 'lettuce')
       for (let i = 0; i < 12; i++) {
         f.water(0)

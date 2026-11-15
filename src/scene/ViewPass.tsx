@@ -15,9 +15,10 @@ const SHUT = 0.002
 
 /**
  * The drawing pass that leaves out what cannot be seen (src/lib/visibility), started on the game's scene and camera.
- * The rooms and portals, and the sun's windows, only in first person with the house closed round you: playing, not
- * decorating or editing (their camera flight back included), every ceiling up and opaque — and only for the house
- * drawn from src/data/layout.ts (a real house model would not match its rooms and windows).
+ * The rooms and portals, and the sun's windows, only in first person with the house closed round you: on the home map
+ * (the farm has no house: src/scene/Maps.tsx), playing, not decorating or editing (their camera flight back included),
+ * every ceiling up and opaque — and only for the house drawn from src/data/layout.ts (a real house model would not
+ * match its rooms and windows).
  */
 export function ViewPass() {
   const scene = useThree((s) => s.scene)
@@ -33,6 +34,7 @@ export function ViewPass() {
         const s = useHome.getState()
         return (
           fits &&
+          s.map === 'home' &&
           s.phase === 'playing' &&
           s.view === 'first' &&
           !s.decorating &&

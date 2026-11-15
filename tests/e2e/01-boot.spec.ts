@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { test, expect } from './helpers'
+import { test, expect, FARM_START } from './helpers'
 
 // Order matters: this spec comes first and boots the shared page (see helpers.ts).
 test.describe('boot', () => {
@@ -9,8 +9,24 @@ test.describe('boot', () => {
     await expect(page.locator('.intro .primary')).toBeEnabled({ timeout: 180_000 })
     expect((await game.state()).phase).toBe('intro')
     await page.locator('.intro .primary').click()
-    await page.waitForFunction(() => (window as any).__home.useHome.getState().room != null, null, { timeout: 120_000, polling: 500 })
+    await page.waitForFunction(() => (window as any).__home.useHome.getState().mapReady, null, { timeout: 120_000, polling: 500 })
     expect((await game.state()).phase).toBe('playing')
+    // a new farm starts on the farm (the house is a map of its own, bought later), on the path among the beds, looking
+    // south to the gate (src/data/maps.ts, FARM_START)
+    const start = await page.evaluate(() => {
+      const h = (window as any).__home
+      const s = h.useHome.getState()
+      const p = h.ecctrl().body.translation()
+      return { map: s.map, place: h.farm.state.place, owned: h.farm.state.apartment.owned, outdoors: s.outdoors, room: s.room, x: p.x, z: p.z, yaw: h.look.yaw }
+    })
+    expect(start).toMatchObject({ map: 'farm', place: 'farm', owned: false, outdoors: true, room: null })
+    expect(Math.hypot(start.x - FARM_START.x, start.z - FARM_START.z)).toBeLessThan(0.5)
+    expect(Math.cos(start.yaw - Math.PI)).toBeGreaterThan(0.95)
+    // the farm's own things, and none of the house's: its beds on offer, no room, no lamp, no screen
+    const ids: string[] = await page.evaluate(() => (window as any).__home.interactables().map((d: any) => d.id))
+    expect(ids.some((id) => id.startsWith('farm-bed-'))).toBe(true)
+    expect(ids.filter((id) => /^(lamp-|screen-|item-|door-|wardrobe-)/.test(id))).toEqual([])
+    expect(await page.evaluate(() => !!(window as any).__home.scene.getObjectByName('home-map'))).toBe(false)
     // let the first frames run, then nothing should have gone wrong
     await page.waitForTimeout(3000)
     expect(game.errors, game.errors.join('\n')).toEqual([])
@@ -19,6 +35,11 @@ test.describe('boot', () => {
   test('first person by default, eyes about 1.6 m above the floor', async ({ game }) => {
     await game.ready()
     const { page } = game
+    // the house now (the test farm owns it): its own things, and none of the farm's
+    const ids: string[] = await page.evaluate(() => (window as any).__home.interactables().map((d: any) => d.id))
+    expect(ids.some((id) => id.startsWith('lamp-'))).toBe(true)
+    expect(ids.filter((id) => id.startsWith('farm-'))).toEqual([])
+    expect(await page.evaluate(() => !!(window as any).__home.scene.getObjectByName('farm-map'))).toBe(false)
     expect((await game.state()).view).toBe('first')
     // software rendering makes the physics bounce a little: use the median of many samples
     const ys: number[] = []

@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { Page } from '@playwright/test'
-import { countingTest as test, expect, bootApp, emptyFarm, fillFarm, marketDoorStill, watchErrors, BASE, NULL_GL } from './helpers'
+import { countingTest as test, expect, bootApp, emptyFarm, fillFarm, marketDoorStill, onMap, watchErrors, BASE, NULL_GL, type MapId } from './helpers'
 import { FRONT_DOOR, HALL } from '../../src/data/market'
 
-// The budget, measured the way phones meet the game: a walk through the house, out over the farm and into the
-// supermarket, at its fullest (every room filled with the heaviest piece until full, every animal the shop sells,
-// fifteen buyers, ripe crops, every place on the market's shelves full of corn), at
-// 640×360 and at a phone's drawing buffers held upright and turned sideways. A Pixel 7 on Medium draws 390×844 CSS px
+// The budget, measured the way phones meet the game: a walk through the house and its garden (the home map), then over
+// the farm and into the supermarket (the farm's map: src/scene/Maps.tsx), at its fullest (every room filled with the
+// heaviest piece until full, every animal the shop sells, fifteen buyers, ripe crops, every place on the market's
+// shelves full of corn), at 640×360 and at a phone's drawing buffers held upright and turned sideways. A Pixel 7 on Medium draws 390×844 CSS px
 // at 1.25 px each: 487×1055. What a view draws depends only on its frustum (its size and the field of view the game
 // gives it, wider when upright), never on the device or the tier (src/lib/profile.ts changes the shadow map's texels,
 // textures and post-processing, not geometry), so the shared page at that size draws what the phone draws.
@@ -38,8 +38,6 @@ const PAID = 0.05
 /** Paid by: what each debt waits for. */
 // (levels of detail — a model far off drawn with fewer triangles — were measured and pay nothing: far people change
 // pixels below a pixel's size, and at the scale where nothing changes they save 9 %)
-const OCCLUDERS = "the farm's buildings hiding what is behind them, as the house's walls do (third person over the yard: a fifth to a third of it is behind something)"
-const MERGED = 'the merged pieces left out one by one where they cannot be seen (a merged mesh is drawn whole)'
 const FURNITURE = 'fewer furniture draws: the pieces of one kind in a room drawn together'
 
 interface Debt {
@@ -53,41 +51,19 @@ interface Debt {
   pays: string[]
 }
 
-const YARD = 'over the farm the walls hide only what is behind the house: every room is seen through its windows, full of furniture, and the whole farm in front with its animals and buyers'
-const ROOMS = 'the ceilings go and the eye is over the walls: every room in view is drawn, full of furniture (the walls hide only what is low and close behind them)'
 const SHADOWS = 'the ceilings go, so the sun reaches every room: every piece of furniture is drawn into its map'
 
 /** The views over the budget today (with the drawing pass, the hedge and the woods in pieces), and the most each may draw
- *  until it is paid: the most it measured, and 5 % more (the animals and buyers wander in and out of a view: the yard
- *  back at the house sideways measured 249k to 263k). Paid once it measures 5 % under the budget. */
-const DEBTS: Debt[] = [
-  // the house's walls hide what is behind them (src/lib/visibility/walls.ts): 436k-439k -> 256k-263k here, and the yard back at
-  // the house, the yard upright, third person and decorating sideways paid
-  // with the crowds' lighter copies of far parts (src/lib/sculpt/lod.ts) 238k-249k at 640x360 and 244k-250k sideways
-  // over four walks, at full speed with every buyer at the gate (261k-278k before them): under the budget, not yet 5 % under
-  { view: 'yard, over the farm', size: '640×360', pass: 'camera', triangles: 258_000, why: YARD, pays: [OCCLUDERS] },
-  { view: 'yard, over the farm', size: '1055×487', pass: 'camera', triangles: 258_000, why: YARD, pays: [OCCLUDERS] },
-  // the pieces and the walls stay merged while decorating (649 → 373 draws): a merged mesh is drawn whole, 3-7 % more triangles
-  { view: 'decorating the living room', size: '640×360', pass: 'camera', triangles: 300_000, why: ROOMS, pays: [MERGED] },
-  ...SIZES.flatMap((s): Debt[] => [
-    { view: 'third person, the living room', size: s.name, pass: 'shadow', triangles: 315_000, draws: 453, why: SHADOWS, pays: [FURNITURE] },
-    { view: 'decorating the living room', size: s.name, pass: 'shadow', triangles: 313_000, draws: 447, why: SHADOWS, pays: [FURNITURE] },
-  ]),
-]
-
-/** Outdoors in first person the sun's shadow pass is the same from every view: one debt for them (draws only; its
- *  triangles stay under the budget). Indoors it is paid while no window's sunlight falls on you (215-220 draws: the
- *  walls drawn merged, your body out of the map); where it does, your body is drawn into the map — 37 draws of its 52
- *  meshes, 6.9k triangles — and the same debt holds (the office, 0.8 m from where the walk stands: 252). */
-const OUTDOORS = ['gate, the line', 'yard, over the farm', 'yard, back at the house', 'lane, the market', 'lane, the market, its shoppers', 'market, the shelves', 'market, the shelves, mixed']
-const SUN_DEBT: Debt = {
-  view: 'first person outdoors, and indoors in a window’s sunlight',
-  size: 'every size',
-  pass: 'shadow',
-  draws: 275,
-  why: 'the silo, the barn, the office and the tractor cast shadows of their own (242 → 261), and so does your body in the sun: outdoors, and indoors where a window’s sunlight falls on you (215 → 252)',
-  pays: ['their static parts drawn into the map together', 'your body drawn in fewer pieces'],
-}
+ *  until it is paid: the most it measured, and 5 % more. Paid once it measures 5 % under the budget. */
+// paid with the two maps (the house and the farm each a map of its own, src/scene/Maps.tsx): the yard over the farm
+// (238k-252k with the house's rooms seen through its windows → 231k-241k), decorating the living room at 640×360 (286k
+// with the farm round the house → 230k), and the sun's draws outdoors and in a window's sunlight (261-262 → 141-172:
+// the farm's casters are not in the house's map, nor the house's in the farm's). Third person and decorating draw no
+// farm into the sun's map: 309k-310k → 264k triangles, 425-433 → 305-312 draws.
+const DEBTS: Debt[] = SIZES.flatMap((s): Debt[] => [
+  { view: 'third person, the living room', size: s.name, pass: 'shadow', triangles: 278_000, draws: 328, why: SHADOWS, pays: [FURNITURE] },
+  { view: 'decorating the living room', size: s.name, pass: 'shadow', triangles: 275_000, draws: 322, why: SHADOWS, pays: [FURNITURE] },
+])
 
 /** `BUDGET_MEASURE=1`: the table without the checks, to measure the debts again (after a change that pays one). */
 const MEASURE_ONLY = !!process.env.BUDGET_MEASURE
@@ -96,6 +72,8 @@ const P = Math.PI
 const EYE = 1.62
 
 interface View {
+  /** the map it is on: the house and its garden, or the farm */
+  map: MapId
   name: string
   /** where the player stands, and (first person) the camera set by hand: yaw, pitch, at eye height */
   x: number
@@ -116,40 +94,43 @@ interface View {
   fill?: { shoppers?: boolean; mixed?: boolean; quiet?: boolean }
 }
 
-/** The walk: the four rooms, each doorway with the kitchen's door shut and open, out of the garden door, the gate with
- *  the line, the yard over the farm and back at the house, the supermarket from the lane and across its shelves, third
- *  person and decorating in the living room, and the bedroom's wardrobe open (a hat on). */
+/** The walk, map by map. The house: the four rooms, each doorway with the kitchen's door shut and open, out of the garden
+ *  door, its garden back at the house and over the fence, third person and decorating in the living room, and the
+ *  bedroom's wardrobe open (a hat on). The farm: the gate with the line, the yard over the farm and where the house stood,
+ *  the supermarket from the lane and across its shelves. */
 const WALK: View[] = [
-  { name: 'living room', x: -3.5, z: 1.3, yaw: P, pitch: -0.04, door: false },
-  { name: 'studio', x: -3.5, z: -2, yaw: 0, door: false },
-  { name: 'kitchen', x: 3.5, z: -3, yaw: P, door: false },
-  { name: 'bedroom', x: 3.5, z: 1, yaw: P, door: false },
-  ...[false, true].flatMap((open) => {
+  { map: 'home', name: 'living room', x: -3.5, z: 1.3, yaw: P, pitch: -0.04, door: false },
+  { map: 'home', name: 'studio', x: -3.5, z: -2, yaw: 0, door: false },
+  { map: 'home', name: 'kitchen', x: 3.5, z: -3, yaw: P, door: false },
+  { map: 'home', name: 'bedroom', x: 3.5, z: 1, yaw: P, door: false },
+  ...[false, true].flatMap((open): View[] => {
     const door = open ? 'the door open' : 'the door shut'
     return [
-      { name: `living ↔ studio doorway, ${door}`, x: -3.5, z: 1.2, yaw: 0, door: open },
-      { name: `studio ↔ kitchen doorway, ${door}`, x: -1.2, z: -3, yaw: -P / 2, door: open },
-      { name: `living ↔ bedroom doorway, ${door}`, x: -1.2, z: 3, yaw: -P / 2, door: open },
-      { name: `kitchen ↔ bedroom doorway, ${door}`, x: 3.5, z: -1.3, yaw: P, door: open },
+      { map: 'home', name: `living ↔ studio doorway, ${door}`, x: -3.5, z: 1.2, yaw: 0, door: open },
+      { map: 'home', name: `studio ↔ kitchen doorway, ${door}`, x: -1.2, z: -3, yaw: -P / 2, door: open },
+      { map: 'home', name: `living ↔ bedroom doorway, ${door}`, x: -1.2, z: 3, yaw: -P / 2, door: open },
+      { map: 'home', name: `kitchen ↔ bedroom doorway, ${door}`, x: 3.5, z: -1.3, yaw: P, door: open },
     ]
   }),
-  { name: 'garden door, looking out', x: -1.2, z: 3.6, yaw: P, pitch: -0.05, door: false },
-  { name: 'gate, the line', x: 4.2, z: 10.8, yaw: P - 0.5, pitch: -0.05 },
-  { name: 'yard, over the farm', x: -12, z: -10.5, yaw: (-3 * P) / 4, pitch: -0.08 },
-  { name: 'yard, back at the house', x: 0, z: 12.5, yaw: 0, pitch: 0.02 },
+  { map: 'home', name: 'garden door, looking out', x: -1.2, z: 3.6, yaw: P, pitch: -0.05, door: false },
+  { map: 'home', name: 'the garden, back at the house', x: 0, z: 12.5, yaw: 0, pitch: 0.02, door: false },
+  { map: 'home', name: 'the garden, over the fence to the west', x: -9.5, z: 2, yaw: P / 2, pitch: 0.02, door: false },
+  { map: 'home', name: 'third person, the living room', x: -3.5, z: 2.5, yaw: P, mode: 'third', door: false },
+  { map: 'home', name: 'decorating the living room', x: -3.5, z: 2.5, yaw: P, mode: 'decorate', door: false },
+  { map: 'home', name: 'the wardrobe open, you filmed', x: 5.8, z: 1.75, yaw: 0, mode: 'wardrobe', door: false },
+  { map: 'farm', name: 'gate, the line', x: 4.2, z: 10.8, yaw: P - 0.5, pitch: -0.05 },
+  { map: 'farm', name: 'yard, over the farm', x: -12, z: -10.5, yaw: (-3 * P) / 4, pitch: -0.08 },
+  { map: 'farm', name: 'yard, where the house stood', x: 0, z: 12.5, yaw: 0, pitch: 0.02 },
   // the supermarket across the lane (src/data/market.ts), every place on its shelves full: from the lane, 2.4 m out from
   // its doorway and looking at its front, its sliding doors shut (they open for anyone within 2 m; the garden's gate,
   // more than 1.8 m away, stays shut too) — and with its shoppers about, who keep the doors open (one stands just inside
   // them); and inside by the door, the doors open beside you, looking across the shelves along the south wall to the
   // island (36° east of south), its shoppers about, every place full of corn (the most triangles) and each a different
   // good (the most draws)
-  { name: 'lane, the market', x: (FRONT_DOOR.x0 + FRONT_DOOR.x1) / 2, z: FRONT_DOOR.z0 - 2.4, yaw: P, pitch: -0.03, marketDoor: 0 },
-  { name: 'lane, the market, its shoppers', x: (FRONT_DOOR.x0 + FRONT_DOOR.x1) / 2, z: FRONT_DOOR.z0 - 2.4, yaw: P, pitch: -0.03, marketDoor: 1, fill: { shoppers: true } },
-  { name: 'market, the shelves', x: FRONT_DOOR.x1 - 0.3, z: HALL.z0 + 0.6, yaw: -P + (36 * P) / 180, pitch: -0.12, marketDoor: 1, fill: { shoppers: true } },
-  { name: 'market, the shelves, mixed', x: FRONT_DOOR.x1 - 0.3, z: HALL.z0 + 0.6, yaw: -P + (36 * P) / 180, pitch: -0.12, marketDoor: 1, fill: { shoppers: true, mixed: true } },
-  { name: 'third person, the living room', x: -3.5, z: 2.5, yaw: P, mode: 'third', door: false },
-  { name: 'decorating the living room', x: -3.5, z: 2.5, yaw: P, mode: 'decorate', door: false },
-  { name: 'the wardrobe open, you filmed', x: 5.8, z: 1.75, yaw: 0, mode: 'wardrobe', door: false },
+  { map: 'farm', name: 'lane, the market', x: (FRONT_DOOR.x0 + FRONT_DOOR.x1) / 2, z: FRONT_DOOR.z0 - 2.4, yaw: P, pitch: -0.03, marketDoor: 0 },
+  { map: 'farm', name: 'lane, the market, its shoppers', x: (FRONT_DOOR.x0 + FRONT_DOOR.x1) / 2, z: FRONT_DOOR.z0 - 2.4, yaw: P, pitch: -0.03, marketDoor: 1, fill: { shoppers: true } },
+  { map: 'farm', name: 'market, the shelves', x: FRONT_DOOR.x1 - 0.3, z: HALL.z0 + 0.6, yaw: -P + (36 * P) / 180, pitch: -0.12, marketDoor: 1, fill: { shoppers: true } },
+  { map: 'farm', name: 'market, the shelves, mixed', x: FRONT_DOOR.x1 - 0.3, z: HALL.z0 + 0.6, yaw: -P + (36 * P) / 180, pitch: -0.12, marketDoor: 1, fill: { shoppers: true, mixed: true } },
 ]
 
 interface Count {
@@ -169,6 +150,8 @@ interface Row {
   on: Measured
   off: Measured
   whole: Measured | null
+  /** a first-person view (the wardrobe's included: the camera films you, the rooms and portals in use) */
+  firstPerson: boolean
   portals: boolean
   sun: boolean
   verdict: string
@@ -210,7 +193,8 @@ function count([pose, asWhole]: [number[] | null, boolean]) {
     const off = run()
     v.on = true
     let whole = null
-    if (asWhole && h.land) {
+    // (the hedge and the woods are the farm's: on its map only)
+    if (asWhole && h.land && h.useHome.getState().map === 'farm') {
       h.land.whole(true)
       try {
         whole = run()
@@ -317,7 +301,7 @@ async function measure(page: Page, v: View, farm: string, whole: boolean): Promi
     })
     await page.waitForFunction(() => (window as any).__home.view.stats.portals === true, null, { timeout: 120_000, polling: 250 })
   } else r = await page.evaluate(count, [[v.x, EYE, v.z, v.yaw, v.pitch ?? 0], whole] as [number[], boolean])
-  return { farm, view: v.name, size: r.size.join('×'), on: r.on, off: r.off, whole: r.whole, portals: r.portals, sun: r.sun, verdict: '' }
+  return { farm, view: v.name, size: r.size.join('×'), on: r.on, off: r.off, whole: r.whole, firstPerson: !v.mode || v.mode === 'wardrobe', portals: r.portals, sun: r.sun, verdict: '' }
 }
 
 /** Resizes the shared page to a size until the canvas has it; back to 640×360 with `null`. */
@@ -332,10 +316,7 @@ async function resize(page: Page, size: { width: number; height: number } | null
 function judge(row: Row) {
   const notes: string[] = []
   for (const pass of ['camera', 'shadow'] as const) {
-    // the sun's debt: outdoors always; indoors only when the pass is over the budget (your body in a window's sunlight,
-    // where you happen to stand: 215 draws or 252 in the same view) — under it, an indoor view needs no debt
-    const sunny = pass === 'shadow' && row.portals && (OUTDOORS.includes(row.view) || row.on.shadow.draws >= LIMITS.shadow.draws)
-    const debt = DEBTS.find((d) => d.view === row.view && d.size === row.size && d.pass === pass) ?? (sunny ? SUN_DEBT : undefined)
+    const debt = DEBTS.find((d) => d.view === row.view && d.size === row.size && d.pass === pass)
     for (const what of ['triangles', 'draws'] as const) {
       const value = row.on[pass][what]
       const limit = LIMITS[pass][what]
@@ -357,20 +338,26 @@ function judge(row: Row) {
   row.verdict = notes.length ? notes.join('; ') : 'ok'
 }
 
-/** The walk at each size, on a page with the farm at its fullest. */
+/** The walk at each size, on a page with the farm at its fullest: the house's views, then the farm's. */
 async function walk(page: Page, farm: string, sizes: typeof SIZES, check: boolean, whole = true) {
   try {
     for (const size of sizes) {
       await resize(page, size.width === 640 ? null : size)
-      for (const v of WALK) {
-        const row = await measure(page, v, farm, whole)
-        expect(row.size, `${v.name}: the canvas at ${size.name}`).toBe(size.name)
-        // the rooms and the sun's windows are used in first person (the wardrobe's camera too), and not in third person or
-        // decorating
-        expect(row.portals, `${v.name}: the rooms and portals`).toBe(!v.mode || v.mode === 'wardrobe')
-        rows.push(row)
-        if (check) judge(row)
-        else row.verdict = 'report'
+      for (const map of ['home', 'farm'] as const) {
+        await onMap(page, map)
+        // the farm at its fullest again on its map (the shelves, quiet), the animals and the buyers in their places
+        await fillFarm(page)
+        await page.waitForTimeout(6000)
+        for (const v of WALK.filter((w) => w.map === map)) {
+          const row = await measure(page, v, farm, whole)
+          expect(row.size, `${v.name}: the canvas at ${size.name}`).toBe(size.name)
+          // the rooms and the sun's windows are used in first person in the house (the wardrobe's camera too), and not in
+          // third person or decorating, nor on the farm (a map of its own, with no house)
+          expect(row.portals, `${v.name}: the rooms and portals`).toBe(map === 'home' && row.firstPerson)
+          rows.push(row)
+          if (check) judge(row)
+          else row.verdict = 'report'
+        }
       }
     }
   } finally {

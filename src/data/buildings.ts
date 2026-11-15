@@ -9,7 +9,6 @@
 // and a room would look roofless. src/data/buildings.test.ts checks every row.
 
 import { LOT, MARKET_WALKIN } from './market'
-import { insideHouse, roomAt } from './layout'
 
 /** A box in world metres: x and z on the ground, y up. */
 export interface Box {
@@ -121,10 +120,9 @@ export function insideWalkIn(x: number, z: number, margin = 0): WalkIn | null {
  *  nothing in the garden is in reach from it over the fence, nor the other way. */
 export const LANE = 'lane'
 
-/** Which space a point is in, for the action button (src/lib/interaction.ts): a room of the house (or 'house' in its
- *  walls), a walk-in's room, the lane, or 'out' (the garden and the farm). */
+/** Which space a point of the farm is in, for the action button: a walk-in's room, the lane, or 'out' (the garden and
+ *  the farm). (The house's rooms are the home map's: src/lib/world.ts, spaceHere, asks this only on the farm.) */
 export function spaceAt(x: number, z: number): string {
-  if (insideHouse(x, z)) return roomAt(x, z) ?? 'house'
   const walkIn = walkInRoomAt(x, z)
   if (walkIn) return walkIn.room.space
   return LOT.some((r) => inRect(r, x, z)) ? LANE : 'out'

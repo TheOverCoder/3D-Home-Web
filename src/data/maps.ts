@@ -11,16 +11,16 @@ export interface Spot {
   heading: number
 }
 
-/** Where the car stands on each map. */
+/** Where the car stands on each map (at home: on the driveway, src/data/home.ts, facing the gate in the east fence). */
 export const CAR_SPOT: Record<Place, Spot> = {
   farm: { x: 2.4, z: 14.4, heading: Math.PI / 2 },
-  home: { x: 2.6, z: 9.2, heading: -Math.PI / 2 },
+  home: { x: 2.6, z: 10.2, heading: -Math.PI / 2 },
 }
 
 /** Where you stand when a drive ends, beside the car. */
 export const ARRIVE: Record<Place, Spot> = {
   farm: { x: 2.4, z: 15.9, heading: 0 },
-  home: { x: -1.2, z: 8.2, heading: 0 },
+  home: { x: -1.2, z: 10.2, heading: 0 },
 }
 
 /** Where a new farm starts: on the farm, on the path among the beds, looking south to the gate. */

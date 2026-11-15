@@ -179,17 +179,17 @@ describe('rooms and portals', () => {
     // through the open door the bedroom is seen only through it: its rectangle is the doorway's, not the screen
     const r = p.rects.slice(cellIndex('bedroom') * 4, cellIndex('bedroom') * 4 + 4)
     expect(r[1] - r[0]).toBeLessThan(1.5)
-    // the farm behind the kitchen's back wall: not drawn
+    // the plot behind the kitchen's back wall (the home map: src/data/home.ts): not drawn
     expect(p.seesBox(4, 0, -12, 6, 2, -10, true)).toBe(false)
   })
 
-  it('the garden door shows the farm, narrowed to the door', () => {
+  it('the garden door shows the garden, narrowed to the door', () => {
     const p = new Portals()
     update(p, camera(-1.2, 1.62, 3.6, Math.PI, -0.05, 72, 640 / 360), false)
     expect(p.seen(OUTSIDE)).toBe(true)
-    // the lawn straight out of the door
+    // the lawn straight out of the door, by the driveway
     expect(p.seesBox(-1.5, 0, 9, -1, 0.5, 10, true)).toBe(true)
-    // the hen run far to the east, out past the living room's wall: not through the door
+    // the shrubs by the bedroom's south wall, out past the living room's wall: not through the door
     expect(p.seesBox(9, 0, 8, 10, 1, 9, true)).toBe(false)
   })
 

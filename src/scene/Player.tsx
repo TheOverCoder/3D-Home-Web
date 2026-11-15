@@ -8,8 +8,8 @@ import { useButtonStore, useJoystickStore } from 'ecctrl/input'
 import { CameraControlsImpl } from '@react-three/drei'
 import { MathUtils, Matrix4, Quaternion, Vector3, type Group, type PerspectiveCamera } from 'three'
 import { footstep, jumpSound, land } from '../audio/sound'
-import { GARDEN_DOOR, HOUSE, ROOMS, SPAWN, groundAt, insideHouse, roomAt, type FloorKind } from '../data/layout'
-import { WALK_INS, bounds, walkInRoomAt, type Box, type Rect, type WalkIn } from '../data/buildings'
+import { GARDEN_DOOR, HOUSE, insideHouse } from '../data/layout'
+import { WALK_INS, bounds, type Box, type Rect, type WalkIn } from '../data/buildings'
 import { screenById, type ScreenDef } from '../data/screens'
 import { debugSet } from '../lib/debug'
 import { openEdit, stopDecorating, useDecorate } from '../home/decorate'
@@ -25,13 +25,15 @@ import { stepWalkView, stopWalk, useWalk, walkStats, walkStick, walkTo, walkingT
 import { BODY, playerState } from '../lib/playerState'
 import { useSettings } from '../settings'
 import { busy, useHome, type CompassMark, type Nearby } from '../store'
-import { reachBounds } from '../farm/layout'
-import { farm } from '../farm/state'
+import { floorHere, groundBounds, houseHere, mapNow, roomHere, walkInHere } from '../lib/world'
+import { START } from './maps'
 import { AimMarker } from './AimMarker'
 import { GuideMarker } from './GuideMarker'
 import { gardenDoor } from './GardenDoor'
 import { Avatar, HeldItem } from './Avatar'
 
+/** Where the body is put to stand somewhere (its middle, over the floor): the start, a drive's end. */
+const BODY_Y = 1.4
 const CAPSULE_HALF = BODY.half
 const CAPSULE_RADIUS = BODY.radius
 const FLOAT = BODY.float
@@ -59,15 +61,8 @@ const gait = { phase: 0, step: 0 }
 /** Set by the player when it lands; the camera turns it into a short dip of the head. */
 const landing = { kick: 0 }
 
-/** What a walk-in building's floor sounds like underfoot. */
-const WALK_IN_FLOOR: Record<WalkIn['floor'], FloorKind> = { tile: 'tile', boards: 'wood' }
-
-const floorAt = (x: number, z: number): FloorKind => {
-  const room = roomAt(x, z)
-  if (room) return ROOMS[room].floor
-  const inside = walkInRoomAt(x, z)
-  return inside ? WALK_IN_FLOOR[inside.walkIn.floor] : groundAt(x, z)
-}
+/** What is underfoot, on the map in the scene (src/lib/world.ts). */
+const floorAt = floorHere
 
 /** The touch stick as the player reads it: walking to a compass mark by itself is the stick pushed where the way goes
  *  (src/lib/route); walking on by itself (the button beside the stick) is the stick pushed straight ahead, at a walk. */
@@ -118,10 +113,12 @@ function doorwayAt(w: WalkIn, x: number, z: number): { top: number } | null {
  * through the outer walls is the garden door's opening while it is open. `body` is where the body is drawn this
  * frame (not last frame's position: right after a teleport out of the house that would hold the eyes indoors).
  * A walk-in building is the same: with your body in one of its rooms (or a doorway's thickness) the eyes stay in that
- * room, or in a doorway out of it; outside, they keep out of its walls but for its doorways.
+ * room, or in a doorway out of it; outside, they keep out of its walls but for its doorways. Each map has its own: the
+ * house is the home map's, the walk-ins the farm's (src/lib/world.ts).
  */
 function keepCameraInBounds(p: Vector3, body: Vector3) {
-  const walkIn = walkInRoomAt(body.x, body.z)
+  const house = houseHere()
+  const walkIn = walkInHere(body.x, body.z)
   if (walkIn) {
     const door = doorwayAt(walkIn.walkIn, p.x, p.z)
     if (door) {
@@ -135,38 +132,40 @@ function keepCameraInBounds(p: Vector3, body: Vector3) {
     p.z = MathUtils.clamp(p.z, r.z0 + WALL_CLEAR, r.z1 - WALL_CLEAR)
     return
   }
-  const inOpening = gardenDoor.open > 0.55 && Math.abs(p.x - GARDEN_DOOR.centre) < DOOR_HALF
+  const inOpening = house && gardenDoor.open > 0.55 && Math.abs(p.x - GARDEN_DOOR.centre) < DOOR_HALF
   if (inOpening && Math.abs(p.z - GARDEN_DOOR.at) < CLEAR) {
     // stepping through the door: keep to the opening
     p.y = Math.min(p.y, GARDEN_DOOR.top - 0.12)
     return
   }
-  if (insideHouse(body.x, body.z)) {
+  if (house && insideHouse(body.x, body.z)) {
     p.y = Math.min(p.y, HOUSE.wallHeight - 0.12)
     p.x = MathUtils.clamp(p.x, HOUSE.minX + CLEAR, HOUSE.maxX - CLEAR)
     p.z = MathUtils.clamp(p.z, HOUSE.minZ + CLEAR, inOpening ? HOUSE.maxZ + 3 : HOUSE.maxZ - CLEAR)
     return
   }
   // outdoors: above the ground, around the ground you can be on, and out of the house's walls and every walk-in's
-  const ours = reachBounds(farm.layout)
+  const ours = groundBounds()
   p.y = Math.max(p.y, 0.2)
   p.x = MathUtils.clamp(p.x, ours.minX - 4, ours.maxX + 4)
   p.z = MathUtils.clamp(p.z, ours.minZ - 4, ours.maxZ + 4)
-  for (const { w, b } of WALK_IN_BOUNDS) {
-    if (!inRect(b, p.x, p.z, WALL_CLEAR)) continue
-    // looking in through a doorway: keep under its lintel
-    const door = doorwayAt(w, p.x, p.z)
-    if (door) {
-      p.y = Math.min(p.y, door.top - 0.12)
-      continue
+  if (!house)
+    for (const { w, b } of WALK_IN_BOUNDS) {
+      if (!inRect(b, p.x, p.z, WALL_CLEAR)) continue
+      // looking in through a doorway: keep under its lintel
+      const door = doorwayAt(w, p.x, p.z)
+      if (door) {
+        p.y = Math.min(p.y, door.top - 0.12)
+        continue
+      }
+      const d = [p.x - (b.x0 - WALL_CLEAR), b.x1 + WALL_CLEAR - p.x, p.z - (b.z0 - WALL_CLEAR), b.z1 + WALL_CLEAR - p.z]
+      const m = Math.min(...d)
+      if (m === d[0]) p.x = b.x0 - WALL_CLEAR
+      else if (m === d[1]) p.x = b.x1 + WALL_CLEAR
+      else if (m === d[2]) p.z = b.z0 - WALL_CLEAR
+      else p.z = b.z1 + WALL_CLEAR
     }
-    const d = [p.x - (b.x0 - WALL_CLEAR), b.x1 + WALL_CLEAR - p.x, p.z - (b.z0 - WALL_CLEAR), b.z1 + WALL_CLEAR - p.z]
-    const m = Math.min(...d)
-    if (m === d[0]) p.x = b.x0 - WALL_CLEAR
-    else if (m === d[1]) p.x = b.x1 + WALL_CLEAR
-    else if (m === d[2]) p.z = b.z0 - WALL_CLEAR
-    else p.z = b.z1 + WALL_CLEAR
-  }
+  if (!house) return
   if (inOpening) {
     if (insideHouse(p.x, p.z)) p.y = Math.min(p.y, HOUSE.wallHeight - 0.12)
     return
@@ -217,6 +216,8 @@ function enters(o: Vector3, d: Vector3, b: Box): number {
  * camera looks at to the camera is cut where it first meets one, so it still looks at you.
  */
 function holdArm(target: Vector3, cam: Vector3) {
+  // the walk-ins are the farm's
+  if (houseHere()) return
   armDir.subVectors(cam, target)
   const length = armDir.length()
   if (length < 1e-6) return
@@ -477,7 +478,8 @@ function CameraRig({ ecctrl, feet }: { ecctrl: RefObject<EcctrlHandle | null>; f
   useEffect(() => {
     const c = controls.current
     if (!c) return
-    void c.setLookAt(SPAWN[0] + 2.6, SPAWN[1] + 4.2, SPAWN[2] + 4.0, SPAWN[0], SPAWN[1] - 0.4, SPAWN[2], false)
+    const s = START[mapNow()]
+    void c.setLookAt(s.x + 2.6, BODY_Y + 4.2, s.z + 4.0, s.x, BODY_Y - 0.4, s.z, false)
     // turning round in third person swings the camera round you
     orbit.turn = (yaw, smooth) => void controls.current?.rotate(yaw, 0, smooth)
     return () => {
@@ -651,9 +653,13 @@ function CameraRig({ ecctrl, feet }: { ecctrl: RefObject<EcctrlHandle | null>; f
 
 export function Player() {
   const ecctrl = useRef<EcctrlHandle>(null)
-  // a restart of the graphics mid-game puts you back where you stood, looking the same way
+  // where the map in the scene starts (src/scene/maps.ts: a new farm on the farm, a save on the map it was left on); a
+  // restart of the graphics mid-game puts you back where you stood, looking the same way
   const [spawnAt] = useState<[number, number, number]>(() => {
-    if (!resume.at) return SPAWN
+    if (!resume.at) {
+      const s = START[mapNow()]
+      return [s.x, BODY_Y, s.z]
+    }
     const at = resume.at
     look.yaw = resume.yaw
     look.pitch = resume.pitch
@@ -762,12 +768,26 @@ export function Player() {
       playerState.position.z = to.z
       return
     }
+    // the map changing behind the curtain (src/scene/maps.ts): the body waits where it gets out, whatever ground is there
+    // meanwhile, until the new map is in
+    const hold = playerState.hold
+    if (hold) {
+      const body = handle.body
+      body?.setTranslation(hold, true)
+      body?.setLinvel({ x: 0, y: 0, z: 0 }, true)
+      body?.setAngvel({ x: 0, y: 0, z: 0 }, true)
+      playerState.position.x = hold.x
+      playerState.position.y = hold.y
+      playerState.position.z = hold.z
+      return
+    }
     // a safety net: should physics ever throw the body out of the world (through the floor, or knocked flying),
-    // it comes back to the start instead of falling or flying for ever (anywhere on the ground you can be on is in it)
-    const ours = reachBounds(farm.layout)
+    // it comes back to the map's start instead of falling or flying for ever (anywhere on the ground you can be on is in it)
+    const ours = groundBounds()
     if (pos.y < -6 || pos.y > 30 || pos.x < ours.minX - 8 || pos.x > ours.maxX + 8 || pos.z < ours.minZ - 8 || pos.z > ours.maxZ + 8) {
       const body = handle.body
-      body?.setTranslation({ x: SPAWN[0], y: SPAWN[1], z: SPAWN[2] }, true)
+      const start = START[mapNow()]
+      body?.setTranslation({ x: start.x, y: BODY_Y, z: start.z }, true)
       body?.setLinvel({ x: 0, y: 0, z: 0 }, true)
       body?.setAngvel({ x: 0, y: 0, z: 0 }, true)
       return
@@ -905,9 +925,10 @@ export function Player() {
     acc.current += dt
     if (acc.current < 0.1) return
     acc.current = 0
-    const room = roomAt(pos.x, pos.z)
+    // (the house and its rooms are the home map's: on the farm you are always outdoors)
+    const room = roomHere(pos.x, pos.z)
     if (room !== state.room) state.setRoom(room)
-    const outdoors = !insideHouse(pos.x, pos.z)
+    const outdoors = !(houseHere() && insideHouse(pos.x, pos.z))
     if (outdoors !== state.outdoors) state.setOutdoors(outdoors)
     if (busy(state)) return
     let view: ViewRay | undefined

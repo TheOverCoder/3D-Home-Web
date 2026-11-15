@@ -5,6 +5,11 @@ import { test as base, expect, type Browser, type Page } from '@playwright/test'
 const IGNORED = [/THREE\.Clock: This module has been deprecated/, /using deprecated parameters for the initialization function/]
 
 export const SPAWN = { x: -3.5, y: 1.4, z: 1.3 }
+/** Where a new farm starts, on the farm (src/data/maps.ts, FARM_START): on the path among the beds, looking south. */
+export const FARM_START = { x: -1.2, y: 1.4, z: 6.8 }
+
+/** The two maps (src/scene/Maps.tsx): the house on its own plot, and the farm. */
+export type MapId = 'home' | 'farm'
 
 /** The address the app is served on (playwright.config.ts: 4185, or E2E_PORT for a second copy of the tree). */
 export const BASE = `http://localhost:${Number(process.env.E2E_PORT) || 4185}`
@@ -13,21 +18,52 @@ export interface Game {
   page: Page
   /** console errors / page errors seen since the page was created */
   errors: string[]
-  /** Boots the app if needed, then resets the world to a known state (spawn, nothing open or carried, every pickup where it started). */
-  ready: () => Promise<void>
+  /** Boots the app if needed, then resets the world to a known state on a map (the house, by default: in its living room,
+   *  where it always started; the farm: at a new farm's start), nothing open or carried, every pickup where it started.
+   *  The map is changed when needed (the test farm owns the house). */
+  ready: (map?: MapId) => Promise<void>
   state: () => Promise<any>
   teleport: (x: number, y: number, z: number, yaw?: number, pitch?: number) => Promise<void>
   /** Holds a key down for a while. */
   hold: (key: string, ms: number) => Promise<void>
 }
 
-/** Opens the app with the debug hooks, waits for the intro button, enters, waits for the first room. */
+/** Opens the app with the debug hooks, waits for the intro button, enters, waits until you stand on the first map (a
+ *  new farm: the farm, outdoors). */
 export async function bootApp(page: Page, query = 'debug&quality=low') {
   await page.goto(`/?${query}`)
   const btn = page.locator('.intro .primary')
   await expect(btn).toBeEnabled({ timeout: 300_000 })
   await btn.click()
-  await page.waitForFunction(() => (window as any).__home?.useHome.getState().room != null, null, { timeout: 120_000, polling: 500 })
+  await page.waitForFunction(
+    () => {
+      const s = (window as any).__home?.useHome.getState()
+      return !!s && s.phase === 'playing' && s.mapReady && !s.curtain
+    },
+    null,
+    { timeout: 120_000, polling: 500 },
+  )
+}
+
+/** Puts the shared page on a map (the house yours first): the scene changes behind its curtain, you at that map's start.
+ *  Nothing happens when you are on it already. */
+export async function onMap(page: Page, map: MapId) {
+  const there = await page.evaluate((map) => {
+    const h = (window as any).__home
+    const s = h.useHome.getState()
+    if (s.map === map && s.mapReady && !s.curtain) return true
+    h.maps.go(map)
+    return false
+  }, map)
+  if (there) return
+  await page.waitForFunction(
+    (map) => {
+      const s = (window as any).__home.useHome.getState()
+      return s.map === map && s.mapReady && !s.curtain
+    },
+    map,
+    { timeout: 180_000, polling: 250 },
+  )
 }
 
 export function watchErrors(page: Page, errors: string[]) {
@@ -87,9 +123,10 @@ export async function openGame(browser: Browser, counting = false): Promise<{ ga
       await page.waitForTimeout(ms)
       await page.keyboard.up(key)
     },
-    ready: async () => {
+    ready: async (map = 'home') => {
       if (!(await isPlaying(page))) await bootApp(page)
-      await page.evaluate(() => {
+      await onMap(page, map)
+      await page.evaluate((map) => {
         const h = (window as any).__home
         const s = h.useHome.getState()
         if (s.screen) s.closeScreen()
@@ -110,7 +147,9 @@ export async function openGame(browser: Browser, counting = false): Promise<{ ga
           lamps: Object.fromEntries(Object.keys(s.lamps).map((k) => [k, true])),
           doors: Object.fromEntries(Object.keys(s.doors).map((k) => [k, false])),
         })
-        h.teleport(-3.5, 1.4, 1.3)
+        // the house: its living room, where it always started; the farm: where a new farm starts
+        const at = map === 'home' ? [-3.5, 1.3] : [-1.2, 6.8]
+        h.teleport(at[0], 1.4, at[1])
         if (typeof h.look === 'function') h.look({ yaw: Math.PI, pitch: -0.04 })
         else {
           h.look.yaw = Math.PI
@@ -121,7 +160,7 @@ export async function openGame(browser: Browser, counting = false): Promise<{ ga
         // the day's clock has no such hooks)
         h.farm?.setHour?.(12)
         h.farm?.freezeDay?.(true)
-      })
+      }, map)
     },
   }
   return { game: g, close: () => context.close() }
@@ -180,6 +219,8 @@ export async function fillFarm(page: Page): Promise<FullFarm> {
     const h = (window as any).__home
     if (h.__fullFarm) return { ...h.__fullFarm, fresh: false }
     h.farm.state.coins = 1_000_000
+    // the house yours (the two maps: src/scene/Maps.tsx)
+    h.farm.state.apartment.owned = true
     const pieces = h.home.pieces
     const heaviest = Object.keys(pieces)
       .filter((t) => pieces[t].price > 0)
@@ -249,13 +290,22 @@ export async function marketDoorStill(page: Page, want?: 0 | 1) {
   )
 }
 
-/** Today's farm again, after `fillFarm`, for the specs that follow. */
+/** Today's farm again, after `fillFarm`, for the specs that follow (a new farm: the scene goes to the farm with it). */
 export async function emptyFarm(page: Page) {
   await page.evaluate(() => {
     const h = (window as any).__home
     h.farm.reset()
     delete h.__fullFarm
   })
+  await page.waitForFunction(
+    () => {
+      const h = (window as any).__home
+      const s = h.useHome.getState()
+      return s.map === h.farm.state.place && s.mapReady && !s.curtain
+    },
+    null,
+    { timeout: 180_000, polling: 250 },
+  )
 }
 
 export { expect }

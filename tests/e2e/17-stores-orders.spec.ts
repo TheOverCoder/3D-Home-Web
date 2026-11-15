@@ -34,7 +34,7 @@ const reset = (game: Game, inv: Record<string, number> = {}, coins = 200) =>
 
 test.describe('the silo, the barn, surprises and orders', () => {
   test('the chips at the top show how full the silo and the barn are; a tap opens what is inside', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     await reset(game, { lettuce: 12, lemon: 3, egg: 7, brick: 1 })
     await game.teleport(-1.2, 1.4, 8.0, Math.PI, -0.1)
@@ -51,7 +51,7 @@ test.describe('the silo, the barn, surprises and orders', () => {
   })
 
   test('a harvest the silo has no room for waits in its bed: a status says so, and the full silo is on the compass', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     await reset(game, { wheat: 48 })
     // the first bed ripe, the others growing (nothing else to do there), the lemon tree picked
@@ -84,7 +84,7 @@ test.describe('the silo, the barn, surprises and orders', () => {
   })
 
   test('the barn is made bigger with a brick, a plank and a nail, from its panel, through a card that asks first', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     await reset(game, { brick: 1, plank: 1, nail: 1 })
     // at the barn's doors, in the west yard
@@ -110,7 +110,7 @@ test.describe('the silo, the barn, surprises and orders', () => {
   })
 
   test('surprises: a buyer with one gives it as you sell, each egg can turn one up; they fly to the barn', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     await reset(game, { egg: 2 })
     await game.teleport(5.6, 1.4, 11.6, Math.PI, -0.05)
@@ -145,7 +145,7 @@ test.describe('the silo, the barn, surprises and orders', () => {
   })
 
   test('orders at the office: goods go in partly, a full order is sent and paid, a declined one gives its goods back', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     await reset(game, {}, 100)
     await game.teleport(-8.0, 1.4, 6.3, Math.PI / 2, -0.1)
@@ -190,7 +190,7 @@ test.describe('the silo, the barn, surprises and orders', () => {
   })
 
   test('the tractor loads the crates, drives them off through the gate in the hedge and backs into its yard again', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     await reset(game)
     await game.teleport(-7.6, 1.4, 9.3, 1.18, 0.02)
@@ -231,7 +231,7 @@ test.describe('the silo, the barn, surprises and orders', () => {
   })
 
   test('the tractor is solid: walking into it in its yard, you stop at it', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     await reset(game)
     // east of its carrier, walking west along its track towards the gate
     await game.teleport(-8.9, 1.4, 7.9, Math.PI / 2, 0)
@@ -241,7 +241,7 @@ test.describe('the silo, the barn, surprises and orders', () => {
   })
 
   test('the office sells a fourth place on the board, through a card that asks first', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     await reset(game, {}, 500)
     await page.evaluate(() => (window as any).__home.useHome.getState().openPanel({ kind: 'orders' }))
@@ -259,7 +259,7 @@ test.describe('the silo, the barn, surprises and orders', () => {
   })
 
   test('the seed packets show how many of each crop are in the silo', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     await reset(game, { lettuce: 7, tomato: 2 })
     await page.evaluate(() => (window as any).__home.useHome.getState().openPanel({ kind: 'seeds', bed: 0 }))

@@ -4,7 +4,8 @@ import { test, expect, type Game } from './helpers'
 
 // The action button's contract (src/lib/interaction.ts; CLAUDE.md, "Farm actions"), held for everything that can be
 // pressed (`__home.interactables()`), on farms of every kind: today's, one with plenty of everything, one with
-// nothing, and farms put together at random. Whatever is offered as an action — enabled, and not a status
+// nothing, and farms put together at random — on both maps, the farm and the house (src/scene/Maps.tsx: each has its
+// own things to press, and only the map you are on is in the scene). Whatever is offered as an action — enabled, and not a status
 // (`verb: 'wait'`) — does something when pressed and never spends coins without its price on the prompt. A press that
 // does a job (pick, water, plant, sell, make) and opens something instead opens something to press: a card its
 // button, a panel a button besides Close and Cancel (a sale's panel a Sell). A shop or a board (`shop`, `watch`) may
@@ -120,11 +121,18 @@ async function plenty(page: Page) {
   })
 }
 
-/** A farm with nothing: no coins, no goods, and the contractor away for the night. */
+/** A farm with nothing: no coins, no goods, and the contractor away for the night (in the house: the house yours, and
+ *  you still in it). */
 async function nothing(page: Page) {
   await page.evaluate(() => {
-    const f = (window as any).__home.farm
+    const h = (window as any).__home
+    const f = h.farm
+    const map = h.useHome.getState().map
     f.reset()
+    if (map === 'home') {
+      f.state.apartment.owned = true
+      f.state.place = 'home'
+    }
     f.setHour(23)
     f.freezeDay(true)
     f.state.coins = 0
@@ -155,22 +163,24 @@ async function check(game: Game, name: string) {
 
 test.describe('the action button', () => {
   test('everything offered does something, spends nothing unpriced, and opens something to press — on every kind of farm', async ({ game }) => {
-    test.setTimeout(600_000)
-    await game.ready()
+    test.setTimeout(900_000)
     const problems: string[] = []
     let pressed = 0
     const add = (r: { problems: string[]; pressed: number }) => {
       problems.push(...r.problems)
       pressed += r.pressed
     }
-    add(await check(game, "today's farm"))
-    await plenty(game.page)
-    add(await check(game, 'plenty'))
-    await nothing(game.page)
-    add(await check(game, 'nothing'))
-    for (const seed of [1, 2, 3]) {
-      await random(game.page, seed)
-      add(await check(game, `random ${seed}`))
+    for (const map of ['farm', 'home'] as const) {
+      await game.ready(map)
+      add(await check(game, `${map}: today's farm`))
+      await plenty(game.page)
+      add(await check(game, `${map}: plenty`))
+      await nothing(game.page)
+      add(await check(game, `${map}: nothing`))
+      for (const seed of [1, 2, 3]) {
+        await random(game.page, seed)
+        add(await check(game, `${map}: random ${seed}`))
+      }
     }
     // enough was pressed to mean something
     expect(pressed).toBeGreaterThan(40)
@@ -179,7 +189,7 @@ test.describe('the action button', () => {
   })
 
   test("afterwards: today's farm again", async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     await game.page.evaluate(() => (window as any).__home.farm.reset())
     await game.ready()
   })

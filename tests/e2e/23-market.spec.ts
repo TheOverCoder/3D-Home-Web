@@ -142,7 +142,7 @@ const atTill = (game: Game) => game.teleport(TILL_STAND.x, 1.4, TILL_STAND.z, ya
 
 test.describe('the supermarket', () => {
   test('through the gate onto the lane and back; the lot holds you in at its edges; inside, nothing puts you back', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     await reset(game)
     // in the garden, a few steps north of the gate, facing it (south): the gate opens as you come, out onto the lane
@@ -181,7 +181,7 @@ test.describe('the supermarket', () => {
   })
 
   test('the manager pays his share of the fair price, rounded down; a sale of nothing is not made; no building materials', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     await reset(game, { lettuce: 5, carrot: 1, tomato: 7, egg: 3, milk: 1, brick: 2 }, 2000)
     const r = await game.page.evaluate(() => {
       const f = (window as any).__home.farm
@@ -232,7 +232,7 @@ test.describe('the supermarket', () => {
   })
 
   test("the manager's panel: buying the shop is there from the first visit, shut below 40 %; holding bricks, Go there walks you to the contractor", async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     await reset(game, { lettuce: 5, brick: 2 }, MANAGER.shopPrice + 100)
     await atManager(game)
@@ -258,7 +258,7 @@ test.describe('the supermarket', () => {
   })
 
   test('his rate to its top, then the shop bought — its price tag on the computer, or his panel, through a card that asks; he walks out and the computer is yours', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     const ladder = Array.from({ length: LADDERS.rate.levels }, (_, k) => ladderPrice('rate', k))
     const total = ladder.reduce((a, b) => a + b, 0) + MANAGER.shopPrice + 100
@@ -341,7 +341,7 @@ test.describe('the supermarket', () => {
   })
 
   test('stocking the shelves: from the silo and the barn, one good a place, priced in steps; emptied back past full; no XP', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     await ownShop(game, { lettuce: 10, egg: 2, brick: 3 })
     const r = await game.page.evaluate(() => {
       const f = (window as any).__home.farm
@@ -387,7 +387,7 @@ test.describe('the supermarket', () => {
   })
 
   test('a bay: never set, it opens its card; sold out, one press restocks every sold-out bay in reach', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     await ownShop(game, { lettuce: 9 })
     // in the hall before the shelves along its south wall, looking at the middle bays
@@ -428,7 +428,7 @@ test.describe('the supermarket', () => {
   })
 
   test('shoppers (the dice always yes) buy everything on the shelves into the till; through the wall the till is not offered; it pays coins and XP', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     await ownShop(game, { lettuce: 3 * SHOP.units })
     const r = await page.evaluate((units) => {
@@ -477,7 +477,7 @@ test.describe('the supermarket', () => {
   })
 
   test('the till on the compass: tapped in the garden, it walks you through the gate and in at the door to the till', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     await ownShop(game)
     // the till full enough to be worth the walk; nothing else ready anywhere
@@ -506,7 +506,7 @@ test.describe('the supermarket', () => {
   })
 
   test('time away: shoppers buy on while you are gone, the welcome-back card says what they left in the till; no XP for it', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     await ownShop(game, { lettuce: 3 * SHOP.units })
     const r = await page.evaluate((units) => {
@@ -534,7 +534,7 @@ test.describe('the supermarket', () => {
   })
 
   test('the walls hide what is inside from the lane; third person, the camera stays in the room your body is in, and out of the building from outside', async ({ game }) => {
-    await game.ready()
+    await game.ready('farm')
     const { page } = game
     await ownShop(game)
     await fillShelves(page)
