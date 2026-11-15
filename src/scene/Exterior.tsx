@@ -147,13 +147,14 @@ function paint(g: BufferGeometry, color: string): BufferGeometry {
 }
 
 /**
- * The countryside round the plot, seen over the fence and from the windows: a few trees (each its own mesh, so the
- * drawing pass leaves out those not in view; their trunks together), fields and low hills on the horizon (each all one
- * mesh: a few thousand triangles at most). Nothing here throws a shadow, and nothing is solid: you never get there.
+ * The countryside round the plot, seen over the fence and from the windows: a few trees as round as the farm's (each
+ * its own mesh, so the drawing pass leaves out those not in view; their trunks together), fields and low hills on the
+ * horizon (each all one mesh: a few thousand triangles at most). Nothing here throws a shadow, and nothing is solid:
+ * you never get there.
  */
 export function Countryside() {
   const built = useMemo(() => {
-    const trees = COUNTRY_TREES.map(([x, z, h], i) => tree(x, z, h, 70 + i, 1))
+    const trees = COUNTRY_TREES.map(([x, z, h], i) => tree(x, z, h, 70 + i))
     const wood = mergeGeometries(trees.map((t) => t.wood))!
     const hills = mergeGeometries(
       HILLS.map(([x, z, rx, rz, h, color]) => {

@@ -446,6 +446,8 @@ const armTarget = new Vector3()
 const screenQ = new Quaternion()
 const m4 = new Matrix4()
 const UP = new Vector3(0, 1, 0)
+// where the body was in the last third-person frame (see the early pass in CameraRig)
+const thirdAt = new Vector3()
 // the first-person pose of the last frame (see the early pass in CameraRig)
 const lastPose = { pos: new Vector3(), quat: new Quaternion(), valid: false }
 
@@ -522,7 +524,10 @@ function CameraRig({ ecctrl, feet }: { ecctrl: RefObject<EcctrlHandle | null>; f
     }
     if (state.view === 'third') {
       const p = ecctrl.current?.currPos
-      if (c && p) void c.moveTo(p.x, p.y + 0.5, p.z, true)
+      // a jump of metres in a frame (put somewhere: out of the car on the other map) is taken at once, not glided to
+      const far = p ? Math.hypot(p.x - thirdAt.x, p.z - thirdAt.z) > 3 : false
+      if (c && p) void c.moveTo(p.x, p.y + 0.5, p.z, !far)
+      if (p) thirdAt.set(p.x, p.y, p.z)
       // the camera swings round behind where you walk with the stick, when chosen (the button beside it)
       if (c && coarsePointer && !busy(state)) {
         const s = stickInput()
@@ -716,6 +721,8 @@ export function Player() {
     debugSet('teleport', (x: number, y: number, z: number) => {
       stopTurn()
       stopWalk('moved')
+      // (a move the game still had to make — out of the car after a change of map — is overtaken by this one)
+      playerState.moveTo = null
       const body = ecctrl.current?.body
       body?.setTranslation({ x, y, z }, true)
       body?.setRotation({ x: 0, y: 0, z: 0, w: 1 }, true)

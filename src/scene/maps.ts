@@ -37,6 +37,16 @@ let asked = 0
 /** Notes a step of the change under way (Maps.tsx). */
 export const mapStep = (step: string) => void (mapTiming[step] = Math.round(performance.now() - asked))
 
+/** Stops the scene's frames (Maps.tsx sets it): from the moment the other map is asked for, nothing is drawn until it is
+ *  in and compiled (its `Arrived` starts them again). */
+let holdFrames: (() => void) | null = null
+export function holdFramesWith(hold: () => void) {
+  holdFrames = hold
+  return () => {
+    if (holdFrames === hold) holdFrames = null
+  }
+}
+
 /** The map the scene is bringing in, and what to do once it is in (Maps.tsx calls `mapArrived`). */
 let expected: { map: Place; resolve: () => void } | null = null
 
@@ -88,6 +98,8 @@ async function show(to: Place, at: Spot) {
       expected = { map: to, resolve }
       for (const k of Object.keys(mapTiming)) delete mapTiming[k]
       asked = performance.now()
+      // (not while the warm-up of a scene starting holds them itself)
+      if (useHome.getState().ready.warm) holdFrames?.()
       useHome.setState({ map: to, mapReady: false })
     })
   }

@@ -38,7 +38,8 @@ export async function bootApp(page: Page, query = 'debug&quality=low') {
   await page.waitForFunction(
     () => {
       const s = (window as any).__home?.useHome.getState()
-      return !!s && s.phase === 'playing' && s.mapReady && !s.curtain
+      // (and where you stand looked at once: in a room, or outdoors)
+      return !!s && s.phase === 'playing' && s.mapReady && !s.curtain && (s.outdoors || s.room !== null)
     },
     null,
     { timeout: 120_000, polling: 500 },

@@ -9,7 +9,14 @@ test.describe('boot', () => {
     await expect(page.locator('.intro .primary')).toBeEnabled({ timeout: 180_000 })
     expect((await game.state()).phase).toBe('intro')
     await page.locator('.intro .primary').click()
-    await page.waitForFunction(() => (window as any).__home.useHome.getState().mapReady, null, { timeout: 120_000, polling: 500 })
+    await page.waitForFunction(
+      () => {
+        const s = (window as any).__home.useHome.getState()
+        return s.mapReady && (s.outdoors || s.room !== null)
+      },
+      null,
+      { timeout: 120_000, polling: 500 },
+    )
     expect((await game.state()).phase).toBe('playing')
     // a new farm starts on the farm (the house is a map of its own, bought later), on the path among the beds, looking
     // south to the gate (src/data/maps.ts, FARM_START)

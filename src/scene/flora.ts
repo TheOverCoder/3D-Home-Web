@@ -81,9 +81,8 @@ export interface TreeParts {
   crown: BufferGeometry
 }
 
-/** A broadleaf tree: tapered, slightly leaning trunk with two limbs and a crown of overlapping leaf masses (each an
- *  icosphere of `detail`: 2 for the garden and the woods, 1 for the countryside far off round the house). */
-export function tree(x: number, z: number, height: number, seed: number, detail = 2): TreeParts {
+/** A broadleaf tree: tapered, slightly leaning trunk with two limbs and a crown of overlapping leaf masses. */
+export function tree(x: number, z: number, height: number, seed: number): TreeParts {
   const r = mulberry(seed)
   const lean = (r() - 0.5) * 0.12
   const trunkH = height * 0.42
@@ -107,7 +106,7 @@ export function tree(x: number, z: number, height: number, seed: number, detail 
     const a = (i / masses) * Math.PI * 2 + r() * 0.6
     const rad = height * (0.16 + r() * 0.08)
     const out = i === 0 ? 0 : height * (0.14 + r() * 0.1)
-    const b = foliage(new IcosahedronGeometry(1, detail), seed * 7 + i, 0.2, 0.9)
+    const b = foliage(new IcosahedronGeometry(1, 2), seed * 7 + i, 0.2, 0.9)
     b.scale(rad * 1.1, rad * 0.85, rad * 1.1)
     b.translate(cx + Math.cos(a) * out, crownY + (i === 0 ? height * 0.08 : (r() - 0.4) * height * 0.16), Math.sin(a) * out)
     blobs.push(b.index ? b.toNonIndexed() : b)

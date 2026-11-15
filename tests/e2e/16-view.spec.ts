@@ -504,8 +504,9 @@ const ROOMS: Pose[] = [
   { name: 'kitchen, looking up into a corner', x: 6.4, z: -5.4, yaw: -P / 4, pitch: 1.1 },
   { name: 'living room, against the studio wall', x: -5.2, z: 0.36, yaw: P / 2, pitch: 0.2 },
   { name: 'bedroom, looking down at your feet', x: 3.5, z: 2, yaw: P, pitch: -1.4 },
-  // the prototype's one pixel at the left edge, both poses: a thing on the farm far behind a wall, at the very edge of
-  // the view, that today's renderer lets through — proven again each run (check)
+  // the prototype's one pixel at the left edge, both poses: a thing outdoors far behind a wall (the farm's, when the farm
+  // stood round the house), at the very edge of the view, that today's renderer lets through — proven again each run
+  // whenever it shows (check)
   { name: 'living room, the left edge (known pixel)', x: -3.5, z: 0.6, yaw: P, pitch: -0.05 },
   { name: 'kitchen, the left edge (known pixel)', x: 1.5, z: -3, yaw: P / 2, pitch: -0.05 },
 ]
