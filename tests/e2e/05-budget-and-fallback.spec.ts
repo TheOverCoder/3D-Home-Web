@@ -69,6 +69,11 @@ interface Debt {
 }
 
 const SHADOWS = 'the ceilings go, so the sun reaches every room: every piece of furniture is drawn into its map'
+/** The farm decorated (src/farm/decor.ts): about a hundred pieces and every fruit tree and bush hung full, all of it in view
+ *  from the corner over the farm (78k triangles: the decoration 56k, the fruit 22k; none casts into the sun's map). */
+const DECORATED = 'the farm decorated in full view: about a hundred pieces and every fruit plant, hung full'
+const FAR_FRUIT = 'far copies of the hanging fruit (each under the 400 triangles a part needs for one)'
+const FAR_CROWNS = 'far copies of the leafy crowns (their colour and fine bumps keep the simplifier from thinning them)'
 
 /** The views over the budget today (with the drawing pass, the hedge and the woods in pieces), and the most each may draw
  *  until it is paid: the most it measured, and 5 % more. Paid once it measures 5 % under the budget. */
@@ -77,10 +82,14 @@ const SHADOWS = 'the ceilings go, so the sun reaches every room: every piece of 
 // with the farm round the house → 230k), and the sun's draws outdoors and in a window's sunlight (261-262 → 141-172:
 // the farm's casters are not in the house's map, nor the house's in the farm's). Third person and decorating draw no
 // farm into the sun's map: 309k-310k → 264k triangles, 425-433 → 305-312 draws.
-const DEBTS: Debt[] = SIZES.flatMap((s): Debt[] => [
-  { view: 'third person, the living room', size: s.name, pass: 'shadow', triangles: 278_000, draws: 328, why: SHADOWS, pays: [FURNITURE] },
-  { view: 'decorating the living room', size: s.name, pass: 'shadow', triangles: 275_000, draws: 322, why: SHADOWS, pays: [FURNITURE] },
-])
+const DEBTS: Debt[] = [
+  ...SIZES.flatMap((s): Debt[] => [
+    { view: 'third person, the living room', size: s.name, pass: 'shadow', triangles: 278_000, draws: 328, why: SHADOWS, pays: [FURNITURE] },
+    { view: 'decorating the living room', size: s.name, pass: 'shadow', triangles: 275_000, draws: 322, why: SHADOWS, pays: [FURNITURE] },
+  ]),
+  // the decorated farm (the edit mode's shop): 238.6k → 319.0k at 640×360, 241.7k → 318.6k sideways (upright 214k: under)
+  ...['640×360', '1055×487'].map((size): Debt => ({ view: 'yard, over the farm', size, pass: 'camera', triangles: 335_000, why: DECORATED, pays: [FAR_FRUIT, FAR_CROWNS] })),
+]
 
 /** `BUDGET_MEASURE=1`: the table without the checks, to measure the debts again (after a change that pays one). */
 const MEASURE_ONLY = !!process.env.BUDGET_MEASURE
@@ -456,6 +465,10 @@ test.describe('performance budget', () => {
       expect(r.reason, room).toBe('This room is full')
     }
     expect(full.line).toBe(15)
+    // the farm decorated: every kind of the edit mode's shop standing, about a hundred pieces in all
+    console.log(`decoration: ${JSON.stringify(full.decor)}`)
+    expect(Object.keys(full.decor).length).toBe(20)
+    expect(Object.values(full.decor).reduce((a, b) => a + b, 0)).toBeGreaterThanOrEqual(90)
   })
 
   for (const size of SIZES)

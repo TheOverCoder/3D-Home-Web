@@ -116,7 +116,33 @@ import { isComplete, makeOrder, orderKey, orderPay, cratesFor, type Order, type 
 import { bringsSurprise, canUpgrade, nextLevel, randomItem, roomIn, rollItems, usedIn } from './storage'
 import { GOALS, GOAL_IDS, MOST_STEPS, goalById, goalReward, goalTarget, startStep, type GoalId } from './goals'
 import { tripSeconds } from './tractorRoute'
-import { PARCELS, PLACES, boundary, canBuyParcel, canPlace, defaultLayout, sanitizeLayout, snap, type FarmLayout, type Fit, type ParcelId, type PlaceId, type Placement } from './layout'
+import {
+  PARCELS,
+  PLACES,
+  bedHome,
+  boundary,
+  canBuyParcel,
+  canPlace,
+  canPlaceBed,
+  canPlaceNew,
+  canPlaceThing,
+  decorRect,
+  defaultLayout,
+  freeSpot,
+  isPlant,
+  joinRun,
+  mostOf,
+  sanitizeLayout,
+  snap,
+  toWorld,
+  type DecorPiece,
+  type FarmLayout,
+  type Fit,
+  type ParcelId,
+  type PlaceId,
+  type Placement,
+} from './layout'
+import { FRUIT, FRUIT_KINDS, SHOP as FARM_SHOP, nextPrice, type FruitKind, type ShopItemView, type ShopKind } from './decor'
 import { PIECES, type PieceType } from '../home/catalogue'
 import { canMoveOpening, canPlacePiece, defaultHome, findFreeSpot, sanitizeHome, type HomeFit, type HomeLayout, type HomePiece } from '../home/layout'
 import { floorById, paintById, type OpeningAt } from '../home/shell'
@@ -341,7 +367,7 @@ const field = (v: unknown, k: string | number) => (isObject(v) ? v[k] : undefine
 
 /** Where a save from before the tables in src/farm/data.ts kept what each producer held: a field of its own for the
  *  count and one for the clock (a list of each for the cows and the sheep), and one for how many animals. */
-const OLD_PRODUCERS: Record<ProducerId, { stock: string; timer: string; animals?: string }> = {
+const OLD_PRODUCERS: Partial<Record<ProducerId, { stock: string; timer: string; animals?: string }>> = {
   tree: { stock: 'lemons', timer: 'lemonTimer' },
   hens: { stock: 'eggs', timer: 'eggTimer', animals: 'hens' },
   cows: { stock: 'milk', timer: 'milkTimer', animals: 'cows' },
@@ -355,7 +381,9 @@ function savedProducer(id: ProducerId, raw: Record<string, unknown>): ProducerSt
   const saved = field(raw.producers, id)
   const p = isObject(saved)
     ? saved
-    : { animals: old.animals ? raw[old.animals] : undefined, stock: ownEach(id) ? raw[old.stock] : [raw[old.stock]], timer: ownEach(id) ? raw[old.timer] : [raw[old.timer]] }
+    : old
+      ? { animals: old.animals ? raw[old.animals] : undefined, stock: ownEach(id) ? raw[old.stock] : [raw[old.stock]], timer: ownEach(id) ? raw[old.timer] : [raw[old.timer]] }
+      : {}
   const animals = def.herd ? int(p.animals, def.herd.start, def.herd.start, def.herd.max) : 0
   const n = stocksFor(id, animals)
   return {
@@ -523,8 +551,13 @@ function load(text: string | null = readRaw(KEY)): { data: FarmData; savedAt: nu
     // each stat a count, and no others (spread in as saved, a count saved as text made a harvest add "7" + 3 = "73")
     for (const k of Object.keys(data.stats) as (keyof FarmData['stats'])[]) data.stats[k] = amount(field(raw.stats, k), 0)
     for (const id of produceIds) data.got[id] = amount(field(raw.got, id), 0)
-    // a farm from before the layout keeps everything where it always stood
-    data.layout = sanitizeLayout(raw.layout)
+    // a farm from before the layout keeps everything where it always stood (a bed moves only once it is built; the
+    // fruit trees and bushes standing on the farm are their producers' plants)
+    data.layout = sanitizeLayout(
+      raw.layout,
+      data.beds.map((b) => b.built),
+    )
+    fitPlants(data)
     // a farm from before the house could be furnished keeps today's furniture where it always stood
     data.home = sanitizeHome(raw.home)
     // the order board, as many places as the office has, each an order or a wait (a farm from before the office: a
@@ -715,11 +748,16 @@ export function bedStage(i: number): BedStage {
  *  Within reach as the action button measures it: from the edge of each bed's frame (BED_REACH). */
 export function bedsNear(index: number, stage: BedStage, x: number, z: number): number[] {
   const out = [index]
-  BEDS.forEach((b, i) => {
-    if (i !== index && bedStage(i) === stage && groundDistance(x, z, b, BED_BOX) <= BED_REACH) out.push(i)
+  BEDS.forEach((_, i) => {
+    if (i !== index && bedStage(i) === stage && groundDistance(x, z, bedSpot(i), bedBox(i)) <= BED_REACH) out.push(i)
   })
   return out
 }
+
+/** Where a bed stands now (its middle, and its quarter turns): built ones can be moved in the edit mode. */
+export const bedSpot = (i: number): Placement => farm.layout.beds[i] ?? { x: BEDS[i].x, z: BEDS[i].z, rot: 0 }
+/** A bed's frame on the ground, half its size each way, as it stands (turned a quarter, its length runs along z). */
+export const bedBox = (i: number) => (bedSpot(i).rot % 2 ? { x: BED_BOX.z, z: BED_BOX.x } : BED_BOX)
 
 /** 0 … 1 */
 /** The empty beds near (x, z) that seeds chosen by hand go into: this one, and those within reach not set to grow
@@ -732,7 +770,7 @@ export const bedProgress = (i: number) => {
 }
 
 /** Where a bed's crystals (and surprises) fly up from. */
-const bedAt = (i: number) => ({ x: BEDS[i].x, y: 0.7, z: BEDS[i].z })
+const bedAt = (i: number) => ({ x: bedSpot(i).x, y: 0.7, z: bedSpot(i).z })
 
 export const yieldOf = (crop: CropId) => Math.round(cropById(crop).yield * (farm.compost ? 1.5 : 1))
 
@@ -991,15 +1029,19 @@ export const machineDone = (id: MachineId) => goodsOf(id, farm.machines[id].jobs
 /** The jobs it has still to do (the one under way first), as the goods they make. */
 export const machineToDo = (id: MachineId) => goodsOf(id, farm.machines[id].jobs.slice(farm.machines[id].done))
 
-/** Where a machine's crystals fly up from: where its sparkles pop. */
-const machineAt = (id: MachineId) => {
-  const def = MACHINES[id]
-  return { x: def.x + def.sparkle[0], y: def.sparkle[1], z: def.z + def.sparkle[2] }
+/** A point of a machine's own frame (MACHINES: its stand, aim and sparkle), where it stands now (it is a movable place
+ *  of the edit mode: src/farm/layout.ts). */
+export function machinePoint(id: MachineId, [x, y, z]: readonly [number, number, number]) {
+  const [wx, wz] = toWorld(farm.layout.places[id], x, z)
+  return { x: wx, y, z: wz }
 }
+
+/** Where a machine's crystals fly up from: where its sparkles pop. */
+const machineAt = (id: MachineId) => machinePoint(id, MACHINES[id].sparkle)
 /** A machine's sound, from where it stands. */
 function machineSound(id: MachineId, sound: Parameters<typeof farmSound>[0]) {
-  const def = MACHINES[id]
-  const { pan, near } = placeSound(def.x, def.z)
+  const at = machinePoint(id, [0, 0, 0])
+  const { pan, near } = placeSound(at.x, at.z)
   farmSound(sound, pan, near)
 }
 
@@ -1269,6 +1311,172 @@ export function movePlace(id: PlaceId, to: Placement): Fit {
 /** Puts a place back where it stood on a new farm (if that spot is free). */
 export const sendHome = (id: PlaceId) => movePlace(id, PLACES[id].home)
 
+/** Moves (or turns) a built bed, with what grows in it, to a free spot on your land, on the half-metre grid; one not
+ *  built yet stays where it was staked out. */
+export function moveBed(i: number, to: Placement): Fit {
+  if (!farm.beds[i]?.built) return { ok: false, reason: 'Build it first' }
+  const p = { x: snap(to.x), z: snap(to.z), rot: quarter(to.rot) }
+  const fit = canPlaceBed(farm.layout, i, p)
+  if (!fit.ok) return fit
+  farm.layout = { ...farm.layout, beds: farm.layout.beds.map((b, k) => (k === i ? p : b)) }
+  bump()
+  save()
+  return fit
+}
+
+/** Puts a bed back where it was staked out (if that spot is free). */
+export function sendBedHome(i: number): Fit {
+  const home = bedHome(i)
+  if (!farm.beds[i]?.built) return { ok: false, reason: 'Build it first' }
+  const fit = canPlaceBed(farm.layout, i, home)
+  if (!fit.ok) return fit
+  farm.layout = { ...farm.layout, beds: farm.layout.beds.map((b, k) => (k === i ? home : b)) }
+  bump()
+  save()
+  return fit
+}
+
+// ───────────────────────────── the farm's decoration and fruit plants ─────────────────────────────
+
+/** How many of a kind the farm has: standing on it and waiting in its store (what its next price is counted from). */
+export const decorOwned = (kind: ShopKind) => farm.layout.decor.filter((d) => d.kind === kind).length + farm.layout.stored[kind]
+/** What the next one of a kind costs. */
+export const decorPrice = (kind: ShopKind) => nextPrice(FARM_SHOP[kind].price, decorOwned(kind))
+/** Whether one more of a kind can be bought (a kind has a most: a fruit kind's plants). */
+export const decorForSale = (kind: ShopKind) => decorOwned(kind) < mostOf(kind)
+
+/** Every kind of the farm's shop as it shows it: how many the farm has and the next one's price. */
+export function shopView(): ShopItemView[] {
+  return (Object.keys(FARM_SHOP) as ShopKind[]).map((kind) => {
+    const def = FARM_SHOP[kind]
+    const price = decorPrice(kind)
+    const fruit = isPlant(kind) ? FRUIT[kind as FruitKind].fruit : undefined
+    return { kind, tab: def.tab, name: def.name, owned: decorOwned(kind), price, can: decorForSale(kind) && farm.coins >= price, ...(fruit ? { fruit } : {}) }
+  })
+}
+
+/** The plants of a fruit kind standing on the farm, in order: its producer's animals. */
+function plantsOf(kind: FruitKind, layout: FarmLayout = farm.layout) {
+  return layout.decor.filter((d) => d.kind === kind)
+}
+
+/** A fruit kind's producer holds as many plants (each a count and a clock) as stand on the farm: a save read, the counts
+ *  and clocks of the plants there kept, any more start bare. */
+function fitPlants(data: FarmData) {
+  for (const kind of FRUIT_KINDS) {
+    const n = plantsOf(kind, data.layout).length
+    const p = data.producers[kind]
+    const max = PRODUCERS[kind].max
+    data.producers[kind] = {
+      animals: n,
+      stock: Array.from({ length: n }, (_, i) => Math.min(max, p.stock[i] ?? 0)),
+      timer: Array.from({ length: n }, (_, i) => p.timer[i] ?? 0),
+    }
+  }
+}
+
+/** A new piece stands at a spot: a fruit plant becomes one more of its producer's (bare: its fruit to come), in the order
+ *  it stands in the layout. */
+function standPiece(d: DecorPiece) {
+  farm.layout = { ...farm.layout, decor: [...farm.layout.decor, d], next: Math.max(farm.layout.next, d.id + 1) }
+  if (isPlant(d.kind)) {
+    const p = farm.producers[d.kind as FruitKind]
+    p.animals += 1
+    p.stock.push(0)
+    p.timer.push(0)
+  }
+}
+
+/** Where a piece put down by the edit mode goes: on the half-metre grid, a fence or hedge joined to one whose end is
+ *  near. */
+function landing(kind: ShopKind, id: number, to: Placement): DecorPiece {
+  return joinRun(farm.layout, { id, kind, x: snap(to.x), z: snap(to.z), rot: quarter(to.rot) })
+}
+
+/** Buys one of a kind (its price tag's card asked first): it waits in the farm's store until put down (the edit mode
+ *  puts it down at once where there is room: `placeDecor`). Whether it was bought. */
+export function buyDecor(kind: ShopKind): boolean {
+  if (!Object.prototype.hasOwnProperty.call(FARM_SHOP, kind) || !decorForSale(kind)) return false
+  const price = decorPrice(kind)
+  if (!(farm.coins >= price)) return false
+  farm.coins -= price
+  farm.layout = { ...farm.layout, stored: { ...farm.layout.stored, [kind]: farm.layout.stored[kind] + 1 } }
+  gainXp('build')
+  bump()
+  save()
+  return true
+}
+
+/** Takes one of a kind out of the store and stands it at a spot, if it fits there: its id, or why not. */
+export function placeDecor(kind: ShopKind, to: Placement): Fit & { id?: number } {
+  if (!(farm.layout.stored[kind] > 0)) return { ok: false, reason: 'None in your store' }
+  const d = landing(kind, farm.layout.next, to)
+  const fit = canPlaceNew(farm.layout, kind, d)
+  if (!fit.ok) return fit
+  farm.layout = { ...farm.layout, stored: { ...farm.layout.stored, [kind]: farm.layout.stored[kind] - 1 } }
+  standPiece(d)
+  bump()
+  save()
+  return { ok: true, id: d.id }
+}
+
+/** A free spot for one of a kind near (x, z) (on your land, clear of everything), or null. */
+export const freeDecorSpot = (kind: ShopKind, x: number, z: number) => freeSpot(farm.layout, kind, x, z)
+
+/** Moves (or turns) a piece standing on the farm, if it fits there (a fence or hedge joins one whose end is near). */
+export function moveDecor(id: number, to: Placement): Fit {
+  const d = farm.layout.decor.find((x) => x.id === id)
+  if (!d) return { ok: false, reason: 'Not on the farm' }
+  const q = landing(d.kind, id, to)
+  const fit = canPlaceThing(farm.layout, { kind: 'decor', id }, q)
+  if (!fit.ok) return fit
+  farm.layout = { ...farm.layout, decor: farm.layout.decor.map((x) => (x.id === id ? q : x)) }
+  bump()
+  save()
+  return fit
+}
+
+/** Where a piece would go if put down at `to` (on the grid, joined to a run's end near it), for the edit mode's drag. */
+export const decorLanding = (id: number, to: Placement): Placement => {
+  const d = farm.layout.decor.find((x) => x.id === id)
+  if (!d) return to
+  const q = landing(d.kind, id, to)
+  return { x: q.x, z: q.z, rot: q.rot }
+}
+
+/** Puts a piece standing on the farm away into the store (put down again later for nothing). A fruit plant's fruit is
+ *  picked first, into the silo; while the silo has no room for all of it, the plant stays. */
+export function storeDecor(id: number): Fit {
+  const k = farm.layout.decor.findIndex((x) => x.id === id)
+  if (k < 0) return { ok: false, reason: 'Not on the farm' }
+  const d = farm.layout.decor[k]
+  if (isPlant(d.kind)) {
+    const kind = d.kind as FruitKind
+    const i = plantsOf(kind).findIndex((x) => x.id === id)
+    if (stockOf(kind, i) > 0) {
+      const r = decorRect(d)
+      collect(kind, i, { x: (r.minX + r.maxX) / 2, y: PRODUCERS[kind].sparkle, z: (r.minZ + r.maxZ) / 2 })
+      if (stockOf(kind, i) > 0) return { ok: false, reason: 'The silo is full: its fruit has nowhere to go' }
+    }
+    const p = farm.producers[kind]
+    p.animals -= 1
+    p.stock.splice(i, 1)
+    p.timer.splice(i, 1)
+  }
+  farm.layout = { ...farm.layout, decor: farm.layout.decor.filter((x) => x.id !== id), stored: { ...farm.layout.stored, [d.kind]: farm.layout.stored[d.kind] + 1 } }
+  bump()
+  save()
+  return { ok: true }
+}
+
+/** The fruit plant a piece is, with its place among its kind's plants (its producer's animal), or null. */
+export function plantOf(id: number): { kind: FruitKind; index: number } | null {
+  const d = farm.layout.decor.find((x) => x.id === id)
+  if (!d || !isPlant(d.kind)) return null
+  const kind = d.kind as FruitKind
+  return { kind, index: plantsOf(kind).findIndex((x) => x.id === id) }
+}
+
 // ───────────────────────────── the house's furniture ─────────────────────────────
 
 const quarter = (rot: number) => ((Math.round(rot) % 4) + 4) % 4
@@ -1365,8 +1573,10 @@ export const freeSpotFor = (type: PieceType, room: Parameters<typeof findFreeSpo
 
 let visitorSeq = 0
 
-/** What the farm grows and makes (and what every farm has: lemons, eggs, milk): what buyers and orders ask for. */
-const knownGoods = () => [...new Set<ProduceId>([...farm.planted, ...farm.made, 'lemon', 'egg', 'milk'])].filter(isSellable)
+/** What the farm grows and makes (and what every farm has: lemons, eggs, milk; and the fruit of the trees and bushes
+ *  standing on it): what buyers and orders ask for. */
+const knownGoods = () =>
+  [...new Set<ProduceId>([...farm.planted, ...farm.made, 'lemon', 'egg', 'milk', ...FRUIT_KINDS.filter((k) => farm.producers[k].animals > 0).map((k) => FRUIT[k].fruit)])].filter(isSellable)
 
 /** What a buyer asks for: mostly something you have, sometimes something your farm makes but has run out of. */
 function chooseRequest(): { want: ProduceId; qty: number } {

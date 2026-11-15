@@ -98,8 +98,9 @@ const sweep = (page: Page, farmName: string) =>
     { farmName, shows: SHOWS, looks: LOOKS },
   )
 
-/** A farm with plenty of everything: coins, every good, ripe beds, full animals, finished machines, the shop yours
- *  and stocked with coins in its till, the contractor in with his pieces, a line at the gate. */
+/** A farm with plenty of everything: coins, every good, ripe beds, full animals, finished machines, a fruit tree or bush
+ *  of every kind hung with fruit (the edit mode's shop), the shop yours and stocked with coins in its till, the
+ *  contractor in with his pieces, a line at the gate. */
 async function plenty(page: Page) {
   await page.evaluate(() => {
     const h = (window as any).__home
@@ -113,6 +114,12 @@ async function plenty(page: Page) {
     f.state.beds.forEach((b: any, i: number) => {
       if (b.built && !b.crop) f.plant(i, 'lettuce')
     })
+    // one of each fruit plant, on the free land where the house stood (they fill on the hour below)
+    for (const kind of ['apple-tree', 'orange-tree', 'cherry-tree', 'blueberry-bush', 'raspberry-bush']) {
+      if (f.decorOwned(kind) > 0 || !f.buyDecor(kind)) continue
+      const spot = f.freeDecorSpot(kind, 2, 0)
+      if (spot) f.placeDecor(kind, spot)
+    }
     f.tick(3600)
     f.marketFill('lettuce', { quiet: true })
     f.state.market.till.coins = 40

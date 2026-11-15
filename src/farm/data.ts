@@ -3,6 +3,7 @@
 import type { FarmSound } from '../audio/sound'
 import type { ArtId } from '../ui/art'
 import { GATE, GARDEN, LANE } from '../data/layout'
+import { FRUIT, FRUIT_KINDS, type FruitId, type FruitKind } from './decor'
 import type { PlaceId } from './layout'
 
 export type CropId = 'lettuce' | 'carrot' | 'strawberry' | 'tomato' | 'corn' | 'pumpkin' | 'wheat' | 'sugarcane'
@@ -10,7 +11,7 @@ export type CakeId = 'lemon_cake' | 'strawberry_cake' | 'carrot_cake' | 'pumpkin
 /** The building materials: what the silo and the barn are made bigger with (STORES, below). Never asked for, and sold
  *  only to the contractor behind the market (CONTRACTOR); they come as surprises (ITEM_ODDS) and are kept in the barn. */
 export type ItemId = 'brick' | 'plank' | 'nail' | 'iron' | 'bolt' | 'log'
-export type ProduceId = CropId | 'lemon' | 'egg' | 'milk' | 'wool' | 'sugar' | 'flour' | 'cloth' | CakeId | ItemId
+export type ProduceId = CropId | 'lemon' | FruitId | 'egg' | 'milk' | 'wool' | 'sugar' | 'flour' | 'cloth' | CakeId | ItemId
 
 export interface CropDef {
   id: CropId
@@ -48,6 +49,13 @@ export interface ProduceDef {
 export const PRODUCE: ProduceDef[] = [
   ...CROPS.map((c) => ({ id: c.id, name: c.name, plural: c.plural, price: c.price, maxAsk: Math.max(2, Math.min(6, c.yield)) })),
   { id: 'lemon', name: 'lemon', plural: 'lemons', price: 2, maxAsk: 6 },
+  // the fruit of the trees and bushes bought in the edit mode (src/farm/decor.ts): each plant pays for itself in about
+  // an hour and a half of play (FRUIT_PRODUCERS, below)
+  { id: 'apple', name: 'apple', plural: 'apples', price: 4, maxAsk: 6 },
+  { id: 'orange', name: 'orange', plural: 'oranges', price: 5, maxAsk: 6 },
+  { id: 'cherry', name: 'cherry', plural: 'cherries', price: 3, maxAsk: 6 },
+  { id: 'blueberry', name: 'blueberry', plural: 'blueberries', price: 3, maxAsk: 6 },
+  { id: 'raspberry', name: 'raspberry', plural: 'raspberries', price: 3, maxAsk: 6 },
   { id: 'egg', name: 'egg', plural: 'eggs', price: 2, maxAsk: 6 },
   { id: 'milk', name: 'bottle of milk', plural: 'bottles of milk', price: 4, maxAsk: 4 },
   { id: 'wool', name: 'fleece', plural: 'fleeces', price: 5, maxAsk: 3 },
@@ -101,8 +109,11 @@ export const STORE_STEP = 50
 export const storeCapacity = (level: number) => STORE_STEP * level
 /** How many of each of its three materials the next level costs, from `level`. */
 export const upgradeCost = (level: number) => level
-/** Where a good is kept: the silo for what grows (a crop, a lemon), the barn for the rest. */
-export const storeOf = (id: ProduceId): StoreId => (CROPS.some((c) => c.id === id) || id === 'lemon' ? 'silo' : 'barn')
+/** The fruit of the trees and bushes (apples, cherries, …): goods that grow, kept in the silo. */
+const FRUIT_GOODS: readonly string[] = FRUIT_KINDS.map((k) => FRUIT[k].fruit)
+/** Where a good is kept: the silo for what grows (a crop, a lemon, the fruit of the trees and bushes), the barn for
+ *  the rest. */
+export const storeOf = (id: ProduceId): StoreId => (CROPS.some((c) => c.id === id) || id === 'lemon' || FRUIT_GOODS.includes(id) ? 'silo' : 'barn')
 
 /** The odds of a surprise, a building material (any of the six alike): a buyer in two comes with one, given as you
  *  sell to them; each egg, bottle of milk and fleece collected; each bed harvested and each picking of the lemon
@@ -154,11 +165,12 @@ export interface MachineWords {
 export interface MachineDef {
   /** what it is called, on its panel (Mill, Loom, Oven) */
   name: string
-  /** where it stands (it never moves) */
+  /** where it stands on a new farm: it is a movable place of the edit mode (src/farm/layout.ts, PLACES), and where it
+   *  stands now is the farm's layout's */
   x: number
   z: number
-  /** round where it stands: where you stand near to use it, what you look at, and where the sparkles pop as you take
-   *  out what it made; and how far off it is still in reach */
+  /** in its own frame (it turns with its place), round where it stands: where you stand near to use it, what you look
+   *  at, and where the sparkles pop as you take out what it made; and how far off it is still in reach */
   stand: [number, number, number]
   aim: [number, number, number]
   sparkle: [number, number, number]
@@ -313,9 +325,10 @@ export const FOLD = { minX: -4.3, maxX: 4.3, minZ: -1.85, maxZ: 1.85, gateX: 0, 
 
 // ───────────────────────────── what fills up, and is collected ─────────────────────────────
 
-export type ProducerId = 'tree' | 'hens' | 'cows' | 'sheep'
+export type ProducerId = 'tree' | 'hens' | 'cows' | 'sheep' | FruitKind
 
-/** Something that fills up over time and is collected: the lemon tree, the hens' nest, each cow, each sheep.
+/** Something that fills up over time and is collected: the lemon tree, the hens' nest, each cow, each sheep, each fruit
+ *  tree and bush bought in the edit mode.
  *  src/farm/state.ts runs them all the same way and src/farm/useProducer.ts puts them on the action button; everything
  *  that differs between them is here. */
 export interface ProducerDef {
@@ -334,10 +347,13 @@ export interface ProducerDef {
   holdsFull?: boolean
   /** its animals: how many on a new farm and at most. `shared`: they all lay into one nest, its clock running as many
    *  times as fast as there are hens; otherwise each animal has her own, and her name (on the button, and in the
-   *  shop's note: "Bella joins the herd") */
+   *  shop's note: "Bella joins the herd"). A fruit plant's "herd" is its kind's plants standing on the farm (`plant`). */
   herd?: { start: number; max: number; shared?: boolean; names?: readonly string[]; joins?: string }
-  /** the movable place it is in (src/farm/layout.ts) */
-  place: PlaceId
+  /** the movable place it is in (src/farm/layout.ts); a fruit plant stands on its own (`plant`) */
+  place?: PlaceId
+  /** a fruit tree or bush of the edit mode's shop: one for each of its kind placed on the farm (src/farm/layout.ts,
+   *  `decor`), each with its own fruit and clock, in the order they stand in the layout */
+  plant?: FruitKind
   /** the button: its id (an animal's own ends in her number: farm-cow-0), its word and its verb's picture */
   action: string
   word: string
@@ -352,6 +368,50 @@ export interface ProducerDef {
   /** its surprises (a building material, ITEM_ODDS): one chance for `each` good taken (every egg, bottle of milk,
    *  fleece), or `once` for each picking (the lemon tree, as a harvest) */
   surprise: 'each' | 'once'
+}
+
+/** The most plants of one kind the farm can have (each costs more than the one before: past this, more than any farm
+ *  earns). */
+export const MOST_PLANTS = 99
+
+/** How each fruit tree and bush bears: one more every `every` seconds, up to `max` hanging; a tree is picked from a
+ *  step round it, a bush from a little nearer. */
+const BEARING: Record<FruitKind, { every: number; max: number; tree: boolean }> = {
+  'apple-tree': { every: 40, max: 8, tree: true },
+  'orange-tree': { every: 45, max: 8, tree: true },
+  'cherry-tree': { every: 25, max: 12, tree: true },
+  'blueberry-bush': { every: 35, max: 8, tree: false },
+  'raspberry-bush': { every: 30, max: 8, tree: false },
+}
+
+/** The fruit trees and bushes as producers: each plant of a kind fills with its own fruit, picked with the action
+ *  button as the lemons are (one chance of a surprise for each picking). */
+function FRUIT_PRODUCERS(): Record<FruitKind, ProducerDef> {
+  return Object.fromEntries(
+    FRUIT_KINDS.map((k): [FruitKind, ProducerDef] => {
+      const b = BEARING[k]
+      return [
+        k,
+        {
+          good: FRUIT[k].fruit,
+          every: b.every,
+          max: b.max,
+          fresh: 0,
+          herd: { start: 0, max: MOST_PLANTS },
+          plant: k,
+          action: `farm-${k}`,
+          word: 'Pick',
+          verb: 'pick',
+          stand: [0, 1.0, 0],
+          aim: b.tree ? [0, 1.7, 0] : [0, 0.55, 0],
+          reach: b.tree ? 2.6 : 1.9,
+          sound: 'harvest',
+          sparkle: b.tree ? 1.7 : 0.7,
+          surprise: 'once',
+        },
+      ]
+    }),
+  ) as Record<FruitKind, ProducerDef>
 }
 
 export const PRODUCERS: Record<ProducerId, ProducerDef> = {
@@ -428,8 +488,11 @@ export const PRODUCERS: Record<ProducerId, ProducerDef> = {
     sparkle: 1.0,
     surprise: 'each',
   },
+  ...FRUIT_PRODUCERS(),
 }
 export const PRODUCER_IDS = Object.keys(PRODUCERS) as ProducerId[]
+/** The fruit trees and bushes, each kind a producer. */
+export const PLANT_PRODUCERS = PRODUCER_IDS.filter((id) => PRODUCERS[id].plant)
 /** The most animals a producer can have (none for the tree). */
 export const mostAnimals = (id: ProducerId) => PRODUCERS[id].herd?.max ?? 0
 

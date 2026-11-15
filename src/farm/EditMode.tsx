@@ -1,27 +1,32 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
-import { FogExp2, MathUtils, Matrix4, Quaternion, Vector3, type PerspectiveCamera } from 'three'
+import { BufferAttribute, BufferGeometry, FogExp2, MathUtils, Matrix4, Quaternion, Vector3, type PerspectiveCamera } from 'three'
 import { uiClick } from '../audio/sound'
 import { useHome } from '../store'
-import { dragTo, drop, shownPlacement, useEdit } from './edit'
-import { BLOCKERS, PARCELS, PARCEL_IDS, PLACE_IDS, canBuyParcel, doorway, footprint, landBounds, type ParcelId, type PlaceId, type Rect } from './layout'
+import { dragTo, drop, keyOf, shownAt, shownPlacement, thingOf, useEdit, type Pick } from './edit'
+import { BLOCKERS, PARCELS, PARCEL_IDS, PLACE_IDS, bedRect, canBuyParcel, decorRect, doorway, footprint, landBounds, type ParcelId, type PlaceId, type Rect, type Thing } from './layout'
 import { farm, useFarm } from './state'
 
 // The farm's edit mode, in the scene: the view from above, and the hand that moves things. The camera flies up
 // from wherever you are to look down on the farm (north at the top of the screen); drag the ground to look round,
-// pinch or scroll to come closer; drag a place (the hen run, the pasture, the fold, a tree) to move it — its
-// outline goes green where it fits and red where it does not, and let go where it is green it stays there; tap
-// one to pick it (the panel can turn it), tap a field beyond the hedge to buy it. Leaving flies back down.
+// pinch or scroll to come closer; drag a place (the hen run, the pasture, the fold, a tree, the mill, the loom, the
+// oven), a built bed or a piece of decoration to move it — its outline goes green where it fits and red where it does
+// not, and let go where it is green it stays there; tap one to pick it (the panel can turn it, or put a piece away), tap
+// a field beyond the hedge to buy it. Leaving flies back down.
 
 const TILT = 0.28 // the view leans this far from straight down (radians), so the farm still looks solid
 const T = Math.tan(TILT)
 const MIN_H = 7
 const MAX_H = 75
-const ALL_LAND = landBounds({ places: farm.layout.places, land: PARCEL_IDS })
+const ALL_LAND = landBounds({ ...farm.layout, land: PARCEL_IDS })
 
 /** How far the camera has flown up (0 on the ground … 1 in the view from above): the hand only works up there. */
 export const editCamera = { blend: 0 }
+
+/** The ground point in the middle of the view from above (what the panel puts a piece bought or taken out of the store
+ *  down near). */
+export const editView = { x: 0, z: 0 }
 
 interface View {
   x: number // the ground point in the middle of the view
@@ -54,18 +59,40 @@ function groundAt(v: View, ndcX: number, ndcY: number, aspect: number): [number,
 
 const inRect = (r: Rect, x: number, z: number, m = 0) => x >= r.minX - m && x <= r.maxX + m && z >= r.minZ - m && z <= r.maxZ + m
 
-/** The place under a ground point (the one picked first, then the smallest: a tree inside a pasture's outline wins). */
-function placeAt(x: number, z: number): PlaceId | null {
-  const picked = useEdit.getState().picked
-  const hits = PLACE_IDS.filter((id) => inRect(footprint(id, shownPlacement(id)), x, z, 0.3))
-  if (!hits.length) return null
-  if (picked?.kind === 'place' && hits.includes(picked.id)) return picked.id
-  const area = (id: PlaceId) => {
-    const r = footprint(id, shownPlacement(id))
-    return (r.maxX - r.minX) * (r.maxZ - r.minZ)
+/** Everything that moves in the edit mode, with its footprint where it is shown: the places, the built beds (one not built
+ *  yet stays where it was staked out) and the decoration. */
+function movables(): { thing: Thing; rect: Rect }[] {
+  const out: { thing: Thing; rect: Rect }[] = PLACE_IDS.map((id) => ({ thing: { kind: 'place', id } as Thing, rect: footprint(id, shownPlacement(id)) }))
+  farm.beds.forEach((b, index) => {
+    const t: Thing = { kind: 'bed', index }
+    const at = b.built ? shownAt(t) : null
+    if (at) out.push({ thing: t, rect: bedRect(at) })
+  })
+  for (const d of farm.layout.decor) {
+    const t: Thing = { kind: 'decor', id: d.id }
+    const at = shownAt(t)
+    if (at) out.push({ thing: t, rect: decorRect({ kind: d.kind, ...at }) })
   }
-  return hits.sort((a, b) => area(a) - area(b))[0]
+  return out
 }
+
+/** The thing under a ground point (the one picked first, then the smallest: a tree inside a pasture's outline wins; a
+ *  small piece of decoration a little beyond its edge, for a finger). */
+function thingAt(x: number, z: number): Thing | null {
+  const picked = thingOf(useEdit.getState().picked)
+  const area = (r: Rect) => (r.maxX - r.minX) * (r.maxZ - r.minZ)
+  const hits = movables().filter((m) => inRect(m.rect, x, z, area(m.rect) < 1 ? 0.35 : 0.3))
+  if (!hits.length) return null
+  if (picked) {
+    const k = keyOf(picked)
+    const mine = hits.find((h) => keyOf(h.thing) === k)
+    if (mine) return mine.thing
+  }
+  return hits.sort((a, b) => area(a.rect) - area(b.rect))[0].thing
+}
+
+/** A pick for a thing. */
+const pickOf = (t: Thing): Pick => (t.kind === 'place' ? { kind: 'place', id: t.id } : t.kind === 'bed' ? { kind: 'bed', index: t.index } : { kind: 'decor', id: t.id })
 
 const parcelAt = (x: number, z: number): ParcelId | null => PARCEL_IDS.find((id) => !farm.layout.land.includes(id) && inRect(PARCELS[id].rect, x, z)) ?? null
 
@@ -107,6 +134,8 @@ function EditCamera({ view }: { view: React.RefObject<View> }) {
 
   useFrame((_, dt) => {
     const on = useHome.getState().editing
+    editView.x = view.current.x
+    editView.z = view.current.z
     const b = blend.current
     // critically damped, exact for any frame time: about a second up or down however slow the frames are
     const omega = 5
@@ -152,8 +181,9 @@ function EditCamera({ view }: { view: React.RefObject<View> }) {
 }
 
 interface Press {
-  kind: 'place' | 'parcel' | 'ground'
-  id?: PlaceId | ParcelId
+  kind: 'thing' | 'parcel' | 'ground'
+  thing?: Thing
+  parcel?: ParcelId
   start: [number, number] // screen
   offset: [number, number] // place middle − ground point, for a place
   ground: [number, number] // the ground point pressed, seen from `from`
@@ -191,19 +221,20 @@ function EditInput({ view }: { view: React.RefObject<View> }) {
       dom.setPointerCapture?.(e.pointerId)
       if (pointers.size === 2) {
         // a second finger: pinch and pan; whatever the first was dragging goes back
-        if (press?.kind === 'place' && press.moved) useEdit.getState().setDrag(null)
+        if (press?.kind === 'thing' && press.moved) useEdit.getState().setDrag(null)
         press = null
         startPinch()
         return
       }
       if (pointers.size > 2) return
       const g = ground(e.clientX, e.clientY)
-      const place = placeAt(g[0], g[1])
-      const parcel = place ? null : parcelAt(g[0], g[1])
-      const p = place ? shownPlacement(place) : null
+      const thing = thingAt(g[0], g[1])
+      const parcel = thing ? null : parcelAt(g[0], g[1])
+      const p = thing ? shownAt(thing) : null
       press = {
-        kind: place ? 'place' : parcel ? 'parcel' : 'ground',
-        id: place ?? parcel ?? undefined,
+        kind: thing ? 'thing' : parcel ? 'parcel' : 'ground',
+        thing: thing ?? undefined,
+        parcel: parcel ?? undefined,
         start: [e.clientX, e.clientY],
         offset: p ? [p.x - g[0], p.z - g[1]] : [0, 0],
         ground: g,
@@ -233,11 +264,10 @@ function EditInput({ view }: { view: React.RefObject<View> }) {
       if (!pr) return
       if (!pr.moved && Math.hypot(e.clientX - pr.start[0], e.clientY - pr.start[1]) < 7) return
       pr.moved = true
-      if (pr.kind === 'place') {
+      if (pr.kind === 'thing' && pr.thing) {
         const g = ground(e.clientX, e.clientY)
-        const id = pr.id as PlaceId
-        useEdit.getState().pick({ kind: 'place', id })
-        dragTo(id, g[0] + pr.offset[0], g[1] + pr.offset[1])
+        if (keyOf(thingOf(useEdit.getState().picked) ?? pr.thing) !== keyOf(pr.thing) || !useEdit.getState().picked) useEdit.getState().pick(pickOf(pr.thing))
+        dragTo(pr.thing, g[0] + pr.offset[0], g[1] + pr.offset[1])
       } else {
         // look round: the ground pressed stays under the finger
         const g = ground(e.clientX, e.clientY, pr.from)
@@ -258,13 +288,13 @@ function EditInput({ view }: { view: React.RefObject<View> }) {
       press = null
       if (!pr || !active()) return
       const edit = useEdit.getState()
-      if (pr.kind === 'place') {
+      if (pr.kind === 'thing' && pr.thing) {
         if (pr.moved) {
           const fit = drop()
           uiClick()
           if (fit && !fit.ok) useHome.getState().showToast(`${fit.reason} — it went back`)
-        } else edit.pick({ kind: 'place', id: pr.id as PlaceId })
-      } else if (!pr.moved) edit.pick(pr.kind === 'parcel' ? { kind: 'parcel', id: pr.id as ParcelId } : null)
+        } else edit.pick(pickOf(pr.thing))
+      } else if (!pr.moved) edit.pick(pr.kind === 'parcel' && pr.parcel ? { kind: 'parcel', id: pr.parcel } : null)
     }
 
     const onWheel = (e: WheelEvent) => {
@@ -354,6 +384,58 @@ function PlaceOutline({ id }: { id: PlaceId }) {
   )
 }
 
+/** The bed or piece of decoration picked, or dragged: its outline, green or red where it would land as it is dragged. */
+function ThingOutline() {
+  useFarm((s) => s.rev)
+  const drag = useEdit((s) => (s.drag && s.drag.thing.kind !== 'place' ? s.drag : null))
+  const picked = useEdit((s) => (s.picked && (s.picked.kind === 'bed' || s.picked.kind === 'decor') ? s.picked : null))
+  const thing = drag?.thing ?? thingOf(picked)
+  if (!thing || thing.kind === 'place') return null
+  const at = drag?.at ?? shownAt(thing)
+  if (!at) return null
+  const d = thing.kind === 'decor' ? farm.layout.decor.find((x) => x.id === thing.id) : null
+  const r = thing.kind === 'bed' ? bedRect(at) : d ? decorRect({ kind: d.kind, ...at }) : null
+  if (!r) return null
+  const color = drag ? (drag.fit.ok ? COLOURS.fits : COLOURS.bad) : COLOURS.picked
+  return <Outline r={r} color={color} fill={0.26} edge={0.1} y={0.07} />
+}
+
+/** Every built bed and piece of decoration not picked: a thin white outline each, all in one draw (a farm can have
+ *  dozens of pieces). */
+function IdleOutlines() {
+  const rev = useFarm((s) => s.rev)
+  const busy = useEdit((s) => s.drag?.id ?? (s.picked && s.picked.kind !== 'parcel' ? keyOf(thingOf(s.picked)!) : ''))
+  const geometry = useMemo(() => {
+    const rects: Rect[] = []
+    farm.beds.forEach((b, index) => {
+      if (b.built && keyOf({ kind: 'bed', index }) !== busy) rects.push(bedRect(farm.layout.beds[index]))
+    })
+    for (const d of farm.layout.decor) if (keyOf({ kind: 'decor', id: d.id }) !== busy) rects.push(decorRect(d))
+    const e = 0.06
+    const y = 0.065
+    const pos: number[] = []
+    const quad = (x0: number, z0: number, x1: number, z1: number) => pos.push(x0, y, z0, x0, y, z1, x1, y, z1, x0, y, z0, x1, y, z1, x1, y, z0)
+    for (const r of rects) {
+      quad(r.minX, r.minZ, r.maxX, r.minZ + e)
+      quad(r.minX, r.maxZ - e, r.maxX, r.maxZ)
+      quad(r.minX, r.minZ + e, r.minX + e, r.maxZ - e)
+      quad(r.maxX - e, r.minZ + e, r.maxX, r.maxZ - e)
+    }
+    const g = new BufferGeometry()
+    g.setAttribute('position', new BufferAttribute(new Float32Array(pos), 3))
+    g.computeBoundingSphere()
+    return g
+    // the layout is read from the farm; its revision is what changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rev, busy])
+  useEffect(() => () => geometry.dispose(), [geometry])
+  return (
+    <mesh geometry={geometry} renderOrder={20}>
+      <meshBasicMaterial color={COLOURS.idle} transparent opacity={0.8} depthTest={false} depthWrite={false} fog={false} toneMapped={false} side={2} />
+    </mesh>
+  )
+}
+
 function ParcelOverlay({ id }: { id: ParcelId }) {
   useFarm((s) => s.rev)
   const picked = useEdit((s) => s.picked?.kind === 'parcel' && s.picked.id === id)
@@ -374,7 +456,8 @@ function ParcelOverlay({ id }: { id: ParcelId }) {
   )
 }
 
-/** While something is dragged: what it may not stand on (the house, the beds, the paths, the workshop). */
+/** While something is dragged: what it may not stand on (the paths, the shed, the stand, the office, the shrubs, and the
+ *  plots and fields' beds not built yet, which stay where they were staked out). */
 function Blocked() {
   const dragging = useEdit((s) => !!s.drag)
   if (!dragging) return null
@@ -383,6 +466,7 @@ function Blocked() {
       {BLOCKERS.map((b, i) => (
         <Outline key={i} r={b.rect} color="#d0453b" fill={0.2} edge={0.05} y={0.04} />
       ))}
+      {farm.beds.map((b, i) => (b.built ? null : <Outline key={`bed${i}`} r={bedRect(farm.layout.beds[i])} color="#d0453b" fill={0.2} edge={0.05} y={0.04} />))}
     </>
   )
 }
@@ -408,6 +492,8 @@ export function EditMode() {
           {PLACE_IDS.map((id) => (
             <PlaceOutline key={id} id={id} />
           ))}
+          <IdleOutlines />
+          <ThingOutline />
           {parcels.map((id) => (
             <ParcelOverlay key={id} id={id} />
           ))}

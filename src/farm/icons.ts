@@ -1,5 +1,6 @@
 import { art } from '../ui/art'
 import type { ProduceId } from './data'
+import type { ShopKind } from './decor'
 
 // The pictures of the farm's goods: each drawn from its model (src/models/goods.ts, by src/models/itemArt.ts) and
 // saved as a WebP file in src/assets/items by scripts/render-item-art.mjs. The panels, the action button, the
@@ -8,14 +9,20 @@ import type { ProduceId } from './data'
 
 const files = import.meta.glob('../assets/items/*.webp', { eager: true, query: '?url', import: 'default' }) as Record<string, string>
 const garments = import.meta.glob('../assets/garments/*.webp', { eager: true, query: '?url', import: 'default' }) as Record<string, string>
+const decor = import.meta.glob('../assets/decor/*.webp', { eager: true, query: '?url', import: 'default' }) as Record<string, string>
 
 /** What has a picture of its own, drawn from its model: every good, the silo and the barn. */
 export type PictureId = ProduceId | 'silo' | 'barn'
 
-/** The picture of a good, a farm building (or of coins), as an image URL. */
+/** The picture of a good, a farm building (or of coins), as an image URL. (One whose picture is not drawn yet shows the
+ *  basket rather than a broken image.) */
 export function iconUrl(id: PictureId | 'coin'): string {
-  return id === 'coin' ? art('coin') : files[`../assets/items/${id}.webp`]
+  return id === 'coin' ? art('coin') : (files[`../assets/items/${id}.webp`] ?? art('basket'))
 }
+
+/** The picture of a kind the farm's shop sells (src/farm/decor.ts), drawn from its model and saved the same way
+ *  (src/models/itemArt.ts, renderShopArt); a kind not drawn yet shows the seedling. */
+export const shopArtUrl = (kind: ShopKind): string => decor[`../assets/decor/${kind}.webp`] ?? art('seedling')
 
 /** A garment's picture (src/farm/outfit.ts), drawn from the people engine's model in its colour and saved the same way
  *  (src/models/itemArt.ts, renderGarmentArt). */

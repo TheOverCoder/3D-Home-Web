@@ -1202,6 +1202,12 @@ button.farm-chip-item:focus-visible { outline: 3px solid var(--sun); outline-off
   .edit-card p { font-size: 12.5px; }
 }
 .edit-open:hover { transform: none; }
+/* the edit mode's shop (src/farm/DecorShop.tsx): its two tabs, and a picked piece's picture on the card */
+.decor-tabs { margin: 2px 0 12px; }
+.decor-tabs .btn { white-space: nowrap; }
+.decor-grid .farm-card { gap: 4px; }
+.decor-card .decor-fruit { width: 22px; height: 22px; }
+.decor-pic { flex: none; width: 52px; height: 52px; }
 
 /* ── a good's picture with how many: a small see-through round badge on its lower corner (src/ui/ItemPic.tsx) ── */
 .item-pic { position: relative; display: inline-grid; place-items: center; flex: none; }

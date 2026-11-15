@@ -4,7 +4,7 @@ import { cropParts } from '../models/crops'
 import { GROWERS, hash, putEgg, putLemon } from '../models/plants'
 import { lemonSpots } from '../models/structures'
 import { BED, BEDS, NEST, PRODUCERS, type CropId } from './data'
-import { shownPlacement } from './edit'
+import { shownAt, shownPlacement, useEdit } from './edit'
 import { toWorld, type Placement } from './layout'
 import { bedProgress, farm, stockOf } from './state'
 
@@ -43,27 +43,33 @@ export function Plants() {
   const parts = useMemo(() => cropParts(), [])
   useEffect(() => () => parts.dispose(), [parts])
   const last = useRef(-1)
-  const seen = useRef<{ lemon?: Placement; hens?: Placement }>({})
+  const seen = useRef<{ lemon?: Placement; hens?: Placement; beds?: unknown; drag?: unknown }>({})
 
   useFrame((state) => {
     const t = state.clock.elapsedTime
-    // the lemons and the eggs move with their tree and their run (dragged in the edit mode: at once)
+    // the lemons and the eggs move with their tree and their run, the plants with their bed (dragged in the edit mode:
+    // at once)
     const lemon = shownPlacement('lemon')
     const hens = shownPlacement('hens')
-    const moved = lemon !== seen.current.lemon || hens !== seen.current.hens
+    const beds = farm.layout.beds
+    const drag = useEdit.getState().drag
+    const moved = lemon !== seen.current.lemon || hens !== seen.current.hens || beds !== seen.current.beds || drag !== seen.current.drag
     if (!moved && Math.abs(t - last.current) < 0.2) return
     last.current = t
-    seen.current = { lemon, hens }
+    seen.current = { lemon, hens, beds, drag }
     parts.begin()
     // each plant, lemon and egg a model of its own (put where it stands): the view draws the ones it can see
-    BEDS.forEach((def, i) => {
+    BEDS.forEach((_, i) => {
       const bed = farm.beds[i]
       if (!bed.built || !bed.crop) return
+      const at = shownAt({ kind: 'bed', index: i })
+      if (!at) return
       const g = bedProgress(i)
       LAYOUT[bed.crop].forEach(([lx, lz], k) => {
         const seed = hash(i + 1, k + 1)
+        const [x, z] = toWorld(at, lx + (hash(k, i) - 0.5) * 0.04, lz + (hash(i, k) - 0.5) * 0.04)
         parts.at(0, 0, 0)
-        GROWERS[bed.crop!](parts, def.x + lx + (hash(k, i) - 0.5) * 0.04, SOIL_Y, def.z + lz + (hash(i, k) - 0.5) * 0.04, g, seed)
+        GROWERS[bed.crop!](parts, x, SOIL_Y, z, g, seed)
       })
     })
     for (let k = 0; k < stockOf('tree'); k++) {

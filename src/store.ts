@@ -44,6 +44,8 @@ export type Panel =
   | { kind: 'office-upgrade'; id: 'slots' | 'wait' } // the card that asks before an office upgrade is bought
   | { kind: 'furniture' } // the furniture shop (decorating)
   | { kind: 'buy-piece'; type: string } // buying one piece: what it is and its price, Cancel or Buy
+  | { kind: 'decor-shop'; tab: 'decor' | 'fruit' } // the farm's edit mode's shop: decoration, or fruit trees and bushes
+  | { kind: 'decor-buy'; item: string } // buying one of a kind for the farm: what it is and its next price, Cancel or Buy
   | { kind: 'away' } // welcome back: what happened on the farm while you were away
   | { kind: 'goals' } // the goals board: what to reach next, and the rewards to claim
   | { kind: 'level' } // the level's card: the XP to the next level, what it brings, the coins to claim

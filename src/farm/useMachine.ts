@@ -7,7 +7,8 @@ import { registerInteractable, type ActionIcon, type InteractableDef } from '../
 import type { Point3 } from '../lib/playerState'
 import { useHome } from '../store'
 import { MACHINES, STORES, count, inputOf, storeOf, type MachineId, type ProduceId, type Recipe } from './data'
-import { canAddJob, clockText, collectMachine, farm, machineCollectable, machineDone, machineSecondsLeft, machineStage, machineToDo } from './state'
+import { usePlacement } from './edit'
+import { canAddJob, clockText, collectMachine, farm, machineCollectable, machineDone, machinePoint, machineSecondsLeft, machineStage, machineToDo } from './state'
 
 // A machine on the action button (MACHINES in src/farm/data.ts): the mill, the loom and the oven, each working through
 // a queue of jobs. The button takes out what is done; otherwise, while something can go into the queue, it opens the
@@ -18,8 +19,10 @@ import { canAddJob, clockText, collectMachine, farm, machineCollectable, machine
 
 /** Whole seconds to go, rounded as the clock in the labels is. */
 const whole = (seconds: number) => Math.max(0, Math.ceil(seconds))
-/** A point round where a machine stands, in the world. */
-const around = (id: MachineId, [x, y, z]: [number, number, number]): Point3 => ({ x: MACHINES[id].x + x, y, z: MACHINES[id].z + z })
+/** A point round where a machine stands (in its own frame: it turns with its place, src/farm/layout.ts), in the world. */
+const around = (id: MachineId, at: [number, number, number]): Point3 => machinePoint(id, at)
+/** Where a machine's sounds come from: its middle, where it stands now. */
+const middle = (id: MachineId) => machinePoint(id, [0, 0, 0])
 
 /** What a recipe still lacks, and how many of each (shown as pictures on the status line). */
 const lacking = (needs: Partial<Record<ProduceId, number>>) =>
@@ -105,7 +108,9 @@ export function useMachine(id: MachineId, ease = 0) {
   const noise = useRef(0)
   const work = useRef(0)
 
-  useEffect(() => registerInteractable(main(id)), [id])
+  // on the button where it stands (again when the edit mode moves it)
+  const placed = usePlacement(id)
+  useEffect(() => registerInteractable(main(id)), [id, placed])
 
   useFrame((_, rawDt) => {
     const dt = Math.min(rawDt, 0.1)
@@ -113,7 +118,7 @@ export function useMachine(id: MachineId, ease = 0) {
     const m = farm.machines[id]
     // a ding for each job done (as many done as before, or fewer: some were collected)
     if (m.done > done.current) {
-      const { pan, near } = placeSound(def.x, def.z)
+      const { pan, near } = placeSound(middle(id).x, middle(id).z)
       farmSound('ding', pan, Math.max(0.6, near))
     }
     done.current = m.done
@@ -129,7 +134,7 @@ export function useMachine(id: MachineId, ease = 0) {
       noise.current -= dt
       if (noise.current <= 0) {
         noise.current = sound.every + Math.random() * sound.spread
-        const { pan, near } = placeSound(def.x, def.z)
+        const { pan, near } = placeSound(middle(id).x, middle(id).z)
         if (near > 0.15) farmSound(sound.sound, pan, near)
       }
     }

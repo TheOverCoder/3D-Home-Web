@@ -24,7 +24,7 @@ export const WOOD = '#8a6440'
 export const WOOD_DARK = '#5e4630'
 
 /** Draws a place where it stands (or is being dragged); its children are in its own frame. */
-function Placed({ id, children }: { id: PlaceId; children: ReactNode }) {
+export function Placed({ id, children }: { id: PlaceId; children: ReactNode }) {
   const p = useShownPlacement(id)
   return (
     <group name={`place-${id}`} position={[p.x, 0, p.z]} rotation-y={turnOf(p)}>
@@ -34,18 +34,18 @@ function Placed({ id, children }: { id: PlaceId; children: ReactNode }) {
 }
 
 type V3 = [number, number, number]
-interface Box {
+export interface Box {
   half: V3
   at: V3
 }
-interface Post {
+export interface Post {
   half: number
   radius: number
   at: V3
 }
 
 /** A place's solid parts, given in its own frame, put into the world where it stands (made again when it moves). */
-function Body({ id, boxes = [], posts = [] }: { id: PlaceId; boxes?: Box[]; posts?: Post[] }) {
+export function Body({ id, boxes = [], posts = [] }: { id: PlaceId; boxes?: Box[]; posts?: Post[] }) {
   const p = usePlacement(id)
   const a = turnOf(p)
   const w = (at: V3): V3 => {

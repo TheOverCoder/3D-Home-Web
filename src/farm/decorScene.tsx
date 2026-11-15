@@ -1,0 +1,349 @@
+import { useEffect, useMemo, useRef } from 'react'
+import { useFrame } from '@react-three/fiber'
+import { CuboidCollider, CylinderCollider, RigidBody } from '@react-three/rapier'
+import { AdditiveBlending, BufferAttribute, BufferGeometry, Group, MeshBasicMaterial, Vector3 } from 'three'
+import { registerInteractable } from '../lib/interaction'
+import { Parts, setSculptGlow, shadowPart, smoothstep, type PartDef } from '../lib/sculpt'
+import type { Structure } from '../models/structures'
+import { DAY, PRODUCERS } from './data'
+import { DECOR_KINDS, FRUIT, FRUIT_KINDS, type DecorKind, type FruitId, type FruitKind, type ShopKind } from './decor'
+import { decorModel, fruitParts, fruitPlantModel, fruitSpots, putFruit } from './decorModels'
+import { moodAt, phaseDef } from './day'
+import { useEdit } from './edit'
+import { DECOR_FEET, isPlant, toWorld, turnOf, type DecorPiece } from './layout'
+import { dayIsFrozen, farm, stockOf, useFarm } from './state'
+import { producerOffer } from './useProducer'
+
+// The farm's decoration and its fruit trees and bushes, bought in the edit mode's shop (src/farm/decor.ts) and standing
+// where the layout puts them (src/farm/layout.ts, `decor`): each kind one crowd (src/lib/sculpt/parts.ts) of its model
+// (src/farm/decorModels.ts), so a hundred fence sections or path tiles cost the draws of one, and the drawing pass draws
+// only those in view (a far one with its lighter copy). A piece being dragged is drawn where the finger is.
+//
+// The lamps and the lanterns light up from the evening: their glass glows (its material's `glow`, at the level
+// `setSculptGlow` sets), and a soft pool of light lies on the ground round each (an additive disc) — no light is added
+// to the scene. Each piece has a soft shadow on the ground under it (CASTS, below). Each fruit plant is one of its kind's
+// producer (PRODUCERS in data.ts): its fruit hang from its crown as they ripen (one crowd, src/models/fruit.ts), and the
+// action button picks them as it picks the lemons.
+
+/** The kinds that cast into the sun's shadow map: none. A crowd that casts is drawn whole wherever it stands (the sun's
+ *  map is drawn from the same meshes), in view or not, with no lighter copies far off: a decorated farm cost every view
+ *  on the farm more triangles that way (tests/e2e/05). Each piece has a soft shadow on the ground under it instead, like
+ *  the corner trees, the woods and the animals (a path or stepping stones none). */
+const CASTS: ReadonlySet<ShopKind> = new Set<ShopKind>([])
+/** A soft shadow's size against the footprint (the leafy ones' crowns spread past theirs). */
+const softShadow = (kind: ShopKind) => (CASTS.has(kind) || DECOR_FEET[kind].flat ? 0 : isPlant(kind) || /tree|pine|bush|roses|hedge/.test(kind) ? 1.15 : 0.9)
+/** The lights' pools on the ground: how far each reaches (m). */
+const POOL: Partial<Record<ShopKind, number>> = { lamp: 2.6, lantern: 1.1 }
+
+/** How the decoration is lit now: 0 by day, rising through the evening to 1 at night (the day's light, src/farm/day.ts;
+ *  noon while the day is stopped, as in the tests). */
+const NOON = phaseDef('noon').mood
+export function glowLevel() {
+  const m = dayIsFrozen() ? NOON : moodAt(farm.day.t)
+  return smoothstep(0.9, Math.max(DAY.minLight, 0.5), m.sun)
+}
+
+let poolGeometry: BufferGeometry | null = null
+/** A disc of warm light on the ground (radius 1), brightest in the middle, nothing at its rim. */
+function pool(): BufferGeometry {
+  if (poolGeometry) return poolGeometry
+  const seg = 28
+  const p: number[] = [0, 0, 0]
+  const c: number[] = [1, 1, 1, 1]
+  for (const [r, a] of [
+    [0.35, 0.75],
+    [0.7, 0.3],
+    [1, 0],
+  ])
+    for (let k = 0; k < seg; k++) {
+      const t = (k / seg) * Math.PI * 2
+      p.push(Math.cos(t) * r, 0, Math.sin(t) * r)
+      c.push(1, 1, 1, a)
+    }
+  const idx: number[] = []
+  for (let k = 0; k < seg; k++) idx.push(0, 1 + ((k + 1) % seg), 1 + k)
+  for (let ring = 0; ring < 2; ring++)
+    for (let k = 0; k < seg; k++) {
+      const a = 1 + ring * seg + k
+      const b = 1 + ring * seg + ((k + 1) % seg)
+      idx.push(a, b, b + seg, a, b + seg, a + seg)
+    }
+  poolGeometry = new BufferGeometry()
+  poolGeometry.setAttribute('position', new BufferAttribute(new Float32Array(p), 3))
+  poolGeometry.setAttribute('color', new BufferAttribute(new Float32Array(c), 4))
+  poolGeometry.setIndex(idx)
+  poolGeometry.computeBoundingSphere()
+  return poolGeometry
+}
+const poolMaterial = new MeshBasicMaterial({ color: 0xffb86a, vertexColors: true, transparent: true, opacity: 0, blending: AdditiveBlending, depthWrite: false, fog: false, toneMapped: false })
+
+/** A kind's model (a fruit plant's or a piece of decoration's). */
+const modelOf = (kind: ShopKind): Structure<string> => (isPlant(kind) ? fruitPlantModel(kind as FruitKind) : decorModel(kind as DecorKind))
+
+interface Crowd {
+  parts: Parts<string>
+  keys: string[]
+  /** room for this many pieces (made again, twice the size, when more stand) */
+  max: number
+}
+
+/** A kind's crowd with room for `max` pieces: its model's parts (the lamps' glass glows by its own material: `glow`). */
+function makeCrowd(kind: ShopKind, max: number): Crowd {
+  const model = modelOf(kind)
+  const keys = Object.keys(model)
+  const defs: Record<string, PartDef> = {}
+  for (const k of keys) {
+    const part = model[k]
+    defs[k] = { geometry: part.shape.geometry(), max, material: part.material, castShadow: CASTS.has(kind) && (part.castShadow ?? true), receiveShadow: part.receiveShadow ?? true }
+  }
+  return { parts: new Parts(defs, `decor-${kind}`), keys, max }
+}
+
+const KINDS = [...DECOR_KINDS, ...FRUIT_KINDS] as ShopKind[]
+
+/** Where each piece is drawn now: where it stands, or where the edit mode drags it. */
+function shownPieces(): DecorPiece[] {
+  const drag = useEdit.getState().drag
+  const list = farm.layout.decor
+  if (!drag || drag.thing.kind !== 'decor') return list
+  const id = drag.thing.id
+  return list.map((d) => (d.id === id ? { ...d, x: drag.at.x, z: drag.at.z, rot: drag.at.rot } : d))
+}
+
+/** Every piece of decoration and every fruit plant, each kind one crowd; the soft shadows under the leafy ones; the
+ *  lights' pools on the ground. */
+function Crowds() {
+  const root = useMemo(() => new Group(), [])
+  const crowds = useRef(new Map<ShopKind, Crowd>())
+  // the soft shadows and the pools of light: room for every piece, made again twice the size when more stand
+  const extras = useRef<{ shadows: Parts<'shadow'>; pools: Parts<'pool'>; max: number } | null>(null)
+  const roomFor = (n: number) => {
+    const now = extras.current
+    if (now && now.max >= n) return now
+    if (now) {
+      root.remove(now.shadows.group, now.pools.group)
+      now.shadows.dispose()
+      now.pools.dispose()
+    }
+    const max = Math.max(64, 2 ** Math.ceil(Math.log2(Math.max(1, n))))
+    const shadows = new Parts({ shadow: shadowPart(max, 0.24) }, 'decor-shadows', false)
+    const pools = new Parts({ pool: { geometry: pool(), max, material: poolMaterial, receiveShadow: false } }, 'decor-light', false)
+    root.add(shadows.group, pools.group)
+    return (extras.current = { shadows, pools, max })
+  }
+  const seen = useRef<{ list: DecorPiece[] | null; drag: unknown }>({ list: null, drag: null })
+  useEffect(() => {
+    const own = crowds.current
+    return () => {
+      for (const c of own.values()) c.parts.dispose()
+      own.clear()
+      extras.current?.shadows.dispose()
+      extras.current?.pools.dispose()
+      extras.current = null
+    }
+  }, [])
+
+  useFrame(() => {
+    // the lights, as the day goes
+    const level = glowLevel()
+    setSculptGlow(level)
+    poolMaterial.opacity = 0.42 * level
+    if (extras.current) extras.current.pools.group.visible = level > 0.001
+    const drag = useEdit.getState().drag
+    const list = farm.layout.decor
+    if (list === seen.current.list && drag === seen.current.drag) return
+    seen.current = { list, drag }
+    const shown = shownPieces()
+    const counts = new Map<ShopKind, number>()
+    for (const d of shown) counts.set(d.kind, (counts.get(d.kind) ?? 0) + 1)
+    for (const kind of KINDS) {
+      const n = counts.get(kind) ?? 0
+      let crowd = crowds.current.get(kind)
+      if (!n && !crowd) continue
+      if (!crowd || crowd.max < n) {
+        // a crowd made (again) with room for twice as many: only while the farm's decoration grows
+        if (crowd) {
+          root.remove(crowd.parts.group)
+          crowd.parts.dispose()
+        }
+        crowd = makeCrowd(kind, Math.max(8, 2 ** Math.ceil(Math.log2(Math.max(1, n)))))
+        crowds.current.set(kind, crowd)
+        root.add(crowd.parts.group)
+      }
+      const c = crowd
+      c.parts.begin()
+      for (const d of shown) {
+        if (d.kind !== kind) continue
+        // each piece a model of its own: the drawing pass draws the ones in view
+        c.parts.at(d.x, 0, d.z, turnOf(d))
+        for (const k of c.keys) c.parts.put(k, 0, 0, 0)
+      }
+      c.parts.end()
+    }
+    const extra = roomFor(shown.length)
+    extra.pools.group.visible = level > 0.001
+    extra.shadows.begin()
+    extra.pools.begin()
+    for (const d of shown) {
+      const soft = softShadow(d.kind)
+      const f = DECOR_FEET[d.kind]
+      if (soft) {
+        extra.shadows.at(d.x, 0, d.z, turnOf(d))
+        extra.shadows.put('shadow', 0, 0.012, 0, 0, 0, 0, SCALE.set(f.hx * soft, 1, f.hz * soft))
+      }
+      const reach = POOL[d.kind]
+      if (reach) {
+        extra.pools.at(d.x, 0, d.z)
+        extra.pools.put('pool', 0, 0.02, 0, 0, 0, 0, reach)
+      }
+    }
+    extra.shadows.end()
+    extra.pools.end()
+  })
+
+  return <primitive object={root} />
+}
+const SCALE = new Vector3()
+
+// ───────────────────────────── the fruit ─────────────────────────────
+
+/** Where each kind's fruit hang, in its own frame (as many places as the most it bears). */
+const SPOTS = Object.fromEntries(FRUIT_KINDS.map((k) => [k, fruitSpots(k, PRODUCERS[k].max)])) as Record<FruitKind, [number, number, number][]>
+
+/** The fruit hanging on every fruit plant: one crowd (src/models/fruit.ts), a part for each fruit, made again with room
+ *  for twice as many when more hang than it holds (only while the farm's plants grow in number). */
+function Fruit() {
+  const root = useMemo(() => new Group(), [])
+  const crowd = useRef<{ parts: Parts<FruitId>; max: number } | null>(null)
+  useEffect(
+    () => () => {
+      crowd.current?.parts.dispose()
+      crowd.current = null
+    },
+    [],
+  )
+  const last = useRef(-1)
+  const seen = useRef<{ list: unknown; drag: unknown }>({ list: null, drag: null })
+  useFrame((state) => {
+    const t = state.clock.elapsedTime
+    const drag = useEdit.getState().drag
+    const list = farm.layout.decor
+    const moved = list !== seen.current.list || drag !== seen.current.drag
+    if (!moved && Math.abs(t - last.current) < 0.25) return
+    last.current = t
+    seen.current = { list, drag }
+    // the most of any one fruit that could hang now: its plants, each full
+    const most = new Map<FruitId, number>()
+    for (const d of list) if (isPlant(d.kind)) most.set(FRUIT[d.kind as FruitKind].fruit, (most.get(FRUIT[d.kind as FruitKind].fruit) ?? 0) + PRODUCERS[d.kind as FruitKind].max)
+    const need = Math.max(0, ...most.values())
+    if (!need && !crowd.current) return
+    if (!crowd.current || crowd.current.max < need) {
+      if (crowd.current) {
+        root.remove(crowd.current.parts.group)
+        crowd.current.parts.dispose()
+      }
+      const max = Math.max(16, 2 ** Math.ceil(Math.log2(Math.max(1, need))))
+      crowd.current = { parts: fruitParts(max), max }
+      root.add(crowd.current.parts.group)
+    }
+    const parts = crowd.current.parts
+    parts.begin()
+    const index = new Map<FruitKind, number>()
+    for (const d of shownPieces()) {
+      if (!isPlant(d.kind)) continue
+      const kind = d.kind as FruitKind
+      const i = index.get(kind) ?? 0
+      index.set(kind, i + 1)
+      const n = stockOf(kind, i)
+      // each fruit a model of its own (the view draws those it sees), hanging from its spot where the plant stands
+      for (let k = 0; k < n; k++) {
+        const [lx, y, lz] = SPOTS[kind][k]
+        const [x, z] = toWorld(d, lx, lz)
+        parts.at(0, 0, 0)
+        putFruit(parts, FRUIT[kind].fruit, x, y, z, k)
+      }
+    }
+    parts.end()
+  })
+  return <primitive object={root} />
+}
+
+/** Each fruit plant on the action button where it stands: pick its fruit (the lemon tree's rules: src/farm/useProducer.ts). */
+function FruitOffers() {
+  const list = useFarm(() => farm.layout.decor)
+  useEffect(() => {
+    const offs: (() => void)[] = []
+    const index = new Map<FruitKind, number>()
+    for (const d of list) {
+      if (!isPlant(d.kind)) continue
+      const kind = d.kind as FruitKind
+      const i = index.get(kind) ?? 0
+      index.set(kind, i + 1)
+      const def = PRODUCERS[kind]
+      const point = ([x, y, z]: readonly [number, number, number]) => {
+        const [wx, wz] = toWorld(d, x, z)
+        return { x: wx, y, z: wz }
+      }
+      offs.push(registerInteractable(producerOffer(kind, i, { stand: point(def.stand), aim: point(def.aim) })))
+    }
+    return () => offs.forEach((off) => off())
+  }, [list])
+  return null
+}
+
+// ───────────────────────────── what is solid ─────────────────────────────
+
+type Solid = { box: [number, number, number] } | { post: [number, number] }
+/** Each kind's body, in its own frame round its middle (half sizes: a box's, or a post's half height and radius); the
+ *  flat ones and the flowers are walked over. */
+const SOLID: Partial<Record<ShopKind, Solid>> = {
+  lamp: { post: [1.25, 0.1] },
+  lantern: { post: [0.6, 0.06] },
+  fence: { box: [1.0, 0.5, 0.06] },
+  hedge: { box: [1.2, 0.47, 0.3] },
+  bench: { box: [0.72, 0.25, 0.28] },
+  tree: { post: [1.5, 0.25] },
+  pine: { post: [1.5, 0.2] },
+  bush: { post: [0.44, 0.5] },
+  roses: { post: [0.45, 0.45] },
+  planter: { box: [0.48, 0.33, 0.24] },
+  birdbath: { post: [0.45, 0.3] },
+  well: { post: [0.5, 0.75] },
+  'apple-tree': { post: [1.2, 0.18] },
+  'orange-tree': { post: [1.2, 0.18] },
+  'cherry-tree': { post: [1.2, 0.18] },
+  'blueberry-bush': { post: [0.5, 0.6] },
+  'raspberry-bush': { post: [0.7, 0.5] },
+}
+
+/** The bodies of everything standing (made again when anything is put down, moved or put away). */
+function Bodies() {
+  const list = useFarm(() => farm.layout.decor)
+  const key = useMemo(() => list.map((d) => `${d.kind}@${d.x},${d.z},${d.rot}`).join('|'), [list])
+  return (
+    <RigidBody key={key} type="fixed" colliders={false}>
+      {list.map((d) => {
+        const s = SOLID[d.kind]
+        if (!s) return null
+        if ('box' in s) {
+          const [hx, hy, hz] = s.box
+          return <CuboidCollider key={d.id} args={[hx, hy, hz]} position={[d.x, hy, d.z]} rotation={[0, turnOf(d), 0]} />
+        }
+        const [half, radius] = s.post
+        return <CylinderCollider key={d.id} args={[half, radius]} position={[d.x, half, d.z]} />
+      })}
+    </RigidBody>
+  )
+}
+
+/** The farm's decoration and fruit plants (mounted with the farm, in its outside cell). */
+export function Decor() {
+  return (
+    <group name="farm-decor">
+      <Crowds />
+      <Fruit />
+      <FruitOffers />
+      <Bodies />
+    </group>
+  )
+}

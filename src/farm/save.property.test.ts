@@ -33,7 +33,8 @@ import {
   type CropId,
 } from './data'
 import { GOAL_IDS, MOST_STEPS } from './goals'
-import { PARCELS, PARCEL_IDS, PLACE_IDS, canPlace } from './layout'
+import { PARCELS, PARCEL_IDS, PLACE_IDS, bedHome, canPlace, canPlaceBed, canPlaceThing, isShopKind, mostOf } from './layout'
+import { FRUIT_KINDS, SHOP as FARM_SHOP, type ShopKind } from './decor'
 import { MAX_PLACES, SHOP_LADDERS, placesOpen, shopperEvery } from './market'
 import { offersPerDay } from './contractor'
 import { levelOf } from './xp'
@@ -169,7 +170,9 @@ const OLD_PARTS: Record<string, string> = {
  *  - the house's shell (its doorways, windows, paint and floors) → the furniture as above (a piece where a doorway was
  *    closed is put away; a save with no shell, from before it, gets the things on the walls and the standing lamp)
  *  - the layout is one part: a field not bought sends the places on it home, and one place sent home can send all home;
- *    the west meadow bought or not moves the tractor's gate, and so how long its trip is (dispatch)
+ *    the west meadow bought or not moves the tractor's gate, and so how long its trip is (dispatch); the fruit trees and
+ *    bushes standing on it are their producers' plants (each kind's producer: its counts and clocks)
+ *  - the beds (built or not) → the layout: a bed not built stands where it was staked out
  *  - the office's upgrades → the order board: as many places, and no wait longer than the office's
  *  - the time it was saved also → the orders on their way (they come in) and the tractor's trip (it goes on); the
  *    shop's visits (its shelves, its till, the countdown), the day's clock and the contractor's new day
@@ -177,9 +180,12 @@ const OLD_PARTS: Record<string, string> = {
  *    pieces a day); the market (whether the shop is yours) → the ladders (the shop's own are 0 until it is)
  */
 function alsoChanges(part: string): RegExp | null {
-  if (part.startsWith('expansions')) return /^beds\./
+  if (part.startsWith('expansions')) return /^beds\.|^layout$/
+  // a bed not built stands where it was staked out (only a built one moves)
+  if (part.startsWith('beds.')) return /^layout$/
   if (part === 'office') return /^orders$/
-  if (part === 'layout') return /^dispatch$/
+  // the fruit trees and bushes standing are their producers' plants (one count and clock each)
+  if (part === 'layout') return /^dispatch$|^producers\.[a-z]+-(tree|bush)$/
   const herd = /^producers\.(\w+)\.animals$/.exec(part)
   if (herd) return new RegExp(`^producers\\.${herd[1]}\\.(stock|timer)$`)
   if (part === 'queueLevel' || part === 'nextVisitorIn') return /^queue$/
@@ -256,6 +262,8 @@ function farmProblems(): string[] {
     p.stock.forEach((s, i) => bad(`producers.${id}.stock.${i}`, isCount(s, def.max)))
     p.timer.forEach((t, i) => bad(`producers.${id}.timer.${i}`, typeof t === 'number' && t >= 0 && t < def.every))
   }
+  // a fruit kind's producer has a count and a clock for each of its plants standing on the farm
+  for (const kind of FRUIT_KINDS) bad(`producers.${kind}: one for each plant standing`, farm.producers[kind].animals === farm.layout.decor.filter((d) => d.kind === kind).length)
   // the machines: a queue of their own recipes, twelve at most; the done ones first, no more than there are; the one
   // under way no further in than it takes at the machine's level (none: no progress); three to twelve places; the
   // seconds worked from 0
@@ -351,9 +359,25 @@ function placeProblems(): string[] {
   const bad = (what: string, ok: boolean) => {
     if (!ok) out.push(what)
   }
-  const { places, land } = farm.layout
+  const { places, land, beds, decor } = farm.layout
   bad('layout: every place', sameKeys(places, PLACE_IDS))
   for (const id of PLACE_IDS) bad(`layout.places.${id} fits`, [0, 1, 2, 3].includes(places[id].rot) && canPlace(farm.layout, id, places[id]).ok)
+  // every bed where it fits; one not built where it was staked out
+  bad('layout.beds: one for each bed', beds.length === BEDS.length)
+  beds.forEach((p, i) => {
+    bad(`layout.beds.${i} fits`, [0, 1, 2, 3].includes(p.rot) && canPlaceBed(farm.layout, i, p).ok)
+    if (!farm.beds[i].built) bad(`layout.beds.${i}: not built, where it was staked out`, json(p) === json(bedHome(i)))
+  })
+  // each piece of decoration a kind of the shop's, with an id of its own, where it fits; the store a count of each kind,
+  // no kind owning more than its most
+  bad('layout.decor: ids once each, under the next', unique(decor.map((d) => d.id)) && decor.every((d) => Number.isSafeInteger(d.id) && d.id >= 1 && d.id < farm.layout.next))
+  for (const d of decor)
+    bad(
+      `layout.decor.${d.id} fits`,
+      isShopKind(d.kind) && sameKeys(d, ['id', 'kind', 'x', 'z', 'rot']) && [0, 1, 2, 3].includes(d.rot) && canPlaceThing(farm.layout, { kind: 'decor', id: d.id }, d).ok,
+    )
+  bad('layout.stored: a count of each kind', sameKeys(farm.layout.stored, Object.keys(FARM_SHOP)))
+  for (const [kind, n] of Object.entries(farm.layout.stored)) bad(`layout.stored.${kind}`, isCount(n) && n + decor.filter((d) => d.kind === kind).length <= mostOf(kind as ShopKind))
   bad(
     'layout.land: fields, once each, bought in order',
     land.every((id) => PARCEL_IDS.includes(id)) && unique(land) && land.every((id) => !PARCELS[id].after || PARCELS[id].after!.some((a) => land.includes(a))),

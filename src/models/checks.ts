@@ -20,6 +20,9 @@ import { ESTATE_LOOK } from './look'
 import { sitAtDesk } from './person'
 import { putSlidingDoor, slidingDoorParts } from './slidingDoor'
 import { WALK_INS } from '../data/buildings'
+import { DECOR_KINDS, FRUIT, FRUIT_KINDS } from '../farm/decor'
+import { decorModel } from './decor'
+import { fruitParts, fruitPlantModel, fruitSpots, putFruit } from './fruit'
 
 // Every model, in every variant and in the poses it takes in the game, run through the kit's checks (see
 // src/lib/sculpt/check.ts): every piece holds on to the rest, and the model stands on its ground. The gallery shows
@@ -336,6 +339,34 @@ export const MODEL_CHECKS: ModelCheck[] = [
               ),
         )
       })
+    },
+  },
+  {
+    id: 'decor',
+    name: "The farm's decoration",
+    run() {
+      return DECOR_KINDS.flatMap((kind) => checkPieces(kind, ...structure(decorModel(kind))))
+    },
+  },
+  {
+    id: 'fruit',
+    name: 'The fruit trees and bushes, with their fruit',
+    run() {
+      // every fruit holds on to its plant, up to sixteen of them (the k-th spot is the same for any number)
+      const fruit = fruitParts(16)
+      return FRUIT_KINDS.flatMap((kind) =>
+        checkPieces(
+          `${kind} with its fruit`,
+          [
+            ...structurePieces(fruitPlantModel(kind)),
+            ...posedPieces(fruit, (pp) => {
+              pp.at(0, 0, 0)
+              fruitSpots(kind, 16).forEach(([x, y, z], k) => putFruit(pp, FRUIT[kind].fruit, x, y, z, k))
+            }),
+          ],
+          { ground: 0, open: openParts(fruit) },
+        ),
+      )
     },
   },
   {

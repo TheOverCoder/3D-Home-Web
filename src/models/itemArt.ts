@@ -20,6 +20,8 @@ import {
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import type { Garment } from '../farm/outfit'
 import type { PictureId } from '../farm/icons'
+import { DECOR_KINDS, FRUIT, FRUIT_KINDS, type FruitKind, type ShopKind } from '../farm/decor'
+import { decorModel, fruitParts, fruitPlantModel, fruitSpots, putFruit } from '../farm/decorModels'
 import { sculptMaterial, type SculptMaterialOptions } from '../lib/sculpt'
 import { barnModel, siloModel } from './buildings'
 import { GOODS } from './goods'
@@ -98,6 +100,44 @@ function getStudio(px: number) {
 export function renderItemArt(id: PictureId, size = 256): string {
   const item = structureParts(MODELS[id](), `item-${id}`)
   const url = shoot(item.group, VIEWS[id] ?? {}, size)
+  item.dispose()
+  return url
+}
+
+/** How each kind of the farm's shop is seen (src/farm/decor.ts): from the front left, a little above; the flat ones
+ *  from higher up, a fence and a hedge more from the front. */
+const SHOP_VIEWS: Partial<Record<ShopKind, Item>> = {
+  path: { el: 55 },
+  stones: { el: 55 },
+  flowers: { el: 40 },
+  fence: { az: -22, el: 16 },
+  hedge: { az: -22, el: 18 },
+  bench: { az: -30, el: 18 },
+}
+
+/** The kinds of the farm's shop with a picture of their own (drawn from their models). */
+export const SHOP_ART_KINDS: ShopKind[] = [...DECOR_KINDS, ...FRUIT_KINDS]
+
+/** A kind of the farm's shop as a picture (its card in the edit mode's shop), `size` pixels square: drawn from its model
+ *  as the goods are. `scripts/render-item-art.mjs` saves them in src/assets/decor, which src/farm/icons.ts serves. */
+export function renderShopArt(kind: ShopKind, size = 192): string {
+  const plant = !(DECOR_KINDS as string[]).includes(kind)
+  const model = plant ? fruitPlantModel(kind as FruitKind) : decorModel(kind as (typeof DECOR_KINDS)[number])
+  const item = structureParts(model, `shop-${kind}`)
+  // a fruit tree or bush hung with its fruit, as it is when ripe
+  const fruit = plant ? fruitParts(16) : null
+  if (fruit) {
+    const f = FRUIT[kind as FruitKind].fruit
+    fruit.begin()
+    fruitSpots(kind as FruitKind, 8).forEach(([x, y, z], k) => {
+      fruit.at(0, 0, 0)
+      putFruit(fruit, f, x, y, z, k)
+    })
+    fruit.end()
+    item.group.add(fruit.group)
+  }
+  const url = shoot(item.group, SHOP_VIEWS[kind] ?? {}, size)
+  fruit?.dispose()
   item.dispose()
   return url
 }

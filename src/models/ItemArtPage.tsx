@@ -2,7 +2,8 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { PRODUCE, type ProduceId } from '../farm/data'
 import type { PictureId } from '../farm/icons'
 import { GARMENTS } from '../farm/outfit'
-import { ITEM_IDS, renderGarmentArt, renderItemArt } from './itemArt'
+import { SHOP } from '../farm/decor'
+import { ITEM_IDS, SHOP_ART_KINDS, renderGarmentArt, renderItemArt, renderShopArt } from './itemArt'
 
 // The item pictures drawn from the models (open the site with ?items): each at the size the panels show it, on
 // the paper, on the dark chip, and small, as in a chip — the sizes a picture has to read at.
@@ -16,6 +17,7 @@ const dark: CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, pad
 export function ItemArtPage() {
   const [items, setItems] = useState<[PictureId, string][]>([])
   const [clothes, setClothes] = useState<[string, string][]>([])
+  const [shop, setShop] = useState<[string, string][]>([])
   useEffect(() => {
     const size = Number(new URLSearchParams(location.search).get('size')) || 256
     const out = {} as Record<PictureId, string>
@@ -23,11 +25,16 @@ export function ItemArtPage() {
     // the wardrobe's garments, smaller (a tile in its sheet)
     const worn: Record<string, string> = {}
     for (const g of GARMENTS) worn[g.id] = renderGarmentArt(g)
-    const w = window as unknown as { __itemArt: Record<string, string>; __garmentArt: Record<string, string> }
+    // the farm shop's decoration and fruit plants (the edit mode's shop)
+    const sold: Record<string, string> = {}
+    for (const k of SHOP_ART_KINDS) sold[k] = renderShopArt(k)
+    const w = window as unknown as { __itemArt: Record<string, string>; __garmentArt: Record<string, string>; __shopArt: Record<string, string> }
     w.__garmentArt = worn
+    w.__shopArt = sold
     w.__itemArt = out
     setItems(Object.entries(out) as [PictureId, string][])
     setClothes(Object.entries(worn))
+    setShop(Object.entries(sold))
   }, [])
   return (
     <main style={page}>
@@ -41,6 +48,15 @@ export function ItemArtPage() {
               <img src={url} alt="" width={24} height={24} />
             </span>
             <figcaption>{PRODUCE.find((p) => p.id === (id as ProduceId))?.name ?? id}</figcaption>
+          </figure>
+        ))}
+      </div>
+      <h1 style={{ margin: '20px 0 12px', font: '600 26px var(--font-display)' }}>The farm shop</h1>
+      <div style={grid}>
+        {shop.map(([id, url]) => (
+          <figure key={id} style={card}>
+            <img src={url} alt="" width={96} height={96} />
+            <figcaption>{SHOP[id as keyof typeof SHOP]?.name ?? id}</figcaption>
           </figure>
         ))}
       </div>
