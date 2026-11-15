@@ -10,7 +10,7 @@ import { useEffect, useMemo } from 'react'
 import { CuboidCollider, CylinderCollider, RigidBody } from '@react-three/rapier'
 import { BufferAttribute, BufferGeometry, CanvasTexture, MeshStandardMaterial, SRGBColorSpace } from 'three'
 import type { Box } from '../data/buildings'
-import { AGENT_SEAT, AGENT_STAND, CABINET, ESTATE_DESK, ESTATE_HOURS, ESTATE_PATH, ESTATE_SIGN, ESTATE_WALKIN, ESTATE_WINDOW, PARKING_SIGN, PLANT, SALE_BOARD } from '../data/estate'
+import { AGENT_SEAT, AGENT_STAND, CABINET, ESTATE_DESK, ESTATE_HOURS, ESTATE_PATH, ESTATE_ROOM, ESTATE_SIGN, ESTATE_WALKIN, ESTATE_WINDOW, PARKING_SIGN, PLANT, SALE_BOARD } from '../data/estate'
 import { debugSet } from '../lib/debug'
 import { useInteractable } from '../lib/interaction'
 import { estateFittingsParts, parkingLotParts } from '../models/estate'
@@ -37,6 +37,7 @@ const REGIONS = {
   window: { x: 528, y: 256, w: 300, h: 500 },
   parking: { x: 848, y: 256, w: 176, h: 176 },
   board: { x: 0, y: 640, w: 512, h: 384 },
+  plate: { x: 560, y: 660, w: 340, h: 340 },
 } as const
 type Region = keyof typeof REGIONS
 
@@ -185,6 +186,18 @@ function drawPictures(c: HTMLCanvasElement, pics: Pics, sold: boolean) {
   // the board on the wall inside: the same poster, larger
   const b = REGIONS.board
   poster(g, b, pics, sold)
+  // the plate on the wall behind his desk: the logo, gold on navy, and the words under it
+  const l = REGIONS.plate
+  g.fillStyle = NAVY
+  g.fillRect(l.x, l.y, l.w, l.h)
+  g.strokeStyle = GOLD
+  g.lineWidth = 6
+  g.strokeRect(l.x + 12, l.y + 12, l.w - 24, l.h - 24)
+  logo(g, l.x + 80, l.y + 40, 180)
+  g.fillStyle = '#ffffff'
+  g.textAlign = 'center'
+  g.font = `600 44px ${DISPLAY}`
+  g.fillText('ESTATE AGENT', l.x + l.w / 2, l.y + 268)
 }
 
 /** One picture's quad: its middle, which way is right and up on it (its face looks along right × up), half its size,
@@ -243,8 +256,12 @@ const OUTSIDE: Quad[] = [
   { at: [ESTATE_WINDOW.x, ESTATE_WINDOW.y, ESTATE_WINDOW.z - 0.01], right: NORTH, half: ESTATE_WINDOW.half, region: 'window' },
   { at: [PARKING_SIGN.x + 0.052, PARKING_SIGN.y, PARKING_SIGN.z], right: EAST, half: PARKING_SIGN.half, region: 'parking' },
 ]
-/** Inside: the board with the house for sale, in its frame on the west wall. */
-const INSIDE: Quad[] = [{ at: [SALE_BOARD.x + 0.018, SALE_BOARD.y, SALE_BOARD.z], right: EAST, half: SALE_BOARD.half, region: 'board' }]
+/** Inside: the board with the house for sale, in its frame on the west wall, and the plate with the logo on the wall
+ *  behind the agent's desk, over his head. */
+const INSIDE: Quad[] = [
+  { at: [SALE_BOARD.x + 0.018, SALE_BOARD.y, SALE_BOARD.z], right: EAST, half: SALE_BOARD.half, region: 'board' },
+  { at: [AGENT_SEAT.x, 1.75, ESTATE_ROOM.z1 - 0.008], right: NORTH, half: [0.24, 0.24], region: 'plate' },
+]
 
 let images: Promise<Pics> | null = null
 /** The house's and the coin's pictures, loaded once. */
@@ -360,7 +377,7 @@ function Counterparts() {
     radius: 1.6,
     enabled: () => !estateOpen(),
     label: () => `The estate office opens at ${clockOf(opensAt('estate'))} · ${mmss(estateOpensIn())}`,
-    icon: () => ({ verb: 'wait', art: 'house', seconds: Math.ceil(estateOpensIn()) }),
+    icon: () => ({ verb: 'wait', art: 'man-office-worker', seconds: Math.ceil(estateOpensIn()) }),
     run: () => {},
   })
   return null

@@ -50,7 +50,7 @@ export function EstatePanel() {
     >
       {owned ? (
         <>
-          <p className="farm-line">The house is yours: the car by the gate drives you there.</p>
+          <p className="farm-line">The house is yours.</p>
           <div className="farm-shop-item">
             <img className="art" src={art('house')} alt="" />
             <div className="farm-shop-text">

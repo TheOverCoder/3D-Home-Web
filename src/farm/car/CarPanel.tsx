@@ -94,7 +94,7 @@ export function CarPanel() {
   const close = useHome((s) => s.closePanel)
   return (
     <Shell title="The car" art={art('automobile')} sub={<span className="tag">{farm.place === 'home' ? 'At the house' : 'On the farm'}</span>} onClose={close}>
-      {!farm.apartment.owned && <p className="farm-line">The house is sold at the estate office by the market.</p>}
+      {!farm.apartment.owned && <p className="farm-line">The house is for sale by the market.</p>}
       <div className="farm-list">
         <Destination to="home" />
         <Destination to="farm" />

@@ -13,7 +13,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { CuboidCollider, RigidBody } from '@react-three/rapier'
 import { BufferAttribute, BufferGeometry, type Group, type Object3D } from 'three'
-import { bounds, type AutoDoor, type Box, type Rect, type WalkIn as WalkInDef } from '../data/buildings'
+import { bounds, walkInRoomAt, type AutoDoor, type Box, type Rect, type WalkIn as WalkInDef } from '../data/buildings'
 import { groundDistance } from '../lib/interaction'
 import { playerState } from '../lib/playerState'
 import { surface } from '../lib/proceduralTextures'
@@ -133,8 +133,8 @@ export function shownInScene(o: Object3D | null): boolean {
   return true
 }
 
-/** How far round a building's walls you still count as in it, for a locked door: you never find it locked in your face
- *  on your way out (it locks once you are this far from its walls). */
+/** On your way out of a building whose door is locked, how far from its doorway you are before it locks behind you
+ *  (m, on the ground: clear of your body, so the door never shuts on you). */
 const LOCK_CLEAR = 0.6
 
 /**
@@ -142,8 +142,8 @@ const LOCK_CLEAR = 0.6
  * market's island has a panel down its middle: from one aisle, the far face's goods are not drawn). `walkers`: who
  * else opens its sliding door by coming near (its shoppers, its manager), besides you. `closed`: out of its hours (the
  * estate office): its sliding door stays shut to you and a collider stands in it (the way-finding's cells too: a fixed
- * collider), though it still opens for its walkers, and for you while you are in it or at its walls (you can always
- * get out).
+ * collider), though it still opens for its walkers, and for you while you are in it (you can always get out: it locks
+ * behind you once you are clear of its doorway).
  */
 export function WalkIn({ def, hiders = NONE, walkers, closed }: { def: WalkInDef; hiders?: readonly Box[]; walkers?: () => Iterable<{ x: number; z: number }>; closed?: () => boolean }) {
   const root = useRef<Group>(null)
@@ -179,17 +179,18 @@ export function WalkIn({ def, hiders = NONE, walkers, closed }: { def: WalkInDef
   latest.current = walkers
   const shutNow = useRef(closed)
   shutNow.current = closed
-  const outer = useMemo(() => bounds(def), [def])
-  // locked: out of its hours, and you not in it
+  // locked: out of its hours, and you not in it (in one of its rooms or its doorways, or on your way out of its door)
   const [locked, setLocked] = useState(false)
   const lockedNow = useRef(false)
+  const inside = useRef(false)
   useFrame((_, rawDt) => {
     if (!door || !leaves) return
     const mid = { x: (door.x0 + door.x1) / 2, z: (door.z0 + door.z1) / 2 }
     const half = { x: (door.x1 - door.x0) / 2, z: (door.z1 - door.z0) / 2 }
     const p = playerState.position
-    const lock =
-      !!shutNow.current?.() && groundDistance(p.x, p.z, { x: (outer.x0 + outer.x1) / 2, z: (outer.z0 + outer.z1) / 2 }, { x: (outer.x1 - outer.x0) / 2, z: (outer.z1 - outer.z0) / 2 }) > LOCK_CLEAR
+    if (walkInRoomAt(p.x, p.z)?.walkIn === def) inside.current = true
+    else if (groundDistance(p.x, p.z, mid, half) > LOCK_CLEAR) inside.current = false
+    const lock = !!shutNow.current?.() && !inside.current
     if (lock !== lockedNow.current) {
       lockedNow.current = lock
       setLocked(lock)

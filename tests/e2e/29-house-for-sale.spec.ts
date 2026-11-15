@@ -4,7 +4,6 @@ import { test, expect, type Game } from './helpers'
 import { AGENT_SEAT, AGENT_STAND, ESTATE_DOOR, ESTATE_ROOM, PARKING, SALE_BOARD } from '../../src/data/estate'
 import { CAR_SPOT } from '../../src/data/maps'
 import { DAY, ESTATE, XP_FOR } from '../../src/farm/data'
-import { ARM_MS } from '../../src/ui/Sheet'
 
 // The house for sale (src/farm/Estate.tsx, EstatePanel.tsx, src/farm/car): past the garden's gate, the parking lot west
 // of it with the car in its bay, and the estate office against the market's west wall, open from 8:00 to 16:00 with its
@@ -57,6 +56,22 @@ const setHour = (page: Page, h: number) =>
   }, h)
 const panelIs = (game: Game, kind: string | null) =>
   game.page.waitForFunction((kind) => ((window as any).__home.useHome.getState().panel?.kind ?? null) === kind, kind, { timeout: 30_000, polling: 200 })
+/** Holds W until the body is past `at` along `axis` (beyond: greater), within a minute (software rendering is slow). */
+async function walkUntil(game: Game, axis: 'x' | 'z', beyond: boolean, at: number) {
+  await game.page.keyboard.down('KeyW')
+  try {
+    await game.page.waitForFunction(
+      ([axis, beyond, at]) => {
+        const v = (window as any).__home.playerState.position[axis] as number
+        return beyond ? v > at : v < at
+      },
+      [axis, beyond, at] as const,
+      { timeout: 60_000, polling: 200 },
+    )
+  } finally {
+    await game.page.keyboard.up('KeyW')
+  }
+}
 const nearbyIs = (game: Game, id: string) => game.page.waitForFunction((want) => (window as any).__home.useHome.getState().nearby?.id === want, id, { timeout: 60_000, polling: 250 })
 
 /** On the lane beside the car, looking at it. */
@@ -72,9 +87,8 @@ test.describe('the house for sale', () => {
     await reset(game, 12, 0)
     // from the lane before the gate, walking west along the fence into the lot (it used to end at x 4.3)
     await game.teleport(5.6, 1.4, 15.1, P / 2, 0)
-    await game.hold('KeyW', 3500)
+    await walkUntil(game, 'x', false, 4.0)
     let s = await state(page)
-    expect(s.at.x, 'walked west into the parking lot').toBeLessThan(4.0)
     // in the lot west of the car, nothing puts you back; its west end holds you in
     await game.teleport(PARKING.x0 + 1.2, 1.4, 14.2, P / 2, 0)
     await page.waitForTimeout(2500)
@@ -102,7 +116,7 @@ test.describe('the house for sale', () => {
     await page.keyboard.press('KeyE')
     await panelIs(game, 'car')
     const sheet = page.locator('.farm-panel')
-    await expect(sheet).toContainText('The house is sold at the estate office by the market')
+    await expect(sheet).toContainText('The house is for sale by the market')
     const house = sheet.locator('.farm-shop-item').filter({ hasText: 'The house' })
     await expect(house).toContainText('Estate office')
     await expect(house).toContainText(String(ESTATE.price))
@@ -127,19 +141,21 @@ test.describe('the house for sale', () => {
     // noon: at the door it opens; in you go
     await game.teleport(DOOR.x, 1.4, DOOR.z - 1.2, P, 0)
     await page.waitForFunction(() => (window as any).__home.estate.door() === 1, null, { timeout: 30_000, polling: 200 })
-    await game.hold('KeyW', 2500)
+    await walkUntil(game, 'z', true, ESTATE_ROOM.z0 + 0.2)
     let s = await state(page)
-    expect(s.at.z, 'walked in at its door').toBeGreaterThan(ESTATE_ROOM.z0)
     await atAgent(game)
     await nearbyIs(game, 'farm-estate-agent')
     s = await state(page)
     expect(s.nearby).toMatchObject({ label: 'Talk to the estate agent', verb: 'talk' })
     expect(await page.evaluate(() => (window as any).__home.farm.estateAgentNow())).toMatchObject({ x: AGENT_SEAT.x, z: AGENT_SEAT.z, pose: 'sit' })
-    // night: from the lane the door stays shut and the office says when it opens; walking at it, you stay out (just
-    // east of its door: the car, out of reach, offers nothing there)
+    // night: coming to it along the lane, the door stays shut and the office says when it opens; walking at it, you
+    // stay out (just east of its door: the car, out of reach, offers nothing there). (Out of it first: on your way out
+    // the door stays open for you until you are clear of it.)
+    await game.teleport(9, 1.4, 15, P / 2, 0)
+    await page.waitForTimeout(1000)
+    await setHour(page, 22)
     const AT_DOOR = { x: DOOR.x + 0.55, z: DOOR.z - 0.5 }
     await game.teleport(AT_DOOR.x, 1.4, AT_DOOR.z, yawTo(AT_DOOR.x, AT_DOOR.z, DOOR.x, DOOR.z + 0.2), 0)
-    await setHour(page, 22)
     await page.waitForFunction(() => (window as any).__home.useHome.getState().status?.id === 'farm-estate-door', null, { timeout: 30_000, polling: 200 })
     s = await state(page)
     expect(s.status).toMatchObject({ verb: 'wait', label: expect.stringMatching(/^The estate office opens at 8:00/) })
@@ -180,15 +196,15 @@ test.describe('the house for sale', () => {
       .getByRole('button', { name: `Buy the house for ${ESTATE.price} coins` })
       .click()
     await panelIs(game, 'house-buy')
-    await page.waitForTimeout(ARM_MS + 200)
+    await page.waitForTimeout(650) // the Buy button arms a moment after the card opens (ARM_MS)
     await page.locator('.farm-panel .farm-buy').click()
     await panelIs(game, null)
     s = await state(page)
     expect([s.owned, s.coins]).toEqual([true, 300])
     expect(await page.evaluate(() => (window as any).__home.farm.xpNow().points)).toBe(xp + XP_FOR.home)
     expect(await page.evaluate(() => (window as any).__home.useHome.getState().toast?.text)).toBe('The house is yours')
-    // in the save
-    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('3d-home:farm:v1') ?? '{}').apartment)).toEqual({ owned: true })
+    // in the save (written a moment later)
+    await page.waitForFunction(() => JSON.parse(localStorage.getItem('3d-home:farm:v1') ?? '{}').apartment?.owned === true, null, { timeout: 30_000, polling: 250 })
     // the agent now says it is yours, and shows the way to the car
     await page.keyboard.press('KeyE')
     await panelIs(game, 'estate')
