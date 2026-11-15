@@ -184,6 +184,24 @@ The README has the overview; `tests/README.md` what each test guards.
   tests); orders are rows of the board (`farm.orders`), the tractor's trip a timeline (`tractorRoute.ts`), both in the
   save like the line at the gate.
 
+## The farm's decoration (src/farm/decor.ts, layout.ts, decorScene.tsx, DecorShop.tsx)
+
+- The edit mode's shop (the bag on its card) sells decoration and, on a tab of its own, fruit trees and bushes: a row
+  each in `decor.ts` (name, first price; `nextPrice`: each one dearer than the last, counted from what the farm owns,
+  standing and in its store). Its card asks before anything is spent; bought, it stands at the nearest free spot in
+  view, picked, to be dragged, turned or put away into the farm's store (`layout.stored`, put down again for nothing).
+- What stands is `layout.decor` (kind, middle, quarter turn, id); each kind's ground is `DECOR_FEET` (fence and hedge
+  sections whose ends meet, path tiles that join edge to edge). Places, beds and pieces share one set of rules
+  (`canPlaceThing`). A new kind: its row, its model (`src/models/decor.ts`, taken through `src/farm/decorModels.ts`),
+  its ground, its body (`SOLID` in `decorScene.tsx`) and its picture (`node scripts/render-item-art.mjs`).
+- Each kind is one crowd, and none casts into the sun's map (a casting crowd is drawn whole in every view): each piece
+  has a soft shadow on the ground. The lamps' glass glows from the evening (`setSculptGlow`) over a pool of light on the
+  ground (an additive disc): no light is added.
+- A fruit tree or bush is a `PRODUCERS` row whose plants are its kind's pieces standing, in the layout's order; its fruit
+  a good of the silo.
+- The mill, the loom and the oven are places of the layout, and a built bed moves (`layout.beds`): where one stands now
+  is `machinePoint` and `bedSpot`, never the `x`/`z` of `MACHINES` or `BEDS` (where they start).
+
 ## Interface (src/styles.css tokens, src/ui/art.ts, src/ui/glyphs.ts)
 
 - How everything that wraps the game looks, moves and flows is the interface designer's
