@@ -116,8 +116,9 @@ function beam(x0: number, x1: number, y: number, z: number, hz: number, hy: numb
   )
 }
 
-/** A soft square pyramid (a lamp's roof, a post's cap): its base half-width `half` at y0, its tip at y1. */
-function pyramid(half: number, y0: number, y1: number, rim = 0.02): Shape {
+/** A soft square pyramid (a lamp's roof, a post's cap): its base half-width `half` at y0, its tip at y1 (`seg` 8 for a
+ *  small one: its corners on the diagonals all the same). */
+function pyramid(half: number, y0: number, y1: number, rim = 0.02, seg = 16): Shape {
   return lathe(
     [
       [0, y0],
@@ -126,7 +127,7 @@ function pyramid(half: number, y0: number, y1: number, rim = 0.02): Shape {
       [half * 0.12, y1 - (y1 - y0) * 0.08],
       [0, y1],
     ],
-    { seg: 16, steps: 1, shape: (a) => squircle(a, 6) },
+    { seg, steps: 1, shape: (a) => squircle(a, 6) },
   )
 }
 
@@ -259,7 +260,7 @@ function lantern(): Structure<'iron' | 'glass'> {
 export const SECTION_HALF = 1
 
 function fence(): Structure<'paint'> {
-  const post = (x: number) => merge(slab(0.045, 0.045, -0.02, 0.97, 6, 8).place([x, 0, 0]), pyramid(0.062, 0.955, 1.045, 0.018).place([x, 0, 0]))
+  const post = (x: number) => merge(slab(0.045, 0.045, -0.02, 0.97, 6, 8).place([x, 0, 0]), pyramid(0.062, 0.955, 1.045, 0.018, 8).place([x, 0, 0]))
   const rails = [0.26, 0.66].map((y) => beam(-SECTION_HALF, SECTION_HALF, y, -0.02, 0.012, 0.035))
   // nine pickets, pointed, nailed on the front of the rails
   const pickets: Shape[] = []
