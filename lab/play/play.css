@@ -6,17 +6,28 @@
   position: fixed;
   inset: 0;
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   background: #15171b;
   color: var(--ink);
   font: 400 16px/1.4 var(--text);
 }
-.play.wide {
+/* a computer: the sidebar beside the screen (on the right, the page is right to left) */
+.play.beside {
+  grid-template-columns: 300px minmax(0, 1fr);
+}
+.main {
+  position: relative;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-width: 0;
+  min-height: 0;
+}
+.play.wide .main {
   grid-template-rows: none;
   grid-template-columns: auto minmax(0, 1fr);
   direction: ltr;
 }
-.play.wide > * {
+.play.wide .main > * {
   direction: rtl;
 }
 .play.wide .dock {
@@ -170,9 +181,9 @@
 /* the bar */
 .dock {
   display: grid;
-  grid-template-columns: 46px minmax(0, 1fr) auto;
+  grid-template-columns: 46px auto minmax(0, 1fr);
   grid-template-areas:
-    'close seg state'
+    'menu seg state'
     'judge judge judge';
   gap: 8px;
   padding: 8px max(10px, env(safe-area-inset-right, 0px)) max(8px, env(safe-area-inset-bottom, 0px)) max(10px, env(safe-area-inset-left, 0px));
@@ -187,7 +198,7 @@
 .dock .judge {
   grid-area: judge;
   display: grid;
-  grid-template-columns: 1.6fr 1.2fr 1fr 1fr 1fr 1fr;
+  grid-template-columns: 1.5fr 1.1fr 1fr 1fr 1fr 1.4fr;
   gap: 6px;
 }
 .d-btn {
@@ -215,15 +226,16 @@
   outline: 3px solid var(--accent);
   outline-offset: 2px;
 }
-.d-close {
-  grid-area: close;
+.d-menu {
+  grid-area: menu;
   font-size: 18px;
 }
 .d-state {
   grid-area: state;
-  max-width: 44vw;
+  min-width: 0;
 }
 .d-state span {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   font-size: 15px;
@@ -240,7 +252,9 @@
 .d-var {
   position: relative;
   flex: 1;
+  min-width: 44px;
   min-height: 38px;
+  padding: 0 6px;
   border: 0;
   border-radius: 10px;
   background: transparent;
@@ -304,14 +318,24 @@
   }
 }
 
-/* many proposals (six letters or more, today with them): upright, the switch takes a row of its own under the close and
-   the state, so every letter keeps a finger's width instead of sliding under the state */
+/* every letter keeps a finger's width and the state's name takes what is left, cut short; where the letters would leave
+   it too little (six or more, today with them, or five on a phone), the switch takes a row of its own under the list
+   and the state */
 .play:not(.wide) .dock:not(.idle):has(.d-seg > .d-var:nth-child(6)) {
   grid-template-columns: 46px minmax(0, 1fr);
   grid-template-areas:
-    'close state'
+    'menu state'
     'seg seg'
     'judge judge';
+}
+@media (max-width: 520px) {
+  .play:not(.wide) .dock:not(.idle):has(.d-seg > .d-var:nth-child(5)) {
+    grid-template-columns: 46px minmax(0, 1fr);
+    grid-template-areas:
+      'menu state'
+      'seg seg'
+      'judge judge';
+  }
 }
 
 /* nothing open: the list, and what to do */
@@ -333,7 +357,7 @@
 .play.wide .dock {
   grid-template-columns: 1fr 1fr;
   grid-template-areas:
-    'close state'
+    'menu state'
     'seg seg'
     'judge judge';
   align-content: start;
@@ -641,4 +665,279 @@ button.row-main {
 .prefs .seg {
   display: flex;
   gap: 6px;
+}
+
+/* a proposal's answer on its letter: a green or red tint and a dot (a note alone, a softer green) */
+.d-var::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  translate: -50% 0;
+}
+.d-var.said-yes:not(.on) {
+  background: #e3f3e6;
+  color: #1c5c2b;
+}
+.d-var.said-no:not(.on) {
+  background: #fbe4df;
+  color: #98301f;
+}
+.d-var.said-yes::after,
+.d-var.said-note::after {
+  background: #2c8540;
+}
+.d-var.said-no::after {
+  background: #d2452f;
+}
+.d-var.said-note::after {
+  opacity: 0.6;
+}
+.d-next {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--card);
+}
+.d-next.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+.dock.idle .d-next {
+  justify-self: start;
+  padding: 0 18px;
+}
+
+/* the sidebar: every design, coloured by the answer */
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  overflow-y: auto;
+  padding: max(14px, env(safe-area-inset-top, 0px)) 12px max(14px, env(safe-area-inset-bottom, 0px));
+  background: var(--card);
+  border-left: 1px solid var(--line);
+}
+.side.floating {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  z-index: 15;
+  width: min(88vw, 340px);
+  translate: 100% 0;
+  visibility: hidden;
+  box-shadow: -12px 0 40px rgba(0, 0, 0, 0.35);
+  transition:
+    translate 0.25s cubic-bezier(0.05, 0.7, 0.1, 1),
+    visibility 0s 0.25s;
+}
+.side.floating.open {
+  translate: 0 0;
+  visibility: visible;
+  transition: translate 0.25s cubic-bezier(0.05, 0.7, 0.1, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .side.floating,
+  .side.floating.open {
+    transition: none;
+  }
+}
+.side-back {
+  position: fixed;
+  inset: 0;
+  z-index: 14;
+  background: rgba(0, 0, 0, 0.4);
+}
+.side-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.side-head h2 {
+  font-size: 22px;
+}
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 14px;
+}
+.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #b9c0c8;
+  flex: none;
+}
+.dot.yes {
+  background: #2c8540;
+}
+.dot.no {
+  background: #d2452f;
+}
+.side-list {
+  display: grid;
+  gap: 8px;
+}
+.side-row {
+  display: grid;
+  grid-template-columns: 12px 36px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 60px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.side-row.home {
+  grid-template-columns: 36px minmax(0, 1fr);
+}
+.side-row.a-yes {
+  background: #f1faf2;
+}
+.side-row.a-no {
+  background: #fdf1ee;
+}
+.side-row.on {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.side-row:focus-visible,
+.side-more summary:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+.side-thumb {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 54px;
+  border-radius: 8px;
+  object-fit: cover;
+  object-position: top;
+  background: var(--wall);
+  font-size: 20px;
+}
+.side-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.side-text b {
+  font: 600 16px/1.2 var(--display);
+}
+.side-text small {
+  overflow: hidden;
+  color: var(--ink-2);
+  font-size: 13px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.side-tag {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #2c8540;
+  color: #fff;
+  font: 600 12px/1 var(--display);
+}
+.side-done {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: #e3f3e6;
+  color: #1c5c2b;
+  font-size: 14px;
+}
+.side-more summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--ink-2);
+  font: 600 15px/1.2 var(--display);
+  cursor: pointer;
+}
+.side-area h3 {
+  margin: 8px 0 2px;
+  color: var(--ink-2);
+  font-size: 14px;
+}
+.side-ask {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+}
+.side-ask .ask-btn {
+  flex: none;
+  padding: 0 12px;
+}
+.side-foot {
+  display: grid;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+/* ℹ︎: what the design is, and the answers given */
+.info-line {
+  margin: 0;
+  font-size: 15px;
+}
+.info-variant {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--wall);
+}
+.info-variant p {
+  margin: 0;
+  font-size: 15px;
+}
+.info-variant .soft-btn {
+  justify-self: start;
+}
+.notes li.said-yes {
+  background: #e3f3e6;
+}
+.notes li.said-no {
+  background: #fbe4df;
+}
+.notes li b {
+  margin-inline-end: 4px;
+}
+.info-research {
+  color: var(--ink-2);
+  font-size: 14px;
+}
+.info-research summary {
+  min-height: 40px;
+  cursor: pointer;
+}
+.quiet {
+  color: var(--ink-2);
+}
+.sheet-status {
+  width: min(900px, 100%);
 }

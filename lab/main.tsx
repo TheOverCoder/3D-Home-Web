@@ -462,7 +462,7 @@ function Lab() {
     location.hash = id
     scrollTo({ top: 0 })
   }
-  if (hash === '' || hash === 'play' || hash.startsWith('play/')) return <Play start={hash.split('/')[1]} onPage={go} />
+  if (hash === '' || hash === 'play' || hash.startsWith('play/')) return <Play start={hash.split('/')[1]} />
   const page = hash === 'map' || hash === 'status' ? hash : null
   const board = page ? null : (BOARDS.find((b) => b.id === hash) ?? BOARDS[0])
   return (

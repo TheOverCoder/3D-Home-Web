@@ -23,23 +23,30 @@ No 3D, no farm state, no CI: it builds in a second and is published as a link of
 - `node scripts/lab-audit.mjs` — every screen of every board (each variant, state, upright and sideways) checked:
   errors, nothing drawn, scrolling, buttons under 44 px, text under 13 px, a button under the notch or the home bar or
   off the screen → `lab/audit.json`.
-- `node scripts/lab-check.mjs` — the lab used end to end as the user uses it (the sandbox, every board, every variant
-  and state, ✓ / ✗, notes and pins kept, a request, the side by side, the map, the status page) on a phone upright and
-  sideways and a computer → `lab/check.json`. Both show on the lab's status page (`#status`, ☰ → 📋): run them after a
-  change, before publishing.
+- `node scripts/lab-check.mjs` — the lab used end to end as the user uses it (the sandbox: its list, every board, every
+  variant and state, ✓ / ✗, notes and pins kept and the row turning green, "next", a request, the game's screen, the
+  status) on a phone upright and sideways and a computer → `lab/check.json`. Both show in the lab's status (the
+  sidebar's 📋): run them after a change, before publishing.
 - `node scripts/lab-stills.mjs` — the game stills behind the frames again (`lab/stills/<place>-upright.jpg` and
   `-sideways.jpg`, the dev server up; if the game never starts for it, the dev server's dependency cache is stale:
   restart it with `npx vite --force`).
 
 ## The sandbox (what the user sees first)
 
-`lab/play/Play.tsx`: the game's screen with nothing of the game in it but its look — a still of the game (the frame,
-`?play=1`) on which every chip or button that has designs waiting is ringed in yellow and named. A touch opens it there,
-as the game would; the bar under the thumb (a rail on the left, sideways) switches between today and the proposals and
-between the states, and takes what the user thinks: **✓ / ✗** on a variant, a **💬 note** on it, or a **📍 note pinned
-to one point** of it. ☰ lists every screen of the game (the map): those with designs open from it, the others can be
-asked for ("🙋 לעצב את זה"). On a phone the screen is the phone's own, at its size; on a computer a phone stands in the
-middle. A touch where nothing opens lights the rings up for a moment.
+`lab/play/Play.tsx` is the lab's one view, full screen like the game: a sidebar of every design, the screen, and a bar
+under the thumb.
+
+- **The sidebar** (always beside the screen on a computer; on a phone it slides over it, ☰) lists every board with its
+  picture and a dot by its answer: **gray** waiting, **green** answered (a ✓, or only notes), **red** turned down (only
+  ✗). Each row says what was said ("✓ B · ✗ A · 2 הערות"). Under it: the game's screen, the screens with no design yet
+  (🙋 to ask for one), and the settings (the screen on a computer, 🐢 slow, 🧘 less motion, 📋 the lab's status).
+- **The screen**: the game's screen with nothing of the game in it but its look — a still of the game (the frame,
+  `?play=1`) on which every chip or button that has designs is ringed in yellow and named. A touch opens it there, as
+  the game would. On a phone the screen is the phone's own, at its size; on a computer a phone stands beside the list.
+- **The bar** (a rail on the left, sideways): today and the proposals, each letter marked by its answer (tap the open
+  one to see it open again); the state; **✓ / ✗** on the letter shown, a **💬 note**, a **📍 note pinned to one point**,
+  **ℹ︎** (the request, what is new in this round, this letter's note and motion, and every answer given, each one
+  deletable), and **הבא ←** to the next design still waiting. Keys: ← / → letters, N next, Esc closes.
 
 A board is in it by itself: its `spot` (a chip or button of the game's screen, as `lab/stills/<still>.json` names it:
 `coins`, `line`, `store`, `goals`, `day`, `level`, `settings`…, recorded by `scripts/lab-stills.mjs`) rings it on the
@@ -50,9 +57,9 @@ screen, its `screen` (an id of `lab/map.ts`) gives it its picture and place in t
 The main agent reads it (`ArtifactData`, `list` of `reviews` with `out_dir`) into `lab/feedback/<board>.json` for the
 designer. Where there is no database (`npm run lab`), it is kept in that browser.
 
-## The side by side and the map
+## The side by side and the map (for the designer)
 
-`#<board>` shows every variant of a board side by side, `#map` the map. There, at the top every board, with where it stands (waiting for a choice, chosen, in the game), and the map. A board's bar
+Not linked from the sandbox: `#<board>` shows every variant of a board side by side, `#map` the map. A board's bar
 sets what every frame shows: its state, the screens (a phone upright and sideways, a small phone, a tablet, a
 computer), slow motion (four times slower: CSS, Web Animations, Motion and timers alike) and the marks of touches. ↻
 plays a variant's opening again; ⛶ opens it full screen — on a phone, at the phone's own size under the user's own

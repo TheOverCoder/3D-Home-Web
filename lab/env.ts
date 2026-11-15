@@ -15,7 +15,9 @@ import { DEVICES, type DeviceId } from './devices'
 //   ?play=1      the sandbox's screen (lab/play): the game's screen with nothing open, its chips and buttons that open a
 //        board marked, and a board opened by the address (#board/variant/state/n) or closed by an empty one.
 
-const q = new URLSearchParams(location.search)
+// only a frame takes these settings: anywhere else (the lab's own page, if a board imports this) nothing changes
+const inFrame = location.pathname.endsWith('frame.html')
+const q = new URLSearchParams(inFrame ? location.search : 'device=real&speed=1')
 const named = q.get('device') ?? 'upright'
 const device: DeviceId | 'real' = named === 'real' || named in DEVICES ? (named as DeviceId | 'real') : 'upright'
 const spec = device === 'real' ? null : DEVICES[device]

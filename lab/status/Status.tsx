@@ -129,7 +129,7 @@ export function StatusView({ onPage }: { onPage: (hash: string) => void }) {
                 <b>{b.title}</b>
                 <small>{f.screens} מסכים</small>
                 <button className="link-btn" onClick={() => onPage(b.id)}>
-                  זה לצד זה ←
+                  לפתוח ←
                 </button>
               </header>
               {found.length === 0 ? (
