@@ -21,7 +21,7 @@
 
 export { Shape, merge, rgb, mixRgb, noise3, fbm3, random, smoothstep, type V3 } from './core'
 export { loft, lathe, tube, ellipsoid, blade, blob, squircle, type Ring, type LoftOptions, type BladeOptions } from './shapes'
-export { sculptMaterial, setSculptDetail, type SculptMaterialOptions, type SculptSurface } from './material'
+export { sculptMaterial, setSculptDetail, setSculptGlow, sculptGlow, type SculptMaterialOptions, type SculptSurface } from './material'
 export { Parts, shadowPart, type PartDef } from './parts'
 export { loadSolids, solidsReady, subtract, union, intersect } from './solid'
 export { checkPieces, checkPose, posedPieces, piecesOf, describeIssue, type Issue, type CheckOptions, type Piece } from './check'

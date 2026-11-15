@@ -24,11 +24,23 @@ const cache = new Map<string, MeshStandardMaterial>()
 /** One switch for every detailed material (a uniform they all share). */
 const detailOn = { value: 1 }
 
+/** How brightly every glowing part glows now (a uniform they all share): 0 by day, up to 1 at night. */
+const glowLevel = { value: 0 }
+
 /** Fine surface detail on or off, everywhere at once (no recompiling): off in the lowest graphics tier. The
  *  surface patterns stay (they are the look of a wall), only their relief goes. */
 export function setSculptDetail(on: boolean) {
   detailOn.value = on ? 1 : 0
 }
+
+/** How brightly the glowing parts glow (`glow` in their material: a lamp's glass), everywhere at once and without
+ *  recompiling: 0 by day (the glass as painted), 1 at night (each glows its own colour, as bright as its `glow`). */
+export function setSculptGlow(level: number) {
+  glowLevel.value = Math.max(0, level)
+}
+
+/** How brightly the glowing parts glow now (see `setSculptGlow`). */
+export const sculptGlow = () => glowLevel.value
 
 // three's colour chunk, with the instance colour weighted by the tint mask, and the pattern layer passed on
 const COLOR_VERTEX =
@@ -162,6 +174,19 @@ float sculptNoise( vec3 x ) {
 #endif
 `
 
+// a glowing part: its own colour as light, at the shared level (by day 0, nothing added)
+const GLOW_HEAD = `
+#ifdef SCULPT_GLOW
+uniform float sculptGlowLevel;
+uniform float sculptGlow;
+#endif
+`
+const GLOW_FRAGMENT = `
+#ifdef SCULPT_GLOW
+	totalEmissiveRadiance += diffuseColor.rgb * sculptGlow * sculptGlowLevel;
+#endif
+`
+
 /** How deep each pattern's relief is (metres), before `bump`. */
 const RELIEF: Record<SculptSurfaceKind, number> = { stone: 0.012, brick: 0.007, boards: 0.004, shingle: 0.01, bark: 0.012, clay: 0.006 }
 
@@ -197,12 +222,15 @@ export interface SculptMaterialOptions {
   /** a second instance colour (a crowd's `put` gives it: Parts), applied where the geometry's `tint2` attribute (0..1
    *  per vertex) says: the eyes on a head, the head's skin being the first colour. Off: the material is as before. */
   tint2?: boolean
+  /** a part that gives light (a lamp's glass): it glows its own colour (the vertex colours, as an instance's tints them)
+   *  this many times over, at the level `setSculptGlow` sets for all of them (0 by day: only the colour shows) */
+  glow?: number
 }
 
 export function sculptMaterial(o: SculptMaterialOptions = {}): MeshStandardMaterial {
   const d = o.detail
   const sf = o.surface
-  const key = `${o.roughness ?? 0.8}|${o.doubleSided ? 2 : 1}|${o.metalness ?? 0}|${d ? `${d.scale},${d.bump},${d.shade}` : ''}|${o.leaf ? 1 : 0}|${sf ? `${sf.kind},${sf.size},${sf.joint ? sf.joint.join(',') : ''},${sf.tone ?? ''},${sf.bump ?? ''},${sf.turn ? 1 : 0}` : ''}${o.tint2 ? '|tint2' : ''}`
+  const key = `${o.roughness ?? 0.8}|${o.doubleSided ? 2 : 1}|${o.metalness ?? 0}|${d ? `${d.scale},${d.bump},${d.shade}` : ''}|${o.leaf ? 1 : 0}|${sf ? `${sf.kind},${sf.size},${sf.joint ? sf.joint.join(',') : ''},${sf.tone ?? ''},${sf.bump ?? ''},${sf.turn ? 1 : 0}` : ''}${o.tint2 ? '|tint2' : ''}${o.glow ? `|glow${o.glow}` : ''}`
   let m = cache.get(key)
   if (m) return m
   m = new MeshStandardMaterial({ vertexColors: true, roughness: o.roughness ?? 0.8, metalness: o.metalness ?? 0, side: o.doubleSided ? DoubleSide : FrontSide })
@@ -212,6 +240,7 @@ export function sculptMaterial(o: SculptMaterialOptions = {}): MeshStandardMater
   if (o.leaf) defines.SCULPT_LEAF = ''
   // (a define of its own: the shader's cache key is the same for every sculpt material but for its defines)
   if (o.tint2) defines.SCULPT_TINT2 = ''
+  if (o.glow) defines.SCULPT_GLOW = ''
   if (Object.keys(defines).length) m.defines = defines
   const detail = d ? new Vector3(d.scale, d.bump, d.shade) : null
   const surface = sf
@@ -224,6 +253,10 @@ export function sculptMaterial(o: SculptMaterialOptions = {}): MeshStandardMater
     : null
   m.onBeforeCompile = (shader) => {
     if (detail || surface) shader.uniforms.sculptDetailOn = detailOn
+    if (o.glow) {
+      shader.uniforms.sculptGlowLevel = glowLevel
+      shader.uniforms.sculptGlow = { value: o.glow }
+    }
     if (detail) shader.uniforms.sculptDetail = { value: detail }
     if (surface) {
       shader.uniforms.sculptSurfMap = { value: surface.map }
@@ -239,11 +272,12 @@ export function sculptMaterial(o: SculptMaterialOptions = {}): MeshStandardMater
       )
       .replace('#include <color_vertex>', COLOR_VERTEX + (o.tint2 ? TINT2_VERTEX : ''))
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vColor2;\nvarying float vPattern;\n' + NOISE)
+      .replace('#include <common>', '#include <common>\nvarying vec3 vColor2;\nvarying float vPattern;\n' + NOISE + (o.glow ? GLOW_HEAD : ''))
       .replace('#include <color_fragment>', COLOR_FRAGMENT)
       // the joints are a little rougher than the stones and boards
       .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n#ifdef SCULPT_SURFACE\nroughnessFactor = min( 1.0, roughnessFactor + sculptJointAmt * 0.12 );\n#endif')
       .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\n' + BUMP_NORMAL)
+      .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n' + (o.glow ? GLOW_FRAGMENT : ''))
       // a leaf's underside is lit like its upper side (three turned its normal round for the back face)
       .replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\n#ifdef SCULPT_LEAF\nnormal *= faceDirection;\n#endif')
   }

@@ -1,5 +1,6 @@
 import type { ProduceId } from '../farm/data'
-import { blade, blob, fbm3, lathe, loft, merge, noise3, rgb, smoothstep, squircle, tube, type Shape, type V3 } from '../lib/sculpt'
+import type { FruitId } from '../farm/decor'
+import { blade, blob, ellipsoid, fbm3, lathe, loft, merge, noise3, rgb, smoothstep, squircle, tube, type Shape, type V3 } from '../lib/sculpt'
 import { around, leaflet } from './crops'
 import { woodpile, type Structure, type StructurePart } from './structures'
 
@@ -8,7 +9,8 @@ import { woodpile, type Structure, type StructurePart } from './structures'
 // corn, a pumpkin, a sheaf of wheat, sugar cane, a lemon, eggs, a bottle of milk, a ball of wool, a bowl of
 // sugar, a sack of flour, a roll of cloth, three cakes and a pie; and the six building materials the silo and the
 // barn are made bigger with: two bricks, two planks, three nails, two iron bars, a bolt with its nut, a stack of
-// logs. Each is a small structure (a part per material)
+// logs; and what the fruit trees and bushes bear: an apple, an orange, a pair of cherries, a little heap of
+// blueberries, two raspberries. Each is a small structure (a part per material)
 // of about 0.1–0.5 m, posed the way its picture shows it and set down on y = 0, finer than the garden's own parts
 // (it is seen big, once). They are drawn into the game's item pictures (src/models/itemArt.ts), and shown in the
 // gallery and checked like every other model.
@@ -902,7 +904,222 @@ function logs(): Structure<'logs'> {
   return grounded({ logs: { shape: pile, material: { roughness: 0.9, surface: { kind: 'bark', size: 0.3, turn: true } } } })
 }
 
-export type GoodsId = ProduceId
+// ───────────────────────────── fruit from the trees and bushes ─────────────────────────────
+
+/** A leaf from the origin along +x, tilted up a little (a fruit's own leaf). */
+function fruitLeaf(length: number, width: number, dark: V3, light: V3, teeth = 0): Shape {
+  return blade({ length, width, fold: 0.35, bend: 0.35, teeth, toothCount: 7, segL: 8, segW: 2 })
+    .paint((x, _y, z) => mix(dark, light, 0.45 * smoothstep(0.004, 0, Math.abs(x)) + 0.4 * (z / length)), 0)
+    .place([0, 0, 0], [0, Math.PI / 2, 0])
+}
+
+/** An apple: round, a little wider at the shoulders, deep red streaked darker, a yellow cheek; a stalk and a leaf. */
+function appleGood(): Structure<'fruit' | 'leaf'> {
+  const fruit = lathe(
+    [
+      [0, 0.008],
+      [0.016, 0.002],
+      [0.036, 0.006],
+      [0.052, 0.024],
+      [0.059, 0.05],
+      [0.056, 0.076],
+      [0.045, 0.094],
+      [0.025, 0.102],
+      [0.009, 0.095],
+      [0, 0.088],
+    ],
+    { seg: 30, steps: 2, shape: (a) => 1 + 0.018 * Math.sin(a * 5 + 0.4) },
+  )
+    .paint((_x, y) => mix(rgb(0xa8161e), rgb(0xe0362a), smoothstep(0.0, 0.07, y)), 0)
+    // a sunny cheek on its right, and a paler ring round the stalk
+    .blend(rgb(0xf2c056), (x, y, z) => 0.8 * smoothstep(0.015, 0.06, x - z * 0.5) * smoothstep(0.005, 0.045, y))
+    .blend(rgb(0xe8a040), (x, y, z) => 0.5 * smoothstep(0.03, 0.012, Math.hypot(x, z)) * smoothstep(0.08, 0.095, y))
+  const stalk = tube(
+    [
+      [0, 0.088, 0],
+      [0.003, 0.11, 0.001],
+      [0.01, 0.124, 0.003],
+    ],
+    [0.0045, 0.004, 0.0035],
+    { seg: 6, steps: 2, caps: [true, false], round: [0, 0.003] },
+  ).fill(STEM_BROWN, 0)
+  const leaf = fruitLeaf(0.08, 0.038, LEAF, LEAF_LIGHT).place([0, 0, 0], [0, 0, 0.45]).place([0.006, 0.112, 0.001], [0, 0.6, 0])
+  return grounded({ fruit: { shape: fruit, material: { roughness: 0.3 } }, leaf: { shape: merge(stalk, leaf), material: leafy } })
+}
+
+/** An orange: round, its peel finely dimpled, a green star where it hung, two glossy leaves. */
+function orangeGood(): Structure<'fruit' | 'leaf'> {
+  const fruit = lathe(
+    [
+      [0, 0.002],
+      [0.03, 0.006],
+      [0.054, 0.024],
+      [0.064, 0.054],
+      [0.06, 0.084],
+      [0.043, 0.106],
+      [0.017, 0.114],
+      [0, 0.112],
+    ],
+    { seg: 32, steps: 2 },
+  ).paint((_x, y) => mix(rgb(0xd0601a), rgb(0xf8961e), smoothstep(0.0, 0.09, y)), 0)
+  const calyx = lathe(
+    [
+      [0, 0.108],
+      [0.013, 0.112],
+      [0, 0.12],
+    ],
+    { seg: 10, steps: 1, shape: (a) => 0.6 + 0.4 * Math.abs(Math.cos(a * 2.5)) },
+  ).fill(rgb(0x5a8a2e), 0)
+  const stalk = tube(
+    [
+      [0, 0.112, 0],
+      [0.002, 0.128, 0],
+    ],
+    0.004,
+    { seg: 6, steps: 1, caps: [false, true] },
+  ).fill(rgb(0x6f7a3a), 0)
+  const dark = rgb(0x2f6a2a)
+  const light = rgb(0x5f9a40)
+  const leaves = merge(
+    fruitLeaf(0.085, 0.04, dark, light).place([0, 0, 0], [0, 0, 0.35]).place([0.002, 0.124, 0], [0, -0.5, 0]),
+    fruitLeaf(0.07, 0.034, dark, light).place([0, 0, 0], [0, 0, 0.5]).place([0.002, 0.124, 0], [0, 2.2, 0]),
+  )
+  return grounded({
+    fruit: { shape: fruit, material: { roughness: 0.45, detail: { scale: 260, bump: 0.0012, shade: 0.08 } } },
+    leaf: { shape: merge(calyx, stalk, leaves), material: leafy },
+  })
+}
+
+/** Two cherries side by side, their stalks meeting at a leaf. */
+function cherryGood(): Structure<'fruit' | 'stalks'> {
+  const cherry = (at: V3) =>
+    lathe(
+      [
+        [0, 0.0],
+        [0.018, 0.004],
+        [0.029, 0.018],
+        [0.031, 0.032],
+        [0.026, 0.048],
+        [0.012, 0.056],
+        [0, 0.05],
+      ],
+      { seg: 22, steps: 2 },
+    )
+      .paint((_x, y) => mix(rgb(0x5e0814), rgb(0xc4182e), smoothstep(0.0, 0.05, y)), 0)
+      .place(at)
+  const a: V3 = [-0.03, 0, 0.004]
+  const b: V3 = [0.03, 0, -0.006]
+  const top: V3 = [0.004, 0.15, -0.012]
+  const stalk = (from: V3, bend: number) =>
+    tube(
+      [
+        [from[0], 0.048, from[2]],
+        [from[0] * 0.75 + bend, 0.1, from[2] * 0.7],
+        [top[0], top[1], top[2]],
+      ],
+      [0.0035, 0.003, 0.0028],
+      { seg: 6, steps: 3, caps: [false, false] },
+    )
+  const stalks = merge(stalk(a, -0.008), stalk(b, 0.008)).fill(rgb(0x6a7a32), 0)
+  const knot = lathe(
+    [
+      [0, top[1] - 0.004],
+      [0.005, top[1]],
+      [0, top[1] + 0.006],
+    ],
+    { seg: 6, steps: 1 },
+  )
+    .fill(STEM_BROWN, 0)
+    .place([top[0], 0, top[2]])
+  const leaf = fruitLeaf(0.085, 0.036, LEAF, LEAF_LIGHT, 0.06).place([0, 0, 0], [0, 0, 0.3]).place(top, [0, -0.4, 0])
+  return grounded({ fruit: { shape: merge(cherry(a), cherry(b)), material: { roughness: 0.2 } }, stalks: { shape: merge(stalks, knot, leaf), material: leafy } })
+}
+
+/** A little heap of blueberries, each with its five-pointed crown, dusty pale over the blue; a leaf behind. */
+function blueberryGood(): Structure<'fruit' | 'leaf'> {
+  const R = 0.024
+  // one berry, its crown at the top: a dent round a star
+  const berry = (at: V3, tilt: V3, seed: number) =>
+    lathe(
+      [
+        [0, -R * 0.95],
+        [R * 0.6, -R * 0.8],
+        [R * 0.98, -R * 0.2],
+        [R * 0.95, R * 0.35],
+        [R * 0.62, R * 0.78],
+        [R * 0.4, R * 0.8],
+        [R * 0.25, R * 0.66],
+        [0, R * 0.7],
+      ],
+      { seg: 18, steps: 1, shape: (a, t) => 1 + (t > 0.7 ? 0.25 * Math.abs(Math.cos(a * 2.5)) : 0) },
+    )
+      .paint((_x, y) => mix(rgb(0x34488a), rgb(0x6a7fbe), smoothstep(-R, R, y)), 0)
+      // the bloom: pale dust on top
+      .blend(rgb(0xb4c0e0), (x, y, z) => 0.5 * smoothstep(0.2, 0.9, noise3(x * 300 + seed, y * 300, z * 300, 5)) * smoothstep(-R * 0.3, R * 0.6, y))
+      .pattern((x, y, z) => smoothstep(R * 0.68, R * 0.74, y) * smoothstep(R * 0.42, R * 0.3, Math.hypot(x, z)), rgb(0x2a2f4e))
+      .place([0, 0, 0], tilt)
+      .place(at)
+  const y0 = R * 0.95
+  const fruit = merge(
+    berry([-0.028, y0, 0.01], [0.2, 0, -0.5], 1),
+    berry([0.02, y0, 0.02], [-0.3, 0, 0.4], 2),
+    berry([0.0, y0, -0.03], [0.6, 0, 0.1], 3),
+    berry([0.042, y0, -0.022], [0.1, 0, 0.9], 4),
+    berry([-0.004, y0 + 0.034, -0.002], [0.25, 0, -0.2], 5),
+    berry([-0.05, y0, -0.03], [0.5, 0, -0.9], 6),
+  )
+  const leaf = fruitLeaf(0.075, 0.034, rgb(0x3d6e4a), rgb(0x6f9e78)).place([0, 0, 0], [0, 0, 0.12]).place([-0.01, 0.004, -0.045], [0, 2.4, 0])
+  return grounded({ fruit: { shape: fruit, material: { roughness: 0.55 } }, leaf: { shape: leaf, material: leafy } })
+}
+
+/** A raspberry: a cone of shining drupelets round a dark core, a green star of sepals where it was picked, and a
+ *  toothed leaf. */
+function raspberryGood(): Structure<'fruit' | 'leaf'> {
+  const H = 0.07
+  // the berry's radius at a height along it (0 at its foot, H at the sepals)
+  const radius = (t: number) => 0.032 * Math.pow(Math.sin(Math.PI * Math.min(1, Math.max(0, t)) * 0.92 + 0.12), 0.8)
+  const core = lathe(
+    [
+      [0, 0.004],
+      [0.018, 0.012],
+      [0.026, 0.03],
+      [0.024, 0.052],
+      [0.016, 0.066],
+      [0, 0.068],
+    ],
+    { seg: 12, steps: 1 },
+  ).fill(rgb(0x6a0a24), 0)
+  const drupes: Shape[] = []
+  const rings = 6
+  for (let j = 0; j < rings; j++) {
+    const t = (j + 0.5) / rings
+    const y = 0.006 + t * (H - 0.012)
+    const r = radius(t)
+    const n = Math.max(4, Math.round((2 * Math.PI * r) / 0.0165))
+    for (let k = 0; k < n; k++) {
+      const a = ((k + (j % 2) * 0.5) / n) * Math.PI * 2
+      const d = 0.0094 * (0.8 + 0.4 * Math.sin(Math.PI * t))
+      drupes.push(
+        ellipsoid(d, d, d * 1.1, 6, 3)
+          .paint((_x, yy) => mix(rgb(0xa8143a), rgb(0xe8385a), smoothstep(-d, d, yy)), 0)
+          .place([Math.cos(a) * (r - d * 0.35), y, Math.sin(a) * (r - d * 0.35)], [0, -a, 0]),
+      )
+    }
+  }
+  const tip = ellipsoid(0.009, 0.008, 0.009, 6, 4)
+    .paint(() => rgb(0xb8183e), 0)
+    .place([0, 0.008, 0])
+  const sepals: Shape[] = []
+  for (let k = 0; k < 5; k++) sepals.push(around(leaflet(0.026, 0.012, 0.004, 4).fill(CALYX, 0), -0.25, (k / 5) * Math.PI * 2, [0, H - 0.004, 0]))
+  const leaf = fruitLeaf(0.1, 0.055, rgb(0x3f7a34), rgb(0x78ad52), 0.12)
+    .place([0, 0, 0], [0, 0, 0.1])
+    .place([0.0, H - 0.006, 0.0], [0, 1.65, 0])
+  // lying a little on its side, its sepals to the back
+  return posed({ fruit: { shape: merge(core, ...drupes, tip), material: { roughness: 0.32 } }, leaf: { shape: merge(...sepals, leaf), material: leafy } }, [0.15, 0, -1.05])
+}
+
+/** Every good with a model: the farm's produce, and the fruit of the fruit trees and bushes. */
+export type GoodsId = ProduceId | FruitId
 
 /** Every good's model, by the produce id it stands for. */
 export const GOODS: Record<GoodsId, () => Structure> = {
@@ -931,4 +1148,9 @@ export const GOODS: Record<GoodsId, () => Structure> = {
   iron: ironBars,
   bolt,
   log: logs,
+  apple: appleGood,
+  orange: orangeGood,
+  cherry: cherryGood,
+  blueberry: blueberryGood,
+  raspberry: raspberryGood,
 }
