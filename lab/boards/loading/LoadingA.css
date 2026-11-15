@@ -41,6 +41,8 @@
 .v-loading-a.wide .la-logo { grid-area: logo; align-self: end; }
 .v-loading-a.wide .v-loading-logo { font-size: 38px; -webkit-text-stroke-width: 5px; }
 .v-loading-a.wide .la-low { grid-area: low; align-self: start; }
+/* sideways the stage is low and the island fills it: the sun climbs beside it, inside the picture */
+.v-loading-a.wide .la-sun { top: 16%; left: 82%; width: 15%; }
 
 @keyframes la-spin { to { rotate: 360deg; } }
 @media (prefers-reduced-motion: reduce) {

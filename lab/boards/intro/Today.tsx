@@ -17,7 +17,7 @@ const SHOTS: Record<string, [string, string]> = { new: [introTall, introWide], b
 
 export function Today({ s }: { s: IntroState }) {
   const wide = useWide()
-  const [tall, side] = SHOTS[several(s) ? 'many' : farmOf(s).played ? 'back' : 'new']
+  const [tall, side] = SHOTS[s.load !== undefined && s.load < 1 ? 'new' : several(s) ? 'many' : farmOf(s).played ? 'back' : 'new']
   return (
     <m.div className="v-intro-today" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
       <img src={wide ? side : tall} alt="The opening screen as the game has it today (a picture)" />

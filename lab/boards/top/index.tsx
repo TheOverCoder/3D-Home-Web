@@ -2,7 +2,7 @@ import { xpAt } from '../../../src/farm/xp'
 import type { Board } from '../../board'
 import { atHour, type TopState } from './parts'
 import { TopToday } from './TopToday'
-import { TopC } from './TopC'
+import { TopC, type Pinned } from './TopC'
 
 // The top of the screen in play (src/farm/FarmUI.tsx FarmChip, XpChip, DayChip; src/ui/Compass.tsx, HudMode.tsx,
 // TopStack.tsx): the coins, the level and its XP, the line at the gate, the silo and the barn, the goals, the farm's
@@ -65,17 +65,21 @@ const attention: TopState = {
   hud: 'all',
 }
 
+/** SAMPLE (variant D): the goal pinned on the goals board (its E), as the goals' own numbers have it mid game. */
+const PINNED: Pinned = { art: 'shopping-bags', words: 'Sell 60 goods', have: 44, target: 60, per: 8 }
+
 export const topBoard: Board<TopState> = {
   id: 'top',
   title: 'החלק העליון של המסך',
   kind: 'ui',
-  added: '2026-11-14T05:28',
+  added: '2026-11-15T08:29',
   ask: 'החלק העליון לוקח רבע מהמסך לאורך: שורה אחת קטנה, המטבעות במרכז, הרמה מראה כמה נשאר ומה מקבלים, מצפן קריא, וכפתורים עם משמעות ברורה.',
   status: 'chosen',
   chosen: 'c',
   round:
-    'סיבוב 3: בחרת ב־C (לוח מחוונים), אז A ו־B ירדו מהלוח. ב־C: כל המחוונים עכשיו 44 פיקסלים (מתחת לזה קשה לאצבע), ' +
-    'ופס הרמה למעלה מדבר באותה שפה כמו חלון הרמה – ארבעה רבעים שנדלקים, וברבע האחרון הפס מתחמם, כתוב "Only 7 XP!" והפרס בסופו מתנדנד. התווית "דוגמה" גדלה ל־13 פיקסלים. נוסף מצב "כמעט רמה".',
+    'סיבוב 4: בחרת ב־C (✓), והוא לוטש לרפרנס הסופי. פס הרמה למעלה מדבר עכשיו באותה שפה כמו חלון הרמה החדש (D שם): מסילה כהה עם שוליים לבנים, מילוי מבריק עם פסים שזזים, ' +
+    'ורבעים שהופכים לכוכבי זהב כשעוברים אותם – אותו סרגל בכל מקום. השאר כמו שבחרת: המטבעות, הדרך לרמה הבאה והפרס שלה, המצפן עם הכנפיים, והתפריט עם שמות. ' +
+    'חדש: D – C עם המטרה הננעצת (מלוח המטרות, E שם) במקום שלה מתחת למצפן; כל מכירה מקדמת אותה, והיא נהיית ירוקה כשהושגה (✦ תכונה חדשה).',
   still: 'yard-clean',
   spot: 'coins',
   screen: 'top',
@@ -132,6 +136,16 @@ export const topBoard: Board<TopState> = {
         'המצפן נפתח ראשון, הכנפיים יוצאות מאחוריו, והמיכלים מתמלאים עם גל קטן. הדרך מתמלאת עם נקודה זוהרת. מכירה: המטבעות עפים, השבב קופץ ואור עובר עליו. ' +
         'מחסן שמתמלא רועד פעם אחת ונצבע אדום. נגיעה במחוון פותחת בועה עם המספר המדויק.',
       render: (s, act) => <TopC s={s} set={act.set} />,
+    },
+    {
+      id: 'd',
+      name: 'C + המטרה הננעצת',
+      note:
+        'לוח המחוונים של C, ומתחת למצפן – במקום שלו בעמודה של ראש המסך – המטרה שננעצה בלוח המטרות: התמונה, המילים, פס שמתמלא והמספר. ' +
+        'כך רואים את ההתקדמות תוך כדי משחק. כשהיא מושגת היא נהיית ירוקה וכתוב Claim!; נגיעה פותחת את לוח המטרות. בתצוגות "רק המצפן" ו"נקי" היא מוסתרת.',
+      motion: 'היא נכנסת מלמעלה אחרי המחוונים. כל מכירה (נגיעה ב"+24" באמצע המסך): המטבעות עפים לצ׳יפ, הפס של המטרה קופץ ו"+8" עולה ממנו; בהגעה למטרה – קפיצה קטנה והיא נצבעת ירוק.',
+      adds: 'המטרה שננעצה בלוח המטרות מופיעה בראש המסך, מתחת למצפן, ומתקדמת עם כל מה שעושים – בלי לפתוח את הלוח.',
+      render: (s, act) => <TopC s={s} set={act.set} pinned={PINNED} />,
     },
   ],
 }

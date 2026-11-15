@@ -1,0 +1,154 @@
+/* D · the wooden order board (./OrdersD.tsx); E (where a good comes from) adds .v-orders-e. Its woods are mixed from the
+   game's own tokens (the edge's brown, the sun, the paper), never new colours. The sheet and its motion:
+   ../level/LevelSheet. */
+.v-orders-d {
+  --board: color-mix(in oklab, var(--edge) 78%, var(--ink));
+  --board-lip: color-mix(in oklab, var(--edge) 45%, var(--ink));
+  --plank: color-mix(in oklab, var(--edge-soft) 72%, var(--sun));
+  --plank-lip: color-mix(in oklab, var(--edge) 85%, var(--ink));
+  --carve: color-mix(in oklab, var(--ink) 88%, var(--edge));
+}
+.v-orders-d .od-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.v-orders-d .od-head > .art { width: 36px; height: 36px; }
+.v-orders-d .farm-panel { padding-top: 16px; }
+.v-orders-d .od-head h2 { margin: 0; font: 600 25px/1.1 var(--font-display); color: var(--ink); }
+.v-orders-d .od-head .tag { font-size: 14px; }
+.v-orders-d .od-head .close { margin-inline-start: auto; }
+.v-orders-d .od-tractor img { width: 20px; height: 20px; }
+.v-orders-d .od-tabs { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+.v-orders-d .od-tablist { display: grid; grid-template-columns: 1fr 1fr; padding: 2px; border-radius: 999px; background: var(--paper-2); }
+.v-orders-d .od-tab { position: relative; min-height: 44px; border: 0; border-radius: 999px; background: none; color: var(--ink-2); font: 600 17px/1 var(--font-display); isolation: isolate; }
+.v-orders-d .od-tab[data-state='active'] { color: var(--ink); }
+.v-orders-d .od-tab-on { position: absolute; inset: 0; z-index: -1; border-radius: 999px; background: var(--paper); box-shadow: 0 2px 0 var(--paper-3); }
+.v-orders-d .od-board[hidden],
+.v-orders-d .od-office[hidden] { display: none; }
+
+/* the board: dark wood, its boards' joins, the planks nailed to it */
+.v-orders-d .od-board {
+  padding: 6px;
+  border-radius: 20px;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 calc(25% - 2px), rgba(0, 0, 0, 0.22) calc(25% - 2px) 25%),
+    repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0 3px, transparent 3px 11px),
+    var(--board);
+  box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.35), 0 3px 0 var(--board-lip);
+}
+.v-orders-d .od-planks { display: flex; flex-direction: column; gap: 8px; }
+
+/* a plank: light wood with its grain, nailed at its top corners */
+.v-orders-d .od-plank,
+.v-orders-d .od-wait { position: relative; border-radius: 12px; }
+.v-orders-d .od-plank {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 10px 8px;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.18), transparent 30%, rgba(120, 70, 20, 0.05) 70%, rgba(255, 255, 255, 0.12)),
+    repeating-linear-gradient(178deg, transparent 0 8px, rgba(120, 70, 20, 0.09) 8px 9px, transparent 9px 17px),
+    var(--plank);
+  box-shadow: 0 3px 0 var(--plank-lip), 0 7px 12px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  transform-origin: 85% 0;
+}
+.v-orders-d .od-plank.done { box-shadow: 0 3px 0 var(--plank-lip), 0 7px 12px rgba(0, 0, 0, 0.3), 0 0 0 3px color-mix(in oklab, var(--leaf) 70%, #fff), 0 0 18px 4px color-mix(in oklab, var(--leaf) 45%, transparent); }
+.v-orders-d .od-nail { position: absolute; z-index: 2; top: 6px; width: 9px; height: 9px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff 0 12%, color-mix(in oklab, var(--ink-2) 40%, var(--paper-3)) 30%, var(--ink-2) 100%); box-shadow: 0 1px 1px rgba(0, 0, 0, 0.4); }
+.v-orders-d .od-nail.tl { left: 6px; }
+.v-orders-d .od-nail.tr { right: 6px; }
+
+/* carved: the words and numbers cut into the wood (dark, with the light catching the cut's lower lip) */
+.v-orders-d .od-pays b,
+.v-orders-d .od-name,
+.v-orders-d .od-wait span { color: var(--carve); text-shadow: 0 1px 0 rgba(255, 244, 220, 0.75), 0 -1px 0 rgba(60, 30, 10, 0.3); }
+.v-orders-d .od-foot { display: flex; align-items: center; gap: 8px; padding-inline-start: 4px; }
+.v-orders-d .od-pays { display: inline-flex; align-items: center; gap: 4px; flex: none; }
+.v-orders-d .od-pays .art { width: 26px; height: 26px; }
+.v-orders-d .od-pays b { font: 900 21px/1 var(--font-text); font-variant-numeric: tabular-nums; }
+.v-orders-d .od-pays .od-surprise { width: 26px; height: 26px; margin-inline-start: 2px; }
+.v-orders-d .od-crates { display: inline-flex; margin-inline-start: 4px; }
+.v-orders-d .od-crates img { width: 22px; height: 22px; margin-inline-start: -5px; }
+.v-orders-d .od-no { flex: none; display: grid; place-items: center; width: 44px; height: 44px; margin: 0 -6px 0 -4px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--carve); }
+.v-orders-d .od-no svg { width: 18px; height: 18px; }
+
+/* the goods, a line each (two to a row upright): the picture with how many it still wants, the name, the pegs */
+.v-orders-d .od-lines { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 10px; margin: 0; padding: 0; list-style: none; }
+.v-orders-d .od-lines:has(> li:only-child) { grid-template-columns: minmax(0, 1fr); }
+.v-orders-d .od-line { display: grid; grid-template-columns: 42px minmax(0, 1fr); grid-template-areas: 'pic name' 'pic pegs'; align-items: center; column-gap: 6px; min-width: 0; padding: 2px 6px 2px 2px; border-radius: 12px; background: rgba(120, 70, 20, 0.1); box-shadow: inset 0 2px 3px rgba(80, 45, 10, 0.18), inset 0 -1px 0 rgba(255, 244, 220, 0.5); }
+.v-orders-d .od-line.in { background: color-mix(in oklab, var(--leaf) 16%, transparent); }
+.v-orders-d .od-good { grid-area: pic; position: relative; display: grid; place-items: center; width: 44px; height: 44px; margin-inline-start: -2px; padding: 0; border: 0; border-radius: 12px; background: none; }
+.v-orders-d .od-good .item-pic .art { width: 36px; height: 36px; }
+.v-orders-d .od-in { position: absolute; right: -2px; bottom: 0; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--leaf); color: #fff; box-shadow: 0 0 0 2px var(--plank); }
+.v-orders-d .od-in svg { width: 13px; height: 13px; }
+.v-orders-d .od-name { grid-area: name; align-self: end; display: -webkit-box; min-width: 0; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font: 600 15px/1.08 var(--font-display); letter-spacing: 0.01em; }
+.v-orders-d .od-pegs { grid-area: pegs; align-self: start; display: flex; flex-wrap: wrap; gap: 3px; padding-top: 3px; }
+.v-orders-d .od-pegs i { width: 9px; height: 9px; border-radius: 50%; background: rgba(80, 45, 10, 0.35); box-shadow: inset 0 1px 2px rgba(40, 20, 0, 0.5), 0 1px 0 rgba(255, 244, 220, 0.6); }
+.v-orders-d .od-pegs i.full { background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--sun) 40%, #fff), var(--sun) 55%, var(--sun-lip)); box-shadow: 0 1px 0 var(--plank-lip); }
+.v-orders-d .od-line.in .od-pegs i.full { background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--leaf) 40%, #fff), var(--leaf) 60%, var(--leaf-lip)); }
+
+/* READY, branded into the plank once all are in */
+.v-orders-d .od-brand { position: absolute; z-index: 3; top: 34%; left: 50%; translate: -50% -50%; padding: 2px 10px; border: 3px solid color-mix(in oklab, var(--leaf-lip) 80%, var(--ink)); border-radius: 8px; color: color-mix(in oklab, var(--leaf-lip) 80%, var(--ink)); font: 700 18px/1.1 var(--font-display); letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.85; mix-blend-mode: multiply; pointer-events: none; }
+
+.v-orders-d .od-act { flex: 1; min-width: 0; display: flex; }
+.v-orders-d .od-send,
+.v-orders-d .od-put { flex: 1; min-height: 44px; }
+.v-orders-d .od-send { font-size: 19px; gap: 8px; }
+.v-orders-d .od-put { font-size: 17px; }
+.v-orders-d .od-wait { display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 0 16px; border: 2px dashed rgba(255, 244, 220, 0.35); color: rgba(255, 244, 220, 0.85); font: 700 15px/1.2 var(--font-text); }
+.v-orders-d .od-wait svg { width: 22px; height: 22px; }
+.v-orders-d .od-wait span { color: rgba(255, 244, 220, 0.9); text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.4); }
+.v-orders-d .od-wait b { font-variant-numeric: tabular-nums; }
+
+/* the office tab */
+.v-orders-d .od-office { display: flex; flex-direction: column; gap: 8px; }
+.v-orders-d .od-up { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 20px; background: var(--paper-2); }
+.v-orders-d .od-up .art { width: 44px; height: 44px; }
+.v-orders-d .od-up-text { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.v-orders-d .od-up-text > b { font: 600 17px/1.2 var(--font-display); }
+.v-orders-d .od-up .tag svg { width: 14px; height: 14px; }
+.v-orders-d .od-up .btn { min-height: 44px; }
+
+/* the bubble of a good touched: its name, how many are in, what the store holds (E: where it comes from) */
+.v-orders-d-pop { z-index: 80; }
+.v-orders-d-pop > div { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 150px; max-width: 240px; padding: 8px 12px 10px; border: 2px solid #fff; border-radius: 16px; background: var(--paper); box-shadow: 0 3px 0 var(--paper-3), 0 10px 24px rgba(40, 24, 10, 0.3); color: var(--ink); text-align: center; transform-origin: 50% 100%; }
+.v-orders-d-pop-name { font: 600 19px/1.15 var(--font-display); text-transform: capitalize; }
+.v-orders-d-pop-state { font: 800 14px/1.3 var(--font-text); color: var(--xp-lip); }
+.v-orders-d-pop-state.in { color: var(--leaf); }
+.v-orders-d-pop-store { font: 700 13px/1.3 var(--font-text); color: var(--ink-2); }
+.v-orders-d-pop-arrow { fill: var(--paper); }
+.v-orders-e-src { display: flex; align-items: center; gap: 6px; margin-top: 4px; padding: 4px 8px; border-radius: 12px; background: var(--paper-2); font: 700 14px/1.25 var(--font-text); text-align: left; }
+.v-orders-e-src > .art { width: 30px; height: 30px; flex: none; }
+.v-orders-e-from { display: inline-flex; align-items: center; gap: 2px; vertical-align: middle; }
+.v-orders-e-from .item-pic .art { width: 22px; height: 22px; }
+.v-orders-e-show { margin-top: 6px; min-height: 44px; gap: 6px; }
+.v-orders-e-show svg { width: 16px; height: 16px; }
+/* "Show me": the place put on the compass, said at the top of the screen */
+.v-orders-e-mark { position: fixed; z-index: 70; top: calc(max(10px, env(safe-area-inset-top)) + 8px); left: 50%; translate: -50% 0; display: flex; align-items: center; gap: 6px; padding: 8px 14px; border: 2px solid #fff; border-radius: 999px; background: var(--ink); color: #fff; font: 800 15px/1 var(--font-text); white-space: nowrap; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3); pointer-events: none; }
+.v-orders-e-mark svg { width: 16px; height: 16px; color: var(--sun); }
+
+/* a phone on its side: the tabs beside the title, the planks in a row that slides */
+@media (orientation: landscape) and (max-height: 560px) {
+  .v-orders-d .od-head { flex-wrap: nowrap; }
+  .v-orders-d .od-head > .art { width: 32px; height: 32px; }
+  .v-orders-d .od-head h2 { font-size: 22px; }
+  .v-orders-d .od-head .tag:not(.od-tractor) { display: none; }
+  .v-orders-d .od-tractor { display: none; }
+  .v-orders-d .od-tablist { position: absolute; top: calc(10px + env(safe-area-inset-top)); right: calc(74px + env(safe-area-inset-right)); width: 190px; padding: 2px; }
+  .v-orders-d .od-board { padding: 8px; }
+  .v-orders-d .od-planks { flex-direction: row; align-items: stretch; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+  .v-orders-d .od-plank,
+  .v-orders-d .od-wait { flex: 0 0 min(210px, 48.5%); scroll-snap-align: start; }
+  .v-orders-d .od-plank { gap: 6px; padding: 8px 10px 10px; }
+  .v-orders-d .od-lines { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .v-orders-d .od-line { grid-template-columns: 42px minmax(0, 1fr); padding-block: 0; }
+  .v-orders-d .od-good .item-pic .art { width: 32px; height: 32px; }
+  .v-orders-d .od-name { font-size: 15px; }
+  .v-orders-d .od-send,
+  .v-orders-d .od-put { min-height: 44px; padding-inline: 10px; font-size: 15px; }
+  .v-orders-d .od-send { gap: 4px; }
+  .v-orders-d .od-brand { font-size: 20px; }
+  .v-orders-d .od-foot { margin-top: auto; flex-wrap: wrap; gap: 2px 4px; }
+  .v-orders-d .od-pays { flex-basis: 100%; }
+  .v-orders-d .od-pays b { font-size: 18px; }
+  .v-orders-d .od-pays .art { width: 22px; height: 22px; }
+  .v-orders-d .od-crates img { width: 18px; height: 18px; }
+  .v-orders-d .od-wait { flex-direction: column; justify-content: center; text-align: center; }
+}

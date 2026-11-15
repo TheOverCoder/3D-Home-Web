@@ -1,4 +1,5 @@
 import { AnimatePresence, m } from 'motion/react'
+import { ItemPic } from '../../../src/ui/ItemPic'
 import { art } from '../../../src/ui/art'
 import { Check, Clock, Play } from '../../../src/ui/glyphs'
 import { EASE, PRESS, SPRING } from '../../../src/ui/motion'
@@ -18,6 +19,7 @@ export function Chrome({
   tone = 'plain',
   bar = true,
   className = '',
+  away,
 }: {
   v: LoadView
   tip: number
@@ -25,6 +27,9 @@ export function Chrome({
   tone?: 'plain' | 'card' | 'glass' | 'ink'
   bar?: boolean
   className?: string
+  /** SAMPLE (variant G, a feature the game does not have): a returning player's away report, shown while loading in the
+   *  tip's place — what is waiting on the farm, as pictures with counts */
+  away?: Away
 }) {
   const near = !v.ready && v.p >= 0.8
   return (
@@ -59,6 +64,29 @@ export function Chrome({
                 {v.press}
               </m.button>
             </m.div>
+          ) : away ? (
+            <m.div key="away" className="lc-away" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.25, ease: EASE.out }}>
+              <p>
+                Waiting on your farm <small>· {away.ago} away</small>
+              </p>
+              <m.span className="lc-away-goods" initial="hidden" animate="shown" variants={{ shown: { transition: { staggerChildren: 0.12, delayChildren: 0.3 } } }}>
+                {away.goods.map((g) => (
+                  <m.span key={g.item} variants={{ hidden: { opacity: 0, scale: 0.3, y: 10 }, shown: { opacity: 1, scale: 1, y: 0, transition: SPRING.pop } }}>
+                    <ItemPic id={g.item} count={g.count} />
+                  </m.span>
+                ))}
+                {away.buyers > 0 && (
+                  <m.span
+                    className="item-pic"
+                    variants={{ hidden: { opacity: 0, scale: 0.3, y: 10 }, shown: { opacity: 1, scale: 1, y: 0, transition: SPRING.pop } }}
+                    aria-label={`${away.buyers} buyers at the gate`}
+                  >
+                    <img className="art" src={art('people-queue')} alt="" />
+                    <b className="qty">{away.buyers}</b>
+                  </m.span>
+                )}
+              </m.span>
+            </m.div>
           ) : v.again ? (
             <m.div key="again" className="lc-tip again" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.25 }}>
               <img className="art" src={art('sparkles')} alt="" />
@@ -74,6 +102,13 @@ export function Chrome({
       </div>
     </div>
   )
+}
+
+/** A returning player's away report, as the loading screen shows it (variant G). */
+export interface Away {
+  ago: string
+  goods: { item: string; count: number }[]
+  buyers: number
 }
 
 /** The game's name, as the logo is drawn everywhere (white letters in a thick ink line). */

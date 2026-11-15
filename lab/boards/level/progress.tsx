@@ -24,6 +24,8 @@ export interface LevelState extends LevelView {
   gain: number
   /** what waits on the farm now (missing in the game: the compass's ready marks × XP_FOR) */
   ready?: Ready
+  /** SAMPLE (variant E only, a feature the game does not have): how many of this level's quarter gifts were opened */
+  opened?: number
 }
 
 /** Beds of a crop ready to harvest: two XP a bed (gainXp('harvest', 1) per bed). */

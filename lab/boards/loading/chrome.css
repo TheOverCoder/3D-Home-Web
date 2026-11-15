@@ -59,3 +59,10 @@
   .v-loading-chrome .lc-play,
   .v-loading-chrome .lc-play::after { animation: none; }
 }
+
+/* G · the away report in the tip's place: what waits on the farm, popping in one by one */
+.v-loading-chrome .lc-away { display: grid; gap: 4px; min-height: 64px; padding: 8px 14px 10px; border: 2px solid #fff; border-radius: 18px; background: var(--paper); box-shadow: 0 3px 0 var(--edge-soft); }
+.v-loading-chrome .lc-away p { margin: 0; font: 600 16px/1.2 var(--font-display); color: var(--ink); }
+.v-loading-chrome .lc-away small { font: 700 13px/1 var(--font-text); color: var(--leaf); }
+.v-loading-chrome .lc-away-goods { display: flex; align-items: center; gap: 12px; }
+.v-loading-chrome .lc-away-goods .item-pic .art { width: 36px; height: 36px; }

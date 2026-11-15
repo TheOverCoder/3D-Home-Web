@@ -1,4 +1,5 @@
 import type { Board } from '../../board'
+import type { Away } from './Chrome'
 import { TOTAL, type LoadingState } from './load'
 import { LoadingA } from './LoadingA'
 import { LoadingB } from './LoadingB'
@@ -14,19 +15,36 @@ import { LoadingToday } from './LoadingToday'
 // formula, ./load.ts), and each one goes on moving in the lab as it would in the game: the almost-ready state becomes
 // ready by itself a moment after it opens, which is each variant's moment.
 
+/** SAMPLE (variant G): a returning player's away report — the opening screen's evening farm (lab/boards/intro/data.ts):
+ *  two beds of tomatoes and one of strawberries ripe, the nest and the cow full, four buyers at the gate. */
+const AWAY: Away = {
+  ago: '3 h',
+  goods: [
+    { item: 'tomato', count: 16 },
+    { item: 'strawberry', count: 8 },
+    { item: 'egg', count: 6 },
+    { item: 'milk', count: 3 },
+  ],
+  buyers: 4,
+}
+
 const base: LoadingState = { phase: 'download', total: TOTAL, loaded: 0, fromDevice: 0, speed: 0, scene: 0, compile: 0, attempt: 0, returning: false, farm: 1 }
 
 export const loadingBoard: Board<LoadingState> = {
   id: 'loading',
   title: 'מסך הטעינה',
   kind: 'ui',
-  added: '2026-11-14T05:26',
-  ask: 'ביקשת לעצב את מסך הטעינה (🙋). מהמפה: היום הוא מדבר כמו מפתח (MB, decoding), יש בו שני אחוזים, והדבר הכי בולט בו הוא כפתור אפור שאי אפשר ללחוץ.',
+  added: '2026-11-15T08:29',
+  ask:
+    'ביקשת לעצב את מסך הטעינה (🙋). מהמפה: היום הוא מדבר כמו מפתח (MB, decoding), יש בו שני אחוזים, והדבר הכי בולט בו הוא כפתור אפור שאי אפשר ללחוץ. · ' +
+    'הערה על B: "לשפר את שלוש ההצעות עם motion graphics מתקדם יותר, יש לך ספריות 3D; 6 אפשרויות, ואת ה־3 הקיימות לשפר משמעותית."',
   status: 'choose',
   round:
-    'סיבוב 3, תשובה להערה ("motion graphics מתקדם יותר, 6 אפשרויות, לשפר משמעותית את השלוש"): עכשיו שש אפשרויות, כל אחת טכניקה אחרת של motion graphics, ובכולן אותו פס, אותה שורה ואותו טיפ (כדי שישוו רק את התנועה). ' +
-    'A האי – עכשיו תלת־ממד אמיתי: אי קטן מסתובב והבית נבנה עליו חלק אחרי חלק. B הדרך – עכשיו נוף בשש שכבות עומק (parallax) ושמיים מהשחר ליום. C החלון – עכשיו כמו פתיחה של סרט: פוקוס שמתחדד, קרני אור, אבק בשלושה עומקים ופסים שחורים שנפתחים. ' +
-    'חדשים: D זרע שגדל לחמנייה (העלים נפתחים בכל רבע), E הסמל נבנה מצורות שעפות פנימה עם טבעת התקדמות, F כוכב לכת קטן בתלת־ממד שהלילה בו הופך ליום. התלת־ממד נטען אחרי הדף, כך שהפס לא מחכה לו.',
+    'סיבוב 4. ההערה שלך ("6 אפשרויות, motion graphics מתקדם, תלת־ממד, לשפר את השלוש") נענתה כבר בסיבוב 3, אבל הלוח לא סומן אז כחדש – אז הנה הוא שוב, מחכה לך: ' +
+    'שש אפשרויות, כל אחת טכניקה אחרת – A אי בתלת־ממד שהבית נבנה עליו חלק אחרי חלק; B דרך בשש שכבות עומק (parallax) והשמיים מהשחר ליום; C פתיחה של סרט (פוקוס, קרני אור, אבק, פסים שחורים); ' +
+    'D זרע שגדל לחמנייה (עלה בכל רבע); E הסמל נבנה מצורות שעפות פנימה עם טבעת; F כוכב לכת בתלת־ממד שהלילה בו הופך ליום. בכולן אותו פס, אותה שורה ואותו טיפ, כדי להשוות רק את התנועה. ' +
+    'בסיבוב הזה: לרוחב השמש של A כבר לא נחתכת בראש המסך. חדש: G – האי של A, ולשחקן שחוזר, במקום טיפ: מה מחכה לו בחווה, בתמונות עם כמויות, כבר בזמן הטעינה (✦ תכונה חדשה). ' +
+    'סמן ✓ על מה שאהבת (אפשר יותר מאחת) ו־✗ על מה שלא.',
   still: 'none',
   screen: 'loading',
   research: [
@@ -143,6 +161,16 @@ export const loadingBoard: Board<LoadingState> = {
         'הכוכב מסתובב, טחנת הרוח מסתובבת, הכוכבים מנצנצים ונעלמים עם הפס, השמיים עוברים מסגול כהה דרך ורוד־כתום לזהב, והאור על החווה מתחמם. נגיעה בכוכב – הוא קופץ. ' +
         'כשמוכן: השמש גבוהה, טחנת הרוח ממהרת, הכוכב קופץ, קונפטי – ו־Play.',
       render: (s, act) => <LoadingF s={s} onPlay={act.close} />,
+    },
+    {
+      id: 'g',
+      name: 'A + מה מחכה לך בחווה',
+      note:
+        'האי בתלת־ממד של A, ולשחקן שחוזר – במקום הטיפ – "Waiting on your farm": מה הבשיל ומה החיות נתנו בזמן שלא היה, ומי מחכה בשער, בתמונות עם כמויות. ' +
+        'זמן הטעינה הופך לרגע של "יש לי מה לעשות", והכפתור Continue כבר מבטיח משהו. שחקן חדש (ההורדה הראשונה) רואה את הטיפים כמו ב־A.',
+      motion: 'כמו A; והדברים שמחכים קופצים לכרטיס אחד אחרי השני עם קפיצה קטנה. כשמוכן – Continue במקומם.',
+      adds: 'דוח "מה קרה בזמן שלא היית" כבר במסך הטעינה, לשחקן שחוזר – בתמונות עם כמויות, במקום טיפ.',
+      render: (s, act) => <LoadingA s={s} onPlay={act.close} away={s.phase === 'download' && s.fromDevice < s.total && !s.returning ? undefined : AWAY} />,
     },
   ],
 }

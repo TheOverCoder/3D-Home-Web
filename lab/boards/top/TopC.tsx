@@ -7,6 +7,7 @@ import { ArrowsOutCardinal, CompassRose, EyeSlash, GearSix, SquaresFour, X } fro
 import { ItemPic } from '../../../src/ui/ItemPic'
 import { EASE, PRESS, SPRING } from '../../../src/ui/motion'
 import { List } from '@phosphor-icons/react/dist/csr/List'
+import { PushPin } from '@phosphor-icons/react/dist/csr/PushPin'
 import { Compass, Num, Opens, SaleStandIn, topView, usePurse, type HudView, type TopState } from './parts'
 import './TopC.css'
 
@@ -19,7 +20,17 @@ import './TopC.css'
 const NEXT: Record<HudView, HudView> = { all: 'compass', compass: 'clean', clean: 'all' }
 const VIEW_WORD: Record<HudView, string> = { all: 'All', compass: 'Compass', clean: 'Clear' }
 
-export function TopC({ s, set }: { s: TopState; set: (s: TopState) => void }) {
+/** SAMPLE (variant D, a feature the game does not have): the goal pinned from the goals board (lab/boards/goals, E). */
+export interface Pinned {
+  art: 'shopping-bags'
+  words: string
+  have: number
+  target: number
+  /** how many one sale (the stand-in's) counts */
+  per: number
+}
+
+export function TopC({ s, set, pinned }: { s: TopState; set: (s: TopState) => void; pinned?: Pinned }) {
   const v = topView(s)
   const lv = v.lv
   const still = useReducedMotion()
@@ -27,6 +38,7 @@ export function TopC({ s, set }: { s: TopState; set: (s: TopState) => void }) {
   const [coins, animateCoins] = useAnimate()
   const [menu, setMenu] = useState(false)
   const [opens, setOpens] = useState<string | null>(null)
+  const [sold, setSold] = useState(0)
   const purse = usePurse(s.coins, (last) => {
     if (still) return
     void animateCoins('img', { y: [0, 3, 0], scaleY: [1, 0.8, 1] }, { duration: 0.2, ease: EASE.out })
@@ -172,7 +184,13 @@ export function TopC({ s, set }: { s: TopState; set: (s: TopState) => void }) {
           </AnimatePresence>
         </div>
       </div>
-      <SaleStandIn onSell={(from) => purse.pay(24, from, root.current)} />
+      {pinned && s.hud === 'all' && <Tracker p={pinned} counted={sold} />}
+      <SaleStandIn
+        onSell={(from) => {
+          purse.pay(24, from, root.current)
+          setSold((n) => n + 1)
+        }}
+      />
       <AnimatePresence>{opens && <Opens what={opens} onDone={() => setOpens(null)} />}</AnimatePresence>
     </div>
   )
@@ -256,5 +274,45 @@ function Gauge({
         </Popover.Content>
       </Popover.Portal>
     </Popover.Root>
+  )
+}
+
+/** D: the pinned goal under the compass. Each sale counts on it: the bar jumps and "+8" pops off it; reached, it turns
+ *  green and says Claim (a touch would open the goals board). */
+function Tracker({ p, counted }: { p: Pinned; counted: number }) {
+  const have = Math.min(p.target, p.have + counted * p.per)
+  const done = have >= p.target
+  return (
+    <m.button
+      className={`v-top-d-track${done ? ' done' : ''}`}
+      aria-label={`Pinned goal: ${p.words}, ${have} of ${p.target}${done ? ', reached' : ''}`}
+      initial={{ opacity: 0, y: -12, scale: 0.9 }}
+      animate={{ opacity: 1, y: 0, scale: done ? [1, 1.08, 1] : 1 }}
+      transition={{ ...SPRING.pop, delay: 0.35 }}
+      whileTap={{ scale: 0.95 }}
+    >
+      <PushPin weight="fill" className="v-top-d-track-pin" />
+      <img className="art" src={art(p.art)} alt="" />
+      <span className="v-top-d-track-text">
+        <b>{p.words}</b>
+        <span className="v-top-d-track-bar">
+          <m.i initial={{ width: 0 }} animate={{ width: `${(have / p.target) * 100}%` }} transition={{ duration: 0.5, ease: EASE.out }} />
+        </span>
+      </span>
+      <span className="v-top-d-track-n">{done ? 'Claim!' : `${have}/${p.target}`}</span>
+      <AnimatePresence>
+        {counted > 0 && !done && (
+          <m.b
+            key={counted}
+            className="v-top-d-plus"
+            initial={{ opacity: 0, y: 6, scale: 0.6 }}
+            animate={{ opacity: [0, 1, 1, 0], y: [6, -8, -10, -18], scale: [0.6, 1.1, 1, 1] }}
+            transition={{ duration: 1 }}
+          >
+            +{p.per}
+          </m.b>
+        )}
+      </AnimatePresence>
+    </m.button>
   )
 }

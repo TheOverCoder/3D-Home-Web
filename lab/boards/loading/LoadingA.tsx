@@ -3,7 +3,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { art } from '../../../src/ui/art'
 import { burst } from '../../../src/ui/burst'
 import { SPRING } from '../../../src/ui/motion'
-import { Chrome, Logo } from './Chrome'
+import { Chrome, Logo, type Away } from './Chrome'
 import { loadView, useLive, useTip, useWide, type LoadingState } from './load'
 import './LoadingA.css'
 
@@ -16,7 +16,7 @@ import './LoadingA.css'
 
 const Island3D = lazy(() => import('./Island3D').then((x) => ({ default: x.Island3D })))
 
-export function LoadingA({ s: start, onPlay }: { s: LoadingState; onPlay: () => void }) {
+export function LoadingA({ s: start, onPlay, away }: { s: LoadingState; onPlay: () => void; away?: Away }) {
   const s = useLive(start)
   const v = loadView(s)
   const wide = useWide()
@@ -55,7 +55,7 @@ export function LoadingA({ s: start, onPlay }: { s: LoadingState; onPlay: () => 
         </Suspense>
       </div>
       <m.div className="la-low" {...enter(2)}>
-        <Chrome v={v} tip={tip} onPlay={onPlay} tone="card" />
+        <Chrome v={v} tip={tip} onPlay={onPlay} tone="card" away={away} />
       </m.div>
     </m.div>
   )

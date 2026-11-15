@@ -109,18 +109,25 @@
 }
 .v-top-c-track {
   position: relative;
-  height: 8px;
+  height: 10px;
+  margin-top: 2px;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.8), inset 0 2px 2px rgba(0, 0, 0, 0.5);
 }
+/* the bar as the level's card draws it (lab/boards/level, D): a glossy fill whose stripes run, a bright head */
 .v-top-c-fill {
   position: absolute;
   inset: 0 auto 0 0;
   border-radius: inherit;
-  background: linear-gradient(to bottom, color-mix(in srgb, var(--xp) 50%, #fff), var(--xp) 60%, var(--xp-lip));
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--xp) 45%, #fff), var(--xp) 55%, var(--xp-lip));
 }
-.v-top-c-notch { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: rgba(0, 0, 0, 0.45); }
-.v-top-c-notch.passed { background: rgba(255, 255, 255, 0.75); }
+.v-top-c-fill::before { content: ''; position: absolute; inset: 0; border-radius: inherit; background: repeating-linear-gradient(-55deg, rgba(255, 255, 255, 0.2) 0 5px, transparent 5px 10px); background-size: 24px 100%; }
+@media (prefers-reduced-motion: no-preference) { .v-top-c-fill::before { animation: v-top-c-run 1.1s linear infinite; } }
+@keyframes v-top-c-run { to { background-position: 24px 0; } }
+/* the quarters: a little diamond on the bar's top edge; once passed, a gold star */
+.v-top-c-notch { position: absolute; z-index: 1; top: -4px; width: 8px; height: 8px; margin-left: -4px; border-radius: 2px; background: rgba(255, 255, 255, 0.55); rotate: 45deg; }
+.v-top-c-notch.passed { top: -6px; width: 12px; height: 12px; margin-left: -6px; border-radius: 0; background: var(--sun); rotate: 0deg; clip-path: polygon(50% 0, 63% 33%, 98% 36%, 71% 58%, 80% 94%, 50% 74%, 20% 94%, 29% 58%, 2% 36%, 37% 33%); }
 /* the last quarter: the road warms toward the sun */
 .v-top-c-road.near .v-top-c-fill { background: linear-gradient(to bottom, rgba(255, 255, 255, 0.35), transparent 50%), linear-gradient(90deg, var(--xp) 0 40%, color-mix(in oklab, var(--xp) 45%, var(--berry)) 78%, color-mix(in oklab, var(--berry) 35%, var(--sun)) 100%); }
 .v-top-c-road.near .v-top-c-togo { color: var(--sun); }
@@ -523,4 +530,42 @@
   .v-top-c-pop {
     animation: none;
   }
+}
+
+/* D · the pinned goal, in its slot of the column under the compass (src/ui/TopStack.tsx): its picture, its words, a bar
+   that fills as you play, its count; a "+8" pops off it when something counts; reached, it turns green and says Claim */
+.v-top-d-track {
+  position: absolute;
+  top: calc(max(10px, env(safe-area-inset-top)) + 122px);
+  left: 50%;
+  translate: -50% 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: min(250px, calc(100vw - 150px));
+  min-height: 44px;
+  padding: 4px 12px 4px 6px;
+  border-radius: 999px;
+  background: var(--night);
+  border: 2px solid var(--night-line);
+  color: #fff;
+  box-shadow: 0 3px 12px rgba(20, 12, 6, 0.32);
+  pointer-events: auto;
+}
+.v-top-d-track.done { border-color: color-mix(in srgb, var(--leaf) 80%, #fff); box-shadow: 0 3px 12px rgba(20, 12, 6, 0.32), 0 0 14px 1px color-mix(in srgb, var(--leaf) 60%, transparent); }
+.v-top-d-track .item-pic .art,
+.v-top-d-track > .art { width: 32px; height: 32px; flex: none; }
+.v-top-d-track-pin { position: absolute; top: -8px; left: -4px; width: 18px; height: 18px; color: var(--berry); rotate: -20deg; filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.5)); }
+.v-top-d-track-text { flex: 1; display: grid; gap: 4px; min-width: 0; }
+.v-top-d-track-text b { font: 800 13px/1.1 var(--font-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.v-top-d-track-bar { position: relative; height: 8px; border-radius: 999px; background: rgba(0, 0, 0, 0.5); box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.7); overflow: hidden; }
+.v-top-d-track-bar > i { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: linear-gradient(to bottom, color-mix(in srgb, var(--xp) 45%, #fff), var(--xp-lip)); }
+.v-top-d-track.done .v-top-d-track-bar > i { background: linear-gradient(to bottom, color-mix(in srgb, var(--leaf) 45%, #fff), var(--leaf-lip)); }
+.v-top-d-track-n { font: 900 14px/1 var(--font-text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.v-top-d-track.done .v-top-d-track-n { padding: 4px 8px; border-radius: 999px; background: var(--leaf); }
+.v-top-d-plus { position: absolute; right: 8px; top: -6px; padding: 2px 7px; border-radius: 999px; background: var(--xp); color: #fff; font: 900 13px/1.2 var(--font-text); pointer-events: none; }
+.v-top-c.hud-compass .v-top-d-track,
+.v-top-c.hud-clean .v-top-d-track { display: none; }
+@media (orientation: landscape) {
+  .v-top-d-track { top: calc(max(10px, env(safe-area-inset-top)) + 76px); }
 }
