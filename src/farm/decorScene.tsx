@@ -115,29 +115,40 @@ function shownPieces(): DecorPiece[] {
 function Crowds() {
   const root = useMemo(() => new Group(), [])
   const crowds = useRef(new Map<ShopKind, Crowd>())
-  const extras = useMemo(() => {
-    const shadows = new Parts({ shadow: shadowPart(256, 0.24) }, 'decor-shadows', false)
-    const pools = new Parts({ pool: { geometry: pool(), max: 256, material: poolMaterial, receiveShadow: false } }, 'decor-light', false)
+  // the soft shadows and the pools of light: room for every piece, made again twice the size when more stand
+  const extras = useRef<{ shadows: Parts<'shadow'>; pools: Parts<'pool'>; max: number } | null>(null)
+  const roomFor = (n: number) => {
+    const now = extras.current
+    if (now && now.max >= n) return now
+    if (now) {
+      root.remove(now.shadows.group, now.pools.group)
+      now.shadows.dispose()
+      now.pools.dispose()
+    }
+    const max = Math.max(64, 2 ** Math.ceil(Math.log2(Math.max(1, n))))
+    const shadows = new Parts({ shadow: shadowPart(max, 0.24) }, 'decor-shadows', false)
+    const pools = new Parts({ pool: { geometry: pool(), max, material: poolMaterial, receiveShadow: false } }, 'decor-light', false)
     root.add(shadows.group, pools.group)
-    return { shadows, pools }
-  }, [root])
+    return (extras.current = { shadows, pools, max })
+  }
   const seen = useRef<{ list: DecorPiece[] | null; drag: unknown }>({ list: null, drag: null })
   useEffect(() => {
     const own = crowds.current
     return () => {
       for (const c of own.values()) c.parts.dispose()
       own.clear()
-      extras.shadows.dispose()
-      extras.pools.dispose()
+      extras.current?.shadows.dispose()
+      extras.current?.pools.dispose()
+      extras.current = null
     }
-  }, [extras])
+  }, [])
 
   useFrame(() => {
     // the lights, as the day goes
     const level = glowLevel()
     setSculptGlow(level)
     poolMaterial.opacity = 0.42 * level
-    extras.pools.group.visible = level > 0.001
+    if (extras.current) extras.current.pools.group.visible = level > 0.001
     const drag = useEdit.getState().drag
     const list = farm.layout.decor
     if (list === seen.current.list && drag === seen.current.drag) return
@@ -169,23 +180,25 @@ function Crowds() {
       }
       c.parts.end()
     }
-    extras.shadows.begin()
-    extras.pools.begin()
+    const extra = roomFor(shown.length)
+    extra.pools.group.visible = level > 0.001
+    extra.shadows.begin()
+    extra.pools.begin()
     for (const d of shown) {
       const soft = softShadow(d.kind)
       const f = DECOR_FEET[d.kind]
       if (soft) {
-        extras.shadows.at(d.x, 0, d.z, turnOf(d))
-        extras.shadows.put('shadow', 0, 0.012, 0, 0, 0, 0, SCALE.set(f.hx * soft, 1, f.hz * soft))
+        extra.shadows.at(d.x, 0, d.z, turnOf(d))
+        extra.shadows.put('shadow', 0, 0.012, 0, 0, 0, 0, SCALE.set(f.hx * soft, 1, f.hz * soft))
       }
       const reach = POOL[d.kind]
       if (reach) {
-        extras.pools.at(d.x, 0, d.z)
-        extras.pools.put('pool', 0, 0.02, 0, 0, 0, 0, reach)
+        extra.pools.at(d.x, 0, d.z)
+        extra.pools.put('pool', 0, 0.02, 0, 0, 0, 0, reach)
       }
     }
-    extras.shadows.end()
-    extras.pools.end()
+    extra.shadows.end()
+    extra.pools.end()
   })
 
   return <primitive object={root} />
