@@ -203,13 +203,16 @@ export interface FullFarm {
   rooms: Record<string, { added: number; weight: number; limit: number; reason: string }>
   line: number
   animals: Record<string, number>
+  /** the decoration and fruit plants standing on the farm, by kind */
+  decor: Record<string, number>
   /** filled by this call (the furniture still merging, the animals going to their places) */
   fresh: boolean
 }
 
 /**
  * The farm at its fullest (05-budget, 16-view): each room filled with the heaviest piece for sale until the next one
- * is refused, every animal the shop sells, fifteen buyers in line, a ripe crop in every bed, and the supermarket yours
+ * is refused, every animal the shop sells, fifteen buyers in line, a ripe crop in every bed, the farm decorated (a
+ * hundred pieces, every fruit tree and bush hung full), and the supermarket yours
  * with every place on its shelves open and full of the heaviest good (`fillShelves`). Once per page, until `emptyFarm`
  * (the shelves again on every call); waits for the furniture to merge again and the animals and buyers to take their
  * places.
@@ -250,8 +253,77 @@ export async function fillFarm(page: Page): Promise<FullFarm> {
     })
     f.state.producers.tree.stock[0] = 3
     f.state.producers.hens.stock[0] = 2
+    // the farm decorated (src/farm/decor.ts, the edit mode's shop), on the free land where the house stood and round
+    // it, through the game's own rules (each where it fits, or the nearest free spot): a fenced garden with a path
+    // across it, lamps and lanterns, benches, trees and bushes, flowers, a bird bath and a well, and every kind of fruit
+    // tree and bush, hung full
+    const decor: [string, number, number, number][] = [
+      ...[-5, -3, -1, 1, 3, 5].map((x): [string, number, number, number] => ['fence', x, -6, 0]),
+      ...[-5, -3, -1].flatMap((z): [string, number, number, number][] => [
+        ['fence', -6, z, 1],
+        ['fence', 6, z, 1],
+      ]),
+      ['fence', -5, 0, 0],
+      ['fence', 5, 0, 0],
+      ...[-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5].map((z): [string, number, number, number] => ['path', 0, z, 0]),
+      ...[-5, -4, -3, -2, -1, 1, 2, 3, 4, 5].map((x): [string, number, number, number] => ['path', x, -2.5, 0]),
+      ...[-6.5, -4.5, -2.5, 2.5, 4.5, 6.5].map((x): [string, number, number, number] => ['hedge', x, 4, 0]),
+      ...[
+        [1, -4],
+        [-1, -4],
+        [1, 1],
+        [-1, 1],
+        [3.5, 5.5],
+        [-3.5, 5.5],
+      ].map(([x, z]): [string, number, number, number] => ['lamp', x, z, 0]),
+      ...[-4, -2, 2, 4].flatMap((x): [string, number, number, number][] => [
+        ['lantern', x, -3.5, 0],
+        ['lantern', x, -1.5, 0],
+      ]),
+      ['bench', -3, -5, 0],
+      ['bench', 3, -5, 0],
+      ['bench', -3, 1.5, 2],
+      ['tree', -7.5, -3, 0],
+      ['tree', 7.5, 2, 0],
+      ['tree', -4, 7, 0],
+      ['pine', -7.5, 1, 0],
+      ['pine', 7.5, -5, 0],
+      ['pine', 6, 6.5, 0],
+      ...[-4.5, -2, 2, 4.5].map((x): [string, number, number, number] => ['bush', x, -0.5, 0]),
+      ['bush', -5, 2.5, 0],
+      ['bush', 5, 2.5, 0],
+      ...[-4.5, 4.5, -2.5, 2.5].map((x): [string, number, number, number] => ['roses', x, -4.5, 0]),
+      ...[-2.5, -1.5, 1.5, 2.5, 3.5, -3.5].map((x): [string, number, number, number] => ['flowers', x, 2.5, 0]),
+      ['planter', -1.5, -5.5, 0],
+      ['planter', 1.5, -5.5, 0],
+      ['planter', 2.5, 1.5, 0],
+      ['birdbath', 3, -1, 0],
+      ['well', -3, 6, 0],
+      ...[-5, -4, -3, -2, -1, 1].map((x): [string, number, number, number] => ['stones', x, 5.5, 0]),
+      ['apple-tree', 7.5, -2, 0],
+      ['apple-tree', -6, -8, 0],
+      ['orange-tree', 3, -8, 0],
+      ['orange-tree', -8, 4, 0],
+      ['cherry-tree', 6, -8, 0],
+      ['cherry-tree', 2, 7, 0],
+      ['blueberry-bush', -5, 9, 0],
+      ['blueberry-bush', 6.5, 9, 0],
+      ['blueberry-bush', -7.5, -5.5, 0],
+      ['raspberry-bush', 7.5, 4.5, 0],
+      ['raspberry-bush', -7.5, 6.5, 0],
+      ['raspberry-bush', 4.5, 9, 0],
+    ]
+    const placed: Record<string, number> = {}
+    for (const [kind, x, z, rot] of decor) {
+      if (!f.buyDecor(kind)) continue
+      const spot = f.placeDecor(kind, { x, z, rot }).ok ? true : !!f.freeDecorSpot(kind, x, z) && f.placeDecor(kind, f.freeDecorSpot(kind, x, z)).ok
+      if (spot) placed[kind] = (placed[kind] ?? 0) + 1
+    }
+    // (the most each bears: PRODUCERS in src/farm/data.ts)
+    const most: Record<string, number> = { 'apple-tree': 8, 'orange-tree': 8, 'cherry-tree': 12, 'blueberry-bush': 8, 'raspberry-bush': 8 }
+    for (const [k, n] of Object.entries(most)) f.state.producers[k].stock = f.state.producers[k].stock.map(() => n)
     const animals = Object.fromEntries(['cows', 'sheep', 'hens'].map((k) => [k, f.state.producers[k].animals]))
-    h.__fullFarm = { heaviest, rooms, line: f.inLine().length, animals }
+    h.__fullFarm = { heaviest, rooms, line: f.inLine().length, animals, decor: placed }
     return { ...h.__fullFarm, fresh: true }
   })
   // the furniture merged again, the animals and the buyers in their places
