@@ -9,6 +9,8 @@ import { CameraControlsImpl } from '@react-three/drei'
 import { MathUtils, Matrix4, Quaternion, Vector3, type Group, type PerspectiveCamera } from 'three'
 import { footstep, jumpSound, land } from '../audio/sound'
 import { GARDEN_DOOR, HOUSE, insideHouse } from '../data/layout'
+import { gardenDoorOf } from '../home/shell'
+import { farm } from '../farm/state'
 import { WALK_INS, bounds, type Box, type Rect, type WalkIn } from '../data/buildings'
 import { screenById, type ScreenDef } from '../data/screens'
 import { debugSet } from '../lib/debug'
@@ -132,16 +134,22 @@ function keepCameraInBounds(p: Vector3, body: Vector3) {
     p.z = MathUtils.clamp(p.z, r.z0 + WALL_CLEAR, r.z1 - WALL_CLEAR)
     return
   }
-  const inOpening = house && gardenDoor.open > 0.55 && Math.abs(p.x - GARDEN_DOOR.centre) < DOOR_HALF
-  if (inOpening && Math.abs(p.z - GARDEN_DOOR.at) < CLEAR) {
+  // the garden door where the house's shell has it (src/home/shell.ts): along its wall and across it
+  const g = gardenDoorOf(farm.home.shell)
+  const along = g.axis === 'x' ? p.x : p.z
+  const across = g.axis === 'x' ? p.z : p.x
+  const inOpening = house && gardenDoor.open > 0.55 && Math.abs(along - g.centre) < DOOR_HALF
+  if (inOpening && Math.abs(across - g.at) < CLEAR) {
     // stepping through the door: keep to the opening
-    p.y = Math.min(p.y, GARDEN_DOOR.top - 0.12)
+    p.y = Math.min(p.y, g.top - 0.12)
     return
   }
   if (house && insideHouse(body.x, body.z)) {
     p.y = Math.min(p.y, HOUSE.wallHeight - 0.12)
-    p.x = MathUtils.clamp(p.x, HOUSE.minX + CLEAR, HOUSE.maxX - CLEAR)
-    p.z = MathUtils.clamp(p.z, HOUSE.minZ + CLEAR, inOpening ? HOUSE.maxZ + 3 : HOUSE.maxZ - CLEAR)
+    // through the open garden door the eyes may lean out past its wall
+    const out = (axis: 'x' | 'z', high: boolean) => inOpening && g.axis !== axis && g.at > 0 === high
+    p.x = MathUtils.clamp(p.x, out('z', false) ? HOUSE.minX - 3 : HOUSE.minX + CLEAR, out('z', true) ? HOUSE.maxX + 3 : HOUSE.maxX - CLEAR)
+    p.z = MathUtils.clamp(p.z, out('x', false) ? HOUSE.minZ - 3 : HOUSE.minZ + CLEAR, out('x', true) ? HOUSE.maxZ + 3 : HOUSE.maxZ - CLEAR)
     return
   }
   // outdoors: above the ground, around the ground you can be on, and out of the house's walls and every walk-in's

@@ -1,5 +1,6 @@
 import type { RapierContext, RapierRigidBody } from '@react-three/rapier'
-import { DOOR, GARDEN_DOOR } from '../../data/layout'
+import { farm } from '../../farm/state'
+import { gardenDoorOf, hingedDoorOf } from '../../home/shell'
 import { BODY } from '../playerState'
 import { inHouse, houseHere } from '../world'
 import { makeGrid, type Grid } from './grid'
@@ -48,13 +49,15 @@ export interface PhysicsGrid extends Grid {
 export function physicsGrid(world: World, rapier: Rapier, area: Area, doorShut: boolean): PhysicsGrid {
   const flags = rapier.QueryFilterFlags.ONLY_FIXED | rapier.QueryFilterFlags.EXCLUDE_SENSORS
   const capsule = new rapier.Capsule(HALF, PROBE_RADIUS)
+  // the kitchen's door where its doorway is (src/home/shell.ts; none while the doorway is closed)
+  const DOOR = hingedDoorOf(farm.home.shell) ?? { width: 1, height: 1, thickness: 1, openAngle: 0, hinge: [0, -100, 0] }
   const leaf = new rapier.Cuboid(DOOR.width / 2, DOOR.height / 2, DOOR.thickness / 2)
   // the leaf turns about the hinge (Door.tsx): shut along the wall, open a quarter turn into the bedroom
   const a = doorShut ? 0 : -DOOR.openAngle
   const leafAt = { x: DOOR.hinge[0] + (Math.cos(a) * DOOR.width) / 2, y: DOOR.hinge[1] + DOOR.height / 2, z: DOOR.hinge[2] - (Math.sin(a) * DOOR.width) / 2 }
   const leafRot = { x: 0, y: Math.sin(a / 2), z: 0, w: Math.cos(a / 2) }
   // the kitchen's door is the house's: on the farm map there is none
-  const door = houseHere()
+  const door = houseHere() && hingedDoorOf(farm.home.shell) !== null
   const at = { x: 0, y: Y, z: 0 }
   const stats = { blocks: 0, empty: 0, capsules: 0, ms: 0 }
   // per block: 0 not asked yet, 1 nothing there, 2 something there (ask cell by cell)
@@ -96,6 +99,14 @@ export function physicsGrid(world: World, rapier: Rapier, area: Area, doorShut: 
     return empty
   }
   return grid
+}
+
+/** Within its width along its wall, and 1.2 m across it, of the garden door (where the house's shell has it). */
+function nearGardenDoor(x: number, z: number) {
+  const g = gardenDoorOf(farm.home.shell)
+  const along = g.axis === 'x' ? x : z
+  const across = g.axis === 'x' ? z : x
+  return Math.abs(along - g.centre) < g.width && Math.abs(across - g.at) < 1.2
 }
 
 const mix = (h: number, v: number) => Math.imul(h ^ (Math.round(v) | 0), 16777619)
@@ -141,7 +152,7 @@ export function movingBlocked(world: World, rapier: Rapier, grid: Grid, x: numbe
       at.x = grid.x0 + (i + 0.5) * grid.cell
       at.z = grid.z0 + (j + 0.5) * grid.cell
       if (Math.hypot(at.x - x, at.z - z) > radius || inHouse(at.x, at.z, 0.6)) continue
-      if (houseHere() && Math.abs(at.x - GARDEN_DOOR.centre) < GARDEN_DOOR.width && Math.abs(at.z - GARDEN_DOOR.at) < 1.2) continue
+      if (houseHere() && nearGardenDoor(at.x, at.z)) continue
       if (world.intersectionWithShape(at, IDENT, capsule, flags, undefined, undefined, body ?? undefined)) out.add(j * grid.w + i)
     }
   return out

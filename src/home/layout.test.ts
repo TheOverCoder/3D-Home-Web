@@ -188,7 +188,7 @@ describe('what a room may draw', () => {
       [-0.6, 3.0],
       [-5.5, 4.6],
     ].map(([x, z], i) => ({ id: `plant-tall-${50 + i}`, type: 'plant-tall', x, z, rot: 0 }))
-    const old: HomeLayout = { pieces: [...defaultHome().pieces, ...extra], stored: [], next: 60 }
+    const old: HomeLayout = { pieces: [...defaultHome().pieces, ...extra], stored: [], next: 60, shell: defaultHome().shell }
     expect(roomWeight(old, 'living')).toBeGreaterThan(ROOM_WEIGHT)
     const out = sanitizeHome(JSON.parse(JSON.stringify(old)))
     expect(roomWeight(out, 'living')).toBeLessThanOrEqual(ROOM_WEIGHT)

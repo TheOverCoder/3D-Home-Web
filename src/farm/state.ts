@@ -101,7 +101,9 @@ import { GOALS, GOAL_IDS, MOST_STEPS, goalById, goalReward, goalTarget, startSte
 import { tripSeconds } from './tractorRoute'
 import { PARCELS, PLACES, boundary, canBuyParcel, canPlace, defaultLayout, sanitizeLayout, snap, type FarmLayout, type Fit, type ParcelId, type PlaceId, type Placement } from './layout'
 import { PIECES, type PieceType } from '../home/catalogue'
-import { canPlacePiece, defaultHome, findFreeSpot, sanitizeHome, type HomeLayout, type HomePiece } from '../home/layout'
+import { canMoveOpening, canPlacePiece, defaultHome, findFreeSpot, sanitizeHome, type HomeFit, type HomeLayout, type HomePiece } from '../home/layout'
+import { floorById, paintById, type OpeningAt } from '../home/shell'
+import type { RoomId } from '../data/layout'
 
 // The farm runs on a plain object that the scene reads every frame (growth, water, people walking), so nothing
 // re-renders 60 times a second. Anything the interface shows changes in steps — planted, thirsty, ripe, sold —
@@ -1081,7 +1083,7 @@ export const sendHome = (id: PlaceId) => movePlace(id, PLACES[id].home)
 const quarter = (rot: number) => ((Math.round(rot) % 4) + 4) % 4
 
 /** Moves (or turns) a piece of furniture to where it fits; if it does not, nothing moves and the reason comes back. */
-export function movePiece(id: string, to: Placement): Fit {
+export function movePiece(id: string, to: Placement): HomeFit {
   const p = farm.home.pieces.find((q) => q.id === id)
   if (!p) return { ok: false, reason: 'Not in the house' }
   if (PIECES[p.type].fitted) return { ok: false, reason: 'Built in' }
@@ -1094,10 +1096,10 @@ export function movePiece(id: string, to: Placement): Fit {
   return fit
 }
 
-/** Puts a piece away into storage (what is built in stays). */
+/** Puts a piece away into storage (what is built in stays, and a screen). */
 export function storePiece(id: string) {
   const p = farm.home.pieces.find((q) => q.id === id)
-  if (!p || PIECES[p.type].fitted) return false
+  if (!p || PIECES[p.type].fitted || PIECES[p.type].keep) return false
   farm.home = { ...farm.home, pieces: farm.home.pieces.filter((o) => o.id !== id), stored: [...farm.home.stored, p.type] }
   bump()
   save()
@@ -1113,7 +1115,7 @@ export function placeStored(type: PieceType, to: Placement): Fit & { id?: string
   const fit = canPlacePiece(farm.home, q)
   if (!fit.ok) return fit
   const stored = farm.home.stored.filter((_, j) => j !== k)
-  farm.home = { pieces: [...farm.home.pieces, q], stored, next: farm.home.next + 1 }
+  farm.home = { ...farm.home, pieces: [...farm.home.pieces, q], stored, next: farm.home.next + 1 }
   bump()
   save()
   return { ok: true, id }
@@ -1125,6 +1127,33 @@ export function buyPiece(type: PieceType) {
   if (!def || !def.price || farm.coins < def.price) return false
   farm.coins -= def.price
   farm.home = { ...farm.home, stored: [...farm.home.stored, type] }
+  bump()
+  save()
+  return true
+}
+
+/** Slides a doorway, a window or the garden door along its wall, or closes or opens one, where it fits (the house's
+ *  shell: src/home/shell.ts); if it does not, nothing changes and the reason comes back. */
+export function moveOpening(id: string, at: OpeningAt): HomeFit {
+  const fit = canMoveOpening(farm.home, id, at)
+  if (!fit.ok) return fit
+  farm.home = { ...farm.home, shell: { ...farm.home.shell, openings: { ...farm.home.shell.openings, [id]: { run: at.run, centre: at.centre, closed: at.closed } } } }
+  bump()
+  save()
+  return fit
+}
+
+/** Paints a room's walls (its own side of each; null: as it was built), or lays another floor in it. Free. */
+export function paintRoom(room: RoomId, paint: string | null) {
+  if (paint !== null && !paintById(paint)) return false
+  farm.home = { ...farm.home, shell: { ...farm.home.shell, paint: { ...farm.home.shell.paint, [room]: paint } } }
+  bump()
+  save()
+  return true
+}
+export function floorRoom(room: RoomId, floor: string) {
+  if (!floorById(floor)) return false
+  farm.home = { ...farm.home, shell: { ...farm.home.shell, floors: { ...farm.home.shell.floors, [room]: floor } } }
   bump()
   save()
   return true

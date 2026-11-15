@@ -1,6 +1,8 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { AdditiveBlending, BufferGeometry, DoubleSide, Float32BufferAttribute, Vector3 } from 'three'
-import { SUN, WINDOWS, type WindowDef } from '../data/layout'
+import { SUN, type WindowDef } from '../data/layout'
+import { farm, useFarm } from '../farm/state'
+import { windowsOf } from '../home/shell'
 import { useHome } from '../store'
 import { useSettings } from '../settings'
 
@@ -79,7 +81,16 @@ function buildShaft(w: WindowDef): BufferGeometry | null {
 export function LightShafts() {
   const haze = useSettings((s) => s.haze)
   const quality = useHome((s) => s.quality)
-  const shafts = useMemo(() => WINDOWS.map((w) => ({ id: w.id, geometry: buildShaft(w) })).filter((s) => s.geometry), [])
+  // through the windows where the house's shell has them (src/home/shell.ts): made again as one moves or closes
+  const shell = useFarm(() => farm.home.shell)
+  const shafts = useMemo(
+    () =>
+      windowsOf(shell)
+        .map((w) => ({ id: w.id, geometry: buildShaft(w) }))
+        .filter((s) => s.geometry),
+    [shell],
+  )
+  useEffect(() => () => shafts.forEach((s) => s.geometry?.dispose()), [shafts])
   const uniforms = useMemo(() => ({ uColor: { value: new Vector3(1, 0.86, 0.62) }, uIntensity: { value: 0.16 } }), [])
   if (!haze || quality === 'low') return null
   return (

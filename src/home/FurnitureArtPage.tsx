@@ -63,7 +63,7 @@ function Shot({ type, onDone }: { type: PieceType; onDone: (url: string) => void
   return (
     <group ref={group}>
       {url && <Loaded url={url} />}
-      <PieceLook p={{ id: type, type }} />
+      <PieceLook p={{ id: type, type }} whole />
     </group>
   )
 }

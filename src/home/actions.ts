@@ -1,8 +1,8 @@
-import { carry, type Fit, type Placement } from '../farm/layout'
+import { carry, type Placement } from '../farm/layout'
 import { buyPiece, farm, movePiece, placeStored, storePiece } from '../farm/state'
 import { aimPointOf } from '../lib/interaction'
 import { useHome } from '../store'
-import { footprint, type HomePiece } from './layout'
+import { footprint, type HomeFit, type HomePiece } from './layout'
 
 // What decorating does to the house, with what goes along with it: a thing to pick up that stands on a piece (the
 // notebook on the desk, the gift on the bed) goes where the piece goes, and comes down to the floor when the piece is
@@ -25,7 +25,7 @@ function carryPickups(before: HomePiece, after: HomePiece | null) {
 }
 
 /** Moves or turns a piece; what stands on it goes along. */
-export function movePieceTo(id: string, to: Placement): Fit {
+export function movePieceTo(id: string, to: Placement): HomeFit {
   const before = pieceById(id)
   const fit = movePiece(id, to)
   const after = pieceById(id)
@@ -34,7 +34,7 @@ export function movePieceTo(id: string, to: Placement): Fit {
 }
 
 /** Turns a piece a quarter turn where it stands (anticlockwise; −1 the other way). */
-export const turnPiece = (id: string, by: 1 | -1 = 1): Fit => {
+export const turnPiece = (id: string, by: 1 | -1 = 1): HomeFit => {
   const p = pieceById(id)
   return p ? movePieceTo(id, { x: p.x, z: p.z, rot: p.rot + by }) : { ok: false, reason: 'Not in the house' }
 }

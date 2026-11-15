@@ -2,18 +2,38 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { FogExp2, MathUtils, Matrix4, Quaternion, Vector3, type PerspectiveCamera } from 'three'
 import { uiClick } from '../audio/sound'
-import { HOUSE, ROOMS, roomAt, type RoomId } from '../data/layout'
+import { HOUSE, ROOMS, type RoomId } from '../data/layout'
 import { FloorOutlines, outlinesWarmup, type FloorRect } from './FloorOutlines'
 import { farm, useFarm } from '../farm/state'
 import { focus } from '../lib/focus'
 import { PieceLook } from '../scene/Furnishings'
 import { useHome } from '../store'
-import { PIECES } from './catalogue'
+import { PIECES, onWall } from './catalogue'
 import { debugSet } from '../lib/debug'
 import { buyPiece, movePieceTo, placeStored, putAway, turnPiece } from './actions'
 import { type PieceType } from './catalogue'
-import { decorateEye, decorateFocus, dragPiece, dropPiece, movable, startDecorating, stopDecorating, undo, useDecorate } from './decorate'
-import { ROOM_WEIGHT, canPlacePiece, findFreeSpot, footprint, roomWeight, snapPiece, unreachable, type HomePiece } from './layout'
+import {
+  OPENING,
+  decorateEye,
+  decorateFocus,
+  dragOpening,
+  dragPiece,
+  dropPiece,
+  floorRoomInView,
+  movable,
+  nudgeOpening,
+  openingOf,
+  paintRoomInView,
+  shiftOpening,
+  startDecorating,
+  stopDecorating,
+  toggleOpening,
+  undo,
+  useDecorate,
+} from './decorate'
+import { ROOM_WEIGHT, canMoveOpening, canPlacePiece, findFreeSpot, footprint, hangOf, pieceBoxes, pieceRoom, roomWeight, snapPiece, unreachable, type HomeFit, type HomePiece } from './layout'
+import { FLOORS, PAINTS, openingById, openingsOf, runById, type OpeningAt } from './shell'
+import { floorRoom, moveOpening, paintRoom } from '../farm/state'
 
 // The house's decorate mode, in the scene: the view over a room, and the hand that moves its furniture. The camera
 // flies up from your eyes to look down on the room you are in (north at the top; the ceiling goes, and the walls on
@@ -56,16 +76,46 @@ function floorAt(v: View, ndcX: number, ndcY: number, aspect: number): [number, 
   return [r.ox + r.dx * t, r.oz + r.dz * t]
 }
 
-/** The piece under a point on the screen: the nearest standing piece the ray meets, else a rug under it. */
+/** The boxes a tap can pick: each piece (one on a wall a little larger: a switch is small), and each doorway, window
+ *  and the garden door (`opening:<id>`, closed ones too: a tap opens them again) as a slab through its wall. */
+function pickBoxes(): { id: string; lo: number[]; hi: number[]; rug: boolean }[] {
+  const out: { id: string; lo: number[]; hi: number[]; rug: boolean }[] = []
+  for (const p of farm.home.pieces) {
+    const def = PIECES[p.type]
+    if (def.layer === 'wall') {
+      const b = pieceBoxes(p)[0]
+      const pad = 0.12
+      out.push({ id: p.id, lo: [b[0] - pad, b[1] - pad, b[2] - pad], hi: [b[3] + pad, b[4] + pad, b[5] + pad], rug: false })
+      continue
+    }
+    const f = footprint(p)
+    out.push({ id: p.id, lo: [f.minX, 0, f.minZ], hi: [f.maxX, Math.max(0.05, def.size[1]), f.maxZ], rug: def.layer === 'rug' })
+  }
+  for (const o of openingsOf(farm.home.shell)) {
+    const r = openingRect(o)
+    out.push({ id: `${OPENING}${o.id}`, lo: [r.minX, o.kind === 'doorway' ? 0 : o.sill, r.minZ], hi: [r.maxX, o.top, r.maxZ], rug: false })
+  }
+  return out
+}
+
+/** The floor along an opening, on both sides of its wall: where its outline is drawn and a tap picks it. */
+const openingRect = (o: { axis: 'x' | 'z'; at: number; lo: number; hi: number }) =>
+  o.axis === 'x' ? { minX: o.lo, maxX: o.hi, minZ: o.at - 0.35, maxZ: o.at + 0.35 } : { minX: o.at - 0.35, maxX: o.at + 0.35, minZ: o.lo, maxZ: o.hi }
+
+/** An opening's middle on the floor. */
+function openingPoint(id: string): [number, number] | null {
+  const o = openingsOf(farm.home.shell).find((q) => q.id === id)
+  return o ? (o.axis === 'x' ? [o.centre, o.at] : [o.at, o.centre]) : null
+}
+
+/** The piece under a point on the screen: the nearest standing piece, thing on a wall or opening the ray meets, else a
+ *  rug under it. */
 function pieceAt(v: View, ndcX: number, ndcY: number, aspect: number): string | null {
   const r = rayOf(v, ndcX, ndcY, aspect)
   let best: { id: string; t: number } | null = null
   let rug: { id: string; t: number } | null = null
-  for (const p of farm.home.pieces) {
-    const def = PIECES[p.type]
-    const f = footprint(p)
-    const lo = [f.minX, 0, f.minZ]
-    const hi = [f.maxX, Math.max(0.05, def.size[1]), f.maxZ]
+  for (const p of pickBoxes()) {
+    const { lo, hi } = p
     const o = [r.ox, r.oy, r.oz]
     const d = [r.dx, r.dy, r.dz]
     let t0 = 0
@@ -81,7 +131,7 @@ function pieceAt(v: View, ndcX: number, ndcY: number, aspect: number): string | 
       t1 = Math.min(t1, Math.max(a, b))
     }
     if (t1 < t0) continue
-    if (def.layer === 'rug') {
+    if (p.rug) {
       if (!rug || t0 < rug.t) rug = { id: p.id, t: t0 }
     } else if (!best || t0 < best.t) best = { id: p.id, t: t0 }
   }
@@ -284,11 +334,13 @@ function DecorateInput({ view, goal }: { view: React.RefObject<View>; goal: Reac
       const grab = !!id && movable(id) && (!touch || id === useDecorate.getState().picked)
       const g = floor(e.clientX, e.clientY)
       const p = id ? farm.home.pieces.find((q) => q.id === id) : null
+      // an opening slides with the finger from where it is along its wall
+      const at = openingOf(id) ? openingPoint(openingOf(id)!) : p ? [p.x, p.z] : null
       press = {
         kind: grab ? 'piece' : 'floor',
         id,
         start: [e.clientX, e.clientY],
-        offset: p ? [p.x - g[0], p.z - g[1]] : [0, 0],
+        offset: at ? [at[0] - g[0], at[1] - g[1]] : [0, 0],
         floor: g,
         from: { ...view.current },
         moved: false,
@@ -350,7 +402,7 @@ function DecorateInput({ view, goal }: { view: React.RefObject<View>; goal: Reac
       } else deco.pick(pr.id)
       if (pr.id) {
         const p = farm.home.pieces.find((q) => q.id === pr.id)
-        const r = p ? roomAt(p.x, p.z) : null
+        const r = p ? pieceRoom(p) : null
         if (r && r !== deco.room) useDecorate.setState({ room: r })
       }
     }
@@ -392,37 +444,72 @@ function DecorateInput({ view, goal }: { view: React.RefObject<View>; goal: Reac
   return null
 }
 
-const COLOURS = { idle: '#ffffff', picked: '#ffb454', fits: '#5fd068', bad: '#ff5a4e' }
+const COLOURS = { idle: '#ffffff', picked: '#ffb454', fits: '#5fd068', warn: '#ffc93c', bad: '#ff5a4e', opening: '#8fd0ff', closed: '#b9b2a8' }
+const fitColour = (fit: HomeFit) => (!fit.ok ? COLOURS.bad : fit.warn ? COLOURS.warn : COLOURS.fits)
 
-/** Each piece's outline on the floor: faint white for what can be moved, orange for the one picked, green or red for
- *  the one being dragged (where it is now). */
+/** The floor out from a thing on a wall, for its outline (a switch is thin: the outline reaches out 25 cm). */
+function outlineOf(p: HomePiece) {
+  const r = footprint(p)
+  if (!onWall(p.type)) return r
+  const rot = ((p.rot % 4) + 4) % 4
+  const reach = 0.25
+  if (rot === 0) return { ...r, maxZ: r.minZ + reach }
+  if (rot === 2) return { ...r, minZ: r.maxZ - reach }
+  if (rot === 1) return { ...r, maxX: r.minX + reach }
+  return { ...r, minX: r.maxX - reach }
+}
+
+/** Each piece's outline on the floor: faint white for what can be moved, orange for the one picked, green (amber where
+ *  it blocks the way) or red for the one being dragged (where it is now); each doorway, window and the garden door a
+ *  faint blue strip across its wall (grey while closed). */
 function Outlines() {
   const home = useFarm(() => farm.home)
   const picked = useDecorate((s) => s.picked)
   const drag = useDecorate((s) => s.drag)
   // all of them in two draws (FloorOutlines), as each drawn on its own would look
-  const rects = useMemo<FloorRect[]>(
-    () =>
-      home.pieces
-        .filter((p) => !PIECES[p.type].fitted)
-        .map((p) => {
-          const dragged = drag?.id === p.id ? drag : null
-          const on = dragged || p.id === picked
-          const color = dragged ? (dragged.fit.ok ? COLOURS.fits : COLOURS.bad) : on ? COLOURS.picked : COLOURS.idle
-          return { key: p.id, r: footprint(dragged?.at ?? p), color, fill: on ? 0.22 : 0.05, edge: on ? 0.07 : 0.025, y: 0.03 }
-        }),
-    [home, picked, drag],
-  )
+  const rects = useMemo<FloorRect[]>(() => {
+    const out: FloorRect[] = home.pieces
+      .filter((p) => !PIECES[p.type].fitted)
+      .map((p) => {
+        const dragged = drag?.id === p.id ? drag : null
+        const on = dragged || p.id === picked
+        const color = dragged ? fitColour(dragged.fit) : on ? COLOURS.picked : COLOURS.idle
+        return { key: p.id, r: outlineOf(dragged?.at ?? p), color, fill: on ? 0.22 : 0.05, edge: on ? 0.07 : 0.025, y: 0.03 }
+      })
+    for (const o of openingsOf(home.shell)) {
+      const key = `${OPENING}${o.id}`
+      const dragged = drag?.id === key && drag.open ? drag : null
+      const on = dragged || key === picked
+      const at = dragged?.open ? { ...o, ...runById(dragged.open.run)!, lo: dragged.open.centre - o.width / 2, hi: dragged.open.centre + o.width / 2 } : o
+      const color = dragged ? fitColour(dragged.fit) : on ? COLOURS.picked : o.closed ? COLOURS.closed : COLOURS.opening
+      out.push({ key, r: openingRect(at), color, fill: on ? 0.24 : o.closed ? 0.14 : 0.08, edge: on ? 0.07 : 0.03, y: 0.035 })
+    }
+    return out
+  }, [home, picked, drag])
   return <FloorOutlines rects={rects} />
 }
 
-/** The piece being dragged, drawn where it would go. */
+/** The piece being dragged, drawn where it would go (an opening: a pane of its colour where it would be cut). */
 function Dragged() {
   const drag = useDecorate((s) => s.drag)
   const piece = useFarm(() => (drag ? farm.home.pieces.find((p) => p.id === drag.id) : undefined))
-  if (!drag || !piece) return null
+  const id = openingOf(drag?.id)
+  if (drag && id && drag.open) {
+    const def = openingById(id)!
+    const run = runById(drag.open.run)!
+    const y0 = def.kind === 'doorway' ? 0 : def.sill
+    const h = def.top - y0
+    const size: [number, number, number] = run.axis === 'x' ? [def.width, h, HOUSE.wallThickness + 0.08] : [HOUSE.wallThickness + 0.08, h, def.width]
+    return (
+      <mesh position={run.axis === 'x' ? [drag.open.centre, y0 + h / 2, run.at] : [run.at, y0 + h / 2, drag.open.centre]} renderOrder={6}>
+        <boxGeometry args={size} />
+        <meshBasicMaterial color={fitColour(drag.fit)} transparent opacity={0.45} depthWrite={false} />
+      </mesh>
+    )
+  }
+  if (!drag || !piece || !drag.at) return null
   return (
-    <group position={[drag.at.x, 0, drag.at.z]} rotation-y={(drag.at.rot * Math.PI) / 2}>
+    <group position={[drag.at.x, onWall(piece.type) ? hangOf(piece) : 0, drag.at.z]} rotation-y={(drag.at.rot * Math.PI) / 2}>
       <PieceLook p={piece} />
     </group>
   )
@@ -452,6 +539,21 @@ export function DecorateMode() {
       placeStored,
       buy: buyPiece,
       decorate: { useDecorate, start: startDecorating, stop: stopDecorating, undo, camera: decorateCamera, view },
+      // the shell: its openings (slid, closed, opened), each room's paint and floor
+      shell: () => farm.home.shell,
+      openings: () => openingsOf(farm.home.shell),
+      canMoveOpening: (id: string, at: OpeningAt) => canMoveOpening(farm.home, id, at),
+      moveOpening,
+      shiftOpening,
+      toggleOpening,
+      nudgeOpening,
+      dragOpening,
+      paint: paintRoom,
+      floor: floorRoom,
+      paints: PAINTS,
+      floors: FLOORS,
+      paintInView: paintRoomInView,
+      floorInView: floorRoomInView,
     })
   }, [])
   // the outlines once the camera is up (on the way they would swing across the screen)

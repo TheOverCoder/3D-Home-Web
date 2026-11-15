@@ -50,7 +50,7 @@ import {
 } from 'three'
 import { HOUSE } from '../../data/layout'
 import { liveParts, type LodView, type Parts } from '../sculpt/parts'
-import { CELLS, OUTER_PORTALS, OUTSIDE, Portals, portalBox, type Cell } from './portals'
+import { CELLS, MOST_PORTALS, OUTER_PORTALS, OUTSIDE, Portals, portalBox, type Cell } from './portals'
 import { updateWalls, wallHides } from './walls'
 
 export interface ViewHooks {
@@ -319,7 +319,7 @@ let sunPassOf = -1
 /** the shadow pass each caster was last left out of */
 const leftOut = new WeakMap<Object3D, number>()
 /** the windows' rectangles in the sun's map (NDC), worked out once per shadow pass */
-const windows = new Float64Array(OUTER_PORTALS.length * 4)
+const windows = new Float64Array(MOST_PORTALS * 4)
 let windowsFor = -1
 const PB = new Float64Array(6)
 const LR = new Float64Array(4)
