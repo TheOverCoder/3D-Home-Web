@@ -27,3 +27,5 @@
 03:36 done: intro — one reference E (A, D removed): a real menu (New farm, Load farm, Settings, Music, How to play, Credits), pages slide inside the card; Load farm is the saves board's D; settings only the game's own
 03:36 start: loading — one shared stage for all six
 03:48 done: loading — all six on one shared stage (sky, name, disc and rays, card, ready moment); G folded into a 'back' state (away report, ✦)
+04:22 checks: npm run check passes; audit clean on all seven boards but for lists that scroll (orders upright with 3–5 orders, sideways with 5; the settings page sideways); the shared sheet now closes only on a touch that began outside it (the Office tab had closed it)
+04:23 done: lab-check 63 of 63; round 5 handed back
