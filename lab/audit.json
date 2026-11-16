@@ -1,5 +1,5 @@
 {
- "at": "2026-11-16T10:41:01.324Z",
+ "at": "2026-11-16T10:53:18.868Z",
  "devices": [
   "upright",
   "sideways"
@@ -36,37 +36,17 @@
    "off": []
   },
   "orders": {
-   "screens": 12,
+   "screens": 8,
    "errors": [],
    "blank": [],
    "scroll": [],
    "small": [],
    "tiny": [],
-   "under": [
-    "e/fresh/upright · carrots: 0 of 6 in",
-    "e/big/sideways · lemons: 6 of 6 in"
-   ],
-   "off": [
-    "e/fresh/upright · Put in 9",
-    "e/big/upright · lemons: 6 of 6 in",
-    "e/big/upright · Send this order for 15 coins",
-    "e/big/upright · Decline this order",
-    "e/big/upright · fleeces: 0 of 3 in",
-    "e/big/upright · bottles of milk: 2 of 4 in",
-    "e/big/upright · Put in 4",
-    "e/big/upright · sheaves of wheat: 0 of 5 in",
-    "e/big/upright · Put in 2",
-    "e/big/sideways · Send this order for 15 coins",
-    "e/big/sideways · Decline this order",
-    "e/big/sideways · fleeces: 0 of 3 in",
-    "e/big/sideways · bottles of milk: 2 of 4 in",
-    "e/big/sideways · Put in 4",
-    "e/big/sideways · sheaves of wheat: 0 of 5 in",
-    "e/big/sideways · Put in 2"
-   ]
+   "under": [],
+   "off": []
   },
   "goals": {
-   "screens": 16,
+   "screens": 24,
    "errors": [],
    "blank": [],
    "scroll": [],
@@ -103,11 +83,7 @@
    "small": [],
    "tiny": [],
    "under": [],
-   "off": [
-    "e/settings/sideways · Film grain",
-    "e/settings/sideways · Cinema bars",
-    "e/settings/sideways · Free up space"
-   ]
+   "off": []
   },
   "loading": {
    "screens": 84,

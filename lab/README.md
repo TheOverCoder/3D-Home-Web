@@ -61,8 +61,9 @@ A board is in it by itself: its `spot` (a chip or button of the game's screen, a
 screen, its `screen` (an id of `lab/map.ts`) gives it its picture and place in the list.
 
 **What the user said** is kept in the published lab's database (the artifact's `db` capability: `reviews/<board>` —
-`verdicts` by variant, `notes` with the variant, state, the phone's way round and the point, `at` — `outbox/<board>` —
-`sent`, `at` — and `requests/screens`). The main agent reads it (`ArtifactData`, `list` of `reviews` and `outbox` with
+`verdicts` by variant, `notes` with the variant, state, the phone's way round and the point, `at`, `round` — `outbox/<board>`
+— `sent`, `at`, `round` — and `requests/screens`). An answer names the round it was about (the board's `added` then) and
+counts for that round only, whatever the clocks say: a board's `added` may even be ahead of the user's time. The main agent reads it (`ArtifactData`, `list` of `reviews` and `outbox` with
 `out_dir`) and hands what is **ready to send** to its designer as `lab/feedback/<board>.json`. Where there is no database (`npm run lab`), it is kept in that browser.
 
 ## The side by side and the map (for the designer)

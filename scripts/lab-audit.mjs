@@ -1,8 +1,9 @@
 // The design lab checked screen by screen: every board, every variant, every state, on a phone upright and sideways
 // (and any device asked for), each loaded afresh as a finger would see it once its opening has played. For each screen:
-// errors from the page; nothing drawn (a picture counts); the page scrolling sideways or down; buttons smaller than a finger (44 px);
-// text under 13 px; a button under the notch, the home bar or off the screen. Writes lab/audit.json (the lab's status
-// page shows it) and prints a summary. With the lab served (`npm run lab`, port 5180):
+// errors from the page; nothing drawn (a picture counts); the page scrolling sideways or down; buttons smaller than a
+// finger (44 px); text under 13 px; a button under the notch, the home bar or off the screen (what a list that scrolls
+// shows of it). Writes lab/audit.json (the lab's status page shows it) and prints a summary. With the lab served
+// (`npm run lab`, port 5180):
 //
 //   node scripts/lab-audit.mjs [--boards level,top] [--devices upright,sideways] [--wait 1600] [--base url]
 import { readFile, writeFile } from 'node:fs/promises'
@@ -31,10 +32,25 @@ function measure(safe) {
   const small = []
   const under = []
   const off = []
+  // what a list that scrolls shows of a button: its box cut by every box round it that clips (a button scrolled out of
+  // a list is reached by scrolling it, not under the notch or off the screen; only what is shown of it is judged)
+  const shown = (el) => {
+    const r = el.getBoundingClientRect()
+    let box = { left: r.left, top: r.top, right: r.right, bottom: r.bottom }
+    for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+      const cs = getComputedStyle(p)
+      if (cs.overflowX === 'visible' && cs.overflowY === 'visible') continue
+      const c = p.getBoundingClientRect()
+      box = { left: Math.max(box.left, c.left), top: Math.max(box.top, c.top), right: Math.min(box.right, c.right), bottom: Math.min(box.bottom, c.bottom) }
+    }
+    return box.right - box.left > 1 && box.bottom - box.top > 1 ? box : null
+  }
   for (const el of document.querySelectorAll('button, a[href], [role="button"], input, select, textarea')) {
     if (lab(el) || !seen(el) || el.disabled) continue
-    const r = el.getBoundingClientRect()
-    if (Math.round(r.width) < 44 || Math.round(r.height) < 44) small.push(`${name(el)} ${Math.round(r.width)}×${Math.round(r.height)}`)
+    const size = el.getBoundingClientRect()
+    if (Math.round(size.width) < 44 || Math.round(size.height) < 44) small.push(`${name(el)} ${Math.round(size.width)}×${Math.round(size.height)}`)
+    const r = shown(el)
+    if (!r) continue
     if (r.right < 1 || r.bottom < 1 || r.left > W - 1 || r.top > H - 1 || r.left < -1 || r.top < -1 || r.right > W + 1 || r.bottom > H + 1) off.push(name(el))
     else if (r.top < safe.top || r.bottom > H - safe.bottom || r.left < safe.left || r.right > W - safe.right) under.push(name(el))
   }

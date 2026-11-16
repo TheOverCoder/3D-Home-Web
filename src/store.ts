@@ -41,7 +41,7 @@ export type Panel =
   | { kind: 'store'; store: 'silo' | 'barn' } // what is inside, how full, and its next level
   | { kind: 'store-upgrade'; store: 'silo' | 'barn' } // the card that asks before the materials are used
   | { kind: 'orders' } // the order board on the office's computer
-  | { kind: 'office-upgrade'; id: 'slots' | 'wait' } // the card that asks before an office upgrade is bought
+  | { kind: 'office-upgrade'; id: 'slots' | 'wait' } // the order board with the card that asks before an office upgrade is bought
   | { kind: 'furniture' } // the furniture shop (decorating)
   | { kind: 'buy-piece'; type: string } // buying one piece: what it is and its price, Cancel or Buy
   | { kind: 'decor-shop'; tab: 'decor' | 'fruit' } // the farm's edit mode's shop: decoration, or fruit trees and bushes

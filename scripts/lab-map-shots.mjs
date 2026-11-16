@@ -195,7 +195,16 @@ async function run(orientation) {
     const OPENING = ['loading', 'intro', 'music', 'saves', 'intro-settings', 'failure']
     if (only && only.every((n) => OPENING.includes(n))) return
     await page.locator('.intro .primary').click()
-    await page.waitForFunction(() => window.__home?.useHome.getState().room != null && !!window.__home.teleport, null, { timeout: 180_000, polling: 500 })
+    // in play, where you stand looked at once: in a room, or outdoors (a new farm starts on the farm, outdoors: its room
+    // is none), as the tests wait for it (tests/e2e/helpers.ts, bootApp)
+    await page.waitForFunction(
+      () => {
+        const s = window.__home?.useHome.getState()
+        return !!s && !!window.__home.teleport && s.phase === 'playing' && s.mapReady && !s.curtain && (s.outdoors || s.room != null)
+      },
+      null,
+      { timeout: 180_000, polling: 500 },
+    )
     // the first moment where a new farm starts: the hint at the top (seven seconds: shown again, as the tests do) and
     // the room's title (shown as you come into a room: from the next room, back)
     await step('first-steps', async () => {

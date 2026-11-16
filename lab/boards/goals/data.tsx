@@ -78,6 +78,19 @@ export function goalsState(farm: Farmish): GoalsState {
 /** A goal claimed: on to its next step (claimGoal in the game). */
 export const claimed = (s: GoalsState, id: GoalId): GoalsState => goalsState({ ...s.farm, goals: { ...s.farm.goals, [id]: (s.farm.goals[id] ?? 0) + 1 } })
 
+/** Every goal reached claimed at once, a step each (SAMPLE for "Claim all", E: in the game a claimGoal for each). */
+export const claimedAll = (s: GoalsState): GoalsState => {
+  const goals = { ...s.farm.goals }
+  for (const r of s.rows) if (r.done) goals[r.id] = (goals[r.id] ?? 0) + 1
+  return goalsState({ ...s.farm, goals })
+}
+
+/** The medal of a step (F): bronze, silver, gold, platinum, then diamond with a star for each step past it. The step
+ *  is the game's; the metal is how F pictures it. */
+export const TIERS = ['bronze', 'silver', 'gold', 'platinum', 'diamond'] as const
+export const tierOf = (step: number) => TIERS[Math.min(step, TIERS.length - 1)]
+export const starsOf = (step: number) => Math.max(0, step - (TIERS.length - 1))
+
 /** What a claim does on the screen, as the game's would: the coins fly from where it was pressed to the coin chip, one
  *  burst from it, and the state moves on. */
 export function claim(s: GoalsState, act: Act<GoalsState>, row: GoalRow, el: HTMLElement, after = 0) {
