@@ -380,7 +380,8 @@ test.describe('the day', () => {
         f.setHour(12)
         f.saveFarm()
         const file = JSON.parse(slots.exportSlot(1).text)
-        file.save.xp = { points, paid: 1 }
+        // (keeping the save's mark of the curve it was counted on: a save without one is from before, and converted)
+        file.save.xp = { ...file.save.xp, points, paid: 1 }
         file.save.day = { t }
         const events = f.xpEventCount()
         const here = { day: f.dayNow(), level: f.xpNow().level }
