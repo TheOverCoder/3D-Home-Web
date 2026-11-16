@@ -106,7 +106,7 @@
 .film-card-part h3 svg { width: 16px; height: 16px; }
 
 /* the level bar filling: the badge, the bar, +XP (a level reached: the bar flashes, the badge pops, "Level n!") */
-.film-xp { display: flex; align-items: center; gap: 8px; padding: 6px 10px 6px 6px; border-radius: 999px; background: var(--paper-2); box-shadow: inset 0 0 0 2px var(--edge-soft); }
+.film-xp { position: relative; display: flex; align-items: center; gap: 8px; padding: 6px 10px 6px 6px; border-radius: 999px; background: var(--paper-2); box-shadow: inset 0 0 0 2px var(--edge-soft); }
 /* (the level chip's star, src/farm/Xp.css, drawn here on its own: the lab has no chip) */
 .film-xp-star { position: relative; flex: none; display: inline-grid; place-items: center; width: 42px; height: 42px; margin: -8px 0; }
 .film-xp-star img { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -118,7 +118,8 @@
 @keyframes film-xp-flash { from { opacity: 0.95; } to { opacity: 0; } }
 .film-xp-gain { display: inline-flex; align-items: center; gap: 2px; flex: none; color: var(--xp-lip); font: 800 17px/1 var(--font-text); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .film-xp-gain img { width: 22px; height: 22px; margin-right: 2px; }
-.film-xp-gain.level { padding: 4px 10px; border-radius: 999px; background: var(--xp); color: #fff; font: 600 16px/1.1 var(--font-display); box-shadow: 0 2px 0 var(--xp-lip), 0 0 12px var(--xp-glow); }
+.film-xp-level { position: absolute; left: 50%; top: 50%; margin: -15px 0 0 -52px; width: 104px; padding: 5px 0; border-radius: 999px; background: var(--xp); color: #fff; text-align: center;
+  font: 600 17px/1.1 var(--font-display); white-space: nowrap; box-shadow: 0 2px 0 var(--xp-lip), 0 0 14px var(--xp-glow), 0 0 0 2px #fff; pointer-events: none; }
 .film-xp.up { box-shadow: inset 0 0 0 2px var(--xp), 0 0 16px var(--xp-glow); }
 
 /* what is yours now: three little cards, each stamped as it comes in */

@@ -73,7 +73,8 @@ export function FilmScreen({
   const film = run.film
   const reduced = !!useReducedMotion()
   const vignette = useRef<HTMLDivElement>(null)
-  const [beat, setBeat] = useState<Beat>({ shot: -1, line: null, said: 0, caption: null, ended: false })
+  // (a film opened at its end shows its end card at once, before its first frame)
+  const [beat, setBeat] = useState<Beat>(() => ({ shot: -1, line: null, said: 0, caption: null, ended: run.ended }))
   const [fx, setFx] = useState<Burst[]>([])
   const [soundOn, setSoundOn] = useState(run.sound)
   const byLine = useRef(new Map<number, Speech>())
@@ -92,7 +93,7 @@ export function FilmScreen({
     fxNext.current = from(run.now())
     const offRestart = run.onRestart((t) => {
       fxNext.current = from(t)
-      setBeat({ shot: -1, line: null, said: 0, caption: null, ended: false })
+      setBeat({ shot: -1, line: null, said: 0, caption: null, ended: t >= tl.length - 1e-3 })
       setFx([])
     })
     /** Every frame drawn: the moment's shot and line (and how much of it has been said), the effects passed, the
@@ -305,7 +306,7 @@ export function FilmEndCard({ end, xp, sound, onAgain, onClose }: { end: EndCard
         className="film-card paper"
         role="dialog"
         aria-label={end.title}
-        initial={{ scale: 0.6, y: 40, opacity: 0 }}
+        initial={{ scale: 0.9, y: 60, opacity: 0 }}
         animate={{ scale: 1, y: 0, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0, transition: { duration: 0.18 } }}
         transition={SPRING.soft}
@@ -413,7 +414,7 @@ function XpGain({ from, to, gained }: { from: number; to: number; gained: number
   }, [])
   return (
     <div className={`film-xp${flash ? ' up' : ''}`}>
-      <m.span ref={badge} key={level} className="film-xp-star" initial={flash ? { scale: 1.6 } : false} animate={{ scale: 1 }} transition={SPRING.pop}>
+      <m.span ref={badge} key={`star-${level}`} className="film-xp-star" initial={flash ? { scale: 1.6 } : false} animate={{ scale: 1 }} transition={SPRING.pop}>
         <img src={art('glowing-star')} alt="" />
         <b>{level}</b>
       </m.span>
@@ -421,17 +422,15 @@ function XpGain({ from, to, gained }: { from: number; to: number; gained: number
         <m.span className="film-xp-fill" style={{ width }} />
         {flash > 0 && <span key={flash} className="film-xp-flash" aria-hidden="true" />}
       </span>
-      <AnimatePresence mode="popLayout">
-        {flash > 0 ? (
-          <m.b key="up" className="film-xp-gain level" initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={SPRING.pop}>
-            Level {level}!
-          </m.b>
-        ) : (
-          <m.b key="xp" className="film-xp-gain" initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ ...SPRING.pop, delay: AT.bar }}>
-            <img src={art('gem-stone')} alt="" />+<CountUp to={gained} duration={0.8} /> XP
-          </m.b>
-        )}
-      </AnimatePresence>
+      <m.b className="film-xp-gain" initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ ...SPRING.pop, delay: still ? 0 : AT.bar }}>
+        <img src={art('gem-stone')} alt="" />+<CountUp to={gained} duration={0.8} /> XP
+      </m.b>
+      {/* a level reached: stamped over the bar, a show of its own */}
+      {(flash > 0 || (still && ups > 0)) && (
+        <m.b key={`level-${level}`} className="film-xp-level" initial={{ scale: 0.3, opacity: 0, rotate: -8 }} animate={{ scale: 1, opacity: 1, rotate: -3 }} transition={SPRING.pop}>
+          Level {level}!
+        </m.b>
+      )}
     </div>
   )
 }
