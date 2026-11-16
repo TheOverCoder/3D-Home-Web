@@ -21,7 +21,7 @@ import { FRONT_DOOR, HALL, ISLAND, SHELF_RUN } from '../../src/data/market'
 // thing that reaches across the side of the screen through the wall in front of it, with a depth it does not have
 // (the prototype's one pixel at the left edge). Allowed only if hiding exactly the things the pass left out there —
 // plain `visible = false`, no pass — draws the same frame as the pass, and rays through those pixels meet the house's
-// opaque shell before they meet those things.
+// opaque shell before they meet those things (never a thing drawn without the depth test: the shell does not hide it).
 
 /** Runs in the page: window.__viewProbe, the comparisons. */
 function installProbe() {
@@ -415,8 +415,8 @@ function installProbe() {
  * Runs in the page, after a comparison where pixels differed: rays from the camera through each such pixel (its
  * centre and its corners) meet an opaque shell — the house's, or a walk-in building's (its group `walk-in-<id>`: from
  * inside one, its walls are what stands between you and the farm) — before they meet anything the pass left out there:
- * the thing is behind a wall, and today's renderer only lets it through at that pixel. (three from node_modules, as 04
- * does.)
+ * the thing is behind a wall, and today's renderer only lets it through at that pixel. A thing drawn without the depth
+ * test is behind nothing: it is drawn over the shell. (three from node_modules, as 04 does.)
  */
 async function behindShell() {
   const THREE: any = await import(/* @vite-ignore */ '/__three/three.module.js')
@@ -447,9 +447,12 @@ async function behindShell() {
   })
   const rc = new THREE.Raycaster()
   rc.near = cam.near
-  const out: { pixel: number[]; behind: boolean; shell: number; thing: number }[] = []
+  // a thing drawn without the depth test (the aim marker) is drawn over the shell, however far behind it it stands
+  const over = (o: any) => [o.material].flat().some((m: any) => m?.depthTest === false)
+  const out: { pixel: number[]; behind: boolean; shell: number; thing: number; over?: boolean }[] = []
   for (const [x, y] of last.pixels) {
     let behind = true
+    let drawnOver = false
     let nearestShell = Infinity
     let nearestThing = Infinity
     for (const [dx, dy] of [
@@ -461,12 +464,17 @@ async function behindShell() {
     ]) {
       rc.setFromCamera({ x: ((x + 0.5 + dx) / last.W) * 2 - 1, y: ((y + 0.5 + dy) / last.H) * 2 - 1 }, cam)
       const s = rc.intersectObjects(shell, false)[0]?.distance ?? Infinity
-      const t = rc.intersectObjects(last.culprits, false)[0]?.distance ?? Infinity
+      const hits = rc.intersectObjects(last.culprits, false)
+      const t = hits[0]?.distance ?? Infinity
       nearestShell = Math.min(nearestShell, s)
       nearestThing = Math.min(nearestThing, t)
       if (t !== Infinity && !(s < t)) behind = false
+      if (hits.some((h: any) => over(h.object))) {
+        behind = false
+        drawnOver = true
+      }
     }
-    out.push({ pixel: [x, y], behind, shell: +nearestShell.toFixed(3), thing: +nearestThing.toFixed(3) })
+    out.push({ pixel: [x, y], behind, shell: +nearestShell.toFixed(3), thing: +nearestThing.toFixed(3), ...(drawnOver ? { over: true } : {}) })
   }
   return out
 }
@@ -749,7 +757,11 @@ function check(name: string, r: any, most = 2) {
   expect(r.sameAsHidden, `${name}: the pass's frame is today's with ${r.culprits?.join('; ')} hidden`).toBe(true)
   // and what was left out is behind the house's shell (or a walk-in's) there: no ray through those pixels meets it first
   expect(r.rays?.length, `${name}: rays through the pixels`).toBe(r.differ)
-  for (const ray of r.rays) expect(ray.behind, `${name}: pixel ${ray.pixel} — ${r.culprits?.join('; ')} at ${ray.thing} m, the shell at ${ray.shell} m`).toBe(true)
+  for (const ray of r.rays)
+    expect(
+      ray.behind,
+      `${name}: pixel ${ray.pixel} — ${r.culprits?.join('; ')} at ${ray.thing} m${ray.over ? ' (drawn without the depth test: over the shell)' : ''}, the shell at ${ray.shell} m`,
+    ).toBe(true)
 }
 
 const routed = new WeakSet<object>()
@@ -827,6 +839,66 @@ test.describe('the drawing pass leaves out only what cannot be seen', () => {
     await page.evaluate(() => (window as any).__home.useHome.getState().drop([2.5, 0.3, 3.4]))
     await compareAt(game, { name: 'the mug left in the bedroom, from the living room', x: -1.2, z: 3, yaw: -P / 2 }, log)
     console.log(log.join('\n'))
+  })
+
+  // The aim marker (src/scene/AimMarker.tsx) on what the button would act on is drawn over everything, walls included.
+  // Left on the kitchen's door as you stand in the studio — the frame after you leave its doorway, before it fades (on a
+  // slow page the frames compared can come then) — it shows through the wall between the two rooms, where the kitchen
+  // is not seen: the pass must draw it all the same.
+  test('640×360: the aim marker, drawn over everything, on the kitchen’s door through the studio’s wall', async ({ game }) => {
+    await setUp(game)
+    const { page } = game
+    const log: string[] = []
+    const openings = await openingsNow(page)
+    const views = openingViews(openings)
+    const hinged = openings.find((o: any) => o.hinged)
+    const view = (tail: string) => views.find((v) => v.name === `doorway ${hinged.sides.join(' ↔ ')}${tail}`)!
+    // in the kitchen's doorway, its door open: the button offers the door, and the marker is on it
+    await standAt(game, view(`, the door open, from the ${hinged.sides[1]}`))
+    await standAt(game, view(', standing in it'))
+    await page.waitForFunction(
+      () => {
+        const h = (window as any).__home
+        h.__aimed = h.useHome.getState().actions.find((a: any) => a.id === 'door-kitchen-bedroom') ?? null
+        return h.__aimed !== null
+      },
+      null,
+      { timeout: 30_000, polling: 250 },
+    )
+    const pose: Pose = { name: 'the aim marker on the kitchen’s door, through the studio’s wall', x: -1.5, z: -1, yaw: -P / 2 }
+    try {
+      await standAt(game, pose)
+      // the marker kept on the door (nothing in reach here takes the button), shown in full
+      await page.evaluate(() => {
+        const h = (window as any).__home
+        h.useHome.setState({ nearby: h.__aimed })
+      })
+      await page.waitForFunction(
+        () => {
+          const g = (window as any).__home.scene.getObjectByName('aim-marker')
+          return g.visible && g.children.every((m: any) => m.material.opacity > 0.19)
+        },
+        null,
+        { timeout: 30_000, polling: 250 },
+      )
+      // the camera looking at it, across the wall between the studio and the kitchen
+      const [mx, my, mz] = await page.evaluate(() => (window as any).__home.scene.getObjectByName('aim-marker').position.toArray())
+      const yaw = yawTo(pose.x, pose.z, mx, mz)
+      const pitch = Math.atan2(my - EYE, Math.hypot(mx - pose.x, mz - pose.z))
+      const r = await page.evaluate((p) => (window as any).__viewProbe.camera(p), [pose.x, EYE, pose.z, yaw, pitch])
+      if (r.differ && r.culprits?.length) r.rays = await page.evaluate(behindShell)
+      report(log, pose.name, r)
+      console.log(log.join('\n'))
+      expect(r.stats.portals, `${pose.name}: the rooms and portals are used`).toBe(true)
+      expect(await page.evaluate(() => (window as any).__home.scene.getObjectByName('aim-marker').visible), `${pose.name}: the marker is drawn`).toBe(true)
+      check(pose.name, r)
+    } finally {
+      // the button back to what is on offer here
+      await page.evaluate(() => {
+        const h = (window as any).__home
+        h.useHome.setState({ nearby: h.useHome.getState().actions[0] ?? null })
+      })
+    }
   })
 
   // The sun's map is drawn again only when something in it changed (Lighting.tsx): your body walking, turning or jumping

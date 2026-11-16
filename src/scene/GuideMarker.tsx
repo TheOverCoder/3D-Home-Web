@@ -35,7 +35,7 @@ export function GuideMarker() {
   })
 
   return (
-    <group ref={group} visible={false} renderOrder={999}>
+    <group name="guide-marker" ref={group} visible={false} renderOrder={999}>
       <mesh geometry={geometry} material={material} renderOrder={999} />
     </group>
   )

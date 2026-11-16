@@ -28,6 +28,9 @@
 //             under the ceilings where no window lets sunlight in), changes nothing in it, so the map is kept —
 //             walking and turning indoors, the sun costs nothing (sunLeftOut).
 //
+// A thing drawn without the depth test (the aim marker, the compass's arrow) shows through every wall: neither the
+// portals nor the walls leave it out, only the view itself (three's own test).
+//
 // Off: third person, decorating and the farm's edit mode (the walls fade, the ceiling goes, the camera flies) — the
 // rooms and the sun; the crowds' view test and the walls hold for any camera. `window.__home.view` (?debug) turns each part on and off
 // and counts what it did; tests/e2e/16-view.spec.ts renders the same frame both ways and compares every pixel.
@@ -276,21 +279,25 @@ function judge(o: Object3D, f: Frustum): boolean {
 function cameraSees(o: Object3D): boolean {
   const tag = tagOf(o)
   if (tag === ALWAYS) return true
+  // a thing drawn without the depth test (the aim marker on what the button would act on, the compass's arrow) is drawn
+  // over everything, walls included: in view, it shows wherever it stands, so neither the portals nor the walls judge it
+  if (!depthTested(o)) return true
   const byPortals = portalsOn && !(tag === OUT && portals.isStart(OUTSIDE))
   // the walls: in the house, only for what is outdoors (what is in the rooms is the portals')
   const byWalls = wallsOn && (tag === OUT || !wallsOutdoorsOnly)
   if (!byPortals && !byWalls) return true
   if (!worldBox(o)) return true
   if (byPortals && !portals.seesBox(B[0], B[1], B[2], B[3], B[4], B[5], tag === OUT)) return false
-  // only a mesh drawn with the depth test (one drawn over everything shows through a wall)
-  if (!byWalls || !(o as Mesh).isMesh || !depthTested(o as Mesh)) return true
+  // the walls hide only meshes
+  if (!byWalls || !(o as Mesh).isMesh) return true
   if (!wallHides(B[0], B[1], B[2], B[3], B[4], B[5])) return true
   stats.wallCulled++
   return false
 }
 
-function depthTested(m: Mesh): boolean {
-  const mat = m.material
+/** Whether a thing is drawn with the depth test (a mesh, sprite, line or points: each of its materials). */
+function depthTested(o: Object3D): boolean {
+  const mat = (o as Mesh).material
   if (Array.isArray(mat)) {
     for (const x of mat) if (x.depthTest === false) return false
     return true
