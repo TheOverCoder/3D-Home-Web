@@ -1,0 +1,79 @@
+import { describe, expect, it } from 'vitest'
+import { CROPS, LEVELS, MACHINES, MACHINE_IDS, PRODUCERS, START_COINS, UPGRADES, type ProduceId } from './data'
+import { SHOP } from './decor'
+import { PARCELS, PARCEL_IDS } from './layout'
+import { UNLOCKS, UNLOCK_IDS, lockedAt, machineOpensAt, opensAt, recipeUnlock, unlockLevel, unlockName, type UnlockId } from './unlocks'
+
+// What each level opens (src/farm/unlocks.ts): one row for every thing a farm buys, plants or puts into a machine,
+// nothing open before what it needs, and the first hour opening something at every level.
+
+/** Every thing the table must hold, from the tables it comes from: a new row there needs a row in UNLOCKS. */
+const EVERY: string[] = [
+  'bed',
+  ...CROPS.map((c) => `crop:${c.id}`),
+  ...UPGRADES.map((u) => `upgrade:${u.id}`),
+  ...MACHINE_IDS.flatMap((m) => MACHINES[m].recipes.map((r) => `recipe:${m}:${r.id}`)),
+  ...Object.keys(SHOP).map((k) => `decor:${k}`),
+  ...PARCEL_IDS.map((p) => `parcel:${p}`),
+]
+
+/** The level a good can first be had at: a crop's seeds, what a machine makes (its first recipe that makes it), what a
+ *  new farm's tree and animals give (from the start). */
+function goodOpensAt(good: ProduceId): number {
+  if (CROPS.some((c) => c.id === good)) return unlockLevel(`crop:${good}` as UnlockId)
+  const made = MACHINE_IDS.flatMap((m) => MACHINES[m].recipes.filter((r) => r.makes === good).map((r) => unlockLevel(recipeUnlock(m, r.id))))
+  if (made.length) return Math.min(...made)
+  if (Object.values(PRODUCERS).some((p) => p.good === good && !p.plant)) return 1
+  throw new Error(`${good}: nowhere to get it`)
+}
+
+describe('what each level opens', () => {
+  it('holds every thing bought, planted or put into a machine, once, each at a whole level from 1 to the top', () => {
+    expect([...UNLOCK_IDS].sort()).toEqual([...EVERY].sort())
+    for (const id of UNLOCK_IDS) expect(Number.isInteger(UNLOCKS[id]) && UNLOCKS[id] >= 1 && UNLOCKS[id] <= LEVELS.max, id).toBe(true)
+  })
+
+  it('opens nothing before what it needs: a recipe after its ingredients, a field after the land it lies beyond', () => {
+    for (const m of MACHINE_IDS)
+      for (const r of MACHINES[m].recipes)
+        for (const good of Object.keys(r.needs) as ProduceId[]) expect(goodOpensAt(good), `${m}:${r.id} needs ${good}`).toBeLessThanOrEqual(unlockLevel(recipeUnlock(m, r.id)))
+    for (const p of PARCEL_IDS) {
+      const after = PARCELS[p].after
+      if (after) expect(Math.min(...after.map((a) => unlockLevel(`parcel:${a}`))), p).toBeLessThanOrEqual(unlockLevel(`parcel:${p}`))
+    }
+    // the west field comes after the east beds (the shop lists them so)
+    expect(unlockLevel('upgrade:east')).toBeLessThanOrEqual(unlockLevel('upgrade:west'))
+  })
+
+  it('a new farm can start: seeds it can pay for and a bed to build open at level 1', () => {
+    const crops = CROPS.filter((c) => lockedAt(`crop:${c.id}`, 1) === null)
+    expect(crops.length).toBeGreaterThan(0)
+    expect(Math.min(...crops.map((c) => c.seedCost))).toBeLessThanOrEqual(START_COINS)
+    expect(lockedAt('bed', 1)).toBeNull()
+  })
+
+  it('every level of the first hour opens something (each one a reward), and each thing at exactly one level', () => {
+    const top = Math.max(...Object.values(UNLOCKS))
+    for (let level = 2; level <= top; level++) expect(opensAt(level).length, `level ${level}`).toBeGreaterThan(0)
+    const all = Array.from({ length: top }, (_, k) => opensAt(k + 1)).flat()
+    expect(all.length).toBe(UNLOCK_IDS.length)
+    expect(new Set(all).size).toBe(UNLOCK_IDS.length)
+  })
+
+  it('locked says the level it opens at, until that level; a machine opens with its first recipe', () => {
+    expect(lockedAt('crop:wheat', 1)).toBe(UNLOCKS['crop:wheat'])
+    expect(lockedAt('crop:wheat', UNLOCKS['crop:wheat'])).toBeNull()
+    expect(lockedAt('crop:lettuce', 1)).toBeNull()
+    for (const m of MACHINE_IDS) expect(machineOpensAt(m)).toBe(Math.min(...MACHINES[m].recipes.map((r) => UNLOCKS[recipeUnlock(m, r.id)])))
+  })
+
+  it('names each thing in a few words', () => {
+    for (const id of UNLOCK_IDS) expect(unlockName(id).length, id).toBeGreaterThan(0)
+    expect(unlockName('crop:wheat')).toBe('Wheat')
+    expect(unlockName('recipe:mill:wheat')).toBe('Flour')
+    expect(unlockName('recipe:oven:lemon_cake')).toBe('Lemon cake')
+    expect(unlockName('upgrade:cow')).toBe('Another cow')
+    expect(unlockName('decor:path')).toBe('Stone path')
+    expect(unlockName('parcel:north')).toBe('North meadow')
+  })
+})
