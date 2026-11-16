@@ -67,6 +67,15 @@ function useSeenXp(): Seen {
   return seen
 }
 
+/** The coins of the levels reached by play whose crystals have not landed on the bar yet (read a frame late, as the bar
+ *  is: from the gain until they land). The level-up show flies them to the coin chip once they have
+ *  (LevelUp, GIFT_FLY_MS after), so the chip (./TopDash.tsx) counts them in as they arrive, not before. */
+export function useLevelCoinsInAir(): number {
+  const seen = useSeenXp()
+  const landed = levelOf(Math.max(0, seen.points - seen.flying))
+  return farm.gifts.came.reduce((n, c) => (c.level > landed ? n + c.coins : n), 0)
+}
+
 const FILL_MS = 300
 const PULSE_MS = 260
 
@@ -202,7 +211,7 @@ export function XpChip() {
 /** How long a level's show lasts, and a garment's after it; when the gift the level brought flies off from it. */
 const LEVEL_MS = 2400
 const GIFT_MS = 3400
-const GIFT_FLY_MS = 650
+export const GIFT_FLY_MS = 650
 
 /** The show of a new level, over the scene under the compass (no pointer events, never a panel or a toast): a flash,
  *  a ring of energy and the new number, once the crystals that reached it have landed on the bar; then, for a level

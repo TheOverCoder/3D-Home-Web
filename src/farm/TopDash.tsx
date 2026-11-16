@@ -9,7 +9,7 @@ import { DayChip } from './DayChip'
 import { useGoalsReady } from './GoalsPanel'
 import { iconUrl } from './icons'
 import { capacity, farm, inLine, placesInLine, useFarm, used } from './state'
-import { XpChip } from './XpChip'
+import { GIFT_FLY_MS, XpChip, useLevelCoinsInAir } from './XpChip'
 import './TopDash.css'
 
 // The top of the screen while you are outdoors (the design lab's board "top", variant D: a dashboard). Nothing is
@@ -94,26 +94,35 @@ export function TopDash() {
   )
 }
 
-/** The coins: the hero of the row. A rise counts in as the flying coins land (src/fx/coins.ts: the first lands after
- *  0.7 s), and the chip pops once with a light crossing it; a fall shows at once, the chip dipping for a moment (where the
- *  coins went from: the shared chips' dip, src/styles.css). */
+/** How long after they take off the flying coins land (src/fx/coins.ts: the first after 0.7 s), less a little. */
+const LAND_S = 0.62
+
+/** The coins: the hero of the row. A rise counts in as the flying coins land, and the chip pops once with a light
+ *  crossing it; a fall shows at once, the chip dipping for a moment (where the coins went from: the shared chips' dip,
+ *  src/styles.css). A level's coins, come in by themselves, are held back until its crystals land on the bar, then
+ *  counted in as the level-up show's coins reach the chip (./XpChip.tsx: LevelUp flies them GIFT_FLY_MS after). */
 function Coins() {
-  const coins = farm.coins
+  const held = useLevelCoinsInAir()
+  const coins = Math.max(0, farm.coins - held)
   const still = useReducedMotion()
   const value = useMotionValue(coins)
   const text = useTransform(value, (n) => Math.round(n).toLocaleString('en-US'))
   const [chip, play] = useAnimate<HTMLSpanElement>()
   const last = useRef(coins)
+  const lastHeld = useRef(held)
   useEffect(() => {
     const from = last.current
     last.current = coins
+    // a level's coins let go as its crystals land: they reach the chip from its show, a moment later
+    const fromShow = held < lastHeld.current
+    lastHeld.current = held
     if (coins <= from || still) {
       value.set(coins)
       if (coins < from && !still && chip.current) void play(chip.current, { scale: [1, 0.9, 1] }, { duration: 0.4, ease: EASE.pop, times: [0, 0.3, 1] })
       return
     }
     const run = animate(value, coins, {
-      delay: 0.62,
+      delay: fromShow ? LAND_S + GIFT_FLY_MS / 1000 : LAND_S,
       duration: 0.42,
       ease: EASE.out,
       onComplete: () => {
@@ -124,7 +133,7 @@ function Coins() {
       },
     })
     return () => run.stop()
-  }, [coins, still, value, chip, play])
+  }, [coins, held, still, value, chip, play])
   return (
     <m.span className="farm-chip-item coins" ref={chip} title="Coins" initial={{ opacity: 0, y: -14 }} animate={{ opacity: 1, y: 0 }} transition={{ ...SPRING.pop, delay: 0.05 }}>
       <img src={art('coin')} alt="" />
