@@ -39,6 +39,7 @@ import { MAX_PLACES, SHOP_LADDERS, placesOpen, shopperEvery } from './market'
 import { offersPerDay } from './contractor'
 import { levelOf } from './xp'
 import { CAME_KEPT, PER_LEVEL, boxesReached } from './gifts'
+import { EVENT_IDS, LUCKY_GOODS, SEEN_KEPT } from './events'
 import { QUEUE, machineLevel } from './machineView'
 import { garmentById } from './outfit'
 import { sanitizeLook } from '../models/look'
@@ -374,6 +375,22 @@ function farmProblems(): string[] {
   c.offers.forEach((o, k) => bad(`contractor.offers.${k}`, sameKeys(o, ['item', 'sold']) && (ITEMS as string[]).includes(o.item) && typeof o.sold === 'boolean'))
   // the day: seconds of farm time, from 0
   bad('day', sameKeys(farm.day, ['t']) && isWithin(farm.day.t, 0, Number.MAX_VALUE))
+  // the week's events: a lucky draw of one or two different goods buyers buy, on a date, or none; the events the news
+  // has shown, each once, the last few
+  const e = farm.events
+  const date = (v: unknown) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)
+  bad('events', sameKeys(e, ['draw', 'seen']))
+  bad(
+    'events.draw',
+    e.draw === null ||
+      (sameKeys(e.draw, ['day', 'goods']) &&
+        date(e.draw.day) &&
+        e.draw.goods.length >= 1 &&
+        e.draw.goods.length <= LUCKY_GOODS &&
+        unique(e.draw.goods) &&
+        e.draw.goods.every((g) => sellable.includes(g))),
+  )
+  bad('events.seen', e.seen.length <= SEEN_KEPT && unique(e.seen) && e.seen.every((k) => typeof k === 'string' && EVENT_IDS.includes(k.split('@')[0] as never) && date(k.split('@')[1])))
   return out
 }
 

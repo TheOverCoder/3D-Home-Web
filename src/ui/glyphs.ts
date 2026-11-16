@@ -45,3 +45,5 @@ export { List } from '@phosphor-icons/react/dist/csr/List'
 export { DownloadSimple } from '@phosphor-icons/react/dist/csr/DownloadSimple'
 export { UploadSimple } from '@phosphor-icons/react/dist/csr/UploadSimple'
 export { Camera } from '@phosphor-icons/react/dist/csr/Camera'
+// the farm news, in the corner menu (src/ui/HudMode.tsx, src/farm/news)
+export { Newspaper } from '@phosphor-icons/react/dist/csr/Newspaper'

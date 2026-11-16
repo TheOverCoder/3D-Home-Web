@@ -1,10 +1,11 @@
 import { AnimatePresence, m } from 'motion/react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { editHere, openEdit } from '../home/decorate'
+import { newsBadge, useFarm } from '../farm/state'
 import { useSettings, type Settings } from '../settings'
 import { busy, useHome } from '../store'
-import { ArrowsOutCardinal, CompassRose, Couch, EyeSlash, GearSix, List, SquaresFour, X } from './glyphs'
-import { MotionRoot, PRESS, SPRING } from './motion'
+import { ArrowsOutCardinal, CompassRose, Couch, EyeSlash, GearSix, List, Newspaper, SquaresFour, X } from './glyphs'
+import { MotionRoot, POP, PRESS, SPRING } from './motion'
 import './Compass.css'
 import './HudMode.css'
 
@@ -18,11 +19,12 @@ const WORD: Record<Mode, string> = { all: 'All', compass: 'Compass', clean: 'Cle
 const typing = (t: EventTarget | null) => t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))
 
 /**
- * The menu in the top corner (the design lab's board "top", D): one round button that opens into three, each with its
- * name — edit the farm (or decorate, in the house), what the top of the screen shows (everything: the dashboard and the
- * compass; only the compass; or nothing at all, a clear view of the farm), and the settings. It keeps the corner in
- * every view, so the view can always be changed back; the view's own button cycles it and leaves the menu open, so
- * pressing it again and again goes round the three. H does the same on a keyboard. The choice is remembered;
+ * The menu in the top corner (the design lab's board "top", D): one round button that opens into its buttons, each with
+ * its name — the farm news (the week's events and the lucky draw, src/farm/news: a sun badge on it and on the menu
+ * itself while something waits there), edit the farm (or decorate, in the house), what the top of the screen shows
+ * (everything: the dashboard and the compass; only the compass; or nothing at all, a clear view of the farm), and the
+ * settings. It keeps the corner in every view, so the view can always be changed back; the view's own button cycles it
+ * and leaves the menu open, so pressing it again and again goes round the three views. H does the same on a keyboard. The choice is remembered;
  * the stylesheets read it from <html data-hud>. A touch anywhere else closes the menu.
  */
 export function HudMode() {
@@ -30,6 +32,9 @@ export function HudMode() {
   const occupied = useHome(busy)
   const edit = useHome(editHere)
   const mode = useSettings((s) => s.hudMode)
+  // what waits in the farm news (an event not shown yet, the lucky draw not made)
+  useFarm((s) => s.rev)
+  const news = newsBadge()
   const [open, setOpen] = useState(false)
   const box = useRef<HTMLDivElement>(null)
   const shown = phase === 'playing' && !occupied
@@ -66,8 +71,16 @@ export function HudMode() {
   return (
     <MotionRoot>
       <div className="top-menu" ref={box}>
-        <m.button className={`top-menu-btn${open ? ' on' : ''}`} {...PRESS} onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label="Menu: edit, the top's view, settings" title="Menu">
+        <m.button
+          className={`top-menu-btn${open ? ' on' : ''}`}
+          {...PRESS}
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          aria-label={`Menu: the farm news, edit, the top's view, settings${news ? ` — ${news} new in the news` : ''}`}
+          title="Menu"
+        >
           {open ? <X weight="bold" /> : <List weight="bold" />}
+          <AnimatePresence>{news > 0 && !open && <Badge n={news} />}</AnimatePresence>
         </m.button>
         <AnimatePresence>
           {open && (
@@ -78,6 +91,17 @@ export function HudMode() {
               exit="shut"
               variants={{ open: { transition: { staggerChildren: 0.045 } }, shut: { transition: { staggerChildren: 0.03, staggerDirection: -1 } } }}
             >
+              <Dial
+                className="news-open"
+                icon={<Newspaper weight="bold" />}
+                badge={news}
+                word="Farm news"
+                label={`The farm news: the week's events${news ? ` — ${news} new` : ''}`}
+                onTap={() => {
+                  setOpen(false)
+                  if (!useHome.getState().panel) useHome.getState().openPanel({ kind: 'news' })
+                }}
+              />
               {edit && (
                 <Dial
                   className="edit-open"
@@ -119,13 +143,43 @@ export function HudMode() {
 
 const dial = { shut: { opacity: 0, y: -14, scale: 0.6 }, open: { opacity: 1, y: 0, scale: 1, transition: SPRING.pop } }
 
-/** One of the menu's buttons: its name on a paper pill, its picture in a round one. */
-function Dial({ className, mode, icon, word, label, title, onTap }: { className: string; mode?: Mode; icon: ReactNode; word: string; label: string; title?: string; onTap: () => void }) {
+/** How many things wait (the farm news): a sun badge that pops in, and out quicker. */
+function Badge({ n }: { n: number }) {
+  return (
+    <m.b className="top-badge" variants={POP} initial="hidden" animate="show" exit="out" aria-hidden="true">
+      {n}
+    </m.b>
+  )
+}
+
+/** One of the menu's buttons: its name on a paper pill, its picture in a round one (with a badge when something waits). */
+function Dial({
+  className,
+  mode,
+  icon,
+  badge = 0,
+  word,
+  label,
+  title,
+  onTap,
+}: {
+  className: string
+  mode?: Mode
+  icon: ReactNode
+  badge?: number
+  word: string
+  label: string
+  title?: string
+  onTap: () => void
+}) {
   return (
     <m.li variants={dial}>
       <m.button className={`top-dial-btn ${className}`} data-mode={mode} {...PRESS} onClick={onTap} aria-label={label} title={title ?? word}>
         <span className="top-dial-word">{word}</span>
-        <span className="top-dial-icon">{icon}</span>
+        <span className="top-dial-icon">
+          {icon}
+          {badge > 0 && <Badge n={badge} />}
+        </span>
       </m.button>
     </m.li>
   )

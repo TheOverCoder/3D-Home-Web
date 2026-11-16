@@ -61,6 +61,7 @@ export type Panel =
   | { kind: 'ladder'; id: 'rate' | 'places' | 'group' | 'pace' | 'stock' | 'discount'; from?: 'manager' | 'market' | 'contractor' } // the card that asks before a ladder's step is bought (from: the panel to go back to)
   | { kind: 'machine'; id: 'mill' | 'loom' | 'oven' } // a machine: its queue of jobs, what it makes, its level and its places
   | { kind: 'machine-slot'; id: 'mill' | 'loom' | 'oven' } // the card that asks before a machine's next place is bought
+  | { kind: 'news' } // the farm news: the week's events on now and coming, and the lucky draw (src/farm/news)
 
 /** The thing you look at carries a tag (src/ui/ThingTag.tsx): a gear for what can be set about it, or a price tag for
  *  what it costs to build or buy; tapped (or G), it opens its card. */

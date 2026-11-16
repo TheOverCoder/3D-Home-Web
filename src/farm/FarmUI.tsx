@@ -10,6 +10,7 @@ import { EstatePanel, HouseBuyPanel } from './EstatePanel'
 import { CarPanel } from './car/CarPanel'
 import { LadderCard } from './Ladder'
 import { MachinePanel, MachineSlotCard } from './MachinePanel'
+import { NewsPanel, NewsWatcher } from './news/NewsPanel'
 import './Xp.css'
 import { AnimatePresence } from 'motion/react'
 import './MarketPanel.css'
@@ -465,9 +466,12 @@ export function FarmUI() {
       {/* the level's card goes out the way it came in (src/ui/SwipeSheet.tsx); opened again while it is still going,
           it is a new card (a key of its own each time), never the one leaving brought back */}
       <AnimatePresence>{panel?.kind === 'level' && <LevelPanel key={`level-${opening(panel)}`} />}</AnimatePresence>
+      {/* the farm news (the corner menu's): the week's events and the lucky draw, going out the way it came in */}
+      <AnimatePresence>{panel?.kind === 'news' && <NewsPanel key={`news-${opening(panel)}`} />}</AnimatePresence>
       {panel?.kind === 'wardrobe' && <WardrobePanel />}
       <LevelUp />
       <AwayWatcher />
+      <NewsWatcher />
     </>
   )
 }

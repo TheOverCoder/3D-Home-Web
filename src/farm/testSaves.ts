@@ -193,8 +193,8 @@ export function seeded(seed: number) {
  *  bought and waiting in storage; XP from all of it, a level's coins claimed and more waiting; the manager's rate at its
  *  top and the shop bought, a place and a quicker pace more, four places stocked (one dearer), a shopper's coins in the
  *  till; the contractor's day: a log stack sold to him, one of his pieces bought, his price a step lower; the farm's
- *  decoration standing and in the store, a fruit tree and bush with fruit on them, the oven and a bed moved. The same
- *  every time (its buyers' looks and names, its orders, the contractor's pieces come from a seed). */
+ *  decoration standing and in the store, a fruit tree and bush with fruit on them, the oven and a bed moved; a lucky draw
+ *  kept and two events shown. The same every time (its buyers' looks and names, its orders, the contractor's pieces come from a seed). */
 export function playedSave(): Record<string, unknown> {
   const random = vi.spyOn(Math, 'random').mockImplementation(seeded(7))
   try {
@@ -304,6 +304,8 @@ export function playedSave(): Record<string, unknown> {
     // the house bought, and the player back on the farm (the two maps)
     farm.apartment.owned = true
     farm.place = 'farm'
+    // the week's events: last Saturday's lucky draw, and two events the news has shown (src/farm/events.ts)
+    farm.events = { draw: { day: '2026-11-14', goods: ['tomato', 'lemon_cake'] }, seen: ['lucky@2026-11-14', 'market@2026-11-16'] }
     return savedNow()
   } finally {
     random.mockRestore()
