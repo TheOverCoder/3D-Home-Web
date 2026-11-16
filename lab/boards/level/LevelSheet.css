@@ -15,6 +15,11 @@
 .v-level-sheet .farm-panel .close { transition: box-shadow 0.1s ease-out, filter 0.15s; }
 .v-level-sheet .farm-panel .close:active { transform: none; }
 
+/* a sheet with a list that scrolls (`scrolls`): the sheet itself takes no pan (a swipe there moves it), the list takes
+   every pan (it is its own scroller, so a swipe in it scrolls) */
+.v-level-sheet.scrolls .farm-panel { touch-action: none; overflow: hidden; }
+.v-level-sheet.scrolls [data-scroll] { touch-action: pan-x pan-y; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+
 /* what was claimed: in the buttons' place, as tall as they were, so nothing under it moves */
 .v-level-sheet .lv-got {
   display: flex;

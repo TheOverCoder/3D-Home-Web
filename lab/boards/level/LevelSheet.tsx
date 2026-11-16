@@ -1,4 +1,4 @@
-import { AnimatePresence, animate, m, useMotionValue, useTransform, type PanInfo, type Variants } from 'motion/react'
+import { AnimatePresence, animate, m, useDragControls, useMotionValue, useTransform, type PanInfo, type Variants } from 'motion/react'
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { Check } from '../../../src/ui/glyphs'
 import { CountUp, PRESS, SPRING } from '../../../src/ui/motion'
@@ -58,8 +58,14 @@ const PANEL: Variants = { show: { transition: { delayChildren: 0.06, staggerChil
 const FAR = 110
 const FAST = 450
 
-export function LevelSheet({ name, label, top, onClose, children }: { name: string; label: string; top?: boolean; onClose: () => void; children: ReactNode }) {
+/**
+ * `scrolls`: the sheet holds a list that scrolls (marked `data-scroll`, itself the scroller). Then a swipe that starts
+ * in that list scrolls it, and only a swipe that starts anywhere else (the grabber, the title, the buttons' row) moves
+ * the sheet: a finger never has to choose between the two (round 5: "the scrolling does not work").
+ */
+export function LevelSheet({ name, label, top, scrolls = false, onClose, children }: { name: string; label: string; top?: boolean; scrolls?: boolean; onClose: () => void; children: ReactNode }) {
   const wide = useSideways()
+  const controls = useDragControls()
   const panel = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const el = panel.current
@@ -86,7 +92,7 @@ export function LevelSheet({ name, label, top, onClose, children }: { name: stri
     } else animate(pull, 0, SPRING.pop)
   }
   return (
-    <div className={`farm-backdrop v-level-sheet ${name}`} onClick={onClose}>
+    <div className={`farm-backdrop v-level-sheet${scrolls ? ' scrolls' : ''} ${name}`} onClick={onClose}>
       <m.div className="lv-shade" aria-hidden="true" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.22 }}>
         <m.span style={{ opacity: shade }} />
       </m.div>
@@ -100,6 +106,9 @@ export function LevelSheet({ name, label, top, onClose, children }: { name: stri
           ref={panel}
           variants={PANEL}
           drag={wide ? 'x' : 'y'}
+          dragListener={!scrolls}
+          dragControls={controls}
+          onPointerDown={scrolls ? (e) => !(e.target as Element).closest('[data-scroll]') && controls.start(e) : undefined}
           dragConstraints={wide ? { left: 0 } : { top: 0 }}
           dragElastic={0.06}
           dragMomentum={false}

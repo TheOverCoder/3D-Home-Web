@@ -1,6 +1,6 @@
 import { PushPin } from '@phosphor-icons/react/dist/csr/PushPin'
 import { AnimatePresence, LayoutGroup, m, useReducedMotion } from 'motion/react'
-import { useState, type CSSProperties } from 'react'
+import { useRef, useState, type CSSProperties } from 'react'
 import type { GoalId } from '../../../src/farm/goals'
 import { art } from '../../../src/ui/art'
 import { Check, X } from '../../../src/ui/glyphs'
@@ -9,19 +9,31 @@ import type { Act } from '../../board'
 import { ITEM, LevelSheet } from '../level/LevelSheet'
 import { claim, GoalPic, howFar, Reward, Ring, type GoalRow, type GoalsState } from './data'
 import './goals.css'
-import './GoalsD.css'
+import './GoalsE.css'
 
-// D · the spotlight over the sticker book, round 4: A and B made one, as the user asked. From A: the goal nearest to
-// done (or reached) is big at the top — its picture in a ring, what to do, the count, the words for how far, what it
-// gives in pictures, and a bar that marks where this step began. From B: the others are stickers, now two to a row,
-// each its picture in a ring, its words, a sticker of its coins on the corner — and now a bar of its own with its count
-// (the user's "progress bar"). A sticker reached lifts off the page, bobs, and has a Claim strip. A touch on a sticker
-// flies its picture up into the spotlight (and the one there back down to its place). Its moment: Claim — a stamp comes
-// down on the spotlight with a squash, the coins fly to the coin chip, confetti, and the card turns over to the goal's
-// next step, already part full ("40% there already!": what you did counts on).
+// E · the spotlight over the sticker book, with a goal pinned to the top of the screen (chosen: ✓ E, and on D "put it
+// in the game, only make the move when a goal is pressed to open bigger more natural to the eye, and more advanced").
+// D is gone: E was D with a pin, so the two looked the same; this is the one reference.
 //
-// E is the same board with a feature the game does not have (`pin`): a goal pinned goes to the top of the screen in
-// play, a small tracker under the compass that fills as you play (lab/boards/top's D shows it there).
+// The goal nearest to done (or reached) is big at the top — its picture in a ring with a soft light, what to do, the
+// words for how far, what it gives in pictures, a thick bar marking where this step began, and a pin that sends it to
+// the top of the screen in play (✦). The others are stickers, two to a row, each with its ring, its words, its own bar
+// and count, its coins on the corner; one reached lifts off the page, bobs, and has a Claim strip.
+//
+// Round 5, the move from a sticker to the spotlight is one shape that grows (a container transform): the sticker's
+// card itself swells and slides up into the spotlight's place and shape — its picture flying ahead of it into the big
+// ring, its words fading in as it settles — while the goal that was there shrinks back into the sticker's place in the
+// same moment, the other stickers easing aside, and the page behind dimming a little and coming back (what moves is
+// in front). The spotlight's light opens as it lands and its ring fills again. Reduced motion: the two simply
+// change places with a fade. Its moment stays the claim: a stamp, the coins to the chip, confetti, and the card
+// turning over to the next step, already part full ("40% there already!").
+
+/** The move from a sticker to the spotlight and back: one spring for the shape, its picture and the others easing aside
+ *  (a little slower than a press, no bounce: the eye follows one shape growing). */
+const MOVE = { type: 'spring', stiffness: 300, damping: 34, mass: 0.9 } as const
+/** What a card holds besides its picture keeps its own size while the card grows or shrinks round it (never a stretched
+ *  word), slides to its place with the card, and fades in as the shape settles. */
+const SETTLE = { layout: true, initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { delay: 0.14, duration: 0.2, layout: MOVE } } as const
 
 const GRID = { hidden: {}, show: { transition: { staggerChildren: 0.05, delayChildren: 0.12 } } }
 const TILE = { hidden: { opacity: 0, scale: 0.8, y: 12 }, show: { opacity: 1, scale: 1, y: 0, transition: SPRING.pop } }
@@ -56,13 +68,24 @@ function Bar({ row, big, fresh, delay }: { row: GoalRow; big?: boolean; fresh?: 
   )
 }
 
-export function GoalsD({ s, act, pin = false }: { s: GoalsState; act: Act<GoalsState>; pin?: boolean }) {
+export function GoalsE({ s, act }: { s: GoalsState; act: Act<GoalsState> }) {
   const still = useReducedMotion()
   const [pick, setPick] = useState<GoalId | null>(null)
+  // a sticker pressed: the page behind sinks for the move, and the spotlight is brought into view
+  const [moving, setMoving] = useState(false)
+  const body = useRef<HTMLDivElement>(null)
   const [pinned, setPinned] = useState<GoalId | null>(null)
   const [stamped, setStamped] = useState<GoalId | null>(null)
   const hero = s.rows.find((r) => r.id === pick) ?? s.rows[0]
   const rest = s.rows.filter((r) => r !== hero)
+  const open = (id: GoalId) => {
+    if (id === hero.id) return
+    setPick(id)
+    if (still) return
+    setMoving(true)
+    setTimeout(() => setMoving(false), 420)
+    body.current?.scrollTo({ top: 0, behavior: 'smooth' })
+  }
   const take = (row: GoalRow, el: HTMLElement) => {
     setPick(row.id)
     setStamped(row.id)
@@ -72,7 +95,7 @@ export function GoalsD({ s, act, pin = false }: { s: GoalsState; act: Act<GoalsS
   const pinnedRow = s.rows.find((r) => r.id === pinned)
   return (
     <>
-      <LevelSheet name={`v-goals v-goals-d${pin ? ' v-goals-e' : ''}`} label="Goals" onClose={act.close}>
+      <LevelSheet name="v-goals v-goals-e" label="Goals" scrolls onClose={act.close}>
         <m.header className="gd-head" variants={ITEM}>
           <img className="art" src={art('trophy')} alt="" />
           <h2>Goals</h2>
@@ -82,48 +105,49 @@ export function GoalsD({ s, act, pin = false }: { s: GoalsState; act: Act<GoalsS
           </m.button>
         </m.header>
         <LayoutGroup>
-          <div className="gd-body">
+          <div className={`gd-body${moving ? ' moving' : ''}`} ref={body} data-scroll>
             <m.div variants={ITEM} className="gd-spot-wrap">
-              <AnimatePresence mode="popLayout" initial={false}>
-                <Spot
-                  key={`${hero.id}-${hero.step}`}
-                  row={hero}
-                  fresh={pick === hero.id && hero.step > 0 && !hero.done}
-                  stamp={stamped === hero.id}
-                  onClaim={take}
-                  pin={pin ? { on: pinned === hero.id, toggle: () => setPinned(pinned === hero.id ? null : hero.id) } : undefined}
-                />
-              </AnimatePresence>
+              <Spot
+                key={`${hero.id}-${hero.step}`}
+                row={hero}
+                fresh={pick === hero.id && hero.step > 0 && !hero.done}
+                stamp={stamped === hero.id}
+                onClaim={take}
+                pin={{ on: pinned === hero.id, toggle: () => setPinned(pinned === hero.id ? null : hero.id) }}
+              />
             </m.div>
             <m.ul className="gd-grid" variants={GRID}>
               {rest.map((r, i) => (
-                <m.li key={r.id} variants={TILE} layout transition={SPRING.sheet}>
-                  <Sticker row={r} i={i} pinned={pin && pinned === r.id} onPick={() => setPick(r.id)} onClaim={(el) => take(r, el)} />
+                <m.li key={r.id} variants={TILE} layout="position" transition={MOVE}>
+                  <Sticker row={r} i={i} pinned={pinned === r.id} onPick={() => open(r.id)} onClaim={(el) => take(r, el)} />
                 </m.li>
               ))}
             </m.ul>
           </div>
         </LayoutGroup>
       </LevelSheet>
-      {pin && <AnimatePresence>{pinnedRow && <Tracker key={pinnedRow.id} row={pinnedRow} />}</AnimatePresence>}
+      <AnimatePresence>{pinnedRow && <Tracker key={pinnedRow.id} row={pinnedRow} />}</AnimatePresence>
     </>
   )
 }
 
 /** The goal in the spotlight. It turns over to its next step after a claim; a stamp comes down on it as it is claimed. */
 function Spot({ row, fresh, stamp, onClaim, pin }: { row: GoalRow; fresh: boolean; stamp: boolean; onClaim: (row: GoalRow, el: HTMLElement) => void; pin?: { on: boolean; toggle: () => void } }) {
+  // after a claim the card turns over to the next step (a new shape of its own); after a press on a sticker it is the
+  // sticker's own card, grown: it comes from the sticker's place and shape (layoutId), its words fading in as it settles
+  const turned = fresh
   return (
     <m.section
       className={`gd-spot${row.done ? ' done' : ''}${row.part >= 0.75 && !row.done ? ' warm' : ''}`}
       aria-label={`${row.words}: ${Math.min(row.have, row.target)} of ${row.target}`}
-      initial={{ opacity: 0, rotateX: -70, y: 10 }}
+      layoutId={`gd-card-${row.id}-${row.step}`}
+      initial={turned ? { opacity: 0, rotateX: -70, y: 10 } : false}
       animate={{ opacity: 1, rotateX: 0, y: 0 }}
-      exit={{ opacity: 0, rotateX: 70, y: -10, transition: { duration: 0.2, ease: 'easeIn' } }}
-      transition={{ ...SPRING.soft, delay: 0.04 }}
-      style={{ transformPerspective: 700 }}
+      transition={turned ? { ...SPRING.soft, delay: 0.04 } : { layout: MOVE }}
+      style={{ transformPerspective: 700, borderRadius: 24 }}
     >
-      <m.div className="gd-spot-pic" layoutId={`gd-pic-${row.id}`} transition={SPRING.soft}>
-        <i className="gd-glow" aria-hidden="true" />
+      <m.div className="gd-spot-pic" layoutId={`gd-pic-${row.id}`} transition={MOVE}>
+        <m.i className="gd-glow" aria-hidden="true" initial={{ scale: 0.3, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ ...SPRING.soft, delay: 0.18 }} />
         <Ring part={row.part} done={row.done} size={92} stroke={8} delay={0.2} />
         <GoalPic row={row} />
         {row.done && (
@@ -132,22 +156,30 @@ function Spot({ row, fresh, stamp, onClaim, pin }: { row: GoalRow; fresh: boolea
           </m.span>
         )}
       </m.div>
-      <div className="gd-spot-text">
+      <m.div className="gd-spot-text" {...SETTLE}>
         <small>Step {row.step + 1}</small>
         <h3>{row.words}</h3>
         <span className={`gd-say${row.done ? ' done' : ''}`}>{fresh ? `${Math.round(row.part * 100)}% there already!` : howFar(row)}</span>
-      </div>
-      <div className="gd-gives">
+      </m.div>
+      <m.div className="gd-gives" {...SETTLE}>
         <span>Gives</span>
         <Reward row={row} />
-      </div>
+      </m.div>
       {row.done ? (
-        <m.button className="btn leaf gd-claim" onClick={(e) => onClaim(row, e.currentTarget)} whileTap={{ scale: 0.95, y: 3 }} transition={SPRING.pop} aria-label={`Claim ${row.reward.coins} coins`}>
+        <m.button
+          className="btn leaf gd-claim"
+          onClick={(e) => onClaim(row, e.currentTarget)}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          whileTap={{ scale: 0.95, y: 3 }}
+          transition={{ ...SPRING.pop, opacity: { delay: 0.22, duration: 0.18 } }}
+          aria-label={`Claim ${row.reward.coins} coins`}
+        >
           <Check weight="bold" /> Claim
         </m.button>
       ) : (
-        <div className="gd-spot-bar">
-          <Bar row={row} big fresh={fresh} delay={0.28} />
+        <m.div className="gd-spot-bar" {...SETTLE}>
+          <Bar row={row} big fresh={fresh} delay={0.3} />
           {pin && (
             <m.button
               className={`gd-pin${pin.on ? ' on' : ''}`}
@@ -159,7 +191,7 @@ function Spot({ row, fresh, stamp, onClaim, pin }: { row: GoalRow; fresh: boolea
               <PushPin weight={pin.on ? 'fill' : 'bold'} />
             </m.button>
           )}
-        </div>
+        </m.div>
       )}
       <AnimatePresence>
         {stamp && (
@@ -191,11 +223,10 @@ function Sticker({ row, i, pinned, onPick, onClaim }: { row: GoalRow; i: number;
       <m.div
         key={`${row.id}-${row.step}`}
         className={`gd-tile${row.done ? ' done' : ''}${row.part >= 0.75 && !row.done ? ' warm' : ''}`}
-        initial={{ rotateY: -90, opacity: 0 }}
-        animate={{ rotateY: 0, opacity: 1 }}
+        layoutId={`gd-card-${row.id}-${row.step}`}
         exit={{ rotateY: 90, opacity: 0, transition: { duration: 0.18, ease: 'easeIn' } }}
-        transition={{ ...SPRING.soft, delay: 0.05 }}
-        style={{ transformPerspective: 600 }}
+        transition={{ layout: MOVE }}
+        style={{ transformPerspective: 600, borderRadius: 18 }}
       >
         <m.button className="gd-tile-main" onClick={onPick} aria-label={`${row.words}: ${Math.min(row.have, row.target)} of ${row.target}`} {...PRESS}>
           <m.span
@@ -203,28 +234,40 @@ function Sticker({ row, i, pinned, onPick, onClaim }: { row: GoalRow; i: number;
             layoutId={`gd-pic-${row.id}`}
             animate={row.done && !still ? { y: [0, -4, 0] } : undefined}
             // the bob of a reached sticker is a loop of its own; the flight to and from the spotlight is the layout's
-            transition={row.done && !still ? { y: { duration: 1.6, repeat: Infinity, ease: 'easeInOut' }, layout: SPRING.soft } : SPRING.soft}
+            transition={row.done && !still ? { y: { duration: 1.6, repeat: Infinity, ease: 'easeInOut' }, layout: MOVE } : MOVE}
           >
             <Ring part={row.part} done={row.done} size={52} stroke={6} delay={0.3 + i * 0.05} />
             <GoalPic row={row} />
           </m.span>
-          <span className="gd-tile-text">
+          <m.span className="gd-tile-text" {...SETTLE}>
             <b>{row.words}</b>
             <span className={`gd-far${row.done ? ' done' : ''}`}>{tileFar(row)}</span>
-          </span>
+          </m.span>
         </m.button>
-        {!row.done && <Bar row={row} delay={0.32 + i * 0.05} />}
-        <span className="gd-sticker" aria-hidden="true">
+        {!row.done && (
+          <m.div className="gd-tile-bar" {...SETTLE}>
+            <Bar row={row} delay={0.32 + i * 0.05} />
+          </m.div>
+        )}
+        <m.span className="gd-sticker" aria-hidden="true" {...SETTLE}>
           <img src={art('coin')} alt="" />
           {row.reward.coins}
-        </span>
+        </m.span>
         {pinned && (
           <span className="gd-tile-pinned" aria-label="Pinned">
             <PushPin weight="fill" />
           </span>
         )}
         {row.done && (
-          <m.button className="gd-tile-claim" onClick={(e) => onClaim(e.currentTarget)} whileTap={{ scale: 0.95, y: 2 }} transition={SPRING.pop} aria-label={`Claim ${row.reward.coins} coins`}>
+          <m.button
+            className="gd-tile-claim"
+            onClick={(e) => onClaim(e.currentTarget)}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            whileTap={{ scale: 0.95, y: 2 }}
+            transition={{ ...SPRING.pop, opacity: { delay: 0.2, duration: 0.18 } }}
+            aria-label={`Claim ${row.reward.coins} coins`}
+          >
             <Check weight="bold" /> Claim
           </m.button>
         )}
@@ -233,7 +276,7 @@ function Sticker({ row, i, pinned, onPick, onClaim }: { row: GoalRow; i: number;
   )
 }
 
-/** E: the pinned goal at the top of the screen in play, in the column under the compass (src/ui/TopStack.tsx: a slot of
+/** The pinned goal at the top of the screen in play, in the column under the compass (src/ui/TopStack.tsx: a slot of
  *  its own). It flies up there as it is pinned; in play it would fill as you play and pop "+1" with each one counted. */
 function Tracker({ row }: { row: GoalRow }) {
   return (
