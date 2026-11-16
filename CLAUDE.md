@@ -170,13 +170,19 @@ The README has the overview; `tests/README.md` what each test guards.
   makes its poses from the row.
 - A new character is a roll of the people engine (`rollLook`, `src/models/look.ts`; one who always looks the same:
   overrides) and a movement script (`src/farm/script.ts`). A look is saved as its traits, never as the roll.
+  Characters speak with the device's own voices (`src/talk`: their lines as data, `rules.ts` for when — never
+  muted, near, rare, never over a film or the drive). A big moment may open a film (`src/film/films.ts`: the shop's
+  purchase plays its film once, a tap skips it to its end card; the lab's film boards play the same code).
 - What keeps hours is a row in `HOURS` (day phases, or hours from and to: the estate office's 8–16); the day's phases and their light are `DAY`. The light changes only the colour
   and strength of the lights there are. Tests stand at noon with the clock stopped (`helpers.ts`, `ready()`).
 
 ## The wardrobe and the levels' rewards (src/farm/outfit.ts, src/home/Wardrobe.tsx, src/farm/LevelPanel.tsx)
 
-- 500 levels (`LEVELS.max`), each taking longer than the one before. Each brings coins, claimed in the level's card
-  (the level chip opens it: the XP to the next level and what it brings); every fifth one a garment.
+- 500 levels (`LEVELS.max`), each taking longer than the one before. Each brings coins and a small gift (a building
+  material), both coming in by themselves as it is reached (`arrive()`, paid exactly once: `xp.paid`); every fifth
+  one a garment. Each level also has four gift boxes, one at every 25% of its bar (`src/farm/gifts.ts`,
+  `farm.gifts`): opened with a tap in the level's card (the level chip opens it), rolled on the farm's dice, never
+  given twice, never XP; one not opened waits (the chip glows with how many), and "Open N gifts" opens them all.
 - The player's clothes are the people engine's (its shirt, trousers, straw hat, cap, beanie) in a table of garments,
   each with the level it comes with (`GARMENTS`: two of each at level 1, then one every `GARMENT_EVERY` levels); what
   is worn is `farm.outfit` in the save. A new garment is a row there, and its picture is drawn from its model by
