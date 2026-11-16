@@ -15,6 +15,7 @@
     "assets:fetch": "node scripts/fetch-assets.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
+    "sim": "vitest run --config vitest.sim.config.ts",
     "test:e2e": "playwright test",
     "test:e2e:quick": "playwright test --grep-invert @boot",
     "test:e2e:core": "playwright test --grep-invert @full",

@@ -1,0 +1,367 @@
+// The "good player" of the pace simulation (./play.ts): each time it is free, it does the first thing on a list of
+// priorities that it can do now, with the game's own functions (the ones the action button and the panels call). A
+// trip costs time (./play.ts walks it): what fills up slowly is fetched once there is a good share of it, as a player
+// would, not one egg at a time. Nothing here is a rule of the game: change the list to play another way.
+
+import {
+  BEDS,
+  CROPS,
+  GATE_SPOT,
+  MACHINES,
+  MACHINE_IDS,
+  OFFICE_STAND,
+  PRODUCERS,
+  PRODUCER_IDS,
+  SHED,
+  UPGRADES,
+  cropById,
+  produceById,
+  storeOf,
+  type CropId,
+  type MachineId,
+  type ProduceId,
+} from '../farm/data'
+import { MANAGER_SPOT } from '../data/market'
+import { goalsNow } from '../farm/goals'
+import { PARCEL_IDS, PARCELS, canBuyParcel } from '../farm/layout'
+import { STORE_GOODS } from '../farm/storage'
+import {
+  addJob,
+  bedSpot,
+  bedStage,
+  buildBed,
+  buy,
+  buyLadder,
+  buyLand,
+  buyOffice,
+  buySlot,
+  canAddJob,
+  canUpgradeStore,
+  claimDaily,
+  claimGoal,
+  collect,
+  collectMachine,
+  collectable,
+  dailyWaiting,
+  declineOffer,
+  farm,
+  fillOrder,
+  giftsWaiting,
+  harvestBeds,
+  harvestFits,
+  inLine,
+  ladderNextPrice,
+  ladderOpen,
+  machineCollectable,
+  machinePoint,
+  machineSecondsLeft,
+  machineStage,
+  officeMaxed,
+  officePrice,
+  openGifts,
+  orderAt,
+  owned,
+  placesInLine,
+  plantBeds,
+  room,
+  sellAll,
+  sellAllPreview,
+  sellToManager,
+  managerPays,
+  sendOrder,
+  slotPrice,
+  upgradePrice,
+  upgradeStore,
+  waiting,
+  waterBeds,
+  yieldOf,
+} from '../farm/state'
+
+/** A place on the farm, to walk to. */
+export interface Spot {
+  x: number
+  z: number
+}
+
+/** One thing the player does. */
+export interface Move {
+  /** in a few words, for the report: "harvest 4 beds" */
+  what: string
+  /** where it is done (null: a tap on a panel or the dashboard, wherever the player stands) */
+  at: Spot | null
+  /** does it, with the game's own function */
+  run: () => unknown
+}
+
+/** Coins kept back from buying, for the next seeds. */
+export const RESERVE = 10
+
+// ───────────────────────────── where things are ─────────────────────────────
+
+const GATE: Spot = { x: GATE_SPOT.x, z: GATE_SPOT.z - 1.5 }
+const SHOP: Spot = { x: SHED.x + 1.15, z: SHED.z }
+const MARKET: Spot = { x: MANAGER_SPOT.x, z: MANAGER_SPOT.z }
+
+/** The beds in patches a press reaches together: the first six, the east beds, the west field. */
+const PATCHES = (['main', 'east', 'west'] as const).map((name) => ({ name, beds: BEDS.filter((b) => (b.expansion ?? 'main') === name).map((b) => b.index) }))
+const middleOf = (beds: number[]): Spot => ({ x: beds.reduce((s, i) => s + bedSpot(i).x, 0) / beds.length, z: beds.reduce((s, i) => s + bedSpot(i).z, 0) / beds.length })
+const producerAt = (id: (typeof PRODUCER_IDS)[number]): Spot => farm.layout.places[PRODUCERS[id].place!]
+const machineAt = (id: MachineId): Spot => machinePoint(id, MACHINES[id].stand)
+
+// ───────────────────────────── what is worth doing ─────────────────────────────
+
+const stageIn = (beds: number[], stage: ReturnType<typeof bedStage>) => beds.filter((i) => bedStage(i) === stage)
+/** Of each crop, what is in the beds now. */
+const growing = (crop: CropId) => farm.beds.reduce((n, b) => n + (b.crop === crop ? yieldOf(crop) : 0), 0)
+/** What the line and the orders ask for that the silo and the beds will not cover: the crop most short first. */
+function shortCrop(): CropId | null {
+  const asked = new Map<ProduceId, number>()
+  const add = (good: ProduceId, n: number) => n > 0 && asked.set(good, (asked.get(good) ?? 0) + n)
+  for (const v of waiting()) add(v.want, v.qty)
+  for (let k = 0; k < farm.orders.length; k++) for (const l of orderAt(k)?.lines ?? []) add(l.good, l.want - l.have)
+  let best: CropId | null = null
+  let most = 0
+  for (const c of CROPS) {
+    const short = (asked.get(c.id) ?? 0) - farm.inv[c.id] - growing(c.id)
+    if (short > most) [best, most] = [c.id, short]
+  }
+  return best
+}
+/** The mill's crops are kept in stock (its flour and sugar go into cakes). */
+const MILL_STOCK = 6
+/**
+ * Which seeds go in: what the line and the orders are short of; else wheat or sugar cane while the mill would run
+ * short; else the quickest crop. Only seeds the player can pay for.
+ */
+function cropToPlant(): CropId | null {
+  const can = (c: CropId) => farm.coins >= cropById(c).seedCost
+  const short = shortCrop()
+  if (short && can(short)) return short
+  for (const c of ['wheat', 'sugarcane'] as const) if (farm.inv[c] + growing(c) < MILL_STOCK && can(c)) return c
+  const quick = [...CROPS].sort((a, b) => a.growSeconds - b.growSeconds).find((c) => can(c.id))
+  return quick?.id ?? null
+}
+
+/** A producer is worth the trip once half of what it holds at most is waiting (every animal of a herd together). */
+function worthCollecting(id: (typeof PRODUCER_IDS)[number]) {
+  const def = PRODUCERS[id]
+  const p = farm.producers[id]
+  const most = def.max * p.stock.length
+  const has = p.stock.reduce((a, b) => a + b, 0)
+  return p.stock.length > 0 && has > 0 && has >= Math.ceil(most / 2) && p.stock.some((_, i) => collectable(id, i) > 0)
+}
+
+/** A machine is worth emptying once it has stopped (all done), or has no place left for another job. */
+const worthTakingOut = (id: MachineId) => {
+  const m = farm.machines[id]
+  return m.done > 0 && (machineStage(id) !== 'working' || m.jobs.length >= m.capacity) && machineCollectable(id) > 0
+}
+
+/** The recipe to queue next at a machine: the dearest whose ingredients are in store. */
+const nextJob = (id: MachineId) => [...MACHINES[id].recipes].sort((a, b) => produceById(b.makes).price - produceById(a.makes).price).find((r) => canAddJob(id, r))
+
+/** An order whose every line the silo and the barn can fill now. */
+function orderToSend(): number {
+  return farm.orders.findIndex((_, k) => {
+    const o = orderAt(k)
+    return !!o && o.lines.every((l) => farm.inv[l.good] >= l.want - l.have)
+  })
+}
+
+// ───────────────────────────── what to buy ─────────────────────────────
+
+interface Purchase {
+  what: string
+  at: Spot | null
+  price: number
+  buy: () => boolean
+}
+
+/** Everything there is to buy, each with its price now: the beds to build, the farm shop's upgrades and animals, the
+ *  order office's upgrades, the machines' queues, land, the manager's better price. */
+function forSale(): Purchase[] {
+  const out: Purchase[] = []
+  BEDS.forEach((b, i) => {
+    if (b.price > 0 && !b.expansion && !farm.beds[i].built) out.push({ what: `build bed ${i}`, at: bedSpot(i), price: b.price, buy: () => buildBed(i) })
+  })
+  for (const u of UPGRADES) if (!owned(u.id)) out.push({ what: u.name.toLowerCase(), at: SHOP, price: upgradePrice(u.id), buy: () => buy(u.id) })
+  for (const id of ['slots', 'wait'] as const) if (!officeMaxed(id)) out.push({ what: `office: ${id}`, at: OFFICE_STAND, price: officePrice(id), buy: () => buyOffice(id) })
+  for (const id of MACHINE_IDS) {
+    const price = slotPrice(id)
+    if (price !== null) out.push({ what: `${id}: a place in its queue`, at: machineAt(id), price, buy: () => buySlot(id) })
+  }
+  // land is bought in the edit mode, from wherever the player stands
+  for (const id of PARCEL_IDS) if (canBuyParcel(farm.layout, id)) out.push({ what: PARCELS[id].name.toLowerCase(), at: null, price: PARCELS[id].price, buy: () => buyLand(id) })
+  if (ladderOpen('rate')) out.push({ what: 'a better price from the manager', at: MARKET, price: ladderNextPrice('rate'), buy: () => buyLadder('rate') })
+  return out
+}
+
+/** The cheapest thing for sale, once the coins run to it with a few left for seeds. */
+function purchase(): Purchase | null {
+  const cheapest = forSale().sort((a, b) => a.price - b.price)[0]
+  return cheapest && farm.coins - cheapest.price >= RESERVE ? cheapest : null
+}
+
+// ───────────────────────────── the list ─────────────────────────────
+
+/** The priorities, first first: each gives the move it would make now, or null. */
+export const PRIORITIES: { name: string; move: () => Move | null }[] = [
+  // taps on the dashboard and its panels: the level's gift boxes, the daily gift, the goals, a bigger silo or barn
+  { name: 'gifts', move: () => (giftsWaiting().length ? { what: 'open the level gifts', at: null, run: () => openGifts() } : null) },
+  { name: 'daily', move: () => (dailyWaiting() ? { what: 'claim the daily gift', at: null, run: () => claimDaily() } : null) },
+  {
+    name: 'goals',
+    move: () => {
+      const g = goalsNow(farm).find((x) => x.done)
+      return g ? { what: `claim a goal (${g.def.id})`, at: null, run: () => claimGoal(g.def.id) } : null
+    },
+  },
+  {
+    name: 'storage',
+    move: () => {
+      const id = (['silo', 'barn'] as const).find((s) => canUpgradeStore(s))
+      return id ? { what: `a bigger ${id}`, at: null, run: () => upgradeStore(id) } : null
+    },
+  },
+  // the beds first: a ripe or dry bed stands still, an empty one grows nothing
+  {
+    name: 'harvest',
+    move: () => {
+      for (const p of PATCHES) {
+        const ripe = stageIn(p.beds, 'ripe').filter(harvestFits)
+        if (ripe.length) return { what: `harvest ${ripe.length} beds`, at: middleOf(p.beds), run: () => harvestBeds(ripe) }
+      }
+      return null
+    },
+  },
+  {
+    name: 'water',
+    move: () => {
+      for (const p of PATCHES) {
+        const dry = stageIn(p.beds, 'thirsty')
+        if (dry.length) return { what: `water ${dry.length} beds`, at: middleOf(p.beds), run: () => waterBeds(dry) }
+      }
+      return null
+    },
+  },
+  {
+    name: 'plant',
+    move: () => {
+      for (const p of PATCHES) {
+        const empty = stageIn(p.beds, 'empty')
+        const crop = empty.length ? cropToPlant() : null
+        if (crop) return { what: `plant ${crop} in ${empty.length} beds`, at: middleOf(p.beds), run: () => plantBeds(empty, crop) }
+      }
+      return null
+    },
+  },
+  // spending, as soon as the coins run to it: the cheapest thing for sale
+  {
+    name: 'buy',
+    move: () => {
+      const p = purchase()
+      return p ? { what: `buy ${p.what} (${p.price})`, at: p.at, run: () => p.buy() } : null
+    },
+  },
+  // what is ready at the animals, the tree and the machines
+  {
+    name: 'collect',
+    move: () => {
+      const id = PRODUCER_IDS.find(worthCollecting)
+      if (!id) return null
+      return { what: `collect ${PRODUCERS[id].good}`, at: producerAt(id), run: () => farm.producers[id].stock.forEach((_, i) => collect(id, i)) }
+    },
+  },
+  {
+    name: 'take out',
+    move: () => {
+      const id = MACHINE_IDS.find(worthTakingOut)
+      return id ? { what: `take out of the ${id}`, at: machineAt(id), run: () => collectMachine(id) } : null
+    },
+  },
+  // selling: an order that can go, then the line at the gate
+  {
+    name: 'order',
+    move: () => {
+      const k = orderToSend()
+      return k >= 0 ? { what: 'send an order', at: OFFICE_STAND, run: () => fillOrder(k) + Number(sendOrder(k)) } : null
+    },
+  },
+  {
+    name: 'sell',
+    move: () => {
+      const n = sellAllPreview().buyers
+      return n ? { what: `sell to ${n} ${n === 1 ? 'buyer' : 'buyers'}`, at: GATE, run: () => sellAll() } : null
+    },
+  },
+  // keeping the machines busy
+  {
+    name: 'load',
+    move: () => {
+      const id = MACHINE_IDS.find((m) => nextJob(m))
+      if (!id) return null
+      return {
+        what: `queue jobs at the ${id}`,
+        at: machineAt(id),
+        run: () => {
+          for (let r = nextJob(id); r && addJob(id, r.id); r = nextJob(id));
+        },
+      }
+    },
+  },
+  // unsticking: a full line that waits for what the farm has none of and is not growing; a full store
+  {
+    name: 'decline',
+    move: () => {
+      if (inLine().length < placesInLine()) return null
+      const v = waiting().find((w) => farm.inv[w.want] < w.qty && !farm.beds.some((b) => b.crop === w.want))
+      return v ? { what: `decline a buyer (${v.want})`, at: GATE, run: () => declineOffer(v.id) } : null
+    },
+  },
+  {
+    name: 'make room',
+    move: () => {
+      for (const store of ['silo', 'barn'] as const) {
+        if (room(store) > 0) continue
+        const good = STORE_GOODS[store].filter((g) => managerPays(g) > 0).sort((a, b) => farm.inv[b] - farm.inv[a])[0]
+        if (good) return { what: `sell ${good} to the manager`, at: MARKET, run: () => sellToManager(good) }
+      }
+      return null
+    },
+  },
+]
+
+/** The move to make now: the first priority that has one (null: nothing useful to do). */
+export function nextMove(): (Move & { rule: string }) | null {
+  for (const p of PRIORITIES) {
+    const m = p.move()
+    if (m) return { ...m, rule: p.name }
+  }
+  return null
+}
+
+/** What is on its way while the player waits, the soonest first, in a few words: for the report's gaps. */
+export function onTheWay(): string {
+  const soon: { s: number; what: string }[] = []
+  farm.beds.forEach((b, i) => {
+    if (!b.crop || bedStage(i) === 'ripe') return
+    const left = cropById(b.crop).growSeconds - b.growth
+    soon.push({ s: farm.sprinkler ? left : Math.min(left, b.water), what: farm.sprinkler || left <= b.water ? `${b.crop} ripe` : `${b.crop} thirsty` })
+  })
+  for (const id of MACHINE_IDS) if (machineStage(id) === 'working') soon.push({ s: machineSecondsLeft(id), what: `the ${id} done` })
+  if (inLine().length < placesInLine()) soon.push({ s: farm.nextVisitorIn, what: 'a buyer' })
+  for (const id of PRODUCER_IDS) {
+    const p = farm.producers[id]
+    if (!p.stock.length) continue
+    const def = PRODUCERS[id]
+    const most = def.max * p.stock.length
+    const need = Math.ceil(most / 2) - p.stock.reduce((a, b) => a + b, 0)
+    const rate = (def.herd?.shared ? p.animals : p.stock.length) / def.every
+    if (need > 0 && room(storeOf(def.good)) > 0) soon.push({ s: need / rate, what: `${def.good} to collect` })
+  }
+  const short = waiting().filter((v) => farm.inv[v.want] < v.qty)
+  const line = short.length ? ` · line wants ${[...new Set(short.map((v) => v.want))].join(', ')}` : ''
+  const first = soon.sort((a, b) => a.s - b.s)[0]
+  const full = (['silo', 'barn'] as const).filter((s) => room(s) <= 0)
+  return `${first ? `${first.what} in ${Math.ceil(first.s)} s` : 'nothing growing'}${line}${full.length ? ` · ${full.join(' and ')} full` : ''} · ${farm.coins} coins`
+}
