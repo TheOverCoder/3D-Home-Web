@@ -64,7 +64,8 @@ The README has the overview; `tests/README.md` what each test guards.
   map leaves out the casters under the ceilings that no window lets sunlight reach, and is kept between frames while
   everything that moved is out of it (`src/scene/Lighting.tsx`). Third person, decorating, the edit mode and first
   person outdoors: the crowds' view test, and the house's walls hide what lies wholly behind one opaque piece of them
-  (`walls.ts`; a wall fading hides nothing; a thing drawn without the depth test is never hidden). In first person in
+  (`walls.ts`; a wall fading hides nothing). A thing drawn without the depth test (the aim marker) shows through
+  walls, so neither the walls nor the rooms' portals ever hide it: only the camera's own view test. In first person in
   the house the walls still judge what is outdoors (what the portals let in through a window). The rooms, portals and
   the sun's culling are the house's map's; on the farm only the walk-ins' walls hide things. A walk-in building adds
   its walls as another source, and while its doors are shut it hides everything wholly inside its rooms from an eye
