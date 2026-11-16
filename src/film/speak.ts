@@ -1,4 +1,5 @@
-import { audioStatus } from '../../src/audio/sound'
+import { audioStatus } from '../audio/sound'
+import { primeSpeech } from './prime'
 import { readingOf, spokenOf, wordsBy, type Speech, type Voice } from './voice'
 
 // Lines read aloud in words: the device's own speech voices (the Web Speech API's speechSynthesis — on every phone and
@@ -125,12 +126,9 @@ export class Talker {
 
   /** In a tap: a phone lets a page speak once it has spoken from a touch. */
   unlock() {
-    const s = speech()
-    if (!s || this.unlocked) return
+    if (this.unlocked) return
     this.unlocked = true
-    const u = new SpeechSynthesisUtterance(' ')
-    u.volume = 0
-    s.speak(u)
+    primeSpeech()
   }
 
   /** Reads a line aloud now, in its speaker's voice and mood. */

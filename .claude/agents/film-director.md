@@ -27,7 +27,7 @@ against it before it is shown; add to it what a film teaches you (a point, its s
 films and games stage it, and the one or two tricks you take. Put what you took in the board's `research` (in simple
 Hebrew, with its source), as the interface designer does.
 
-## A film is data (`lab/films/format.ts`)
+## A film is data (`src/film/format.ts`)
 
 ```ts
 export const MY_FILM: Film = {
@@ -46,37 +46,39 @@ export const MY_FILM: Film = {
 
 - **Cast**: looks from the people engine (`src/models/look.ts`): `'player'` (as dressed: `outfitLook`), `'manager'`,
   `'contractor'` (the game's fixed dice), or `{ roll: n }`. Never colours: when the engine changes, the film follows.
-- **Places and marks** (`lab/films/set.ts`): every mark, way and thing comes from the game's rows (`src/data/market.ts`,
+- **Places and marks** (`src/film/set.ts`): every mark, way and thing comes from the game's rows (`src/data/market.ts`,
   `src/farm/script.ts`: the manager's way out is `managerLeaves`). A new place is its marks, things and the models the
   stage builds it from.
 - **Shots** name what to frame (`on`: cast or things), never where the camera stands: `from` (a cast id = over their
   shoulder; `'side'` = beside the scene's line; degrees round the first subject), `size` (extreme … wide), `angle`
   (eye, low, ground, high, top), `move` (still, push, pull, crane, orbit, drift, punch), `shake`, `slow` (slow motion).
-  The camera (`lab/films/camera.ts`) fits the subjects to the screen it is on, keeps the scene's side of the line, is
+  The camera (`src/film/camera.ts`) fits the subjects to the screen it is on, keeps the scene's side of the line, is
   placed for where people are at the shot's end (a walk ends in the picture), and leaves out every wall between it and
   them (`stage3d.ts`, wild walls).
-- **Acting**: `do` — `pose` (`lab/films/poses.ts`: talk, laugh, point, snap, carry, surprise, count, shake, wave, shrug,
+- **Acting**: `do` — `pose` (`src/film/poses.ts`: talk, laugh, point, snap, carry, surprise, count, shake, wave, shrug,
   slump, cheer, box, cool, type, freeze), `to` (walk a way, feet planted), `face`, `put`, `off`. Speakers nod by
   themselves. Faces do not move: bodies act.
 - **Lines**: `say` — at most 38 characters, the speaker's name over them on screen, `mood` (flat, smug, shock, warm,
   sad, cool: the player's last laugh is `cool`). `lint(film)` counts what breaks FILM.md's numbers.
-- **Sound**: `hear` — `music` (`muzak`, `tension`, `beat`, or `'stop'`) and `sting`s (`lab/films/score.ts`, composed
+- **Sound**: `hear` — `music` (`muzak`, `tension`, `beat`, or `'stop'`) and `sting`s (`src/film/score.ts`, composed
   as it plays; coins, till and level are the game's own `farmSound`).
 - **Props** (`case`, `box`, `banner`, `screen`, `lights`, `goods`) and **effects** (`flash`, `glint`, `glow`, `sparkle`,
   `confetti`, `coins`, `tag`: one of the game's chips, a price).
 
-## The player (`lab/films/`)
+## The player (`src/film/`, `src/ui/Film.tsx`)
 
-`Player.tsx` (the 3D view, the letterbox, the bubbles, captions, effects, Skip from the first second, sound, the end
-card with Watch again and Continue) · `stage3d.ts` (the set from the game's models, the cast on `PersonRig`s in one
-crowd, the props, the day's light from `DAY`) · `stage.ts` (where everyone is at a moment: pure, from the start) ·
-`camera.ts` · `poses.ts` · `score.ts` · `format.ts` (types, the timeline, `lint`). Keep it small: add a pose, a sting
-or a kind of shot when a film needs it, once, for every film.
+`stage3d.ts` (the set from the game's models, the cast on `PersonRig`s in one crowd, the props, the day's light from
+`DAY`) · `stage.ts` (where everyone is at a moment: pure, from the start) · `camera.ts` · `poses.ts` · `score.ts` ·
+`format.ts` (types, the timeline, `lint`) · `run.ts` (a film playing: its clock and sound) · `cast.ts` (looks and
+voices) · `src/ui/Film.tsx` (the letterbox, the bubbles, captions, effects, Sound, Skip from the first second, the end
+card as progress with Watch again and Continue). The game plays a film on its own canvas when its moment asks
+(`films.ts`: `askFilm`, its table in `story.ts`; `StoryFilm.tsx`), the lab in `lab/films/Player.tsx`. Keep it small: add
+a pose, a sting or a kind of shot when a film needs it, once, for every film.
 
 ## How you work
 
 1. **Log** each step's start and end, with the time, in `lab/films/progress.md` (one line each).
-2. Write the turn, the logline and the beats (FILM.md); then the shots in a film file (`lab/films/<film>.ts`).
+2. Write the turn, the logline and the beats (FILM.md); then the shots in a film file (`src/film/<film>.ts`).
 3. **A board** in the lab: `node scripts/lab-new.mjs film-<name> "סרט: …" --kind film --screen <map screen>` (its
    `kind` is `film`, its icon in the sandbox; a new round sets its `added` to now, so it waits for the user again); its states are
    moments to start from (`{ from: seconds }`, e.g. the whole film, the reveal, the ending); a variant a take (two
@@ -92,28 +94,24 @@ or a kind of shot when a film needs it, once, for every film.
    from the game. Only what the user approves goes into the game.
 
 Other agents work in the lab at the same time: never touch another board or `lab/CRAFT.md`; `lab/boards.ts` only
-through `lab-new.mjs`. No game file under `src/` changes while a film is a reference. Packages: `npm install
+through `lab-new.mjs`. No game file under `src/` changes for a film still a reference but its own data file in `src/film/` (not played
+anywhere until its moment asks for it). Packages: `npm install
 --ignore-scripts --save-exact <pkg>@<version>` (a version at least two weeks old), and say why.
 
 ## From the lab into the game (when a film is approved)
 
-The lab plays a film on a set of its own; the game would play it in the scene it already draws:
+Done once for the first film (round 4 of `film-supermarket`); a new film only needs its moment:
 
-- **Code**: `format.ts`, `stage.ts`, `poses.ts`, `camera.ts`, `score.ts` move to `src/film/` as they are (pure but for
-  three's vectors and WebAudio); the overlay (`Player.tsx`'s bubbles, bars, end card) to `src/ui/Film.tsx` with its
-  CSS, by the interface designer's rules (tokens, glyphs: add the speaker icons to `src/ui/glyphs.ts`).
-- **The stage**: no set of its own — the game's market, lights, sign and goods are already drawn. The film player only
-  takes the camera (the player's camera rig set aside), hides the HUD (`data-hud`), pauses input, and poses the cast:
-  rigs written into the people crowd (`crowdGuests`, `src/farm/Visitors.tsx`), the manager and the contractor the
-  game's own walkers (`managerNow`, `contractorNow`) held by the film while it plays. Wild walls become the visibility
-  pass's business (`src/lib/visibility`): a film camera is one more view for `05-budget` and `16-view`.
-- **What src must export**: `steadyLook`/`MANAGER_DRESS`/`CONTRACTOR_DRESS` (`src/farm/state.ts`), the sign's picture
-  (`signTexture`, `src/farm/Market.tsx`), the day's tints (`NOON`, `TINT`, `src/scene/Lighting.tsx`); the props (the
-  briefcase, the box, the banner) become models in `src/models` with their gallery entries and checks.
-- **When it plays**: the moment's own function opens it (`buyMarket()` → the film, then the game's toast and XP as
-  today); a mission (`src/farm/goals.ts`) may name a film to open when done. Seen films are kept in the save
-  (`farm.films`, converted by `load()`), so each plays once and can be watched again from a menu; Skip always lands on
-  the end card.
+- **Where it plays**: on the game's own canvas, the way the drive's film does (`src/film/DriveFilm.tsx`): the screen
+  fades to dark, the film's stage is made and compiled, the game's frame loop is held (the farm catches up after) and
+  the film draws on the same renderer; at its end (or a tap, Esc) the screen fades again and the end card pops over the
+  game. Whatever fails lands on the end card and gives the game back.
+- **When it plays**: the moment's own act asks for it once it is done (`askFilm` in `src/film/films.ts`; the shop's
+  card calls `buyShop`, which buys and then asks): the coins, XP and toast happen as always, the film only shows them.
+  A film asked for plays once and nothing of it is saved. A new film: its data file, its id in `FilmId` and `FILMS`
+  (`story.ts`), and one `askFilm` where its moment is; a unit test beside it (`films.test.ts`).
+- **Budget**: the film's frames are its own scene, not the game's walk (`__home.story.cost()` per shot, ?debug: the shop
+  film draws at most ~85 draws and ~110k triangles a frame).
 
 ## Downloaded code
 

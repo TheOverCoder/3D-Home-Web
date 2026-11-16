@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { farmSound, uiClick } from '../audio/sound'
+import { buyShop } from '../film/films'
 import { playGesture } from '../lib/gestures'
 import { useHome } from '../store'
 import { ItemPic } from '../ui/ItemPic'
@@ -12,7 +13,7 @@ import { iconUrl } from './icons'
 import { priceOf } from './prices'
 import { ContractorLink, KeepTag } from './ContractorPanel'
 import { LadderRow } from './Ladder'
-import { buyMarket, clockText, emptyPlace, farm, fillPlace, ladderLevel, ladderMaxed, ladderOpen, orderAt, sellAllToManager, sellToManager, setPlacePrice, useFarm } from './state'
+import { clockText, emptyPlace, farm, fillPlace, ladderLevel, ladderMaxed, ladderOpen, orderAt, sellAllToManager, sellToManager, setPlacePrice, useFarm } from './state'
 
 // The supermarket's panels: the manager's (what he pays for each good you have, his rate and its ladder, buying the
 // shop), your shop's computer once it is yours (each place on the shelves with its good, how many, its price and the
@@ -392,7 +393,8 @@ export function MarketPlacePanel({ place }: { place: number }) {
 }
 
 /** The card that asks before the shop is bought: what you get, Not now, and Buy with its price (it arms after a
- *  moment). Bought, the panel closes: the manager waves and walks off, and the computer is yours. */
+ *  moment). Bought, the panel closes and the shop's film plays; the manager waves and walks off, and the computer is
+ *  yours. */
 export function MarketBuyPanel() {
   useFarm((s) => s.rev)
   const close = useHome((s) => s.closePanel)
@@ -401,7 +403,8 @@ export function MarketBuyPanel() {
   const ready = ladderMaxed('rate') && !farm.market.owned
   const afford = ready && farm.coins >= price
   const confirm = () => {
-    if (!armed || !buyMarket()) return
+    // (bought, its film plays: src/film/films.ts)
+    if (!armed || !buyShop()) return
     playGesture('interact')
     close()
   }

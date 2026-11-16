@@ -124,6 +124,10 @@ against it before it is shown.
   cannot show that. [In-engine cinematics][engine]
 - **Emotion first.** Decide what the player should feel at each beat (doubt, suspense, triumph, a laugh); camera,
   light, sound and timing all serve it. [Blizzard on cinematics][blizzard]
+- **The end card is progress, not a receipt.** The level bar fills from where it was with the XP the moment gave (a
+  level crossed is a show of its own: the bar flashes, the badge pops), what is theirs now comes in one by one, and
+  what it opens next is named — each part a beat after the last, within a second and a half, then two buttons. The
+  user asked for it (round 4: "a sense of progress"). [Achievement pop-ups][xbox] · [show the next reward][next]
 
 ## 7. On a phone, in a game
 
@@ -145,13 +149,15 @@ end card.
 
 ## How a film is made here
 
-A film is data (`lab/films/format.ts`): its cast (the people engine's looks, and their voices: `lab/films/voice.ts`,
-read aloud by `lab/films/speak.ts`), its set (the game's own rows), its shots (what they frame, from where, how big, at
-what angle, how the camera moves),
-its lines, its moves and its cues. The player (`lab/films/Player.tsx`) plays any film from that data on the game's own models
-(`src/models/person.ts`, `src/models/market.ts`, `src/models/goods.ts`) and the game's own sound engine, framing each
-shot for the screen it is on, and leaving out the walls in the camera's way. A new film is a new data file; a change
-to the game's people or places needs no change to the films.
+A film is data (`src/film/format.ts`): its cast (the people engine's looks, and their voices: `src/film/voice.ts`,
+read aloud by `src/film/speak.ts`), its set (the game's own rows), its shots (what they frame, from where, how big, at
+what angle, how the camera moves), its lines, its moves and its cues. Its stage (`src/film/stage3d.ts`) plays any film
+from that data on the game's own models (`src/models/person.ts`, `src/models/market.ts`, `src/models/goods.ts`), its
+clock and sound (`src/film/run.ts`) on the game's own sound engine, framing each shot for the screen it is on and
+leaving out the walls in the camera's way; the overlay and the end card are the game's (`src/ui/Film.tsx`). The game
+plays it on its own canvas when its moment asks (`src/film/films.ts`, `StoryFilm.tsx`), the lab in a view of its own
+(`lab/films/Player.tsx`). A new film is a new data file; a change to the game's people or places needs no change to
+the films.
 
 Why this and not a library: Remotion's Player would play a composition in the browser, but its licence asks companies
 of four or more for a paid company licence, and it is made for videos, not for a game's own 3D scene. Theatre.js keys
@@ -194,3 +200,5 @@ the camera, the people engine for the cast, Motion for the overlay, a procedural
 [short]: https://neiloseman.com/introduction-short-key-lighting/
 [cry]: https://www.cryengine.com/docs/static/engines/cryengine-3/categories/1114113/pages/15011053
 [rig]: https://docs.blender.org/manual/en/4.0/addons/rigging/rigify/bone_positioning.html
+[xbox]: https://www.thexboxhub.com/the-achievement-pop-up-effect-when-xbox-rewards-start-feeling-like-mini-jackpots/
+[next]: https://screensdesign.com/articles/mobile-app-loyalty-rewards-design-examples/

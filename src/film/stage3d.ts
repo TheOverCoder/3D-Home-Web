@@ -26,88 +26,43 @@ import {
   Vector3,
   type BufferGeometry,
   type ShaderMaterial,
+  type WebGLRenderer,
 } from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import { Sky } from 'three-stdlib'
-import { LANE, SUN } from '../../src/data/layout'
-import { BACK, BAYS, HALL, LOT, MANAGER_SPOT, MARKET_WALKIN } from '../../src/data/market'
-import { DAY, LADDERS, MANAGER, SHOP, type DayPhase, type ProduceId } from '../../src/farm/data'
-import { treeSpots } from '../../src/farm/landGeometry'
-import { defaultLayout } from '../../src/farm/layout'
-import { managerPct } from '../../src/farm/market'
-import { MarketGoods } from '../../src/farm/marketGoods'
-import { DEFAULT_OUTFIT, outfitLook } from '../../src/farm/outfit'
-import type { Parts } from '../../src/lib/sculpt'
-import { CONTRACTOR_LOOK, MANAGER_LOOK, rollLook } from '../../src/models/look'
-import { MARKET_SCREEN, MARKET_SIGN, marketFittingsParts, walkInShellParts } from '../../src/models/market'
-import { PERSON, PersonRig, personParts, type PersonLook } from '../../src/models/person'
-import { putSlidingDoor, slidingDoorParts } from '../../src/models/slidingDoor'
-import { random } from '../../src/lib/sculpt'
-import { surface } from '../../src/lib/proceduralTextures'
-import { tree } from '../../src/scene/flora'
+import { LANE, SUN } from '../data/layout'
+import { BACK, BAYS, HALL, LOT, MANAGER_SPOT, MARKET_WALKIN } from '../data/market'
+import { DAY, LADDERS, MANAGER, SHOP, type DayPhase, type ProduceId } from '../farm/data'
+import { treeSpots } from '../farm/landGeometry'
+import { defaultLayout } from '../farm/layout'
+import { managerPct } from '../farm/market'
+import { MarketGoods } from '../farm/marketGoods'
+import { DEFAULT_OUTFIT, type Outfit } from '../farm/outfit'
+import type { Parts } from '../lib/sculpt'
+import { MARKET_SCREEN, MARKET_SIGN, marketFittingsParts, walkInShellParts } from '../models/market'
+import { PERSON, PersonRig, personParts } from '../models/person'
+import { putSlidingDoor, slidingDoorParts } from '../models/slidingDoor'
+import { surface } from '../lib/proceduralTextures'
+import { tree } from '../scene/flora'
 import { shotCamera, type Subject } from './camera'
-import { lineAt, shotAt, type Film, type Look, type Timeline } from './format'
+import { lookOf } from './cast'
+import { lineAt, shotAt, type Timeline } from './format'
 import { poseRig } from './poses'
 import { looksAtFarm, THINGS_AT, WILD } from './set'
 import { memberAt, propAt, type MemberNow, type PropNow } from './stage'
-import { speakingAt, voiceOfLook, VOICES, type Speech, type Voice } from './voice'
+import { speakingAt, type Speech } from './voice'
 
 // The film's stage in three.js: the market built from the game's own models and rows (its shell, fittings, goods,
 // sliding door and sign), the cast on the people engine's rigs (one crowd, one draw a part), the props, the light of
 // the scene's time of day (the game's DAY table, turned as the game's Lighting.tsx turns it), and the camera of the
 // shot. Round the market, the part of the world that is the same on every farm: the game's sky and haze, its lawn, the
 // lane, and the woods on the market's side of the lane (no field the player buys ever moves them). The player's own
-// farm lies across the lane; the films never turn to it (`looksAtFarm`, ./set.ts), so the lab shows no farm that is
-// not theirs — in the game, a film plays in the scene the game already draws, and whatever is there is theirs. While a
+// farm lies across the lane; the films never turn to it (`looksAtFarm`, ./set.ts), so neither the lab nor the game shows
+// a farm that is not theirs (the game plays it on this stage too, on its own renderer: ./StoryFilm.tsx). While a
 // scene talks, the shots on people have a light of their own (a film's key and rim, `portrait`). `frame(t)` puts
 // everything where the film has it at t; it keeps no state of its own between frames but what it built, so any moment
 // can be drawn at once.
-
-// ───────────────────────────── the people ─────────────────────────────
-
-/** The game's fixed characters are rolls on fixed dice (src/farm/state.ts, steadyLook): the same dice here. */
-function steadyLook(seed: number, overrides: Partial<PersonLook>) {
-  let a = seed
-  const dice = () => {
-    a = (a * 16807) % 2147483647
-    return a / 2147483647
-  }
-  return rollLook(dice, overrides)
-}
-
-/** The player as the people engine draws them: what they wear (src/farm/outfit.ts), their own hair and skin. */
-function playerLook(): PersonLook {
-  const o = outfitLook(DEFAULT_OUTFIT)
-  return {
-    sex: 'm',
-    shirt: o.shirt,
-    trousers: o.trousers,
-    skin: '#e0ac87',
-    hair: '#2b2017',
-    hairStyle: 0,
-    hat: o.hat?.kind ?? false,
-    hatBand: o.hat?.colour,
-    height: 1,
-    basket: false,
-    eyes: '#4a2f1e',
-  }
-}
-
-export function lookOf(look: Look): PersonLook {
-  if (look === 'player') return playerLook()
-  if (look === 'manager') return steadyLook(1723, MANAGER_LOOK)
-  if (look === 'contractor') return steadyLook(9157, CONTRACTOR_LOOK)
-  return { ...rollLook(random(look.roll)), basket: false }
-}
-
-/** Each cast member's voice (./voice.ts): the game's own for its fixed characters, else one from their look, tuned by
- *  what the film gives. */
-export function voicesOf(film: Film): Record<string, Voice> {
-  return Object.fromEntries(
-    Object.entries(film.cast).map(([id, m]) => [id, { ...(m.look === 'manager' ? VOICES.manager : m.look === 'contractor' ? VOICES.contractor : voiceOfLook(lookOf(m.look))), ...m.voice }]),
-  )
-}
 
 // ───────────────────────────── light ─────────────────────────────
 
@@ -483,6 +438,7 @@ export class FilmStage {
   private lamp = new SpotLight('#ffd9a8', 5, 6, 0.75, 0.6, 2)
   private door = MARKET_WALKIN.autoDoor!
   private leaves = slidingDoorParts(this.door)
+  private fittings = marketFittingsParts()
   private goods = new MarketGoods()
   private filled = -1
   private sign: Mesh
@@ -498,9 +454,11 @@ export class FilmStage {
   private hand = new Vector3()
   private dir = new Vector3()
 
+  /** `outfit`: what the player wears in it (the game's save; the lab's, the one every farm starts in) */
   constructor(
     private tl: Timeline,
     private speech: Speech[] = [],
+    private outfit: Outfit = DEFAULT_OUTFIT,
   ) {
     const film = tl.film
     // the sky, the lawn, the lane and the woods; the lot's gravel, the rooms' tiles
@@ -531,7 +489,7 @@ export class FilmStage {
       this.root.add(floor)
     }
     // the market's fittings, its goods, its sliding door
-    this.root.add(marketFittingsParts().group, this.goods.group, this.leaves.group)
+    this.root.add(this.fittings.group, this.goods.group, this.leaves.group)
     // the sign, the banner over it, the computer's screen, the shop window lit from inside
     const signMap = signPicture()
     this.sign = new Mesh(
@@ -559,7 +517,7 @@ export class FilmStage {
     this.people = personParts(ids.length)
     this.root.add(this.people.group)
     ids.forEach((id, i) => {
-      const rig = new PersonRig(lookOf(film.cast[id].look))
+      const rig = new PersonRig(lookOf(film.cast[id].look, this.outfit))
       this.cast.push({ id, rig, hipsY: rig.hips.position.y, seed: i * 1.7 + 0.4 })
     })
     this.root.add(this.case.outer, this.box)
@@ -625,7 +583,7 @@ export class FilmStage {
     const c = this.cast.find((x) => x.id === name)
     if (c) {
       const m = now.get(name)!
-      const h = (lookOf(this.tl.film.cast[name].look).height ?? 1) * HEAD
+      const h = (lookOf(this.tl.film.cast[name].look, this.outfit).height ?? 1) * HEAD
       if (live) c.rig.head.localToWorld(this.head.copy(SKULL))
       return { x: m.x, y: 0, z: m.z, head: live ? this.head.y + 0.02 : h, h: h + 0.15, w: 0.55, heading: m.heading, person: true }
     }
@@ -859,7 +817,26 @@ export class FilmStage {
     }
   }
 
+  /** Compiles every shader the film draws with (the props and walls it shows later included), before its first frame:
+   *  nothing stalls once it plays (in parallel where the browser can). */
+  async compile(gl: WebGLRenderer, scene: Object3D, camera: PerspectiveCamera) {
+    const hidden: Object3D[] = []
+    this.root.traverse((o) => {
+      if (!o.visible) hidden.push(o)
+    })
+    for (const o of hidden) o.visible = true
+    try {
+      await gl.compileAsync(scene, camera)
+    } catch {
+      /* (compiled as it draws instead) */
+    } finally {
+      for (const o of hidden) o.visible = false
+    }
+  }
+
   dispose() {
+    // the crowds out of the game's list of those in a scene (src/lib/sculpt/parts.ts, liveParts), then every shape
+    for (const p of [this.people, this.fittings, this.leaves, ...this.shells.values()]) p.dispose()
     this.root.traverse((o: Object3D) => {
       const mesh = o as Mesh
       mesh.geometry?.dispose?.()

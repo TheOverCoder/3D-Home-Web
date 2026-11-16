@@ -7,7 +7,7 @@
 // each picture is that moment exactly, however slow the machine), one sheet per screen, and the film's lint (lab/FILM.md
 // rules that can be counted). Effects that fire at a moment (a flash, a glint) are passed by a seek: watch those with
 // scripts/lab-film.mjs. Each moment also says when the camera looks across the lane at the farm (a film never does:
-// lab/films/set.ts, looksAtFarm). The second: the score rendered offline (lab/films/score.ts, render: the music, the
+// src/film/set.ts, looksAtFarm). The second: the score rendered offline (src/film/score.ts, render: the music, the
 // voices and the stings) and its loudness every half second, so a cue too quiet, a voice lost under the music or a
 // drop too loud shows without listening; --wav writes it to a file to listen to. The game's own sounds (coins, the
 // till, a level) are not in it.
@@ -30,10 +30,9 @@ try {
     await ready(page)
     await page.waitForFunction(() => window.__filmPlayer, null, { timeout: 60_000 })
     const { rows, pcm } = await page.evaluate(async (wav) => {
-      const { render } = await import('/films/score.ts')
       const p = window.__filmPlayer
       const rate = 22050
-      const d = (await render(p.timeline, p.speech, p.voices, rate)).getChannelData(0)
+      const d = (await p.render(rate)).getChannelData(0)
       // who speaks in each half second
       const who = (a, b) => [...new Set(p.speech.filter((s) => s.t < b && s.t + s.u.length > a).map((s) => s.who))].join(' ')
       const out = []
