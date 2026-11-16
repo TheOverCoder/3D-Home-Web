@@ -18,7 +18,7 @@ beforeEach(() => {
 const DOING: Record<StepId, (f: FarmData) => void> = {
   plant: (f) => void f.planted.push('lettuce'),
   eggs: (f) => void (f.got.egg = 1),
-  water: (f) => void Object.assign(f.stats, { watered: 1 }),
+  water: (f) => void (f.stats.watered = 1),
   harvest: (f) => void (f.got.lettuce = 4),
   sell: (f) => void (f.stats.sold = 4),
   shear: (f) => void (f.got.wool = 1),

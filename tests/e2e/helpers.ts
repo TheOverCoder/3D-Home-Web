@@ -195,6 +195,9 @@ export async function openGame(browser: Browser, counting = false): Promise<{ ga
         h.farm?.unlocks?.all?.(true)
         // the daily gift out of the way: it would open over a test by itself once a day (35-daily tests it)
         h.farm?.daily?.quiet?.(true)
+        // a new farm's first steps quiet (src/farm/firstSteps.ts), as a ?debug page starts: a spec that turned them on
+        // (37-first-steps) leaves them quiet for the next
+        h.farm?.steps?.quiet?.(true)
       }, map)
     },
   }

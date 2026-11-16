@@ -3,11 +3,13 @@
 // place to another takes time (as far as a player runs, round what stands in the way), and so does each press. What it
 // keeps: the minute each level is reached, the coins as play goes on, what was bought and when, and every stretch with
 // nothing useful to do. Events are off (they are under Vitest); the levels' locks are on, as in play (src/farm/unlocks.ts:
-// what a level has not opened is not bought, planted or queued); the daily gift is claimed as it opens and each level's
-// gift boxes are opened as they are reached, as a player would. Run it under happy-dom (the farm keeps its save).
+// what a level has not opened is not bought, planted or queued); the first steps run (src/farm/firstSteps.ts: their
+// coins are paid as the player does them, and the daily gift waits for them); the daily gift is claimed as it opens
+// and each level's gift boxes are opened as they are reached, as a player would. Run it under happy-dom (the farm keeps
+// its save).
 
 import { LEVELS } from '../farm/data'
-import { farm, resetFarm, setDailyClock, setEventClock, setRandom, tick, unlockAll } from '../farm/state'
+import { farm, quietSteps, resetFarm, setDailyClock, setEventClock, setRandom, tick, unlockAll } from '../farm/state'
 import { levelOf } from '../farm/xp'
 import { nextMove, onTheWay, type Spot } from './policy'
 
@@ -76,6 +78,7 @@ export function simulate(opts: { minutes: number; seed?: number; until?: number;
   setEventClock(null)
   setDailyClock(() => DAY)
   unlockAll(opts.open ?? false)
+  quietSteps(false)
   try {
     resetFarm()
     const run: SimRun = { seed, open: opts.open ?? false, minutes: 0, levelAt: [undefined, 0], samples: [], gaps: [], longest: { seconds: 0, minute: 0 }, bought: [], moves: {} }
@@ -135,7 +138,8 @@ export function simulate(opts: { minutes: number; seed?: number; until?: number;
     Math.random = random
     setRandom(null)
     setDailyClock(null)
-    // (everything open again: the tests' default)
+    // (everything open again, and the steps quiet: the tests' default)
     unlockAll(true)
+    quietSteps(true)
   }
 }

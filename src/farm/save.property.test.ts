@@ -41,6 +41,7 @@ import { offersPerDay } from './contractor'
 import { FIRST_STEP, levelOf, levelProgress } from './xp'
 import { BOX_COUNT, CAME_KEPT, PER_LEVEL, boxAt, boxesReached } from './gifts'
 import { EVENT_IDS, LUCKY_GOODS, SEEN_KEPT } from './events'
+import { FIRST_STEPS } from './firstSteps'
 import { QUEUE, machineLevel } from './machineView'
 import { garmentById, garmentsAt } from './outfit'
 import { sanitizeLook } from '../models/look'
@@ -76,7 +77,7 @@ const cropIds: string[] = CROPS.map((c) => c.id)
 const isCrop = (v: unknown): v is CropId => cropIds.includes(v as string)
 /** A kind of furniture of the catalogue (not the game's own isPieceType: the rules here do not lean on the code they test). */
 const isKind = (v: unknown) => (PIECE_TYPES as string[]).includes(v as string)
-const STATS = ['harvested', 'sold', 'earned', 'declined', 'baked', 'sent']
+const STATS = ['harvested', 'sold', 'earned', 'declined', 'baked', 'sent', 'watered']
 
 // ───────────────────────────── what a value can be turned into ─────────────────────────────
 
@@ -291,7 +292,7 @@ function farmProblems(): string[] {
   bad('nextVisitorIn', isWithin(farm.nextVisitorIn, 0, arrivalSeconds()))
   bad('planted: crops, once each', farm.planted.every(isCrop) && unique(farm.planted))
   bad('made: goods, once each', farm.made.every((id) => produceIds.includes(id)) && unique(farm.made))
-  bad('stats: the six', sameKeys(farm.stats, STATS))
+  bad('stats: the seven', sameKeys(farm.stats, STATS))
   for (const [k, n] of Object.entries(farm.stats)) bad(`stats.${k}`, isCount(n))
   // what the farm has got by its work: a count for each good; the goals: a step for each, from 0
   bad('got: each good', sameKeys(farm.got, produceIds) && Object.values(farm.got).every((n) => isCount(n)))
@@ -399,6 +400,8 @@ function farmProblems(): string[] {
         e.draw.goods.every((g) => sellable.includes(g))),
   )
   bad('events.seen', e.seen.length <= SEEN_KEPT && unique(e.seen) && e.seen.every((k) => typeof k === 'string' && EVENT_IDS.includes(k.split('@')[0] as never) && date(k.split('@')[1])))
+  // the first steps: the step it is on, from the first to past the last, and whether they are over
+  bad('firstSteps', sameKeys(farm.firstSteps, ['step', 'over']) && isCount(farm.firstSteps.step, FIRST_STEPS.length) && typeof farm.firstSteps.over === 'boolean')
   return out
 }
 

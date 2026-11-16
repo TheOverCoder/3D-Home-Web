@@ -148,6 +148,7 @@ import {
 } from './layout'
 import { FRUIT, FRUIT_KINDS, SHOP as FARM_SHOP, nextPrice, type FruitKind, type ShopItemView, type ShopKind } from './decor'
 import { lockedAt, machineOpensAt, opensAt, recipeUnlock, type UnlockId } from './unlocks'
+import { advance, currentStep, sanitizeSteps, skipped, stepsFresh, type StepDef, type StepsRecord } from './firstSteps'
 import { PIECES, type PieceType } from '../home/catalogue'
 import { canMoveOpening, canPlacePiece, defaultHome, findFreeSpot, sanitizeHome, type HomeFit, type HomeLayout, type HomePiece } from '../home/layout'
 import { floorById, paintById, type OpeningAt } from '../home/shell'
@@ -226,7 +227,8 @@ export interface FarmData {
   started: boolean // the player has planted something: from then on buyers come by
   planted: CropId[] // kinds ever planted: buyers ask for what you grow
   made: ProduceId[] // everything the farm has ever produced: buyers ask for that too
-  stats: { harvested: number; sold: number; earned: number; declined: number; baked: number; sent: number }
+  /** counts of what the player has done (`watered`: beds watered, from the first steps on; 0 on a farm from before) */
+  stats: { harvested: number; sold: number; earned: number; declined: number; baked: number; sent: number; watered: number }
   /** every good the farm has got by its work: harvested, collected, made, found as a surprise (the goals count it) */
   got: Record<ProduceId, number>
   /** the goals board: the step each goal is on (src/farm/goals.ts) */
@@ -266,6 +268,8 @@ export interface FarmData {
   apartment: { owned: boolean }
   /** the week's events (src/farm/events.ts): the lucky draw of its day, and the events the farm news has shown */
   events: EventsRecord
+  /** a new farm's first steps (src/farm/firstSteps.ts): the step it is on, and whether they are over */
+  firstSteps: StepsRecord
 }
 
 /** The two maps: the farm, and the house you buy and drive to. */
@@ -320,7 +324,7 @@ function fresh(): FarmData {
     started: false,
     planted: [],
     made: [],
-    stats: { harvested: 0, sold: 0, earned: 0, declined: 0, baked: 0, sent: 0 },
+    stats: { harvested: 0, sold: 0, earned: 0, declined: 0, baked: 0, sent: 0, watered: 0 },
     got: emptyInv(),
     goals: Object.fromEntries(GOAL_IDS.map((id) => [id, 0])) as Record<GoalId, number>,
     visitors: [],
@@ -342,6 +346,7 @@ function fresh(): FarmData {
     place: 'farm',
     apartment: { owned: false },
     events: freshEvents(),
+    firstSteps: stepsFresh(),
   }
 }
 
@@ -610,6 +615,8 @@ function load(text: string | null = readRaw(KEY)): { data: FarmData; savedAt: nu
     data.gifts = sanitizeGifts(raw.gifts, data.xp.points)
     // the daily gift: as saved (a farm from before it has never claimed one; one that cannot be read has taken today's)
     data.daily = sanitizeDaily(raw.daily, calendarDay())
+    // the first steps: as saved (a farm from before them has done them: it never sees them)
+    data.firstSteps = sanitizeSteps(raw.firstSteps)
     // the clothes: as saved, each one the wardrobe has at the farm's level (a farm from before it: what it always wore)
     data.outfit = sanitizeOutfit(raw.outfit, levelOf(data.xp.points))
     // the ladders, the market, the contractor and the day (a farm from before them: as on a new farm)
@@ -897,6 +904,7 @@ export function water(i: number) {
   // XP only for a bed that needed it: under half its water
   if (b.water < fullWater(b.crop) / 2) gainXp('water', 1, bedAt(i))
   b.water = fullWater(b.crop)
+  farm.stats.watered++
   bump()
   save()
   return true
@@ -2192,10 +2200,50 @@ export function tick(dt: number) {
   runShop(dt)
   runDay(dt)
   neverStuck()
+  stepsOn()
   if (stageKey() !== before) {
     bump()
     save()
   }
+}
+
+// ───────────────────────────── a new farm's first steps ─────────────────────────────
+
+/** The first steps (src/farm/firstSteps.ts) are quiet — nothing shown, passed or paid — until their hint is in the game
+ *  (plans/first-hour.md, C3): everywhere until then. From then: they run on the game's own pages; under Vitest and on
+ *  a ?debug page unless it says &steps=on, they are quiet until a test turns them on. */
+const stepsQuietByDefault = () => true
+let stepsQuiet = stepsQuietByDefault()
+/** For the tests and the simulation: the steps quiet (true), or running as on a new farm's own pages (false). */
+export function quietSteps(on: boolean) {
+  stepsQuiet = on
+  bump()
+}
+/** The step to show now (null: over, or quiet). */
+export const stepNow = () => (stepsQuiet ? null : currentStep(farm.firstSteps))
+/** They are running: the daily gift waits for them. */
+export const stepsBusy = () => !stepsQuiet && !farm.firstSteps.over
+/** The steps passed and not shown yet (the hint's ✓ takes them). */
+const passedNow: StepDef[] = []
+export const takePassed = () => passedNow.splice(0)
+/** Skipped from the hint: over, nothing more paid. */
+export function skipSteps() {
+  farm.firstSteps = skipped(farm.firstSteps)
+  bump()
+  save()
+}
+/** Passes the steps the farm has done, paying each one's reward (coins, or goods into their building past full; no XP:
+ *  a reward is not something done). Each frame, from `tick`: whatever function changed the farm's numbers, they are
+ *  read a frame later. The record is saved as it pays, so a step is never paid twice. */
+function stepsOn() {
+  if (stepsQuiet || farm.firstSteps.over) return
+  const { rec, passed } = advance(farm.firstSteps, farm)
+  if (rec === farm.firstSteps) return
+  for (const step of passed) give(step.reward)
+  farm.firstSteps = rec
+  passedNow.push(...passed)
+  bump()
+  save()
 }
 
 // ───────────────────────────── the goals board ─────────────────────────────
@@ -2334,8 +2382,9 @@ export function quietDaily(on: boolean) {
 export const dailyNow = (): DailyView => dailyView(farm.daily, calendarDay(), levelOf(farm.xp.points))
 
 /** Today's gift waits for the player: it can be claimed, on a farm that has begun (one that has planted: a new farm's
- *  first minutes are for learning to play), and it is not put out of the way. The menu in the corner shows it then. */
-export const dailyWaiting = () => !dailyQuiet && farm.started && dailyStatus(farm.daily, calendarDay()).ready
+ *  first minutes are for learning to play) and is through its first steps, and it is not put out of the way. The menu
+ *  in the corner shows it then. */
+export const dailyWaiting = () => !dailyQuiet && farm.started && !stepsBusy() && dailyStatus(farm.daily, calendarDay()).ready
 
 /** Today's gift opens by itself: it waits, and it has not opened by itself today (it does once a day, then only from
  *  the menu). */
@@ -3282,6 +3331,8 @@ export function resetFarm() {
   const f = fresh()
   Object.assign(farm, f)
   forgetWalkers()
+  // (the steps passed on the farm before are not this one's to show)
+  takePassed()
   lastAway = null
   saveNow()
   bump()
@@ -3345,6 +3396,7 @@ export function switchSlot(n: Slot) {
   if (panel) useHome.getState().closePanel()
   // what happened on the farm left behind is not this one's
   lastAway = null
+  takePassed()
   resumeFrom(l)
   bump()
 }
@@ -3395,6 +3447,8 @@ export function importSlot(n: Slot, text: string): { ok: true } | { ok: false; e
     Object.assign(farm, l.data)
     farm.visitors = []
     forgetWalkers()
+    // (the steps passed on the farm before are not this one's to show)
+    takePassed()
     resumeFrom(l)
     bump()
   }
