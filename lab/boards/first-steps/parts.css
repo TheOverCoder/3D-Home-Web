@@ -1,0 +1,35 @@
+/* The "first-steps" board's shared pieces (./parts.tsx): the top column under the dashboard, the lab's stand-in and
+   note, the last card's sum. Every rule under a class of the board's own (.v-first-steps-…). */
+
+/* the top column under the dashboard (src/ui/TopStack.tsx): the toast, the level-up, the first hint, then the step */
+.v-first-steps-col {
+  position: fixed;
+  z-index: 12;
+  left: 0;
+  right: 0;
+  top: calc(max(10px, env(safe-area-inset-top)) + 164px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding-inline: 12px;
+  pointer-events: none;
+}
+@media (orientation: landscape) {
+  .v-first-steps-col { top: calc(max(10px, env(safe-area-inset-top)) + 68px); }
+}
+
+/* the lab's stand-in for doing the step (the top board's sale stand-in, its look) */
+.v-first-steps-do .art { width: 34px; height: 34px; }
+.v-first-steps-do:disabled { opacity: 0.45; }
+.v-first-steps-note { white-space: normal; max-width: calc(100vw - 32px); text-align: center; }
+/* sideways the screen is short and the column long: the stand-in goes to the lower left, its note to the lower right */
+@media (orientation: landscape) and (max-height: 560px) {
+  .top-lab-sale.v-first-steps-do { left: calc(16px + env(safe-area-inset-left)); bottom: calc(26px + env(safe-area-inset-bottom)); translate: 0 0; }
+  .top-lab-opens.v-first-steps-note { left: auto; right: calc(16px + env(safe-area-inset-right)); bottom: calc(26px + env(safe-area-inset-bottom)); translate: 0 0; max-width: 40vw; }
+}
+
+/* the last card: its place in the column, and the sum of the coins beside "All set!" */
+.v-first-steps-final { position: relative; display: grid; justify-items: center; gap: 6px; }
+.v-first-steps-final .tag.v-first-steps-sum { background: color-mix(in srgb, var(--sun) 30%, #fff); color: var(--ink); font-size: 15px; }
+.v-first-steps-final .tag.v-first-steps-sum img { width: 20px; height: 20px; }

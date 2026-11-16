@@ -1,0 +1,78 @@
+/* A · a chip under the compass (./StepsA.tsx): the top's dark look (the compass, the gauges), the reward in sun. */
+.v-first-steps-a-hint { display: flex; align-items: center; gap: 6px; max-width: 100%; pointer-events: auto; }
+.v-first-steps-a-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: min(330px, calc(100vw - 80px));
+  min-height: 48px;
+  padding: 4px 8px 4px 5px;
+  border: 2px solid var(--night-line);
+  border-radius: 999px;
+  background: var(--night);
+  color: #fff;
+  text-align: left;
+  box-shadow: 0 3px 12px rgba(20, 12, 6, 0.32);
+  -webkit-tap-highlight-color: transparent;
+}
+.v-first-steps-a-pic { position: relative; display: grid; place-items: center; flex: none; width: 38px; height: 38px; border-radius: 50%; background: var(--paper); box-shadow: 0 0 0 2px #fff; }
+.v-first-steps-a-pic .art { width: 30px; height: 30px; }
+.v-first-steps-a-say { flex: 1 1 auto; min-width: 0; font: 600 16px/1.15 var(--font-display); }
+.v-first-steps-a-reward {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+  padding: 3px 9px 3px 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--sun) 22%, transparent);
+  color: #ffe08a;
+  font: 900 15px/1 var(--font-text);
+  font-variant-numeric: tabular-nums;
+}
+.v-first-steps-a-reward img { width: 20px; height: 20px; }
+/* done: a green tick on its picture, its rim green */
+.v-first-steps-a-tick,
+.v-first-steps-a-walk { position: absolute; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; box-shadow: 0 0 0 2px #fff; }
+.v-first-steps-a-tick { right: -5px; bottom: -5px; background: var(--leaf); color: #fff; }
+.v-first-steps-a-walk { left: -6px; top: -6px; background: var(--sun); color: var(--ink); }
+.v-first-steps-a-tick svg,
+.v-first-steps-a-walk svg { width: 12px; height: 12px; }
+.v-first-steps-a-chip.done { border-color: color-mix(in srgb, var(--leaf) 80%, #fff); }
+/* walking there: a sun rim that breathes, as the compass's mark does while you go */
+.v-first-steps-a-chip.going { border-color: var(--sun); box-shadow: 0 3px 12px rgba(20, 12, 6, 0.32), 0 0 0 4px color-mix(in srgb, var(--sun) 30%, transparent); }
+@media (prefers-reduced-motion: no-preference) {
+  .v-first-steps-a-chip.going { animation: v-first-steps-a-going 1.4s ease-in-out infinite; }
+}
+@keyframes v-first-steps-a-going { 50% { box-shadow: 0 3px 12px rgba(20, 12, 6, 0.32), 0 0 0 8px color-mix(in srgb, var(--sun) 18%, transparent); } }
+/* the ✕: quieter than the chip, a finger's size */
+.v-first-steps-a-x {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--night) 70%, transparent);
+  color: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 0 1.5px var(--night-line);
+}
+.v-first-steps-a-x svg { width: 18px; height: 18px; }
+/* the question in its place: Keep, Skip */
+.v-first-steps-a-ask {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 4px 4px 16px;
+  border: 2px solid var(--night-line);
+  border-radius: 999px;
+  background: var(--night);
+  color: #fff;
+  font: 600 16px/1.2 var(--font-display);
+  box-shadow: 0 3px 12px rgba(20, 12, 6, 0.32);
+  pointer-events: auto;
+}
+.v-first-steps-a-ask > span { white-space: nowrap; }
