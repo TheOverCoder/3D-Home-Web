@@ -6,7 +6,7 @@ import '../src/styles.css'
 import '../src/farm/Xp.css'
 import './frame.css'
 import { AnimatePresence } from 'motion/react'
-import { StrictMode, useEffect, useState, type ReactNode } from 'react'
+import { Fragment, StrictMode, useEffect, useState, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { MotionRoot } from '../src/ui/motion'
 import { BOARDS } from './boards'
@@ -56,7 +56,7 @@ function Marks({ still, wide }: { still: string; wide: boolean }) {
     const fit = () => setRoom({ w: innerWidth, h: innerHeight })
     // a touch anywhere else lights the marks up for a moment: this is what can be opened
     const elsewhere = (e: PointerEvent) => {
-      if ((e.target as Element).closest?.('.lab-spot')) return
+      if ((e.target as Element).closest?.('.lab-spot, .lab-spot-names')) return
       setHint((n) => n + 1)
       tell({ type: 'hint' })
     }
@@ -77,17 +77,36 @@ function Marks({ still, wide }: { still: string; wide: boolean }) {
   const pad = 5
   // a name near an edge of the screen hangs from that side of its ring, so it stays on the screen
   const side = (b: { left: number; width: number }) => (b.left + b.width / 2 < room.w * 0.25 ? ' start' : b.left + b.width / 2 > room.w * 0.75 ? ' end' : '')
+  // boards on the same chip share one ring, which opens the newest of them; their names, one under another, each open
+  // their own board (the level chip: its card and what a level opens; the menu: the daily gift and the news)
+  const groups = new Map<string, typeof BOARDS>()
+  for (const b of BOARDS) if (b.spot && map.spots[b.spot]) groups.set(b.spot, [...(groups.get(b.spot) ?? []), b])
   return (
     <div className={`lab-marks${hint ? ' hint' : ''}`} key={hint}>
-      {BOARDS.filter((b) => b.spot && map.spots[b.spot]).map((b) => {
-        const r = map.spots[b.spot!]
+      {[...groups].map(([spot, list]) => {
+        const r = map.spots[spot]
         // kept on the screen, whatever the still loses at its edges
         const left = Math.min(Math.max(2, ox + r.x * k - pad), room.w - 2 - (r.w * k + pad * 2))
         const box = { left, top: Math.max(2, oy + r.y * k - pad), width: r.w * k + pad * 2, height: r.h * k + pad * 2 }
+        const where = `${box.top > room.h / 2 ? ' low' : ''}${side(box)}`
+        const open = (id: string) => tell({ type: 'open', board: id })
         return (
-          <button key={b.id} className={`lab-spot${box.top > room.h / 2 ? ' low' : ''}${side(box)}`} style={box} onClick={() => tell({ type: 'open', board: b.id })} aria-label={`לפתוח: ${b.title}`}>
-            <span className="lab-spot-name">{b.title}</span>
-          </button>
+          <Fragment key={spot}>
+            <button className={`lab-spot${where}`} style={box} onClick={() => open(list[0].id)} aria-label={`לפתוח: ${list[0].title}`}>
+              {list.length === 1 && <span className="lab-spot-name">{list[0].title}</span>}
+            </button>
+            {list.length > 1 && (
+              <span className={`lab-spot-names${where}`} style={box}>
+                <span className="lab-spot-list">
+                  {list.map((b) => (
+                    <button key={b.id} className="lab-spot-name" onClick={() => open(b.id)} aria-label={`לפתוח: ${b.title}`}>
+                      {b.title}
+                    </button>
+                  ))}
+                </span>
+              </span>
+            )}
+          </Fragment>
         )
       })}
     </div>

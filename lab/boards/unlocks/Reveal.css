@@ -1,0 +1,68 @@
+/* The garment's card made general (./Reveal.tsx; the game's .garment-show in src/farm/Xp.css): paper, a white rim, the
+   sun's glow round it, a burst of light turning behind its pictures; the word in berry, a note beside it; pictures
+   in rows of --cols, each name under its picture. Every rule under .v-unlocks-reveal. */
+.v-unlocks-reveal {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  max-width: calc(100vw - 24px);
+  padding: 8px 16px 12px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 3px solid #fff;
+  border-radius: 26px;
+  box-shadow: var(--shadow-sheet), 0 0 22px 4px color-mix(in srgb, var(--sun) 55%, transparent);
+  pointer-events: none;
+}
+.v-unlocks-reveal-rays {
+  position: absolute;
+  left: 50%;
+  top: 58%;
+  width: 240px;
+  height: 240px;
+  margin: -120px 0 0 -120px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(color-mix(in srgb, var(--sun) 70%, transparent) 0 10deg, transparent 10deg 30deg);
+  -webkit-mask: radial-gradient(circle, #000 20%, transparent 70%);
+  mask: radial-gradient(circle, #000 20%, transparent 70%);
+  animation: garment-rays 3.4s linear both;
+}
+.v-unlocks-reveal-head { position: relative; display: flex; align-items: center; gap: 8px; }
+.v-unlocks-reveal-word { font: 600 20px/1.1 var(--font-display); color: var(--berry); }
+.v-unlocks-reveal-row {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 8px;
+  max-width: calc(var(--cols) * 76px + (var(--cols) - 1) * 8px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.v-unlocks-reveal-row li { display: grid; justify-items: center; align-content: start; gap: 2px; width: 76px; }
+.v-unlocks-reveal-pic { position: relative; display: grid; place-items: center; }
+.v-unlocks-reveal-pic .art { width: 56px; height: 56px; filter: drop-shadow(0 4px 4px rgba(120, 60, 10, 0.22)); }
+.v-unlocks-reveal-row b { font: 800 14px/1.15 var(--font-text); text-align: center; color: var(--ink); }
+/* the first steps' last card: the eight pictures small, each ticked */
+.v-unlocks-reveal.small .v-unlocks-reveal-row { gap: 4px; max-width: calc(var(--cols) * 34px + (var(--cols) - 1) * 4px); }
+.v-unlocks-reveal.small .v-unlocks-reveal-row li { width: 34px; }
+.v-unlocks-reveal.small .v-unlocks-reveal-pic .art { width: 30px; height: 30px; }
+.v-unlocks-reveal-done {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  display: grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: var(--leaf);
+  color: #fff;
+  box-shadow: 0 0 0 2px #fff;
+}
+.v-unlocks-reveal-done svg { width: 11px; height: 11px; }
+@media (prefers-reduced-motion: reduce) {
+  .v-unlocks-reveal-rays { display: none; }
+}

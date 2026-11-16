@@ -1,0 +1,19 @@
+/* A · the garment's card as "Unlocked!" (./UnlocksA.tsx, the card itself: ./Reveal.css). */
+.v-unlocks-a .tag.v-unlocks-a-level { background: var(--xp); color: #fff; font-size: 14px; }
+
+/* under "At level N" in the level card: "Opens", then the pictures with their names */
+.v-unlocks-a-row { display: grid; justify-items: center; gap: 4px; width: 100%; }
+.v-unlocks-a-row-word { font: 600 13px/1.2 var(--font-display); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-2); }
+.v-unlocks-a-row ul { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 6px; max-width: calc(var(--cols) * 76px + (var(--cols) - 1) * 6px); margin: 0; padding: 0; list-style: none; }
+.v-unlocks-a-row li { display: grid; justify-items: center; align-content: start; gap: 1px; width: 76px; }
+.v-unlocks-a-row .art { width: 40px; height: 40px; }
+.v-unlocks-a-row b { font: 800 13px/1.15 var(--font-text); text-align: center; color: var(--ink); }
+/* sideways the card is short: the pictures alone, in one line (their names are the row's label) */
+@media (orientation: landscape) and (max-height: 560px) {
+  .v-unlocks-a-row { grid-area: tag; }
+  .v-unlocks-a-row-word,
+  .v-unlocks-a-row b { display: none; }
+  .v-unlocks-a-row ul { flex-wrap: nowrap; gap: 4px; max-width: none; }
+  .v-unlocks-a-row li { width: auto; }
+  .v-unlocks-a-row .art { width: 30px; height: 30px; }
+}

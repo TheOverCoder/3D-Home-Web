@@ -172,6 +172,45 @@
   top: auto;
   bottom: calc(100% + 9px);
 }
+/* several boards on one chip: their names under its one ring, each a button of its own */
+.lab-spot-names {
+  position: absolute;
+  pointer-events: none;
+}
+.lab-spot-list {
+  position: absolute;
+  top: calc(100% + 9px);
+  left: 50%;
+  translate: -50% 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.lab-spot-names.start .lab-spot-list {
+  left: 0;
+  translate: 0 0;
+  align-items: flex-start;
+}
+.lab-spot-names.end .lab-spot-list {
+  left: auto;
+  right: 0;
+  translate: 0 0;
+  align-items: flex-end;
+}
+.lab-spot-names.low .lab-spot-list {
+  top: auto;
+  bottom: calc(100% + 9px);
+  flex-direction: column-reverse;
+}
+.lab-spot-list .lab-spot-name {
+  position: static;
+  translate: none;
+  padding: 7px 12px;
+  border: 0;
+  pointer-events: auto;
+  cursor: pointer;
+}
 .lab-marks.hint .lab-spot {
   animation: lab-spot-hint 0.45s ease-out 3;
 }

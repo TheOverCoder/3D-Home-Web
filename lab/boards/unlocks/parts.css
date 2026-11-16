@@ -1,0 +1,173 @@
+/* The "unlocks" board's shared pieces (./parts.tsx): the top column, the three locked faces (A's chip, B's badge, C's
+   banner), the panels' locked look, the tags, the prompt and the meadows' labels. Every rule under .v-unlocks (each
+   variant's root) or a class of the board's own (.v-unlocks-…, .ul-…). */
+
+/* the top column under the dashboard (src/ui/TopStack.tsx), where the level's show stands */
+.v-unlocks-col {
+  position: fixed;
+  z-index: 12;
+  left: 0;
+  right: 0;
+  top: calc(max(10px, env(safe-area-inset-top)) + 164px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding-inline: 16px;
+  pointer-events: none;
+}
+@media (orientation: landscape) {
+  .v-unlocks-col { top: calc(max(10px, env(safe-area-inset-top)) + 68px); }
+}
+/* B keeps the level's number while its ribbon is there (the two go out together) */
+.v-unlocks .level-up-show.v-unlocks-hold { animation: none; }
+
+/* a locked thing: its picture faded and grey (the plan's one rule beside .tag: LevelCard.css's locked box moves onto
+   it), its name quieter, the card a shade darker; it does not sink under a finger (a tap shakes it instead) */
+.v-unlocks .ul-locked .art { filter: grayscale(1) brightness(1.15); opacity: 0.5; }
+.v-unlocks .ul-locked .farm-card-name,
+.v-unlocks .ul-locked .farm-shop-text strong { color: var(--ink-2); }
+.v-unlocks .farm-card.ul-locked,
+.v-unlocks .farm-card.ul-locked:hover { background: color-mix(in srgb, var(--paper-2) 60%, var(--paper-3)); cursor: default; }
+.v-unlocks .farm-card.ul-locked:active { transform: none; box-shadow: 0 4px 0 var(--paper-3); }
+.v-unlocks .farm-shop-item.ul-row { position: relative; overflow: hidden; }
+.v-unlocks .farm-shop-item.ul-locked { background: color-mix(in srgb, var(--paper-2) 60%, var(--paper-3)); }
+
+/* a picture that can hold a badge (the game's sizes, kept) */
+.v-unlocks .ul-pic { position: relative; display: grid; place-items: center; flex: none; }
+.v-unlocks .farm-card .ul-pic > .art { width: 64px; height: 64px; }
+.v-unlocks .farm-grid.compact .farm-card .ul-pic > .art { width: 48px; height: 48px; }
+
+/* A · where the price was: the lock and the level, on paper (the plan's .tag.lock) */
+.v-unlocks .tag.ul-chip { gap: 3px; padding: 2px 8px 2px 6px; background: var(--paper-3); color: var(--ink-2); }
+.v-unlocks .tag.ul-chip svg { width: 14px; height: 14px; }
+.v-unlocks .btn.ul-lock-btn {
+  --b: var(--paper-3);
+  --b-ink: var(--ink-2);
+  --b-lip: color-mix(in srgb, var(--paper-3) 60%, var(--edge));
+  gap: 5px;
+  font: 800 15px/1 var(--font-text);
+  cursor: default;
+}
+.v-unlocks .btn.ul-lock-btn svg { width: 16px; height: 16px; }
+.v-unlocks .btn.ul-lock-btn:active,
+.v-unlocks .btn.ul-btn-off:active { transform: none; box-shadow: 0 4px 0 var(--b-lip), 0 8px 16px rgba(40, 24, 10, 0.2); }
+
+/* B · a violet badge on the picture's corner: the lock and the level's number (the level's own colour: the crystals,
+   the star) — the price stays where it was, greyed */
+.v-unlocks .ul-badge {
+  position: absolute;
+  right: -6px;
+  bottom: -4px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  height: 22px;
+  padding: 0 7px 0 5px;
+  border-radius: 999px;
+  background: var(--xp);
+  color: #fff;
+  font: 900 13px/1 var(--font-text);
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 0 2px #fff, 0 2px 4px rgba(40, 24, 10, 0.3);
+}
+.v-unlocks .ul-badge svg { width: 12px; height: 12px; }
+.v-unlocks .tag.ul-price-off { color: color-mix(in srgb, var(--ink-2) 70%, transparent); background: color-mix(in srgb, #fff 55%, transparent); }
+.v-unlocks .tag.ul-price-off img { filter: grayscale(1); opacity: 0.6; }
+.v-unlocks .btn.ul-btn-off { --b: var(--paper-3); --b-ink: color-mix(in srgb, var(--ink-2) 80%, transparent); --b-lip: color-mix(in srgb, var(--paper-3) 60%, var(--edge)); cursor: default; }
+.v-unlocks .btn.ul-btn-off img { filter: grayscale(1); opacity: 0.6; }
+
+/* C · the level card's berry banner ("At level N"), notched at both ends */
+.v-unlocks .ul-banner {
+  display: inline-block;
+  padding: 3px 14px 4px;
+  color: #fff;
+  background: linear-gradient(var(--berry), color-mix(in srgb, var(--berry) 80%, var(--berry-lip)));
+  font: 600 14px/1.15 var(--font-display);
+  white-space: nowrap;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 8px) 50%, 100% 100%, 0 100%, 8px 50%);
+}
+.v-unlocks .ul-banner-big { padding: 14px 22px 15px; font-size: 17px; }
+/* across a card's top corner (a row's: its right one, where the button was) */
+.v-unlocks .ul-corner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  width: 78px;
+  height: 78px;
+  overflow: hidden;
+  border-top-left-radius: var(--r-card);
+  pointer-events: none;
+}
+.v-unlocks .ul-corner .ul-banner {
+  position: absolute;
+  top: 16px;
+  left: -30px;
+  width: 124px;
+  padding: 3px 0;
+  text-align: center;
+  font-size: 13px;
+  rotate: -45deg;
+  clip-path: none;
+  box-shadow: 0 2px 4px rgba(60, 20, 10, 0.3);
+}
+.v-unlocks .ul-row .ul-corner { left: auto; right: 0; border-radius: 0 var(--r-card) 0 0; }
+.v-unlocks .ul-row .ul-corner .ul-banner { left: auto; right: -30px; rotate: 45deg; }
+.v-unlocks .farm-grid.compact .ul-corner { width: 64px; height: 64px; }
+.v-unlocks .farm-grid.compact .ul-corner .ul-banner { top: 11px; left: -34px; width: 116px; }
+
+/* a price tag on the scene (src/ui/ThingTag.tsx), where the still's plot is */
+.v-unlocks .ul-tag { position: fixed; z-index: 11; translate: -50% -50%; white-space: nowrap; }
+/* A: the lock and the level in the tag */
+.v-unlocks .ul-tag-chip { padding: 0 14px 0 10px; background: color-mix(in srgb, var(--paper-3) 94%, transparent); color: var(--ink-2); gap: 5px; }
+.v-unlocks .ul-tag-chip .ul-tag-lock { width: 20px; height: 20px; }
+.v-unlocks .ul-tag-chip b { font: 800 17px/1 var(--font-text); }
+/* B: the price greyed, the badge on its corner */
+.v-unlocks .ul-tag-badge { padding: 0 14px 0 7px; background: color-mix(in srgb, var(--paper) 90%, transparent); }
+.v-unlocks .ul-tag-badge > img { width: 28px; height: 28px; filter: grayscale(1); opacity: 0.6; }
+.v-unlocks .ul-tag-badge > b { font: 800 19px/1 var(--font-text); color: color-mix(in srgb, var(--ink-2) 75%, transparent); }
+.v-unlocks .ul-tag-badge .ul-badge { top: -9px; right: -10px; bottom: auto; }
+/* C: the banner is the tag */
+.v-unlocks .ul-tag-banner { padding: 0; background: none; box-shadow: none; filter: drop-shadow(0 0 1.5px #fff) drop-shadow(0 4px 6px rgba(20, 12, 6, 0.35)); }
+.v-unlocks .ul-tag-banner .ul-banner { padding: 11px 18px 12px; font-size: 17px; }
+
+/* the action button's prompt: a locked machine's picture with its lock (sideways, as low as the game's touch layout
+   puts it between the stick and the buttons) */
+@media (orientation: landscape) and (max-height: 560px) {
+  .v-unlocks-world { --prompt-bottom: 64px; }
+}
+.v-unlocks .prompt .ul-badge { right: -8px; bottom: -6px; }
+.v-unlocks .prompt .ul-banner { font-size: 15px; }
+.v-unlocks .prompt .tag.ul-chip { padding: 3px 11px 3px 8px; }
+
+/* the edit mode from above: a picture of the game's covering the screen as the still does, and the meadows' labels */
+.v-unlocks-shot {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 0;
+  pointer-events: none;
+}
+@media (orientation: landscape) {
+  .v-unlocks-shot { object-position: 0 0; }
+}
+.v-unlocks .ul-meadow { position: fixed; z-index: 3; translate: -50% -50%; min-width: 124px; min-height: 50px; gap: 3px; align-content: center; font-size: 13px; }
+.v-unlocks .ul-meadow strong { font-size: 14px; }
+.v-unlocks .ul-meadow.edge { pointer-events: none; cursor: default; }
+.v-unlocks .ul-meadow-lock { display: inline-flex; align-items: center; gap: 4px; font: 800 13px/1.2 var(--font-text); color: #d5dbe5; }
+.v-unlocks .ul-meadow-lock svg { width: 14px; height: 14px; }
+.v-unlocks .ul-meadow .ul-badge { top: -9px; right: -9px; bottom: auto; }
+.v-unlocks .ul-meadow-badge > span { color: rgba(213, 219, 229, 0.6); text-decoration: line-through; text-decoration-color: rgba(213, 219, 229, 0.35); }
+.v-unlocks .ul-meadow .ul-banner { font-size: 13px; padding: 2px 13px 3px; }
+
+/* the level card's "At level N": what it opens, under its row (each variant styles its own); sideways, where the card
+   is short, the pictures alone take the place of "Comes by itself" */
+.v-unlocks-into { display: contents; }
+@media (orientation: landscape) and (max-height: 560px) {
+  .level-card .lf-next:has(.v-unlocks-into) .lf-auto { display: none; }
+}
