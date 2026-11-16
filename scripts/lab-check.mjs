@@ -4,8 +4,9 @@
 // a reload and turn its card green; an answered card goes to "ready to send" and comes back; "next" goes to the next
 // design waiting; ℹ︎ shows the answers given; a screen can be asked for; the game's screen shows its rings; the lab's
 // status opens; and a 3D board is marked as a board of the interface is, by a user whose clock is hours before its
-// round's `added` (✓ / ✗ shown on its letters and buttons, its card green, kept across a reload). Writes lab/check.json (the lab's status shows it) and prints each step. With the lab served
-// (`npm run lab`, port 5180, or the build on another port: --base):
+// round's `added` (✓ / ✗ shown on its letters and buttons, its card green, kept across a reload). Writes
+// lab/check.json (the lab's status shows it) and prints each step. With the lab served (`npm run lab`, port 5180, or
+// the build on another port: --base):
 //
 //   node scripts/lab-check.mjs [--base http://localhost:5180/]
 import { writeFile } from 'node:fs/promises'
