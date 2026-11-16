@@ -44,6 +44,17 @@ export const useEdit = create<EditState>()((set) => ({
   setNote: (note) => set({ note }),
 }))
 
+// The view from above, as the scene's camera (EditMode.tsx) leaves it each frame. Kept here, not with the camera: the
+// shop's panel reads it, and the panel is in the page shell, which must not import three.js (`lightShell` in
+// vite.config.ts fails the build otherwise).
+
+/** How far the camera has flown up (0 on the ground … 1 in the view from above): the hand only works up there. */
+export const editCamera = { blend: 0 }
+
+/** The ground point in the middle of the view from above (what the panel puts a piece bought or taken out of the store
+ *  down near). */
+export const editView = { x: 0, z: 0 }
+
 /** Where a place is drawn right now: where it is being dragged, else where it stands. */
 export function shownPlacement(id: PlaceId): Placement {
   const d = useEdit.getState().drag
