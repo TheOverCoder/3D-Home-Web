@@ -9,9 +9,10 @@ import { useCalendarDay } from './useDaily'
 
 // The daily gift (src/farm/daily.ts): its card reads the farm (how it looks: ./DailyCard.tsx), and the watcher opens it
 // by itself once a day — the first time the farm is in view that day, on the farm or in the house, a beat after it
-// appears, and never over the opening menu, a film, the drive, the welcome-back card or another panel: it waits for
-// them, and comes after. A day changing while the game is open brings the new day's gift. Closed without claiming, it
-// waits in the menu in the corner (src/ui/HudMode.tsx) until the day is over.
+// appears, and never over the opening menu, a film, the drive, the welcome-back card, another panel (the farm news) or a
+// word at the top (a toast: the news's "Gift day is on" as play starts, or as an event begins at midnight with the new
+// day): it waits for them, and comes after. A day changing while the game is open brings the new day's gift. Closed
+// without claiming, it waits in the menu in the corner (src/ui/HudMode.tsx) until the day is over.
 
 export function DailyPanel() {
   useFarm((s) => s.rev)
@@ -29,7 +30,7 @@ let decided = ''
 
 export function DailyWatcher() {
   const playing = useHome((s) => s.phase === 'playing' && s.mapReady && !s.curtain)
-  const busy = useHome((s) => !!(s.panel || s.editing || s.decorating || s.screen || s.settingsOpen))
+  const busy = useHome((s) => !!(s.panel || s.editing || s.decorating || s.screen || s.settingsOpen || s.toast))
   const film = useFilm((s) => s.on !== null)
   const story = useStory((s) => s.on !== null)
   const away = useFarm(() => awaySummary() !== null)
@@ -42,7 +43,7 @@ export function DailyWatcher() {
     const t = window.setTimeout(() => {
       const s = useHome.getState()
       // (still nothing over the game: a panel may have opened in the same moment)
-      if (s.panel || s.screen || s.settingsOpen || s.editing || s.decorating || awaySummary()) return
+      if (s.panel || s.screen || s.settingsOpen || s.editing || s.decorating || s.toast || awaySummary()) return
       decided = key
       if (!dailyDue()) return
       offerDaily()
