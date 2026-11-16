@@ -12,7 +12,7 @@ export const mmss = (minutes: number) => {
 
 export function report(run: SimRun, levels = 30): string {
   const out: string[] = []
-  out.push(`A new farm, played ${Math.round(run.minutes)} minutes by the good player (seed ${run.seed})`, '')
+  out.push(`A new farm, played ${Math.round(run.minutes)} minutes by the good player (seed ${run.seed}; ${run.open ? 'everything open' : 'locked by the level'})`, '')
   out.push('Level  reached  since last  band (PACE)', '    1     0:00')
   for (let l = 2; l <= levels; l++) {
     const at = run.levelAt[l]

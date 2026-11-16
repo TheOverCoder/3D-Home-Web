@@ -2,11 +2,12 @@
 // a fixed step, the game's own functions for every press, its dice and the buyers' on a fixed seed. Walking from one
 // place to another takes time (as far as a player runs, round what stands in the way), and so does each press. What it
 // keeps: the minute each level is reached, the coins as play goes on, what was bought and when, and every stretch with
-// nothing useful to do. Events are off (they are under Vitest); the daily gift is claimed as it opens and each level's
+// nothing useful to do. Events are off (they are under Vitest); the levels' locks are on, as in play (src/farm/unlocks.ts:
+// what a level has not opened is not bought, planted or queued); the daily gift is claimed as it opens and each level's
 // gift boxes are opened as they are reached, as a player would. Run it under happy-dom (the farm keeps its save).
 
 import { LEVELS } from '../farm/data'
-import { farm, resetFarm, setDailyClock, setEventClock, setRandom, tick } from '../farm/state'
+import { farm, resetFarm, setDailyClock, setEventClock, setRandom, tick, unlockAll } from '../farm/state'
 import { levelOf } from '../farm/xp'
 import { nextMove, onTheWay, type Spot } from './policy'
 
@@ -31,6 +32,8 @@ export interface Gap {
 
 export interface SimRun {
   seed: number
+  /** played with everything open whatever the level (src/farm/unlocks.ts), not locked by it */
+  open: boolean
   minutes: number
   /** the minute of play each level was reached (index: the level; level 1 at 0; none: not reached) */
   levelAt: (number | undefined)[]
@@ -59,9 +62,10 @@ export function seeded(seed: number): () => number {
 
 /**
  * Plays a new farm for `minutes` of play (or, with `until`, until that level is reached and `minutes` have passed, at
- * most `most` minutes). Samples coins every `every` minutes.
+ * most `most` minutes). Samples coins every `every` minutes. With `open`, everything is open whatever the level (the
+ * farm before its locks: to compare).
  */
-export function simulate(opts: { minutes: number; seed?: number; until?: number; most?: number; every?: number }): SimRun {
+export function simulate(opts: { minutes: number; seed?: number; until?: number; most?: number; every?: number; open?: boolean }): SimRun {
   const seed = opts.seed ?? 1
   const every = opts.every ?? 10
   const end = Math.max(opts.minutes, opts.most ?? 0) * 60
@@ -71,9 +75,10 @@ export function simulate(opts: { minutes: number; seed?: number; until?: number;
   Math.random = seeded(seed * 7919 + 13)
   setEventClock(null)
   setDailyClock(() => DAY)
+  unlockAll(opts.open ?? false)
   try {
     resetFarm()
-    const run: SimRun = { seed, minutes: 0, levelAt: [undefined, 0], samples: [], gaps: [], longest: { seconds: 0, minute: 0 }, bought: [], moves: {} }
+    const run: SimRun = { seed, open: opts.open ?? false, minutes: 0, levelAt: [undefined, 0], samples: [], gaps: [], longest: { seconds: 0, minute: 0 }, bought: [], moves: {} }
     let t = 0
     // the player starts on the path among the first beds
     let at: Spot = { x: -1.2, z: 8 }
@@ -130,5 +135,7 @@ export function simulate(opts: { minutes: number; seed?: number; until?: number;
     Math.random = random
     setRandom(null)
     setDailyClock(null)
+    // (everything open again: the tests' default)
+    unlockAll(true)
   }
 }
