@@ -1,11 +1,14 @@
 // The design lab's build (dist-lab, from `vite build --config vite.lab.config.ts`) made ready to publish as a link of
 // its own: its page as the link's main page takes it — without the document's own <html>, <head> and <body>, which the
 // link's host puts round it — and the list of its other files (frame.html, scripts, styles, fonts, pictures).
-import { readFile, readdir, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const dist = join(dirname(fileURLToPath(import.meta.url)), '../dist-lab')
+// the tips (what to polish next) go beside the lab, a page of their own its footer links to
+await mkdir(join(dist, 'tips'), { recursive: true })
+await copyFile(join(dirname(fileURLToPath(import.meta.url)), '../tips/index.html'), join(dist, 'tips/index.html'))
 const page = await readFile(join(dist, 'index.html'), 'utf8')
 const head = page.match(/<head>([\s\S]*)<\/head>/)?.[1] ?? ''
 const body = page.match(/<body>([\s\S]*)<\/body>/)?.[1] ?? ''
@@ -20,7 +23,7 @@ async function walk(dir) {
   for (const e of await readdir(dir, { withFileTypes: true })) {
     const p = join(dir, e.name)
     if (e.isDirectory()) await walk(p)
-    else if (e.name !== 'index.html' && e.name !== 'files.json') files.push(relative(dist, p))
+    else if (!['index.html', 'files.json'].includes(relative(dist, p))) files.push(relative(dist, p))
   }
 }
 await walk(dist)

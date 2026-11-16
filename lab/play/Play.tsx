@@ -668,6 +668,10 @@ function Side({
             <button className="pref" onClick={onStatus}>
               📋 מצב המערכת
             </button>
+            {/* the tips: what to polish next (tips/index.html, copied beside the lab by scripts/lab-finish.mjs) */}
+            <a className="pref" href="./tips/index.html" aria-label="טיפים: מה ללטש בהמשך">
+              💡 טיפים
+            </a>
           </div>
         </footer>
       </aside>
