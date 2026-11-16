@@ -59,24 +59,116 @@ void lodReady().then(() => (loaded = true))
 /** Whether the simplifier has loaded (copies can be made now). */
 export const lodLoaded = () => loaded
 
-const cache = new WeakMap<BufferGeometry, Lod[]>()
+/** The copies for the camera ('far') or for the sun's map ('sun'). */
+type Kind = 'far' | 'sun'
 
-/** Copies being made, and the time spent making them since the page loaded (ms), of how many geometries
+/** Each geometry's copies, as handed out: its own geometries, drawing its own attributes. */
+const cache: Record<Kind, WeakMap<BufferGeometry, Lod[]>> = { far: new WeakMap(), sun: new WeakMap() }
+
+/** What a making found for one copy: the triangles it keeps (one index, shared by the copies of every geometry made from
+ *  the same content), how far it moved, and how many triangles. */
+interface Found {
+  index: BufferAttribute
+  error: number
+  triangles: number
+}
+
+/**
+ * What the makings found, by what they read (`contentOf`: the shape, and for the camera's copies its light and colour,
+ * hashed): a model built again — each visit to a map builds its crowds anew, the market's goods are built again when
+ * their casting is switched — gets its copies at once, the very ones it had, with nothing made again. The models are a
+ * fixed set, so this stays small (both maps, the farm at its fullest: about 300,000 indices); it is bounded all the
+ * same (`FOUND_MOST` indices, the longest unused let go first).
+ */
+const found = new Map<string, Found[]>()
+const FOUND_MOST = 2_000_000
+
+function remember(key: string, f: Found[]) {
+  found.set(key, f)
+  for (const c of f) copyTime.indices += c.index.count
+  for (const [k, old] of found) {
+    if (copyTime.indices <= FOUND_MOST || k === key) break
+    found.delete(k)
+    for (const c of old) copyTime.indices -= c.index.count
+  }
+}
+
+function recall(key: string): Found[] | undefined {
+  const f = found.get(key)
+  if (f) {
+    // the last used goes last: the first to be let go is the longest unused
+    found.delete(key)
+    found.set(key, f)
+  }
+  return f
+}
+
+/** Copies being made, and the time spent making them since the page loaded (ms), of how many geometries, how many
+ *  geometries had them at once from what was found before (`reused`), and the indices of all that was found, kept
  *  (`__home.copies` with ?debug). They are made a step at a time in the page's idle time (`later`), never while a map
  *  loads: until its copies are made a part is drawn whole. */
-export const copyTime = { ms: 0, geometries: 0, pending: 0 }
+export const copyTime = { ms: 0, geometries: 0, reused: 0, pending: 0, indices: 0 }
 
 /** The lighter copies of a geometry for the camera, finest first (none for a light one), made now: once, then kept.
  *  Call after `lodReady()` has resolved. */
 export function lodsOf(g: BufferGeometry): Lod[] {
-  return cache.get(g) ?? finish(make(g), cache, g)
+  return cache.far.get(g) ?? finish(g, 'far')
 }
 
 /** The same, made a step at a time in idle time (`later`); `then` gets them once made (at once if they are known). */
 export function lodsLater(g: BufferGeometry, then: (lods: Lod[]) => void) {
-  const known = cache.get(g)
+  const known = cache.far.get(g)
   if (known) then(known)
-  else later(make(g), cache, g, then)
+  else later(g, 'far', then)
+}
+
+/** What a making reads of a geometry (`read`), and the key of what it finds (`contentOf`). */
+interface Content {
+  positions: Float32Array
+  indices: Uint32Array
+  triangles: number
+  /** the shading weighed with the shape (the camera's copies only) */
+  attributes: Float32Array | null
+  stride: number
+  radius: number
+  key: string
+}
+
+/** Everything a making of `kind` reads of `g`, and its key: none where it makes nothing (no index, too light). */
+function read(g: BufferGeometry, kind: Kind): Content | null {
+  const src = source(g)
+  if (!src || src.triangles < LOD_SMALLEST) return null
+  // the shading kept too, not only the shape: a vertex's normal and colours weigh in the error (SHADE), so a bumpy or
+  // patterned part (the corn's kernels) is simplified only as far as its light and colour stay as they were (the sun's
+  // map keeps depth only: the shape alone)
+  const { attributes, stride } = kind === 'far' ? shading(g, src.positions.length / 3) : { attributes: null, stride: 0 }
+  if (!g.boundingSphere) g.computeBoundingSphere()
+  const radius = g.boundingSphere!.radius
+  return { ...src, attributes, stride, radius, key: contentOf(kind, src.positions, src.indices, attributes, stride, radius) }
+}
+
+/** The key of what a making finds: its kind and every number it reads — the lengths, the part's size, and two
+ *  independent 32-bit hashes (FNV-1a and murmur3) of every word of the positions, the indices and the shading. */
+function contentOf(kind: Kind, positions: Float32Array, indices: Uint32Array, attributes: Float32Array | null, stride: number, radius: number): string {
+  let a = 0x811c9dc5
+  let b = 0x9747b28c
+  for (const array of attributes ? [positions, indices, attributes] : [positions, indices]) {
+    const words = new Uint32Array(array.buffer, array.byteOffset, array.length)
+    for (let i = 0; i < words.length; i++) {
+      const w = words[i]
+      a = Math.imul(a ^ w, 0x01000193)
+      let k = Math.imul(w, 0xcc9e2d51)
+      k = Math.imul((k << 15) | (k >>> 17), 0x1b873593)
+      b ^= k
+      b = (Math.imul((b << 13) | (b >>> 19), 5) + 0xe6546b64) | 0
+    }
+  }
+  b ^= b >>> 16
+  b = Math.imul(b, 0x85ebca6b)
+  b ^= b >>> 13
+  b = Math.imul(b, 0xc2b2ae35)
+  b ^= b >>> 16
+  return `${kind} ${positions.length} ${indices.length} ${attributes?.length ?? 0} ${stride} ${radius} ${(a >>> 0).toString(36)} ${(b >>> 0).toString(36)}`
 }
 
 /** The geometry's positions and indices as the simplifier takes them (none: it cannot be simplified). */
@@ -99,10 +191,10 @@ function source(g: BufferGeometry) {
 }
 
 /** A copy of `g` drawing `kept`: every attribute shared, only the index its own. */
-function copyOf(g: BufferGeometry, kept: Uint32Array): BufferGeometry {
+function copyOf(g: BufferGeometry, kept: BufferAttribute): BufferGeometry {
   const lod = new BufferGeometry()
   for (const [name, a] of Object.entries(g.attributes)) lod.setAttribute(name, a)
-  lod.setIndex(new BufferAttribute(kept, 1))
+  lod.setIndex(kept)
   if (!g.boundingSphere) g.computeBoundingSphere()
   if (!g.boundingBox) g.computeBoundingBox()
   lod.boundingSphere = g.boundingSphere
@@ -110,17 +202,13 @@ function copyOf(g: BufferGeometry, kept: Uint32Array): BufferGeometry {
   return lod
 }
 
-function* make(g: BufferGeometry): Generator<void, Lod[]> {
-  const src = source(g)
-  if (!src || src.triangles < LOD_SMALLEST) return []
-  const { positions, indices, triangles } = src
-  // the shading kept too, not only the shape: a vertex's normal and colours weigh in the error (SHADE), so a bumpy or
-  // patterned part (the corn's kernels) is simplified only as far as its light and colour stay as they were
-  const { attributes, stride } = shading(g, positions.length / 3)
+/** The copies of `g` from what a making found (for it, or for a geometry of the same content). */
+const copiesOf = (g: BufferGeometry, f: Found[]): Lod[] => f.map((c) => ({ geometry: copyOf(g, c.index), error: c.error, triangles: c.triangles }))
+
+function* make(c: Content): Generator<void, Found[]> {
+  const { positions, indices, triangles, attributes, stride, radius } = c
   const weights = Array.from({ length: stride }, () => SHADE)
-  if (!g.boundingSphere) g.computeBoundingSphere()
-  const radius = g.boundingSphere!.radius
-  const out: Lod[] = []
+  const out: Found[] = []
   let last = triangles
   let floor = 0
   for (const share of STEPS) {
@@ -136,7 +224,7 @@ function* make(g: BufferGeometry): Generator<void, Lod[]> {
     const error = MEASURED.map((k) => Math.max(estimate * k, floor)).find((r) => within(positions, indices, kept, r))
     yield
     if (error === undefined) continue
-    out.push({ geometry: copyOf(g, kept), error, triangles: n })
+    out.push({ index: new BufferAttribute(kept, 1), error, triangles: n })
     last = n
     floor = error
   }
@@ -207,8 +295,6 @@ export const SUN_TEXEL = (2 * SUN_SHADOW.half) / FINEST_SHADOW_MAP
  *  drawn at its own size, a half and a quarter of that for parts drawn twice and four times as big. */
 const SUN_STEPS = [1, 0.5, 0.25].map((k) => (SUN_TEXEL / 2) * k).reverse()
 
-const sunCache = new WeakMap<BufferGeometry, Lod[]>()
-
 /**
  * The lighter copies of a geometry for the sun's map, finest first: its shape only — where two vertices share a place
  * (a seam in the colours or the normals) they are one for it, as depth is all the map keeps — and its open edges where
@@ -217,50 +303,55 @@ const sunCache = new WeakMap<BufferGeometry, Lod[]>()
  * only if it holds: its `error` is what was measured, not estimated. Made once, then kept; call after `lodReady()`.
  */
 export function sunLodsOf(g: BufferGeometry): Lod[] {
-  return sunCache.get(g) ?? finish(makeSun(g), sunCache, g)
+  return cache.sun.get(g) ?? finish(g, 'sun')
 }
 
 /** The same, made a step at a time in idle time (`later`); `then` gets them once made (at once if they are known). */
 export function sunLodsLater(g: BufferGeometry, then: (lods: Lod[]) => void) {
-  const known = sunCache.get(g)
+  const known = cache.sun.get(g)
   if (known) then(known)
-  else later(makeSun(g), sunCache, g, then)
+  else later(g, 'sun', then)
 }
 
-function* makeSun(g: BufferGeometry): Generator<void, Lod[]> {
-  const out: Lod[] = []
-  const src = source(g)
-  if (src && src.triangles >= LOD_SMALLEST) {
-    const { positions, triangles } = src
-    const remap = MeshoptSimplifier.generatePositionRemap(positions, 3)
-    const indices = src.indices.map((v) => remap[v])
-    let last = triangles
-    for (const step of SUN_STEPS) {
-      // the coarsest the simplifier makes that holds to the step, measured: asked for the step, then for less
-      let found: Uint32Array | null = null
-      for (const ask of [1, 0.5, 0.25]) {
-        const [kept] = MeshoptSimplifier.simplify(indices, positions, 3, 0, step * ask, ['ErrorAbsolute', 'LockBorder'])
-        if (kept.length / 3 > last * (1 - WORTH)) break
-        const holds = within(positions, src.indices, kept, step)
-        yield
-        if (holds) {
-          found = kept
-          break
-        }
+function* makeSun(c: Content): Generator<void, Found[]> {
+  const out: Found[] = []
+  const { positions, triangles } = c
+  const remap = MeshoptSimplifier.generatePositionRemap(positions, 3)
+  const indices = c.indices.map((v) => remap[v])
+  let last = triangles
+  for (const step of SUN_STEPS) {
+    // the coarsest the simplifier makes that holds to the step, measured: asked for the step, then for less
+    let found: Uint32Array | null = null
+    for (const ask of [1, 0.5, 0.25]) {
+      const [kept] = MeshoptSimplifier.simplify(indices, positions, 3, 0, step * ask, ['ErrorAbsolute', 'LockBorder'])
+      if (kept.length / 3 > last * (1 - WORTH)) break
+      const holds = within(positions, c.indices, kept, step)
+      yield
+      if (holds) {
+        found = kept
+        break
       }
-      if (!found || found.length === 0) continue
-      out.push({ geometry: copyOf(g, found), error: step, triangles: found.length / 3 })
-      last = found.length / 3
     }
+    if (!found || found.length === 0) continue
+    out.push({ index: new BufferAttribute(found, 1), error: step, triangles: found.length / 3 })
+    last = found.length / 3
   }
   return out
 }
 
 // ───────────────────────────── made in idle time ─────────────────────────────
 
-type Making = Generator<void, Lod[]>
+/** A geometry whose copies of one kind are asked for: its content read and its making started once it comes to the
+ *  front of the queue (null until then: nothing is read while a map loads). */
+interface Job {
+  g: BufferGeometry
+  kind: Kind
+  done: ((lods: Lod[]) => void)[]
+  key: string
+  making: Generator<void, Found[]> | null
+}
 /** The geometries whose copies are being made, a step at a time, in turn. */
-const queue: { making: Making; cache: WeakMap<BufferGeometry, Lod[]>; g: BufferGeometry; done: ((lods: Lod[]) => void)[] }[] = []
+const queue: Job[] = []
 /** The most a slice of idle time is used for (ms) when the page gives no deadline of its own. */
 const SLICE = 6
 let pumping = false
@@ -274,27 +365,89 @@ export function holdCopies(on: boolean) {
   if (!on) pump()
 }
 
-/** Runs a making to its end now, and keeps what it made. */
-function finish(making: Making, cache: WeakMap<BufferGeometry, Lod[]>, g: BufferGeometry): Lod[] {
+/** The first step of a making: reads the geometry. Nothing to make (too light, no index): no copies. Its content seen
+ *  before: what was found then (`reused`). Else the making, from what it read. */
+function start(g: BufferGeometry, kind: Kind): { found: Found[]; reused: boolean } | { key: string; making: Generator<void, Found[]> } {
+  const c = read(g, kind)
+  if (!c) return { found: [], reused: false }
+  const known = recall(c.key)
+  if (known) return { found: known, reused: true }
+  return { key: c.key, making: kind === 'far' ? make(c) : makeSun(c) }
+}
+
+/** Hands a geometry its copies, from what was found (`reused`: found for another geometry of the same content). */
+function settle(g: BufferGeometry, kind: Kind, f: Found[], reused: boolean): Lod[] {
+  const lods = copiesOf(g, f)
+  cache[kind].set(g, lods)
+  if (reused) copyTime.reused++
+  else copyTime.geometries++
+  return lods
+}
+
+/** Makes a geometry's copies now, to the end (or has them from what was found before). */
+function finish(g: BufferGeometry, kind: Kind): Lod[] {
   const t0 = performance.now()
-  let step = making.next()
-  while (!step.done) step = making.next()
+  const s = start(g, kind)
+  if ('found' in s) {
+    copyTime.ms += performance.now() - t0
+    return settle(g, kind, s.found, s.reused)
+  }
+  let step = s.making.next()
+  while (!step.done) step = s.making.next()
+  remember(s.key, step.value)
   copyTime.ms += performance.now() - t0
-  copyTime.geometries++
-  cache.set(g, step.value)
-  return step.value
+  return settle(g, kind, step.value, false)
 }
 
 /** Queues a making for idle time (one geometry's twice asked for is made once). */
-function later(making: Making, cache: WeakMap<BufferGeometry, Lod[]>, g: BufferGeometry, then: (lods: Lod[]) => void) {
-  const same = queue.find((q) => q.g === g && q.cache === cache)
+function later(g: BufferGeometry, kind: Kind, then: (lods: Lod[]) => void) {
+  const same = queue.find((q) => q.g === g && q.kind === kind)
   if (same) {
     same.done.push(then)
     return
   }
-  queue.push({ making, cache, g, done: [then] })
+  queue.push({ g, kind, done: [then], key: '', making: null })
   copyTime.pending = queue.length
   pump()
+}
+
+/** The job at the front of the queue is done: its geometry gets its copies, and those who asked. */
+function complete(job: Job, f: Found[], reused: boolean) {
+  queue.shift()
+  const lods = settle(job.g, job.kind, f, reused)
+  for (const then of job.done) then(lods)
+}
+
+/** One step of the making at the front of the queue. */
+function step() {
+  const job = queue[0]
+  if (!job.making) {
+    // its first step: what it reads, and what was found for that before (a model built again: its copies at once)
+    const s = start(job.g, job.kind)
+    if ('found' in s) complete(job, s.found, s.reused)
+    else {
+      job.key = s.key
+      job.making = s.making
+    }
+    return
+  }
+  const next = job.making.next()
+  if (next.done) {
+    remember(job.key, next.value)
+    complete(job, next.value, false)
+  }
+}
+
+/** Steps until the queue is empty, or until `until` (performance.now()). */
+function work(until: number) {
+  const t0 = performance.now()
+  while (queue.length) {
+    step()
+    if (performance.now() >= until) break
+  }
+  copyTime.ms += performance.now() - t0
+  copyTime.pending = queue.length
+  if (!queue.length) waiting.splice(0).forEach((resolve) => resolve())
 }
 
 function pump() {
@@ -303,30 +456,21 @@ function pump() {
   const run = (deadline?: IdleDeadline) => {
     pumping = false
     if (held) return
-    const until = performance.now() + (deadline && !deadline.didTimeout ? Math.max(1, deadline.timeRemaining()) : SLICE)
-    const t0 = performance.now()
-    while (queue.length) {
-      const job = queue[0]
-      const step = job.making.next()
-      if (step.done) {
-        queue.shift()
-        copyTime.geometries++
-        job.cache.set(job.g, step.value)
-        for (const done of job.done) done(step.value)
-      }
-      if (performance.now() >= until) break
-    }
-    copyTime.ms += performance.now() - t0
-    copyTime.pending = queue.length
-    if (queue.length) pump()
-    else waiting.splice(0).forEach((done) => done())
+    work(performance.now() + (deadline && !deadline.didTimeout ? Math.max(1, deadline.timeRemaining()) : SLICE))
+    pump()
   }
   if (typeof requestIdleCallback === 'function') requestIdleCallback(run, { timeout: 100 })
   else setTimeout(run, 0)
 }
 
 /** Resolves once every copy asked for is made (for tests). */
-export const copiesMade = () => (queue.length ? new Promise<void>((done) => waiting.push(done)) : Promise.resolve())
+export const copiesMade = () => (queue.length ? new Promise<void>((resolve) => waiting.push(resolve)) : Promise.resolve())
+
+/** Makes every copy asked for now, unless a map is loading (for tests, `__home.copiesNow` with ?debug: the same copies the
+ *  idle time would make, without waiting for it — a page drawn in software at a few frames a second has little). */
+export function makeCopiesNow() {
+  if (!held) work(Infinity)
+}
 
 /** Whether a copy keeps to `r` of its whole both ways: every vertex of the whole within `r` of the copy's surface, and
  *  every triangle of the copy (its middle and the middles of its edges) within `r` of the whole's — nothing moved

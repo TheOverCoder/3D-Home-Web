@@ -3,7 +3,7 @@ import { MeshoptSimplifier } from 'meshoptimizer/simplifier'
 import { SphereGeometry, TorusKnotGeometry, type BufferGeometry } from 'three'
 import { SUN_SHADOW } from '../../data/layout'
 import { FINEST_SHADOW_MAP } from '../profile'
-import { A_DRAW, HALF_PIXEL, SHADE, SUN_TEXEL, farEnough, lodReady, lodsOf, sunEnough, sunLodsOf, within, worthDrawing } from './lod'
+import { A_DRAW, HALF_PIXEL, SHADE, SUN_TEXEL, copiesMade, copyTime, farEnough, lodReady, lodsLater, lodsOf, makeCopiesNow, sunEnough, sunLodsOf, within, worthDrawing, type Lod } from './lod'
 import { loadSolids } from './solid'
 import { GOODS } from '../../models/goods'
 import { barnModel } from '../../models/buildings'
@@ -14,7 +14,8 @@ import { cropParts } from '../../models/crops'
 
 // The lighter copies of parts (lod.ts): what each copy promises — no surface moved by more than its `error` — measured
 // on the game's own models; whether a copy is worth its draw, judged across the crowd; the weight that keeps light and
-// colour under what the screen shows (measured on the simplifier itself); and the sun's copies, held to half a texel.
+// colour under what the screen shows (measured on the simplifier itself); the sun's copies, held to half a texel; and a
+// model built again (a map gone to again) has the very copies it had, at once, made from nothing but the same content.
 
 beforeAll(async () => {
   await loadSolids()
@@ -272,5 +273,79 @@ describe("the sun's copies", () => {
   it("stay well inside what the sun's shadow bias takes up (Lighting.tsx: −0.0003 of its depth range)", () => {
     const bias = 0.0003 * (SUN_SHADOW.far - SUN_SHADOW.near)
     expect(SUN_TEXEL / 2).toBeLessThan(bias / 2)
+  })
+})
+
+describe('a model built again', () => {
+  /** What a geometry's copies are, but for the geometry they draw: each one's triangles, error and index. */
+  const what = (lods: Lod[]) => lods.map((c) => ({ triangles: c.triangles, error: c.error, index: Array.from(c.geometry.index!.array) }))
+
+  it('has the very copies it had, at once, each drawing its own attributes — for the camera and for the sun', () => {
+    // the corn's cob, built twice: the same content, two geometries
+    for (const of of [lodsOf, sunLodsOf]) {
+      const first = GOODS.corn().cob.shape.geometry()
+      const again = GOODS.corn().cob.shape.geometry()
+      expect(again).not.toBe(first)
+      const had = of(first)
+      expect(had.length).toBeGreaterThan(0)
+      const before = { ...copyTime }
+      const got = of(again)
+      // nothing made: what was found for the same content, handed over
+      expect(copyTime.geometries).toBe(before.geometries)
+      expect(copyTime.reused).toBe(before.reused + 1)
+      expect(what(got)).toEqual(what(had))
+      for (const c of got) {
+        expect(c.geometry.getAttribute('position')).toBe(again.getAttribute('position'))
+        expect(c.geometry.getAttribute('normal')).toBe(again.getAttribute('normal'))
+        expect(c.geometry.boundingSphere).toBe(again.boundingSphere)
+      }
+    }
+  })
+
+  it('that differs gets copies of its own: a normal for the camera (its light weighs), a vertex for both', () => {
+    const base = new SphereGeometry(0.4, 64, 32)
+    expect(lodsOf(base).length).toBeGreaterThan(0)
+    expect(sunLodsOf(base).length).toBeGreaterThan(0)
+    // one vertex's normal: the camera's copies are made again; the sun's map keeps depth only, so its copies are the same
+    const lit = base.clone()
+    ;(lit.getAttribute('normal').array as Float32Array)[0] += 0.5
+    let before = { ...copyTime }
+    lodsOf(lit)
+    expect(copyTime.geometries).toBe(before.geometries + 1)
+    before = { ...copyTime }
+    sunLodsOf(lit)
+    expect(copyTime.reused).toBe(before.reused + 1)
+    // one vertex moved: both made again
+    const moved = base.clone()
+    ;(moved.getAttribute('position').array as Float32Array)[1] += 0.01
+    moved.computeBoundingSphere()
+    before = { ...copyTime }
+    lodsOf(moved)
+    sunLodsOf(moved)
+    expect(copyTime.geometries).toBe(before.geometries + 2)
+    expect(copyTime.reused).toBe(before.reused)
+  })
+
+  it('asked for in idle time, has them in its first step', async () => {
+    const first = fruitPlantModel('cherry-tree').leaves.shape.geometry()
+    const had = lodsOf(first)
+    expect(had.length).toBeGreaterThan(0)
+    const again = fruitPlantModel('cherry-tree').leaves.shape.geometry()
+    let got: Lod[] | null = null
+    lodsLater(again, (lods) => (got = lods))
+    await copiesMade()
+    expect(what(got!)).toEqual(what(had))
+    // what was found for the first, handed over: the same indices, not made again
+    got!.forEach((c, i) => expect(c.geometry.index).toBe(had[i].geometry.index))
+  })
+
+  it('asked for in idle time, is made at once when a test asks (`__home.copiesNow`): the same copies', () => {
+    const knot = () => new TorusKnotGeometry(0.3, 0.08, 120, 16)
+    let got: Lod[] | null = null
+    lodsLater(knot(), (lods) => (got = lods))
+    makeCopiesNow()
+    expect(copyTime.pending).toBe(0)
+    expect(got!.length).toBeGreaterThan(0)
+    expect(what(got!)).toEqual(what(lodsOf(knot())))
   })
 })

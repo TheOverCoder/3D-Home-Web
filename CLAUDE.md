@@ -83,7 +83,10 @@ The README has the overview; `tests/README.md` what each test guards.
   across n pixels only where Δ·n < ½). A copy is drawn only where its error is under half a pixel for the game's camera
   (`farEnough`), and only where it saves a draw's worth (`A_DRAW`) across the crowd's instances in view
   (`worthDrawing`). Each copy is measured against the whole part (the simplifier's estimate can run short), and they
-  are made a step at a time in idle time once a map has loaded (until then a part is drawn whole). Not the pass's: the
+  are made a step at a time in idle time once a map has loaded (until then a part is drawn whole), once per model:
+  what was found is kept by the content it was made from, so a crowd built again (a map gone to again, the market's
+  goods) has the same copies at once. Tests make what is pending now (`copiesMade`: a page drawn in software has
+  little idle time). Not the pass's: the
   same with it on or off, so `16-view` still compares equal; `27-far-copies` bounds what they change on screen
   (`__home.view.lod` switches them). A new crowd part needs nothing.
 - Shadow copies: what casts is drawn into the sun's map by a mesh no camera draws (`src/lib/sculpt/sun.ts`), from a

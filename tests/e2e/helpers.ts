@@ -333,9 +333,19 @@ export async function fillFarm(page: Page): Promise<FullFarm> {
   return done
 }
 
-/** Until every lighter copy asked for is made (src/lib/sculpt/lod.ts: made in idle time, after a map has loaded). */
+/** Until every lighter copy asked for is made (src/lib/sculpt/lod.ts: made in idle time once a map can be played). They
+ *  are made now (`copiesNow`): a page drawn in software has little idle time, and waiting for it took longer than the
+ *  making itself (the same copies; a map still loading is waited for). */
 export async function copiesMade(page: Page) {
-  await page.waitForFunction(() => !((window as any).__home.copies?.pending > 0), null, { timeout: 120_000, polling: 250 })
+  await page.waitForFunction(
+    () => {
+      const h = (window as any).__home
+      h.copiesNow?.()
+      return !(h.copies?.pending > 0)
+    },
+    null,
+    { timeout: 120_000, polling: 250 },
+  )
 }
 
 /**
