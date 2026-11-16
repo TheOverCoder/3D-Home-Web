@@ -48,7 +48,7 @@ test.describe('starting up', () => {
     expect(listed.filter((u) => /rapier_wasm3d_bg-[\w-]{8}\.wasm$/.test(u))).toHaveLength(1)
     expect(listed.filter((u) => /(^|\/)(dev-[a-z]+|Gallery)-/.test(u))).toEqual([])
     // the page shell (the intro, the saves, the settings) comes before any of it: index.html loads neither three.js
-    // nor the models, which the loader brings once you choose to play
+    // nor the models, which the loader brings once you choose to play (the build fails first: `lightShell`, vite.config.ts)
     const shell = await page.evaluate(async () => await (await fetch('/index.html')).text())
     expect(shell).not.toMatch(/vendor-three|vendor-r3f|vendor-physics|\/models-|Experience-/)
     expect(listed.some((u) => /vendor-three-/.test(u))).toBe(true)
@@ -121,6 +121,9 @@ test.describe('starting up', () => {
     expect(s.failure).toBeNull()
     expect(s.quality).toBe('low')
     expect(s.light).toBe('auto')
+    // the loading screen (its own note: "Lighter graphics this time") fades out as the opening menu comes in: the
+    // menu's note is read once it has gone
+    await expect(page.locator('.intro .loading-screen')).toHaveCount(0)
     await expect(page.locator('.load-note')).toContainText('Light graphics are on')
     await expect(page.locator('.intro-device')).toContainText('light graphics')
     await context.close()

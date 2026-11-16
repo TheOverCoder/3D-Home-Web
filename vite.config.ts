@@ -53,6 +53,72 @@ function rapierWasmAsFile(): Plugin {
   }
 }
 
+// The 3D side: the physics engine, three.js, the scene's libraries and the sculpted models (each a chunk of its own, in
+// the groups below) and the scene itself. The loader downloads it while the intro shows and the scene imports it once
+// you play; the page shell (the intro, the opening menu, the loading screen, the saves) imports none of it.
+const PHYSICS = /node_modules[\\/]@dimforge[\\/]/
+const THREE = /node_modules[\\/]three[\\/]/
+const R3F =
+  /node_modules[\\/](@react-three|three-stdlib|troika-[^\\/]+|camera-controls|postprocessing|n8ao|maath|ecctrl|three-mesh-bvh|@monogrid|meshline|stats-gl|suspend-react|its-fine|hls\.js)[\\/]/
+const MODELS = /src[\\/](models[\\/](cow|sheep|chicken|person|crops|plants)|lib[\\/]sculpt[\\/])/
+const THREE_SIDE = [PHYSICS, THREE, R3F, MODELS, /src[\\/]scene[\\/]Experience\./]
+
+/** Everything reached from `start` along `next`, breadth first, each with the one it was first reached from. */
+function reach(start: string, next: (at: string) => readonly string[]) {
+  const from = new Map<string, string | null>([[start, null]])
+  for (const at of from.keys()) for (const n of next(at)) if (!from.has(n)) from.set(n, at) // a Map's keys() goes on to keys added meanwhile
+  return from
+}
+
+/** The way `reach` came to `end`, from its start. */
+function wayTo(from: Map<string, string | null>, end: string) {
+  const way: string[] = []
+  for (let at: string | null = end; at; at = from.get(at) ?? null) way.unshift(at)
+  return way
+}
+
+/**
+ * Keeps the page shell light: the entry and every chunk it imports statically (what index.html loads and preloads
+ * before the intro shows) hold nothing of the 3D side. One static import from the shell's code into it (a constant
+ * read from a module that also draws, say) would put three.js in front of the intro on every phone: the build fails
+ * instead, naming the chain of imports to cut (move what the shell needs into a module without three.js, or import
+ * the 3D side with `import()`). 11-startup checks the served index.html the same way.
+ */
+function lightShell(): Plugin {
+  return {
+    name: 'home-light-shell',
+    apply: 'build',
+    generateBundle(_, bundle) {
+      const entry = Object.values(bundle).find((o) => o.type === 'chunk' && o.isEntry)
+      if (entry?.type !== 'chunk') return
+      const heavy = (id: string) => THREE_SIDE.some((t) => t.test(id))
+      const short = (id: string) =>
+        id
+          .replace(/^.*[\\/]node_modules[\\/]/, '')
+          .replace(process.cwd(), '')
+          .replace(/^[\\/]/, '')
+      const chunk = (f: string) => {
+        const o = bundle[f]
+        return o?.type === 'chunk' ? o : undefined
+      }
+      // the chunks the shell loads (static imports only), each with the chunk that imports it
+      const shell = reach(entry.fileName, (f) => chunk(f)?.imports ?? [])
+      for (const f of shell.keys()) {
+        const bad = chunk(f)?.moduleIds.find(heavy)
+        if (!bad) continue
+        // the static imports from the entry's module into the 3D side: where to cut
+        const modules = reach(entry.facadeModuleId!, (id) => (heavy(id) ? [] : (this.getModuleInfo(id)?.importedIds ?? [])))
+        const hit = [...modules.keys()].find(heavy)
+        this.error(
+          `The page shell loads the 3D side before the intro: ${wayTo(shell, f).join(' → ')} holds ${short(bad)}.` +
+            (hit ? `\nImported by: ${wayTo(modules, hit).map(short).join(' → ')}` : '') +
+            `\nThe shell may import only what the intro, the menu and the loading screen need: move what it reads into a module without three.js, or import the 3D side with import().`,
+        )
+      }
+    },
+  }
+}
+
 /** The developer pages and tools (?gallery, ?furniture, ?items, ?tune, ?console, ?debug&stress: the model gallery's
  *  chunk and the dev-* groups below): they load only when their flag is used, so the loader does not download them for
  *  every player and the service worker does not keep them. */
@@ -200,7 +266,7 @@ self.addEventListener('fetch', (event) => {
 
 export default defineConfig({
   base: process.env.BASE_PATH ?? '/',
-  plugins: [react(), rapierWasmAsFile(), offlineAndProgress()],
+  plugins: [react(), rapierWasmAsFile(), lightShell(), offlineAndProgress()],
   assetsInclude: ['**/*.glb', '**/*.gltf', '**/*.hdr', '**/*.exr', '**/*.ktx2'],
   build: {
     target: 'es2022',
@@ -226,17 +292,13 @@ export default defineConfig({
             // the particle engine and the effects made with it, imported once the game is playing (`later`)
             { name: 'effects', test: /node_modules[\\/](three\.quarks|quarks\.core)[\\/]|src[\\/]fx[\\/]quarks\./, priority: 45, includeDependenciesRecursively: false },
             { name: 'vendor-react', test: /node_modules[\\/](react|react-dom|scheduler|zustand|use-sync-external-store)[\\/]|vite[\\/]preload-helper/, priority: 40 },
-            { name: 'vendor-physics', test: /node_modules[\\/]@dimforge[\\/]/, priority: 30 },
-            { name: 'vendor-three', test: /node_modules[\\/]three[\\/]/, priority: 20 },
+            { name: 'vendor-physics', test: PHYSICS, priority: 30 },
+            { name: 'vendor-three', test: THREE, priority: 20 },
             // the sculpted models and the kit they are made with: shared by the scene and the model gallery. Only their own
             // modules: pulled in with what they import, it took the device profile, which the page shell reads, and so put
             // three.js and the models in front of the intro (362 KB instead of 151 KB before it shows; 11-startup)
-            { name: 'models', test: /src[\\/](models[\\/](cow|sheep|chicken|person|crops|plants)|lib[\\/]sculpt[\\/])/, priority: 5, includeDependenciesRecursively: false },
-            {
-              name: 'vendor-r3f',
-              test: /node_modules[\\/](@react-three|three-stdlib|troika-[^\\/]+|camera-controls|postprocessing|n8ao|maath|ecctrl|three-mesh-bvh|@monogrid|meshline|stats-gl|suspend-react|its-fine|hls\.js)[\\/]/,
-              priority: 10,
-            },
+            { name: 'models', test: MODELS, priority: 5, includeDependenciesRecursively: false },
+            { name: 'vendor-r3f', test: R3F, priority: 10 },
           ],
         },
       },

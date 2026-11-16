@@ -4,7 +4,7 @@ import { Html } from '@react-three/drei'
 import { BufferAttribute, BufferGeometry, FogExp2, MathUtils, Matrix4, Quaternion, Vector3, type PerspectiveCamera } from 'three'
 import { uiClick } from '../audio/sound'
 import { useHome } from '../store'
-import { dragTo, drop, keyOf, shownAt, shownPlacement, thingOf, useEdit, type Pick } from './edit'
+import { dragTo, drop, editCamera, editView, keyOf, shownAt, shownPlacement, thingOf, useEdit, type Pick } from './edit'
 import { BLOCKERS, PARCELS, PARCEL_IDS, PLACE_IDS, bedRect, canBuyParcel, decorRect, doorway, footprint, landBounds, type ParcelId, type PlaceId, type Rect, type Thing } from './layout'
 import { farm, useFarm } from './state'
 
@@ -20,13 +20,6 @@ const T = Math.tan(TILT)
 const MIN_H = 7
 const MAX_H = 75
 const ALL_LAND = landBounds({ ...farm.layout, land: PARCEL_IDS })
-
-/** How far the camera has flown up (0 on the ground … 1 in the view from above): the hand only works up there. */
-export const editCamera = { blend: 0 }
-
-/** The ground point in the middle of the view from above (what the panel puts a piece bought or taken out of the store
- *  down near). */
-export const editView = { x: 0, z: 0 }
 
 interface View {
   x: number // the ground point in the middle of the view

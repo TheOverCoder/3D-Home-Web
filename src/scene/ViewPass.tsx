@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useThree } from '@react-three/fiber'
 import { assets } from '../assets/registry'
-import { editCamera } from '../farm/EditMode'
+import { editCamera } from '../farm/edit'
 import { decorateCamera } from '../home/DecorateMode'
 import { debugSet } from '../lib/debug'
 import { copyTime, holdCopies, makeCopiesNow } from '../lib/sculpt/lod'
