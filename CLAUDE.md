@@ -233,7 +233,8 @@ The README has the overview; `tests/README.md` what each test guards.
   its designer (`lab/feedback`). Every board has its kind, its icon there: `ui` (the interface designer), `film` (the
   film director), `3d` (the 3D designer, `.claude/agents/3d-designer.md`: the game's models proposed the same way). A
   proposal may add a feature the game does not have (its `adds` line, ✦ in the sandbox, on sample data); its logic is
-  written only once the user chose it. Only the variant the user chose goes into the game. A
+  written only once the user chose it. Only the variant the user chose goes into the game, and a variant they marked ✓
+  and said may go in is built into the game in the very next round, not left waiting on its board. A
   panel's look is a component of its own fed with data (`LevelCard` from `levelView`; `LevelPanel` reads the farm), so
   the lab shows it as it is. Motion is Motion for React through `src/ui/motion.tsx` (`m.*`, the game's springs,
   reduced motion respected), a celebration `burst` (`src/ui/burst.ts`), form controls Radix primitives.
