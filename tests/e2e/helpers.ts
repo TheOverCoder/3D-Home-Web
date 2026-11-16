@@ -34,8 +34,18 @@ export interface Game {
   hold: (key: string, ms: number) => Promise<void>
 }
 
+/** Puts the daily gift out of the way (src/farm/daily.ts: it never opens by itself, nor waits in the corner menu; its
+ *  card, if open, closes) for a test that is not about it (tests/e2e/35-daily never puts it away). Guarded: a page from
+ *  before it has no such hook. */
+export const quietDaily = (page: Page) => page.evaluate(() => (window as any).__home?.farm?.daily?.quiet?.(true))
+
+/** Turns the week's events off (src/farm/events.ts: they follow the device's date; a ?debug page starts with them off
+ *  unless it says &events=on, and 34-events sets dates of its own). Guarded: a page from before them has no such hook. */
+export const quietEvents = (page: Page) => page.evaluate(() => (window as any).__home?.events?.set?.(null))
+
 /** Opens the app with the debug hooks, waits for the intro button, enters, waits until you stand on the first map (a
- *  new farm: the farm, outdoors). */
+ *  new farm: the farm, outdoors). The daily gift is put out of the way (`quietDaily`) and the week's events are off
+ *  (`quietEvents`). */
 export async function bootApp(page: Page, query = 'debug&quality=low') {
   await page.goto(`/?${query}`)
   const btn = page.locator('.intro .primary')
@@ -50,6 +60,8 @@ export async function bootApp(page: Page, query = 'debug&quality=low') {
     null,
     { timeout: 120_000, polling: 500 },
   )
+  await quietDaily(page)
+  await quietEvents(page)
 }
 
 /** Puts the shared page on a map (the house yours first): the scene changes behind its curtain, you at that map's start.
@@ -171,6 +183,8 @@ export async function openGame(browser: Browser, counting = false): Promise<{ ga
         // Thursday would change prices, gifts and speeds): a ?debug page starts with them off, and a spec that turned
         // them on (34-events) leaves them off for the next
         h.events?.set?.(null)
+        // the daily gift out of the way: it would open over a test by itself once a day (35-daily tests it)
+        h.farm?.daily?.quiet?.(true)
       }, map)
     },
   }

@@ -1,6 +1,7 @@
 import { BuyDecor, DecorShop } from './DecorShop'
 import { GoalsPanel } from './GoalsPanel'
 import { AwayPanel, AwayWatcher } from './AwayPanel'
+import { DailyPanel, DailyWatcher } from './DailyPanel'
 import { LevelUp } from './XpChip'
 import { LevelPanel } from './LevelPanel'
 import { WardrobePanel } from '../home/WardrobePanel'
@@ -468,10 +469,13 @@ export function FarmUI() {
       <AnimatePresence>{panel?.kind === 'level' && <LevelPanel key={`level-${opening(panel)}`} />}</AnimatePresence>
       {/* the farm news (the corner menu's): the week's events and the lucky draw, going out the way it came in */}
       <AnimatePresence>{panel?.kind === 'news' && <NewsPanel key={`news-${opening(panel)}`} />}</AnimatePresence>
+      {/* the daily gift: out the way it came in, as the level's card */}
+      <AnimatePresence>{panel?.kind === 'daily' && <DailyPanel key={`daily-${opening(panel)}`} />}</AnimatePresence>
       {panel?.kind === 'wardrobe' && <WardrobePanel />}
       <LevelUp />
       <AwayWatcher />
       <NewsWatcher />
+      <DailyWatcher />
     </>
   )
 }

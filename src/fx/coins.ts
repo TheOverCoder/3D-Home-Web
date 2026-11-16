@@ -51,6 +51,23 @@ export function flyCoins(x: number, y: number, n: number): number {
   return n
 }
 
+// Coins already the farm's that the interface still shows on their way (the daily gift's, on its card until they fly):
+// the dashboard's count (src/farm/TopDash.tsx) leaves them out until they are let go, as they take off for the chip.
+let held = 0
+const holders = new Set<() => void>()
+/** The coins held back from the chip's count now. */
+export const coinsHeld = () => held
+/** Called whenever the coins held back change; the returned function stops it. */
+export function onCoinsHeld(f: () => void) {
+  holders.add(f)
+  return () => void holders.delete(f)
+}
+/** Holds `n` coins back from the chip's count (a negative `n` lets them go). */
+export function holdCoins(n: number) {
+  held = Math.max(0, held + n)
+  for (const f of holders) f()
+}
+
 const ITEM = 56 // CSS px, a surprise as it pops up
 const POP = 520 // ms: up it pops, and shows itself
 const HOLD = 420

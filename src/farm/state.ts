@@ -69,6 +69,7 @@ import {
 } from './data'
 import { sanitizeXp, seedXp, levelOf, levelReward, xpAt, unpaidCoins, xpForSale, type Xp } from './xp'
 import { CAME_KEPT, boxOf, boxesReached, giftsFor, isOpen as giftOpen, rollArrival, rollBox, sanitizeGifts, settle, waitingBoxes, type Gifts, type Opened, type Prize } from './gifts'
+import { claimed, dailyFresh, dailyStatus, dailyView, dayNumber, rollDay, sanitizeDaily, type Daily, type DailyView } from './daily'
 import { QUEUE, machineLevel, queuePrice, type MachineActions, type MachineView, type QueueSlot } from './machineView'
 import {
   boostOf,
@@ -245,6 +246,8 @@ export interface FarmData {
   xp: Xp
   /** the level's gifts (src/farm/gifts.ts): the boxes on each level's bar opened, and what the levels reached brought */
   gifts: Gifts
+  /** the daily gift (src/farm/daily.ts): the last day one was claimed, the streak, what this week's days gave */
+  daily: Daily
   /** what the player wears, from the wardrobe's garments (src/farm/outfit.ts) */
   outfit: Outfit
   /** every upgrade ladder's step (LADDERS in ./data): the market's and the contractor's */
@@ -328,6 +331,7 @@ function fresh(): FarmData {
     clock: 0,
     xp: { points: 0, paid: 1 },
     gifts: giftsFor(0),
+    daily: dailyFresh(),
     outfit: { ...DEFAULT_OUTFIT },
     ladders: clampLevels({}),
     market: freshMarket(),
@@ -513,6 +517,12 @@ export function gateX(layout: FarmLayout = farm.layout): number {
 }
 let gateCache: { key: string; x: number } | null = null
 
+/** The device's clock for the daily gift (src/farm/daily.ts): its calendar day is the gift's day. Tests set their own
+ *  (setDailyClock). Here, before the farm first loads: a save's daily gift is read on today. */
+let dailyClock: () => number = () => Date.now()
+/** Today, on the device's own calendar (a day number of src/farm/daily.ts). */
+export const calendarDay = () => dayNumber(dailyClock())
+
 /** The saved farm, made safe (a hand-edited or old save can never break the game), plus the time it was saved. */
 function load(text: string | null = readRaw(KEY)): { data: FarmData; savedAt: number | null; queue: SavedBuyer[] } {
   const data = fresh()
@@ -594,6 +604,8 @@ function load(text: string | null = readRaw(KEY)): { data: FarmData; savedAt: nu
     // the level's gifts: as saved, never past the boxes the XP reached; a farm from before them finds its own level's
     // boxes reached so far waiting (the levels before are not given again)
     data.gifts = sanitizeGifts(raw.gifts, data.xp.points)
+    // the daily gift: as saved (a farm from before it has never claimed one; one that cannot be read has taken today's)
+    data.daily = sanitizeDaily(raw.daily, calendarDay())
     // the clothes: as saved, each one the wardrobe has at the farm's level (a farm from before it: what it always wore)
     data.outfit = sanitizeOutfit(raw.outfit, levelOf(data.xp.points))
     // the ladders, the market, the contractor and the day (a farm from before them: as on a new farm)
@@ -2251,6 +2263,64 @@ export function sawLevel() {
   farm.gifts = { ...farm.gifts, seen: level }
   bump()
   save()
+}
+
+// ───────────────────────────── the daily gift ─────────────────────────────
+
+/** For the tests: the daily gift's clock (null: the device's own again). A day changing is seen at once. */
+export function setDailyClock(f: (() => number) | null) {
+  dailyClock = f ?? (() => Date.now())
+  bump()
+}
+
+/** Put out of the way (the tests that do not test it: src/farm/daily.ts never opens by itself, nor shows on the menu).
+ *  The card open is closed. Not kept: a page loaded again has it as always. */
+let dailyQuiet = false
+export function quietDaily(on: boolean) {
+  dailyQuiet = on
+  if (on && useHome.getState().panel?.kind === 'daily') useHome.getState().closePanel()
+  bump()
+}
+
+/** The daily gift's card as it stands today (./DailyCard.tsx). */
+export const dailyNow = (): DailyView => dailyView(farm.daily, calendarDay(), levelOf(farm.xp.points))
+
+/** Today's gift waits for the player: it can be claimed, on a farm that has begun (one that has planted: a new farm's
+ *  first minutes are for learning to play), and it is not put out of the way. The menu in the corner shows it then. */
+export const dailyWaiting = () => !dailyQuiet && farm.started && dailyStatus(farm.daily, calendarDay()).ready
+
+/** Today's gift opens by itself: it waits, and it has not opened by itself today (it does once a day, then only from
+ *  the menu). */
+export const dailyDue = () => dailyWaiting() && farm.daily.offered !== calendarDay()
+
+/** The card opened by itself today: not again today. */
+export function offerDaily() {
+  const day = calendarDay()
+  if (farm.daily.offered === day) return
+  farm.daily = { ...farm.daily, offered: day }
+  bump()
+  save()
+}
+
+/**
+ * Claims today's gift: rolled on the farm's dice (src/farm/daily.ts, rollDay) for the week's day it is, at the farm's
+ * level, and given at once — coins, or goods into their building even past full (as surprises go); the streak goes on
+ * (a missed day forgiven) or a new week starts. What it gave, or null when there is none today (taken already, or the
+ * clock before the last day claimed): never twice. No XP: a gift is not something done.
+ */
+export function claimDaily(): Prize[] | null {
+  const day = calendarDay()
+  const s = dailyStatus(farm.daily, day)
+  if (!s.ready) return null
+  const prizes = rollDay(s.day, levelOf(farm.xp.points), farm.made, random)
+  const next = claimed(farm.daily, day, prizes)
+  if (!next) return null
+  for (const p of prizes) give(p)
+  farm.daily = next
+  // (its sound and its touch come as it bursts open on its card)
+  bump()
+  save()
+  return prizes
 }
 
 /**

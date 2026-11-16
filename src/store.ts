@@ -47,6 +47,7 @@ export type Panel =
   | { kind: 'decor-shop'; tab: 'decor' | 'fruit' } // the farm's edit mode's shop: decoration, or fruit trees and bushes
   | { kind: 'decor-buy'; item: string } // buying one of a kind for the farm: what it is and its next price, Cancel or Buy
   | { kind: 'away' } // welcome back: what happened on the farm while you were away
+  | { kind: 'daily' } // the daily gift: today's to claim, and the week's streak (src/farm/DailyPanel.tsx)
   | { kind: 'goals' } // the goals board: what to reach next, and the rewards to claim
   | { kind: 'level' } // the level's card: the XP to the next level, what it brings, the coins to claim
   | { kind: 'wardrobe'; piece: string } // a wardrobe open: its garments, and you filmed while you choose (src/home)

@@ -12,6 +12,7 @@ import {
   buyOffice,
   buyPiece,
   buySlot,
+  claimDaily,
   claimLevel,
   giftsWaiting,
   openGifts,
@@ -30,6 +31,7 @@ import {
   moveBed,
   moveJob,
   movePiece,
+  offerDaily,
   movePlace,
   orderAt,
   placeDecor,
@@ -41,6 +43,7 @@ import {
   sellToContractor,
   sellToManager,
   sendOrder,
+  setDailyClock,
   setPlacePrice,
   spawnVisitor,
   storeDecor,
@@ -301,6 +304,13 @@ export function playedSave(): Record<string, unknown> {
     const waiting = giftsWaiting()
     openGifts(waiting.slice(-1))
     sawLevel()
+    // the daily gift: claimed two days in a row (the second day's opened by itself), a streak of two
+    setDailyClock(() => Date.UTC(2026, 10, 8, 12))
+    claimDaily()
+    setDailyClock(() => Date.UTC(2026, 10, 9, 12))
+    offerDaily()
+    claimDaily()
+    setDailyClock(null)
     // the house bought, and the player back on the farm (the two maps)
     farm.apartment.owned = true
     farm.place = 'farm'
@@ -309,5 +319,6 @@ export function playedSave(): Record<string, unknown> {
     return savedNow()
   } finally {
     random.mockRestore()
+    setDailyClock(null)
   }
 }

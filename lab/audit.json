@@ -114,6 +114,16 @@
    "tiny": [],
    "under": [],
    "off": []
+  },
+  "daily": {
+   "screens": 12,
+   "errors": [],
+   "blank": [],
+   "scroll": [],
+   "small": [],
+   "tiny": [],
+   "under": [],
+   "off": []
   }
  }
 }

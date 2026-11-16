@@ -1,9 +1,11 @@
 import { AnimatePresence, m } from 'motion/react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useDailyWaiting } from '../farm/useDaily'
 import { editHere, openEdit } from '../home/decorate'
 import { newsBadge, useFarm } from '../farm/state'
 import { useSettings, type Settings } from '../settings'
 import { busy, useHome } from '../store'
+import { art } from './art'
 import { ArrowsOutCardinal, CompassRose, Couch, EyeSlash, GearSix, List, Newspaper, SquaresFour, X } from './glyphs'
 import { MotionRoot, POP, PRESS, SPRING } from './motion'
 import './Compass.css'
@@ -20,21 +22,28 @@ const typing = (t: EventTarget | null) => t instanceof HTMLElement && (t.isConte
 
 /**
  * The menu in the top corner (the design lab's board "top", D): one round button that opens into its buttons, each with
- * its name — the farm news (the week's events and the lucky draw, src/farm/news: a sun badge on it and on the menu
- * itself while something waits there), edit the farm (or decorate, in the house), what the top of the screen shows
- * (everything: the dashboard and the compass; only the compass; or nothing at all, a clear view of the farm), and the
- * settings. It keeps the corner in every view, so the view can always be changed back; the view's own button cycles it
- * and leaves the menu open, so pressing it again and again goes round the three views. H does the same on a keyboard. The choice is remembered;
- * the stylesheets read it from <html data-hud>. A touch anywhere else closes the menu.
+ * its name — the daily gift while today's waits (src/farm/daily.ts: it opens by itself once a day; closed unclaimed, it
+ * waits here), the farm news (the week's events and the lucky draw, src/farm/news), edit the farm (or decorate, in the
+ * house), what the top of the screen shows (everything: the dashboard and the compass; only the compass; or nothing at
+ * all, a clear view of the farm), and the settings. It keeps the corner in every view, so the view can always be changed
+ * back; the view's own button cycles it and leaves the menu open, so pressing it again and again goes round the three
+ * views. H does the same on a keyboard. The choice is remembered; the stylesheets read it from <html data-hud>. A touch
+ * anywhere else closes the menu.
+ *
+ * What waits inside shows on the button, on its two right-hand corners in the dial's order (the left side is the
+ * dashboard's: the level's road ends beside it): today's gift on the top corner, a small gift that hops now and then;
+ * the news's sun badge with how many wait there on the top corner too while it is alone, on the bottom one while the
+ * gift is there, so the two never cover each other. In the dial, the news's own button carries its number again.
  */
 export function HudMode() {
   const phase = useHome((s) => s.phase)
   const occupied = useHome(busy)
   const edit = useHome(editHere)
   const mode = useSettings((s) => s.hudMode)
-  // what waits in the farm news (an event not shown yet, the lucky draw not made)
+  // what waits in the farm news (an event not shown yet, the lucky draw not made), and whether today's gift waits
   useFarm((s) => s.rev)
   const news = newsBadge()
+  const gift = useDailyWaiting()
   const [open, setOpen] = useState(false)
   const box = useRef<HTMLDivElement>(null)
   const shown = phase === 'playing' && !occupied
@@ -72,15 +81,30 @@ export function HudMode() {
     <MotionRoot>
       <div className="top-menu" ref={box}>
         <m.button
-          className={`top-menu-btn${open ? ' on' : ''}`}
+          className={`top-menu-btn${open ? ' on' : ''}${gift ? ' gift' : ''}`}
           {...PRESS}
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
-          aria-label={`Menu: the farm news, edit, the top's view, settings${news ? ` — ${news} new in the news` : ''}`}
+          aria-label={`Menu: ${gift ? "today's gift waits; " : ''}the farm news${news ? ` (${news} new)` : ''}, edit, the top's view, settings`}
           title="Menu"
         >
           {open ? <X weight="bold" /> : <List weight="bold" />}
-          <AnimatePresence>{news > 0 && !open && <Badge n={news} />}</AnimatePresence>
+          <AnimatePresence>
+            {gift && !open && (
+              <m.span
+                key="gift"
+                className="top-menu-gift"
+                aria-hidden="true"
+                initial={{ scale: 0, rotate: -30 }}
+                animate={{ scale: 1, rotate: 0 }}
+                exit={{ scale: 0, transition: { duration: 0.12 } }}
+                transition={SPRING.pop}
+              >
+                <img src={art('wrapped-gift')} alt="" />
+              </m.span>
+            )}
+            {news > 0 && !open && <Badge key="news" n={news} />}
+          </AnimatePresence>
         </m.button>
         <AnimatePresence>
           {open && (
@@ -91,6 +115,18 @@ export function HudMode() {
               exit="shut"
               variants={{ open: { transition: { staggerChildren: 0.045 } }, shut: { transition: { staggerChildren: 0.03, staggerDirection: -1 } } }}
             >
+              {gift && (
+                <Dial
+                  className="daily-open"
+                  icon={<img className="art" src={art('wrapped-gift')} alt="" />}
+                  word="Daily gift"
+                  label="Daily gift: today's is waiting"
+                  onTap={() => {
+                    setOpen(false)
+                    useHome.getState().openPanel({ kind: 'daily' })
+                  }}
+                />
+              )}
               <Dial
                 className="news-open"
                 icon={<Newspaper weight="bold" />}

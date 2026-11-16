@@ -10,7 +10,8 @@ import { savesBoard } from './boards/saves'
 import { woodsBoard } from './boards/woods'
 import { scarecrowBoard } from './boards/scarecrow'
 import { newsBoard } from './boards/news'
+import { dailyBoard } from './boards/daily'
 
 /** Every board of the lab, newest first. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const BOARDS: Board<any>[] = [newsBoard, scarecrowBoard, woodsBoard, savesBoard, ordersBoard, goalsBoard, filmSupermarketBoard, topBoard, introBoard, loadingBoard, levelBoard]
+export const BOARDS: Board<any>[] = [dailyBoard, newsBoard, scarecrowBoard, woodsBoard, savesBoard, ordersBoard, goalsBoard, filmSupermarketBoard, topBoard, introBoard, loadingBoard, levelBoard]

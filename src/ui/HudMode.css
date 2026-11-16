@@ -1,5 +1,5 @@
 /* the menu in the top corner (src/ui/HudMode.tsx, the design lab's board "top", D): a round button that opens into
-   three, each with its name, in every view of the top of the screen */
+   its buttons, each with its name, in every view of the top of the screen */
 .top-menu { position: fixed; z-index: 13; top: calc(max(var(--top-pad), env(safe-area-inset-top)) + 4px); right: calc(10px + env(safe-area-inset-right)); }
 .top-menu-btn {
   display: grid;
@@ -22,6 +22,18 @@
 .top-badge { position: absolute; top: -5px; right: -5px; display: grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: var(--sun); color: var(--ink); font: 900 13px/1 var(--font-text); font-variant-numeric: tabular-nums; box-shadow: 0 0 0 2px var(--night), 0 2px 4px rgba(0, 0, 0, 0.35); pointer-events: none; }
 .top-dial-icon .top-badge { box-shadow: 0 0 0 2px var(--paper), 0 2px 4px rgba(0, 0, 0, 0.3); }
 .top-menu-btn:focus-visible { outline: 3px solid var(--sun); outline-offset: 2px; }
+/* today's gift waits (src/farm/daily.ts): a small gift on the button's top corner (clear of the level's road beside it),
+   hopping now and then; in the menu, the daily gift first, its picture on the sun. The news's badge then steps down to
+   the bottom corner, so the two read in the dial's order (the gift first) and never cover each other */
+.top-menu-btn.gift .top-badge { top: auto; bottom: -5px; }
+.top-menu-gift { position: absolute; top: -6px; right: -6px; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--sun); box-shadow: 0 0 0 2px #fff, 0 2px 6px rgba(20, 12, 6, 0.35); pointer-events: none; }
+.top-menu-gift img { width: 18px; height: 18px; }
+@media (prefers-reduced-motion: no-preference) {
+  .top-menu-gift img { animation: top-menu-gift 3.2s ease-in-out 1s infinite; }
+}
+@keyframes top-menu-gift { 0%, 76%, 100% { translate: 0 0; rotate: 0deg; } 82% { translate: 0 -4px; rotate: -12deg; } 88% { translate: 0 0; rotate: 10deg; } 94% { translate: 0 -1px; rotate: -4deg; } }
+.top-dial-btn.daily-open .top-dial-icon { background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--sun) 40%, #fff), var(--sun)); box-shadow: 0 3px 0 var(--sun-lip), 0 0 0 3px rgba(255, 255, 255, 0.7), 0 3px 12px color-mix(in srgb, var(--sun) 70%, transparent); }
+.top-dial-btn.daily-open .top-dial-icon .art { width: 30px; height: 30px; }
 .top-dial { position: absolute; top: calc(100% + 8px); right: 0; margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; justify-items: end; }
 .top-dial-btn { display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 0; border: 0; background: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .top-dial-btn:focus-visible { outline: 3px solid var(--sun); outline-offset: 2px; border-radius: 999px; }
