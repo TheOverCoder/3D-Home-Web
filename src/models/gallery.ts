@@ -27,6 +27,10 @@ import { setSculptGlow } from '../lib/sculpt'
 import { decorModel, PATH_HALF, SECTION_HALF } from './decor'
 import { FRUIT, FRUIT_KINDS, type DecorKind } from '../farm/decor'
 import { fruitParts, fruitPlantModel, fruitSpots, putFruit } from './fruit'
+// proposals in the design lab, not yet in the game (the 3D designer's boards)
+import { SETS as SCARECROW_SETS } from '../../lab/boards/scarecrow/models/scarecrows'
+import { birchTree, oakTree, pineTree, poplarTree } from '../../lab/boards/woods/models/woods'
+import { modelGroup, trianglesOf, type LabModel } from '../../lab/three/model'
 
 // Every model the kit makes, posed and moving, for the gallery page (open the site with ?gallery). Add a new
 // model here as soon as it has a shape: it is the quickest way to see it from every side, in the game's light.
@@ -554,6 +558,46 @@ export const GALLERY: GalleryEntry[] = [
       fruit.end()
       object.add(fruit.group)
       return { object, width: 10.4, height: 3.6, triangles: () => plants.reduce((n, p) => n + p.parts.triangles(), 0) + fruit.triangles(), update() {} }
+    },
+  },
+  {
+    id: 'lab-scarecrows',
+    label: 'Scarecrows (lab)',
+    name: "The design lab's scarecrows, proposals not yet in the game (lab/boards/scarecrow): three sets of three, a row each — the American farm, the English fields, the Japanese rice field",
+    make() {
+      const object = new Group()
+      let triangles = 0
+      Object.values(SCARECROW_SETS).forEach((set, row) =>
+        set.forEach((one, k) => {
+          const model = one.model()
+          triangles += trianglesOf(model)
+          const g = modelGroup(model, `scarecrow-${one.id}`)
+          g.position.set((k - 1) * 1.7, 0, (row - 1) * 1.9)
+          object.add(g)
+        }),
+      )
+      return { object, width: 5.2, height: 2.3, triangles: () => triangles, update() {} }
+    },
+  },
+  {
+    id: 'lab-woods',
+    label: 'Woods (lab)',
+    name: "The design lab's woods, a proposal not yet in the game (lab/boards/woods): an oak as in the garden's corners and as in the woods, a birch, a poplar and a pine",
+    make() {
+      const object = new Group()
+      const trees: [LabModel, number][] = [
+        [oakTree(7.5, 21, 0, 6), -8.4],
+        [oakTree(8.6, 44, 1), -2.6],
+        [birchTree(8.2, 46), 2.2],
+        [poplarTree(8.4, 45), 5.4],
+        [pineTree(8.0, 41), 9.2],
+      ]
+      for (const [model, x] of trees) {
+        const g = modelGroup(model, 'lab-tree')
+        g.position.x = x
+        object.add(g)
+      }
+      return { object, width: 22, height: 9.6, triangles: () => trees.reduce((n, [m]) => n + trianglesOf(m), 0), update() {} }
     },
   },
 ]
