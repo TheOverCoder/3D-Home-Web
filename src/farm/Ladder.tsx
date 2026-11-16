@@ -10,7 +10,7 @@ import { buyLadder, farm, ladderLevel, ladderMaxed, ladderOpen, useFarm } from '
 
 // Upgrade ladders (LADDERS in ./data; buyLadder in ./state): one row (its name, what it is now → after the next step,
 // its price on the button) and one card that asks before a step is bought, for every ladder — as the office shows its
-// upgrades (src/farm/OrdersPanel.tsx, OfficeUpgrade and OfficeUpgradePanel).
+// upgrades (src/farm/orderBoard/OrdersBoard.tsx, OfficeUpgrade and OfficeCard).
 
 /** Each ladder's picture. */
 const LADDER_ART: Record<LadderId, ArtId> = { rate: 'coin', places: 'package', group: 'shopping-cart', pace: 'person-running', stock: 'building-construction', discount: 'coin' }

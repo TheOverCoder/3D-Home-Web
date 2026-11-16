@@ -1,0 +1,405 @@
+/* The order board (./OrdersBoard.tsx): a sheet holding a board of dark wood, the orders planks nailed to it. Its woods
+   are mixed from the game's own tokens (the edge's brown, the sun, the paper), never new colours. Moved by Motion (in,
+   out, a swipe of its head), so the game's CSS animations of the panel are off here. Upright a sheet at the bottom
+   (the planks one under another), sideways on the right (the planks in a row that slides), on a tablet or a computer
+   in the middle (two planks side by side). */
+.ob-root {
+  --board: color-mix(in oklab, var(--edge) 78%, var(--ink));
+  --board-lip: color-mix(in oklab, var(--edge) 45%, var(--ink));
+  --plank: color-mix(in oklab, var(--edge-soft) 72%, var(--sun));
+  --plank-lip: color-mix(in oklab, var(--edge) 85%, var(--ink));
+  --carve: color-mix(in oklab, var(--ink) 88%, var(--edge));
+  position: fixed;
+  inset: 0;
+  z-index: 42;
+  display: grid;
+  overflow: hidden;
+}
+.ob-shade { position: absolute; inset: 0; background: rgba(40, 24, 10, 0.4); }
+.ob-sheet.farm-panel { position: relative; z-index: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; animation: none; outline: none; }
+.ob-sheet img { -webkit-user-drag: none; -webkit-touch-callout: none; user-select: none; }
+.ob-bottom { place-items: end center; }
+.ob-bottom .ob-sheet { width: 100%; max-height: 92dvh; padding: 16px 14px calc(14px + env(safe-area-inset-bottom)); border-radius: var(--r-sheet) var(--r-sheet) 0 0; border-bottom: 0; }
+.ob-right { place-items: stretch end; }
+.ob-right .ob-sheet {
+  width: min(600px, 70vw);
+  height: 100dvh;
+  max-height: none;
+  padding: calc(10px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) 22px;
+  border-radius: var(--r-sheet) 0 0 var(--r-sheet);
+  border-right: 0;
+}
+.ob-middle { place-items: center; padding: 16px; }
+.ob-middle .ob-sheet { width: min(660px, 100%); max-height: min(820px, calc(100dvh - 32px)); padding: 16px; border-radius: var(--r-sheet); }
+/* Motion moves the buttons (a press sinks them): no CSS transition fighting it over their transform */
+.ob-sheet .farm-confirm .btn,
+.ob-sheet .close { transition: box-shadow 0.1s ease-out, filter 0.15s; }
+.ob-sheet .close:active { transform: none; }
+
+/* the head: the picture, the title, the two tabs and the close; swiped, it takes the sheet away */
+.ob-sheet .ob-head { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; margin: 0; touch-action: none; }
+.ob-grab { position: absolute; top: -10px; left: 50%; width: 40px; height: 5px; margin-left: -20px; border-radius: 3px; background: var(--paper-3); pointer-events: none; }
+.ob-middle .ob-grab { display: none; }
+.ob-head-art { width: 36px; height: 36px; flex: none; }
+.ob-sheet .ob-head h2 { margin: 0; font: 600 25px/1.1 var(--font-display); color: var(--ink); }
+.ob-head .close { order: 1; margin-inline-start: auto; }
+/* upright the tabs take a row of their own under the title */
+.ob-head .ob-tablist { order: 2; flex: 1 0 100%; margin-top: 4px; }
+
+/* the tabs: Orders with how many places are taken and a green count of those ready to send; Office */
+.ob-tabs { display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 0; }
+.ob-tablist { display: grid; grid-template-columns: 1fr 1fr; padding: 3px; border-radius: 999px; background: var(--paper-2); }
+.ob-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--ink-2);
+  font: 600 17px/1 var(--font-display);
+  isolation: isolate;
+}
+.ob-tab[data-state='active'] { color: var(--ink); }
+.ob-tab-on { position: absolute; inset: 0; z-index: -1; border-radius: 999px; background: var(--paper); box-shadow: 0 2px 0 var(--paper-3); }
+.ob-tab-n { font: 800 14px/1 var(--font-text); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.ob-tab-ready {
+  display: grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--leaf);
+  color: #fff;
+  font: 800 13px/1 var(--font-text);
+  box-shadow: 0 2px 0 var(--leaf-lip);
+}
+.ob-board[hidden],
+.ob-office[hidden] { display: none; }
+
+/* the board: dark wood with its joins, the planks nailed to it; it scrolls by itself (a swipe in it scrolls) */
+.ob-board {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-x pan-y;
+  padding: 8px;
+  border-radius: 20px;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 calc(25% - 2px), rgba(0, 0, 0, 0.22) calc(25% - 2px) 25%), repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0 3px, transparent 3px 11px),
+    var(--board);
+  box-shadow:
+    inset 0 3px 8px rgba(0, 0, 0, 0.35),
+    0 3px 0 var(--board-lip);
+  scrollbar-width: none;
+}
+.ob-planks { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+
+/* a plank: light wood with its grain, nailed at its top corners */
+.ob-plank,
+.ob-wait { position: relative; border-radius: 14px; }
+.ob-plank {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.18), transparent 30%, rgba(120, 70, 20, 0.05) 70%, rgba(255, 255, 255, 0.12)),
+    repeating-linear-gradient(178deg, transparent 0 8px, rgba(120, 70, 20, 0.09) 8px 9px, transparent 9px 17px), var(--plank);
+  box-shadow:
+    0 3px 0 var(--plank-lip),
+    0 7px 12px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  transform-origin: 85% 0;
+  transition: box-shadow 0.3s;
+}
+.ob-plank.done {
+  box-shadow:
+    0 3px 0 var(--plank-lip),
+    0 7px 12px rgba(0, 0, 0, 0.3),
+    0 0 0 3px color-mix(in oklab, var(--leaf) 70%, #fff),
+    0 0 18px 4px color-mix(in oklab, var(--leaf) 45%, transparent);
+}
+.ob-nail {
+  position: absolute;
+  z-index: 2;
+  top: 6px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #fff 0 12%, color-mix(in oklab, var(--ink-2) 40%, var(--paper-3)) 30%, var(--ink-2) 100%);
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
+}
+.ob-nail.tl { left: 6px; }
+.ob-nail.tr { right: 6px; }
+
+/* carved: the words and numbers cut into the wood (dark, the light catching the cut's lower lip) */
+.ob-pays b,
+.ob-name { color: var(--carve); text-shadow: 0 1px 0 rgba(255, 244, 220, 0.75), 0 -1px 0 rgba(60, 30, 10, 0.3); }
+.ob-pays { display: flex; align-items: center; gap: 4px; min-height: 30px; padding-inline: 10px 0; }
+.ob-pays .art { width: 26px; height: 26px; }
+.ob-pays b { font: 900 22px/1 var(--font-text); font-variant-numeric: tabular-nums; }
+.ob-pays .ob-surprise { margin-inline-start: 4px; }
+.ob-coins { display: inline-flex; align-items: center; gap: 4px; }
+.ob-crates { display: inline-flex; margin-inline-start: 6px; }
+.ob-crates img { width: 22px; height: 22px; margin-inline-start: -5px; }
+.ob-no {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin: -8px -6px -8px auto;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--carve);
+}
+.ob-no svg { width: 18px; height: 18px; }
+/* READY, a tag that swings onto the plank in the place of its price once all are in (Send says the coins) */
+.ob-pays b.ob-ready {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px 5px 8px;
+  border-radius: 8px;
+  background: var(--leaf);
+  color: #fff;
+  font: 700 14px/1 var(--font-display);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-shadow: none;
+  box-shadow:
+    0 2px 0 var(--leaf-lip),
+    0 4px 8px rgba(0, 0, 0, 0.25);
+  transform-origin: 12% 0;
+}
+.ob-pays b.ob-ready svg { width: 14px; height: 14px; }
+
+/* the goods, a line each (two to a row upright): the picture with how many it still wants, the name, the pegs */
+.ob-lines { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 0; padding: 0; list-style: none; }
+.ob-lines:has(> li:only-child) { grid-template-columns: minmax(0, 1fr); }
+.ob-line {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  grid-template-areas: 'pic name' 'pic pegs';
+  align-items: center;
+  column-gap: 6px;
+  min-width: 0;
+  padding: 2px 8px 2px 2px;
+  border-radius: 12px;
+  background: rgba(120, 70, 20, 0.1);
+  box-shadow:
+    inset 0 2px 3px rgba(80, 45, 10, 0.18),
+    inset 0 -1px 0 rgba(255, 244, 220, 0.5);
+  transition: background 0.3s;
+}
+.ob-line.in { background: color-mix(in oklab, var(--leaf) 16%, transparent); }
+.ob-good { grid-area: pic; position: relative; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 12px; background: none; }
+.ob-good .item-pic .art { width: 36px; height: 36px; }
+.ob-good .item-pic .qty { font-variant-numeric: tabular-nums; }
+.ob-in {
+  position: absolute;
+  right: -2px;
+  bottom: 0;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--leaf);
+  color: #fff;
+  box-shadow: 0 0 0 2px var(--plank);
+}
+.ob-in svg { width: 13px; height: 13px; }
+.ob-name {
+  grid-area: name;
+  align-self: end;
+  display: -webkit-box;
+  min-width: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font: 600 15px/1.08 var(--font-display);
+  letter-spacing: 0.01em;
+}
+.ob-pegs { grid-area: pegs; align-self: start; display: flex; flex-wrap: wrap; gap: 3px; padding-top: 3px; }
+.ob-pegs i { width: 10px; height: 10px; border-radius: 50%; background: rgba(80, 45, 10, 0.35); box-shadow: inset 0 1px 2px rgba(40, 20, 0, 0.5), 0 1px 0 rgba(255, 244, 220, 0.6); }
+.ob-pegs i.full { background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--sun) 40%, #fff), var(--sun) 55%, var(--sun-lip)); box-shadow: 0 1px 0 var(--plank-lip); }
+/* what the next Put in would add: a dashed ring of the sun's colour, breathing a little */
+.ob-pegs i.soon { background: color-mix(in oklab, var(--sun) 25%, transparent); box-shadow: inset 0 0 0 2px var(--sun-lip); animation: ob-soon 1.6s ease-in-out infinite; }
+.ob-line.in .ob-pegs i.full { background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--leaf) 40%, #fff), var(--leaf) 60%, var(--leaf-lip)); }
+@keyframes ob-soon {
+  50% { background: color-mix(in oklab, var(--sun) 55%, transparent); }
+}
+
+.ob-foot { display: flex; margin-top: auto; }
+.ob-send,
+.ob-put { flex: 1; min-height: 48px; }
+.ob-send { font-size: 19px; gap: 8px; }
+.ob-put { font-size: 17px; }
+.ob-put:disabled { opacity: 0.7; }
+
+/* a place waiting for its next order: a ring that runs down */
+.ob-wait {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 8px 16px;
+  border: 2px dashed rgba(255, 244, 220, 0.35);
+  color: rgba(255, 244, 220, 0.92);
+  font: 700 15px/1.2 var(--font-text);
+}
+.ob-ring {
+  --share: 1;
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: conic-gradient(var(--sun) calc(var(--share) * 360deg), rgba(255, 244, 220, 0.18) 0);
+}
+.ob-ring::before { content: ''; position: absolute; inset: 4px; border-radius: 50%; background: var(--board); }
+.ob-ring img { position: relative; width: 24px; height: 24px; }
+.ob-wait-words { text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.4); }
+.ob-wait-words b { display: block; font-variant-numeric: tabular-nums; color: #fff; font-size: 17px; }
+
+/* the office tab: what you have, then each upgrade as the farm shop shows its own */
+.ob-office { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 8px; }
+.ob-purse { display: flex; align-items: center; gap: 8px; margin: 0; padding: 4px 4px 2px; font: 700 15px/1.2 var(--font-text); color: var(--ink-2); }
+.ob-purse .art { width: 24px; height: 24px; }
+.ob-purse b { color: var(--ink); font-size: 17px; font-variant-numeric: tabular-nums; }
+.ob-sheet .ob-up { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 20px; background: var(--paper-2); }
+.ob-sheet .ob-up .art { width: 44px; height: 44px; }
+.ob-up-text { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; min-width: 0; }
+.ob-up-text > b { font: 600 17px/1.2 var(--font-display); }
+.ob-up-line { display: flex; flex-wrap: wrap; gap: 4px; }
+.ob-up .tag { font-size: 14px; }
+.ob-up .tag.effect { perspective: 200px; }
+.ob-up .tag.effect > span { display: inline-block; }
+.ob-up .tag svg { width: 14px; height: 14px; }
+.ob-sheet .ob-up .ob-up-buy { min-height: 44px; min-width: 80px; }
+.ob-up-done { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--leaf); color: #fff; }
+.ob-up-done svg { width: 20px; height: 20px; }
+
+/* the card that asks before an upgrade is bought: over the sheet, in its middle */
+.ob-ask-scrim { position: absolute; inset: 0; z-index: 6; display: grid; place-items: center; padding: 16px; border-radius: inherit; background: rgba(40, 24, 10, 0.32); }
+.ob-ask { display: flex; flex-direction: column; align-items: center; gap: 8px; width: min(320px, 100%); padding: 16px; border-radius: 24px; text-align: center; }
+.ob-ask-art { width: 56px; height: 56px; }
+.ob-ask h3 { margin: 0; font: 600 21px/1.1 var(--font-display); }
+.ob-ask p { margin: 0; font: 600 15px/1.3 var(--font-text); color: var(--ink-2); }
+.ob-ask-effect { font-size: 15px; }
+.ob-ask-effect svg { width: 14px; height: 14px; }
+.ob-ask .farm-confirm { width: 100%; margin-top: 4px; }
+.ob-ask .farm-confirm > * { flex: 1; }
+.ob-ask .farm-confirm .farm-buy { min-width: 0; }
+
+/* the goods on their way into an order */
+.ob-flights { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+.ob-flights img { position: absolute; left: 0; top: 0; width: 36px; height: 36px; filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.25)); }
+
+/* the bubble of a good touched: its name, how many are in, what the store holds, where it comes from */
+.ob-pop { z-index: 80; }
+.ob-pop > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 150px;
+  max-width: 240px;
+  padding: 8px 12px 10px;
+  border: 2px solid #fff;
+  border-radius: 16px;
+  background: var(--paper);
+  box-shadow:
+    0 3px 0 var(--paper-3),
+    0 10px 24px rgba(40, 24, 10, 0.3);
+  color: var(--ink);
+  text-align: center;
+  transform-origin: 50% 100%;
+}
+.ob-pop-name { font: 600 19px/1.15 var(--font-display); text-transform: capitalize; }
+.ob-pop-state { font: 800 14px/1.3 var(--font-text); color: var(--xp-lip); }
+.ob-pop-state.in { color: var(--leaf); }
+.ob-pop-store { font: 700 13px/1.3 var(--font-text); color: var(--ink-2); }
+.ob-pop-arrow { fill: var(--paper); }
+.ob-src { display: flex; align-items: center; gap: 6px; margin-top: 4px; padding: 4px 8px; border-radius: 12px; background: var(--paper-2); font: 700 14px/1.25 var(--font-text); text-align: left; }
+.ob-src > .art { width: 30px; height: 30px; flex: none; }
+.ob-from { display: inline-flex; align-items: center; gap: 2px; vertical-align: middle; }
+.ob-from .item-pic .art { width: 22px; height: 22px; }
+.ob-show { margin-top: 6px; min-height: 44px; gap: 6px; }
+.ob-show svg { width: 16px; height: 16px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ob-pegs i.soon { animation: none; }
+}
+
+/* upright the sheet keeps one height whichever tab is open (it never jumps under the finger) */
+.ob-bottom .ob-board,
+.ob-bottom .ob-office { min-height: min(500px, 58dvh); }
+/* a tablet or a computer: the sheet in the middle, a plank's goods three to a row */
+.ob-middle .ob-board,
+.ob-middle .ob-office { min-height: min(520px, 60dvh); }
+.ob-middle .ob-lines { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+/* a small phone: the goods one to a line, so a name never squeezes */
+@media (max-width: 370px) {
+  .ob-bottom .ob-lines { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* a phone on its side: the tabs beside the title, the planks in a row that slides (three fit); a long order's goods
+   scroll inside its plank, its press always in view */
+.ob-right .ob-tabs { gap: 8px; }
+.ob-right .ob-head { flex-wrap: nowrap; gap: 6px; }
+.ob-right .ob-grab { top: 50%; left: -14px; width: 5px; height: 40px; margin: -20px 0 0; }
+.ob-right .ob-head-art { width: 30px; height: 30px; }
+.ob-right.ob-root .ob-head h2 { font-size: 22px; }
+.ob-right .ob-head .ob-tablist { order: 0; flex: 1 1 200px; max-width: 230px; margin: 0 0 0 auto; }
+.ob-right .ob-head .close { margin-inline-start: 0; }
+.ob-right .ob-tab { font-size: 16px; gap: 4px; }
+.ob-right .ob-tab-n { display: none; }
+.ob-right .ob-board { overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; }
+.ob-right .ob-planks { display: flex; align-items: stretch; height: 100%; gap: 8px; }
+.ob-right .ob-plank,
+.ob-right .ob-wait { flex: 0 0 calc((100% - 16px) / 3); min-width: 150px; min-height: 0; scroll-snap-align: start; }
+.ob-right .ob-plank { gap: 6px; padding: 8px; }
+.ob-right .ob-lines {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  align-content: start;
+  margin-inline: -2px;
+  padding: 2px 2px 10px;
+  scrollbar-width: none;
+}
+/* what scrolls inside a plank fades at its foot, so a line half seen says there is more */
+.ob-right .ob-plank:has(> .ob-lines > li:nth-child(4)) .ob-lines {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 14px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 14px), transparent);
+}
+.ob-right .ob-line { padding-block: 0; }
+.ob-right .ob-good .item-pic .art { width: 32px; height: 32px; }
+.ob-right .ob-pays { padding-inline-start: 8px; }
+.ob-right .ob-pays b { font-size: 19px; }
+.ob-right .ob-pays .art { width: 22px; height: 22px; }
+.ob-right .ob-crates img { width: 18px; height: 18px; }
+.ob-right .ob-send,
+.ob-right .ob-put { min-height: 44px; padding-inline: 8px; font-size: 15px; }
+.ob-right .ob-send { gap: 4px; }
+.ob-right .ob-foot { flex: none; }
+.ob-right .ob-wait { flex-direction: column; justify-content: center; text-align: center; }
+/* a long order (four goods or more) is a wider plank with its goods two to a row */
+.ob-right .ob-plank:has(> .ob-lines > li:nth-child(4)) { flex-basis: calc((100% - 8px) * 2 / 3); }
+.ob-right .ob-plank:has(> .ob-lines > li:nth-child(4)) .ob-lines { grid-template-columns: repeat(2, minmax(0, 1fr)); }

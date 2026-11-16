@@ -245,6 +245,8 @@ test.describe('the silo, the barn, surprises and orders', () => {
     const { page } = game
     await reset(game, {}, 500)
     await page.evaluate(() => (window as any).__home.useHome.getState().openPanel({ kind: 'orders' }))
+    // the office is the board's second tab
+    await page.getByRole('tab', { name: 'Office' }).click()
     await page.locator('.farm-office .farm-shop-item').nth(0).getByRole('button').click()
     await until(game, () => (window as any).__home.useHome.getState().panel?.kind === 'office-upgrade')
     await page.waitForTimeout(600)
