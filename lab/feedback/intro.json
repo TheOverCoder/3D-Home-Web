@@ -2,14 +2,9 @@
   "board": "intro",
   "for": "ui-designer",
   "read": "2026-11-16",
-  "sent": "2026-11-15T14:58",
-  "verdicts": {},
-  "notes": [
-    {
-      "variant": "d",
-      "state": "new",
-      "kind": "sideways",
-      "text": "צריך שיהיה דף New farm \nLoad farm \nSettings\nMusic \nועוד בעיצוב כמו שיש עכשיו רק משופר עם הגדרות שאפשר ליישם במשחק תעדכן את הרפרנס העיצובי משמעותית לאחד יציב ברור קודם"
-    }
-  ]
+  "sent": "2026-11-16T08:53",
+  "verdicts": {
+    "e": "yes"
+  },
+  "notes": []
 }
