@@ -8,7 +8,7 @@
 // lab/check.json (the lab's status shows it) and prints each step. With the lab served (`npm run lab`, port 5180, or
 // the build on another port: --base):
 //
-//   node scripts/lab-check.mjs [--base http://localhost:5180/]
+//   node scripts/lab-check.mjs [--base http://localhost:5180/] [--screens upright,sideways,computer]
 import { writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -17,11 +17,13 @@ import { args, labOf, launch } from './lab-tools.mjs'
 const a = args()
 const base = a.base ?? 'http://localhost:5180/'
 const out = join(dirname(fileURLToPath(import.meta.url)), '../lab/check.json')
-const SCREENS = [
-  { name: 'טלפון לאורך', ctx: { viewport: { width: 390, height: 740 }, isMobile: true, hasTouch: true }, touch: true },
-  { name: 'טלפון לרוחב', ctx: { viewport: { width: 800, height: 360 }, isMobile: true, hasTouch: true }, touch: true },
-  { name: 'מחשב', ctx: { viewport: { width: 1280, height: 860 } }, touch: false },
+const ALL_SCREENS = [
+  { id: 'upright', name: 'טלפון לאורך', ctx: { viewport: { width: 390, height: 740 }, isMobile: true, hasTouch: true }, touch: true },
+  { id: 'sideways', name: 'טלפון לרוחב', ctx: { viewport: { width: 800, height: 360 }, isMobile: true, hasTouch: true }, touch: true },
+  { id: 'computer', name: 'מחשב', ctx: { viewport: { width: 1280, height: 860 } }, touch: false },
 ]
+// --screens sideways,computer: those only (a step looked at again)
+const SCREENS = a.screens ? ALL_SCREENS.filter((s) => String(a.screens).split(',').includes(s.id)) : ALL_SCREENS
 
 const browser = await launch()
 const report = { at: new Date().toISOString(), steps: [] }
