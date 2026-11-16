@@ -1,7 +1,7 @@
-import { GARDEN } from '../../src/data/layout'
-import { BACK, BAYS, DESK, FRONT_DOOR, HALL, INNER_DOOR, MANAGER_SPOT, MANAGER_STAND, MARKET_PATH, SCREEN, SHELF_RUN, TILL } from '../../src/data/market'
-import { managerLeaves, shopperIn, type Step } from '../../src/farm/script'
-import { MARKET_SIGN } from '../../src/models/market'
+import { GARDEN } from '../data/layout'
+import { BACK, BAYS, DESK, FRONT_DOOR, HALL, INNER_DOOR, MANAGER_SPOT, MANAGER_STAND, MARKET_PATH, SCREEN, SHELF_RUN, TILL } from '../data/market'
+import { managerLeaves, shopperIn, type Step } from '../farm/script'
+import { MARKET_SIGN } from '../models/market'
 import type { Spot } from './format'
 
 // The market as a film set, every mark and thing from the game's own row (src/data/market.ts) and its people's ways

@@ -1,4 +1,4 @@
-import { PERSON, type PersonRig } from '../../src/models/person'
+import { PERSON, type PersonRig } from '../models/person'
 import type { Pose } from './format'
 
 // The poses a film's people take, on the people engine's rig (src/models/person.ts): its joints turned, nothing else.

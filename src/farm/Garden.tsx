@@ -137,6 +137,7 @@ import { Visitors } from './Visitors'
 import { Workshop } from './Workshop'
 import { OrderYard } from './OrderYard'
 import { Decor, glowLevel } from './decorScene'
+import { FarmTalk } from '../talk/FarmTalk'
 
 const mmss = (seconds: number) => {
   const t = Math.max(0, Math.ceil(seconds))
@@ -875,6 +876,8 @@ export function Garden() {
       <Market />
       <Estate />
       <Car place="farm" />
+      {/* the buyers and the man on the tractor saying a word now and then (src/talk) */}
+      <FarmTalk />
     </group>
   )
 }

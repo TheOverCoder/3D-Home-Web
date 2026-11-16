@@ -1,11 +1,12 @@
-import type { DayPhase } from '../../src/farm/data'
+import type { DayPhase } from '../farm/data'
 import type { Voice } from './voice'
 
 // A film is data: who is in it (looks from the game's people engine), the scenes it plays in (a place the game has, its
 // light from the game's own day), and in each scene its shots in order — what the camera frames, from where, how big,
 // at what angle, how it moves — with what is said, done and heard during each shot, at seconds from the shot's start.
-// The player (./Player.tsx) plays any film from this; it frames each shot for the screen it is on (a phone upright or
-// sideways), so a film names who and what to see, never where the camera stands. Nothing here knows a model, a
+// Its player plays any film from this — the game's on its own canvas (./StoryFilm.tsx), the design lab's in a view of
+// its own (lab/films/Player.tsx), both with the same overlay (src/ui/Film.tsx) — and frames each shot for the screen it
+// is on (a phone upright or sideways), so a film names who and what to see, never where the camera stands. Nothing here knows a model, a
 // coordinate or a colour: those come from the game, so a film keeps working when the game's looks change.
 
 /** Someone from the people engine: the player as dressed now, the game's fixed characters, or a roll of its dice. */
@@ -152,11 +153,25 @@ export interface Scene {
   shots: Shot[]
 }
 
-/** The end card: what the player got, in the game's own words and pictures. */
+/** One thing on the end card: a picture (src/ui/art.ts) and a few words. */
+export interface EndThing {
+  art: string
+  text: string
+}
+
+/** The end card (src/ui/Film.tsx): what the player got, in the game's own words and pictures — a sense of progress:
+ *  what they own now, the XP it gave (the level bar filling from where it was), and what it opens next. */
 export interface EndCard {
   art: string
   title: string
-  chips: { art: string; text: string }[]
+  /** a ribbon over the picture, as the film's banner (a callback) */
+  ribbon?: string
+  /** the XP the moment gave (the game's XP_FOR) */
+  xp: number
+  /** what is the player's now */
+  owns: EndThing[]
+  /** what it opens: the next steps to take */
+  next: EndThing[]
 }
 
 export interface Film {

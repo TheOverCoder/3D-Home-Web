@@ -1,5 +1,5 @@
 {
- "at": "2026-11-16T09:35:18.889Z",
+ "at": "2026-11-16T10:41:01.324Z",
  "devices": [
   "upright",
   "sideways"
@@ -76,7 +76,7 @@
    "off": []
   },
   "film-supermarket": {
-   "screens": 8,
+   "screens": 12,
    "errors": [],
    "blank": [],
    "scroll": [],

@@ -1,4 +1,4 @@
-import { audioGraph, farmSound, unlockAudio } from '../../src/audio/sound'
+import { audioGraph, farmSound, unlockAudio } from '../audio/sound'
 import type { Sting, Timeline, Track } from './format'
 import type { Talker } from './speak'
 import type { Speech, Utterance, Voice } from './voice'

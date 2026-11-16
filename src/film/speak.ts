@@ -1,4 +1,5 @@
-import { audioStatus } from '../../src/audio/sound'
+import { audioStatus } from '../audio/sound'
+import { primeSpeech } from './prime'
 import { readingOf, spokenOf, wordsBy, type Speech, type Voice } from './voice'
 
 // Lines read aloud in words: the device's own speech voices (the Web Speech API's speechSynthesis — on every phone and
@@ -64,7 +65,7 @@ const WOMEN = [
 const speech = () => (typeof window !== 'undefined' && 'speechSynthesis' in window ? window.speechSynthesis : null)
 
 /** How well a voice suits a man (or a woman): lower is better, Infinity not at all. */
-function fit(v: SpeechSynthesisVoice, female: boolean) {
+export function voiceFit(v: SpeechSynthesisVoice, female: boolean) {
   if (!/^en([-_]|$)/i.test(v.lang) || NOVELTY.test(v.name)) return Infinity
   const mine = (female ? WOMEN : MEN).findIndex((n) => v.name.includes(n))
   const theirs = (female ? MEN : WOMEN).some((n) => v.name.includes(n))
@@ -94,7 +95,7 @@ export class Talker {
     const s = speech()
     if (!s) return
     const load = () => {
-      this.voices = s.getVoices().filter((v) => fit(v, false) < Infinity || fit(v, true) < Infinity)
+      this.voices = s.getVoices().filter((v) => voiceFit(v, false) < Infinity || voiceFit(v, true) < Infinity)
       this.chosen.clear()
     }
     load()
@@ -113,8 +114,8 @@ export class Talker {
     if (!this.chosen.size) {
       const taken = new Set<SpeechSynthesisVoice>()
       for (const c of this.cast) {
-        const ranked = [...this.voices].filter((v) => fit(v, c.female) < Infinity).sort((a, b) => fit(a, c.female) - fit(b, c.female))
-        const theirs = ranked.filter((v) => fit(v, c.female) < 200)
+        const ranked = [...this.voices].filter((v) => voiceFit(v, c.female) < Infinity).sort((a, b) => voiceFit(a, c.female) - voiceFit(b, c.female))
+        const theirs = ranked.filter((v) => voiceFit(v, c.female) < 200)
         const v = theirs.find((x) => !taken.has(x)) ?? theirs[0] ?? ranked[0] ?? null
         if (v) taken.add(v)
         this.chosen.set(c.id, v)
@@ -125,12 +126,9 @@ export class Talker {
 
   /** In a tap: a phone lets a page speak once it has spoken from a touch. */
   unlock() {
-    const s = speech()
-    if (!s || this.unlocked) return
+    if (this.unlocked) return
     this.unlocked = true
-    const u = new SpeechSynthesisUtterance(' ')
-    u.volume = 0
-    s.speak(u)
+    primeSpeech()
   }
 
   /** Reads a line aloud now, in its speaker's voice and mood. */

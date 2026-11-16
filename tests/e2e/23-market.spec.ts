@@ -257,7 +257,9 @@ test.describe('the supermarket', () => {
     await nearbyIs(game, 'farm-contractor')
   })
 
-  test('his rate to its top, then the shop bought — its price tag on the computer, or his panel, through a card that asks; he walks out and the computer is yours', async ({ game }) => {
+  test('his rate to its top, then the shop bought — its price tag on the computer, or his panel, through a card that asks; its film plays once, a tap skips it to its end card; he walks out and the computer is yours', async ({
+    game,
+  }) => {
     await game.ready('farm')
     const { page } = game
     const ladder = Array.from({ length: LADDERS.rate.levels }, (_, k) => ladderPrice('rate', k))
@@ -311,9 +313,26 @@ test.describe('the supermarket', () => {
     await until(game, () => (window as any).__home.farm.state.market.owned === true)
     // (the card goes back to his panel, opened from it)
     await closePanel(page)
+    // bought before its film starts: the coins, the shop, the XP
     f = await farm(game.page)
     expect(f.coins).toBe(100)
     expect(await xp(page)).toBe(xp0 + XP_FOR.shop)
+    // its film plays once (src/film/films.ts), in the game's canvas, the rest of the page hidden; a tap skips it to its
+    // end card (what is yours now, the XP it gave), and Continue gives the game back as it was
+    await page.waitForFunction(() => (window as any).__home.story.state()?.step === 'film', null, { timeout: 120_000, polling: 100 })
+    const film = await page.evaluate(() => ({ ...(window as any).__home.story.state(), hidden: document.documentElement.dataset.film ?? null }))
+    expect(film).toMatchObject({ id: 'shop', step: 'film', xp: [xp0, xp0 + XP_FOR.shop], hidden: 'story' })
+    await expect(page.locator('.film-skip')).toBeVisible()
+    await page.mouse.click(320, 180)
+    await page.waitForFunction(() => (window as any).__home.story.state()?.step === 'card', null, { timeout: 30_000, polling: 100 })
+    const end = page.getByRole('dialog', { name: 'The shop is yours' })
+    await expect(end).toBeVisible()
+    await expect(end).toContainText(`+${XP_FOR.shop} XP`)
+    await expect(end.locator('.film-own')).toHaveCount(3)
+    await end.getByRole('button', { name: 'Continue' }).click()
+    await page.waitForFunction(() => (window as any).__home.story.state() === null, null, { timeout: 10_000, polling: 100 })
+    expect(await page.evaluate(() => document.documentElement.dataset.film ?? null)).toBe(null)
+    expect(await page.evaluate(() => (window as any).__home.useHome.getState().panel)).toBe(null)
     // he waves, walks out through the hall and the front door onto the lane, and is gone
     const out = await page.evaluate(() => {
       const f = (window as any).__home.farm

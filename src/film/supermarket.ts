@@ -1,4 +1,4 @@
-import { MANAGER, XP_FOR } from '../../src/farm/data'
+import { LADDERS, MANAGER, XP_FOR } from '../farm/data'
 import type { Film } from './format'
 
 // "Under New Management": buying the supermarket from the manager (src/farm/state.ts, buyMarket — at the top of his
@@ -17,7 +17,8 @@ import type { Film } from './format'
 // little high, the contractor slow and deep, the farmer low and level — nothing recorded.
 // Light (./stage3d.ts, portrait): the talking scenes light the faces as a film does, a warm key and a cold edge at night.
 // Where: the market's side of the lane, the same on every farm. The camera never turns across the lane to the farm
-// (lab/films/set.ts, looksAtFarm): the last beat is a deadpan two-shot from the lane, the shop and its banner behind.
+// (./set.ts, looksAtFarm): the last beat is a deadpan two-shot from the lane, the shop and its banner behind.
+// In the game it plays once the shop is bought from its card (./films.ts, buyShop), on the game's own canvas.
 
 export const SUPERMARKET: Film = {
   id: 'buy-the-shop',
@@ -296,10 +297,19 @@ export const SUPERMARKET: Film = {
   end: {
     art: 'convenience-store',
     title: 'The shop is yours',
-    chips: [
-      { art: 'gem-stone', text: `+${XP_FOR.shop} XP` },
-      { art: 'shopping-bags', text: 'Shoppers come' },
-      { art: 'coin', text: 'The till is yours' },
+    ribbon: 'Under new management',
+    xp: XP_FOR.shop,
+    // what is yours now (src/farm/state.ts, buyMarket: the shelves, the till, the shoppers who come) and what it opens:
+    // the shop's own ladders to their tops (LADDERS; the pictures their cards have, src/farm/Ladder.tsx)
+    owns: [
+      { art: 'package', text: LADDERS.places.say(0) },
+      { art: 'coin', text: 'The till' },
+      { art: 'shopping-bags', text: 'Shoppers' },
+    ],
+    next: [
+      { art: 'package', text: LADDERS.places.say(LADDERS.places.levels) },
+      { art: 'shopping-cart', text: LADDERS.group.say(LADDERS.group.levels) },
+      { art: 'person-running', text: LADDERS.pace.say(LADDERS.pace.levels) },
     ],
   },
 }

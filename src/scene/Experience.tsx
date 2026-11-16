@@ -15,6 +15,7 @@ import { FarmClock } from '../farm/Garden'
 import { EditMode } from '../farm/EditMode'
 import { farm } from '../farm/state'
 import { DriveFilm } from '../film/DriveFilm'
+import { StoryFilm } from '../film/StoryFilm'
 import { FarmFx } from '../fx/FarmFx'
 import { Effects } from './Effects'
 import { LightDirector } from './LightDirector'
@@ -203,6 +204,8 @@ export default function Experience() {
         <RenderPause />
         {/* the drive's film, played between the maps on this same canvas (src/scene/travel.ts) */}
         <DriveFilm />
+        {/* a moment's film (buying the shop), played on this same canvas (src/film/films.ts) */}
+        <StoryFilm />
       </Suspense>
       {Tune && (
         <Suspense fallback={null}>

@@ -1,0 +1,149 @@
+/* A film's overlay (./Film.tsx): the letterbox, the lines, the effects, Sound and Skip, the end card. The bars are thin
+   and cover the notch and the home bar; nothing to press sits under either. In the game it lies over the game's canvas
+   (.film.game, over everything the page has: the film draws on the canvas under it); in the lab over a view of its own. */
+.film { position: fixed; inset: 0; z-index: 30; overflow: hidden; background: var(--bg); user-select: none; -webkit-user-select: none; touch-action: manipulation;
+  --bar-top: max(6vh, calc(env(safe-area-inset-top, 0px) + 4px)); --bar-bottom: max(6vh, calc(env(safe-area-inset-bottom, 0px) + 4px)); }
+.film.game { z-index: 51; background: none; touch-action: none; cursor: pointer; }
+.film.game.step-card { cursor: default; }
+/* the veil: the picture fades out and in between the game and the film */
+.film-veil { position: absolute; inset: 0; z-index: 6; background: var(--bg); opacity: 0; pointer-events: none; transition: opacity 400ms ease; }
+.film-veil.on { opacity: 1; }
+.film-veil:not(.on) { animation: none; }
+.film.game.step-dark .film-veil { animation: film-veil-in 400ms ease both; }
+@keyframes film-veil-in { from { opacity: 0; } }
+/* (everything in the page but the game's canvas, the film and its confetti, while it plays: src/styles.css hides the rest) */
+:root[data-film] .film, :root[data-film] body > canvas { visibility: visible; }
+
+/* while a scene talks, the shots on people: the edges of the picture go dark, the faces the brightest thing in it (the
+   player sets its opacity, at once on each cut) */
+.film-vignette { position: absolute; inset: 0; z-index: 1; opacity: 0; pointer-events: none; background: radial-gradient(ellipse 75% 70% at 50% 46%, transparent 52%, rgba(8, 6, 4, 0.34) 78%, rgba(8, 6, 4, 0.62) 100%); }
+.film.game:not(.step-film) .film-vignette { visibility: hidden; }
+
+/* the letterbox: in as the film starts, out for the end card */
+.film-bars i { position: absolute; left: 0; right: 0; z-index: 2; background: #000; pointer-events: none; transition: transform 0.6s var(--ease-sheet); animation: film-bar-in 0.7s var(--ease-sheet) both; }
+.film-bars i:first-child { top: 0; height: var(--bar-top); --from: -100%; }
+.film-bars i:last-child { bottom: 0; height: var(--bar-bottom); --from: 100%; }
+.film-bars.out i:first-child { transform: translateY(-100%); }
+.film-bars.out i:last-child { transform: translateY(100%); }
+@keyframes film-bar-in { from { transform: translateY(var(--from)); } }
+@media (prefers-reduced-motion: reduce) { .film-bars i { transition: none; animation: none; } }
+
+/* Skip and the sound: small paper pills in the picture's top corners */
+.film-sound, .film-skip { position: absolute; top: calc(var(--bar-top) + 10px); z-index: 3; gap: 6px; opacity: 0.92; box-shadow: 0 2px 0 var(--paper-3), 0 6px 16px rgba(0, 0, 0, 0.35); }
+.film-sound { left: calc(env(safe-area-inset-left, 0px) + 12px); }
+.film-sound.on { width: 44px; padding: 0; }
+.film-skip { right: calc(env(safe-area-inset-right, 0px) + 12px); }
+.film-sound:not(.on) { animation: film-call 1.6s ease-in-out 1s 3; }
+@keyframes film-call { 50% { transform: scale(1.08); } }
+
+/* a caption: a few typed words (a place, a time) */
+.film-caption { position: absolute; left: 50%; top: calc(var(--bar-top) + 64px); transform: translateX(-50%); z-index: 2; margin: 0; padding: 6px 12px; border-radius: 10px; background: rgba(13, 16, 20, 0.55);
+  color: var(--paper); font: 800 15px/1.2 var(--font-text); letter-spacing: 0.14em; text-transform: uppercase; white-space: nowrap; pointer-events: none; }
+@media (orientation: landscape) { .film-caption { top: calc(var(--bar-top) + 16px); } }
+
+/* a line: the game's paper bubble over the bottom bar, the speaker's name on its edge over where they stand */
+.film-say { position: absolute; left: 0; right: 0; bottom: calc(var(--bar-bottom) + 14px); z-index: 2; display: flex; justify-content: center; padding: 0 14px; pointer-events: none; }
+.film-bubble { position: relative; max-width: min(92vw, 520px); padding: 16px 18px 12px; border-radius: 20px; box-shadow: 0 3px 0 var(--edge-soft), 0 10px 30px rgba(20, 12, 4, 0.35); text-align: center; }
+.film-name { position: absolute; top: -13px; left: 16px; z-index: 1; padding: 2px 10px; border-radius: 999px; font: 600 15px/1.35 var(--font-display); white-space: nowrap; box-shadow: 0 2px 0 rgba(0, 0, 0, 0.15); }
+/* the name stands over the speaker, a little point on it towards their head */
+.film-bubble[data-tail='on'] .film-name { left: var(--tail); transform: translateX(-50%); }
+.film-name::before { content: ''; position: absolute; left: 50%; top: -5px; width: 10px; height: 10px; margin-left: -5px; background: inherit; border-radius: 2px; transform: rotate(45deg); opacity: 0; }
+.film-bubble[data-tail='on'] .film-name::before { opacity: 1; }
+.film-text { display: block; color: var(--ink); font: 800 19px/1.25 var(--font-text); }
+/* the words come up as they are said (the speaker's voice reads the line); the line keeps its size from the start */
+.film-text > span { transition: opacity 0.1s ease-out; }
+.film-text > .film-unsaid { opacity: 0; }
+@media (prefers-reduced-motion: reduce) { .film-text > span { transition: none; } }
+.film-bubble.mood-smug .film-text { font-style: italic; }
+.film-bubble.mood-shock .film-text { font-size: 22px; letter-spacing: 0.02em; }
+.film-bubble.mood-sad { background: var(--paper-2); }
+.film-bubble.mood-sad .film-text { color: var(--ink-2); font-size: 18px; }
+.film-bubble.mood-cool { background: #1d1712; box-shadow: 0 3px 0 #000, 0 10px 30px rgba(0, 0, 0, 0.5); }
+.film-bubble.mood-cool .film-text { color: var(--sun); font-family: var(--font-display); font-weight: 600; font-size: 22px; letter-spacing: 0.02em; }
+@media (orientation: landscape) { .film-text { font-size: 18px; } .film-bubble { max-width: min(62vw, 520px); } }
+
+/* the picture's effects */
+.film-tag { position: absolute; left: 50%; top: 42%; z-index: 2; display: flex; align-items: center; gap: 8px; margin: -32px 0 0 -84px; width: 168px; height: 64px; justify-content: center; border-radius: 999px;
+  background: #fff; color: var(--ink); font: 800 30px/1 var(--font-text); font-variant-numeric: tabular-nums; box-shadow: 0 4px 0 var(--sun-lip), 0 12px 30px rgba(0, 0, 0, 0.35); border: 3px solid var(--sun); pointer-events: none; }
+.film-tag img { width: 40px; height: 40px; }
+.film-flash { position: absolute; inset: 0; z-index: 1; background: #fff; pointer-events: none; }
+.film-glow { position: absolute; inset: 0; z-index: 1; pointer-events: none; mix-blend-mode: screen; background: radial-gradient(ellipse 70% 55% at 50% 62%, rgba(255, 196, 80, 0.55), rgba(255, 170, 40, 0.12) 55%, transparent 75%); }
+.film-glint { position: absolute; inset: 0; z-index: 1; pointer-events: none; mix-blend-mode: screen; background: linear-gradient(110deg, transparent 38%, rgba(255, 250, 230, 0.6) 48%, rgba(255, 250, 230, 0.15) 53%, transparent 62%); background-size: 260% 100%; animation: film-glint 1.1s ease-out forwards; }
+@keyframes film-glint { from { background-position: 130% 0; } to { background-position: -30% 0; opacity: 0.2; } }
+.film-coins { position: absolute; inset: 0; z-index: 1; overflow: hidden; pointer-events: none; }
+.film-coins img { position: absolute; top: -48px; width: 36px; height: 36px; animation: film-coin linear both; }
+@keyframes film-coin { to { transform: translateY(calc(100vh + 96px)) rotate(600deg); } }
+.film-sparkles { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.film-sparkles img { position: absolute; width: 52px; height: 52px; margin: -26px 0 0 -26px; animation: film-sparkle 1.2s var(--ease-pop) both; }
+@keyframes film-sparkle { 0% { transform: scale(0) rotate(-30deg); opacity: 0; } 40% { transform: scale(1.15) rotate(0); opacity: 1; } 100% { transform: scale(0.2) rotate(25deg); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .film-sparkles img { animation: film-fade 1.2s ease both; } @keyframes film-fade { 50% { opacity: 1; } from, to { opacity: 0; } } }
+
+/* ───────── the end card: what the player got, as progress ───────── */
+.film-end { position: absolute; inset: 0; z-index: 4; display: grid; place-items: center; overflow: auto;
+  padding: max(14px, env(safe-area-inset-top, 0px)) max(14px, env(safe-area-inset-right, 0px)) max(14px, env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-left, 0px));
+  background: radial-gradient(ellipse 80% 70% at 50% 40%, rgba(255, 201, 60, 0.18), rgba(13, 16, 20, 0.62) 70%); cursor: default; }
+.film-card { position: relative; width: min(360px, 100%); display: grid; gap: 12px; padding: 18px 18px 18px; border-radius: var(--r-sheet); box-shadow: var(--shadow-sheet), 0 0 0 6px color-mix(in srgb, var(--sun) 35%, transparent); text-align: center; }
+.film-card-head { display: grid; justify-items: center; gap: 4px; }
+.film-card h2 { margin: 0; font-size: 28px; line-height: 1.1; }
+
+/* the picture in a burst of light (it turns slowly), the film's ribbon across its foot */
+.film-card-hero { position: relative; display: grid; place-items: center; width: 100%; height: 134px; margin-top: -4px; }
+.film-card-rays { position: absolute; left: 50%; top: 50%; width: 220px; height: 220px; margin: -118px 0 0 -110px; border-radius: 50%;
+  background: repeating-conic-gradient(color-mix(in srgb, var(--sun) 75%, transparent) 0 9deg, transparent 9deg 24deg);
+  -webkit-mask: radial-gradient(circle, #000 18%, transparent 68%); mask: radial-gradient(circle, #000 18%, transparent 68%); animation: film-rays 14s linear infinite, film-rays-in 0.6s ease-out both; }
+@keyframes film-rays { to { transform: rotate(360deg); } }
+@keyframes film-rays-in { from { opacity: 0; scale: 0.4; } }
+.film-card-art { position: relative; width: 104px; height: 104px; margin-bottom: 14px; }
+.film-ribbon { position: absolute; left: 50%; bottom: 0; translate: -50% 0; padding: 4px 16px 5px; border-radius: 8px; background: var(--berry); color: var(--sun);
+  font: 600 15px/1.2 var(--font-display); letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; box-shadow: 0 3px 0 var(--berry-lip), 0 6px 14px rgba(60, 20, 10, 0.3); }
+.film-ribbon::before, .film-ribbon::after { content: ''; position: absolute; top: 6px; width: 14px; height: 100%; background: var(--berry-lip); z-index: -1; }
+.film-ribbon::before { left: -9px; clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 45% 50%); }
+.film-ribbon::after { right: -9px; clip-path: polygon(0 0, 100% 0, 55% 50%, 100% 100%, 0 100%); }
+
+.film-card-body { display: grid; gap: 12px; }
+.film-card-part { display: grid; gap: 6px; }
+.film-card-part h3 { display: flex; align-items: center; justify-content: center; gap: 5px; margin: 0; color: var(--ink-2); font: 600 15px/1.2 var(--font-display); letter-spacing: 0.08em; text-transform: uppercase; }
+.film-card-part h3 svg { width: 16px; height: 16px; }
+
+/* the level bar filling: the badge, the bar, +XP (a level reached: the bar flashes, the badge pops, "Level n!") */
+.film-xp { position: relative; display: flex; align-items: center; gap: 8px; padding: 6px 10px 6px 6px; border-radius: 999px; background: var(--paper-2); box-shadow: inset 0 0 0 2px var(--edge-soft); }
+/* (the level chip's star, src/farm/Xp.css, drawn here on its own: the lab has no chip) */
+.film-xp-star { position: relative; flex: none; display: inline-grid; place-items: center; width: 42px; height: 42px; margin: -8px 0; }
+.film-xp-star img { position: absolute; inset: 0; width: 100%; height: 100%; }
+.film-xp-star b { position: relative; top: 2px; font: 800 16px/1 var(--font-text); color: #fff;
+  text-shadow: 1px 0 0 var(--xp-lip), -1px 0 0 var(--xp-lip), 0 1px 0 var(--xp-lip), 0 -1px 0 var(--xp-lip), 1px 1px 0 var(--xp-lip), -1px 1px 0 var(--xp-lip), 1px -1px 0 var(--xp-lip), -1px -1px 0 var(--xp-lip), 0 2px 2px rgba(40, 24, 10, 0.4); }
+.film-xp-bar { position: relative; flex: 1 1 auto; height: 12px; border-radius: 999px; background: var(--paper-3); overflow: hidden; }
+.film-xp-fill { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: linear-gradient(to bottom, color-mix(in srgb, var(--xp) 55%, #fff), var(--xp) 55%, var(--xp-lip)); box-shadow: 0 0 8px var(--xp-glow); }
+.film-xp-flash { position: absolute; inset: 0; border-radius: inherit; background: #fff; animation: film-xp-flash 0.6s ease-out both; }
+@keyframes film-xp-flash { from { opacity: 0.95; } to { opacity: 0; } }
+.film-xp-gain { display: inline-flex; align-items: center; gap: 2px; flex: none; color: var(--xp-lip); font: 800 17px/1 var(--font-text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.film-xp-gain img { width: 22px; height: 22px; margin-right: 2px; }
+.film-xp-level { position: absolute; left: 50%; top: 50%; margin: -15px 0 0 -52px; width: 104px; padding: 5px 0; border-radius: 999px; background: var(--xp); color: #fff; text-align: center;
+  font: 600 17px/1.1 var(--font-display); white-space: nowrap; box-shadow: 0 2px 0 var(--xp-lip), 0 0 14px var(--xp-glow), 0 0 0 2px #fff; pointer-events: none; }
+.film-xp.up { box-shadow: inset 0 0 0 2px var(--xp), 0 0 16px var(--xp-glow); }
+
+/* what is yours now: three little cards, each stamped as it comes in */
+.film-owns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.film-own { position: relative; display: grid; justify-items: center; align-content: start; gap: 2px; padding: 8px 4px 7px; border-radius: 16px; background: #fff; box-shadow: 0 2px 0 var(--edge-soft); color: var(--ink); font: 800 15px/1.2 var(--font-text); }
+.film-own .art { width: 40px; height: 40px; }
+.film-own-check { position: absolute; top: -6px; right: -4px; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--leaf); color: #fff; box-shadow: 0 2px 0 var(--leaf-lip); }
+.film-own-check svg { width: 14px; height: 14px; }
+
+/* what it opens next: the shop's upgrades, as chips */
+.film-next { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.film-next-tag { padding: 3px 11px 3px 6px; background: color-mix(in srgb, var(--sun) 22%, #fff); color: var(--ink); font-size: 15px; box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--sun) 60%, transparent); }
+.film-next-tag img { width: 22px; height: 22px; }
+
+.film-card-buttons { display: flex; gap: 10px; width: 100%; margin-top: 2px; }
+.film-card-buttons .btn { flex: 1; gap: 6px; padding: 0 12px; white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { .film-card-rays { animation: none; } }
+
+/* sideways on a phone: the picture and the title on the left, the progress and the buttons on the right */
+@media (orientation: landscape) and (max-height: 500px) {
+  .film-card { width: min(640px, 100%); grid-template-columns: 210px 1fr; align-items: center; gap: 10px 16px; padding: 14px 16px; }
+  .film-card-hero { height: 128px; }
+  .film-card h2 { font-size: 24px; }
+  .film-card-body { gap: 9px; }
+  .film-own { padding: 6px 4px 5px; }
+  .film-own .art { width: 34px; height: 34px; }
+}

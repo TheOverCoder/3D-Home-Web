@@ -1,2 +1,2 @@
-/* A · Under New Management (./FilmSupermarketA.tsx): the film player's own look is lab/films/Player.css */
+/* A · Under New Management (./FilmSupermarketA.tsx): the overlay's look is the game's (src/ui/Film.css), the view's lab/films/Player.css */
 .v-film-supermarket-a { position: fixed; inset: 0; }

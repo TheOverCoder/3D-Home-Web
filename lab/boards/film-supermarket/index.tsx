@@ -1,19 +1,21 @@
 import type { Board } from '../../board'
-import { timeline } from '../../films/format'
-import { SUPERMARKET } from '../../films/supermarket'
+import { timeline } from '../../../src/film/format'
+import { SUPERMARKET } from '../../../src/film/supermarket'
 import { FilmSupermarketA } from './FilmSupermarketA'
 
 // A film, not a panel: buying the supermarket from the manager (src/farm/state.ts, buyMarket), as the film director
-// made it (.claude/agents/film-director.md, lab/FILM.md). The film is data (lab/films/supermarket.ts) played by the
-// lab's film player (lab/films/Player.tsx) on the game's own models: the market from its row, the manager and the
-// contractor from the people engine, each line read aloud in words in its speaker's voice (lab/films/speak.ts), the
-// talking scenes lit as a film lights faces (lab/films/stage3d.ts), round the market the game's own sky, haze, lawn,
-// lane and woods. Its states are moments to start from, so each part can be watched
-// again on its own; nothing here is in the game yet.
+// made it (.claude/agents/film-director.md, lab/FILM.md). Chosen (A) and in the game now: the film is data
+// (src/film/supermarket.ts) played on the game's own models (src/film/stage3d.ts: the market from its row, the manager
+// and the contractor from the people engine, each line read aloud in words in its speaker's voice by src/film/speak.ts),
+// under the game's own overlay and end card (src/ui/Film.tsx) — the game plays it on its canvas once the shop is bought
+// from its card (src/film/films.ts, src/film/StoryFilm.tsx), the lab in a view of its own (lab/films/Player.tsx). Its
+// states are moments to start from, and the end card with and without a level reached.
 
 export interface FilmSupermarketState {
   /** the second of the film it starts from */
   from: number
+  /** the player's XP after buying the shop (the end card's bar fills to it from 25 less); left out, level 13 near its end */
+  xp?: number
 }
 
 const at = (shot: number) => timeline(SUPERMARKET).shots[shot].start
@@ -22,13 +24,13 @@ export const filmSupermarketBoard: Board<FilmSupermarketState> = {
   id: 'film-supermarket',
   title: 'סרט: קונים את הסופר',
   kind: 'film',
-  added: '2026-11-16T03:42',
+  added: '2026-11-16T09:19',
   ask: 'משימות שפותחות סרט של הדמויות מדברות: זוויות מצלמה, מה יגידו – במאי אמיתי לסרטים הקצרים. הסרט הראשון: קניית הסופר מהמנהל. מוזיקת רקע, העסקה, רואים את הכסף, עובד עם המזוודה, צילום מלמטה של הסופר, המוזיקה עולה לביט גנגסטרי, הסופר נראה מבריק – זה הרגע שקנית אותו.',
   status: 'choose',
   round:
-    'לפי ההערות: (1) הראש שיצא מהמקום כשהדמות מזיזה אותו – זה היה באג במנוע הדמויות של המשחק עצמו, לא בסרט: הראש הסתובב סביב האמצע של הגולגולת, והצוואר (שהוא חלק מהראש) נשלף מהצווארון בכל הנהון, צחוק או השפלת ראש. עכשיו הראש מסתובב בבסיס הצוואר, כמו אצל אדם, והצוואר נשאר בצווארון – בסרט וגם במשחק (קונים שמנידים ראש בעצב, קונים שמשלמים בקופה). ' +
-    '(2) תאורה קולנועית כשהם מדברים: בכל שוט על הדמויות בסצנה שמדברים בה יש אור מפתח חם מלפנים, מהצד שאליו הפנים פונות (צד אחד של הפנים מואר והשני בצל, כמו בקולנוע), אור קצה מאחור שמפריד אותן מהרקע, האור של החדר יורד כדי שהפנים יהיו הדבר הבהיר בתמונה, ושולי התמונה מתכהים. בלילה: אור חם של מנורה וקצה כחלחל; כשהמזוודה נפתחת – הזהב שלה הוא האור על הפנים שלו. ' +
-    '(3) אנגלית ברורה: הדמויות מדברות עכשיו במילים – בקולות הדיבור של הטלפון עצמו (בלי הורדות ובלי הקלטות), לכל דמות קול משלה, גובה וקצב: המנהל מהיר וקצת גבוה, הקבלן איטי ועמוק, את/ה נמוך ורגוע. המילים בבועה עולות בדיוק כשהקול מגיע אליהן. גם השורות נכתבו מחדש באנגלית פשוטה, בלי ניבים, וכך גם הבדיחה ברורה: הוא משלם לך 40% – ובסוף את/ה מציע/ה לו 20%. 🔊 כדי לשמוע: הכפתור Sound בפינה.',
+    'לפי ההערה ("מעולה להטמיע, לשפר את החלון בסוף"): (1) הסרט נכנס למשחק – הוא מתנגן פעם אחת אחרי שקונים את הסופר מהכרטיס של הקנייה, על הקנבס של המשחק עצמו (כמו סרט הנסיעה): המסך מתכהה, הסרט, ובסוף המסך מתכהה שוב והמשחק חוזר עם החלון מעליו. נגיעה בכל מקום מדלגת – ישר לחלון. בטעינה מחדש הוא לא מתנגן שוב; אם משהו נכשל – ישר לחלון, והמשחק ממשיך. את/ה בבגדים שלך מהמלתחה. ' +
+    '(2) חלון הסיום החדש – תחושת התקדמות: החנות בתוך פרץ של קרני אור מסתובבות, והסרט האדום "UNDER NEW MANAGEMENT" מהבאנר של הסרט מתחתיה; פס הרמה שלך מתמלא ב־25 XP ממה שהיה לפני הקנייה (ואם עברת רמה: הפס מתמלא עד הסוף, מהבהב, הכוכב קופץ ל"Level 14!" עם קונפטי); "Yours now" – שלושה כרטיסים שנוחתים אחד אחרי השני עם וי ירוק: 3 מקומות על המדפים, הקופה, הקונים; "Next" – מה שזה פותח: עד 10 מקומות, 4 קונים בבת אחת, קונה כל 30 שניות. בצד: התמונה והכותרת משמאל, ההתקדמות מימין. ' +
+    'מצבים חדשים בלוח: "החלון בסוף" ו"החלון בסוף – עם רמה חדשה".',
   still: 'yard',
   screen: 'market',
   research: [
@@ -101,9 +103,26 @@ export const filmSupermarketBoard: Board<FilmSupermarketState> = {
       url: 'https://docs.blender.org/manual/en/4.0/addons/rigging/rigify/bone_positioning.html',
     },
     {
-      pattern: 'סרט במנוע של המשחק מראה את העולם של השחקן – הבגדים שלו, החווה שלו. לכן במשחק הסרט ירוץ בסצנה החיה (בלי סט משלו), ובמעבדה המצלמה נשארת בצד של הדרך שזהה בכל חווה.',
+      pattern:
+        'סרט במנוע של המשחק מראה את העולם של השחקן – הבגדים שלו. לכן במשחק הסרט מצויר על הקנבס של המשחק עצמו, מהמודלים של המשחק ואת/ה בבגדים שלך מהמלתחה; המצלמה נשארת בצד של הדרך שזהה בכל חווה, וחלון הסיום עולה מעל המשחק החי.',
       from: 'Giant Bomb – In-engine cinematics',
       url: 'https://www.giantbomb.com/in-engine-cinematic/3015-964/',
+    },
+    {
+      pattern:
+        'כשפס התקדמות עובר רמה זה אירוע נפרד וגדול יותר: הפס מתמלא עד הסוף, הבזק, הכוכב קופץ, צליל וקונפטי – ואז הפס מתמלא מחדש. בחלון: הפס של הרמה מתמלא מה־XP שהיה לך לפני הקנייה, ואם עברת רמה – "Level 14!".',
+      from: 'Game Juice – UI feedback design (מחפשים: progress bar overflow → level-up event)',
+    },
+    {
+      pattern: 'לא רק לחגוג: להראות מה יש לך עכשיו ומה הפרס המשמעותי הבא. בחלון: "Yours now" (המדפים, הקופה, הקונים) ו"Next" (השדרוגים של החנות עד הסוף שלהם), מהשורות של המשחק עצמו.',
+      from: 'Screensdesign – Loyalty rewards design examples',
+      url: 'https://screensdesign.com/articles/mobile-app-loyalty-rewards-design-examples/',
+    },
+    {
+      pattern:
+        'פופאפ של הישג עובד כי הוא מהיר: צליל, הודעה קצרה, וחוזרים למשחק. בחלון: כל חלק נכנס אחרי הקודם בתוך שנייה וחצי (התמונה, הסרט, הפס, הכרטיסים, הבא), ושני כפתורים בלבד – Watch again ו־Continue.',
+      from: 'The Xbox Hub – The achievement pop-up effect',
+      url: 'https://www.thexboxhub.com/the-achievement-pop-up-effect-when-xbox-rewards-start-feeling-like-mini-jackpots/',
     },
   ],
   states: [
@@ -111,17 +130,20 @@ export const filmSupermarketBoard: Board<FilmSupermarketState> = {
     { id: 'case', name: 'הסנאפ והמזוודה', data: { from: at(5) } },
     { id: 'drop', name: 'הביט נכנס', data: { from: at(11) } },
     { id: 'button', name: 'הסוף: 20%', data: { from: at(15) } },
+    { id: 'end', name: 'החלון בסוף', data: { from: timeline(SUPERMARKET).length } },
+    { id: 'end-level', name: 'החלון בסוף – עם רמה חדשה', data: { from: timeline(SUPERMARKET).length, xp: 1375 } },
   ],
   variants: [
     {
       id: 'a',
       name: 'בהנהלה חדשה',
-      note: 'סרט של 42 שניות ב־18 שוטים, בתלת־ממד של המשחק עצמו: הסופר מהשורה שלו, המנהל והקבלן ממנוע הדמויות, ואת/ה בבגדים שלך, ומסביב השמיים, הדרך והיער של המשחק. כל שורה נקראת במילים, באנגלית פשוטה, בקול הדיבור של הטלפון – לכל דמות קול, גובה וקצב משלה (בלי הורדות ובלי הקלטות); הסצנות שמדברים בהן מוארות כמו בקולנוע. עד 38 תווים לשורה, אפשר לדלג מהשנייה הראשונה, ובסוף כרטיס עם מה שקיבלת. 🔊 עם קול: לחצו על Sound.',
+      note: 'סרט של 42 שניות ב־18 שוטים, בתלת־ממד של המשחק עצמו: הסופר מהשורה שלו, המנהל והקבלן ממנוע הדמויות, ואת/ה בבגדים שלך, ומסביב השמיים, הדרך והיער של המשחק. כל שורה נקראת במילים, באנגלית פשוטה, בקול הדיבור של הטלפון – לכל דמות קול, גובה וקצב משלה (בלי הורדות ובלי הקלטות); הסצנות שמדברים בהן מוארות כמו בקולנוע. עד 38 תווים לשורה, אפשר לדלג מהשנייה הראשונה, ובסוף חלון עם תחושת התקדמות: פס הרמה מתמלא, מה שלך עכשיו ומה זה פותח. במשחק: אחרי הקנייה מהכרטיס, פעם אחת. 🔊 עם קול: לחצו על Sound.',
       motion:
         'ערב, סגירה: מוזק מהרמקול של הסופר, והקבלן סוחב מזוודה כבדה לדלת. במשרד, לילה, אור מנורה חם: המנהל מקליד ולועג: "More carrots? I pay 40%, kid." ("עוד גזר? אני משלם 40%, ילד"). את/ה מצביע/ה על המסך – "FOR SALE · 1500" בזום. "You? Buy my shop? With carrots?" – הוא צוחק, מצולם מלמטה, הראש נזרק אחורה מבסיס הצוואר. סנאפ באצבעות: שריטת תקליט, שקט. ' +
         'הקבלן נכנס בהילוך איטי, דופק של מתח, קצה של אור כחלחל על הכתפיים: "Where do I put it, boss?" – הוא קורא לך "בוס". המזוודה נוחתת על השולחן (רעידה), נפתחת – "Whoa…" ואור זהב מלמטה על הפנים של המנהל, מקהלה, ורואים את המטבעות. "שעתיים אחר כך": "…1,499…" ' +
         'לחיצת יד באור צד חם על רקע כהה: "1,500. The shop is yours." – עלייה, חצי שנייה שקט, והביט נכנס: האורות נדלקים בקליק והמדפים מתמלאים בסחורה של החווה. בוקר: את/ה יוצא/ת מהחנות בהילוך איטי, מצולם/ת מהרצפה; באנר "UNDER NEW MANAGEMENT" נפרש על השלט, ניצוצות וקונפטי. ' +
-        'הכפתור, בשוט מרובע מול החנות: המנהל יוצא עם קופסה, ספל ועציץ, נעמד לידך ומסתובב אלייך: "Want my mug? Only 10 coins." את/ה לא מסתובב/ת בכלל, ואחרי שנייה של שקט, מצולם/ת מלמטה מתחת לבאנר: "I\'ll give you 20%." – מה שהוא שילם לך בהתחלה, חצי ממה שהוא משלם היום. טרומבון עצוב, הוא קופא ומשתרך משם, והקונים נכנסים לחנות. כרטיס: "The shop is yours", ‎+25 XP. ' +
+        'הכפתור, בשוט מרובע מול החנות: המנהל יוצא עם קופסה, ספל ועציץ, נעמד לידך ומסתובב אלייך: "Want my mug? Only 10 coins." את/ה לא מסתובב/ת בכלל, ואחרי שנייה של שקט, מצולם/ת מלמטה מתחת לבאנר: "I\'ll give you 20%." – מה שהוא שילם לך בהתחלה, חצי ממה שהוא משלם היום. טרומבון עצוב, הוא קופא ומשתרך משם, והקונים נכנסים לחנות. ' +
+        'החלון: נוחת בקפיצה עם קונפטי וצליל של רמה; החנות קופצת מתוך קרני אור, הסרט האדום נפרש מתחתיה, הפס הסגול מתמלא ו"‎+25 XP" סופר למעלה (עם רמה חדשה: הבזק, הכוכב קופץ, "Level 14!", עוד קונפטי), שלושת הכרטיסים של "Yours now" נוחתים אחד אחד עם וי ירוק, ואז "Next". ' +
         'המילים בבועה עולות בדיוק כשהקול מגיע אליהן; בלי קול – לפי השעון של הסרט.',
       adds: 'סרט שנפתח כשקונים את הסופר (אין עדיין סרטים במשחק), קולות לדמויות (אין דיבור במשחק), ובאנר "UNDER NEW MANAGEMENT" מעל השלט אחרי הקנייה.',
       render: (s, act) => <FilmSupermarketA s={s} onClose={act.close} />,

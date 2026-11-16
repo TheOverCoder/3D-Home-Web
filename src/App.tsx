@@ -9,6 +9,7 @@ import { playerState } from './lib/playerState'
 import { handleContextLost, handleSceneError } from './lib/startup'
 import { useHome } from './store'
 import { Curtain } from './ui/Curtain'
+import { FilmLayer } from './ui/FilmLayer'
 import { GraphicsNotice } from './ui/GraphicsNotice'
 import { Hud } from './ui/Hud'
 import { HudMode } from './ui/HudMode'
@@ -69,6 +70,7 @@ export function App() {
       )}
       <ScreenModal />
       <Curtain />
+      <FilmLayer />
       <SettingsPanel />
       <Intro />
       <GraphicsNotice />

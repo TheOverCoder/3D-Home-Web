@@ -1,9 +1,11 @@
+import { AGENT_SEAT } from '../data/estate'
 import { playGesture } from '../lib/gestures'
 import { walkTo } from '../lib/route/walking'
 import { useHome } from '../store'
 import { Coins, Purse, Shell, useArmed } from '../ui/Sheet'
 import { art } from '../ui/art'
 import { Check, Clock, NavigationArrow } from '../ui/glyphs'
+import { AGENT, talk } from '../talk/speech'
 import { KeepTag } from './ContractorPanel'
 import { ESTATE } from './data'
 import { clockOf, hoursText, opensAt } from './day'
@@ -104,6 +106,8 @@ export function HouseBuyPanel() {
     if (!armed || !buyApartment()) return
     playGesture('interact')
     close()
+    // the agent hands you the keys (src/talk)
+    talk('agent-sold', AGENT, AGENT_SEAT)
   }
   return (
     <Shell title="Buy the house" art={art('house')} sub={<Purse />} onClose={close}>

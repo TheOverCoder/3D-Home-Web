@@ -15,6 +15,7 @@ import { debugSet } from '../lib/debug'
 import { useInteractable } from '../lib/interaction'
 import { estateFittingsParts, parkingLotParts } from '../models/estate'
 import { WalkIn, hidingPiece, walkInDoor } from '../scene/WalkIn'
+import { AGENT, talk } from '../talk/speech'
 import { useHome } from '../store'
 import { art } from '../ui/art'
 import { ESTATE } from './data'
@@ -343,7 +344,10 @@ function Counterparts() {
     },
     icon: () => (agentHere() ? { verb: 'talk', art: 'man-office-worker' } : { verb: 'wait', art: 'man-office-worker', seconds: Math.ceil(agentBackIn()) }),
     run: () => {
-      if (agentHere()) openPanel({ kind: 'estate' })
+      if (!agentHere()) return
+      openPanel({ kind: 'estate' })
+      // he says hello (src/talk)
+      talk(farm.apartment.owned ? 'agent-yours' : 'agent-hello', AGENT, AGENT_SEAT)
     },
   })
 
