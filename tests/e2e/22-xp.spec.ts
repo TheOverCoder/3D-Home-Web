@@ -140,15 +140,37 @@ const seen = (page: Page) => page.evaluate(() => ({ ...(window as any).__xpWatch
 const stopWatching = (page: Page) => page.evaluate(() => ({ ...(window as any).__xpWatch.stop() }) as Seen)
 
 /** Runs the page's animations (CSS, and the Web Animations API's) at `rate` times their speed, so the software
- *  renderer's few frames a second see a pulse of a quarter of a second. Returns what puts them back to full speed. */
+ *  renderer's few frames a second see a pulse of a quarter of a second. Each is slowed on its own as it starts, never
+ *  the document's timeline (DevTools' playback rate): a timeline slowed falls behind the page's clock for good, and
+ *  Motion, which gives each animation its start on that clock, then starts every one that much late (each card's way
+ *  out waited ten seconds for the rest of the run). Returns what puts them back to full speed. */
 async function slowAnimations(page: Page, rate: number) {
-  const cdp = await page.context().newCDPSession(page)
-  await cdp.send('Animation.enable')
-  await cdp.send('Animation.setPlaybackRate', { playbackRate: rate })
-  return async () => {
-    await cdp.send('Animation.setPlaybackRate', { playbackRate: 1 }).catch(() => {})
-    await cdp.detach().catch(() => {})
-  }
+  await page.evaluate((rate) => {
+    const slowed = new Set<Animation>()
+    const slow = (a: Animation) => {
+      if (slowed.has(a)) return
+      slowed.add(a)
+      a.playbackRate = rate
+    }
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- called with the element as `this` below
+    const animate = Element.prototype.animate
+    Element.prototype.animate = function (this: Element, ...args: Parameters<Element['animate']>) {
+      const a = animate.apply(this, args)
+      slow(a)
+      return a
+    }
+    // CSS animations and transitions start with a change to the page: slowed before their first frame
+    const css = () => document.getAnimations().forEach(slow)
+    const changes = new MutationObserver(css)
+    changes.observe(document.documentElement, { childList: true, subtree: true, attributes: true })
+    css()
+    ;(window as any).__fullSpeed = () => {
+      Element.prototype.animate = animate
+      changes.disconnect()
+      for (const a of slowed) a.playbackRate = 1
+    }
+  }, rate)
+  return () => page.evaluate(() => (window as any).__fullSpeed?.())
 }
 
 test.describe('levels', () => {

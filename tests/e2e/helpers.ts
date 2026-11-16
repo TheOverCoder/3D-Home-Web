@@ -145,7 +145,14 @@ export async function openGame(browser: Browser, counting = false): Promise<{ ga
     ready: async (map = 'home') => {
       if (!(await isPlaying(page))) await bootApp(page)
       await onMap(page, map)
-      await page.evaluate((map) => {
+      await page.evaluate(async (map) => {
+        // the page's clock and its animations' timeline in step (read again on a new frame: the timeline moves on with
+        // frames, and a slow one is a few seconds). A test that moves either apart (the clock moved on: 20-away's page
+        // hidden; the timeline slowed through DevTools) cannot put it back, and Motion, which starts each animation on
+        // the clock and plays it on the timeline, would start every one that much late: a page of its own for that
+        const apart = () => Math.abs(performance.now() - Number(document.timeline.currentTime))
+        if (apart() > 5000) await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
+        if (apart() > 5000) throw new Error(`the page's clock and its animations' timeline are ${Math.round(apart() / 1000)} s apart: a test that moves either needs a page of its own`)
         const h = (window as any).__home
         const s = h.useHome.getState()
         if (s.screen) s.closeScreen()
