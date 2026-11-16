@@ -3,8 +3,9 @@ import { WoodsView } from './WoodsView'
 
 // The big trees (3D, the 3D designer's): the woods round the farm and the three trees in the garden's corners, all made
 // by src/scene/flora.ts `tree` and drawn by src/farm/Land.tsx and src/farm/Places.tsx. "Today" is that maker with the
-// game's materials; A, B and C are proposals made with the kit in ./models/trees.ts. Its states: in the game (the
-// farm from the garden at the player's eye, in the haze) and close (turning under a finger).
+// game's materials; D is the one reference the user asked for in round 2, made from B and C (both ✓) with the kit in
+// ./models/woods.ts. Its states: in the game (the farm from the garden at the player's eye, in the haze) and close
+// (its four kinds side by side, turning under a finger).
 
 export interface WoodsState {
   view: 'game' | 'close'
@@ -14,9 +15,17 @@ export const woodsBoard: Board<WoodsState> = {
   id: 'woods',
   title: 'העצים הגדולים',
   kind: '3d',
-  added: '2026-11-15T07:50',
-  ask: 'צריך עוד סוכן לעיצוב תלת־ממד: שיפורים שמביאים אלמנטים בתלת־ממד שמתאימים למשחק, או שיפורי תלת־ממד לאישור. תעשה את הסוכן ותן לו לבנות גם הצעות.',
+  added: '2026-11-16T09:00',
+  ask:
+    'צריך עוד סוכן לעיצוב תלת־ממד: שיפורים שמביאים אלמנטים בתלת־ממד שמתאימים למשחק, או שיפורי תלת־ממד לאישור. תעשה את הסוכן ותן לו לבנות גם הצעות. · ' +
+    'סיבוב 2 (✓ B, ✓ C): "צריך בפחות משולשים לייצר כמה סוגים ברמה גבוהה. תעשה רפרנס אחד שהוא באמת הכי טוב שאתה יכול מ־B ו־C שאהבתי."',
   status: 'choose',
+  round:
+    'סיבוב 2, לפי מה שענית (✓ B, ✓ C, "פחות משולשים, כמה סוגים ברמה גבוהה, רפרנס אחד"): B ו־C הם עכשיו רפרנס אחד, D. ' +
+    'מ־B: העץ העגול – גושים גדולים, בהיר למעלה וכהה למטה, מוצלל כגוש אחד. מ־C: יער מעורב – עגול, גבוה ומחודד לסירוגין. ' +
+    'ארבעה סוגים: אלון עגול (גם שלושת העצים בגינה), ליבנה עם גזע לבן, צפצפה גבוהה כמו להבה, ואורן בקומות עם קצוות ענפים מרופטים. ' +
+    'פחות משולשים: הצמרת היא עכשיו עור אחד מעל כל הגושים – אין גוש שמסתתר בתוך גוש אחר, אז כל משולש נראה. ' +
+    '9,197 משולשים לכל 17 העצים: B היה 19,159, C היה 12,956, היום 23,956.',
   still: 'none',
   research: [
     {
@@ -34,6 +43,11 @@ export const woodsBoard: Board<WoodsState> = {
       from: 'Games Artist: Lush tree',
       url: 'https://gamesartist.co.uk/lush-tree/',
     },
+    {
+      pattern: 'בחבילות עצים למובייל עץ מסוגנן טוב הוא כמה מאות עד כ־1,600 משולשים, וצללית ברורה ומוכרת היא מה שמוכר אותו. לכן כאן 369–809 לעץ, וכל סוג בצללית אחרת.',
+      from: 'חבילות עצים מסוגננים למובייל (CGTrader)',
+      url: 'https://www.cgtrader.com/3d-models/plant/leaf/low-poly-deciduous-tree-stylized-3d-model-4608058e-2f03-4a18-989e-23d65ec9c7de',
+    },
   ],
   states: [
     { id: 'game', name: 'במשחק', data: { view: 'game' } },
@@ -47,22 +61,13 @@ export const woodsBoard: Board<WoodsState> = {
       render: (s) => <WoodsView v="today" s={s} />,
     },
     {
-      id: 'a',
-      name: 'אותו עץ, צבע חדש',
-      note: 'אותן צורות בדיוק, רק הצבע והאור: למעלה ירוק בהיר כמו בשמש, למטה ובפנים ירוק עמוק, והצמרת מוארת כמו גוש אחד, בלי תמונת הדשא. אף משולש לא נוסף: 23,956, כמו היום.',
-      render: (s) => <WoodsView v="a" s={s} />,
-    },
-    {
-      id: 'b',
-      name: 'עץ עגול ומלא',
-      note: 'עץ חדש מהערכה: צמרת מלאה ונמוכה יותר מכמה גושים גדולים (הגדול באמצע), תחתית שטוחה יותר, גזע עבה שמתרחב לאדמה ומתפצל לשלושה ענפים. צבע כמו ב־A. 1,127 משולשים לעץ (היום 1,208–1,568): 19,159 לכל ה־17 במקום 23,956.',
-      render: (s) => <WoodsView v="b" s={s} />,
-    },
-    {
-      id: 'c',
-      name: 'יער מעורב',
-      note: 'ביער, לסירוגין: העץ העגול של B, צפצפה גבוהה וצרה, ואורן בקומות — קו אופק עם צורות עגולות, גבוהות ומחודדות. שלושת העצים בגינה נשארים עגולים. עגול 1,127, צפצפה 404, אורן 480 משולשים: 12,956 לכל ה־17 במקום 23,956.',
-      render: (s) => <WoodsView v="c" s={s} />,
+      id: 'd',
+      name: 'יער מעורב, רפרנס אחד',
+      note:
+        'הטוב מ־B ומ־C: ארבעה סוגי עצים לסירוגין ביער – אלון עגול (589 משולשים), ליבנה עם גזע לבן (409), צפצפה גבוהה (369) ואורן בקומות (497) – ושלושת העצים בגינה אלונים, קצת יותר עדינים כי רואים אותם מקרוב (809). ' +
+        'כל צמרת היא עור אחד מעל הגושים, בלי משולשים מוסתרים, בהירה למעלה, כהה בקפלים ובתחתית, ומוצללת כגוש אחד. ' +
+        '9,197 משולשים לכל 17 העצים: 38% מהיום (23,956), 48% מ־B (19,159), 71% מ־C (12,956).',
+      render: (s) => <WoodsView v="d" s={s} />,
     },
   ],
 }
