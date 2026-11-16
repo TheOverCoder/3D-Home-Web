@@ -77,6 +77,9 @@ export function HudMode() {
 
   if (!shown) return null
   const ViewIcon = mode === 'all' ? SquaresFour : mode === 'compass' ? CompassRose : EyeSlash
+  // the dial's buttons: the daily gift while it waits, the news, edit where there is something to edit, the view, the
+  // settings (five: on a phone on its side they go in two columns, see HudMode.css)
+  const buttons = (gift ? 1 : 0) + 1 + (edit ? 1 : 0) + 2
   return (
     <MotionRoot>
       <div className="top-menu" ref={box}>
@@ -109,7 +112,7 @@ export function HudMode() {
         <AnimatePresence>
           {open && (
             <m.ul
-              className="top-dial"
+              className={`top-dial${buttons > 4 ? ' many' : ''}`}
               initial="shut"
               animate="open"
               exit="shut"
