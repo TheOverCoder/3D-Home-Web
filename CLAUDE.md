@@ -102,7 +102,7 @@ The README has the overview; `tests/README.md` what each test guards.
   the same data the one mesh had, with a material of its own made in the one mesh's drawing order (three draws a
   material's meshes nearest first, materials in the order they were made), so not a pixel changes: `16-view`
   compares them (`window.__home.land.whole`). A light thing (the fence, the trunks: a few hundred triangles) stays
-  one mesh, a draw costs more than it saves.
+  one mesh, a draw costs more than it saves (the trunks one per bark: the birches' is white).
 - `16-view` draws the same frames with the pass on and off and requires every pixel, depth and shadow-map texel to
   match (a difference there is a culling bug): a new room or kind of view gets a pose there; the house's doorways,
   windows and garden door are posed from its openings as the save has them (`openingViews`), a changed house too
