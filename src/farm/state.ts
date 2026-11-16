@@ -57,6 +57,7 @@ import {
   type StoreId,
   type UpgradeId,
   LADDERS,
+  LEVELS,
   CONTRACTOR,
   DAY,
   ESTATE,
@@ -67,7 +68,7 @@ import {
   type LadderId,
   type XpAction,
 } from './data'
-import { sanitizeXp, seedXp, levelOf, levelReward, xpAt, unpaidCoins, xpForSale, type Xp } from './xp'
+import { sanitizeXp, savedOnToday, seedXp, levelOf, levelReward, xpAt, unpaidCoins, xpForSale, type Xp } from './xp'
 import { CAME_KEPT, boxOf, boxesReached, giftsFor, isOpen as giftOpen, rollArrival, rollBox, sanitizeGifts, settle, waitingBoxes, type Gifts, type Opened, type Prize } from './gifts'
 import { claimed, dailyFresh, dailyStatus, dailyView, dayNumber, rollDay, sanitizeDaily, type Daily, type DailyView } from './daily'
 import { QUEUE, machineLevel, queuePrice, type MachineActions, type MachineView, type QueueSlot } from './machineView'
@@ -592,8 +593,10 @@ function load(text: string | null = readRaw(KEY)): { data: FarmData; savedAt: nu
     // the goals: each on the step it was saved on; a farm from before them starts each where it is (what it did before
     // is not paid for again)
     for (const def of GOALS) data.goals[def.id] = isObject(raw.goals) ? int(field(raw.goals, def.id), 0, 0, MOST_STEPS) : startStep(def, data)
-    // levels: as saved; a farm from before them starts with XP for what it did (its levels are not paid again)
-    data.xp = sanitizeXp(raw.xp, seedXp(data.stats))
+    // levels: as saved; a farm from before them starts with XP for what it did (its levels are not paid again). XP
+    // saved under an older curve (LEVELS.step 15, before saves marked theirs) is moved onto today's: the same level and
+    // the same share of the way to the next, so what was paid, the boxes opened and the clothes worn all stay
+    data.xp = sanitizeXp(savedOnToday(raw.xp), seedXp(data.stats))
     // a level's coins come in by themselves as it is reached; a farm saved with some reached and not yet claimed (from
     // when they waited for a Claim) is paid them now, once (the level paid moves up with them)
     const owed = unpaidCoins(data.xp)
@@ -652,12 +655,14 @@ function saveNow() {
   window.clearTimeout(saveTimer)
   saveTimer = undefined
   try {
-    const { visitors, clock: _c, orders: board, ...rest } = farm
+    const { visitors, clock: _c, orders: board, xp, ...rest } = farm
     // the line at the gate is kept too: buyers wait for you while you are away
     const queue: SavedBuyer[] = visitors.filter((v) => v.phase !== 'leaving').map(({ name, look, want, qty, offer, gift }) => ({ name, look, want, qty, offer, gift }))
     // the orders without their keys (each gets a new one as the farm loads)
     const orders = board.map((slot) => ('order' in slot ? { lines: slot.order.lines, coins: slot.order.coins, surprise: slot.order.surprise } : slot))
-    localStorage.setItem(KEY, JSON.stringify({ ...rest, orders, queue, time: Date.now() }))
+    // the XP with the curve it is counted on (src/farm/xp.ts, savedOnToday: a save made under another is moved onto
+    // the curve of the game that loads it)
+    localStorage.setItem(KEY, JSON.stringify({ ...rest, xp: { ...xp, curve: LEVELS.step }, orders, queue, time: Date.now() }))
   } catch {
     /* storage full or blocked: the farm still works for this visit */
   }

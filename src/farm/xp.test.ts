@@ -1,7 +1,7 @@
 import fc from 'fast-check'
 import { describe, expect, it } from 'vitest'
 import { LEVELS } from './data'
-import { levelOf, levelProgress, levelReward, sanitizeXp, seedXp, unpaidCoins, xpAt, xpForSale, type Xp } from './xp'
+import { FIRST_STEP, levelOf, levelProgress, levelReward, onToday, sanitizeXp, savedOnToday, seedXp, unpaidCoins, xpAt, xpForSale, type Xp } from './xp'
 
 // Levels (src/farm/xp.ts): the curve and its inverse, the rewards waiting to be claimed, what a sale is worth, the XP a
 // farm from before levels starts with, and the saved XP read back. Pure: no farm, no page.
@@ -173,5 +173,59 @@ describe('the saved XP read back', () => {
       fc.property(raw, num, (r, seed) => valid(sanitizeXp(r, seed))),
       { numRuns: RUNS },
     )
+  })
+})
+
+// The curve was made steeper (LEVELS.step 15 → 30); a save marks the curve its XP was counted on, and one from before
+// the mark was made under the first. Its XP is moved onto today's curve: the same level, the same share of the way.
+describe('XP saved under the first curve', () => {
+  /** The first curve, worked out here: where level L began, the level of some points, and the quarter of its bar. */
+  const firstAt = (level: number) => (FIRST_STEP * level * (level - 1)) / 2
+  const firstLevel = (p: number) => {
+    let level = 1
+    while (level < TOP && firstAt(level + 1) <= p) level++
+    return level
+  }
+  const quarter = (into: number, need: number) => Math.min(3, Math.floor((4 * into) / need))
+
+  it('every level keeps its number, from its first point to its last', () => {
+    for (let L = 1; L < TOP; L++) {
+      expect(levelOf(onToday(firstAt(L), FIRST_STEP)), `level ${L}`).toBe(L)
+      expect(onToday(firstAt(L), FIRST_STEP), `level ${L} begins where it begins today`).toBe(xpAt(L))
+      expect(levelOf(onToday(firstAt(L + 1) - 1, FIRST_STEP)), `the end of level ${L}`).toBe(L)
+    }
+    expect(levelOf(onToday(firstAt(TOP), FIRST_STEP))).toBe(TOP)
+  })
+
+  it('level 20 halfway to 21 is level 20 halfway', () => {
+    expect(levelProgress(onToday(firstAt(20) + 150, FIRST_STEP))).toEqual({ level: 20, into: 300, need: 600, top: false })
+  })
+
+  it('any points: the same level, at least the same share of its bar (the same boxes reached), and more points never fewer', () => {
+    fc.assert(
+      fc.property(fc.integer({ min: 0, max: firstAt(TOP) + 10_000 }), fc.integer({ min: 0, max: 50 }), (p, more) => {
+        const now = onToday(p, FIRST_STEP)
+        const level = firstLevel(p)
+        const was = levelProgress(now)
+        if (level === TOP) return was.level === TOP && now >= xpAt(TOP)
+        const share = (p - firstAt(level)) / (firstAt(level + 1) - firstAt(level))
+        return (
+          was.level === level &&
+          was.into / was.need >= share &&
+          quarter(was.into, was.need) === quarter(p - firstAt(level), firstAt(level + 1) - firstAt(level)) &&
+          onToday(p + more, FIRST_STEP) >= now
+        )
+      }),
+      { numRuns: RUNS },
+    )
+  })
+
+  it('a save without the mark is moved; one marked with today’s curve, or with a mark that cannot be read, is not', () => {
+    expect(savedOnToday({ points: firstAt(7) + 3, paid: 7 })).toEqual({ points: onToday(firstAt(7) + 3, FIRST_STEP), paid: 7 })
+    const today = { points: firstAt(7) + 3, paid: 4, curve: LEVELS.step }
+    expect(savedOnToday(today)).toBe(today)
+    for (const curve of [null, 0, -15, 2.5, 'fifteen', 1e9, NaN, {}]) expect(savedOnToday({ points: 99, paid: 1, curve }), JSON.stringify(curve)).toEqual({ points: 99, paid: 1, curve })
+    // what is not an XP stays as it was (sanitizeXp reads it)
+    for (const raw of [undefined, null, 7, 'xp', {}, { paid: 3 }, { points: '50' }]) expect(savedOnToday(raw)).toBe(raw)
   })
 })

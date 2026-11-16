@@ -12,21 +12,63 @@ export interface Xp {
   paid: number
 }
 
+/** The XP at which level L begins on a curve of `step` (level 1 at 0). */
+const xpOn = (level: number, step: number) => (step * level * (level - 1)) / 2
+
 /** The XP at which level L begins (level 1 at 0). */
-export const xpAt = (level: number) => (LEVELS.step * level * (level - 1)) / 2
+export const xpAt = (level: number) => xpOn(level, LEVELS.step)
 
 /** Points as a whole number from 0 to the most a number holds exactly (NaN is none, past that is that). */
 const wholePoints = (points: number) => (points > 0 ? Math.min(Math.floor(points), Number.MAX_SAFE_INTEGER) : 0)
 
-/** The level for this many points: the largest L with xpAt(L) ≤ points (closed form, then put right by one either
- *  way where floating point rounds the root), at most the top level. Points are taken whole and at most
- *  Number.MAX_SAFE_INTEGER. */
-export function levelOf(points: number): number {
+/** The level for this many points on a curve of `step`: the largest L with xpOn(L) ≤ points (closed form, then put
+ *  right by one either way where floating point rounds the root), at most the top level. */
+function levelOn(points: number, step: number): number {
   const p = wholePoints(points)
-  let level = Math.min(LEVELS.max, Math.max(1, Math.floor((1 + Math.sqrt(1 + (8 * p) / LEVELS.step)) / 2)))
-  while (level > 1 && xpAt(level) > p) level--
-  while (level < LEVELS.max && xpAt(level + 1) <= p) level++
+  let level = Math.min(LEVELS.max, Math.max(1, Math.floor((1 + Math.sqrt(1 + (8 * p) / step)) / 2)))
+  while (level > 1 && xpOn(level, step) > p) level--
+  while (level < LEVELS.max && xpOn(level + 1, step) <= p) level++
   return level
+}
+
+/** The level for this many points: the largest L with xpAt(L) ≤ points, at most the top level. Points are taken whole
+ *  and at most Number.MAX_SAFE_INTEGER. */
+export const levelOf = (points: number): number => levelOn(points, LEVELS.step)
+
+/** The curve's step before a save marked the curve it was made under (LEVELS.step was 15): a save without the mark
+ *  counted its XP on it. */
+export const FIRST_STEP = 15
+/** The steepest curve a save's mark may name (past it, a mark is not one). */
+const MOST_STEP = 1000
+
+/**
+ * XP counted on a curve of `step`, counted on today's (LEVELS.step): the same level, and the same share of the way to
+ * the next one, rounded up (every gift box it had reached is still reached) but never into the next level. Past the top
+ * level, as far past it. Points are taken whole.
+ */
+export function onToday(points: number, step: number): number {
+  const p = wholePoints(points)
+  if (step === LEVELS.step) return p
+  const level = levelOn(p, step)
+  const from = xpOn(level, step)
+  if (level >= LEVELS.max) return Math.min(Number.MAX_SAFE_INTEGER, xpAt(level) + (p - from))
+  const need = xpOn(level + 1, step) - from
+  const now = xpAt(level + 1) - xpAt(level)
+  return xpAt(level) + Math.min(now - 1, Math.ceil(((p - from) * now) / need))
+}
+
+/**
+ * The XP of a save as counted on today's curve. The game marks each save with the curve it was made under (`curve` in
+ * its XP: the step); a save without the mark was made under the first one (FIRST_STEP), and its points are moved onto
+ * today's (onToday), so it keeps its level and its share of the way to the next. A mark that cannot be read is taken
+ * as today's (a hand-edited save gains nothing by it). Only the points change: what was paid stays as saved.
+ */
+export function savedOnToday(raw: unknown): unknown {
+  if (!raw || typeof raw !== 'object' || typeof (raw as Partial<Xp>).points !== 'number') return raw
+  const r = raw as Record<string, unknown>
+  const mark = r.curve
+  const step = mark === undefined ? FIRST_STEP : Number.isInteger(mark) && (mark as number) >= 1 && (mark as number) <= MOST_STEP ? (mark as number) : LEVELS.step
+  return step === LEVELS.step ? raw : { ...r, points: onToday(r.points as number, step) }
 }
 
 /** Where a level stands: the points into it, the points it takes to the next, and whether it is the top one (whose

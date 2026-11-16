@@ -34,8 +34,8 @@ part is built, replace its plan with two lines on what was built and where.
   level's boxes taken as they come), `report.ts`; `npm run sim` prints three hours; `pace.test.ts` holds `PACE`
   (`targets.ts`) on seeds 1–3 in about a second.
 - **Tuned:** `LEVELS.step` 15 → 30, nothing else (no wait over 2 min before or after; the longest 7 s). It leaves room
-  for Part B, whose locks slow the first hour. An older save keeps its XP points: it drops to a lower level and is
-  paid those levels' coins and boxes again as it climbs back (a save conversion would be a rule, not a number).
+  for Part B, whose locks slow the first hour. Saves mark their curve (`xp.curve`); one without it is moved onto the new
+  curve as it loads (`savedOnToday`, src/farm/xp.ts): the same level and share, nothing paid or given twice.
 
 | Level (minutes of play, seeds 1–3) | 2 | 3 | 5 | 8 | 10 | 12 | 15 | 20 | 30 |
 |---|---|---|---|---|---|---|---|---|---|

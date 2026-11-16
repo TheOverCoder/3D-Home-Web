@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { takeFx } from '../fx/fx'
 import { useHome } from '../store'
 import { BEDS, LEVELS, MACHINES, OFFICE_SCREEN, XP_FOR, cropById } from './data'
+import { boxAt } from './gifts'
 import { goalById, goalTarget } from './goals'
 import {
   acceptOffer,
@@ -25,10 +26,12 @@ import {
   fillPlace,
   fixBed,
   gainXp,
+  giftsWaiting,
   harvestBeds,
   importSlot,
   marketFill,
   moveJob,
+  openGifts,
   movePlace,
   orderAt,
   plantBeds,
@@ -265,7 +268,7 @@ describe('gainXp, the level and its coins', () => {
     const saved = savedNow()
     const coins = farm.coins
     // as such a farm was saved: level 4, paid up to level 1
-    const owed = { ...saved, xp: { points: (saved.xp as { points: number }).points, paid: 1 } }
+    const owed = { ...saved, xp: { ...(saved.xp as object), paid: 1 } }
     const events = xpEventCount()
     try {
       startFrom(justSaved(owed))
@@ -349,6 +352,79 @@ describe('the wardrobe', () => {
     } finally {
       switchSlot(1)
       vi.useRealTimers()
+    }
+  })
+})
+
+// The curve was made steeper (LEVELS.step 15 → 30: src/sim, PACE). A save marks the curve its XP was counted on; one
+// from before the mark was made under the first curve, and loads at the same level and the same share of the way to the
+// next on today's: nothing paid again, no box given twice, no garment taken off.
+describe('a save from before the curve was marked', () => {
+  /** An XP point count on the first curve (LEVELS.step 15): level L, and `share` of the way to the next. */
+  const firstCurve = (level: number, share: number) => (15 * level * (level - 1)) / 2 + share * 15 * level
+  /** The farm as saved now, its XP put back as the game saved it before the mark (points and paid only). */
+  function savedBefore(points: number, paid: number, more: Record<string, unknown> = {}) {
+    const save = savedNow()
+    return justSaved({ ...save, xp: { points, paid }, ...more })
+  }
+
+  it('level 20 halfway to 21 loads at level 20 halfway; saved again it is not moved twice', () => {
+    try {
+      startFrom(savedBefore(firstCurve(20, 0.5), 20))
+      expect(farm.xp.points).toBe(xpAt(20) + 300)
+      expect(xpNow()).toMatchObject({ level: 20, into: 300, need: 600, unpaid: 0 })
+      // saved again, it carries today's curve: loaded again, the same
+      const again = savedNow()
+      expect(again.xp).toEqual({ points: xpAt(20) + 300, paid: 20, curve: LEVELS.step })
+      startFrom(justSaved(again))
+      expect(farm.xp).toEqual({ points: xpAt(20) + 300, paid: 20 })
+    } finally {
+      switchSlot(1)
+    }
+  })
+
+  it('the levels paid are not paid again and the boxes opened are not given again; the next level pays its own', () => {
+    // every box level 20 had reached opened (its first two: 25 % and 50 %), the level seen
+    const open = boxAt(20, 2)
+    const gifts = { open, also: [], gave: [], came: [], seen: 20 }
+    const coins = farm.coins
+    try {
+      startFrom(savedBefore(firstCurve(20, 0.5), 20, { gifts }))
+      expect(farm.coins).toBe(coins)
+      expect([farm.xp.paid, farm.gifts.open, giftsWaiting()]).toEqual([20, open, []])
+      expect(openGifts()).toEqual([])
+      // on to level 21: its coins only, and its own boxes, from level 20's third
+      gainXp('build', Math.ceil((xpAt(21) - farm.xp.points) / XP_FOR.build))
+      expect(levelOf(farm.xp.points)).toBe(21)
+      expect(farm.coins).toBe(coins + levelReward(21))
+      expect(farm.gifts.came.map((c) => c.level)).toEqual([21])
+      expect(giftsWaiting()).toEqual([boxAt(20, 2), boxAt(20, 3)])
+    } finally {
+      switchSlot(1)
+    }
+  })
+
+  it('a garment that came with its level stays on', () => {
+    const coat = garmentAt(20)!
+    const outfit = { ...DEFAULT_OUTFIT, [coat.slot]: coat.id, seen: 20 }
+    try {
+      startFrom(savedBefore(firstCurve(20, 0.1), 20, { outfit }))
+      expect(levelOf(farm.xp.points)).toBe(20)
+      expect(farm.outfit).toEqual(outfit)
+    } finally {
+      switchSlot(1)
+    }
+  })
+
+  it('a save on today’s curve is untouched', () => {
+    farm.xp = { points: firstCurve(20, 0.5), paid: levelOf(firstCurve(20, 0.5)) }
+    const save = savedNow()
+    expect((save.xp as { curve: number }).curve).toBe(LEVELS.step)
+    try {
+      startFrom(justSaved(save))
+      expect(farm.xp).toEqual({ points: firstCurve(20, 0.5), paid: levelOf(firstCurve(20, 0.5)) })
+    } finally {
+      switchSlot(1)
     }
   })
 })

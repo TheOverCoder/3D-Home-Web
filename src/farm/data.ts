@@ -589,7 +589,8 @@ export type XpAction = keyof typeof XP_FOR
 /** From level L to the next takes `step · L` XP, so each level takes longer than the one before; reaching level L pays
  *  `reward · L` coins (claimed in the level's card). `max` is the top level: past it XP still counts, the level stays.
  *  `step` is set against the pace a new farm is held to (`npm run sim`, PACE in src/sim/targets.ts: at 15 a good
- *  player reached level 15 in about 34 minutes; at 30, in about 72). */
+ *  player reached level 15 in about 34 minutes; at 30, in about 72). A save marks the step its XP was counted on, and
+ *  one made under another is moved onto this one as it loads, at the same level (src/farm/xp.ts, savedOnToday). */
 export const LEVELS = { step: 30, reward: 10, max: 500 } as const
 
 // ───────────────────────────── the supermarket ─────────────────────────────
