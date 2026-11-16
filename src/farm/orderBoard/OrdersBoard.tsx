@@ -26,7 +26,7 @@ import './OrdersBoard.css'
 // in would add now: the next press seen before it is made), or empty (still to make). At its foot one press: Put in N
 // (yellow when it would fill the order: "Put in 4 · ready"), then Send (green), the plank glowing and a READY tag
 // swinging onto its nail. A touch on a good says its name, how many are in, what the store holds and where it comes
-// from. A place whose order was declined counts down on a ring. The office's two upgrades are a tab of their own, each
+// from; with too few in store, "Show me" closes the board and walks you there (on the farm, where the game gives it). A place whose order was declined counts down on a ring. The office's two upgrades are a tab of their own, each
 // bought through a card that asks first.
 //
 // Its moments: Put in — the goods fly from the press into their lines on an arc, one after another, the pegs fill
@@ -289,6 +289,7 @@ function Board({ v, act, asking, onAsk, onClose }: OrdersBoardProps) {
                         onSend={send}
                         onDecline={(k) => act.decline(k)}
                         onShow={act.show}
+                        canShow={act.canShow}
                       />
                     ) : (
                       <Waiting key={`wait-${k}`} left={slot.wait} full={v.wait} delay={opening ? 0.14 + k * 0.07 : 0} />
@@ -371,6 +372,7 @@ function Plank({
   onSend,
   onDecline,
   onShow,
+  canShow,
 }: {
   ref?: Ref<HTMLElement>
   o: Order
@@ -389,6 +391,7 @@ function Plank({
   onSend: (k: number, el: HTMLElement) => void
   onDecline: (k: number) => void
   onShow?: (good: ProduceId) => void
+  canShow?: (good: ProduceId) => boolean
 }) {
   const still = useReducedMotion()
   // on its way out (sent, declined) it is no longer one of the board's orders
@@ -464,7 +467,7 @@ function Plank({
             store={inv[l.good] ?? 0}
             pop={pop}
             setPop={setPop}
-            onShow={onShow}
+            onShow={onShow && canShow?.(l.good) !== false ? onShow : undefined}
             still={!!still}
           />
         ))}

@@ -25,8 +25,10 @@ export interface OrdersActions {
   send: (k: number) => boolean
   decline: (k: number) => boolean
   buy: (id: OfficeUpgradeId) => boolean
-  /** shows where a good comes from (the compass and the walk there): only where the game gives it */
+  /** "Show me": the board closes and you walk to where a good is made (the walk-to of the compass marks); only where the
+   *  game gives it (on the farm), and only for a good that has such a place now (`canShow`) */
   show?: (good: ProduceId) => void
+  canShow?: (good: ProduceId) => boolean
 }
 
 /** An office upgrade as its row shows it: its level, what it changes now → after the next step, its price. */

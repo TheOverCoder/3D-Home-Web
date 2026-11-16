@@ -7,7 +7,8 @@ import { buyOffice, decline, putIn, send, viewOf, type OrdersState } from './dat
 
 // The order board as the game has it (src/farm/orderBoard/OrdersBoard.tsx, E of round 3, chosen), fed with the
 // board's sample data instead of the farm: its presses do here what the farm's do there (./data.tsx). The card that
-// asks for an office upgrade is the game's `office-upgrade` panel there; here, a state of this frame.
+// asks for an office upgrade is the game's `office-upgrade` panel there; here, a state of this frame. "Show me" walks
+// you to where a good is made there; here it only closes the board.
 
 export function Live({ s, act }: { s: OrdersState; act: Act<OrdersState> }) {
   const [asking, setAsking] = useState<OfficeUpgradeId | null>(null)
@@ -35,6 +36,9 @@ export function Live({ s, act }: { s: OrdersState; act: Act<OrdersState> }) {
       act.set(next)
       return true
     },
+    // "Show me": in the game the board closes and you walk to where the good is made; here it closes (and opens again)
+    show: () => act.close(),
+    canShow: () => true,
   }
   return <OrdersBoard v={viewOf(s)} act={acts} asking={asking} onAsk={setAsking} onClose={act.close} />
 }

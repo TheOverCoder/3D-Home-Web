@@ -189,6 +189,35 @@ test.describe('the silo, the barn, surprises and orders', () => {
     await page.evaluate(() => (window as any).__home.useHome.getState().closePanel())
   })
 
+  test('"Show me" on a good an order wants and the store lacks: the board closes and you walk to where it is made', async ({ game }) => {
+    await game.ready('farm')
+    const { page } = game
+    await reset(game, { egg: 0 }, 100)
+    // the first order asks for three eggs; there are none in the barn
+    await page.evaluate(() => {
+      const f = (window as any).__home.farm
+      f.state.orders[0] = { order: { id: 9001, lines: [{ good: 'egg', want: 3, have: 0 }], coins: 12, surprise: false } }
+      f.useFarm.setState((s: any) => ({ rev: s.rev + 1 }))
+    })
+    await game.teleport(-8.0, 1.4, 6.3, Math.PI / 2, -0.1)
+    const from = await page.evaluate(() => ({ ...(window as any).__home.playerState.position }))
+    await page.evaluate(() => (window as any).__home.useHome.getState().openPanel({ kind: 'orders' }))
+    // its eggs touched: their bubble, and Show me in it
+    await page.locator('.farm-order').nth(0).locator('[data-good="egg"]').click()
+    await page.getByRole('button', { name: 'Show me' }).click()
+    await until(game, () => (window as any).__home.useHome.getState().panel === null)
+    // walking by yourself to the nest (the eggs' mark), as from the compass: the body moves off towards it
+    await until(game, () => (window as any).__home.walk.state().id === 'farm-nest' && (window as any).__home.useHome.getState().guide?.id === 'farm-nest')
+    await page.waitForFunction((a) => Math.hypot((window as any).__home.playerState.position.x - a.x, (window as any).__home.playerState.position.z - a.z) > 0.4, from, {
+      timeout: 120_000,
+      polling: 200,
+    })
+    // a step of your own takes over
+    await page.keyboard.press('KeyW')
+    await until(game, () => (window as any).__home.walk.state().ended === 'key')
+    expect(game.errors, game.errors.join('\n')).toEqual([])
+  })
+
   test('the tractor loads the crates, drives them off through the gate in the hedge and backs into its yard again', async ({ game }) => {
     await game.ready('farm')
     const { page } = game
