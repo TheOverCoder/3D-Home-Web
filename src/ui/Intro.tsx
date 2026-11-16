@@ -568,7 +568,7 @@ function SettingsPage() {
             <Range value={Math.round(s.musicVolume * 100)} min={0} max={100} step={5} set={(x) => update({ musicVolume: x / 100 })} label="Music volume" show={`${Math.round(s.musicVolume * 100)}`} />
           </Row>
           {coarsePointer && canVibrate && (
-            <Row label="Vibration" hint="A short buzz as you harvest">
+            <Row label="Vibration" hint="A buzz as you collect, sell, buy, open a gift or reach a level">
               <Toggle on={s.vibration} set={(vibration) => update({ vibration })} label="Vibration" />
             </Row>
           )}
