@@ -11,15 +11,17 @@ import { material, surface } from '../../src/lib/proceduralTextures'
 import { loadSolids } from '../../src/lib/sculpt'
 import { walkInShellModel } from '../../src/models/market'
 import { lemonTreeModel } from '../../src/models/structures'
+import { bigTreeModel } from '../../src/models/trees'
 import { tree } from '../../src/scene/flora'
 import { modelGroup } from './model'
 
 // The farm round a 3D proposal, as a player sees it, built from the game's own data and models: the lawn, the lane,
-// the hedge and the fence round the garden and the woods beyond it (src/farm/landGeometry.ts, as Land.tsx draws them),
-// the three big trees in the garden's corners and the lemon tree (src/farm/Places.tsx), the beds and the path at the
-// garden door, the shed (src/farm/Garden.tsx: the same sizes and materials, its boxes plain), and the market's shell
-// across the lane (src/models/market.ts). Not the house, the animals or the machines: a board looks at the farm where
-// they are not in view. A board can give the trees of its own (the woods' board), so only they change.
+// the hedge and the fence round the garden and the woods beyond it (src/farm/landGeometry.ts, as Land.tsx draws them;
+// the trees src/models/trees.ts), the three big trees in the garden's corners and the lemon tree (src/farm/Places.tsx),
+// the beds and the path at the garden door, the shed (src/farm/Garden.tsx: the same sizes and materials, its boxes
+// plain), and the market's shell across the lane (src/models/market.ts). Not the house, the animals or the machines: a
+// board looks at the farm where they are not in view. A board can give the trees of its own (the woods' board: the
+// ones before), so only they change.
 
 /** One of the big trees: in the woods round the farm, or one of the three in the garden's corners. */
 export interface TreeSpot {
@@ -41,7 +43,8 @@ export interface PlaceOptions {
   market?: boolean
 }
 
-/** The leafy materials of the game's hedge, woods and big trees (Land.tsx, Places.tsx): its grass picture, tinted. */
+/** The leafy materials of the game's hedge (Land.tsx), and of its big trees before src/models/trees.ts: its grass
+ *  picture, tinted. */
 function leaf(color: string) {
   const s = surface('grass', 1, 1)
   return new MeshStandardMaterial({ color, map: s.map, normalMap: s.normalMap, roughnessMap: s.roughnessMap, roughness: 1, normalScale: new Vector2(1.4, 1.4) })
@@ -51,11 +54,20 @@ function bark(color: string, roughness = 0.95) {
   return new MeshStandardMaterial({ color, map: s.map, normalMap: s.normalMap, roughness })
 }
 
-/** The game's three shades of crown (Land.tsx: tree i in shade i % 3; Places.tsx: corner tree i the same). */
+/** The three shades of crown the big trees had before src/models/trees.ts (tree i in shade i % 3). */
 export const CROWN_SHADES = ['#5d7d43', '#6f8a46', '#4f6e3f']
 
-/** One of the game's big trees as it is today (src/scene/flora.ts `tree`, with Land.tsx's materials). */
-export function todaysTree(s: TreeSpot): Object3D {
+/** One of the game's big trees as it is (src/models/trees.ts, as Land.tsx and Places.tsx draw it: it throws no shadow
+ *  and takes none). */
+export function gameTree(s: TreeSpot): Object3D {
+  const g = modelGroup(bigTreeModel(s), `tree-${s.corner ? 'corner' : 'woods'}-${s.index}`)
+  g.traverse((x) => (x.castShadow = x.receiveShadow = false))
+  g.position.set(s.x, 0, s.z)
+  return g
+}
+
+/** One of the big trees as they were before (src/scene/flora.ts `tree`, with Land.tsx's materials then). */
+export function formerTree(s: TreeSpot): Object3D {
   const parts = tree(0, 0, s.height, s.seed)
   const g = new Group()
   g.add(new Mesh(parts.wood, bark('#6a5a4c')), new Mesh(parts.crown, leaf(CROWN_SHADES[s.index % 3])))
@@ -63,8 +75,8 @@ export function todaysTree(s: TreeSpot): Object3D {
   return g
 }
 
-/** The triangles of one of today's trees (its crown and its wood). */
-export function todaysTriangles(s: TreeSpot) {
+/** The triangles of one of the big trees as they were before (its crown and its wood). */
+export function formerTriangles(s: TreeSpot) {
   const parts = tree(0, 0, s.height, s.seed)
   const n = (g: BufferGeometry) => (g.index ? g.index.count : g.attributes.position.count) / 3
   return n(parts.crown) + n(parts.wood)
@@ -258,7 +270,7 @@ export async function farmPlace(o: PlaceOptions = {}): Promise<Group> {
     f.castShadow = f.receiveShadow = true
     root.add(f)
   }
-  const make = o.trees ?? todaysTree
+  const make = o.trees ?? gameTree
   // (the woods and the big trees throw no shadow in the game: the sun must keep reaching the windows)
   for (const spot of treeSpotsAll()) {
     const t = make(spot)

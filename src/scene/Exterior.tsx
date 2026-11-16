@@ -1,18 +1,21 @@
 import { useEffect, useMemo } from 'react'
 import { CuboidCollider, CylinderCollider, RigidBody } from '@react-three/rapier'
-import { BufferGeometry, Color, Float32BufferAttribute, MeshStandardMaterial, PlaneGeometry, SphereGeometry, Vector2 } from 'three'
+import { BufferGeometry, Color, Float32BufferAttribute, MeshStandardMaterial, PlaneGeometry, SphereGeometry } from 'three'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import { HOUSE_SHRUBS } from '../data/garden'
 import { COUNTRY_LANE, COUNTRY_TREES, DRIVE, FIELDS, GARDEN_TREE, HILLS, PLOT } from '../data/home'
 import { HOUSE } from '../data/layout'
 import { surface } from '../lib/proceduralTextures'
+import { sculptMaterial } from '../lib/sculpt'
+import { CROWN_MATERIAL, countryTree, gardenTree, placeBigTree, trunksByBark } from '../models/trees'
 import { B } from './Furnishings'
-import { fenceRun, shrubs, tree } from './flora'
+import { fenceRun, shrubs } from './flora'
 
 // The house's own plot, the home map round it (src/data/home.ts): the lawn, a paved apron along the walls with the
 // shrubs by them, a gravel driveway where the car stands out to a gate in the east fence, a slatted timber fence round
-// it all, a tree in the corner, and the country lane beyond the gate. All of it static: <House /> merges it into a
-// handful of draws. Round it a quiet countryside (`Countryside`), drawn far off and light.
+// it all, a tree in the corner (a round oak, as in the farm's garden: src/models/trees.ts), and the country lane beyond
+// the gate. All of it static: <House /> merges it into a handful of draws (the tree, painted in its vertices, stays
+// two meshes of its own). Round it a quiet countryside (`Countryside`), drawn far off and light.
 
 const FENCE = '#7a6048'
 const WOOD_DARK = '#5b4636'
@@ -64,7 +67,7 @@ export function Exterior() {
   // the shrubs along the walls, each as it always was
   const bushes = useMemo(() => shrubs(0, HOUSE_SHRUBS.length), [])
   const fence = useMemo(fenceGeometry, [])
-  const corner = useMemo(() => tree(GARDEN_TREE[0], GARDEN_TREE[1], GARDEN_TREE[2], 61), [])
+  const corner = useMemo(() => placeBigTree(gardenTree(GARDEN_TREE[2]), GARDEN_TREE[0], GARDEN_TREE[1]), [])
   useEffect(
     () => () => {
       for (const g of [bushes, fence, corner.wood, corner.crown]) g.dispose()
@@ -108,12 +111,8 @@ export function Exterior() {
       <Gate />
       {/* the corner tree, like the farm's: no shadow (the sun is low in the south-east and must keep reaching the
           windows) */}
-      <mesh geometry={corner.wood}>
-        <meshStandardMaterial color="#6a5a4c" map={bark.map} normalMap={bark.normalMap} roughness={0.95} />
-      </mesh>
-      <mesh geometry={corner.crown}>
-        <meshStandardMaterial color="#6f8a46" map={leaves.map} normalMap={leaves.normalMap} roughnessMap={leaves.roughnessMap} roughness={1} normalScale={[1.4, 1.4]} />
-      </mesh>
+      <mesh name="garden-tree-wood" geometry={corner.wood} material={sculptMaterial(corner.bark)} />
+      <mesh name="garden-tree-crown" geometry={corner.crown} material={sculptMaterial(CROWN_MATERIAL)} />
     </group>
   )
 }
@@ -147,15 +146,15 @@ function paint(g: BufferGeometry, color: string): BufferGeometry {
 }
 
 /**
- * The countryside round the plot, seen over the fence and from the windows: a few trees as round as the farm's (each
- * its own mesh, so the drawing pass leaves out those not in view; their trunks together), fields and low hills on the
- * horizon (each all one mesh: a few thousand triangles at most). Nothing here throws a shadow, and nothing is solid:
- * you never get there.
+ * The countryside round the plot, seen over the fence and from the windows: a few trees of the farm's mixed wood
+ * (src/models/trees.ts: oaks, pines, birches and poplars in turn; each crown its own mesh, so the drawing pass leaves
+ * out those not in view; their trunks together, one mesh for each bark), fields and low hills on the horizon (each all
+ * one mesh: a few thousand triangles at most). Nothing here throws a shadow, and nothing is solid: you never get there.
  */
 export function Countryside() {
   const built = useMemo(() => {
-    const trees = COUNTRY_TREES.map(([x, z, h], i) => tree(x, z, h, 70 + i))
-    const wood = mergeGeometries(trees.map((t) => t.wood))!
+    const trees = COUNTRY_TREES.map(([x, z, height], index) => placeBigTree(countryTree(index, height), x, z))
+    const wood = trunksByBark(trees)
     const hills = mergeGeometries(
       HILLS.map(([x, z, rx, rz, h, color]) => {
         const g = new SphereGeometry(1, 24, 8, 0, Math.PI * 2, 0, Math.PI / 2)
@@ -175,34 +174,32 @@ export function Countryside() {
     )!
     return { crowns: trees.map((t) => t.crown), wood, hills, fields }
   }, [])
-  const mats = useMemo(() => {
-    const leaves = surface('grass', 1, 1)
-    const bark = surface('veneer', 1, 1)
-    const crown = (color: string) =>
-      new MeshStandardMaterial({ color, map: leaves.map, normalMap: leaves.normalMap, roughnessMap: leaves.roughnessMap, roughness: 1, normalScale: new Vector2(1.4, 1.4) })
-    return {
-      shades: ['#5d7d43', '#6f8a46', '#4f6e3f'].map(crown),
-      wood: new MeshStandardMaterial({ color: '#6a5a4c', map: bark.map, normalMap: bark.normalMap, roughness: 0.95 }),
+  const mats = useMemo(
+    () => ({
+      // the trees' are the kit's, shared (their colours are in their vertices)
+      crown: sculptMaterial(CROWN_MATERIAL),
+      wood: built.wood.map((w) => sculptMaterial(w.material)),
       land: new MeshStandardMaterial({ vertexColors: true, roughness: 1 }),
       // the fields lie on the lawn: drawn over it
       fields: new MeshStandardMaterial({ vertexColors: true, roughness: 1, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
-      maps: [leaves.map, leaves.normalMap, leaves.roughnessMap, bark.map, bark.normalMap, bark.roughnessMap],
-    }
-  }, [])
+    }),
+    [built],
+  )
   useEffect(
     () => () => {
-      for (const g of [...built.crowns, built.wood, built.hills, built.fields]) g.dispose()
-      for (const m of [...mats.shades, mats.wood, mats.land, mats.fields]) m.dispose()
-      for (const t of mats.maps) t.dispose()
+      for (const g of [...built.crowns, ...built.wood.map((w) => w.geometry), built.hills, built.fields]) g.dispose()
+      for (const m of [mats.land, mats.fields]) m.dispose()
     },
     [built, mats],
   )
   return (
     <group name="countryside">
       {built.crowns.map((g, i) => (
-        <mesh key={i} name="country-tree" geometry={g} material={mats.shades[i % 3]} />
+        <mesh key={i} name="country-tree" geometry={g} material={mats.crown} />
       ))}
-      <mesh geometry={built.wood} material={mats.wood} />
+      {built.wood.map((w, i) => (
+        <mesh key={`w${i}`} name="country-trunks" geometry={w.geometry} material={mats.wood[i]} />
+      ))}
       <mesh geometry={built.fields} material={mats.fields} receiveShadow />
       <mesh geometry={built.hills} material={mats.land} />
     </group>

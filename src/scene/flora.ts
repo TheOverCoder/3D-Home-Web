@@ -4,7 +4,9 @@ import { SHRUB_SPOTS } from '../data/garden'
 import { boxProject } from '../lib/boxProject'
 
 // The garden's greenery and timber, made from a seed: clipped hedges, shrubs, broadleaf trees and slatted fences.
-// Shared by the exterior (shrubs), the farm's land (the boundary and the woods round it) and the movable trees.
+// Shared by the house's plot (shrubs, its fence) and the farm's land (the boundary round it). The game's big trees are
+// src/models/trees.ts now; `tree` is the one they replaced, kept for the design lab (the woods board's "before", the
+// film stage's woods).
 
 export function mulberry(seed: number) {
   let a = seed
@@ -81,7 +83,8 @@ export interface TreeParts {
   crown: BufferGeometry
 }
 
-/** A broadleaf tree: tapered, slightly leaning trunk with two limbs and a crown of overlapping leaf masses. */
+/** A broadleaf tree: tapered, slightly leaning trunk with two limbs and a crown of overlapping leaf masses (the big
+ *  trees before src/models/trees.ts; the game no longer draws it). */
 export function tree(x: number, z: number, height: number, seed: number): TreeParts {
   const r = mulberry(seed)
   const lean = (r() - 0.5) * 0.12

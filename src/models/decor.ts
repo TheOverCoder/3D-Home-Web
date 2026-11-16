@@ -1,12 +1,14 @@
 import { Matrix4, Quaternion, Vector3 } from 'three'
 import { blob, ellipsoid, fbm3, lathe, loft, merge, noise3, random, rgb, Shape, smoothstep, squircle, tube, type Ring, type SculptMaterialOptions, type V3 } from '../lib/sculpt'
 import type { DecorKind } from '../farm/decor'
+import { bogleScarecrow, ploughmanScarecrow, squireScarecrow } from './scarecrows'
 import { grain, mix, slab, type Structure } from './structures'
 
 // The farm's decoration (src/farm/decor.ts), sculpted with the kit in the farm's own look: soft shapes, painted
 // vertices, the material's surfaces for stone and shingles, leaves as lumps with fine bumps. Each model stands in its
 // own frame, the ground under its middle at the origin, its front towards +z, and is a handful of parts, one per
-// material (a crowd draws each part once for every one placed). A few hundred triangles each; the trees up to ~1.4k.
+// material (a crowd draws each part once for every one placed). A few hundred triangles each; the trees and the
+// scarecrows up to ~1.8k.
 //
 //   lamp      a yard lamp: a dark green iron post with a crossbar, a lantern of four glass panes under a little roof
 //   lantern   a path lantern hanging from a shepherd's crook
@@ -29,6 +31,8 @@ import { grain, mix, slab, type Structure } from './structures'
 //   planter   a wooden planter box with greens and flowers
 //   birdbath  a stone bird bath, water in its bowl and a blue tit on its rim
 //   well      a wishing well: a round stone wall, two posts under a shingled roof, a crank and a bucket on its rope
+//   scarecrow-squire, -ploughman, -bogle
+//             three scarecrows of the English and Scottish fields, about 1.9 m tall (src/models/scarecrows.ts)
 //
 // The lamp's and the lantern's glass is a part of its own, `glass` (DECOR_GLOW), on a glowing material: it shows its
 // pale glass by day and glows warm at the level `setSculptGlow` (src/lib/sculpt) sets for every glowing part at once
@@ -853,6 +857,9 @@ const MAKERS: Record<DecorKind, () => Structure> = {
   planter,
   birdbath,
   well,
+  'scarecrow-squire': squireScarecrow,
+  'scarecrow-ploughman': ploughmanScarecrow,
+  'scarecrow-bogle': bogleScarecrow,
 }
 
 /** One decoration's model (made afresh each call: build it once per kind and share it). */

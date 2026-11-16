@@ -1,11 +1,11 @@
 import type { Board } from '../../board'
 import { WoodsView } from './WoodsView'
 
-// The big trees (3D, the 3D designer's): the woods round the farm and the three trees in the garden's corners, all made
-// by src/scene/flora.ts `tree` and drawn by src/farm/Land.tsx and src/farm/Places.tsx. "Today" is that maker with the
-// game's materials; D is the one reference the user asked for in round 2, made from B and C (both ✓) with the kit in
-// ./models/woods.ts. Its states: in the game (the farm from the garden at the player's eye, in the haze) and close
-// (its four kinds side by side, turning under a finger).
+// The big trees (3D, the 3D designer's): the woods round the farm and the three trees in the garden's corners, drawn by
+// src/farm/Land.tsx and src/farm/Places.tsx. D, the one reference the user asked for in round 2 (made from B and C,
+// both ✓) and chose, is the game's now: src/models/trees.ts. "Today" is the trees it replaced (src/scene/flora.ts
+// `tree` with the materials they had). Its states: in the game (the farm from the garden at the player's eye, in the
+// haze) and close (its four kinds side by side, turning under a finger).
 
 export interface WoodsState {
   view: 'game' | 'close'
@@ -19,9 +19,13 @@ export const woodsBoard: Board<WoodsState> = {
   ask:
     'צריך עוד סוכן לעיצוב תלת־ממד: שיפורים שמביאים אלמנטים בתלת־ממד שמתאימים למשחק, או שיפורי תלת־ממד לאישור. תעשה את הסוכן ותן לו לבנות גם הצעות. · ' +
     'סיבוב 2 (✓ B, ✓ C): "צריך בפחות משולשים לייצר כמה סוגים ברמה גבוהה. תעשה רפרנס אחד שהוא באמת הכי טוב שאתה יכול מ־B ו־C שאהבתי."',
-  status: 'choose',
+  status: 'live',
+  chosen: 'd',
   round:
-    'סיבוב 2, לפי מה שענית (✓ B, ✓ C, "פחות משולשים, כמה סוגים ברמה גבוהה, רפרנס אחד"): B ו־C הם עכשיו רפרנס אחד, D. ' +
+    'במשחק: D הוא עכשיו היער סביב החווה ושלושת העצים בפינות הגינה, כמו שבחרת. ' +
+    'כל 17 העצים: 9,197 משולשים במקום 23,956. במבטים של המשחק על החווה זה 3,000 עד 10,500 משולשים פחות בכל תמונה – הכי הרבה במבט על החווה מהחצר, לרוחב (מ־17,656 משולשי עצים ל־7,109). ' +
+    'הצמרות עדיין חתיכה לכל עץ, כך שעץ שלא בתמונה לא מצויר, והתמונה זהה לגמרי לצמרות כרשת אחת. ' +
+    '· לפני כן, סיבוב 2, לפי מה שענית (✓ B, ✓ C, "פחות משולשים, כמה סוגים ברמה גבוהה, רפרנס אחד"): B ו־C הם עכשיו רפרנס אחד, D. ' +
     'מ־B: העץ העגול – גושים גדולים, בהיר למעלה וכהה למטה, מוצלל כגוש אחד. מ־C: יער מעורב – עגול, גבוה ומחודד לסירוגין. ' +
     'ארבעה סוגים: אלון עגול (גם שלושת העצים בגינה), ליבנה עם גזע לבן, צפצפה גבוהה כמו להבה, ואורן בקומות עם קצוות ענפים מרופטים. ' +
     'פחות משולשים: הצמרת היא עכשיו עור אחד מעל כל הגושים – אין גוש שמסתתר בתוך גוש אחר, אז כל משולש נראה. ' +
@@ -56,17 +60,17 @@ export const woodsBoard: Board<WoodsState> = {
   variants: [
     {
       id: 'today',
-      name: 'היום',
-      note: 'העצים של היום: גזע דק עם שני ענפים וצמרת של 6–8 כדורים עטופים בתמונת דשא, באחד משלושה גוונים. ביער, בערפל, הצמרת נראית כמו דיסק אפור־ירוק על מקל. 1,208–1,568 משולשים לעץ: 23,956 לכל 17 העצים (14 ביער ו־3 בגינה).',
+      name: 'לפני',
+      note: 'העצים שהיו במשחק לפני D: גזע דק עם שני ענפים וצמרת של 6–8 כדורים עטופים בתמונת דשא, באחד משלושה גוונים. ביער, בערפל, הצמרת נראית כמו דיסק אפור־ירוק על מקל. 1,208–1,568 משולשים לעץ: 23,956 לכל 17 העצים (14 ביער ו־3 בגינה).',
       render: (s) => <WoodsView v="today" s={s} />,
     },
     {
       id: 'd',
-      name: 'יער מעורב, רפרנס אחד',
+      name: 'יער מעורב (במשחק)',
       note:
         'הטוב מ־B ומ־C: ארבעה סוגי עצים לסירוגין ביער – אלון עגול (589 משולשים), ליבנה עם גזע לבן (409), צפצפה גבוהה (369) ואורן בקומות (497) – ושלושת העצים בגינה אלונים, קצת יותר עדינים כי רואים אותם מקרוב (809). ' +
         'כל צמרת היא עור אחד מעל הגושים, בלי משולשים מוסתרים, בהירה למעלה, כהה בקפלים ובתחתית, ומוצללת כגוש אחד. ' +
-        '9,197 משולשים לכל 17 העצים: 38% מהיום (23,956), 48% מ־B (19,159), 71% מ־C (12,956).',
+        '9,197 משולשים לכל 17 העצים: 38% ממה שהיה (23,956).',
       render: (s) => <WoodsView v="d" s={s} />,
     },
   ],

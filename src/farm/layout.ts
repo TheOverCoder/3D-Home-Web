@@ -165,6 +165,10 @@ export const DECOR_FEET: Record<ShopKind, DecorFoot> = {
   planter: { hx: 0.5, hz: 0.26 },
   birdbath: { hx: 0.42, hz: 0.38 },
   well: { hx: 0.8, hz: 0.65 },
+  // a scarecrow: its arms out to the sides, its hat's brim and coat-tails a little before and behind it
+  'scarecrow-squire': { hx: 0.7, hz: 0.3 },
+  'scarecrow-ploughman': { hx: 0.7, hz: 0.3 },
+  'scarecrow-bogle': { hx: 0.7, hz: 0.3 },
   'apple-tree': { hx: 1.2, hz: 1.2 },
   'orange-tree': { hx: 1.1, hz: 1.1 },
   'cherry-tree': { hx: 1.2, hz: 1.2 },

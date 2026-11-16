@@ -23,10 +23,11 @@ import { WALK_INS } from '../data/buildings'
 import { DECOR_KINDS, FRUIT, FRUIT_KINDS } from '../farm/decor'
 import { decorModel } from './decor'
 import { fruitParts, fruitPlantModel, fruitSpots, putFruit } from './fruit'
-// proposals in the design lab, not yet in the game (the 3D designer's boards): held to the same checks
-import { SETS as SCARECROW_SETS } from '../../lab/boards/scarecrow/models/scarecrows'
-import { kindAt, referenceModel } from '../../lab/boards/woods/models/woods'
-import { treeSpotsAll } from '../../lab/three/place'
+import { bigTreeKind, bigTreeModel, cornerTree, countryTree, gardenTree } from './trees'
+import { CORNER_TREES } from '../data/garden'
+import { COUNTRY_TREES, GARDEN_TREE } from '../data/home'
+import { treeSpots } from '../farm/landGeometry'
+import { defaultLayout } from '../farm/layout'
 
 // Every model, in every variant and in the poses it takes in the game, run through the kit's checks (see
 // src/lib/sculpt/check.ts): every piece holds on to the rest, and the model stands on its ground. The gallery shows
@@ -374,17 +375,16 @@ export const MODEL_CHECKS: ModelCheck[] = [
     },
   },
   {
-    id: 'lab-scarecrows',
-    name: "The design lab's scarecrows (proposals, lab/boards/scarecrow): three sets of three",
+    id: 'woods',
+    name: "The big trees of both maps: the farm's woods as a new farm has them and its garden's three corners; the house's garden corner and its countryside",
     run() {
-      return Object.values(SCARECROW_SETS).flatMap((set) => set.flatMap((one) => checkPieces(`scarecrow ${one.id}`, ...structure(one.model()))))
-    },
-  },
-  {
-    id: 'lab-woods',
-    name: "The design lab's woods (a proposal, lab/boards/woods): its tree at every one of the farm's big trees' spots",
-    run() {
-      return treeSpotsAll().flatMap((spot) => checkPieces(`${kindAt(spot)} ${spot.corner ? 'corner' : 'woods'} ${spot.index}`, ...structure(referenceModel(spot))))
+      const trees = [
+        ...treeSpots(defaultLayout()).map((t, index) => ({ where: 'woods', t: { height: t.height, seed: t.seed, index, corner: false } })),
+        ...CORNER_TREES.map(([, , height], index) => ({ where: 'corner', t: cornerTree(index, height) })),
+        { where: "the house's garden", t: gardenTree(GARDEN_TREE[2]) },
+        ...COUNTRY_TREES.map(([, , height], index) => ({ where: 'countryside', t: countryTree(index, height) })),
+      ]
+      return trees.flatMap(({ where, t }) => checkPieces(`${bigTreeKind(t)} ${where} ${t.index}`, ...structure(bigTreeModel(t))))
     },
   },
   {

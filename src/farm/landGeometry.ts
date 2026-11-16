@@ -4,32 +4,36 @@ import { WALK_INS, bounds } from '../data/buildings'
 import { SHRUB_SPOTS } from '../data/garden'
 import { GARDEN, GATE, LANE } from '../data/layout'
 import { CABIN } from '../data/market'
-import { fenceRun, hedgeRun, mulberry, tree, type TreeParts } from '../scene/flora'
+import type { SculptMaterialOptions } from '../lib/sculpt'
+import { placeBigTree, trunksByBark, type PlacedTree } from '../models/trees'
+import { fenceRun, hedgeRun, mulberry } from '../scene/flora'
 import { TRACTOR } from './data'
 import { boundary, ownedRects, type Edge, type FarmLayout, type Rect } from './layout'
 
 // What the farm's land is made of (src/farm/Land.tsx draws it): the hedge along the sides that face north and west, the
-// fence along those that face south and east, the woods beyond — made from seeds, the same every time for a layout.
+// fence along those that face south and east, the woods beyond (their trees: src/models/trees.ts) — made from seeds,
+// the same every time for a layout.
 
 const SEP = 0.5 // a fence stops this short of a hedge it runs into
 /** Sections of hedge in one piece (each 2.4 to 3.6 m long). */
 export const HEDGE_PIECE = 2
 
-// The hedge (26k triangles) and the woods' crowns (18k) are drawn in pieces a few metres across, never as one mesh round
+// The hedge (26k triangles) and the woods' crowns (5.8k) are drawn in pieces a few metres across, never as one mesh round
 // the farm: the frustum, and from the house the portals (src/lib/visibility), then leave out the pieces out of view, where
 // one mesh is always partly in view and so always drawn whole. A piece is whole sections of one hedge or one tree's crown,
 // each made on its own exactly as before, so its vertices, normals and UVs are the ones the single mesh had. And they are
 // drawn in the single mesh's order: three draws one material's meshes nearest first, but materials in the order they
 // were made, so each piece has a material of its own (the same settings: one shader), made in that order — where two
 // sections overlap, the one drawn last still wins a tie in the depth buffer.
-// The trunks (128 triangles a tree) and the fence (600 in all) stay one mesh each: a draw costs more than they would save.
+// The trunks (49 to 89 triangles a tree, one mesh for each bark: the birches' is white) and the fence (600 in
+// all) stay one mesh each: a draw costs more than they would save.
 
 /** What the land is made of, each section and tree made on its own (from its seed). */
 interface Sections {
   /** each hedge's sections, in the order of the boundary's edges */
   hedges: BufferGeometry[][]
   fence: BufferGeometry[]
-  trees: TreeParts[]
+  trees: PlacedTree[]
   edges: Edge[]
 }
 
@@ -37,10 +41,10 @@ export interface Built {
   /** the hedge in pieces: a few whole sections of one hedge each */
   hedge: BufferGeometry[]
   fence: BufferGeometry | null
-  /** the woods' trunks */
-  wood: BufferGeometry
-  /** each tree's crown in its shade of green (every third tree in each) */
-  crowns: { geometry: BufferGeometry; shade: number }[]
+  /** the woods' trunks, one mesh for each bark (the birches' white one last; none when no tree has it) */
+  wood: { geometry: BufferGeometry; material: SculptMaterialOptions }[]
+  /** each tree's crown, in the order of the trees (one material's settings for all: the colours are the vertices') */
+  crowns: BufferGeometry[]
   edges: Edge[]
 }
 
@@ -87,8 +91,8 @@ export function treeSpots(layout: FarmLayout): { x: number; z: number; height: n
   return out
 }
 
-/** The woods round the farm (where `treeSpots` puts them). */
-const woods = (layout: FarmLayout): TreeParts[] => treeSpots(layout).map((t) => tree(t.x, t.z, t.height, t.seed))
+/** The woods round the farm (where `treeSpots` puts them): the `index`th tree is its kind in WOODS_KINDS's turn. */
+const woods = (layout: FarmLayout): PlacedTree[] => treeSpots(layout).map((t, index) => placeBigTree({ height: t.height, seed: t.seed, index, corner: false }, t.x, t.z))
 
 function sections(layout: FarmLayout): Sections {
   const edges = boundary(layout)
@@ -134,19 +138,19 @@ export function build(layout: FarmLayout): Built {
   return {
     hedge,
     fence: fence.length ? mergeGeometries(flat(fence))! : null,
-    wood: mergeGeometries(trees.map((t) => t.wood))!,
-    crowns: trees.map((t, i) => ({ geometry: t.crown, shade: i % 3 })),
+    wood: trunksByBark(trees),
+    crowns: trees.map((t) => t.crown),
     edges,
   }
 }
 
-/** ?debug: the hedge and the crowns as they were built before the pieces, one mesh for the hedge and one for each shade
- *  of crowns, from the same sections — to show the pieces draw the same picture (tests/e2e/16-view). */
-export function buildWhole(layout: FarmLayout): { hedge: BufferGeometry | null; crowns: BufferGeometry[] } {
+/** ?debug: the hedge and the crowns as they were built before the pieces, one mesh for the hedge and one for the
+ *  crowns, from the same sections — to show the pieces draw the same picture (tests/e2e/16-view). */
+export function buildWhole(layout: FarmLayout): { hedge: BufferGeometry | null; crowns: BufferGeometry } {
   const { hedges, trees } = sections(layout)
   const hedge = hedges.flat()
   return {
     hedge: hedge.length ? mergeGeometries(hedge)! : null,
-    crowns: [0, 1, 2].map((k) => mergeGeometries(trees.filter((_, i) => i % 3 === k).map((t) => t.crown))!),
+    crowns: mergeGeometries(trees.map((t) => t.crown))!,
   }
 }

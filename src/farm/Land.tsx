@@ -4,6 +4,8 @@ import { Group, Mesh, MeshStandardMaterial, Vector2 } from 'three'
 import { GARDEN, GATE } from '../data/layout'
 import { debugSet } from '../lib/debug'
 import { surface } from '../lib/proceduralTextures'
+import { ownSculptMaterial, sculptMaterial } from '../lib/sculpt'
+import { CROWN_MATERIAL } from '../models/trees'
 import { build, buildWhole } from './landGeometry'
 import { lotEdges, type Edge, type FarmLayout, type ParcelId } from './layout'
 import { farm, useFarm } from './state'
@@ -11,8 +13,9 @@ import { farm, useFarm } from './state'
 // The land the farm owns, drawn round its edge: a clipped hedge along the sides that face north and west, a
 // slatted timber fence along those that face south and east (the sunny side, so it throws no shade into the rooms),
 // with the farm gate in the garden's south fence and a gap in the west hedge where the tractor's track goes out (its
-// gate: src/farm/OrderYard.tsx); and the woods beyond (made in landGeometry.ts). Buying a field moves all of it out
-// round the new land: the woods step back so the field is open ground, and from the lane and the tractor's track.
+// gate: src/farm/OrderYard.tsx); and the woods beyond (made in landGeometry.ts, their trees in src/models/trees.ts).
+// Buying a field moves all of it out round the new land: the woods step back so the field is open ground, and from the
+// lane and the tractor's track.
 // Through the gate (src/farm/GardenGate.tsx) is the lot across the lane (src/data/market.ts): invisible walls close it
 // where nothing else does (`lotEdges`), and the walk-in buildings' own walls close the rest.
 
@@ -41,19 +44,16 @@ function Boundary({ layout }: { layout: FarmLayout }) {
     const bark = surface('veneer', 1, 1)
     const leaf = (color: string) =>
       new MeshStandardMaterial({ color, map: leaves.map, normalMap: leaves.normalMap, roughnessMap: leaves.roughnessMap, roughness: 1, normalScale: new Vector2(1.4, 1.4) })
-    // in the order the single meshes were drawn: the hedge's sections, then the fence, the trunks, and the crowns shade
-    // by shade (each shade's trees in turn)
+    // in the order the single meshes were drawn: the hedge's sections, then the fence, and the crowns tree by tree (the
+    // trunks' materials are the kit's, shared)
     const hedge = built.hedge.map(() => leaf('#5f7a4a'))
     const fence = new MeshStandardMaterial({ color: '#7a6048', map: bark.map, normalMap: bark.normalMap, roughness: 0.85 })
-    const wood = new MeshStandardMaterial({ color: '#6a5a4c', map: bark.map, normalMap: bark.normalMap, roughness: 0.95 })
-    const shades = ['#5d7d43', '#6f8a46', '#4f6e3f'].map((color, k) => built.crowns.filter((c) => c.shade === k).map(() => leaf(color)))
+    const crowns = built.crowns.map(() => ownSculptMaterial(CROWN_MATERIAL))
     return {
       hedge,
       fence,
-      wood,
-      // tree i: the (i / 3)th tree of its shade
-      crowns: built.crowns.map((c, i) => shades[c.shade][Math.floor(i / 3)]),
-      shades,
+      wood: built.wood.map((w) => sculptMaterial(w.material)),
+      crowns,
       maps: [leaves.map, leaves.normalMap, leaves.roughnessMap, bark.map, bark.normalMap, bark.roughnessMap],
     }
   }, [built])
@@ -75,7 +75,7 @@ function Boundary({ layout }: { layout: FarmLayout }) {
             m.castShadow = m.receiveShadow = true
             whole.add(m)
           }
-          w.crowns.forEach((g, k) => whole!.add(new Mesh(g, mats.shades[k][0])))
+          if (mats.crowns.length) whole.add(new Mesh(w.crowns, mats.crowns[0]))
           root.current?.add(whole)
         }
         if (whole) whole.visible = on
@@ -83,12 +83,13 @@ function Boundary({ layout }: { layout: FarmLayout }) {
       },
     })
     return () => {
-      for (const g of [...built.hedge, built.fence, built.wood, ...built.crowns.map((c) => c.geometry)]) g?.dispose()
+      for (const g of [...built.hedge, built.fence, ...built.wood.map((w) => w.geometry), ...built.crowns]) g?.dispose()
       if (whole) {
         whole.removeFromParent()
         whole.traverse((o) => (o as Mesh).geometry?.dispose())
       }
-      for (const m of [...mats.hedge, mats.fence, mats.wood, ...mats.shades.flat()]) m.dispose()
+      // (the trunks' materials are shared: the kit keeps them)
+      for (const m of [...mats.hedge, mats.fence, ...mats.crowns]) m.dispose()
       for (const t of mats.maps) t.dispose()
     }
   }, [built, mats, layout])
@@ -99,12 +100,14 @@ function Boundary({ layout }: { layout: FarmLayout }) {
           <mesh key={i} name="hedge" geometry={g} material={mats.hedge[i]} castShadow receiveShadow />
         ))}
         {/* the woods throw no shadow: the sun is low in the south-east and must keep reaching the windows */}
-        {built.crowns.map((c, i) => (
-          <mesh key={`c${i}`} name="crown" geometry={c.geometry} material={mats.crowns[i]} />
+        {built.crowns.map((g, i) => (
+          <mesh key={`c${i}`} name="crown" geometry={g} material={mats.crowns[i]} />
         ))}
       </group>
       {built.fence && <mesh geometry={built.fence} material={mats.fence} castShadow receiveShadow />}
-      <mesh geometry={built.wood} material={mats.wood} />
+      {built.wood.map((w, i) => (
+        <mesh key={`w${i}`} name="trunks" geometry={w.geometry} material={mats.wood[i]} />
+      ))}
       {/* the boundary is solid all round but for the gate in the garden's south fence, the way to the lot; the lot is
           closed by invisible walls where nothing else closes it, and the contractor's cabin stands in it */}
       <RigidBody type="fixed" colliders={false}>
