@@ -211,8 +211,8 @@
   .v-orders-e .oe-wait { flex: 0 0 calc((100% - 16px) / 3); min-width: 150px; scroll-snap-align: start; }
   .v-orders-e .oe-plank { gap: 6px; padding: 8px 8px 8px; }
   .v-orders-e .oe-lines { grid-template-columns: minmax(0, 1fr); gap: 4px; }
-  .v-orders-e .oe-line { grid-template-columns: 40px minmax(0, 1fr); padding-block: 0; }
-  .v-orders-e .oe-good { width: 40px; height: 40px; }
+  .v-orders-e .oe-line { grid-template-columns: 44px minmax(0, 1fr); padding-block: 0; }
+  .v-orders-e .oe-good { width: 44px; height: 44px; }
   .v-orders-e .oe-good .item-pic .art { width: 32px; height: 32px; }
   .v-orders-e .oe-pays { padding-inline-start: 8px; }
   .v-orders-e .oe-pays b { font-size: 19px; }
