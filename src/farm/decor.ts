@@ -92,10 +92,12 @@ export interface ShopItemView {
   name: string
   owned: number
   price: number
-  /** the farm has the coins for it */
+  /** it can be bought now: open, not at its most, and the farm has the coins for it */
   can: boolean
   /** a fruit plant: the fruit it bears */
   fruit?: FruitId
+  /** not open yet at the farm's level: the level it opens at (src/farm/unlocks.ts) */
+  locked?: number
 }
 
 /** What the edit mode's shop does: buy one (it is then placed by the player, as a place is moved), or put one placed

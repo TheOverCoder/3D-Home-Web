@@ -85,6 +85,9 @@ import {
   openGifts,
   giftsWaiting,
   readyOnFarm,
+  unlockAll,
+  lockOf,
+  opensOn,
   xpEventCount,
   wearGarment,
   sawWardrobe,
@@ -767,6 +770,9 @@ export function FarmClock() {
       openGifts,
       giftsWaiting,
       readyOnFarm,
+      // what each level opens (src/farm/unlocks.ts): the tests' switch (true: everything open, as on a ?debug page;
+      // false: locked by the level, as in play), a thing's lock, what a level opens
+      unlocks: { all: unlockAll, lockOf, opensOn },
       // the daily gift (src/farm/daily.ts): its card's view, the claim, whether it waits or opens by itself, the tests'
       // way to put it out of the way, and the day's clock (a moment in ms; null: the device's own)
       daily: {
