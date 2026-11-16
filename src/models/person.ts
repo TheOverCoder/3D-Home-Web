@@ -16,6 +16,8 @@ export const PERSON = {
   shoulder: [0.215, 0.5] as [number, number],
   elbowY: -0.29,
   headY: 0.79,
+  /** where the head turns, under the head's middle: the foot of its neck, where the neck comes out of the shoulders */
+  neckY: -0.19,
 }
 
 /** the eyes' colour when a look has none of its own (as every person had before looks had eyes) */
@@ -696,14 +698,17 @@ export class PersonRig {
     }
     ;[this.armL, this.elbowL] = arm(1)
     ;[this.armR, this.elbowR] = arm(-1)
-    this.head = joint(this.hips, 0, PERSON.headY, 0)
-    this.head.scale.setScalar(wide.head)
-    piece(this.head, 'head', skin, eyes)
+    // the head turns at the foot of its neck, so a nod or a tilt keeps the neck in the collar (turned about the head's
+    // middle, the neck swung out through the shirt); at rest it stands where it always did
+    this.head = joint(this.hips, 0, PERSON.headY + PERSON.neckY, 0)
+    const skull = joint(this.head, 0, -PERSON.neckY, 0)
+    skull.scale.setScalar(wide.head)
+    piece(skull, 'head', skin, eyes)
     const style = HAIR_PARTS[look.hairStyle % HAIR_PARTS.length]
-    piece(this.head, style, hair)
+    piece(skull, style, hair)
     const hat = look.hat === 'cap' || look.hat === 'beanie' ? look.hat : look.hat ? 'hat' : null
     if (hat) {
-      const crown = joint(this.head, 0, 0, 0)
+      const crown = joint(skull, 0, 0, 0)
       if (style === 'hairCurly') crown.scale.setScalar(OVER_CURLS)
       piece(crown, hat, new Color(look.hatBand ?? HAT_BAND))
     }
