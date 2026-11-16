@@ -29,17 +29,20 @@ const fresh = (game: Game) =>
     h.farm.useFarm.setState((s: any) => ({ rev: s.rev + 1 }))
   })
 
+/** The news open now (one closed a moment before may still be on its way out, marked .leaving: it takes no touch). */
+const CARD = '.news-card:not(.leaving)'
+
 /** Opens the farm news as a player does: the corner menu, then its "Farm news". */
 async function openNews(game: Game) {
   await game.page.locator('.top-menu-btn').click()
   await game.page.locator('.top-dial-btn.news-open').click()
   await panelIs(game, 'news')
-  await expect(game.page.locator('.news-card .farm-panel')).toBeVisible()
+  await expect(game.page.locator(`${CARD} .farm-panel`)).toBeVisible()
 }
 const closeNews = async (game: Game) => {
   await game.page.evaluate(() => (window as any).__home.useHome.getState().closePanel())
   await panelIs(game, null)
-  await expect(game.page.locator('.news-card')).toHaveCount(0)
+  await expect(game.page.locator(CARD)).toHaveCount(0)
 }
 
 test.describe('the week’s events', () => {
@@ -65,7 +68,7 @@ test.describe('the week’s events', () => {
     await setDate(game, 18, 13)
     await expect(game.page.locator('.top-menu-btn .top-badge')).toHaveText('1')
     await openNews(game)
-    const card = game.page.locator('.news-card')
+    const card = game.page.locator(CARD)
     await expect(card.locator('.nw-mast small')).toHaveText(/Wednesday 18 November/i)
     const story = card.locator('.nw-now .nw-story')
     await expect(story).toHaveCount(1)
@@ -117,7 +120,7 @@ test.describe('the week’s events', () => {
     expect(offer).toBe(9)
 
     await openNews(game)
-    const card = game.page.locator('.news-card')
+    const card = game.page.locator(CARD)
     await expect(card.locator('.nw-lucky')).toContainText('Lucky draw')
     await expect(card.locator('.nw-cell.ask')).toHaveCount(2)
     await card.locator('.nw-draw').click()
