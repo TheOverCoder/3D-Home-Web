@@ -1,12 +1,13 @@
-import { IcosahedronGeometry } from 'three'
-import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js'
+import { IcosahedronGeometry, type BufferGeometry } from 'three'
+import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js'
 import { fbm3, merge, mixRgb, noise3, rgb, Shape, smoothstep, spin, tube, type SculptMaterialOptions, type V3 } from '../lib/sculpt'
 import { mulberry } from '../scene/flora'
-import type { Structure } from './structures'
+import { partGeometry, type Structure } from './structures'
 
-// The farm's big trees: the woods round it (src/farm/landGeometry.ts, drawn by Land.tsx) and the three in the garden's
-// corners (src/farm/Places.tsx). One mixed wood, chosen in the design lab (lab/boards/woods, D): round, tall and
-// pointed trees in turn along the skyline, each crown one skin over a cluster of lumps (seen from its middle, so no
+// The big trees of both maps: on the farm, the woods round it (src/farm/landGeometry.ts, drawn by Land.tsx) and the
+// three in the garden's corners (src/farm/Places.tsx); round the house, the tree in its garden's corner and the
+// countryside's (src/scene/Exterior.tsx), so driving from one to the other the trees are the same. One mixed wood,
+// chosen in the design lab (lab/boards/woods, D): round, tall and pointed trees in turn along the skyline, each crown one skin over a cluster of lumps (seen from its middle, so no
 // lump hides inside another: every triangle is on the outside). Four kinds:
 //
 //   oak     a round tree: a big lump in the middle and a ring of smaller ones, three on top, its creases darker; the
@@ -336,3 +337,28 @@ export function bigTreeModel(t: BigTree, kind: TreeKind = bigTreeKind(t)): Struc
 
 /** The garden's corner trees' seeds (their heights are CORNER_TREES', src/data/garden.ts). */
 export const cornerTree = (index: number, height: number): BigTree => ({ height, seed: 21 + index, index, corner: true })
+/** The house's garden tree, an oak like the farm's corner trees, and the countryside's round the plot, their kinds in
+ *  the woods' turn (where they stand and how tall: GARDEN_TREE and COUNTRY_TREES, src/data/home.ts). */
+export const gardenTree = (height: number): BigTree => ({ height, seed: 61, index: 0, corner: true })
+export const countryTree = (index: number, height: number): BigTree => ({ height, seed: 70 + index, index, corner: false })
+
+/** A big tree's geometries where it stands (x, z, in the world): its crown (its normals softened) and its trunk, and
+ *  the trunk's bark (a birch's is white). */
+export interface PlacedTree {
+  crown: BufferGeometry
+  wood: BufferGeometry
+  bark: SculptMaterialOptions
+}
+export function placeBigTree(t: BigTree, x: number, z: number): PlacedTree {
+  const model = bigTreeModel(t)
+  return { crown: partGeometry(model.crown).translate(x, 0, z), wood: partGeometry(model.wood).translate(x, 0, z), bark: model.wood.material ?? WOOD_MATERIAL }
+}
+
+/** The trunks of many trees as one geometry for each bark (a few dozen triangles a tree: a draw costs more than drawing
+ *  each on its own would save), the brown bark's first; none for a bark no tree has. */
+export function trunksByBark(trees: PlacedTree[]): { geometry: BufferGeometry; material: SculptMaterialOptions }[] {
+  return [WOOD_MATERIAL, BIRCH_MATERIAL].flatMap((material) => {
+    const trunks = trees.filter((t) => t.bark === material).map((t) => t.wood)
+    return trunks.length ? [{ geometry: mergeGeometries(trunks)!, material }] : []
+  })
+}

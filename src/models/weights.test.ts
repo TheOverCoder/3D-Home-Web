@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import { CORNER_TREES } from '../data/garden'
+import { COUNTRY_TREES, GARDEN_TREE } from '../data/home'
 import { DECOR_KINDS, FRUIT_KINDS, type ShopKind } from '../farm/decor'
 import { treeSpots } from '../farm/landGeometry'
 import { defaultLayout } from '../farm/layout'
@@ -8,7 +9,7 @@ import { decorModel } from './decor'
 import { fruitPlantModel } from './fruit'
 import { GOODS, type GoodsId } from './goods'
 import type { Structure } from './structures'
-import { bigTreeModel, cornerTree } from './trees'
+import { bigTreeModel, cornerTree, countryTree, gardenTree } from './trees'
 
 // The budget engine's first guard: the triangles each good's model draws, and the most it may (its weight). A good
 // stands on the market's shelves up to thirty times in one view, so a model that grows past its weight fails here,
@@ -101,9 +102,10 @@ const DECOR_WEIGHT: Record<ShopKind, number> = {
   'raspberry-bush': 869,
 }
 
-/** The farm's big trees (src/models/trees.ts): the woods' fourteen as a new farm has them and the garden's three corner
- *  oaks (the trees before them drew 23,956). */
-const BIG_TREES_WEIGHT = 9197
+/** The big trees (src/models/trees.ts): on the farm, the woods' fourteen as a new farm has them and the garden's three
+ *  corner oaks (the trees before them drew 23,956); round the house, its garden's corner oak and the countryside's
+ *  twelve (before: 17,504). */
+const BIG_TREES_WEIGHT = { farm: 9197, house: 6621 }
 
 const triangles = (s: Structure) => Object.values(s).reduce((n, p) => n + p.shape.i.length / 3, 0)
 
@@ -119,9 +121,15 @@ describe("the farm's decoration and big trees: their weights", () => {
     expect(triangles(model(kind)), `${kind}: grown past its weight — measure the budget (tests/e2e/05) and set its weight here`).toBeLessThanOrEqual(DECOR_WEIGHT[kind])
   })
 
-  it("the woods and the garden's corner trees draw no more than their weight", () => {
+  it("the farm's woods and its garden's corner trees draw no more than their weight", () => {
     const woods = treeSpots(defaultLayout()).map((t, index) => bigTreeModel({ height: t.height, seed: t.seed, index, corner: false }))
     const corners = CORNER_TREES.map(([, , height], index) => bigTreeModel(cornerTree(index, height)))
-    expect([...woods, ...corners].reduce((n, t) => n + triangles(t), 0)).toBeLessThanOrEqual(BIG_TREES_WEIGHT)
+    expect([...woods, ...corners].reduce((n, t) => n + triangles(t), 0)).toBeLessThanOrEqual(BIG_TREES_WEIGHT.farm)
+  })
+
+  it("the house's garden tree and its countryside draw no more than their weight", () => {
+    const garden = bigTreeModel(gardenTree(GARDEN_TREE[2]))
+    const country = COUNTRY_TREES.map(([, , height], index) => bigTreeModel(countryTree(index, height)))
+    expect([garden, ...country].reduce((n, t) => n + triangles(t), 0)).toBeLessThanOrEqual(BIG_TREES_WEIGHT.house)
   })
 })

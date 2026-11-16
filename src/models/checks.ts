@@ -23,8 +23,9 @@ import { WALK_INS } from '../data/buildings'
 import { DECOR_KINDS, FRUIT, FRUIT_KINDS } from '../farm/decor'
 import { decorModel } from './decor'
 import { fruitParts, fruitPlantModel, fruitSpots, putFruit } from './fruit'
-import { bigTreeKind, bigTreeModel, cornerTree } from './trees'
+import { bigTreeKind, bigTreeModel, cornerTree, countryTree, gardenTree } from './trees'
 import { CORNER_TREES } from '../data/garden'
+import { COUNTRY_TREES, GARDEN_TREE } from '../data/home'
 import { treeSpots } from '../farm/landGeometry'
 import { defaultLayout } from '../farm/layout'
 
@@ -375,13 +376,15 @@ export const MODEL_CHECKS: ModelCheck[] = [
   },
   {
     id: 'woods',
-    name: "The farm's big trees: the woods' fourteen as a new farm has them, and the garden's three corners",
+    name: "The big trees of both maps: the farm's woods as a new farm has them and its garden's three corners; the house's garden corner and its countryside",
     run() {
       const trees = [
-        ...treeSpots(defaultLayout()).map((t, index) => ({ height: t.height, seed: t.seed, index, corner: false })),
-        ...CORNER_TREES.map(([, , height], index) => cornerTree(index, height)),
+        ...treeSpots(defaultLayout()).map((t, index) => ({ where: 'woods', t: { height: t.height, seed: t.seed, index, corner: false } })),
+        ...CORNER_TREES.map(([, , height], index) => ({ where: 'corner', t: cornerTree(index, height) })),
+        { where: "the house's garden", t: gardenTree(GARDEN_TREE[2]) },
+        ...COUNTRY_TREES.map(([, , height], index) => ({ where: 'countryside', t: countryTree(index, height) })),
       ]
-      return trees.flatMap((t) => checkPieces(`${bigTreeKind(t)} ${t.corner ? 'corner' : 'woods'} ${t.index}`, ...structure(bigTreeModel(t))))
+      return trees.flatMap(({ where, t }) => checkPieces(`${bigTreeKind(t)} ${where} ${t.index}`, ...structure(bigTreeModel(t))))
     },
   },
   {

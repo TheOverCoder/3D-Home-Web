@@ -5,8 +5,7 @@ import { SHRUB_SPOTS } from '../data/garden'
 import { GARDEN, GATE, LANE } from '../data/layout'
 import { CABIN } from '../data/market'
 import type { SculptMaterialOptions } from '../lib/sculpt'
-import { partGeometry } from '../models/structures'
-import { BIRCH_MATERIAL, WOOD_MATERIAL, bigTreeKind, bigTreeModel } from '../models/trees'
+import { placeBigTree, trunksByBark, type PlacedTree } from '../models/trees'
 import { fenceRun, hedgeRun, mulberry } from '../scene/flora'
 import { TRACTOR } from './data'
 import { boundary, ownedRects, type Edge, type FarmLayout, type Rect } from './layout'
@@ -29,19 +28,12 @@ export const HEDGE_PIECE = 2
 // The trunks (49 to 89 triangles a tree, one mesh for each bark: the birches' is white) and the fence (600 in
 // all) stay one mesh each: a draw costs more than they would save.
 
-/** One of the woods' trees, where it stands: its trunk (and its bark) and its crown. */
-interface WoodsTree {
-  wood: BufferGeometry
-  birch: boolean
-  crown: BufferGeometry
-}
-
 /** What the land is made of, each section and tree made on its own (from its seed). */
 interface Sections {
   /** each hedge's sections, in the order of the boundary's edges */
   hedges: BufferGeometry[][]
   fence: BufferGeometry[]
-  trees: WoodsTree[]
+  trees: PlacedTree[]
   edges: Edge[]
 }
 
@@ -100,16 +92,7 @@ export function treeSpots(layout: FarmLayout): { x: number; z: number; height: n
 }
 
 /** The woods round the farm (where `treeSpots` puts them): the `index`th tree is its kind in WOODS_KINDS's turn. */
-const woods = (layout: FarmLayout): WoodsTree[] =>
-  treeSpots(layout).map((t, index) => {
-    const spot = { height: t.height, seed: t.seed, index, corner: false }
-    const model = bigTreeModel(spot)
-    return {
-      wood: partGeometry(model.wood).translate(t.x, 0, t.z),
-      birch: bigTreeKind(spot) === 'birch',
-      crown: partGeometry(model.crown).translate(t.x, 0, t.z),
-    }
-  })
+const woods = (layout: FarmLayout): PlacedTree[] => treeSpots(layout).map((t, index) => placeBigTree({ height: t.height, seed: t.seed, index, corner: false }, t.x, t.z))
 
 function sections(layout: FarmLayout): Sections {
   const edges = boundary(layout)
@@ -152,17 +135,10 @@ export function build(layout: FarmLayout): Built {
   const { hedges, fence, trees, edges } = sections(layout)
   const hedge: BufferGeometry[] = []
   for (const run of hedges) for (let i = 0; i < run.length; i += HEDGE_PIECE) hedge.push(mergeGeometries(run.slice(i, i + HEDGE_PIECE))!)
-  const barks = [
-    { birch: false, material: WOOD_MATERIAL },
-    { birch: true, material: BIRCH_MATERIAL },
-  ]
   return {
     hedge,
     fence: fence.length ? mergeGeometries(flat(fence))! : null,
-    wood: barks.flatMap(({ birch, material }) => {
-      const trunks = trees.filter((t) => t.birch === birch).map((t) => t.wood)
-      return trunks.length ? [{ geometry: mergeGeometries(trunks)!, material }] : []
-    }),
+    wood: trunksByBark(trees),
     crowns: trees.map((t) => t.crown),
     edges,
   }
