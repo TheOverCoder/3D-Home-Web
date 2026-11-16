@@ -29,9 +29,10 @@ export interface Opened {
   prize: Prize
 }
 
-/** What a level reached by play brought by itself: its gift. */
+/** What a level reached by play brought by itself: its coins and its gift. */
 export interface Came {
   level: number
+  coins: number
   prize: Prize
 }
 
@@ -159,7 +160,8 @@ export function sanitizeGifts(raw: unknown, points: number): Gifts {
   for (const e of Array.isArray(raw.came) ? raw.came : []) {
     const prize = savedPrize(field(e, 'prize'))
     const at = field(e, 'level')
-    if (prize && whole(at, 2, level) && !came.some((x) => x.level === at)) came.push({ level: at, prize })
+    const coins = field(e, 'coins')
+    if (prize && whole(at, 2, level) && whole(coins, 0, Number.MAX_SAFE_INTEGER) && !came.some((x) => x.level === at)) came.push({ level: at, coins, prize })
   }
   came.sort((a, b) => a.level - b.level)
   return { open, also, gave, came: came.slice(-CAME_KEPT), seen: whole(raw.seen, 1, level) ? raw.seen : level }

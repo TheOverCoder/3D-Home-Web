@@ -67,7 +67,7 @@ import {
   type LadderId,
   type XpAction,
 } from './data'
-import { sanitizeXp, seedXp, levelOf, xpAt, unpaidCoins, xpForSale, type Xp } from './xp'
+import { sanitizeXp, seedXp, levelOf, levelReward, xpAt, unpaidCoins, xpForSale, type Xp } from './xp'
 import { CAME_KEPT, boxOf, boxesReached, giftsFor, isOpen as giftOpen, rollArrival, rollBox, sanitizeGifts, settle, waitingBoxes, type Gifts, type Opened, type Prize } from './gifts'
 import { QUEUE, machineLevel, queuePrice, type MachineActions, type MachineView, type QueueSlot } from './machineView'
 import {
@@ -580,6 +580,13 @@ function load(text: string | null = readRaw(KEY)): { data: FarmData; savedAt: nu
     for (const def of GOALS) data.goals[def.id] = isObject(raw.goals) ? int(field(raw.goals, def.id), 0, 0, MOST_STEPS) : startStep(def, data)
     // levels: as saved; a farm from before them starts with XP for what it did (its levels are not paid again)
     data.xp = sanitizeXp(raw.xp, seedXp(data.stats))
+    // a level's coins come in by themselves as it is reached; a farm saved with some reached and not yet claimed (from
+    // when they waited for a Claim) is paid them now, once (the level paid moves up with them)
+    const owed = unpaidCoins(data.xp)
+    if (owed > 0) {
+      data.coins = Math.min(Number.MAX_SAFE_INTEGER, data.coins + owed)
+      data.xp.paid = levelOf(data.xp.points)
+    }
     // the level's gifts: as saved, never past the boxes the XP reached; a farm from before them finds its own level's
     // boxes reached so far waiting (the levels before are not given again)
     data.gifts = sanitizeGifts(raw.gifts, data.xp.points)
@@ -2091,17 +2098,20 @@ export function xpNow() {
 }
 
 /**
- * A level reached by play (`was` to `now`): each level reached brings by itself a small gift rolled on the farm's dice
- * (src/farm/gifts.ts: a few of a building material, into the barn even past full, as surprises go), remembered for the
- * level-up show and the level's card, which tell it; the boxes on the new level's bar start empty. Its coins wait to
- * be claimed in the card (`claimLevel`). No XP: a reward is not something the player did.
+ * A level reached by play (`was` to `now`): what it brings comes in by itself, with no Claim — its coins (LEVELS: every
+ * level reached and not yet paid, once: `xp.paid` moves to it) and a small gift rolled on the farm's dice
+ * (src/farm/gifts.ts: a few of a building material, into the barn even past full, as surprises go) — remembered for the
+ * level-up show and the level's card, which tell it; the boxes on the new level's bar start empty. No XP: a reward is
+ * not something the player did.
  */
 function arrive(was: number, now: number) {
+  farm.coins = Math.min(Number.MAX_SAFE_INTEGER, farm.coins + unpaidCoins({ points: xpAt(now), paid: farm.xp.paid }))
+  farm.xp.paid = Math.max(farm.xp.paid, now)
   const came = farm.gifts.came.filter((c) => c.level <= was)
   for (let level = was + 1; level <= now; level++) {
     const prize = rollArrival(level, random)
     give(prize)
-    came.push({ level, prize })
+    came.push({ level, coins: levelReward(level), prize })
   }
   farm.gifts = { ...farm.gifts, gave: [], came: came.slice(-CAME_KEPT) }
 }

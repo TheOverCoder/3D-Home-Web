@@ -7,8 +7,8 @@ import { boxAt, boxCoins, boxXp } from '../../src/farm/gifts'
 
 // Levels (src/farm/xp.ts, src/farm/XpChip.tsx, src/fx/xp.ts): what you do on the farm is worth XP (XP_FOR in
 // src/farm/data.ts). Crystals fly up from where it happened into the level chip at the top; its bar fills with what has
-// landed and the chip pulses as it grows. A level reached is shown once — a flash, a ring, the number — its gift (a few
-// building materials) comes in by itself, and its coins wait on the chip until they are claimed in the level's card.
+// landed and the chip pulses as it grows. A level reached is shown once — a flash, a ring, the number — and its coins
+// and its gift (a few building materials) come in by themselves, once, with no Claim; the level's card tells them.
 // The card's bar has a gift box at each quarter (src/farm/gifts.ts): one tap opens a box reached, and one button opens
 // every one waiting. Only play shows a level-up: never a save loaded or another farm switched to. Every number is read
 // in the same call that changes it (the farm ticks every frame).
@@ -42,7 +42,7 @@ const gain = (page: Page, action: string, n = 1) =>
       const c = h.camera
       const d = c.getWorldDirection(c.position.clone())
       h.farm.gainXp(action, n, { x: c.position.x + d.x * 3, y: c.position.y + d.y * 3, z: c.position.z + d.z * 3 })
-      return { xp: h.farm.xpNow(), events: h.farm.xpEventCount() as number, flights: h.fx.stats.xp as number }
+      return { xp: h.farm.xpNow(), coins: h.farm.state.coins as number, events: h.farm.xpEventCount() as number, flights: h.fx.stats.xp as number }
     },
     [action, n] as [string, number],
   )
@@ -200,7 +200,7 @@ test.describe('levels', () => {
     }
   })
 
-  test('a level reached: shown once, its gift comes in by itself, its coins wait on the chip; a tap opens its card, whose Claim pays them — two levels at once in one claim', async ({ game }) => {
+  test('a level reached: shown once, its coins and its gift come in by themselves (no Claim), each once; its card tells what came in — two levels at once: both', async ({ game }) => {
     await game.ready('farm')
     const { page } = game
     await fresh(game)
@@ -221,23 +221,24 @@ test.describe('levels', () => {
     const restore = await slowAnimations(page, 0.25)
     try {
       await watch(page)
-      // a step that builds something: level 2
+      // a step that builds something: level 2, its coins in at once (read in the same call), nothing left to claim
       const g = await gain(page, 'build')
       expect(g.xp.level).toBe(2)
-      expect(g.xp.unpaid).toBe(levelReward(2))
+      expect(g.coins).toBe(before.coins + levelReward(2))
+      expect(g.xp.unpaid).toBe(0)
       expect(g.events).toBe(before.events + 1)
       // its gift came in by itself: a few of a building material, in the barn
-      const came = await page.evaluate(() => (window as any).__home.farm.state.gifts.came as { level: number; prize: { item: string; n: number } }[])
-      expect(came.map((c) => c.level)).toEqual([2])
+      const came = await page.evaluate(() => (window as any).__home.farm.state.gifts.came as { level: number; coins: number; prize: { item: string; n: number } }[])
+      expect(came.map((c) => [c.level, c.coins])).toEqual([[2, levelReward(2)]])
       expect(came[0].prize.n).toBeGreaterThanOrEqual(2)
       await expect.poll(async () => (await seen(page)).show, { timeout: 60_000, message: 'the level-up show' }).toBe(true)
       expect((await stopWatching(page)).showText).toContain('2')
     } finally {
       await restore()
     }
-    // the coins waiting, on the chip; a tap opens the level's card: the level reached with the gift it brought, the bar
-    // to level 3 and what it brings, and Claim pays the coins, once
-    await expect(chip).toContainText(String(levelReward(2)))
+    // the chip asks for no Claim; a tap opens the level's card: the level reached with what came in (its coins and its
+    // gift), the bar to level 3 and what it brings, and no Claim anywhere
+    await expect(chip).not.toHaveAttribute('aria-label', /coins/)
     await chip.click()
     const card = page.locator('.farm-panel[aria-label="Level 2"]')
     await expect(card).toBeVisible()
@@ -245,30 +246,32 @@ test.describe('levels', () => {
     await expect(card.getByRole('progressbar')).toHaveAttribute('aria-valuenow', String(now.into))
     await expect(card.getByRole('progressbar')).toHaveAttribute('aria-valuemax', String(now.need))
     await expect(card.locator('.lf-reached')).toContainText('Level 2 reached!')
+    await expect(card.locator('.lf-reached')).toContainText(`+${levelReward(2)}`)
     await expect(card.locator('.lf-reached .item-pic')).toBeVisible()
     await expect(card.locator('.level-next')).toContainText(`+${levelReward(3)}`)
-    await card.getByRole('button', { name: `Claim ${levelReward(2)} coins` }).click()
-    await expect.poll(() => coins(page)).toBe(before.coins + levelReward(2))
-    expect((await xpNow(page)).unpaid).toBe(0)
-    expect(await page.evaluate(() => (window as any).__home.farm.state.xp.paid)).toBe(2)
-    await expect(chip).not.toContainText(String(levelReward(2)))
-    // nothing more to claim: the card has no Claim, and its Close pays nothing
     await expect(card.getByRole('button', { name: /^Claim/ })).toHaveCount(0)
+    // its Close pays nothing more
     await card.getByRole('button', { name: 'Close (Esc)' }).click()
     await expect(card).toHaveCount(0)
     expect(await coins(page)).toBe(before.coins + levelReward(2))
-    // a goal's worth fifteen times over: two levels at once, one show, and one claim pays both
+    expect(await page.evaluate(() => (window as any).__home.farm.state.xp.paid)).toBe(2)
+    // told once: opened again, the card no longer says it
+    await chip.click()
+    await expect(card).toBeVisible()
+    await expect(card.locator('.lf-reached')).toHaveCount(0)
+    await page.evaluate(() => (window as any).__home.useHome.getState().closePanel())
+    await expect(card).toHaveCount(0)
+    // a goal's worth fifteen times over: two levels at once, one show, both levels' coins in
     const target = xpAt(4) - (await xpNow(page)).points
     const g = await gain(page, 'goal', Math.ceil(target / XP_FOR.goal))
     expect(g.xp.level).toBe(4)
-    expect(g.xp.unpaid).toBe(levelReward(3) + levelReward(4))
+    expect(g.coins).toBe(before.coins + levelReward(2) + levelReward(3) + levelReward(4))
+    expect(g.xp.unpaid).toBe(0)
     expect(g.events).toBe(before.events + 2)
-    await expect(chip).toContainText(String(levelReward(3) + levelReward(4)))
-    await chip.click()
-    await page.getByRole('button', { name: `Claim ${levelReward(3) + levelReward(4)} coins` }).click()
-    await expect.poll(() => coins(page)).toBe(before.coins + levelReward(2) + levelReward(3) + levelReward(4))
     expect(await page.evaluate(() => (window as any).__home.farm.state.xp.paid)).toBe(4)
-    await page.evaluate(() => (window as any).__home.useHome.getState().closePanel())
+    // and nothing more for them later
+    await page.waitForTimeout(1000)
+    expect(await coins(page)).toBe(before.coins + levelReward(2) + levelReward(3) + levelReward(4))
   })
 
   test("the level's card: what the next level brings — a garment every fifth level, big; otherwise the level of the next one; at the top, no next", async ({ game }) => {
@@ -547,7 +550,9 @@ const checkLayout = (page: Page, show: Box | null, size: string, crowded = false
 
 // A phone held upright and turned sideways: a page of its own with touch (coarse pointer), and opened again.
 test.describe('levels on a phone', { tag: '@boot' }, () => {
-  test('the level and the day chips clear of each other, the compass and the stick, both ways; a level claimed stays claimed when the farm is opened again, with no show', async ({ browser }) => {
+  test('the level and the day chips clear of each other, the compass and the stick, both ways; a level reached is paid by itself, once, and stays paid when the farm is opened again, with no show', async ({
+    browser,
+  }) => {
     // two phone boots under software rendering (CI): four to five minutes each
     test.setTimeout(1_500_000)
     const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, baseURL: BASE })
@@ -574,9 +579,13 @@ test.describe('levels on a phone', { tag: '@boot' }, () => {
       await expect(page.locator('.farm-chip-item.day')).toBeVisible()
       const restore = await slowAnimations(page, 0.25)
       let show: Box | null = null
+      // (the coins before the level: its own come in with it, in the same call)
+      const start = await coins(page)
       try {
         await watch(page)
-        expect((await gain(page, 'build')).xp.level).toBe(3)
+        const g = await gain(page, 'build')
+        expect(g.xp.level).toBe(3)
+        expect([g.coins, g.xp.unpaid]).toEqual([start + levelReward(3), 0])
         await expect.poll(async () => (await seen(page)).show, { timeout: 60_000, message: 'the level-up show' }).toBe(true)
         show = (await stopWatching(page)).showBox
       } finally {
@@ -592,14 +601,14 @@ test.describe('levels on a phone', { tag: '@boot' }, () => {
       await checkLayout(page, null, '844×390', true)
       await page.setViewportSize({ width: 390, height: 844 })
       await page.waitForTimeout(1500)
-      // the coins of level 3, claimed in the level's card the chip opens
-      const claim = await page.evaluate(() => ({ coins: (window as any).__home.farm.state.coins as number, unpaid: (window as any).__home.farm.xpNow().unpaid as number }))
-      expect(claim.unpaid).toBe(levelReward(3))
+      // the level's card the chip opens tells what came in, with nothing to claim
       await page.locator('.farm-chip-item.level').tap()
-      await page.getByRole('button', { name: `Claim ${levelReward(3)} coins` }).tap()
-      await expect.poll(() => coins(page)).toBe(claim.coins + levelReward(3))
+      const card = page.locator('.farm-panel[aria-label="Level 3"]')
+      await expect(card.locator('.lf-reached')).toContainText(`+${levelReward(3)}`)
+      await expect(card.getByRole('button', { name: /^Claim/ })).toHaveCount(0)
       await page.evaluate(() => (window as any).__home.useHome.getState().closePanel())
-      // opened again: the same XP, level 3 paid, nothing to claim, and no show (a load is not play)
+      expect(await coins(page)).toBe(start + levelReward(3))
+      // opened again: the same XP, level 3 paid, its coins kept and not paid again, and no show (a load is not play)
       await bootApp(page)
       await watch(page)
       await page.evaluate(() => {
@@ -617,10 +626,10 @@ test.describe('levels on a phone', { tag: '@boot' }, () => {
       expect(again.xp.level).toBe(3)
       expect(again.paid).toBe(3)
       expect(again.xp.unpaid).toBe(0)
-      expect(again.coins).toBe(claim.coins + levelReward(3))
+      expect(again.coins).toBe(start + levelReward(3))
       expect(again.events).toBe(0)
       expect((await stopWatching(page)).show, 'no level-up show when the farm is opened again').toBe(false)
-      await expect(page.locator('.farm-chip-item.level')).not.toContainText(String(levelReward(3)))
+      await expect(page.locator('.farm-chip-item.level')).not.toHaveAttribute('aria-label', /coins/)
       expect(errors, errors.join('\n')).toEqual([])
     } finally {
       await context.close()

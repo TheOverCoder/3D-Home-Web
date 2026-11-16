@@ -35,7 +35,7 @@ export interface LevelView {
   gift?: Garment
   /** when the next level brings none: the next garment, and the level it comes with */
   later?: Garment
-  /** the coins of the levels reached, waiting to be claimed */
+  /** the coins of the levels reached and not yet paid (none in play: a level's coins come in as it is reached) */
   unpaid: number
   /** the four boxes on this level's bar */
   boxes: BoxView[]
@@ -43,8 +43,8 @@ export interface LevelView {
   waiting: number[]
   /** how many of those are from the levels before */
   earlier: number
-  /** the level was just reached by play: the gift it brought by itself (until the card has told it) */
-  arrived?: Prize
+  /** the level was just reached by play: what it brought by itself, its coins and its gift (until the card has told it) */
+  arrived?: { coins: number; prize: Prize }
   /** XP gained since the card was last open (the bar lights that part) */
   gain: number
   /** what is ready on the farm now */
@@ -65,7 +65,8 @@ export function levelView(points: number, paid: number, gifts?: Gifts, more: { g
     return { box, q, state: 'locked', xp: Math.max(0, boxXp(box) - Math.floor(points)) }
   })
   const waiting = waitingBoxes(g, points)
-  const arrived = g.seen < level ? g.came.find((c) => c.level === level)?.prize : undefined
+  const came = g.seen < level ? g.came.find((c) => c.level === level) : undefined
+  const arrived = came && { coins: came.coins, prize: came.prize }
   return {
     level,
     into,

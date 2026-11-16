@@ -1,9 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { farmSound } from '../audio/sound'
-import { reducedMotion } from '../fx/fx'
+import { coinsToFly, reducedMotion } from '../fx/fx'
 import { onXpFlight, xpInFlight } from '../fx/xp'
 import { GarmentPic } from '../ui/GarmentPic'
-import { flyItem } from '../fx/coins'
+import { flyCoins, flyItem } from '../fx/coins'
 import { storeOf } from './data'
 import { iconUrl } from './icons'
 import { useHome } from '../store'
@@ -11,14 +11,16 @@ import { art } from '../ui/art'
 import { TopSlot } from '../ui/TopStack'
 import { GARMENTS, type Garment } from './outfit'
 import { farm, useFarm, xpEventCount, xpNow } from './state'
-import { levelOf, levelProgress, unpaidCoins } from './xp'
+import { levelOf, levelProgress } from './xp'
+import { waitingBoxes } from './gifts'
 
 // The level chip in the row at the top (role G): a star with the level on it, a thin bar along the bottom of the row
-// that fills with XP as the crystals land (src/fx/xp.ts), a pulse of the star as it grows, and the coins of the levels
-// reached waiting. A tap opens the level's card (./LevelPanel.tsx): the XP to the next level, what it brings, the
-// coins to claim. LevelUp is the show of a new level (a flash, a ring, the new number) and, every fifth level, of the
-// garment it brings for the wardrobe; started by play only (xpEventCount in state.ts): a farm loaded or switched to
-// takes its level without a show.
+// that fills with XP as the crystals land (src/fx/xp.ts), a pulse of the star as it grows, and the gift boxes waiting to
+// be opened (src/farm/gifts.ts: the chip glows with how many). A tap opens the level's
+// card (./LevelPanel.tsx): the XP to the next level, its gift boxes, what it brings. LevelUp is the show of a new level
+// (a flash, a ring, the new number; what the level brought by itself — its coins and its gift — flying off it to their
+// chips) and, every fifth level, of the garment it brings for the wardrobe; started by play only (xpEventCount in
+// state.ts): a farm loaded or switched to takes its level without a show.
 
 /** The XP as the bar shows it: all the points, what is still in the air, and the count of gains from play. */
 interface Seen {
@@ -106,8 +108,8 @@ export function XpChip() {
   const shown = Math.max(0, seen.points - seen.flying)
   const { level, into, need } = levelProgress(shown)
   const k = Math.min(1, into / need)
-  // the coins of the levels the bar has reached (a level's crystals still in the air are not paid for yet)
-  const unpaid = unpaidCoins({ points: shown, paid: farm.xp.paid })
+  // the gift boxes the bar has reached and not opened (a quarter's crystals still in the air have not reached it yet)
+  const gifts = waitingBoxes(farm.gifts, shown).length
   const star = useRef<HTMLSpanElement>(null)
   const fill = useRef<HTMLSpanElement>(null)
   const shine = useRef<HTMLSpanElement>(null)
@@ -135,11 +137,16 @@ export function XpChip() {
   // the badge and its bar on one line, the bar taking what the line has left (a phone's narrow row: one line, not two)
   return (
     <span className="xp-line">
-      {unpaid > 0 ? (
-        <button className="farm-chip-item level ready" onClick={open} title={`Level ${level}: ${unpaid} coins to claim`} aria-label={`Level ${level}: ${unpaid} coins to claim`}>
+      {gifts > 0 ? (
+        <button
+          className="farm-chip-item level ready"
+          onClick={open}
+          title={`Level ${level}: ${gifts} ${gifts === 1 ? 'gift' : 'gifts'} to open`}
+          aria-label={`Level ${level}: ${gifts} ${gifts === 1 ? 'gift' : 'gifts'} to open`}
+        >
           {badge}
-          <img className="xp-coin" src={art('coin')} alt="" />
-          <b>{unpaid}</b>
+          <img className="xp-gift" src={art('wrapped-gift')} alt="" />
+          <b>{gifts}</b>
         </button>
       ) : (
         <button className="farm-chip-item level" onClick={open} title={`Level ${level}: ${into} of ${need} XP to level ${level + 1}`} aria-label={`Level ${level}: what the next level brings`}>
@@ -199,14 +206,18 @@ export function LevelUp() {
   useEffect(() => {
     if (!show) return
     const t = window.setTimeout(() => setShow(null), LEVEL_MS)
-    // the gift each level brought by itself pops up out of the number and flies to its building's chip, once the
-    // number has landed (where it went: the level's card tells what it was)
-    const gifts = farm.gifts.came.filter((c) => c.level > show.from && c.level <= show.level)
+    // what each level brought by itself flies off the number once it has landed: its coins to the coin chip, its gift
+    // up and on to its building's chip (where they went: the level's card tells what they were)
+    const came = farm.gifts.came.filter((c) => c.level > show.from && c.level <= show.level)
     const fly = window.setTimeout(() => {
       const el = showEl.current
       if (!el || !el.getClientRects().length || reducedMotion()) return
       const r = el.getBoundingClientRect()
-      gifts.forEach((c, k) => 'item' in c.prize && flyItem(r.left + r.width / 2, r.top + r.height * 0.62, iconUrl(c.prize.item), k, storeOf(c.prize.item)))
+      const x = r.left + r.width / 2
+      const y = r.top + r.height * 0.62
+      const coins = came.reduce((n, c) => n + c.coins, 0)
+      if (coins > 0) flyCoins(x, y, coinsToFly(coins))
+      came.forEach((c, k) => 'item' in c.prize && flyItem(x, y, iconUrl(c.prize.item), k, storeOf(c.prize.item)))
     }, GIFT_FLY_MS)
     return () => {
       window.clearTimeout(t)

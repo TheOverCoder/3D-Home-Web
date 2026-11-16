@@ -50,6 +50,11 @@ import {
   upgradeStore,
   water,
 } from './state'
+import { unpaidCoins, xpAt } from './xp'
+
+/** The coins the levels reached since the level `paid` brought by themselves (src/farm/state.ts, arrive): what a count
+ *  of coins leaves out to show what an action itself cost or paid (the XP it gave can reach a level). */
+export const levelPay = (paid: number) => unpaidCoins({ points: xpAt(farm.xp.paid), paid })
 
 // Saves for the unit tests (never part of the game): two written by the code before the tables, one played to, and the
 // way the game starts from a save.

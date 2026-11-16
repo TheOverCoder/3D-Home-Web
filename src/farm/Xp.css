@@ -11,14 +11,14 @@
   color: #fff;
   text-shadow: 1px 0 0 var(--xp-lip), -1px 0 0 var(--xp-lip), 0 1px 0 var(--xp-lip), 0 -1px 0 var(--xp-lip), 1px 1px 0 var(--xp-lip), -1px 1px 0 var(--xp-lip), 1px -1px 0 var(--xp-lip), -1px -1px 0 var(--xp-lip), 0 2px 2px rgba(40, 24, 10, 0.4);
 }
-/* the coins of the levels reached, waiting: the chip glows until a tap claims them */
+/* gift boxes on the level's bar waiting to be opened: the chip glows with how many until the card opens them */
 .farm-chip-item.level.ready {
   padding-inline-end: 12px;
   border-color: var(--sun);
   color: #ffe08a;
   box-shadow: 0 3px 10px rgba(20, 12, 6, 0.25), 0 0 14px 2px color-mix(in srgb, var(--sun) 55%, transparent);
 }
-.farm-chip-item.level .xp-coin { width: 32px; height: 32px; margin-inline-start: -2px; }
+.farm-chip-item.level .xp-gift { width: 28px; height: 28px; margin-inline-start: 0; }
 /* its glow breathes (an opacity on a layer of its own: nothing is painted again while it waits) */
 .farm-chip-item.level.ready::before { content: ''; position: absolute; inset: -2px; border-radius: inherit; box-shadow: 0 0 22px 5px color-mix(in srgb, var(--sun) 70%, transparent); opacity: 0; pointer-events: none; }
 @media (prefers-reduced-motion: no-preference) {

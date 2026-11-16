@@ -5,6 +5,7 @@ import { cratesFor, isComplete, makeOrder, mostAsked, orderPay, type Order } fro
 import { buyOffice, declineOrder, farm, fillOrder, gateX, orderAt, orderPlaces, resetFarm, sendOrder, setRandom, tick, used } from './state'
 import { AWAY_SECONDS, loadingSeconds, tractorPose, tripSeconds } from './tractorRoute'
 import { levelOf } from './xp'
+import { levelPay } from './testSaves'
 
 // The order board on the office's computer and the tractor that takes the orders away (src/farm/orders.ts,
 // src/farm/state.ts, src/farm/tractorRoute.ts).
@@ -129,8 +130,9 @@ describe('the order board', () => {
     fillOrder(2)
     expect(sendOrder(1)).toBe(false) // not all in
     const coins = farm.coins
+    const paid = farm.xp.paid
     expect(sendOrder(2)).toBe(true)
-    expect(farm.coins).toBe(coins + o.coins)
+    expect(farm.coins - levelPay(paid)).toBe(coins + o.coins)
     expect(farm.dispatch.waiting + farm.dispatch.aboard).toBe(cratesFor(o))
     const next = orderAt(2)!
     expect(next).not.toBe(null)

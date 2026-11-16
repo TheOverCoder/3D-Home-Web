@@ -201,8 +201,9 @@ function alsoChanges(part: string): RegExp | null {
   // the shop's own ladders count only once the shop is yours (src/farm/market.ts, clampLevels)
   if (part === 'market' || part.startsWith('market.')) return /^ladders(\.|$)/
   // the level decides which garments the wardrobe has, so what can be worn (src/farm/outfit.ts), and the boxes it
-  // reached on the levels' bars, so which can be open (src/farm/gifts.ts)
-  if (part === 'xp' || part.startsWith('xp.')) return /^(outfit|gifts)(\.|$)/
+  // reached on the levels' bars, so which can be open (src/farm/gifts.ts); a level reached and not paid (a farm from
+  // when its coins waited for a Claim) is paid as the farm loads (src/farm/state.ts, load)
+  if (part === 'xp' || part.startsWith('xp.')) return /^(outfit|gifts|coins)(\.|$)/
   return null
 }
 
@@ -321,7 +322,8 @@ function farmProblems(): string[] {
   bad('dispatch: a trip with crates, or home', d.aboard ? isWithin(d.trip, 0, tripSeconds(d.aboard, gateX())) : d.trip === -1)
   // levels: every point gained, whole; the level paid for from 1 up to the one reached
   const xp = farm.xp
-  bad('xp', sameKeys(xp, ['points', 'paid']) && isCount(xp.points) && Number.isInteger(xp.paid) && xp.paid >= 1 && xp.paid <= levelOf(xp.points))
+  // (every level reached paid: its coins come in by themselves)
+  bad('xp', sameKeys(xp, ['points', 'paid']) && isCount(xp.points) && xp.paid === levelOf(xp.points))
   // the clothes: a garment of its slot for each, one the level has (a hat, or none); the new marks never past the level
   const o = farm.outfit
   const level = levelOf(xp.points)
@@ -343,7 +345,9 @@ function farmProblems(): string[] {
   bad('gifts.gave', g.gave.every((e) => sameKeys(e, ['box', 'prize']) && isPrize(e.prize) && done(e.box) && Math.floor(e.box / PER_LEVEL) + 1 === level) && unique(g.gave.map((e) => e.box)))
   bad(
     'gifts.came',
-    g.came.length <= CAME_KEPT && g.came.every((e) => sameKeys(e, ['level', 'prize']) && isPrize(e.prize) && isCount(e.level, level) && e.level >= 2) && unique(g.came.map((e) => e.level)),
+    g.came.length <= CAME_KEPT &&
+      g.came.every((e) => sameKeys(e, ['level', 'coins', 'prize']) && isCount(e.coins) && isPrize(e.prize) && isCount(e.level, level) && e.level >= 2) &&
+      unique(g.came.map((e) => e.level)),
   )
   bad('gifts.seen', Number.isInteger(g.seen) && g.seen >= 1 && g.seen <= level)
   // the ladders: a step count each, to its top; the shop's own none until the shop is yours

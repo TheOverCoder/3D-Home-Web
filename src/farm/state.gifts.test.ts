@@ -106,22 +106,22 @@ describe('the boxes on the level’s bar', () => {
 })
 
 describe('a level reached', () => {
-  it('by play: a few of a building material by itself, rolled on the dice and told once; its coins still wait for the card’s Claim', () => {
+  it('by play: its coins and a few of a building material come in by themselves (no Claim), rolled on the dice and told once', () => {
     at(xpAt(2) - 1)
     setRandom(always(0.99)) // the last of the six
     const before = purse()
     gainXp('build')
     expect(levelOf(farm.xp.points)).toBe(2)
     const gift = rollArrival(2, always(0.99))
-    expect(farm.gifts.came).toEqual([{ level: 2, prize: gift }])
+    expect(farm.gifts.came).toEqual([{ level: 2, coins: levelReward(2), prize: gift }])
     expect(farm.inv[ITEMS[5]]).toBe(before.inv[ITEMS[5]] + (gift as { n: number }).n)
-    // the coins: as before, waiting for the Claim, and paid once
-    expect(farm.coins).toBe(before.coins)
-    expect(xpNow().unpaid).toBe(levelReward(2))
-    expect(claimLevel()).toBe(levelReward(2))
-    expect(claimLevel()).toBe(0)
+    // its coins: in, once; nothing left to claim
+    expect(farm.coins).toBe(before.coins + levelReward(2))
+    expect([farm.xp.paid, xpNow().unpaid, claimLevel()]).toEqual([2, 0, 0])
+    gainXp('build')
+    expect(farm.coins).toBe(before.coins + levelReward(2))
     // the card tells it until it has been seen
-    expect(levelView(farm.xp.points, farm.xp.paid, farm.gifts).arrived).toEqual(gift)
+    expect(levelView(farm.xp.points, farm.xp.paid, farm.gifts).arrived).toEqual({ coins: levelReward(2), prize: gift })
     sawLevel()
     expect(farm.gifts.seen).toBe(2)
     expect(levelView(farm.xp.points, farm.xp.paid, farm.gifts).arrived).toBeUndefined()
@@ -130,9 +130,11 @@ describe('a level reached', () => {
   it('several at once: a gift for each, once; the new level’s bar starts with nothing it gave', () => {
     at(xpAt(3) + 5)
     openGifts([boxAt(3, 0)].filter((k) => k < boxesReached(farm.xp.points)))
+    const coins = farm.coins
     gainXp('goal', Math.ceil((xpAt(6) - farm.xp.points) / XP_FOR.goal))
     expect(levelOf(farm.xp.points)).toBe(6)
     expect(farm.gifts.came.map((c) => c.level)).toEqual([4, 5, 6])
+    expect(farm.coins).toBe(coins + levelReward(4) + levelReward(5) + levelReward(6))
     expect(farm.gifts.gave).toEqual([])
     // more XP within the level: no more gifts
     gainXp('build')

@@ -29,12 +29,6 @@
 .level-card .lf-reached-words small { font: 700 13px/1.2 var(--font-text); color: var(--leaf-lip); }
 .level-card .lf-reached-got { display: flex; align-items: center; gap: 10px; flex: none; font-size: 18px; }
 .level-card .lf-reached-got .item-pic .art { width: 34px; height: 34px; }
-/* its coins to claim: a green button on its lip; claimed, a ✓ and the coins counting */
-.level-card .lf-claim { flex: none; gap: 6px; padding: 0 14px; }
-.level-card .lf-claim .farm-coins img { width: 24px; height: 24px; }
-.level-card .lf-claimed { display: inline-flex; align-items: center; gap: 6px; flex: none; min-height: 44px; padding: 0 12px; border-radius: 999px; background: var(--paper); color: var(--leaf-lip); font: 800 17px/1 var(--font-text); box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--leaf) 35%, transparent); }
-.level-card .lf-claimed > svg { width: 18px; height: 18px; }
-.level-card .lf-claimed .farm-coins { color: var(--ink); }
 
 /* the hero: how far, and the bar with its boxes */
 .level-card .lf-hero { position: relative; display: flex; flex-direction: column; gap: 4px; padding: 12px 14px 10px; border-radius: 24px; background: radial-gradient(120% 120% at 20% 0%, #fff, var(--paper-2) 60%); box-shadow: 0 4px 0 var(--paper-3); }

@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { Page } from '@playwright/test'
 import { test, expect, type Game } from './helpers'
+import { LEVELS } from '../../src/farm/data'
 
 // The action button's contract (src/lib/interaction.ts; CLAUDE.md, "Farm actions"), held for everything that can be
 // pressed (`__home.interactables()`), on farms of every kind: today's, one with plenty of everything, one with
@@ -20,7 +21,7 @@ const LOOKS = ['shop', 'watch']
 /** In the page: every thing offered as an action pressed in turn; what broke the contract, in words. */
 const sweep = (page: Page, farmName: string) =>
   page.evaluate(
-    async ({ farmName, shows, looks }) => {
+    async ({ farmName, shows, looks, reward }) => {
       const h = (window as any).__home
       const out: string[] = []
       const home = () => {
@@ -64,7 +65,7 @@ const sweep = (page: Page, farmName: string) =>
         p.x = def.position.x
         p.z = def.position.z
         const what = `${farmName}: ${def.id} ("${labelOf(def)}", ${icon?.verb ?? 'no verb'})`
-        const before = { farm: JSON.stringify(h.farm.state), home: home(), coins: h.farm.state.coins }
+        const before = { farm: JSON.stringify(h.farm.state), home: home(), coins: h.farm.state.coins, paid: h.farm.state.xp.paid }
         try {
           def.run()
         } catch (e) {
@@ -72,9 +73,11 @@ const sweep = (page: Page, farmName: string) =>
           continue
         }
         pressed++
-        const after = { farm: JSON.stringify(h.farm.state), home: home(), coins: h.farm.state.coins }
+        const after = { farm: JSON.stringify(h.farm.state), home: home(), coins: h.farm.state.coins, paid: h.farm.state.xp.paid }
         if (after.farm === before.farm && after.home === before.home) out.push(`${what} is offered and does nothing`)
-        const spent = before.coins - after.coins
+        // (a level its XP reached brought coins of its own: not what the press spent or took)
+        const fromLevels = after.paid > before.paid ? (reward * (before.paid + 1 + after.paid) * (after.paid - before.paid)) / 2 : 0
+        const spent = before.coins - (after.coins - fromLevels)
         if (spent > 0 && !(icon?.coins >= spent)) out.push(`${what} spends ${spent} coins without its price on the prompt`)
         // what it opened, once drawn (a panel's code may still be on its way the first time)
         const opened = () => {
@@ -86,7 +89,7 @@ const sweep = (page: Page, farmName: string) =>
         const s = h.useHome.getState()
         if (s.confirm && !pressable(document.querySelector('.confirm-card'), false)) out.push(`${what} opens a card with nothing to press`)
         if (s.panel && !shows.includes(s.panel.kind) && !looks.includes(icon?.verb)) {
-          const sale = icon?.verb === 'sell' && after.coins <= before.coins
+          const sale = icon?.verb === 'sell' && after.coins - fromLevels <= before.coins
           if (!pressable(document.querySelector('.farm-panel'), sale)) out.push(`${what} opens the ${s.panel.kind} panel with nothing to press${sale ? ' (no Sell)' : ''}`)
         }
       }
@@ -95,7 +98,7 @@ const sweep = (page: Page, farmName: string) =>
       p.z = at.z
       return { problems: out, pressed }
     },
-    { farmName, shows: SHOWS, looks: LOOKS },
+    { farmName, shows: SHOWS, looks: LOOKS, reward: LEVELS.reward },
   )
 
 /** A farm with plenty of everything: coins, every good, ripe beds, full animals, finished machines, a fruit tree or bush

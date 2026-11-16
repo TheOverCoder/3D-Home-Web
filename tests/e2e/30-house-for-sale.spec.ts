@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { Page } from '@playwright/test'
-import { test, expect, type Game } from './helpers'
+import { test, expect, levelPay, type Game } from './helpers'
 import { AGENT_SEAT, AGENT_STAND, ESTATE_DOOR, ESTATE_ROOM, PARKING, SALE_BOARD } from '../../src/data/estate'
 import { CAR_SPOT } from '../../src/data/maps'
 import { DAY, ESTATE, XP_FOR } from '../../src/farm/data'
@@ -29,6 +29,7 @@ const state = (page: Page) =>
       tag: s.tag,
       panel: s.panel?.kind ?? null,
       coins: h.farm.state.coins,
+      paid: h.farm.state.xp.paid as number,
       owned: h.farm.state.apartment.owned,
       place: h.farm.state.place,
       door: h.estate?.door?.(),
@@ -174,7 +175,7 @@ test.describe('the house for sale', () => {
     await game.ready('farm')
     const { page } = game
     await reset(game, 12, ESTATE.price + 300)
-    const xp = await page.evaluate(() => (window as any).__home.farm.xpNow().points)
+    const { xp, paid } = await page.evaluate(() => ({ xp: (window as any).__home.farm.xpNow().points, paid: (window as any).__home.farm.state.xp.paid as number }))
     // the board on the wall carries the house's price tag; G opens the card, and nothing is spent
     await game.teleport(AGENT_STAND.x, 1.4, AGENT_STAND.z, yawTo(AGENT_STAND.x, AGENT_STAND.z, SALE_BOARD.x, SALE_BOARD.z), 0)
     await page.waitForFunction(() => (window as any).__home.useHome.getState().tag?.id === 'farm-estate-board', null, { timeout: 30_000, polling: 200 })
@@ -199,8 +200,9 @@ test.describe('the house for sale', () => {
     await page.waitForTimeout(650) // the Buy button arms a moment after the card opens (ARM_MS)
     await page.locator('.farm-panel .farm-buy').click()
     await panelIs(game, null)
+    // (its XP reaches a level, whose coins come in by themselves)
     s = await state(page)
-    expect([s.owned, s.coins]).toEqual([true, 300])
+    expect([s.owned, s.coins - levelPay(paid, s.paid)]).toEqual([true, 300])
     expect(await page.evaluate(() => (window as any).__home.farm.xpNow().points)).toBe(xp + XP_FOR.home)
     expect(await page.evaluate(() => (window as any).__home.useHome.getState().toast?.text)).toBe('The house is yours')
     // in the save (written a moment later)

@@ -123,8 +123,8 @@ describe('the record as saved', () => {
     also: [21],
     gave: [{ box: 21, prize: { coins: 9 } }],
     came: [
-      { level: 5, prize: { item: 'brick', n: 2 } },
-      { level: 6, prize: { item: 'log', n: 2 } },
+      { level: 5, coins: 50, prize: { item: 'brick', n: 2 } },
+      { level: 6, coins: 60, prize: { item: 'log', n: 2 } },
     ],
     seen: 5,
   }
@@ -155,13 +155,20 @@ describe('the record as saved', () => {
     expect(sanitizeGifts({ ...good, also: 'all' }, points)).toMatchObject({ open: 18, also: [] })
   })
 
-  it('broken: what the boxes gave only for this level’s boxes opened, the levels reached up to this one, the card told up to it', () => {
+  it('broken: what the boxes gave only for this level’s boxes opened, the levels reached up to this one (with their coins), the card told up to it', () => {
     const gave = [{ box: 21, prize: { coins: 9 } }, { box: 22, prize: { coins: 9 } }, { box: 3, prize: { coins: 9 } }, { box: 21, prize: { coins: 1 } }, { box: 18, prize: { item: 'egg', n: 0 } }, 'x']
     expect(sanitizeGifts({ ...good, gave }, points).gave).toEqual([{ box: 21, prize: { coins: 9 } }])
     expect(sanitizeGifts({ ...good, gave: [{ box: 20, prize: { item: 'moon', n: 2 } }] }, points).gave).toEqual([])
-    const came = [{ level: 7, prize: { item: 'log', n: 2 } }, { level: 1, prize: { item: 'log', n: 2 } }, ...good.came, { level: 6, prize: { coins: 3 } }]
+    const came = [
+      { level: 7, coins: 70, prize: { item: 'log', n: 2 } },
+      { level: 1, coins: 10, prize: { item: 'log', n: 2 } },
+      { level: 4, coins: -1, prize: { item: 'log', n: 2 } },
+      { level: 3, coins: 'x', prize: { item: 'log', n: 2 } },
+      ...good.came,
+      { level: 6, coins: 60, prize: { coins: 3 } },
+    ]
     expect(sanitizeGifts({ ...good, came }, points).came).toEqual(good.came)
-    const many = Array.from({ length: 9 }, (_, k) => ({ level: 2 + k, prize: { item: 'nail', n: 2 } }))
+    const many = Array.from({ length: 9 }, (_, k) => ({ level: 2 + k, coins: 10 * (2 + k), prize: { item: 'nail', n: 2 } }))
     expect(sanitizeGifts({ ...good, came: many }, xpAt(20)).came.map((c) => c.level)).toEqual([6, 7, 8, 9, 10])
     expect(CAME_KEPT).toBe(5)
     expect(sanitizeGifts({ ...good, seen: 99 }, points).seen).toBe(level)

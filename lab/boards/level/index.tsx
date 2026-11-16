@@ -1,9 +1,7 @@
 import { boxAt, boxXp, rollBox, settle, type Came, type Gifts, type Opened } from '../../../src/farm/gifts'
 import { LevelCard } from '../../../src/farm/LevelCard'
 import { levelView, type Ready } from '../../../src/farm/levelView'
-import { xpAt } from '../../../src/farm/xp'
-import { flyCoins } from '../../../src/fx/coins'
-import { coinsToFly } from '../../../src/fx/fx'
+import { levelReward, xpAt } from '../../../src/farm/xp'
 import { art } from '../../../src/ui/art'
 import type { Act, Board } from '../../board'
 import { beds, goods } from './progress'
@@ -32,15 +30,6 @@ const dice = (seed: number) => () => {
 }
 /** The goods the sample farm has made (what a box may give a few of). */
 const MADE = ['lettuce', 'egg', 'wheat', 'flour'] as const
-
-/** What the game's LevelPanel does on a claim: the coins fly from the Claim button to the coin chip (src/fx/coins.ts),
- *  and the card is told the coins are paid. */
-const claimed = (s: LevelState, act: Act<LevelState>) => (button: HTMLElement) => {
-  const r = button.getBoundingClientRect()
-  const v = levelView(s.points, s.paid)
-  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) flyCoins(r.left + r.width / 2, r.top + r.height / 2, coinsToFly(v.unpaid))
-  act.set({ ...s, paid: v.level })
-}
 
 /** What the game's openGifts does (src/farm/state.ts), on the lab's dice: the boxes reached and not open, each rolled
  *  and marked open; what this level's gave stays on its bar. */
@@ -84,7 +73,8 @@ export const levelBoard: Board<LevelState> = {
     'F במשחק, עם הלוגיקה שלו: ארבע קופסאות בכל רמה (ב־25%, 50%, 75% ו־100%) – נעולה, מוכנה (נגיעה פותחת), פתוחה עם מה שנתנה; קופסה שלא נפתחה מחכה, ו"Open N gifts" פותח את כולן, גם מרמות קודמות. ' +
     'מה שבקופסה נקבע בקובייה של החווה ברגע הפתיחה: מטבעות לפי הרמה, חומר בנייה, או כמה מסחורה שהחווה מייצרת; אף קופסה לא ניתנת פעמיים, ואין עליה XP. ' +
     'המתנה של עליית רמה נכנסת לבד: כמה חומרי בנייה, שקופצים מהמספר בזמן החגיגה ועפים למחסן; בכרטיס – "Level N reached!" עם מה שנכנס. ' +
-    'המטבעות של הרמה והבגד של כל רמה חמישית – כמו קודם: המטבעות נאספים ב־Claim, עכשיו בפס "Level N reached!" למעלה. ' +
+    'המטבעות של הרמה נכנסים לבד ברגע שמגיעים אליה – בלי Claim, כמו ב־F – ועפים מהמספר בחגיגה לצ׳יפ המטבעות; בכרטיס, "Level N reached!" אומר מה נכנס (המטבעות והמתנה). מטבעות שהרוויחו בעבר ולא אספו נכנסים פעם אחת כשהחווה נטענת. הבגד של כל רמה חמישית – כמו קודם. ' +
+    'הצ׳יפ של הרמה זוהר עם מספר הקופסאות שמחכות. ' +
     'כמה קופסאות יחד: אותו פרס מתאחד (כל המטבעות בתמונה אחת, כל סחורה בתמונה אחת). ' +
     'מיקרו־אנימציות בכל הכפתורים, הכרטיסים, השבבים, התגים, המתג וכפתור הפעולה; ורטט קצר בכל פעולה שעושה משהו – טיק לאיסוף, כפול למכירה, חזק יותר לקנייה, גלגול למתנה והחזק ביותר לרמה (בטלפונים שיכולים, וכבה עם "Vibration" בהגדרות).',
   still: 'yard',
@@ -139,8 +129,8 @@ export const levelBoard: Board<LevelState> = {
     },
     {
       id: 'fresh',
-      name: 'רמה חדשה (7): המתנה שלה נכנסה לבד והמטבעות מחכים ל־Claim; הקופסה האחרונה של רמה 6 מחכה',
-      data: { points: xpAt(7) + 6, paid: 6, gifts: record(boxAt(6, 3), [], [], [{ level: 7, prize: { item: 'brick', n: 2 } }], 6), gain: 6, ready: goods('egg', 4) },
+      name: 'רמה חדשה (7): המטבעות והמתנה שלה נכנסו לבד; הקופסה האחרונה של רמה 6 מחכה',
+      data: { points: xpAt(7) + 6, paid: 7, gifts: record(boxAt(6, 3), [], [], [{ level: 7, coins: levelReward(7), prize: { item: 'brick', n: 2 } }], 6), gain: 6, ready: goods('egg', 4) },
     },
     {
       id: 'later',
@@ -161,15 +151,15 @@ export const levelBoard: Board<LevelState> = {
       note:
         'הסרגל של הרמה הוא הגיבור: ארבעה רבעים, ועל סוף כל אחד קופסה – נעולה (עם כמה XP חסר לבאה), מוכנה (זוהרת וקופצת: נגיעה פותחת), או פתוחה (מה שנתנה עם ✓). ' +
         'מעליו האחוז הגדול וכמה עוד; בקצה – הכוכב של הרמה הבאה. מתחת: מה הרמה הבאה נותנת (מטבעות, בגד או מתי הבגד הבא, ומתנה שנכנסת לבד), וכפתור צהוב אחד כשמחכות קופסאות – "Open 3 gifts", כולל מרמות קודמות. ' +
-        'רמה חדשה: "Level 7 reached!" למעלה, עם המתנה שנכנסה והמטבעות ל־Claim.',
+        'רמה חדשה: "Level 7 reached!" למעלה, עם מה שנכנס לבד – המטבעות והמתנה.',
       motion:
         'הגיליון עולה, הסרגל מתמלא ממה שהיה למה שיש (מה שהרווחת בוהק, "+9 new" קופץ), והקופסאות המוכנות קופצות ומתנדנדות מדי פעם. ' +
         'פתיחה: הקופסה עפה לאמצע הכרטיס וגדלה, רועדת, ומתפוצצת עם קרני אור וקונפטי – הפרס עולה גדול עם השם והמספר; Collect – המטבעות עפים לצ׳יפ והסחורה למחסן שלה. ' +
-        'Claim שוקע על השפה שלו והופך ל־✓ עם המטבעות סופרים. גרירה למטה (לרוחב: ימינה) על הכותרת סוגרת, והגיליון יוצא כמו שנכנס.',
+        'ברמה חדשה המטבעות שנכנסו סופרים בפס למעלה. גרירה למטה (לרוחב: ימינה) על הכותרת סוגרת, והגיליון יוצא כמו שנכנס.',
       render: (s, act) => (
         <>
           <ChipCoin />
-          <LevelCard v={{ ...levelView(s.points, s.paid, s.gifts, { gain: s.gain, ready: s.ready }) }} onOpen={opened(s, act)} onClaim={claimed(s, act)} onClose={act.close} />
+          <LevelCard v={{ ...levelView(s.points, s.paid, s.gifts, { gain: s.gain, ready: s.ready }) }} onOpen={opened(s, act)} onClose={act.close} />
         </>
       ),
     },

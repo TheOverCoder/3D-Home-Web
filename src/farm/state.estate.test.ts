@@ -5,7 +5,7 @@ import { useHome } from '../store'
 import { DAY, ESTATE, LANE_ENDS, VISITOR, WALK_Z, XP_FOR } from './data'
 import { agentBackIn, agentHere, buyApartment, driveTo, estateAgentNow, estateOpen, estateOpensIn, farm, freezeDay, resetFarm, setHour } from './state'
 import { agentComes, agentLeaves, scriptSeconds } from './script'
-import { savedNow, startFrom } from './testSaves'
+import { levelPay, savedNow, startFrom } from './testSaves'
 
 // The estate office by the market (src/farm/state.ts; the hours in src/farm/day.ts, HOURS.estate): the agent walks in
 // from the lane as it opens at eight, sits at his desk until four, waves and walks out; the house is bought from him at
@@ -84,8 +84,10 @@ describe('buying the house', () => {
     // at his desk
     setHour(24 + 12)
     const xp = farm.xp.points
+    const paid = farm.xp.paid
     expect(buyApartment()).toBe(true)
-    expect([farm.coins, farm.apartment.owned]).toEqual([50, true])
+    // (its XP reaches a level: that level's coins came in by themselves)
+    expect([farm.coins - levelPay(paid), farm.apartment.owned]).toEqual([50, true])
     expect(farm.xp.points).toBe(xp + XP_FOR.home)
     expect(useHome.getState().toast?.text).toBe('The house is yours')
     // once: a second press spends nothing

@@ -64,13 +64,11 @@ function together(list: Prize[]): Prize[] {
 export function LevelCard({
   v,
   onOpen,
-  onClaim,
   onClose,
   onReveal,
 }: {
   v: LevelView
   onOpen: (boxes: number[]) => Opened[]
-  onClaim: (button: HTMLElement) => void
   onClose: () => void
   /** the moment a gift bursts open (its sound and touch) */
   onReveal?: () => void
@@ -81,8 +79,6 @@ export function LevelCard({
   const next = v.level + 1
   const left = v.need - v.into
   const [opening, setOpening] = useState<{ got: Opened[]; from: DOMRect | null } | null>(null)
-  // the coins claimed while the card is open: the strip says so (they are paid: the view has none waiting any more)
-  const [claimed, setClaimed] = useState(0)
   const nextLocked = v.boxes.find((b) => b.state === 'locked')
 
   const open = (boxes: number[], from: HTMLElement | null) => {
@@ -90,18 +86,13 @@ export function LevelCard({
     const got = onOpen(boxes)
     if (got.length) setOpening({ got, from: from?.getBoundingClientRect() ?? null })
   }
-  const claim = (button: HTMLElement) => {
-    if (claimed || !v.unpaid) return
-    setClaimed(v.unpaid)
-    onClaim(button)
-  }
 
   return (
     <SwipeSheet name="level-card" label={`Level ${v.level}`} top={v.top} scrolls onClose={onClose}>
       <m.header className="lf-head" variants={ITEM}>
         <Star level={v.level} />
         <h2>Level {v.level}</h2>
-        {(v.unpaid > 0 || claimed > 0 || v.arrived) && <Reached v={v} claimed={claimed} onClaim={claim} />}
+        {v.arrived && <Reached level={v.level} came={v.arrived} />}
         <m.button className="close" onClick={onClose} aria-label="Close (Esc)" {...PRESS}>
           <X weight="bold" />
         </m.button>
@@ -302,8 +293,8 @@ function GiftBox({ b, next, onOpen }: { b: BoxView; next: boolean; onOpen: (el: 
   )
 }
 
-/** What the next level brings: its coins (claimed here once reached), its garment every fifth level (else a small
- *  picture of the next garment and its level), and a gift that comes by itself. */
+/** What the next level brings, all of it by itself as it is reached: its coins, its garment every fifth level (else a
+ *  small picture of the next garment and its level), and a gift. */
 function Next({ v }: { v: LevelView }) {
   const next = v.level + 1
   return (
@@ -334,7 +325,7 @@ function Next({ v }: { v: LevelView }) {
       </div>
       {v.gift && <b className="lf-next-name">{v.gift.name}</b>}
       <span className="tag ok lf-auto">
-        <Check weight="bold" /> Gift comes by itself
+        <Check weight="bold" /> Comes by itself
       </span>
     </m.section>
   )
@@ -349,49 +340,29 @@ const Top = () => (
   </m.section>
 )
 
-/** The level reached: the gift it brought by itself, and its coins to claim (Claim sinks under the finger and turns
- *  into what was claimed, its coins counting up as they fly to the chip). */
-function Reached({ v, claimed, onClaim }: { v: LevelView; claimed: number; onClaim: (button: HTMLElement) => void }) {
+/** The level just reached: what came in by itself (no Claim) — its coins, counting up, and its gift — told once. */
+function Reached({ level, came }: { level: number; came: NonNullable<LevelView['arrived']> }) {
   return (
-    <m.section className="lf-reached" initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }} transition={{ ...SPRING.pop, delay: 0.15 }} aria-label={`Level ${v.level} reached`}>
+    <m.section
+      className="lf-reached"
+      initial={{ opacity: 0, scale: 0.85 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ ...SPRING.pop, delay: 0.15 }}
+      aria-label={`Level ${level} reached: ${came.coins} coins and ${prizeWords(came.prize)} came in`}
+    >
       <span className="lf-reached-badge">
         <Check weight="bold" />
       </span>
       <span className="lf-reached-words">
-        <b>Level {v.level} reached!</b>
-        {v.arrived && <small>A gift came in</small>}
+        <b>Level {level} reached!</b>
+        <small>Came in by itself</small>
       </span>
-      {v.arrived && (
-        <span className="lf-reached-got" aria-label={prizeWords(v.arrived)}>
-          <PrizePic p={v.arrived} />
+      <span className="lf-reached-got">
+        <span className="farm-coins">
+          <img src={art('coin')} alt="" />+<CountUp to={came.coins} duration={0.8} />
         </span>
-      )}
-      <AnimatePresence mode="popLayout" initial={false}>
-        {claimed > 0 ? (
-          <m.span key="got" className="lf-claimed" role="status" variants={POP} initial="hidden" animate="show">
-            <Check weight="bold" />
-            <span className="farm-coins">
-              <img src={art('coin')} alt="" />
-              <CountUp to={claimed} duration={0.75} />
-            </span>
-          </m.span>
-        ) : v.unpaid > 0 ? (
-          <m.button
-            key="claim"
-            className="btn leaf small farm-buy lf-claim"
-            onClick={(e) => onClaim(e.currentTarget)}
-            aria-label={`Claim ${v.unpaid} coins`}
-            exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.12 } }}
-            {...SINK}
-          >
-            Claim
-            <span className="farm-coins">
-              <img src={art('coin')} alt="" />
-              {v.unpaid}
-            </span>
-          </m.button>
-        ) : null}
-      </AnimatePresence>
+        <PrizePic p={came.prize} />
+      </span>
     </m.section>
   )
 }
