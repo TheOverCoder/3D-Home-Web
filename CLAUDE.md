@@ -209,6 +209,27 @@ The README has the overview; `tests/README.md` what each test guards.
   tests); orders are rows of the board (`farm.orders`), the tractor's trip a timeline (`tractorRoute.ts`), both in the
   save like the line at the gate.
 
+## The week's events and the farm news (src/farm/events.ts, src/farm/news)
+
+- An event is a row of `EVENTS` (like `HOURS`): its weekdays and whole hours by the device's own date and clock (local
+  time), what it changes (`boost`) and by how much: Monday's and Sunday's market (buyers at the gate twice as often),
+  Wednesday's harvest festival (crops grow twice as fast), Thursday's gift day (a buyer's or an order's gift comes
+  twice), Friday evening's machine rush (jobs twice as fast), Saturday's lucky draw. The farm judges them at
+  `eventTime()` (`src/farm/state.ts`) and each rule asks `eventSpeed(boost)` where it already runs: no new state but the
+  record. A time away (`goOn`) judges each 5 s step at its own time: an event counts only for the part it was on.
+  Times shown (a bed's, a machine's) are real seconds: divided by the speed.
+- The lucky draw: once on its day (`drawLucky`, on the farm's dice), two goods a buyer could ask for; they sell for
+  double that day wherever they are sold (`priceEvents` in `src/farm/prices.ts`: every sale prices through `priceOf`),
+  and what already waited for them is raised at once (a buyer's offer, an order's pay by their share; kept after the
+  day: a deal made is kept). Events give no XP of their own (a sale is still worth its coins).
+- The save keeps `farm.events` (`sanitizeEvents`): the draw (its date and goods) and the events the news has shown (its
+  badge on the corner menu: an event on and not shown, or the draw not made). A new kind is a row; its effect a
+  `boost` asked where the rule runs.
+- The news is the corner menu's "Farm news" (`src/ui/HudMode.tsx`): `NewsCard` draws `newsView` (now, coming soon, the
+  draw's reels), `NewsPanel` reads the farm. Events are off under Vitest and on a `?debug` page (unless `&events=on`)
+  until a test sets a clock (`setEventClock`, `__home.events.set`); `ready()` in `tests/e2e/helpers.ts` turns them
+  off again, so no spec's prices, gifts or speeds depend on the day it runs.
+
 ## The farm's decoration (src/farm/decor.ts, layout.ts, decorScene.tsx, DecorShop.tsx)
 
 - The edit mode's shop (the bag on its card) sells decoration and, on a tab of its own, fruit trees and bushes: a row

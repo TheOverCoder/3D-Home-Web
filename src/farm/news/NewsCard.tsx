@@ -1,0 +1,159 @@
+import { m } from 'motion/react'
+import type { CSSProperties } from 'react'
+import { art } from '../../ui/art'
+import { X } from '../../ui/glyphs'
+import { ITEM, PRESS, SPRING, STAGGER } from '../../ui/motion'
+import { SwipeSheet } from '../../ui/SwipeSheet'
+import type { ProduceId } from '../data'
+import { LuckyReels } from './LuckyReels'
+import type { NewsView, NowItem, SoonItem } from './view'
+import './NewsCard.css'
+
+// How the farm news looks (the design lab's board "news" shows it with no game round it). What it shows is ./view.ts,
+// made from the farm by ../NewsPanel.tsx.
+//
+// A front page in the game's paper: the masthead (the rolled newspaper, "Farm News", today's date over a double rule),
+// then "Active now" — the hero: the event on today as a story, its picture, what it does, its effect and how long it
+// has left on a bar that empties as the day goes; on the lucky draw's day the story is the draw itself (./LuckyReels.tsx:
+// one tap, two reels, two goods at double price) — and "Coming soon": the next time of every other event, each on a
+// calendar leaf with its weekday and date, its name, when (Tomorrow · All day) and its effect on a chip. A quiet day
+// says so and names the next. The sheet comes in from the bottom (sideways, the right) on its spring, its blocks one by
+// one; the story's picture lands last, the one moment of a day without a draw; a swipe down (sideways: right) closes.
+
+/** An event on now, as the front page's story: what it is, what it does, until when, and its time running out. */
+function Story({ e }: { e: NowItem }) {
+  return (
+    <article className={`nw-story ${e.id}`} aria-label={`${e.name}: ${e.say} ${e.until}, ${e.left}`}>
+      <m.img
+        className="art nw-story-art"
+        src={art(e.art)}
+        alt=""
+        initial={{ scale: 0.3, rotate: -14, opacity: 0 }}
+        animate={{ scale: 1, rotate: 0, opacity: 1 }}
+        transition={{ ...SPRING.soft, delay: 0.28 }}
+      />
+      <div className="nw-story-words">
+        <h4>
+          {e.name}
+          {e.fresh && <span className="nw-new">New</span>}
+        </h4>
+        <p>{e.say}</p>
+        <div className="nw-story-tags">
+          <span className="tag nw-effect">{e.chip}</span>
+          <span className="nw-left">
+            {e.until} · <b>{e.left}</b>
+          </span>
+        </div>
+      </div>
+      <i className="nw-time" style={{ '--share': e.share } as CSSProperties} aria-hidden="true" />
+    </article>
+  )
+}
+
+/** One coming event: its calendar leaf, its picture, its name and when, its effect. */
+function Soon({ s }: { s: SoonItem }) {
+  return (
+    <m.li className={`nw-row ${s.id}`} variants={ITEM} aria-label={`${s.name}: ${s.day}, ${s.hours}. ${s.say}`}>
+      <span className="nw-leaf" aria-hidden="true">
+        <small>{s.weekday}</small>
+        <b>{s.date}</b>
+      </span>
+      <img className="art nw-row-art" src={art(s.art)} alt="" />
+      <span className="nw-row-words">
+        <b>{s.name}</b>
+        <span>
+          {s.day} · {s.hours}
+        </span>
+      </span>
+      <span className="tag nw-effect">{s.chip}</span>
+    </m.li>
+  )
+}
+
+export function NewsCard({
+  v,
+  onDraw,
+  onClose,
+  onLand,
+  onReveal,
+}: {
+  v: NewsView
+  /** the lucky draw (the farm's): its goods, or null */
+  onDraw: () => ProduceId[] | null
+  onClose: () => void
+  /** a reel landing (a tick) */
+  onLand?: () => void
+  /** both reels in (the gift's sound) */
+  onReveal?: () => void
+}) {
+  const lucky = v.now.find((e) => e.id === 'lucky')
+  const others = v.now.filter((e) => e.id !== 'lucky')
+  const next = v.soon[0]
+  return (
+    <SwipeSheet name="news-card" label="Farm news" scrolls onClose={onClose}>
+      <m.header className="nw-mast" variants={ITEM}>
+        <img className="art nw-mast-art" src={art('rolled-up-newspaper')} alt="" />
+        <div className="nw-mast-words">
+          <h2>Farm News</h2>
+          <small>{v.date}</small>
+        </div>
+        <m.button className="close" onClick={onClose} aria-label="Close (Esc)" {...PRESS}>
+          <X weight="bold" />
+        </m.button>
+      </m.header>
+      <div className="nw-body" data-scroll>
+        <m.section className="nw-now" variants={ITEM} aria-label="Active now">
+          <h3 className="nw-kicker">
+            {v.now.length > 0 && <i className="nw-live" aria-hidden="true" />}
+            Active now
+          </h3>
+          {lucky && v.lucky && (
+            <article className="nw-story lucky nw-lucky" aria-label={`${lucky.name}: ${lucky.say}`}>
+              <div className="nw-lucky-head">
+                <img className="art" src={art(lucky.art)} alt="" />
+                <h4>
+                  {lucky.name}
+                  {lucky.fresh && <span className="nw-new">New</span>}
+                </h4>
+                <span className="nw-left">
+                  <b>{lucky.left}</b>
+                </span>
+              </div>
+              <LuckyReels pool={v.lucky.pool} goods={v.lucky.goods} until={v.lucky.until} onDraw={onDraw} onLand={onLand} onReveal={onReveal} />
+            </article>
+          )}
+          {others.map((e) => (
+            <Story key={e.key} e={e} />
+          ))}
+          {!v.now.length && (
+            <p className="nw-quiet">
+              <img className="art" src={art('sun')} alt="" />
+              <span>
+                A quiet day on the farm.
+                {next && (
+                  <>
+                    {' '}
+                    Next: <b>{next.name}</b>, {next.day.toLowerCase()}.
+                  </>
+                )}
+              </span>
+            </p>
+          )}
+        </m.section>
+        {v.soon.length > 0 && (
+          <m.section className="nw-soon" variants={ITEM} aria-label="Coming soon">
+            <h3 className="nw-kicker">
+              <img className="art" src={art('spiral-calendar')} alt="" />
+              Coming soon
+            </h3>
+            <m.ul variants={STAGGER}>
+              {v.soon.map((s) => (
+                <Soon key={s.key} s={s} />
+              ))}
+            </m.ul>
+          </m.section>
+        )}
+      </div>
+    </SwipeSheet>
+  )
+}

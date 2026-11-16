@@ -95,6 +95,8 @@ export const crowdGuests = new Set<(parts: Parts) => void>()
 interface Rig {
   body: PersonRig
   bubble: Sprite
+  /** the offer its bubble shows (the lucky draw raises it: the bubble is drawn again) */
+  offer: number
   phase: number
   lastX: number
   lastZ: number
@@ -104,7 +106,7 @@ function buildRig(v: Visitor): Rig {
   const bubble = new Sprite(new SpriteMaterial({ map: bubbleTexture(v), transparent: true, depthWrite: false }))
   bubble.scale.set((0.66 * bubbleWidth(v)) / 320, 0.28, 1)
   bubble.visible = false
-  return { body: new PersonRig(v.look), bubble, phase: Math.random() * 10, lastX: v.x, lastZ: v.z }
+  return { body: new PersonRig(v.look), bubble, offer: v.offer, phase: Math.random() * 10, lastX: v.x, lastZ: v.z }
 }
 
 function disposeRig(rig: Rig) {
@@ -216,6 +218,12 @@ export function Visitors() {
       damp(body.head, 'x', sad ? 0.25 : 0)
       body.write(parts)
       const b = rig.bubble
+      if (rig.offer !== v.offer) {
+        b.material.map?.dispose()
+        b.material.map = bubbleTexture(v)
+        b.material.needsUpdate = true
+        rig.offer = v.offer
+      }
       b.visible = v.phase === 'queued'
       b.position.set(v.x, 2.12 * H + Math.sin(t * 2.2 + v.id) * 0.02, v.z)
     }

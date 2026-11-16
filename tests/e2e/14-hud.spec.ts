@@ -15,10 +15,11 @@ test.describe('the top of the screen', () => {
     // outdoors on the path, so the coin chip and the compass show
     await game.teleport(-1.2, 1.4, 9.0, Math.PI / 2, -0.1)
     const hud = () => page.evaluate(() => document.documentElement.dataset.hud)
-    // the menu in the corner opens into its three buttons, each with its name
+    // the menu in the corner opens into its four buttons, each with its name (the farm news first)
     await expect(page.locator('.hud-mode')).toHaveCount(0)
     await page.locator('.top-menu-btn').click()
-    await expect(page.locator('.top-dial-btn')).toHaveCount(3)
+    await expect(page.locator('.top-dial-btn')).toHaveCount(4)
+    await expect(page.locator('.top-dial-btn').first()).toContainText('Farm news')
     for (let k = 0; k < 3 && (await hud()) !== 'all'; k++) await page.locator('.hud-mode').click()
     expect(await hud()).toBe('all')
     await expect(page.locator('.farm-chip')).toBeVisible()
@@ -109,8 +110,10 @@ test.describe('the top of the screen', () => {
     await expect(page.locator('.compass')).toBeVisible()
     await page.waitForTimeout(1000)
     expect(await page.evaluate(() => (window as any).__home.useHome.getState().compass)).toEqual([])
+    // the menu: the farm news (the farm's events reach the house too), the top's view and the settings, nothing to edit
     await page.locator('.top-menu-btn').click()
-    await expect(page.locator('.top-dial-btn')).toHaveCount(2)
+    await expect(page.locator('.top-dial-btn')).toHaveCount(3)
+    await expect(page.locator('.news-open')).toBeVisible()
     await expect(page.locator('.edit-open')).toHaveCount(0)
     await page.locator('.top-menu-btn').click()
     await page.keyboard.press('KeyB')

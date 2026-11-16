@@ -27,6 +27,7 @@ import {
   bedsForSeeds,
   bedsNear,
   bedsToHarvest,
+  eventSpeed,
   harvestFits,
   buy,
   collect,
@@ -403,7 +404,7 @@ function Bed({ index }: { index: number }) {
         if (n > 1) return `${stage === 'ripe' ? 'Harvest' : 'Water'} ${n} beds`
         return stage === 'ripe' ? `Harvest ${count(crop.id, yieldOf(crop.id))}` : `Water the ${crop.plural}`
       }
-      return `${crop.plural[0].toUpperCase()}${crop.plural.slice(1)} · ready in ${mmss(crop.growSeconds - b.growth)}`
+      return `${crop.plural[0].toUpperCase()}${crop.plural.slice(1)} · ready in ${mmss((crop.growSeconds - b.growth) / eventSpeed('crops'))}`
     },
     // the prompt's pictures and numbers: what the press does to every bed in reach, or (growing) how long
     icon: () => {
@@ -416,7 +417,7 @@ function Bed({ index }: { index: number }) {
       }
       if (stage === 'thirsty') return { verb: 'water', item: crop!, count: bedsInReach(index, 'thirsty').length }
       if (stage === 'ripe') return harvestFits(index) ? { verb: 'pick', ...harvestOf(bedsInReach(index, 'ripe')) } : { verb: 'wait', item: crop!, count: yieldOf(crop!), full: 'silo' }
-      return { verb: 'wait', item: crop!, count: yieldOf(crop!), seconds: Math.max(0, Math.ceil(cropById(crop!).growSeconds - farm.beds[index].growth)) }
+      return { verb: 'wait', item: crop!, count: yieldOf(crop!), seconds: Math.max(0, Math.ceil((cropById(crop!).growSeconds - farm.beds[index].growth) / eventSpeed('crops'))) }
     },
     run: () => {
       const stage = bedStage(index)
@@ -447,7 +448,7 @@ function Bed({ index }: { index: number }) {
       } else {
         const b = farm.beds[index]
         const crop = cropById(b.crop!)
-        showToast(`${Math.round(bedProgress(index) * 100)}% grown · ${mmss(crop.growSeconds - b.growth)} to go`)
+        showToast(`${Math.round(bedProgress(index) * 100)}% grown · ${mmss((crop.growSeconds - b.growth) / eventSpeed('crops'))} to go`)
       }
     },
     // looked at: a plot to build or a field to buy carries its price tag (it opens a card that asks, with the price

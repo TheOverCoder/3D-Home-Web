@@ -17,12 +17,16 @@
 }
 .top-menu-btn svg { width: 24px; height: 24px; }
 .top-menu-btn.on { background: var(--paper); color: var(--ink); }
+.top-menu-btn { position: relative; }
+/* what waits in the farm news: a sun badge on the menu's corner and on the news's own button */
+.top-badge { position: absolute; top: -5px; right: -5px; display: grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: var(--sun); color: var(--ink); font: 900 13px/1 var(--font-text); font-variant-numeric: tabular-nums; box-shadow: 0 0 0 2px var(--night), 0 2px 4px rgba(0, 0, 0, 0.35); pointer-events: none; }
+.top-dial-icon .top-badge { box-shadow: 0 0 0 2px var(--paper), 0 2px 4px rgba(0, 0, 0, 0.3); }
 .top-menu-btn:focus-visible { outline: 3px solid var(--sun); outline-offset: 2px; }
 .top-dial { position: absolute; top: calc(100% + 8px); right: 0; margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; justify-items: end; }
 .top-dial-btn { display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 0; border: 0; background: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .top-dial-btn:focus-visible { outline: 3px solid var(--sun); outline-offset: 2px; border-radius: 999px; }
 .top-dial-word { padding: 7px 12px; border-radius: 999px; background: var(--paper); color: var(--ink); font: 600 15px/1 var(--font-display); white-space: nowrap; box-shadow: 0 2px 0 var(--edge-soft), 0 3px 10px rgba(20, 12, 6, 0.25); }
-.top-dial-icon { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 50%; background: var(--paper); color: var(--ink); box-shadow: 0 3px 0 var(--edge-soft), 0 3px 10px rgba(20, 12, 6, 0.25); }
+.top-dial-icon { position: relative; display: grid; place-items: center; width: 46px; height: 46px; border-radius: 50%; background: var(--paper); color: var(--ink); box-shadow: 0 3px 0 var(--edge-soft), 0 3px 10px rgba(20, 12, 6, 0.25); }
 .top-dial-icon svg { width: 22px; height: 22px; }
 /* a phone on its side is short: the three open beside the menu, from its top, so the list ends well above the jump
    button (the touch controls own the bottom corners) */

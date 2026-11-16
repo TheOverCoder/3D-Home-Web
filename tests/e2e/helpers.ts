@@ -167,6 +167,10 @@ export async function openGame(browser: Browser, counting = false): Promise<{ ga
         // the day's clock has no such hooks)
         h.farm?.setHour?.(12)
         h.farm?.freezeDay?.(true)
+        // the week's events off (src/farm/events.ts: they follow the device's date, so a run on a Saturday or a
+        // Thursday would change prices, gifts and speeds): a ?debug page starts with them off, and a spec that turned
+        // them on (34-events) leaves them off for the next
+        h.events?.set?.(null)
       }, map)
     },
   }

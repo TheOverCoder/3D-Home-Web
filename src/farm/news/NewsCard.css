@@ -1,0 +1,195 @@
+/* The farm news (NewsCard.tsx, LuckyReels.tsx; the design lab's board "news"): a front page in the game's paper — the
+   masthead over a double rule, "Active now" (the day's event as a story, or the lucky draw's machine) and "Coming soon"
+   (each event on a calendar leaf). The sheet and its motion: SwipeSheet (`scrolls`: the body scrolls, the masthead
+   moves the sheet). Every rule under .news-card. Each event has its tone: --tone, and --tone-ink for words on it. */
+.news-card .farm-panel { display: flex; flex-direction: column; gap: 10px; padding-top: 18px; }
+/* Motion presses these (SINK, PRESS): no CSS transition fighting it over their transform */
+.news-card .btn,
+.news-card .farm-panel .close { transition: box-shadow 0.1s ease-out, filter 0.15s, outline-offset 0.18s var(--ease-sheet); }
+.news-card .btn:active:not(:disabled),
+.news-card .farm-panel .close:active { transform: none; }
+
+.news-card .market { --tone: var(--sun); --tone-ink: var(--ink); }
+.news-card .harvest { --tone: var(--leaf); --tone-ink: #fff; }
+.news-card .gifts { --tone: var(--berry); --tone-ink: #fff; }
+.news-card .rush { --tone: var(--xp); --tone-ink: #fff; }
+.news-card .lucky { --tone: var(--leaf); --tone-ink: #fff; }
+
+/* the masthead: the rolled newspaper, the name, today's date, a double rule under them */
+.news-card .nw-mast { display: flex; align-items: center; gap: 10px; margin: 0; padding-bottom: 8px; border-bottom: 5px double color-mix(in srgb, var(--ink) 45%, transparent); }
+.news-card .nw-mast-art { flex: none; width: 50px; height: 50px; margin: -6px 0 -4px; filter: drop-shadow(0 2px 2px rgba(60, 30, 10, 0.2)); }
+.news-card .nw-mast-words { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.news-card .nw-mast h2 { margin: 0; font: 600 27px/1.05 var(--font-display); letter-spacing: 0.01em; color: var(--ink); }
+.news-card .nw-mast small { font: 800 13px/1.2 var(--font-text); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.news-card .nw-body { display: flex; flex-direction: column; gap: 16px; flex: 1; min-height: 0; overflow: auto; margin: 0 -6px; padding: 4px 6px 6px; scrollbar-width: none; }
+
+/* a section's kicker: small capitals, a rule running on after it */
+.news-card .nw-kicker { display: flex; align-items: center; gap: 7px; margin: 0 0 9px; font: 800 13px/1 var(--font-text); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-2); }
+.news-card .nw-kicker::after { content: ''; flex: 1; height: 2px; border-radius: 1px; background: var(--paper-3); }
+.news-card .nw-kicker .art { width: 22px; height: 22px; margin: -4px 0; }
+/* on now: a live dot that breathes */
+.news-card .nw-live { position: relative; flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--leaf); }
+.news-card .nw-live::after { content: ''; position: absolute; inset: 0; border-radius: 50%; background: var(--leaf); opacity: 0; }
+@media (prefers-reduced-motion: no-preference) {
+  .news-card .nw-live::after { animation: nw-live 1.8s ease-out infinite; }
+}
+@keyframes nw-live { from { opacity: 0.6; transform: scale(1); } to { opacity: 0; transform: scale(2.6); } }
+
+/* ── an event on now: the story ── */
+.news-card .nw-story {
+  position: relative;
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 14px 14px 20px;
+  border-radius: 22px;
+  background: radial-gradient(130% 150% at 0% 0%, #fff, var(--paper-2) 65%);
+  box-shadow: 0 4px 0 var(--paper-3);
+  overflow: hidden;
+}
+.news-card .nw-story-art { width: 78px; height: 78px; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--tone) 34%, transparent) 0 52%, transparent 70%); filter: drop-shadow(0 3px 3px rgba(60, 30, 10, 0.18)); }
+.news-card .nw-story h4 { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; margin: 0; font: 600 22px/1.1 var(--font-display); color: var(--ink); }
+.news-card .nw-story p { margin: 4px 0 9px; font: 600 15px/1.3 var(--font-text); color: var(--ink-2); }
+.news-card .nw-story-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.news-card .nw-left { font: 700 14px/1.2 var(--font-text); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.news-card .nw-left b { color: var(--ink); font-weight: 900; }
+/* its time running out: a bar along its foot, the share still to come, filling in as the page opens */
+.news-card .nw-time { position: absolute; left: 14px; right: 14px; bottom: 8px; height: 5px; border-radius: 3px; background: var(--paper-3); overflow: hidden; }
+.news-card .nw-time::before { content: ''; position: absolute; inset: 0; border-radius: inherit; background: var(--tone); transform-origin: 0 50%; transform: scaleX(var(--share)); }
+@media (prefers-reduced-motion: no-preference) {
+  .news-card .nw-time::before { animation: nw-time 0.9s 0.35s var(--ease-sheet) both; }
+}
+@keyframes nw-time { from { transform: scaleX(0); } }
+/* what it does, on a chip of its tone */
+.news-card .tag.nw-effect { padding: 5px 10px; background: color-mix(in srgb, var(--tone) 20%, #fff); color: var(--ink); font: 800 13px/1.15 var(--font-text); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--tone) 55%, transparent); }
+/* not shown before: a berry pill that pops in */
+.news-card .nw-new { padding: 3px 8px; border-radius: 999px; background: var(--berry); color: #fff; font: 800 13px/1 var(--font-text); box-shadow: 0 2px 0 var(--berry-lip); }
+@media (prefers-reduced-motion: no-preference) {
+  .news-card .nw-new { animation: pop 0.45s 0.5s var(--ease-pop) both; }
+}
+
+/* a quiet day: the sun and the next event */
+.news-card .nw-quiet { display: flex; align-items: center; gap: 12px; margin: 0; padding: 12px 14px; border-radius: 20px; background: var(--paper-2); font: 700 16px/1.35 var(--font-text); color: var(--ink-2); }
+.news-card .nw-quiet .art { flex: none; width: 46px; height: 46px; }
+.news-card .nw-quiet b { color: var(--ink); }
+
+/* ── the lucky draw: the story is the machine ── */
+.news-card .nw-lucky { display: flex; flex-direction: column; gap: 12px; padding: 12px 14px 16px; background: radial-gradient(130% 120% at 50% 0%, color-mix(in srgb, var(--leaf) 16%, #fff), var(--paper-2) 72%); }
+.news-card .nw-lucky-head { display: flex; align-items: center; gap: 8px; }
+.news-card .nw-lucky-head .art { flex: none; width: 42px; height: 42px; margin: -4px 0; }
+.news-card .nw-lucky-head h4 { flex: 1; min-width: 0; }
+.news-card .nw-lucky-play { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+
+.news-card .nw-machine {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+  padding: 9px 16px;
+  border-radius: 26px;
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--berry) 80%, #fff), var(--berry) 40%, color-mix(in srgb, var(--berry) 88%, #000));
+  box-shadow: 0 6px 0 var(--berry-lip), 0 12px 24px rgba(60, 20, 10, 0.28), inset 0 2px 0 rgba(255, 255, 255, 0.35);
+  -webkit-tap-highlight-color: transparent;
+}
+.news-card .spin .nw-machine { cursor: pointer; }
+/* the bulbs: they twinkle at rest, chase while the reels spin, all shine once the goods are in */
+.news-card .nw-bulbs { display: flex; gap: 11px; }
+.news-card .nw-bulbs i { width: 9px; height: 9px; border-radius: 50%; background: color-mix(in srgb, var(--sun) 45%, var(--berry-lip)); box-shadow: inset 0 -1px 1px rgba(0, 0, 0, 0.25); }
+.news-card .done .nw-bulbs i { background: var(--sun); box-shadow: 0 0 8px 1px color-mix(in srgb, var(--sun) 80%, transparent), inset 0 1px 1px #fff; }
+@media (prefers-reduced-motion: no-preference) {
+  .news-card .idle .nw-bulbs i { animation: nw-twinkle 2.4s ease-in-out infinite; animation-delay: calc(var(--i) * 0.27s); }
+  .news-card .spin .nw-bulbs i { animation: nw-chase 0.5s steps(1) infinite; animation-delay: calc(var(--i) * -0.055s); }
+}
+@keyframes nw-twinkle { 0%, 100% { background: color-mix(in srgb, var(--sun) 45%, var(--berry-lip)); } 50% { background: var(--sun); box-shadow: 0 0 6px color-mix(in srgb, var(--sun) 70%, transparent); } }
+@keyframes nw-chase { 0% { background: var(--sun); box-shadow: 0 0 8px 1px color-mix(in srgb, var(--sun) 80%, transparent); } 30% { background: color-mix(in srgb, var(--sun) 45%, var(--berry-lip)); box-shadow: none; } }
+
+.news-card .nw-reels { position: relative; display: flex; gap: 12px; padding: 0 8px; }
+/* the pay line: a sun arrow on each side, at the middle row */
+.news-card .nw-reels::before,
+.news-card .nw-reels::after { content: ''; position: absolute; top: 50%; margin-top: -8px; border: 8px solid transparent; }
+.news-card .nw-reels::before { left: -8px; border-left-color: var(--sun); }
+.news-card .nw-reels::after { right: -8px; border-right-color: var(--sun); }
+.news-card .nw-reel { position: relative; }
+.news-card .nw-window { position: relative; display: block; width: 104px; height: 128px; overflow: hidden; border-radius: 16px; background: #fff; }
+/* the drum's curve and its frame, over the goods */
+.news-card .nw-window::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(to bottom, rgba(60, 30, 15, 0.42), rgba(60, 30, 15, 0) 30%, rgba(60, 30, 15, 0) 70%, rgba(60, 30, 15, 0.42));
+  box-shadow: inset 0 0 0 3px var(--berry-lip), inset 0 3px 6px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+}
+.news-card .nw-strip { position: absolute; left: 0; right: 0; top: 0; display: flex; flex-direction: column; will-change: transform; }
+.news-card .nw-cell { display: grid; place-items: center; flex: none; height: 64px; }
+.news-card .nw-cell .art { width: 54px; height: 54px; filter: drop-shadow(0 2px 1px rgba(60, 30, 10, 0.25)); }
+.news-card .nw-cell.ask b { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 14px; background: var(--paper-2); color: var(--leaf); font: 700 34px/1 var(--font-display); box-shadow: inset 0 -3px 0 var(--paper-3); }
+/* a good landing: it squashes into its place and springs back */
+@media (prefers-reduced-motion: no-preference) {
+  .news-card .spin .nw-cell.won .art,
+  .news-card .done .nw-cell.won .art { animation: nw-land 0.45s var(--ease-pop); }
+}
+@keyframes nw-land { 0% { transform: scale(0.84, 1.14); } 45% { transform: scale(1.16, 0.9); } 100% { transform: none; } }
+/* its ×2 stamp, slammed on the window's corner */
+.news-card .nw-stamp { position: absolute; z-index: 2; top: -11px; right: -11px; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--sun); color: var(--ink); font: 900 18px/1 var(--font-text); box-shadow: 0 0 0 3px #fff, 0 3px 0 3px var(--sun-lip), 0 6px 12px rgba(60, 30, 10, 0.3); pointer-events: none; }
+
+/* the draw: one big press */
+.news-card .nw-draw-row { display: flex; flex-direction: column; align-items: center; gap: 7px; }
+.news-card .btn.nw-draw { min-width: 210px; min-height: 56px; font-size: 21px; }
+.news-card .btn.nw-draw img { width: 30px; height: 30px; }
+.news-card .nw-draw-say { font: 700 15px/1.25 var(--font-text); color: var(--ink-2); text-align: center; }
+
+/* drawn: their names under their reels, until when, and where they sell */
+.news-card .nw-won { display: flex; flex-direction: column; align-items: center; gap: 7px; text-align: center; }
+.news-card .nw-won-names { display: flex; justify-content: center; gap: 12px; }
+.news-card .nw-won-names b { width: 116px; font: 600 17px/1.15 var(--font-display); color: var(--ink); }
+.news-card .nw-won-say { font: 700 15px/1.25 var(--font-text); color: var(--ink-2); }
+.news-card .nw-won-say b { color: var(--leaf-lip); font-weight: 900; }
+.news-card .nw-where { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.news-card .nw-where .tag { background: #fff; box-shadow: inset 0 0 0 2px var(--paper-3); color: var(--ink); }
+.news-card .nw-where .tag img { width: 22px; height: 22px; margin-block: -3px; }
+
+/* ── coming soon: a calendar leaf for each ── */
+.news-card .nw-soon ul { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.news-card .nw-row { display: grid; grid-template-columns: 46px 36px minmax(0, 1fr) auto; grid-template-areas: 'leaf art name chip' 'leaf art when when'; align-items: center; gap: 2px 10px; padding: 8px 10px 8px 8px; border-radius: 18px; background: color-mix(in srgb, var(--paper-2) 55%, #fff); box-shadow: 0 3px 0 var(--paper-3); }
+.news-card .nw-leaf { grid-area: leaf; display: grid; grid-template-rows: 18px 1fr; justify-items: center; width: 46px; height: 52px; border-radius: 10px; background: #fff; box-shadow: 0 2px 0 var(--paper-3), 0 0 0 1.5px var(--paper-3); overflow: hidden; }
+.news-card .nw-leaf small { display: grid; place-items: center; width: 100%; background: var(--tone); color: var(--tone-ink); font: 800 13px/1 var(--font-text); letter-spacing: 0.04em; text-transform: uppercase; }
+.news-card .nw-leaf b { align-self: center; font: 900 22px/1 var(--font-text); color: var(--ink); font-variant-numeric: tabular-nums; }
+.news-card .nw-row-art { grid-area: art; width: 36px; height: 36px; }
+/* (the words' two lines are the row's: the name beside the effect, when under both) */
+.news-card .nw-row-words { display: contents; }
+.news-card .nw-row-words b { grid-area: name; min-width: 0; font: 600 17px/1.15 var(--font-display); color: var(--ink); }
+.news-card .nw-row-words span { grid-area: when; font: 700 14px/1.25 var(--font-text); color: var(--ink-2); }
+.news-card .nw-row .nw-effect { grid-area: chip; justify-self: end; }
+
+/* a small phone: the reels a little narrower, the effect under the name */
+@media (max-width: 370px) {
+  .news-card .nw-window { width: 94px; }
+  .news-card .nw-won-names b { width: 106px; }
+  .news-card .nw-row { grid-template-columns: 46px minmax(0, 1fr) auto; grid-template-areas: 'leaf name chip' 'leaf when when'; }
+  .news-card .nw-row-art { display: none; }
+}
+/* a phone on its side: a shorter masthead; the machine and the draw side by side */
+@media (orientation: landscape) and (max-height: 560px) {
+  .news-card .farm-panel { padding-top: 12px; gap: 8px; }
+  .news-card .nw-mast { padding-bottom: 6px; }
+  .news-card .nw-mast-art { width: 40px; height: 40px; }
+  .news-card .nw-mast h2 { font-size: 22px; }
+  .news-card .nw-body { gap: 12px; }
+  .news-card .nw-story { grid-template-columns: 62px minmax(0, 1fr); padding: 10px 12px 18px; }
+  .news-card .nw-story-art { width: 62px; height: 62px; }
+  .news-card .nw-story h4 { font-size: 20px; }
+  .news-card .nw-lucky { padding: 10px 12px 14px; gap: 8px; }
+  .news-card .nw-lucky-play { flex-direction: row; justify-content: center; gap: 12px; }
+  .news-card .nw-machine { flex: none; padding: 8px 12px; }
+  .news-card .nw-window { width: 84px; }
+  .news-card .nw-reels { gap: 10px; }
+  .news-card .nw-draw-row,
+  .news-card .nw-won { flex: 1 1 0; min-width: 0; max-width: 200px; }
+  .news-card .btn.nw-draw { min-width: 0; width: 100%; padding-inline: 10px; font-size: 19px; }
+  .news-card .nw-won-names { flex-direction: column; gap: 2px; }
+  .news-card .nw-won-names b { width: auto; }
+}

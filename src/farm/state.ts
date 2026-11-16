@@ -85,7 +85,8 @@ import {
   takeWaiting,
   type MachineState,
 } from './machines'
-import { priceBoosts, priceOf } from './prices'
+import { priceBoosts, priceEvents, priceOf } from './prices'
+import { EVENTS, activeAt, canDraw, dateKey, drawGoods, drawPool, freshEvents, luckyNow, markSeen, newsWaiting, priceFactor, sanitizeEvents, speedAt, type Boost, type EventsRecord } from './events'
 import { DEFAULT_OUTFIT, garmentById, putOn, sanitizeOutfit, type Outfit } from './outfit'
 import { SHOP_LADDERS, clampLevels, freshMarket, ladderPrice, managerPay, managerPct, placesOpen, rollShopper, sanitizeMarket, shopperEvery, shoppersAtOnce, snapPct, type Market } from './market'
 import { dailyOffers, offersPerDay, piecePrice, sanitizeContractor, shortMaterials, type Contractor } from './contractor'
@@ -258,6 +259,8 @@ export interface FarmData {
   place: Place
   /** the house, bought from the estate agent by the market (a farm from before the two maps has always had it) */
   apartment: { owned: boolean }
+  /** the week's events (src/farm/events.ts): the lucky draw of its day, and the events the farm news has shown */
+  events: EventsRecord
 }
 
 /** The two maps: the farm, and the house you buy and drive to. */
@@ -332,6 +335,7 @@ function fresh(): FarmData {
     day: { t: 0 },
     place: 'farm',
     apartment: { owned: false },
+    events: freshEvents(),
   }
 }
 
@@ -604,6 +608,8 @@ function load(text: string | null = readRaw(KEY)): { data: FarmData; savedAt: nu
     data.apartment = { owned: before || field(raw.apartment, 'owned') === true }
     const place = before ? 'home' : field(raw, 'place')
     data.place = place === 'home' && data.apartment.owned ? 'home' : 'farm'
+    // the week's events: the lucky draw as saved and the events the news has shown (a farm from before them: none)
+    data.events = sanitizeEvents(raw.events)
     const queue = (Array.isArray(raw.queue) ? raw.queue : []).map(savedBuyer).filter((b): b is SavedBuyer => !!b)
     return { data, savedAt: num(raw.time, 0) || null, queue: queue.slice(0, queuePlaces(data.queueLevel)) }
   } catch {
@@ -667,6 +673,35 @@ let random: () => number = () => Math.random()
 export function setRandom(f: (() => number) | null) {
   random = f ?? (() => Math.random())
 }
+
+// ───────────────────────────── the week's events: their clock ─────────────────────────────
+
+/** The week's events (src/farm/events.ts) are judged on the device's clock — but not where the game is tested: under
+ *  Vitest, nor on a ?debug page unless it says &events=on (the e2e specs). A test that wants them sets a clock. */
+function eventsByDefault() {
+  if (import.meta.env.MODE === 'test') return false
+  if (typeof location === 'undefined') return true
+  const q = new URLSearchParams(location.search)
+  return !q.has('debug') || q.get('events') === 'on'
+}
+let eventClock: (() => number) | null = eventsByDefault() ? () => Date.now() : null
+/** While the farm goes on for a time away: the time of the step it is on (each step judged at its own). */
+let stepAt: number | null = null
+/** The moment the events are judged at (ms of the device's clock), or null when they are off. */
+export const eventTime = (): number | null => (eventClock ? (stepAt ?? eventClock()) : null)
+/** For the tests: the events on at a time of their own (ms, standing still), on the device's clock again ('device'), or
+ *  off (null). */
+export function setEventClock(at: number | 'device' | null) {
+  eventClock = at === null ? null : at === 'device' ? () => Date.now() : () => at
+  bump()
+}
+/** How much the events on now multiply something (1 with none): how fast crops grow and machines work (the times
+ *  left shown are real seconds: divided by it), how often buyers come, how many gifts a sale brings. */
+export const eventSpeed = (b: Boost) => speedAt(b, eventTime())
+// the lucky draw's goods sell for double on its day, wherever they are sold (every sale prices a good through priceOf)
+priceEvents((good) => priceFactor(good, farm.events, eventTime()))
+/** The gifts a buyer or an order brings with it, each a building material on the farm's dice: one, two on gift day. */
+const rollGifts = () => Array.from({ length: eventSpeed('gifts') }, () => randomItem(random))
 
 // ───────────────────────────── the silo and the barn ─────────────────────────────
 
@@ -1014,7 +1049,7 @@ export function machineRecipe(id: MachineId): Recipe | null {
 }
 
 /** Seconds until every job in a machine's queue is done. */
-export const machineSecondsLeft = (id: MachineId) => queueSecondsLeft(id, farm.machines[id])
+export const machineSecondsLeft = (id: MachineId) => queueSecondsLeft(id, farm.machines[id]) / eventSpeed('machines')
 
 /** How far the job under way is, 0 to 1 (0 with none). */
 export function machineProgress(id: MachineId) {
@@ -1185,18 +1220,20 @@ export function machineView(id: MachineId): MachineView {
   const def = MACHINES[id]
   const m = farm.machines[id]
   const level = machineLevel(m.worked)
+  // (real seconds: a machine rush halves them)
+  const fast = eventSpeed('machines')
   const slots = m.jobs.map((job, i): QueueSlot => {
     const r = recipeOf(id, job) ?? def.recipes[0]
-    const seconds = jobSeconds(r, level.boost)
+    const seconds = jobSeconds(r, level.boost) / fast
     const state = i < m.done ? 'done' : i === m.done ? 'working' : 'waiting'
-    return { recipe: r.id, makes: r.makes, state, seconds, left: state === 'done' ? 0 : state === 'working' ? Math.max(0, seconds - m.progress) : seconds }
+    return { recipe: r.id, makes: r.makes, state, seconds, left: state === 'done' ? 0 : state === 'working' ? Math.max(0, seconds - m.progress / fast) : seconds }
   })
   const recipes = def.recipes.map((r) => ({
     id: r.id,
     makes: r.makes,
     needs: { ...r.needs },
     have: Object.fromEntries(Object.keys(r.needs).map((k) => [k, farm.inv[k as ProduceId]])),
-    seconds: jobSeconds(r, level.boost),
+    seconds: jobSeconds(r, level.boost) / fast,
     can: canAddJob(id, r),
   }))
   const price = slotPrice(id)
@@ -1690,7 +1727,7 @@ function sell(v: Visitor): ItemId[] {
   farm.coins += v.offer
   farm.stats.sold += v.qty
   farm.stats.earned += v.offer
-  const items = v.gift ? [randomItem(random)] : []
+  const items = v.gift ? rollGifts() : []
   v.gift = false
   gainItems(items, { x: v.x, y: 1.9, z: v.z })
   gainXp('sale', v.offer, { x: v.x, y: 1.9, z: v.z })
@@ -1809,7 +1846,7 @@ export function sendOrder(k: number) {
   farm.stats.earned += o.coins
   farm.stats.sold += o.lines.reduce((n, l) => n + l.want, 0)
   farm.stats.sent += 1
-  const items = o.surprise ? [randomItem(random)] : []
+  const items = o.surprise ? rollGifts() : []
   gainItems(items, OFFICE_SCREEN)
   gainXp('order', 1, OFFICE_SCREEN)
   gainXp('sale', o.coins, OFFICE_SCREEN)
@@ -1894,6 +1931,60 @@ function growDispatch(dt: number) {
   }
 }
 
+// ───────────────────────────── the week's events: the lucky draw and the farm news ─────────────────────────────
+
+/** The most a buyer offers, and an order pays (as the save keeps them). */
+const MOST_OFFER = 999
+const MOST_PAY = 99_999
+
+/** The events on now (none while they are off). */
+export const eventsNow = () => {
+  const at = eventTime()
+  return at === null ? [] : activeAt(at)
+}
+/** The goods a lucky draw picks from: those a buyer could ask for (what the farm grows and makes). */
+export const luckyPool = () => drawPool(knownGoods())
+
+/**
+ * The lucky draw (the farm news, src/farm/news): on its day, once, two goods the farm makes, on the farm's dice. From
+ * then until the day ends they sell for double wherever they are sold (priceOf), and what already waits for them pays
+ * their part double at once: the buyers in line who ask for one raise their offer, an order on the board its pay by
+ * their share of it. No XP: an event is not something the player did. The goods, or null (not its day, or drawn).
+ */
+export function drawLucky(): ProduceId[] | null {
+  const at = eventTime()
+  const lucky = luckyNow(at)
+  if (at === null || !lucky || !canDraw(farm.events, at)) return null
+  const goods = drawGoods(knownGoods(), random)
+  if (!goods.length) return null
+  const times = EVENTS.lucky.times
+  for (const v of inLine()) if (goods.includes(v.want)) v.offer = Math.min(MOST_OFFER, Math.round(v.offer * times))
+  // (each order's share in the prices before the draw)
+  for (const slot of farm.orders) {
+    if (!('order' in slot)) continue
+    const o = slot.order
+    const all = o.lines.reduce((n, l) => n + priceOf(l.good) * l.want, 0)
+    const drawn = o.lines.reduce((n, l) => n + (goods.includes(l.good) ? priceOf(l.good) * l.want : 0), 0)
+    if (drawn > 0 && all > 0) o.coins = Math.min(MOST_PAY, Math.round(o.coins * (1 + (drawn / all) * (times - 1))))
+  }
+  farm.events = { draw: { day: dateKey(lucky.start), goods }, seen: markSeen(farm.events, at) }
+  bump()
+  save()
+  return goods
+}
+
+/** The farm news was open: the events on now are shown (its badge goes, but for a draw not made). */
+export function sawNews() {
+  const seen = markSeen(farm.events, eventTime())
+  if (seen === farm.events.seen) return
+  farm.events = { ...farm.events, seen }
+  bump()
+  save()
+}
+
+/** What waits in the farm news: the events on that it has not shown, and the lucky draw not made (its badge). */
+export const newsBadge = () => newsWaiting(farm.events, eventTime())
+
 // ───────────────────────────── time ─────────────────────────────
 
 const stageKey = () =>
@@ -1912,17 +2003,20 @@ const stageKey = () =>
   ].join('|')
 
 function grow(dt: number) {
+  // the harvest festival's crops and the machine rush's jobs go faster (the week's events)
+  const crops = eventSpeed('crops')
+  const machines = eventSpeed('machines')
   for (const b of farm.beds) {
     if (!b.crop) continue
     const def = cropById(b.crop)
     if (b.growth >= def.growSeconds) continue
     // growth stops while the soil is dry; with sprinklers it never is
     const wet = farm.sprinkler ? dt : Math.min(dt, b.water)
-    b.growth = Math.min(def.growSeconds, b.growth + wet)
+    b.growth = Math.min(def.growSeconds, b.growth + wet * crops)
     if (!farm.sprinkler) b.water = Math.max(0, b.water - dt)
   }
   for (const id of PRODUCER_IDS) growProducer(id, dt)
-  for (const id of MACHINE_IDS) growMachine(id, dt)
+  for (const id of MACHINE_IDS) growMachine(id, dt * machines)
   growOrders(dt)
   growDispatch(dt)
 }
@@ -1997,7 +2091,8 @@ function people(dt: number) {
   }
   // the next buyer: the countdown runs once you have planted, and waits at zero while the line is full
   if (!farm.started) return
-  farm.nextVisitorIn = Math.max(0, farm.nextVisitorIn - dt)
+  // (a market day: they come twice as often)
+  farm.nextVisitorIn = Math.max(0, farm.nextVisitorIn - dt * eventSpeed('buyers'))
   if (farm.nextVisitorIn <= 0 && line.length < placesInLine()) {
     farm.nextVisitorIn = arrivalSeconds()
     spawnVisitor()
@@ -2993,24 +3088,36 @@ export const awayNews = (r: AwayReport) => r.goods.length > 0 || r.buyers > 0 ||
 /** The farm goes on for a time away, as it would have: in steps of 5 s (a bed ripens, an animal fills, a machine
  *  finishes in the step it would have), buyers joining the line as they come, as many as it has room for; shoppers
  *  visit your shop and buy as they would have; the day goes on (frozen or not: a test's frozen light is for play), and
- *  a new day brings the contractor's new pieces. */
-function goOn(seconds: number) {
-  for (let left = seconds; left > 0; left -= 5) {
-    const dt = Math.min(5, left)
-    farm.clock += dt
-    farm.day.t += dt
-    grow(dt)
-    shopAway(dt)
+ *  a new day brings the contractor's new pieces. The week's events count for each step at its own time (`from`: when
+ *  the time away began, by the events' clock): one that began or ended while you were away, only for its part. */
+function goOn(seconds: number, from: number | null = null) {
+  // the seconds the buyers' countdown ran beyond the time (twice as fast on a market day)
+  let more = 0
+  let into = 0
+  try {
+    for (let left = seconds; left > 0; left -= 5) {
+      const dt = Math.min(5, left)
+      if (from !== null) stepAt = from + into * 1000
+      farm.clock += dt
+      farm.day.t += dt
+      grow(dt)
+      shopAway(dt)
+      more += dt * (eventSpeed('buyers') - 1)
+      into += dt
+    }
+  } finally {
+    stepAt = null
   }
   contractorDay()
   if (farm.started) {
-    let t = seconds - farm.nextVisitorIn
+    const ran = seconds + more
+    let t = ran - farm.nextVisitorIn
     let n = 0
     if (t >= 0) {
       n = 1 + Math.floor(t / arrivalSeconds())
       t %= arrivalSeconds()
       farm.nextVisitorIn = arrivalSeconds() - t
-    } else farm.nextVisitorIn -= seconds
+    } else farm.nextVisitorIn -= ran
     for (let i = Math.min(n, placesInLine() - inLine().length); i > 0; i--) spawnVisitor({ queued: true })
   }
 }
@@ -3029,7 +3136,9 @@ export function cameBack(seconds: number): AwayReport | null {
   if (!(seconds > 0)) return null
   const counted = Math.min(AWAY_MOST, seconds)
   const before = snapshot()
-  goOn(counted)
+  // the time away began `seconds` ago, by the events' clock
+  const now = eventTime()
+  goOn(counted, now === null ? null : now - seconds * 1000)
   const report = awayReport(before, seconds, counted)
   // the morning that came while away is not told as it turns (the contractor's word is for one seen in play)
   lastPhase = phaseOf(farm.day.t)
