@@ -1,0 +1,26 @@
+/* the photo of the farm (./PhotoButton.tsx): in the clear view only, beside the menu in the top corner */
+.photo-btn {
+  position: fixed;
+  z-index: 13;
+  top: calc(max(var(--top-pad), env(safe-area-inset-top)) + 4px);
+  right: calc(10px + 46px + 8px + env(safe-area-inset-right));
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid var(--night-line);
+  background: var(--night);
+  color: #fff;
+  box-shadow: 0 3px 12px rgba(20, 12, 6, 0.32);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.photo-btn svg { width: 24px; height: 24px; }
+.photo-btn:focus-visible { outline: 3px solid var(--sun); outline-offset: 2px; }
+:root:not([data-hud='clean']) .photo-btn { display: none; }
+/* the soft flash, and the photo shrinking into the button */
+.photo-shot { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; pointer-events: none; }
+.photo-flash { position: absolute; inset: 0; background: #fff; }
+.photo-fly { position: relative; width: 100vw; height: 100vh; object-fit: cover; border: 6px solid #fff; border-radius: 24px; box-shadow: 0 10px 30px rgba(20, 12, 6, 0.4); }

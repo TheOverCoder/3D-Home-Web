@@ -1,39 +1,62 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { test, expect } from './helpers'
 
-// The top of the screen: its corner button (or H) cycles what it shows — everything (coins and basket, the compass,
-// the edit and settings buttons), only the compass, or nothing; the choice is remembered. Outdoors the compass is a
-// thin strip with a scale and the heading under its middle.
+// The top of the screen: its corner menu holds the view's button (or H), which cycles what it shows — everything (the
+// dashboard: the coins, the level, the silo and the barn, the line and the goals round the compass), only the compass,
+// or nothing; the choice is remembered — beside the edit mode and the settings. Outdoors the compass is a strip with a
+// scale, the letters on it and the farm's hour under its middle. The clear view has a photo button: the game's frame,
+// with nothing of the interface, shared or saved.
 
 test.describe('the top of the screen', () => {
-  test('its corner button, or H, cycles everything, only the compass and a clear view', async ({ game }) => {
+  test('its corner menu, or H, cycles everything, only the compass and a clear view', async ({ game }) => {
     await game.ready('farm')
     const { page } = game
     await page.evaluate(() => (window as any).__home.farm.reset())
     // outdoors on the path, so the coin chip and the compass show
     await game.teleport(-1.2, 1.4, 9.0, Math.PI / 2, -0.1)
     const hud = () => page.evaluate(() => document.documentElement.dataset.hud)
+    // the menu in the corner opens into its three buttons, each with its name
+    await expect(page.locator('.hud-mode')).toHaveCount(0)
+    await page.locator('.top-menu-btn').click()
+    await expect(page.locator('.top-dial-btn')).toHaveCount(3)
     for (let k = 0; k < 3 && (await hud()) !== 'all'; k++) await page.locator('.hud-mode').click()
     expect(await hud()).toBe('all')
     await expect(page.locator('.farm-chip')).toBeVisible()
     await expect(page.locator('.compass')).toBeVisible()
-    await expect(page.locator('.compass-heading')).toHaveText(/^\d+°$/)
+    await expect(page.locator('.farm-chip-item.day')).toHaveText(/^\d\d:\d0$/)
     await expect(page.locator('.compass-letter.north')).toHaveText('N')
-    await expect(page.locator('.gear.edit-open')).toBeVisible()
+    await expect(page.locator('.edit-open')).toBeVisible()
+    await expect(page.locator('.edit-open')).toContainText('Edit the farm')
+    // the photo button is the clear view's only
+    await expect(page.locator('.photo-btn')).toHaveCount(0)
+    // a touch elsewhere closes it
+    await page.locator('.farm-chip-item.coins').click()
+    await expect(page.locator('.top-dial')).toHaveCount(0)
 
-    // H: only the compass
+    // H: only the compass, with the hour under it
     await page.keyboard.press('KeyH')
     await page.waitForFunction(() => document.documentElement.dataset.hud === 'compass')
     await expect(page.locator('.farm-chip')).toBeHidden()
-    await expect(page.locator('.gear.edit-open')).toBeHidden()
+    await expect(page.locator('.edit-open')).toHaveCount(0)
     await expect(page.locator('.compass')).toBeVisible()
+    await expect(page.locator('.compass-hour')).toHaveText(/^\d\d:\d0$/)
+    await expect(page.locator('.top-menu-btn')).toBeVisible()
+    await expect(page.locator('.photo-btn')).toHaveCount(0)
 
-    // the corner button: a clear view, only the button itself left
+    // the menu's view button: a clear view, only the menu left
+    await page.locator('.top-menu-btn').click()
     await page.locator('.hud-mode').click()
     await page.waitForFunction(() => document.documentElement.dataset.hud === 'clean')
     await expect(page.locator('.compass')).toHaveCount(0)
     await expect(page.locator('.farm-chip')).toBeHidden()
     await expect(page.locator('.hud-mode')).toBeVisible()
+    await expect(page.locator('.top-menu-btn')).toBeVisible()
+    // and a photo of the farm, without the interface: the game's frame, saved as a picture (no share sheet here)
+    await expect(page.locator('.photo-btn')).toBeVisible()
+    const download = page.waitForEvent('download')
+    await page.locator('.photo-btn').click()
+    const photo = await download
+    expect(photo.suggestedFilename()).toMatch(/^3d-home-[\d-]+\.jpg$/)
 
     // and round to everything again, which is what is saved
     await page.keyboard.press('KeyH')
@@ -86,7 +109,10 @@ test.describe('the top of the screen', () => {
     await expect(page.locator('.compass')).toBeVisible()
     await page.waitForTimeout(1000)
     expect(await page.evaluate(() => (window as any).__home.useHome.getState().compass)).toEqual([])
-    await expect(page.locator('.gear.edit-open')).toHaveCount(0)
+    await page.locator('.top-menu-btn').click()
+    await expect(page.locator('.top-dial-btn')).toHaveCount(2)
+    await expect(page.locator('.edit-open')).toHaveCount(0)
+    await page.locator('.top-menu-btn').click()
     await page.keyboard.press('KeyB')
     await page.waitForTimeout(500)
     expect(
@@ -98,7 +124,9 @@ test.describe('the top of the screen', () => {
     // inside, the button decorates the house
     await game.teleport(-3.5, 1.4, 1.3, Math.PI, 0)
     await page.waitForFunction(() => (window as any).__home.useHome.getState().room === 'living', null, { timeout: 30_000, polling: 200 })
-    await expect(page.locator('.gear.edit-open')).toHaveAttribute('aria-label', /^Decorate/)
+    await page.locator('.top-menu-btn').click()
+    await expect(page.locator('.edit-open')).toHaveAttribute('aria-label', /^Decorate/)
+    await page.locator('.top-menu-btn').click()
     expect(game.errors, game.errors.join('\n')).toEqual([])
   })
 })

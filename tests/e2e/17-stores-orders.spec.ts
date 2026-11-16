@@ -33,14 +33,16 @@ const reset = (game: Game, inv: Record<string, number> = {}, coins = 200) =>
   )
 
 test.describe('the silo, the barn, surprises and orders', () => {
-  test('the chips at the top show how full the silo and the barn are; a tap opens what is inside', async ({ game }) => {
+  test('the gauges at the top show how full the silo and the barn are; a tap tells the number, and Open opens what is inside', async ({ game }) => {
     await game.ready('farm')
     const { page } = game
     await reset(game, { lettuce: 12, lemon: 3, egg: 7, brick: 1 })
     await game.teleport(-1.2, 1.4, 8.0, Math.PI, -0.1)
-    await expect(page.locator('.farm-chip-item.store.silo')).toContainText('15/50')
-    await expect(page.locator('.farm-chip-item.store.barn')).toContainText('8/50')
+    await expect(page.locator('.farm-chip-item.store.silo')).toHaveAttribute('aria-label', /^Silo: 15 of 50 /)
+    await expect(page.locator('.farm-chip-item.store.barn')).toHaveAttribute('aria-label', /^Barn: 8 of 50 /)
     await page.locator('.farm-chip-item.store.silo').click()
+    await expect(page.locator('.top-pop')).toContainText('15 / 50')
+    await page.locator('.top-pop-open').click()
     await until(game, () => (window as any).__home.useHome.getState().panel?.store === 'silo')
     await expect(page.locator('.farm-panel .farm-basket-item')).toHaveCount(2)
     await expect(page.locator('.farm-panel .farm-basket-item .qty')).toHaveText(['12', '3'])

@@ -8,10 +8,11 @@ import { useWalk, walkTo } from '../lib/route/walking'
 import { useSettings } from '../settings'
 import { busy, useHome } from '../store'
 import { ItemPic } from './ItemPic'
+import { DayChip } from '../farm/DayChip'
 import './Compass.css'
 
-// The compass: a thin, see-through strip across the top of the screen that turns as you turn — a fine scale every
-// 15°, small degree numbers, N E S W, the heading you face under the middle — and on it a small mark for each thing
+// The compass: a frosted strip across the top of the screen that turns as you turn — a fine scale every 15°, the
+// letters N E S W big and the ones between smaller, a sun-yellow notch over where you look — and on it a small mark for each thing
 // ready to take that the action button cannot reach from here (a ripe bed, a nest with no room for another egg, a
 // cow full of milk, a batch out of the oven): its picture, how many, and where it lies from where you look. What is
 // behind you waits at the nearer edge, with an arrow; two or more there fold into one "+N" mark (more than the strip
@@ -21,25 +22,26 @@ import './Compass.css'
 // stick, a key, a jump or the mark again takes over. Within reach a thing leaves the compass — the button takes it —
 // and if you walk off without it, it comes back. The silo or the barn full while goods wait for room is a mark too,
 // ringed in red: its picture and how many wait. Outdoors, and indoors while something outside is ready; not when the
-// top of the screen is set clear (HudMode).
+// top of the screen is set clear (HudMode). With everything shown outdoors it stands in the dashboard, between its
+// wings (src/farm/TopDash.tsx keeps the hole and the hour under it); alone at the top, it shows the hour itself.
 
 const SPAN = (75 * Math.PI) / 180 // the strip spans what lies within 75° either side of where you look
-const GAP = 30 // marks closer than this are spread apart
+const GAP = 34 // marks closer than this are spread apart
 const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a))
 /** A compass bearing (degrees, clockwise from north) as a look yaw (radians; 0 looks along −z, positive turns left). */
 const yawOf = (deg: number) => (-deg * Math.PI) / 180
 
-// the scale: a tick every 15° (longer every 45°), a number every 30°, the four letters
+// the scale: a tick every 15°, the four letters, and the letters between them (NE, SE, SW, NW)
 interface Mark {
   deg: number
-  kind: 'tick' | 'major' | 'num' | 'letter'
+  kind: 'tick' | 'mid' | 'letter'
   text?: string
 }
 const SCALE: Mark[] = []
 for (let d = 0; d < 360; d += 15) {
   if (d % 90 === 0) SCALE.push({ deg: d, kind: 'letter', text: 'NESW'[d / 90] })
-  else if (d % 30 === 0) SCALE.push({ deg: d, kind: 'num', text: String(d) })
-  else SCALE.push({ deg: d, kind: d % 45 === 0 ? 'major' : 'tick' })
+  else if (d % 45 === 0) SCALE.push({ deg: d, kind: 'mid', text: ['NE', 'SE', 'SW', 'NW'][(d - 45) / 90] })
+  else SCALE.push({ deg: d, kind: 'tick' })
 }
 
 /** Where something at look yaw `yaw` sits on a strip `half` pixels either side of its middle, and whether it is
@@ -108,25 +110,23 @@ export function Compass() {
   const going = useWalk((s) => s.item)
   const strip = useRef<HTMLDivElement>(null)
   const scale = useRef<(HTMLSpanElement | null)[]>([])
-  const heading = useRef<HTMLSpanElement>(null)
   const pins = useRef(new Map<string, HTMLButtonElement>())
   // the "+N" marks at each edge, and the nearest of what each holds (what a tap turns you to)
   const more = useRef<Record<'left' | 'right', HTMLButtonElement | null>>({ left: null, right: null })
   const moreTo = useRef<Record<'left' | 'right', { id: string; item: string } | null>>({ left: null, right: null })
   const shown = phase === 'playing' && (outdoors || marks.length > 0) && !occupied && mode !== 'clean'
 
-  // the scale, the heading and the marks follow the view every frame, without React: only transforms change
+  // the scale and the marks follow the view every frame, without React: only transforms change
   useEffect(() => {
     if (!shown) return
     let raf = 0
-    let lastDeg = -1
     const frame = () => {
       raf = requestAnimationFrame(frame)
       const el = strip.current
       if (!el) return
       // the scale runs to the strip's faded ends; a mark and its count stay inside it
       const half = el.clientWidth / 2 - 14
-      const pinHalf = el.clientWidth / 2 - 24
+      const pinHalf = el.clientWidth / 2 - 22
       SCALE.forEach((m, k) => {
         const t = scale.current[k]
         if (!t) return
@@ -134,11 +134,6 @@ export function Compass() {
         t.style.transform = `translateX(${p.x}px)`
         t.style.opacity = p.behind ? '0' : String(Math.min(1, 1.25 * (1 - Math.abs(p.rel) / SPAN)))
       })
-      const deg = Math.round((((-look.yaw * 180) / Math.PI) % 360) + 360) % 360
-      if (deg !== lastDeg && heading.current) {
-        heading.current.textContent = `${deg}°`
-        lastDeg = deg
-      }
       // each mark where it lies; behind you (or beyond what the strip holds) folded into one "+N" at an edge; then
       // spread so that none covers another (in the same order, within the strip)
       const from = playerState.position
@@ -229,7 +224,7 @@ export function Compass() {
             </button>
           ))}
         </div>
-        <span className="compass-heading" ref={heading} aria-hidden="true" />
+        {(mode === 'compass' || !outdoors) && <DayChip className="compass-hour" />}
       </div>
     </TopSlot>
   )

@@ -1,10 +1,9 @@
 import { BuyDecor, DecorShop } from './DecorShop'
-import { GoalsPanel, useGoalsReady } from './GoalsPanel'
+import { GoalsPanel } from './GoalsPanel'
 import { AwayPanel, AwayWatcher } from './AwayPanel'
-import { LevelUp, XpChip } from './XpChip'
+import { LevelUp } from './XpChip'
 import { LevelPanel } from './LevelPanel'
 import { WardrobePanel } from '../home/WardrobePanel'
-import { DayChip } from './DayChip'
 import { ManagerPanel, MarketBuyPanel, MarketPanel, MarketPlacePanel } from './MarketPanel'
 import { ContractorPanel } from './ContractorPanel'
 import { EstatePanel, HouseBuyPanel } from './EstatePanel'
@@ -13,15 +12,16 @@ import { LadderCard } from './Ladder'
 import { MachinePanel, MachineSlotCard } from './MachinePanel'
 import './Xp.css'
 import './MarketPanel.css'
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { farmSound, placeSound, uiClick } from '../audio/sound'
 import { coarsePointer } from '../lib/device'
 import { farmFx } from '../fx/fx'
 import { playGesture } from '../lib/gestures'
 import { playerState } from '../lib/playerState'
 import { useHome } from '../store'
-import { BEDS, BED_BOX, CROPS, EXPANSIONS, PACE_LEVELS, PRODUCERS, QUEUE_LEVELS, STORES, STORE_IDS, UPGRADES, arrivalEvery, queuePlaces, type BedDef, type CropId, type StoreId } from './data'
-import { EditButton, EditPanel } from './EditPanel'
+import { BEDS, BED_BOX, CROPS, EXPANSIONS, PACE_LEVELS, PRODUCERS, QUEUE_LEVELS, UPGRADES, arrivalEvery, queuePlaces, type BedDef, type CropId } from './data'
+import { EditPanel } from './EditPanel'
+import { TopDash } from './TopDash'
 import { DecoratePanel } from '../home/DecoratePanel'
 import { BuyPiece, FurnitureShop } from '../home/FurnitureShop'
 import { iconUrl } from './icons'
@@ -41,7 +41,6 @@ import {
   buildBed,
   buy,
   canSell,
-  capacity,
   clockText,
   declineOffer,
   fairPrice,
@@ -56,120 +55,11 @@ import {
   upgradeLevel,
   upgradePrice,
   useFarm,
-  used,
   waiting,
   type Visitor,
 } from './state'
 
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1)
-
-/** Coins, the line at the gate, and how full the silo and the barn are, while you are in the garden. Tap the silo or
- *  the barn for what is inside. */
-function FarmChip() {
-  useFarm((s) => s.rev)
-  const row = useRef<HTMLDivElement>(null)
-  // how far down the chips reach (one row or two), for the compass under them (styles.css: .compass)
-  useEffect(() => {
-    const el = row.current
-    if (!el) return
-    const css = document.documentElement.style
-    const measure = () => css.setProperty('--chips-bottom', `${Math.round(el.getBoundingClientRect().bottom)}px`)
-    measure()
-    const ro = new ResizeObserver(measure)
-    ro.observe(el)
-    return () => {
-      ro.disconnect()
-      css.removeProperty('--chips-bottom')
-    }
-  }, [])
-  const line = inLine().length
-  return (
-    <div className="farm-chip" ref={row} role="group" aria-label="Your coins, the line at the gate, the silo and the barn">
-      <ChipItem value={farm.coins} className="coins" title="Coins">
-        <img src={art('coin')} alt="" />
-        <b>{farm.coins}</b>
-      </ChipItem>
-      {farm.started && (
-        <ChipItem value={line} className={`line${line >= placesInLine() ? ' full' : ''}`} title="Buyers in line at the gate">
-          <Users weight="bold" />
-          <b>
-            {line}/{placesInLine()}
-          </b>
-        </ChipItem>
-      )}
-      {STORE_IDS.map((id) => (
-        <StoreChip key={id} id={id} />
-      ))}
-      <GoalsChip />
-      <DayChip />
-      <XpChip />
-    </div>
-  )
-}
-
-/** The goals board's trophy: how many goals wait to be claimed (it hops as one is reached), and opens the board. */
-function GoalsChip() {
-  const openPanel = useHome((s) => s.openPanel)
-  const panel = useHome((s) => s.panel)
-  const ready = useGoalsReady()
-  return (
-    <ChipItem
-      value={ready}
-      className={`goals${ready ? ' ready' : ''}`}
-      title={ready ? `Goals: ${ready} to claim` : 'Goals'}
-      onClick={() => !panel && openPanel({ kind: 'goals' })}
-      label={ready ? `Goals: ${ready} reached, to claim — open the board` : 'Goals — open the board'}
-    >
-      <img src={art('trophy')} alt="" />
-      {ready > 0 && <b>{ready}</b>}
-    </ChipItem>
-  )
-}
-
-/** How full the silo or the barn is (34/50): it hops as goods come in, turns red when full, and opens its panel. */
-function StoreChip({ id }: { id: StoreId }) {
-  const openPanel = useHome((s) => s.openPanel)
-  const panel = useHome((s) => s.panel)
-  const n = used(id)
-  const cap = capacity(id)
-  return (
-    <ChipItem
-      value={n}
-      className={`store ${id}${n >= cap ? ' full' : ''}`}
-      title={`${STORES[id].name}: ${n} of ${cap}`}
-      onClick={() => !panel && openPanel({ kind: 'store', store: id })}
-      label={`${STORES[id].name}: ${n} of ${cap}${n >= cap ? ', full' : ''} — open it`}
-    >
-      <img src={iconUrl(id)} alt="" />
-      <b>
-        {n}
-        <span className="of">/{cap}</span>
-      </b>
-    </ChipItem>
-  )
-}
-
-/** One count in the chip row. It hops when the count goes up — a harvest landing in the silo, a sale paid — so you
- *  see where it went (two class names, so that a hop right after another starts again). With `onClick` it is a
- *  button (the silo, the barn). */
-function ChipItem({ value, className = '', title, children, onClick, label }: { value: number; className?: string; title?: string; children: ReactNode; onClick?: () => void; label?: string }) {
-  const [last, setLast] = useState(value)
-  const [hops, setHops] = useState(0)
-  if (value !== last) {
-    setLast(value)
-    if (value > last) setHops(hops + 1)
-  }
-  const cls = `farm-chip-item${className ? ` ${className}` : ''}${hops ? (hops % 2 ? ' hop-a' : ' hop-b') : ''}`
-  return onClick ? (
-    <button className={cls} title={title} onClick={onClick} aria-label={label}>
-      {children}
-    </button>
-  ) : (
-    <span className={cls} title={title}>
-      {children}
-    </span>
-  )
-}
 
 const seconds = (s: number) => (s < 60 ? `${s} s` : `${Math.round((s / 60) * 10) / 10} min`)
 
@@ -525,8 +415,7 @@ function ShopPanel() {
   )
 }
 
-/** The garden's interface: the chips at the top outdoors (coins, the line, the silo and the barn) and whichever farm
- *  panel is open. */
+/** The garden's interface: the dashboard at the top outdoors (./TopDash.tsx) and whichever farm panel is open. */
 export function FarmUI() {
   const phase = useHome((s) => s.phase)
   const outdoors = useHome((s) => s.outdoors)
@@ -535,8 +424,7 @@ export function FarmUI() {
   if (phase !== 'playing') return null
   return (
     <>
-      {(outdoors || panel || editing) && <FarmChip />}
-      <EditButton />
+      {(outdoors || panel || editing) && <TopDash />}
       <EditPanel />
       <DecoratePanel />
       {panel?.kind === 'seeds' && <SeedsPanel bed={panel.bed} />}

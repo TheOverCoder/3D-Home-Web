@@ -2967,6 +2967,8 @@ export interface SlotSummary {
   sold: number
   growing: number // beds with something in them
   animals: number
+  /** its level (from its saved XP): the save list's star */
+  level: number
   savedAt: number | null
 }
 
@@ -2974,7 +2976,7 @@ export interface SlotSummary {
 export function slotSummary(n: Slot): SlotSummary {
   if (n === slot) saveNow()
   const text = readRaw(keyFor(n))
-  const empty: SlotSummary = { slot: n, exists: false, played: false, coins: START_COINS, earned: 0, sold: 0, growing: 0, animals: 0, savedAt: null }
+  const empty: SlotSummary = { slot: n, exists: false, played: false, coins: START_COINS, earned: 0, sold: 0, growing: 0, animals: 0, level: 1, savedAt: null }
   if (!text) return empty
   const l = load(text)
   return {
@@ -2986,6 +2988,7 @@ export function slotSummary(n: Slot): SlotSummary {
     sold: l.data.stats.sold,
     growing: l.data.beds.filter((b) => b.crop).length,
     animals: PRODUCER_IDS.reduce((n, id) => n + l.data.producers[id].animals, 0),
+    level: levelOf(l.data.xp.points),
     savedAt: l.savedAt,
   }
 }

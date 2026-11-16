@@ -22,6 +22,7 @@ import {
   woolliness,
 } from './state'
 import { OLD_SAVE, OLD_SAVE_2, justSaved } from './testSaves'
+import { xpAt } from './xp'
 
 // the save files a player downloads and loads again (src/ui/SavesPanel.tsx)
 describe('farm saves', () => {
@@ -39,11 +40,15 @@ describe('farm saves', () => {
 
   it('a farm exported and imported into another slot keeps its coins and its house', () => {
     farm.coins = 1234
+    farm.xp = { points: xpAt(4) + 3, paid: 4 }
     farm.home = { ...farm.home, pieces: farm.home.pieces.map((p) => (p.id === 'pouf' ? { ...p, x: -1.5, z: 1.5 } : p)) }
     const file = exportSlot(1)
     expect(file.name).toMatch(/^3d-home-farm-1-\d{4}-\d\d-\d\d\.json$/)
     expect(importSlot(3, file.text)).toEqual({ ok: true })
     expect(slotSummary(3).coins).toBe(1234)
+    // its level, for the save list's star
+    expect(slotSummary(3).level).toBe(4)
+    expect(slotSummary(2).level).toBe(1)
     const saved = JSON.parse(localStorage.getItem('3d-home:farm:v1:slot3')!)
     expect(saved.home.pieces.find((p: HomePiece) => p.id === 'pouf')).toMatchObject({ x: -1.5, z: 1.5 })
   })

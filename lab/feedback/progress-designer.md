@@ -29,3 +29,11 @@
 03:48 done: loading — all six on one shared stage (sky, name, disc and rays, card, ready moment); G folded into a 'back' state (away report, ✦)
 04:22 checks: npm run check passes; audit clean on all seven boards but for lists that scroll (orders upright with 3–5 orders, sideways with 5; the settings page sideways); the shared sheet now closes only on a touch that began outside it (the Office tab had closed it)
 04:23 done: lab-check 63 of 63; round 5 handed back
+
+## Round 6 (the third round of answers, 323e07f): the chosen designs built into the game
+09:01 start: top D, saves D, intro E, loading B into the game; then the clear view's photo button (asked by the coordinator)
+09:20 done: top D — the dashboard (src/farm/TopDash.tsx: coins counting in, the level's road from XpChip, tank gauges with a bubble and Open, the compass in the dashboard's hole with the hour under it), the corner menu (src/ui/HudMode.tsx: edit, the top's view, settings, with names); the pinned goal left out (it needs the goals board's pin, not chosen yet); a narrow sideways screen takes two rows
+09:45 done: saves D (src/ui/SavesPanel.tsx; the photo and the name left out: the game would have to take and keep them); the slot summary gives each farm's level
+09:50 done: loading B (src/ui/Loading.tsx: the loader's real share and time left) and intro E (src/ui/Intro.tsx): the loading screen until ready, its moment, then the menu over the farm; the farm's name and the choice of place left out
+09:55 done: the photo button (src/ui/PhotoButton.tsx): the clear view only, the game's frame shared or saved
+10:20 done: the four boards marked live (today: pictures of the new game), the map's entries, tests 11/14/17/21/22 and their README rows

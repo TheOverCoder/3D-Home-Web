@@ -12,6 +12,7 @@ import { Curtain } from './ui/Curtain'
 import { GraphicsNotice } from './ui/GraphicsNotice'
 import { Hud } from './ui/Hud'
 import { HudMode } from './ui/HudMode'
+import { PhotoButton } from './ui/PhotoButton'
 import { Intro } from './ui/Intro'
 import { ScreenModal } from './ui/ScreenModal'
 import { SettingsPanel } from './ui/SettingsPanel'
@@ -73,6 +74,7 @@ export function App() {
       <Intro />
       <GraphicsNotice />
       <HudMode />
+      <PhotoButton />
     </>
   )
 }
