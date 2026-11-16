@@ -22,8 +22,10 @@ export interface RecipeView {
   /** how many of each the farm has now */
   have: Partial<Record<ProduceId, number>>
   seconds: number
-  /** its ingredients are in store and a place is free */
+  /** it is open, its ingredients are in store and a place is free */
   can: boolean
+  /** not open yet at the farm's level: the level it opens at (src/farm/unlocks.ts) */
+  locked?: number
 }
 
 export interface LevelView {

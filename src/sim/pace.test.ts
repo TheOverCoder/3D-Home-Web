@@ -4,9 +4,10 @@ import { simulate, type SimRun } from './play'
 import { mmss } from './report'
 import { PACE } from './targets'
 
-// The pace of a new farm (PACE in ./targets.ts), played by the good player of ./policy.ts on three rolls of the dice:
-// each level from 2 to 15 is reached within its band, and the first hour has no stretch with nothing useful to do
-// longer than its most. `npm run sim` prints the whole of a run.
+// The pace of a new farm (PACE in ./targets.ts), played by the good player of ./policy.ts on three rolls of the dice,
+// with the levels' locks on as in play (src/farm/unlocks.ts: the levels in UNLOCKS are set so that this holds): each
+// level from 2 to 15 is reached within its band, and the first hour has no stretch with nothing useful to do longer
+// than its most. `npm run sim` prints the whole of a run.
 
 const LEVELS = Object.keys(PACE.levels).map(Number)
 const TOP = Math.max(...LEVELS)
@@ -15,7 +16,7 @@ const SEEDS = [1, 2, 3]
 let runs: SimRun[] = []
 beforeAll(() => {
   // as long as the first hour and the top band take (a little past its end, to see a level that is late)
-  runs = SEEDS.map((seed) => simulate({ seed, minutes: PACE.idle.within, until: TOP, most: PACE.levels[TOP][1] + 5 }))
+  runs = SEEDS.map((seed) => simulate({ seed, minutes: PACE.idle.within, until: TOP, most: PACE.levels[TOP][1] + 5, open: false }))
 })
 
 describe('the pace of a new farm', () => {

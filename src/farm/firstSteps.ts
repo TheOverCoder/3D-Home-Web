@@ -40,20 +40,17 @@ const reached =
   (f: FarmData) =>
     goalById(goal).measure(f) >= n
 
-/** Beds watered by the player (`stats.watered`: the farm counts it from Part C's save commit on; 0 before). */
-const watered = (f: FarmData) => (f.stats as Partial<Record<string, number>>).watered ?? 0
-
 /** The steps, in order: a crop from seed to sale with an egg collected while it grows, a fleece woven at the loom
  *  (both there on a new farm), and the first order sent — every lesson of the farm's loop, on what a new farm has. */
 export const FIRST_STEPS: readonly StepDef[] = [
   { id: 'plant', say: 'Plant some seeds', pic: { art: 'seedling' }, done: (f) => f.planted.length > 0, target: { bed: ['empty'] }, reward: { coins: 10 }, needs: ['crop:lettuce'] },
   { id: 'eggs', say: 'Collect the eggs', pic: { item: 'egg' }, done: reached('eggs'), target: { good: 'egg' }, reward: { coins: 5 } },
-  // (sprinklers water by themselves; a crop harvested was watered)
+  // (beds watered by the player: `stats.watered`; sprinklers water by themselves; a crop harvested was watered)
   {
     id: 'water',
     say: 'Water your seedlings',
     pic: { art: 'droplet' },
-    done: (f) => watered(f) > 0 || f.sprinkler || reached('harvest')(f),
+    done: (f) => f.stats.watered > 0 || f.sprinkler || reached('harvest')(f),
     target: { bed: ['thirsty', 'growing'] },
     reward: { coins: 5 },
   },

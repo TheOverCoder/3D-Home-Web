@@ -147,6 +147,8 @@ import {
   type Placement,
 } from './layout'
 import { FRUIT, FRUIT_KINDS, SHOP as FARM_SHOP, nextPrice, type FruitKind, type ShopItemView, type ShopKind } from './decor'
+import { lockedAt, machineOpensAt, opensAt, recipeUnlock, type UnlockId } from './unlocks'
+import { advance, currentStep, sanitizeSteps, skipped, stepsFresh, type StepDef, type StepsRecord } from './firstSteps'
 import { PIECES, type PieceType } from '../home/catalogue'
 import { canMoveOpening, canPlacePiece, defaultHome, findFreeSpot, sanitizeHome, type HomeFit, type HomeLayout, type HomePiece } from '../home/layout'
 import { floorById, paintById, type OpeningAt } from '../home/shell'
@@ -225,7 +227,8 @@ export interface FarmData {
   started: boolean // the player has planted something: from then on buyers come by
   planted: CropId[] // kinds ever planted: buyers ask for what you grow
   made: ProduceId[] // everything the farm has ever produced: buyers ask for that too
-  stats: { harvested: number; sold: number; earned: number; declined: number; baked: number; sent: number }
+  /** counts of what the player has done (`watered`: beds watered, from the first steps on; 0 on a farm from before) */
+  stats: { harvested: number; sold: number; earned: number; declined: number; baked: number; sent: number; watered: number }
   /** every good the farm has got by its work: harvested, collected, made, found as a surprise (the goals count it) */
   got: Record<ProduceId, number>
   /** the goals board: the step each goal is on (src/farm/goals.ts) */
@@ -265,6 +268,8 @@ export interface FarmData {
   apartment: { owned: boolean }
   /** the week's events (src/farm/events.ts): the lucky draw of its day, and the events the farm news has shown */
   events: EventsRecord
+  /** a new farm's first steps (src/farm/firstSteps.ts): the step it is on, and whether they are over */
+  firstSteps: StepsRecord
 }
 
 /** The two maps: the farm, and the house you buy and drive to. */
@@ -319,7 +324,7 @@ function fresh(): FarmData {
     started: false,
     planted: [],
     made: [],
-    stats: { harvested: 0, sold: 0, earned: 0, declined: 0, baked: 0, sent: 0 },
+    stats: { harvested: 0, sold: 0, earned: 0, declined: 0, baked: 0, sent: 0, watered: 0 },
     got: emptyInv(),
     goals: Object.fromEntries(GOAL_IDS.map((id) => [id, 0])) as Record<GoalId, number>,
     visitors: [],
@@ -341,6 +346,7 @@ function fresh(): FarmData {
     place: 'farm',
     apartment: { owned: false },
     events: freshEvents(),
+    firstSteps: stepsFresh(),
   }
 }
 
@@ -609,6 +615,8 @@ function load(text: string | null = readRaw(KEY)): { data: FarmData; savedAt: nu
     data.gifts = sanitizeGifts(raw.gifts, data.xp.points)
     // the daily gift: as saved (a farm from before it has never claimed one; one that cannot be read has taken today's)
     data.daily = sanitizeDaily(raw.daily, calendarDay())
+    // the first steps: as saved (a farm from before them has done them: it never sees them)
+    data.firstSteps = sanitizeSteps(raw.firstSteps)
     // the clothes: as saved, each one the wardrobe has at the farm's level (a farm from before it: what it always wore)
     data.outfit = sanitizeOutfit(raw.outfit, levelOf(data.xp.points))
     // the ladders, the market, the contractor and the day (a farm from before them: as on a new farm)
@@ -719,6 +727,32 @@ export const eventSpeed = (b: Boost) => speedAt(b, eventTime())
 priceEvents((good) => priceFactor(good, farm.events, eventTime()))
 /** The gifts a buyer or an order brings with it, each a building material on the farm's dice: one, two on gift day. */
 const rollGifts = () => Array.from({ length: eventSpeed('gifts') }, () => randomItem(random))
+
+// ───────────────────────────── what each level opens: the locks ─────────────────────────────
+
+/** Everything open whatever the level. Until the locks show in the game (plans/first-hour.md, B5) that is everywhere:
+ *  a lock nobody can see would only be a button that does nothing. From then: under Vitest and on a ?debug page unless
+ *  it says &unlocks=on (the tests buy what they need), until a test turns the locks on; the game's own pages lock by
+ *  the level. */
+const allOpenByDefault = () => true
+let allOpen = allOpenByDefault()
+/** For the tests and the simulation: everything open (true), or locked by the level as in play (false). */
+export function unlockAll(on: boolean) {
+  allOpen = on
+  bump()
+}
+/** Locked now: the level it opens at; open: null. Every buy, planting and job of the table (src/farm/unlocks.ts) asks
+ *  it here, and the interface draws the same answer. Only buying is locked: what the farm has stays, and works. */
+export const lockOf = (id: UnlockId): number | null => (allOpen ? null : lockedAt(id, levelOf(farm.xp.points)))
+export const isUnlocked = (id: UnlockId) => lockOf(id) === null
+/** A machine while every recipe of it is locked: the level it opens at; else null. */
+export const machineLock = (id: MachineId): number | null => (allOpen || levelOf(farm.xp.points) >= machineOpensAt(id) ? null : machineOpensAt(id))
+/** What a level opens, as the interface tells it (the level-up show, the level's card): nothing while all is open. */
+export const opensOn = (level: number) => (allOpen ? [] : opensAt(level))
+/** A crop's seeds can be bought now. */
+const cropOpen = (crop: CropId) => isUnlocked(`crop:${crop}`)
+/** A view's `locked` (the level a thing opens at), only while it is locked. */
+const lockField = (locked: number | null) => (locked === null ? {} : { locked })
 
 // ───────────────────────────── the silo and the barn ─────────────────────────────
 
@@ -843,7 +877,7 @@ export const yieldOf = (crop: CropId) => Math.round(cropById(crop).yield * (farm
 export function plant(i: number, crop: CropId) {
   const b = farm.beds[i]
   const def = cropById(crop)
-  if (!b?.built || b.crop || farm.coins < def.seedCost) return false
+  if (!b?.built || b.crop || !cropOpen(crop) || farm.coins < def.seedCost) return false
   farm.coins -= def.seedCost
   b.crop = crop
   b.growth = 0
@@ -870,6 +904,7 @@ export function water(i: number) {
   // XP only for a bed that needed it: under half its water
   if (b.water < fullWater(b.crop) / 2) gainXp('water', 1, bedAt(i))
   b.water = fullWater(b.crop)
+  farm.stats.watered++
   bump()
   save()
   return true
@@ -943,7 +978,7 @@ export function waterBeds(beds: number[]) {
 export function buildBed(i: number) {
   const b = farm.beds[i]
   const price = BEDS[i]?.price ?? 0
-  if (!b || b.built || BEDS[i]?.expansion || farm.coins < price) return false
+  if (!b || b.built || BEDS[i]?.expansion || !isUnlocked('bed') || farm.coins < price) return false
   farm.coins -= price
   b.built = true
   gainXp('build', 1, bedAt(i))
@@ -957,7 +992,8 @@ export function buildBed(i: number) {
  *  (null: you choose the seeds each time). */
 export function fixBed(i: number, crop: CropId | null) {
   const b = farm.beds[i]
-  if (!b?.built) return false
+  // (a crop not open yet cannot be chosen: the button would offer seeds it cannot buy)
+  if (!b?.built || (crop && !cropOpen(crop))) return false
   b.fixed = crop
   bump()
   save()
@@ -1114,15 +1150,18 @@ function machineSound(id: MachineId, sound: Parameters<typeof farmSound>[0]) {
 /** A recipe's ingredients are all in store. */
 const hasNeeds = (r: Recipe) => Object.entries(r.needs).every(([k, per]) => farm.inv[k as ProduceId] >= (per ?? 0))
 
-/** A job of a recipe could go into a machine's queue now: a place is free and its ingredients are in store. */
-export const canAddJob = (id: MachineId, r: Recipe) => hasPlace(farm.machines[id]) && hasNeeds(r)
+/** A recipe is open at the farm's level (src/farm/unlocks.ts). */
+const recipeOpen = (id: MachineId, recipe: string) => isUnlocked(recipeUnlock(id, recipe))
+
+/** A job of a recipe could go into a machine's queue now: it is open, a place is free and its ingredients are in store. */
+export const canAddJob = (id: MachineId, r: Recipe) => recipeOpen(id, r.id) && hasPlace(farm.machines[id]) && hasNeeds(r)
 
 /** A job into a machine's queue, at the end or at a waiting place: its ingredients are taken now, and it starts as
  *  soon as the machine is free. No XP for it (it can be taken out again, its ingredients back): its job's comes as it
  *  is collected. */
 export function addJob(id: MachineId, recipe: string, at?: number): boolean {
   const r = recipeOf(id, recipe)
-  if (!r || !hasNeeds(r) || !insertJob(farm.machines[id], r.id, at)) return false
+  if (!r || !recipeOpen(id, r.id) || !hasNeeds(r) || !insertJob(farm.machines[id], r.id, at)) return false
   for (const [k, per] of Object.entries(r.needs)) farm.inv[k as ProduceId] -= per ?? 0
   machineSound(id, MACHINES[id].sounds.load)
   bump()
@@ -1203,7 +1242,7 @@ export const slotPrice = (id: MachineId) => queuePrice(farm.machines[id].capacit
 export function buySlot(id: MachineId): boolean {
   const m = farm.machines[id]
   const price = slotPrice(id)
-  if (price === null || m.capacity >= QUEUE.max || farm.coins < price) return false
+  if (price === null || m.capacity >= QUEUE.max || machineLock(id) !== null || farm.coins < price) return false
   farm.coins -= price
   m.capacity++
   gainXp('build', 1, machineAt(id))
@@ -1232,7 +1271,7 @@ function growMachine(id: MachineId, dt: number) {
 }
 
 /** What a machine's panel shows (src/farm/machineView.ts): its level, its queue as places, what it can make and whether
- *  each can go in now, and the next place's price. */
+ *  each can go in now (one not open yet: the level it opens at), and the next place's price. */
 export function machineView(id: MachineId): MachineView {
   const def = MACHINES[id]
   const m = farm.machines[id]
@@ -1252,6 +1291,7 @@ export function machineView(id: MachineId): MachineView {
     have: Object.fromEntries(Object.keys(r.needs).map((k) => [k, farm.inv[k as ProduceId]])),
     seconds: jobSeconds(r, level.boost) / fast,
     can: canAddJob(id, r),
+    ...lockField(lockOf(recipeUnlock(id, r.id))),
   }))
   const price = slotPrice(id)
   return { id, name: def.name, level, capacity: m.capacity, slots, recipes, upgrade: price === null ? null : { capacity: m.capacity + 1, price } }
@@ -1319,7 +1359,7 @@ export const arrivalSeconds = () => arrivalEvery(farm.paceLevel)
 export function buy(id: UpgradeId) {
   const u = UPGRADES.find((x) => x.id === id)
   const price = upgradePrice(id)
-  if (!u || owned(id) || farm.coins < price) return false
+  if (!u || owned(id) || !isUnlocked(`upgrade:${id}`) || farm.coins < price) return false
   farm.coins -= price
   let note = `${u.name}: done`
   if (u.herd) {
@@ -1355,7 +1395,7 @@ export function buy(id: UpgradeId) {
 /** Buys a field next to your land: the hedge moves out round it, and there is room to move things onto. */
 export function buyLand(id: ParcelId) {
   const p = PARCELS[id]
-  if (!p || !canBuyParcel(farm.layout, id) || farm.coins < p.price) return false
+  if (!p || !canBuyParcel(farm.layout, id) || !isUnlocked(`parcel:${id}`) || farm.coins < p.price) return false
   farm.coins -= p.price
   farm.layout = { ...farm.layout, land: [...farm.layout.land, id] }
   gainXp('build')
@@ -1410,16 +1450,27 @@ export function sendBedHome(i: number): Fit {
 export const decorOwned = (kind: ShopKind) => farm.layout.decor.filter((d) => d.kind === kind).length + farm.layout.stored[kind]
 /** What the next one of a kind costs. */
 export const decorPrice = (kind: ShopKind) => nextPrice(FARM_SHOP[kind].price, decorOwned(kind))
-/** Whether one more of a kind can be bought (a kind has a most: a fruit kind's plants). */
-export const decorForSale = (kind: ShopKind) => decorOwned(kind) < mostOf(kind)
+/** Whether one more of a kind can be bought: it is open at the farm's level, and a kind has a most (a fruit kind's
+ *  plants). */
+export const decorForSale = (kind: ShopKind) => decorOwned(kind) < mostOf(kind) && isUnlocked(`decor:${kind}`)
 
-/** Every kind of the farm's shop as it shows it: how many the farm has and the next one's price. */
+/** Every kind of the farm's shop as it shows it: how many the farm has, the next one's price, and the level it opens at
+ *  while it is locked. */
 export function shopView(): ShopItemView[] {
   return (Object.keys(FARM_SHOP) as ShopKind[]).map((kind) => {
     const def = FARM_SHOP[kind]
     const price = decorPrice(kind)
     const fruit = isPlant(kind) ? FRUIT[kind as FruitKind].fruit : undefined
-    return { kind, tab: def.tab, name: def.name, owned: decorOwned(kind), price, can: decorForSale(kind) && farm.coins >= price, ...(fruit ? { fruit } : {}) }
+    return {
+      kind,
+      tab: def.tab,
+      name: def.name,
+      owned: decorOwned(kind),
+      price,
+      can: decorForSale(kind) && farm.coins >= price,
+      ...(fruit ? { fruit } : {}),
+      ...lockField(lockOf(`decor:${kind}`)),
+    }
   })
 }
 
@@ -2149,10 +2200,50 @@ export function tick(dt: number) {
   runShop(dt)
   runDay(dt)
   neverStuck()
+  stepsOn()
   if (stageKey() !== before) {
     bump()
     save()
   }
+}
+
+// ───────────────────────────── a new farm's first steps ─────────────────────────────
+
+/** The first steps (src/farm/firstSteps.ts) are quiet — nothing shown, passed or paid — until their hint is in the game
+ *  (plans/first-hour.md, C3): everywhere until then. From then: they run on the game's own pages; under Vitest and on
+ *  a ?debug page unless it says &steps=on, they are quiet until a test turns them on. */
+const stepsQuietByDefault = () => true
+let stepsQuiet = stepsQuietByDefault()
+/** For the tests and the simulation: the steps quiet (true), or running as on a new farm's own pages (false). */
+export function quietSteps(on: boolean) {
+  stepsQuiet = on
+  bump()
+}
+/** The step to show now (null: over, or quiet). */
+export const stepNow = () => (stepsQuiet ? null : currentStep(farm.firstSteps))
+/** They are running: the daily gift waits for them. */
+export const stepsBusy = () => !stepsQuiet && !farm.firstSteps.over
+/** The steps passed and not shown yet (the hint's ✓ takes them). */
+const passedNow: StepDef[] = []
+export const takePassed = () => passedNow.splice(0)
+/** Skipped from the hint: over, nothing more paid. */
+export function skipSteps() {
+  farm.firstSteps = skipped(farm.firstSteps)
+  bump()
+  save()
+}
+/** Passes the steps the farm has done, paying each one's reward (coins, or goods into their building past full; no XP:
+ *  a reward is not something done). Each frame, from `tick`: whatever function changed the farm's numbers, they are
+ *  read a frame later. The record is saved as it pays, so a step is never paid twice. */
+function stepsOn() {
+  if (stepsQuiet || farm.firstSteps.over) return
+  const { rec, passed } = advance(farm.firstSteps, farm)
+  if (rec === farm.firstSteps) return
+  for (const step of passed) give(step.reward)
+  farm.firstSteps = rec
+  passedNow.push(...passed)
+  bump()
+  save()
 }
 
 // ───────────────────────────── the goals board ─────────────────────────────
@@ -2291,8 +2382,9 @@ export function quietDaily(on: boolean) {
 export const dailyNow = (): DailyView => dailyView(farm.daily, calendarDay(), levelOf(farm.xp.points))
 
 /** Today's gift waits for the player: it can be claimed, on a farm that has begun (one that has planted: a new farm's
- *  first minutes are for learning to play), and it is not put out of the way. The menu in the corner shows it then. */
-export const dailyWaiting = () => !dailyQuiet && farm.started && dailyStatus(farm.daily, calendarDay()).ready
+ *  first minutes are for learning to play) and is through its first steps, and it is not put out of the way. The menu
+ *  in the corner shows it then. */
+export const dailyWaiting = () => !dailyQuiet && farm.started && !stepsBusy() && dailyStatus(farm.daily, calendarDay()).ready
 
 /** Today's gift opens by itself: it waits, and it has not opened by itself today (it does once a day, then only from
  *  the menu). */
@@ -3239,6 +3331,8 @@ export function resetFarm() {
   const f = fresh()
   Object.assign(farm, f)
   forgetWalkers()
+  // (the steps passed on the farm before are not this one's to show)
+  takePassed()
   lastAway = null
   saveNow()
   bump()
@@ -3302,6 +3396,7 @@ export function switchSlot(n: Slot) {
   if (panel) useHome.getState().closePanel()
   // what happened on the farm left behind is not this one's
   lastAway = null
+  takePassed()
   resumeFrom(l)
   bump()
 }
@@ -3352,6 +3447,8 @@ export function importSlot(n: Slot, text: string): { ok: true } | { ok: false; e
     Object.assign(farm, l.data)
     farm.visitors = []
     forgetWalkers()
+    // (the steps passed on the farm before are not this one's to show)
+    takePassed()
     resumeFrom(l)
     bump()
   }

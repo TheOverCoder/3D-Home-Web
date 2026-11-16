@@ -50,9 +50,11 @@ import {
   harvestBeds,
   harvestFits,
   inLine,
+  isUnlocked,
   ladderNextPrice,
   ladderOpen,
   machineCollectable,
+  machineLock,
   machinePoint,
   machineSecondsLeft,
   machineStage,
@@ -131,10 +133,10 @@ function shortCrop(): CropId | null {
 const MILL_STOCK = 6
 /**
  * Which seeds go in: what the line and the orders are short of; else wheat or sugar cane while the mill would run
- * short; else the quickest crop. Only seeds the player can pay for.
+ * short; else the quickest crop. Only seeds open at the farm's level that the player can pay for.
  */
 function cropToPlant(): CropId | null {
-  const can = (c: CropId) => farm.coins >= cropById(c).seedCost
+  const can = (c: CropId) => isUnlocked(`crop:${c}`) && farm.coins >= cropById(c).seedCost
   const short = shortCrop()
   if (short && can(short)) return short
   for (const c of ['wheat', 'sugarcane'] as const) if (farm.inv[c] + growing(c) < MILL_STOCK && can(c)) return c
@@ -157,7 +159,8 @@ const worthTakingOut = (id: MachineId) => {
   return m.done > 0 && (machineStage(id) !== 'working' || m.jobs.length >= m.capacity) && machineCollectable(id) > 0
 }
 
-/** The recipe to queue next at a machine: the dearest whose ingredients are in store. */
+/** The recipe to queue next at a machine: the dearest whose ingredients are in store (and open at the farm's level:
+ *  canAddJob asks). */
 const nextJob = (id: MachineId) => [...MACHINES[id].recipes].sort((a, b) => produceById(b.makes).price - produceById(a.makes).price).find((r) => canAddJob(id, r))
 
 /** An order whose every line the silo and the barn can fill now. */
@@ -178,20 +181,22 @@ interface Purchase {
 }
 
 /** Everything there is to buy, each with its price now: the beds to build, the farm shop's upgrades and animals, the
- *  order office's upgrades, the machines' queues, land, the manager's better price. */
+ *  order office's upgrades, the machines' queues, land, the manager's better price. Only what is open at the farm's
+ *  level (src/farm/unlocks.ts): the player sees the rest locked, and does not try it. */
 function forSale(): Purchase[] {
   const out: Purchase[] = []
   BEDS.forEach((b, i) => {
-    if (b.price > 0 && !b.expansion && !farm.beds[i].built) out.push({ what: `build bed ${i}`, at: bedSpot(i), price: b.price, buy: () => buildBed(i) })
+    if (b.price > 0 && !b.expansion && !farm.beds[i].built && isUnlocked('bed')) out.push({ what: `build bed ${i}`, at: bedSpot(i), price: b.price, buy: () => buildBed(i) })
   })
-  for (const u of UPGRADES) if (!owned(u.id)) out.push({ what: u.name.toLowerCase(), at: SHOP, price: upgradePrice(u.id), buy: () => buy(u.id) })
+  for (const u of UPGRADES) if (!owned(u.id) && isUnlocked(`upgrade:${u.id}`)) out.push({ what: u.name.toLowerCase(), at: SHOP, price: upgradePrice(u.id), buy: () => buy(u.id) })
   for (const id of ['slots', 'wait'] as const) if (!officeMaxed(id)) out.push({ what: `office: ${id}`, at: OFFICE_STAND, price: officePrice(id), buy: () => buyOffice(id) })
   for (const id of MACHINE_IDS) {
     const price = slotPrice(id)
-    if (price !== null) out.push({ what: `${id}: a place in its queue`, at: machineAt(id), price, buy: () => buySlot(id) })
+    if (price !== null && machineLock(id) === null) out.push({ what: `${id}: a place in its queue`, at: machineAt(id), price, buy: () => buySlot(id) })
   }
   // land is bought in the edit mode, from wherever the player stands
-  for (const id of PARCEL_IDS) if (canBuyParcel(farm.layout, id)) out.push({ what: PARCELS[id].name.toLowerCase(), at: null, price: PARCELS[id].price, buy: () => buyLand(id) })
+  for (const id of PARCEL_IDS)
+    if (canBuyParcel(farm.layout, id) && isUnlocked(`parcel:${id}`)) out.push({ what: PARCELS[id].name.toLowerCase(), at: null, price: PARCELS[id].price, buy: () => buyLand(id) })
   if (ladderOpen('rate')) out.push({ what: 'a better price from the manager', at: MARKET, price: ladderNextPrice('rate'), buy: () => buyLadder('rate') })
   return out
 }
@@ -255,7 +260,7 @@ export const PRIORITIES: { name: string; move: () => Move | null }[] = [
       return null
     },
   },
-  // spending, as soon as the coins run to it: the cheapest thing for sale
+  // spending, as soon as the coins run to it: the cheapest thing for sale (and open at the farm's level)
   {
     name: 'buy',
     move: () => {

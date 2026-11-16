@@ -20,8 +20,9 @@ export type RecipeKey = 'mill:wheat' | 'mill:sugarcane' | 'loom:wool' | `oven:${
  *  fields among them), a recipe, a kind of the edit mode's shop (decoration, fruit trees and bushes), a field. */
 export type UnlockId = 'bed' | `crop:${CropId}` | `upgrade:${UpgradeId}` | `recipe:${RecipeKey}` | `decor:${ShopKind}` | `parcel:${ParcelId}`
 
-/** The level each opens at (1: from the start). A first draft, by theme, something every level from 2 to 13; the
- *  pace simulation (src/sim, `npm run sim`) sets the numbers. What a recipe needs opens no later than it (the test). */
+/** The level each opens at (1: from the start). By theme, something every level from 2 to 13, and held to the pace a
+ *  new farm is held to: the pace simulation plays with these locks on (src/sim/pace.test.ts, `npm run sim`; a number
+ *  moved is checked there). What a recipe needs opens no later than it (the test). */
 export const UNLOCKS = {
   // a new farm: two crops for the seeds it can buy, the beds staked out, and the loom (the sheep come with fleeces)
   bed: 1,

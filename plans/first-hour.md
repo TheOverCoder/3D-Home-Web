@@ -87,6 +87,22 @@ part is built, replace its plan with two lines on what was built and where.
 | 12 | orange tree; North-east and North-west meadows |
 | 13 | cherry tree, wishing well |
 
+**Set by the sim (B2).** Part A's sim plays with the locks on (`unlockAll(false)`; the policy asks `isUnlocked`
+before every buy and planting, `canAddJob` before a job). The draft above already holds `PACE` on seeds 1–3 (and 4–11)
+with no wait over 4 s, so no level moved. Minutes of play, seeds 1–3:
+
+| Level | 2 | 3 | 5 | 8 | 10 | 12 | 15 |
+|---|---|---|---|---|---|---|---|
+| `PACE` band | ≤ 3 | 1–6 | 5–15 | 14–32 | 22–48 | 32–67 | 50–105 |
+| locks off | 1:24–1:32 | 2:39–3:11 | 6:25–7:51 | 16:38–19:14 | 27:18–29:38 | 39:47–42:17 | 70:24–70:48 |
+| locks on | 1:04 | 2:40–2:58 | 6:42–7:31 | 17:47–19:01 | 27:59–29:08 | 41:34–46:04 | 70:42–73:45 |
+| locks on, the first steps paid (C1) | 1:04 | 2:33–2:49 | 6:27–7:10 | 17:09–19:17 | 26:31–29:29 | 37:45–45:17 | 66:01–72:48 |
+
+The locks cost a minute or two from level 6 on (the sheep and the busier lane, bought at level 5–6 without them, wait
+for 7 and 6); level 2 comes sooner (the first seeds are lettuce, not wheat for the mill). `SIM_LOCKS=off npm run sim`
+plays without them. Since C1 the sim also runs the first steps (`quietSteps(false)`): their 80 coins come as it does
+them, and the daily gift waits for them (the last row).
+
 ### The farm's side: gate in the lowest function (state.ts)
 
 Every way to buy, plant or add a job goes through one function in `src/farm/state.ts` (the action button, panels,
