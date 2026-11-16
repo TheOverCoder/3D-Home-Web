@@ -82,6 +82,7 @@ export function LevelSheet({ name, label, top, scrolls = false, onClose, childre
   const shade = useTransform(pull, [0, 360], [1, 0.15])
   // a swipe that began on a button is not a press of it
   const swiped = useRef(false)
+  const outside = useRef(false)
   const letGo = (_: unknown, i: PanInfo) => {
     const far = wide ? i.offset.x : i.offset.y
     const fast = wide ? i.velocity.x : i.velocity.y
@@ -92,7 +93,13 @@ export function LevelSheet({ name, label, top, scrolls = false, onClose, childre
     } else animate(pull, 0, SPRING.pop)
   }
   return (
-    <div className={`farm-backdrop v-level-sheet${scrolls ? ' scrolls' : ''} ${name}`} onClick={onClose}>
+    <div
+      className={`farm-backdrop v-level-sheet${scrolls ? ' scrolls' : ''} ${name}`}
+      // a touch outside closes it, but only one that began outside: a press that began on the sheet and ended outside it
+      // (the sheet grew shorter under the finger, a tab changed its height) is not a touch outside
+      onPointerDown={(e) => (outside.current = !(e.target as Element).closest('.lv-sheet'))}
+      onClick={(e) => outside.current && !(e.target as Element).closest('.lv-sheet') && onClose()}
+    >
       <m.div className="lv-shade" aria-hidden="true" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.22 }}>
         <m.span style={{ opacity: shade }} />
       </m.div>

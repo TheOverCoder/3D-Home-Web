@@ -178,6 +178,12 @@
   .v-orders-e .oe-pegs i.soon { animation: none; }
 }
 
+/* upright the sheet keeps one height whichever tab is open (it never jumps under the finger) */
+@media (orientation: portrait) {
+  .v-orders-e .oe-board,
+  .v-orders-e .oe-office { min-height: min(500px, 58dvh); }
+}
+
 /* a tablet or a computer: two planks side by side */
 @media (min-width: 600px) and (min-height: 600px) {
   .v-orders-e .lv-sheet { width: min(640px, 100%); }
