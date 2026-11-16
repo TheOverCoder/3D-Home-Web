@@ -3,6 +3,7 @@ import { useEffect } from 'react'
 import { XP_FOR, type ProduceId } from '../../../src/farm/data'
 import type { LevelView } from '../../../src/farm/levelView'
 import { EASE } from '../../../src/ui/motion'
+import type { Boxes } from './gifts'
 
 // What the level's card needs for the feeling of progress (lab/CRAFT.md, The feeling of progress), beside the game's
 // LevelView: what was gained since the card was last open (the bar fills that part brighter: a small win seen), and
@@ -24,8 +25,8 @@ export interface LevelState extends LevelView {
   gain: number
   /** what waits on the farm now (missing in the game: the compass's ready marks × XP_FOR) */
   ready?: Ready
-  /** SAMPLE (variant E only, a feature the game does not have): how many of this level's quarter gifts were opened */
-  opened?: number
+  /** SAMPLE (variant F, a feature the game does not have): the level's quarter boxes, opened and waiting */
+  boxes?: Boxes
 }
 
 /** Beds of a crop ready to harvest: two XP a bed (gainXp('harvest', 1) per bed). */
