@@ -8,12 +8,14 @@ import type { Film } from './format'
 // The turn: at the start he looks down on the farmer (shot from below, laughing); at the end the farmer stands over
 // the shop (shot from the ground), and he is the one selling — at the farmer's price.
 // Beats (lab/FILM.md): cold open at closing time with the case already on its way (we know before he does) · he
-// mocks twice · the snap kills his muzak · the case in slow motion, "boss" said to the farmer · the thud, the glow, the
-// money · the time-skip count · "The shop is yours" (the game's own words) · silence, then the beat drops and the shop
-// lights up and fills · the hero walk from the ground · the banner · the button: he begs ("Buy my mug?") and gets the
-// 20% he always gave.
-// Voices (./voice.ts): every line is said aloud in its speaker's voice — the manager quick, nasal and up and down, the
-// contractor slow and deep, the farmer low and level — made from the line's own text, nothing recorded.
+// mocks twice, carrots both times (he pays 40% for them) · the snap kills his muzak · the case in slow motion, "boss"
+// said to the farmer · the thud, the glow, the money · the time-skip count · "The shop is yours" (the game's own
+// words) · silence, then the beat drops and the shop lights up and fills · the hero walk from the ground · the banner ·
+// the button: he begs ("Want my mug?") and is offered 20%, half what he paid (and the 20% he gave at first).
+// Words: plain English a player who learnt it at school follows at once, one idea a line, no idioms.
+// Voices (./speak.ts, ./voice.ts): every line is read aloud in words in its speaker's voice — the manager quick and a
+// little high, the contractor slow and deep, the farmer low and level — nothing recorded.
+// Light (./stage3d.ts, portrait): the talking scenes light the faces as a film does, a warm key and a cold edge at night.
 // Where: the market's side of the lane, the same on every farm. The camera never turns across the lane to the farm
 // (lab/films/set.ts, looksAtFarm): the last beat is a deadpan two-shot from the lane, the shop and its banner behind.
 
@@ -64,13 +66,13 @@ export const SUPERMARKET: Film = {
       side: 1,
       shots: [
         {
-          len: 2.6,
+          len: 3.0,
           cam: { on: ['you', 'boss'], from: 'side', size: 'full' },
           do: [
             { at: 0, who: 'boss', face: 'screen' },
             { at: 0, who: 'boss', pose: 'type' },
           ],
-          say: [{ at: 0.3, who: 'boss', text: 'Back to sell me carrots, kid?', mood: 'smug' }],
+          say: [{ at: 0.3, who: 'boss', text: 'More carrots? I pay 40%, kid.', mood: 'smug', hold: 2.8 }],
         },
         {
           len: 1.5,
@@ -90,7 +92,7 @@ export const SUPERMARKET: Film = {
           fx: [{ at: 0.25, fx: 'tag', art: 'coin', text: String(MANAGER.shopPrice) }],
         },
         {
-          len: 2.5,
+          len: 2.8,
           cam: { on: 'boss', size: 'medium', angle: 'low' },
           do: [
             { at: 0, who: 'boss', face: 'you' },
@@ -98,7 +100,7 @@ export const SUPERMARKET: Film = {
             { at: 0, who: 'you', pose: 'stand' },
             { at: 0, who: 'you', face: 'boss' },
           ],
-          say: [{ at: 0.25, who: 'boss', text: 'Ha! With what? Turnips?', mood: 'smug' }],
+          say: [{ at: 0.2, who: 'boss', text: 'You? Buy my shop? With carrots?', mood: 'smug' }],
         },
         {
           len: 1.2,
@@ -122,7 +124,7 @@ export const SUPERMARKET: Film = {
             { at: 0, who: 'guy', to: ['office-door', 'aside'], pace: 1.0 },
             { at: 0, who: 'you', pose: 'cool' },
           ],
-          say: [{ at: 1.0, who: 'guy', text: 'Heavy one, boss.' }],
+          say: [{ at: 0.9, who: 'guy', text: 'Where do I put it, boss?' }],
           hear: [{ at: 0.3, music: 'tension' }],
         },
         {
@@ -142,7 +144,7 @@ export const SUPERMARKET: Film = {
           do: [{ at: 0.35, who: 'boss', pose: 'surprise' }],
           hear: [
             { at: 0.15, sting: 'glow' },
-            { at: 0.45, voice: 'boss', text: 'Ooh…', mood: 'shock' },
+            { at: 0.45, voice: 'boss', text: 'Whoa…', mood: 'shock' },
           ],
           fx: [{ at: 0.15, fx: 'glow' }],
         },
@@ -156,7 +158,7 @@ export const SUPERMARKET: Film = {
           cam: { on: 'boss', from: 'you', size: 'medium' },
           caption: 'Two hours later.',
           do: [{ at: 0, who: 'boss', pose: 'count' }],
-          say: [{ at: 0.5, who: 'boss', text: '…1,498. 1,499…', hold: 1.9 }],
+          say: [{ at: 0.5, who: 'boss', text: '…1,499…', hold: 1.9 }],
           hear: [
             { at: 0.9, sting: 'tick' },
             { at: 1.4, sting: 'tick' },
@@ -171,7 +173,7 @@ export const SUPERMARKET: Film = {
             { at: 0.25, who: 'you', pose: 'shake' },
           ],
           props: [{ at: 1.3, prop: 'screen', show: 'yours' }],
-          say: [{ at: 0.2, who: 'boss', text: '1,500. The shop is yours.', mood: 'warm' }],
+          say: [{ at: 0.2, who: 'boss', text: '1,500. The shop is yours.', mood: 'warm', hold: 2.6 }],
           hear: [
             { at: 1.35, sting: 'riser' },
             { at: 2.45, music: 'stop' },
@@ -262,13 +264,13 @@ export const SUPERMARKET: Film = {
             { at: 0, who: 'boss', to: ['doorstep', 'front-left'], pace: 1.25 },
             { at: 1.9, who: 'boss', face: 'you' },
           ],
-          say: [{ at: 1.2, who: 'boss', text: 'Buy my mug? Mint condition.', mood: 'sad' }],
+          say: [{ at: 1.2, who: 'boss', text: 'Want my mug? Only 10 coins.', mood: 'sad' }],
         },
         {
-          // the last laugh, from below: the farmer does not even turn, the banner over them
-          len: 2.0,
+          // the last laugh, from below, after a held beat: the farmer does not even turn, the banner over them
+          len: 2.3,
           cam: { on: 'you', from: 0, size: 'medium', angle: 'low' },
-          say: [{ at: 0.75, who: 'you', text: 'I’ll give you 20%.', mood: 'cool' }],
+          say: [{ at: 0.9, who: 'you', text: 'I’ll give you 20%.', mood: 'cool', hold: 2.4 }],
         },
         {
           // the same square two-shot, wider: he freezes, wilts and trudges off; the first shoppers go in behind them

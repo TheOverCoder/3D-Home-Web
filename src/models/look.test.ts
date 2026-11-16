@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { Color } from 'three'
-import { random } from '../lib/sculpt'
+import { Color, Matrix4, Vector3 } from 'three'
+import { random, type Parts } from '../lib/sculpt'
 import { OLD_SAVE } from '../farm/testSaves'
 import { CONTRACTOR_LOOK, LOOK_VARIETY, MANAGER_LOOK, TRAITS, rollLook, sanitizeLook } from './look'
-import { EYES, HAT_BAND, PersonRig, personParts, type PersonLook } from './person'
+import { EYES, HAT_BAND, PERSON, PersonRig, personGeometries, personParts, type PersonLook } from './person'
 
 // The people engine (src/models/look.ts): a rolled look is saved as it is and read back the same, the looks saved before
-// it (buyers in line in an older save) load unchanged, and the table makes enough different people.
+// it (buyers in line in an older save) load unchanged, and the table makes enough different people. Its rig
+// (src/models/person.ts): a head turns at the foot of its neck.
 
 /** Looks as the buyers' line saved them before the people engine: four colours, three hair styles, a straw hat or none. */
 const OLD_LOOKS: PersonLook[] = [
@@ -99,5 +100,40 @@ describe('looks', () => {
     parts.cull(() => k++ > 0)
     expect(parts.meshes.head.count).toBe(1)
     near(second().slice(0, 3), EYES)
+  })
+
+  it('a head nods, tilts and turns at the foot of its neck: the neck stays in the collar, and at rest the head is where it always was', () => {
+    // where the rig draws its head's part (through the crowd's own way of drawing it)
+    const headOf = (rig: PersonRig) => {
+      const m = new Matrix4()
+      rig.write({ at: () => {}, putMatrix: (part: string, local: Matrix4) => void (part === 'head' && m.copy(local)) } as unknown as Parts)
+      return m
+    }
+    // the joint is at the neck's foot: a few centimetres over the bottom of the neck, buried in the shoulders
+    const head = personGeometries().head
+    head.computeBoundingBox()
+    expect(PERSON.neckY - head.boundingBox!.min.y).toBeGreaterThan(0)
+    expect(PERSON.neckY - head.boundingBox!.min.y).toBeLessThan(0.06)
+    for (const look of [OLD_LOOKS[1], { ...OLD_LOOKS[2], head: 1.1 }, { ...OLD_LOOKS[0], head: 0.9 }]) {
+      const rig = new PersonRig(look)
+      const rest = headOf(rig)
+      // at rest, the head's middle stands at the head's height, as before the head turned at its neck
+      expect(new Vector3().setFromMatrixPosition(rest).y).toBeCloseTo((PERSON.hipsY + PERSON.headY) * look.height, 6)
+      // the neck's foot, in the head's own frame (scaled with the head)
+      const foot = new Vector3(0, PERSON.neckY / (look.head ?? 1), 0)
+      const still = foot.clone().applyMatrix4(rest)
+      for (const [x, y, z] of [
+        [0.42, 0, 0],
+        [-0.32, 0, 0.08],
+        [0.25, 0.4, 0],
+        [0, 0, 0.18],
+      ]) {
+        rig.head.rotation.set(x, y, z)
+        const turned = headOf(rig)
+        expect(foot.clone().applyMatrix4(turned).distanceTo(still)).toBeLessThan(1e-6)
+        // (and the head did turn: its middle moved)
+        expect(new Vector3().setFromMatrixPosition(turned).distanceTo(new Vector3().setFromMatrixPosition(rest))).toBeGreaterThan(0.01)
+      }
+    }
   })
 })

@@ -1,13 +1,15 @@
 import { audioGraph, farmSound, unlockAudio } from '../../src/audio/sound'
 import type { Sting, Timeline, Track } from './format'
+import type { Talker } from './speak'
 import type { Speech, Utterance, Voice } from './voice'
 
 // A film's music and stings, composed as it plays, as the game's own music is (src/audio/music.ts): oscillators and
 // noise, nothing downloaded. Three tracks — the shop's muzak (a bossa nova out of a ceiling speaker), a tension pulse
 // (a heartbeat and a clock) and a boom-bap beat — and short stings on the moments. The game's own sounds (coins, the
 // till, a level) are the game's (src/audio/sound.ts, farmSound), so the film sounds like the game; it plays through
-// the game's volume. The characters' voices are made here too, from their lines (./voice.ts: a buzz shaped into vowels,
-// a burst of noise for each consonant), and the music steps back while someone speaks. `Synth` writes into any audio
+// the game's volume. The lines are read aloud in words by the device's speech voices as the film reaches them
+// (./speak.ts); where there are none, and offline, they are said in a babble made here (./voice.ts: a buzz shaped into
+// vowels, a burst of noise for each consonant). The music steps back while someone speaks. `Synth` writes into any audio
 // context, so the score can be rendered offline and measured (`render`).
 
 const midi = (n: number) => 440 * 2 ** ((n - 69) / 12)
@@ -227,13 +229,13 @@ export class Synth {
 
   // ───────────── voices ─────────────
 
-  /** The music a little quieter from a to b (someone is speaking), back over a short fade. */
+  /** The music quieter from a to b (someone is speaking: the words must be heard), back over a short fade. */
   duck(a: number, b: number) {
     const g = this.musicBus.gain
     g.setValueAtTime(1, Math.max(0, a - 0.08))
-    g.linearRampToValueAtTime(0.5, a)
-    g.setValueAtTime(0.5, b)
-    g.linearRampToValueAtTime(1, b + 0.25)
+    g.linearRampToValueAtTime(0.4, a)
+    g.setValueAtTime(0.4, b)
+    g.linearRampToValueAtTime(1, b + 0.3)
   }
 
   /** A line said in a voice from `at` (audio seconds): one buzz at the voice's pitch through three resonances of the
@@ -453,26 +455,30 @@ export class Synth {
   }
 }
 
-/** The film's sound as it plays: the music scheduled ahead on the audio clock from a film time, the stings fired as
- *  the film passes them (the game's own through its engine). Silent until `start`, which must run from a tap. */
+/** The film's sound as it plays: the music (and a babble for the lines where no speech voice reads them) scheduled
+ *  ahead on the audio clock from a film time, the lines read aloud by `talker` on the clock, the stings fired as the
+ *  film passes them (the game's own sounds through its engine). Silent until `start`, which must run from a tap. */
 export class Score {
   private synth: Synth | null = null
   private origin = 0
   private next = 0
+  private timers: ReturnType<typeof setTimeout>[] = []
 
   constructor(
     private tl: Timeline,
     private speech: Speech[] = [],
     private voices: Record<string, Voice> = {},
+    private talker: Talker | null = null,
   ) {}
 
   get on() {
     return this.synth !== null
   }
 
-  /** Sound from film time `t` (in a tap: browsers start audio only from one). */
+  /** Sound from film time `t` (in a tap: browsers start audio, and phones speech, only from one). */
   start(t: number) {
     unlockAudio()
+    this.talker?.unlock()
     const g = audioGraph()
     if (!g) return
     this.stop()
@@ -480,7 +486,16 @@ export class Score {
     this.origin = g.ac.currentTime + 0.06 - t
     this.next = this.tl.cues.findIndex((c) => c.t >= t)
     if (this.next < 0) this.next = this.tl.cues.length
-    plan(this.synth, this.tl, this.speech, this.voices, this.origin, t)
+    const talker = this.talker?.can ? this.talker : null
+    plan(this.synth, this.tl, this.speech, this.voices, this.origin, t, !talker)
+    // each line read aloud on the clock, whatever the frames do, a moment early (a speech voice takes about that long
+    // to begin); a line already begun is left out
+    if (talker)
+      for (const line of this.speech) {
+        const v = this.voices[line.who]
+        if (line.t < t - 0.01 || !v) continue
+        this.timers.push(setTimeout(() => talker.say(line, v), Math.max(0, (line.t - t + 0.06 - 0.08) * 1000)))
+      }
   }
 
   /** The stings the film has passed since the last frame. */
@@ -497,6 +512,12 @@ export class Score {
     }
   }
 
+  /** How many of a line's words its speech voice has said, or null when no speech voice says it (the film's clock
+   *  shows them). */
+  words(line: Speech) {
+    return this.synth && this.talker ? this.talker.words(line) : null
+  }
+
   /** Jumped to t (a skip): what was scheduled is cut, the stings go on from there. */
   skip(t: number) {
     if (!this.synth) return
@@ -504,6 +525,9 @@ export class Score {
   }
 
   stop() {
+    this.timers.forEach(clearTimeout)
+    this.timers = []
+    this.talker?.cancel()
     if (!this.synth) return
     const s = this.synth
     s.out.gain.setTargetAtTime(0, s.ac.currentTime, 0.04)
@@ -512,10 +536,10 @@ export class Score {
   }
 }
 
-/** The music and the voices from film time `from` on, written ahead on the audio clock (film time t is audio time
- *  origin + t): each track to the next music cue, each line said as its bubble comes up (one already begun is left
- *  out), the music stepping back under it. */
-function plan(synth: Synth, tl: Timeline, speech: Speech[], voices: Record<string, Voice>, origin: number, from: number) {
+/** The music (and, `babble`, the voices) from film time `from` on, written ahead on the audio clock (film time t is
+ *  audio time origin + t): each track to the next music cue, each line said as its bubble comes up (one already begun
+ *  is left out), the music stepping back under every line. */
+function plan(synth: Synth, tl: Timeline, speech: Speech[], voices: Record<string, Voice>, origin: number, from: number, babble: boolean) {
   const music = tl.cues.filter((c) => c.item.music)
   music.forEach((c, i) => {
     const end = music[i + 1]?.t ?? tl.length + 4
@@ -526,10 +550,11 @@ function plan(synth: Synth, tl: Timeline, speech: Speech[], voices: Record<strin
   let dip: [number, number] | null = null
   for (const s of speech) {
     if (s.t < from - 0.01 || !voices[s.who]) continue
-    synth.speak(s.u, origin + s.t, voices[s.who])
+    if (babble) synth.speak(s.u, origin + s.t, voices[s.who])
     if (s.line === null) continue
     const a = origin + s.t
-    const b = a + s.u.length
+    // (a speech voice may take a little longer than the line's own clock)
+    const b = a + s.u.length + 0.3
     if (dip && a < dip[1] + 0.5) dip[1] = Math.max(dip[1], b)
     else {
       if (dip) synth.duck(...dip)
@@ -544,7 +569,7 @@ function plan(synth: Synth, tl: Timeline, speech: Speech[], voices: Record<strin
 export async function render(tl: Timeline, speech: Speech[], voices: Record<string, Voice>, rate = 22050) {
   const ctx = new OfflineAudioContext(1, Math.ceil(rate * (tl.length + 3)), rate)
   const synth = new Synth(ctx, ctx.destination)
-  plan(synth, tl, speech, voices, 0, 0)
+  plan(synth, tl, speech, voices, 0, 0, true)
   for (const c of tl.cues) {
     if (c.item.music === 'stop') synth.hush(c.t)
     if (c.item.sting && !GAME[c.item.sting]) synth.sting(c.item.sting, c.t)
