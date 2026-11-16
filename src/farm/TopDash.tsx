@@ -95,7 +95,8 @@ export function TopDash() {
 }
 
 /** The coins: the hero of the row. A rise counts in as the flying coins land (src/fx/coins.ts: the first lands after
- *  0.7 s), and the chip pops once with a light crossing it; a fall shows at once. */
+ *  0.7 s), and the chip pops once with a light crossing it; a fall shows at once, the chip dipping for a moment (where the
+ *  coins went from: the shared chips' dip, src/styles.css). */
 function Coins() {
   const coins = farm.coins
   const still = useReducedMotion()
@@ -108,6 +109,7 @@ function Coins() {
     last.current = coins
     if (coins <= from || still) {
       value.set(coins)
+      if (coins < from && !still && chip.current) void play(chip.current, { scale: [1, 0.9, 1] }, { duration: 0.4, ease: EASE.pop, times: [0, 0.3, 1] })
       return
     }
     const run = animate(value, coins, {

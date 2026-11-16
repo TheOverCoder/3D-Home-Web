@@ -328,7 +328,12 @@ test.describe('levels', () => {
       { points, open: boxAt(2, 3) },
     )
     const start = await page.evaluate(() => ({ coins: (window as any).__home.farm.state.coins as number, xp: (window as any).__home.farm.xpNow().points as number }))
-    await page.locator('.farm-chip-item.level').click()
+    // the level's road at the top glows with the three boxes waiting, their count at its end
+    const chip = page.locator('.farm-chip-item.level')
+    await expect(chip).toHaveAttribute('aria-label', 'Level 3: 3 gifts to open')
+    await expect(chip).toHaveClass(/\bready\b/)
+    await expect(chip.locator('.top-road-gifts')).toHaveText('3')
+    await chip.click()
     const card = page.locator('.farm-panel[aria-label="Level 3"]')
     await expect(card).toBeVisible()
     // two boxes ready on the bar, two locked (the next one says how far); one button for all three waiting
@@ -365,6 +370,11 @@ test.describe('levels', () => {
     expect(await page.evaluate((boxes) => (window as any).__home.farm.openGifts(boxes), [boxAt(2, 3), boxAt(3, 0), boxAt(3, 1), boxAt(3, 2)])).toEqual([])
     await card.getByRole('button', { name: 'Close (Esc)' }).click()
     await expect(card).toHaveCount(0)
+    // none left: the road no longer glows, and its end shows the next level's prize again
+    await expect(chip).toHaveAttribute('aria-label', 'Level 3: what the next level brings')
+    await expect(chip).not.toHaveClass(/\bready\b/)
+    await expect(chip.locator('.top-road-gifts')).toHaveCount(0)
+    await expect(chip.locator('.top-road-prize')).toBeVisible()
     await page.evaluate(() => (window as any).__home.farm.setRandom(null))
     expect(game.errors, game.errors.join('\n')).toEqual([])
   })
