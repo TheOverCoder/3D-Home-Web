@@ -22,8 +22,8 @@ import './SavesC.css'
 // moments: a tab — the highlight slides to it and the card turns over to that farm; Play — the house hops and the sheet
 // goes, into that farm; a full hold — the red fill runs across, and the card turns over to an empty place.
 //
-// D is C with features the game does not have (`extras`): each farm's card shows a photo of the farm as it was last
-// saved instead of the house picture, and its own name (the opening screen's D gives it).
+// D (chosen) is C with features the game does not have (`extras`): each farm's card shows a photo of the farm as it was
+// last saved instead of the house picture, and its own name (given on the opening screen's New farm page).
 
 /** SAMPLE (D): a photo of each farm as it was last saved — the lab has one still of the yard, cropped and tinted
  *  differently for each place; the game would take one from its own view when it saves. */
@@ -34,14 +34,11 @@ const PHOTO: Record<number, { at: string; tint: string }> = {
 }
 
 export function SavesC({ s, act, extras = false }: { s: SavesState; act: Act<SavesState>; extras?: boolean }) {
-  const [pick, setPick] = useState<Slot>(s.playing)
   const [going, setGoing] = useState(false)
-  const f = s.farms.find((x) => x.slot === pick) ?? s.farms[0]
-  const name = (slot: Slot, exists: boolean) => (extras && exists ? FARM_NAMES[slot] : `Farm ${slot}`)
-  const go = () => {
+  const go = (slot: Slot) => {
     if (going) return
     setGoing(true)
-    act.set(play(s, f.slot))
+    act.set(play(s, slot))
     setTimeout(act.close, 320)
   }
   return (
@@ -52,6 +49,20 @@ export function SavesC({ s, act, extras = false }: { s: SavesState; act: Act<Sav
           <X weight="bold" />
         </m.button>
       </m.header>
+      <SavesBody s={s} extras={extras} going={going} onPlay={go} onClear={(slot) => act.set(clear(s, slot))} />
+    </LevelSheet>
+  )
+}
+
+/** The saved farms themselves — the tabs, the chosen farm's card and its presses — as the sheet shows them, and as the
+ *  opening screen's "Load farm" page shows them (lab/boards/intro, E): one design in both places. */
+export function SavesBody({ s, extras = false, going = false, onPlay, onClear }: { s: SavesState; extras?: boolean; going?: boolean; onPlay: (slot: Slot) => void; onClear: (slot: Slot) => void }) {
+  const [pick, setPick] = useState<Slot>(s.playing)
+  const f = s.farms.find((x) => x.slot === pick) ?? s.farms[0]
+  const name = (slot: Slot, exists: boolean) => (extras && exists ? FARM_NAMES[slot] : `Farm ${slot}`)
+  const go = () => onPlay(f.slot)
+  return (
+    <>
       <m.div variants={ITEM}>
         <ToggleGroup.Root className="sc-tabs" type="single" value={String(pick)} onValueChange={(v) => v && setPick(Number(v) as Slot)} aria-label="Your farms">
           {s.farms.map((x) => (
@@ -145,12 +156,12 @@ export function SavesC({ s, act, extras = false }: { s: SavesState; act: Act<Sav
             </m.button>
           </div>
           {f.exists && (
-            <HoldToClear label={`Hold to start ${name(f.slot, true)} afresh`} onDone={() => act.set(clear(s, f.slot))}>
+            <HoldToClear label={`Hold to start ${name(f.slot, true)} afresh`} onDone={() => onClear(f.slot)}>
               Hold to start afresh
             </HoldToClear>
           )}
         </div>
       </div>
-    </LevelSheet>
+    </>
   )
 }
