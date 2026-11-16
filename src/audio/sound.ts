@@ -5,6 +5,7 @@
 import { insideWalkIn } from '../data/buildings'
 import type { FloorKind, RoomId } from '../data/layout'
 import { playerState } from '../lib/playerState'
+import { haptic, type Haptic } from '../lib/device'
 
 interface Engine {
   ac: AudioContext
@@ -426,8 +427,30 @@ function voice(e: Engine, t: number, notes: [number, number][], seconds: number,
   vib.stop(t + seconds + 0.1)
 }
 
-/** Garden work and the people and animals in it. */
-export function farmSound(kind: FarmSound, pan = 0, near = 1) {
+/** What the player feels with each sound of something they did (src/lib/device.ts, haptic): a tick for work done, a
+ *  double for coins in, a firmer one for a thing bought, a roll for a gift, the strongest for a level. The farm's own
+ *  sounds (the hens, the cows, a machine at work or done, the bell, the tractor, a crystal landing) have none, and a
+ *  sound both does (the hens' cluck, a machine's creak) is felt only where the call says so (`feel`). */
+const FEEL: Partial<Record<FarmSound, Haptic>> = {
+  plant: 'tick',
+  water: 'tick',
+  harvest: 'tick',
+  milk: 'tick',
+  shear: 'tick',
+  decline: 'tick',
+  dress: 'tick',
+  coins: 'sale',
+  till: 'sale',
+  build: 'buy',
+  surprise: 'gift',
+  level: 'level',
+  keys: 'level',
+}
+
+/** Garden work and the people and animals in it; what the player did is felt too (`feel`: its touch, FEEL's by
+ *  default; null for none), whether the sound plays or not. */
+export function farmSound(kind: FarmSound, pan = 0, near = 1, feel: Haptic | null = FEEL[kind] ?? null) {
+  haptic(feel)
   const e = live()
   if (!e) return
   const t = e.ac.currentTime + 0.004

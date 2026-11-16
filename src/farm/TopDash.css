@@ -74,11 +74,11 @@
 .top-road-next i { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; border: 2px dashed rgba(255, 255, 255, 0.55); color: #fff; font: 800 13px/1 var(--font-text); font-style: normal; }
 .top-road-prize { display: grid; place-items: center; width: 30px; height: 30px; margin-left: 2px; }
 .top-dash .top-road-prize img { width: 28px; height: 28px; margin: 0; }
-/* the coins of the levels reached: the road glows, Claim! on it and the coins in a sun pill at its end */
+/* gift boxes reached and not opened (src/farm/gifts.ts): the road glows, and how many in a sun pill at its end */
 .top-dash .top-road.ready.farm-chip-item { padding-inline-end: 6px; border-color: var(--sun); color: #fff; box-shadow: 0 3px 12px rgba(20, 12, 6, 0.32), 0 0 14px 1px color-mix(in srgb, var(--sun) 55%, transparent); }
 .top-road.ready .top-road-togo { color: #ffe08a; }
-.top-road-claim { display: inline-flex; align-items: center; gap: 1px; flex: none; height: 32px; padding: 0 9px 0 1px; border-radius: 999px; background: var(--sun); color: var(--ink); font: 900 15px/1 var(--font-text); box-shadow: inset 0 -2px 0 var(--sun-lip); }
-.top-dash .top-road .top-road-claim .xp-coin { width: 28px; height: 28px; margin: 0; }
+.top-road-gifts { display: inline-flex; align-items: center; gap: 1px; flex: none; height: 32px; padding: 0 9px 0 2px; border-radius: 999px; background: var(--sun); color: var(--ink); font: 900 15px/1 var(--font-text); font-variant-numeric: tabular-nums; box-shadow: inset 0 -2px 0 var(--sun-lip); }
+.top-dash .top-road .top-road-gifts .xp-gift { width: 28px; height: 28px; margin: 0; }
 
 /* the band under it: the compass's hole between two wings of gauges */
 .top-band { order: 4; flex: 1 0 100%; display: flex; align-items: flex-start; justify-content: center; gap: 6px; pointer-events: none !important; }

@@ -67,7 +67,8 @@ import {
   type LadderId,
   type XpAction,
 } from './data'
-import { sanitizeXp, seedXp, levelOf, xpAt, unpaidCoins, xpForSale, type Xp } from './xp'
+import { sanitizeXp, seedXp, levelOf, levelReward, xpAt, unpaidCoins, xpForSale, type Xp } from './xp'
+import { CAME_KEPT, boxOf, boxesReached, giftsFor, isOpen as giftOpen, rollArrival, rollBox, sanitizeGifts, settle, waitingBoxes, type Gifts, type Opened, type Prize } from './gifts'
 import { QUEUE, machineLevel, queuePrice, type MachineActions, type MachineView, type QueueSlot } from './machineView'
 import {
   boostOf,
@@ -239,8 +240,10 @@ export interface FarmData {
   /** the crates of the orders sent: on the pallet, on the tractor, and its trip (seconds into it; -1 at home) */
   dispatch: { waiting: number; aboard: number; trip: number }
   clock: number // seconds of farm time since the page opened
-  /** levels (src/farm/xp.ts): every XP point gained, and the highest level whose coins were claimed */
+  /** levels (src/farm/xp.ts): every XP point gained, and the highest level whose coins were paid */
   xp: Xp
+  /** the level's gifts (src/farm/gifts.ts): the boxes on each level's bar opened, and what the levels reached brought */
+  gifts: Gifts
   /** what the player wears, from the wardrobe's garments (src/farm/outfit.ts) */
   outfit: Outfit
   /** every upgrade ladder's step (LADDERS in ./data): the market's and the contractor's */
@@ -321,6 +324,7 @@ function fresh(): FarmData {
     dispatch: { waiting: 0, aboard: 0, trip: -1 },
     clock: 0,
     xp: { points: 0, paid: 1 },
+    gifts: giftsFor(0),
     outfit: { ...DEFAULT_OUTFIT },
     ladders: clampLevels({}),
     market: freshMarket(),
@@ -576,6 +580,16 @@ function load(text: string | null = readRaw(KEY)): { data: FarmData; savedAt: nu
     for (const def of GOALS) data.goals[def.id] = isObject(raw.goals) ? int(field(raw.goals, def.id), 0, 0, MOST_STEPS) : startStep(def, data)
     // levels: as saved; a farm from before them starts with XP for what it did (its levels are not paid again)
     data.xp = sanitizeXp(raw.xp, seedXp(data.stats))
+    // a level's coins come in by themselves as it is reached; a farm saved with some reached and not yet claimed (from
+    // when they waited for a Claim) is paid them now, once (the level paid moves up with them)
+    const owed = unpaidCoins(data.xp)
+    if (owed > 0) {
+      data.coins = Math.min(Number.MAX_SAFE_INTEGER, data.coins + owed)
+      data.xp.paid = levelOf(data.xp.points)
+    }
+    // the level's gifts: as saved, never past the boxes the XP reached; a farm from before them finds its own level's
+    // boxes reached so far waiting (the levels before are not given again)
+    data.gifts = sanitizeGifts(raw.gifts, data.xp.points)
     // the clothes: as saved, each one the wardrobe has at the farm's level (a farm from before it: what it always wore)
     data.outfit = sanitizeOutfit(raw.outfit, levelOf(data.xp.points))
     // the ladders, the market, the contractor and the day (a farm from before them: as on a new farm)
@@ -2065,8 +2079,11 @@ export function gainXp(action: XpAction | 'sale', n = 1, at?: At, more = 0): num
   const boosted = (xp: number) => (more > 0 ? Math.ceil(xp * (1 + more) - 1e-9) : xp)
   const xp = action === 'sale' ? (n > 0 ? xpForSale(n) : 0) : n > 0 ? boosted(XP_FOR[action] * n) : 0
   if (!(xp > 0)) return 0
+  const was = levelOf(farm.xp.points)
   farm.xp.points = Math.min(Number.MAX_SAFE_INTEGER, farm.xp.points + xp)
   xpEvents++
+  const now = levelOf(farm.xp.points)
+  if (now > was) arrive(was, now)
   // the crystals fly up from where it happened; with no place to name (a panel's sale), from low in the middle
   xpFx(at?.x ?? NaN, at?.y ?? NaN, at?.z ?? NaN, xp)
   bump()
@@ -2078,6 +2095,95 @@ export function gainXp(action: XpAction | 'sale', n = 1, at?: At, more = 0): num
 export function xpNow() {
   const level = levelOf(farm.xp.points)
   return { level, into: farm.xp.points - xpAt(level), need: xpAt(level + 1) - xpAt(level), points: farm.xp.points, unpaid: unpaidCoins(farm.xp) }
+}
+
+/**
+ * A level reached by play (`was` to `now`): what it brings comes in by itself, with no Claim — its coins (LEVELS: every
+ * level reached and not yet paid, once: `xp.paid` moves to it) and a small gift rolled on the farm's dice
+ * (src/farm/gifts.ts: a few of a building material, into the barn even past full, as surprises go) — remembered for the
+ * level-up show and the level's card, which tell it; the boxes on the new level's bar start empty. No XP: a reward is
+ * not something the player did.
+ */
+function arrive(was: number, now: number) {
+  farm.coins = Math.min(Number.MAX_SAFE_INTEGER, farm.coins + unpaidCoins({ points: xpAt(now), paid: farm.xp.paid }))
+  farm.xp.paid = Math.max(farm.xp.paid, now)
+  const came = farm.gifts.came.filter((c) => c.level <= was)
+  for (let level = was + 1; level <= now; level++) {
+    const prize = rollArrival(level, random)
+    give(prize)
+    came.push({ level, coins: levelReward(level), prize })
+  }
+  farm.gifts = { ...farm.gifts, gave: [], came: came.slice(-CAME_KEPT) }
+}
+
+/** A prize into the farm: coins, or goods into their building even past full (as surprises go: refused, they would
+ *  be lost). */
+function give(p: Prize) {
+  if ('coins' in p) farm.coins = Math.min(Number.MAX_SAFE_INTEGER, farm.coins + p.coins)
+  else putBack(p.item, p.n)
+}
+
+/** The boxes reached and waiting to be opened, oldest first: this level's and every level's before. */
+export const giftsWaiting = () => waitingBoxes(farm.gifts, farm.xp.points)
+
+/**
+ * Opens gift boxes (`boxes`, or every one waiting): each one reached and not yet open is rolled on the farm's dice and
+ * given at once (coins, or goods into their building even past full); a box already open, or not reached, gives
+ * nothing — none is ever given twice. What each gave, oldest first. No XP: a reward is not something done.
+ */
+export function openGifts(boxes?: readonly number[]): Opened[] {
+  const g = farm.gifts
+  const reached = boxesReached(farm.xp.points)
+  const level = levelOf(farm.xp.points)
+  const list = [...new Set(boxes ?? giftsWaiting())].filter((k) => Number.isInteger(k) && k >= 0 && k < reached && !giftOpen(g, k)).sort((a, b) => a - b)
+  if (!list.length) return []
+  const out = list.map((box): Opened => ({ box, prize: rollBox(box, farm.made, random) }))
+  for (const o of out) give(o.prize)
+  const { open, also } = settle(g.open, [...g.also, ...list])
+  // what this level's boxes gave stays on its bar (an older level's is gone from view)
+  const gave = [...g.gave, ...out].filter((o) => boxOf(o.box).level === level).sort((a, b) => a.box - b.box)
+  farm.gifts = { open, also, gave, came: g.came, seen: g.seen }
+  // (its sound, and its touch, come as it bursts open in the level's card)
+  bump()
+  save()
+  return out
+}
+
+/** The level's card has told the level reached (what it brought by itself): not again. */
+export function sawLevel() {
+  const level = levelOf(farm.xp.points)
+  if (farm.gifts.seen >= level) return
+  farm.gifts = { ...farm.gifts, seen: level }
+  bump()
+  save()
+}
+
+/**
+ * What waits to be collected on the farm now, the kind worth the most XP — the ripe beds of one crop (each bed's XP),
+ * a tree's or an animal's goods (each good's), a machine's jobs done (each job's, more at its level) — counted only
+ * where its building has room for all of it; null when nothing does. For the level's card: how far collecting it
+ * takes the bar (its own numbers: XP_FOR, as collecting gives).
+ */
+export function readyOnFarm(): { id: ProduceId; n: number; xp: number } | null {
+  let best: { id: ProduceId; n: number; xp: number } | null = null
+  const consider = (id: ProduceId, n: number, xp: number) => {
+    if (n > 0 && xp > 0 && roomFor(id) >= n && (!best || xp > best.xp)) best = { id, n, xp }
+  }
+  const beds = new Map<CropId, number>()
+  farm.beds.forEach((b, i) => {
+    if (b.crop && bedStage(i) === 'ripe') beds.set(b.crop, (beds.get(b.crop) ?? 0) + 1)
+  })
+  for (const [crop, k] of beds) consider(crop, k * yieldOf(crop), k * XP_FOR.harvest)
+  for (const id of PRODUCER_IDS) {
+    const n = farm.producers[id].stock.reduce((a, b) => a + b, 0)
+    consider(PRODUCERS[id].good, n, n * XP_FOR.collect)
+  }
+  for (const id of MACHINE_IDS) {
+    // a job makes one good; its XP as collecting gives it (gainXp's share more, rounded up)
+    const more = boostOf(farm.machines[id]).xp
+    for (const g of machineDone(id)) consider(g.item, g.count, more > 0 ? Math.ceil(XP_FOR.make * g.count * (1 + more) - 1e-9) : XP_FOR.make * g.count)
+  }
+  return best
 }
 
 /** Claims the coins of every level reached and not yet paid, up to level `upTo` (the level the chip shows: XP still

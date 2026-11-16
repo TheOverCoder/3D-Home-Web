@@ -32,7 +32,7 @@ import {
   tillReady,
   weighGoods,
 } from './state'
-import { savedNow, seeded, startFrom } from './testSaves'
+import { levelPay, savedNow, seeded, startFrom } from './testSaves'
 import { xpForSale } from './xp'
 
 // The supermarket in play (src/farm/state.ts; its rules in src/farm/market.ts): the manager buys what you sell him at
@@ -92,8 +92,10 @@ describe('the manager', () => {
     for (let k = 0; k < LADDERS.rate.levels; k++) {
       expect(ladderOpen('rate')).toBe(true)
       const coins = farm.coins
+      const paid = farm.xp.paid
       expect(buyLadder('rate')).toBe(true)
-      expect(coins - farm.coins).toBe(ladderPrice('rate', k))
+      // (what it cost: a level its XP reached brought coins of its own)
+      expect(coins - (farm.coins - levelPay(paid))).toBe(ladderPrice('rate', k))
     }
     expect([ladderOpen('rate'), buyLadder('rate'), managerPct(farm.ladders.rate)]).toEqual([false, false, 40])
     // the shop's own ladders wait for the shop
@@ -101,8 +103,10 @@ describe('the manager', () => {
     expect(managerNow()).toMatchObject({ x: MANAGER_SPOT.x, z: MANAGER_SPOT.z, walking: false })
     const xp = farm.xp.points
     const coins = farm.coins
+    const paid = farm.xp.paid
     expect(buyMarket()).toBe(true)
-    expect([farm.market.owned, coins - farm.coins, farm.xp.points - xp]).toEqual([true, MANAGER.shopPrice, XP_FOR.shop])
+    // (what it cost: the level its XP reached brought coins of its own)
+    expect([farm.market.owned, coins - (farm.coins - levelPay(paid)), farm.xp.points - xp]).toEqual([true, MANAGER.shopPrice, XP_FOR.shop])
     expect(buyMarket()).toBe(false)
     // he waves, then goes; he buys no more
     expect(managerNow()).toMatchObject({ pose: 'stand' })

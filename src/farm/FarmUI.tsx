@@ -11,6 +11,7 @@ import { CarPanel } from './car/CarPanel'
 import { LadderCard } from './Ladder'
 import { MachinePanel, MachineSlotCard } from './MachinePanel'
 import './Xp.css'
+import { AnimatePresence } from 'motion/react'
 import './MarketPanel.css'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { farmSound, placeSound, uiClick } from '../audio/sound'
@@ -415,6 +416,14 @@ function ShopPanel() {
   )
 }
 
+/** A number for each panel opened (the store gives a new panel object each time one opens): a card's key. */
+const opened = new WeakMap<object, number>()
+let opens = 0
+const opening = (panel: object) => {
+  if (!opened.has(panel)) opened.set(panel, ++opens)
+  return opened.get(panel)
+}
+
 /** The garden's interface: the dashboard at the top outdoors (./TopDash.tsx) and whichever farm panel is open. */
 export function FarmUI() {
   const phase = useHome((s) => s.phase)
@@ -453,7 +462,9 @@ export function FarmUI() {
       {panel?.kind === 'ladder' && <LadderCard id={panel.id} />}
       {panel?.kind === 'machine' && <MachinePanel id={panel.id} />}
       {panel?.kind === 'machine-slot' && <MachineSlotCard id={panel.id} />}
-      {panel?.kind === 'level' && <LevelPanel />}
+      {/* the level's card goes out the way it came in (src/ui/SwipeSheet.tsx); opened again while it is still going,
+          it is a new card (a key of its own each time), never the one leaving brought back */}
+      <AnimatePresence>{panel?.kind === 'level' && <LevelPanel key={`level-${opening(panel)}`} />}</AnimatePresence>
       {panel?.kind === 'wardrobe' && <WardrobePanel />}
       <LevelUp />
       <AwayWatcher />

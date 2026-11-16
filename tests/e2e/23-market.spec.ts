@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { Page } from '@playwright/test'
-import { test, expect, bootApp, fillShelves, watchErrors, BASE, type Game } from './helpers'
+import { test, expect, bootApp, fillShelves, levelPay, watchErrors, BASE, type Game } from './helpers'
 import { bounds, WALK_INS, type Rect } from '../../src/data/buildings'
 import { CONTRACTOR_STAND, DESK_STAND, HALL, LOT, MANAGER_SPOT, MANAGER_STAND, SCREEN, TILL } from '../../src/data/market'
 import { LADDERS, MANAGER, SHOP, XP_FOR, produceById } from '../../src/farm/data'
@@ -185,7 +185,8 @@ test.describe('the supermarket', () => {
     await reset(game, { lettuce: 5, carrot: 1, tomato: 7, egg: 3, milk: 1, brick: 2 }, 2000)
     const r = await game.page.evaluate(() => {
       const f = (window as any).__home.farm
-      const s = () => ({ coins: f.state.coins, sold: f.state.stats.sold, earned: f.state.stats.earned, xp: f.xpNow().points, inv: { ...f.state.inv } })
+      // (with the level paid: the XP of the sales and the ladder reaches levels, whose coins come in by themselves)
+      const s = () => ({ coins: f.state.coins, paid: f.state.xp.paid, sold: f.state.stats.sold, earned: f.state.stats.earned, xp: f.xpNow().points, inv: { ...f.state.inv } })
       const start = s()
       // one carrot at 20 % pays nothing: nothing changes hands; a brick is not his to buy
       const carrot = f.sellToManager('carrot')
@@ -202,14 +203,33 @@ test.describe('the supermarket', () => {
       // at 40 %: the tomatoes, then everything else he pays anything for (the carrot still nothing)
       const tomato = f.sellToManager('tomato')
       const all = f.sellAllToManager()
-      return { start, carrot, brick, nothing, lettuce, afterLettuce, steps, top: f.state.ladders.rate, open: f.ladderOpen('rate'), again: f.buyLadder('rate'), shut, afterRate, tomato, all, end: s() }
+      // the bricks the levels reached brought by themselves (a level's gift is a building material)
+      const bricks = f.state.gifts.came.filter((c: any) => c.level > start.paid && c.prize.item === 'brick').reduce((n: number, c: any) => n + c.prize.n, 0)
+      return {
+        start,
+        carrot,
+        brick,
+        nothing,
+        lettuce,
+        afterLettuce,
+        steps,
+        top: f.state.ladders.rate,
+        open: f.ladderOpen('rate'),
+        again: f.buyLadder('rate'),
+        shut,
+        afterRate,
+        tomato,
+        all,
+        end: s(),
+        bricks,
+      }
     })
     expect(r.carrot).toBe(0)
     expect(r.brick).toBe(0)
     expect(r.nothing).toEqual(r.start)
     // 5 lettuces worth 3 each at 20 %: 3 coins (3.0); sales count as sold and earned, and give XP for their coins
     expect(r.lettuce).toBe(3)
-    expect(r.afterLettuce.coins).toBe(r.start.coins + 3)
+    expect(r.afterLettuce.coins - levelPay(r.start.paid, r.afterLettuce.paid)).toBe(r.start.coins + 3)
     expect(r.afterLettuce.inv.lettuce).toBe(0)
     expect(r.afterLettuce.sold).toBe(r.start.sold + 5)
     expect(r.afterLettuce.earned).toBe(r.start.earned + 3)
@@ -221,14 +241,14 @@ test.describe('the supermarket', () => {
     expect(r.again).toBe(false)
     expect(r.shut).toEqual([false, false, false])
     const ladder = Array.from({ length: LADDERS.rate.levels }, (_, k) => ladderPrice('rate', k)).reduce((a, b) => a + b, 0)
-    expect(r.afterRate.coins).toBe(r.afterLettuce.coins - ladder)
+    expect(r.afterRate.coins - levelPay(r.afterLettuce.paid, r.afterRate.paid)).toBe(r.afterLettuce.coins - ladder)
     expect(r.afterRate.xp).toBe(r.afterLettuce.xp + LADDERS.rate.levels * XP_FOR.build)
     // 7 tomatoes worth 3 at 40 %: 8 coins (8.4); then 3 eggs (2.4 → 2) and a bottle of milk (1.6 → 1); the carrot stays
     expect(managerPct(LADDERS.rate.levels)).toBe(40)
     expect(r.tomato).toBe(8)
     expect(r.all).toBe(3)
-    expect(r.end.inv).toMatchObject({ tomato: 0, egg: 0, milk: 0, carrot: 1, brick: 2 })
-    expect(r.end.coins).toBe(r.afterRate.coins + 8 + 3)
+    expect(r.end.inv).toMatchObject({ tomato: 0, egg: 0, milk: 0, carrot: 1, brick: 2 + r.bricks })
+    expect(r.end.coins - levelPay(r.afterRate.paid, r.end.paid)).toBe(r.afterRate.coins + 8 + 3)
   })
 
   test("the manager's panel: buying the shop is there from the first visit, shut below 40 %; holding bricks, Go there walks you to the contractor", async ({ game }) => {
@@ -275,8 +295,9 @@ test.describe('the supermarket', () => {
     await page.waitForTimeout(600)
     await page.locator('.farm-confirm .farm-buy').click()
     await until(game, () => (window as any).__home.farm.state.ladders.rate === 1)
+    // (a new farm, at level 1: the coins of the levels the XP reaches come in by themselves, apart from the prices)
     let f = await farm(game.page)
-    expect(f.coins).toBe(total - ladder[0])
+    expect(f.coins - levelPay(1, f.xp.paid)).toBe(total - ladder[0])
     expect(await xp(page)).toBe(XP_FOR.build)
     await closePanel(page)
     // the rest at once, to the top
@@ -286,7 +307,7 @@ test.describe('the supermarket', () => {
     })
     f = await farm(game.page)
     expect(f.ladders.rate).toBe(LADDERS.rate.levels)
-    expect(f.coins).toBe(total - ladder.reduce((a, b) => a + b, 0))
+    expect(f.coins - levelPay(1, f.xp.paid)).toBe(total - ladder.reduce((a, b) => a + b, 0))
     // at the top: the computer carries the shop's price tag; it offers nothing itself (it is for sale)
     await until(game, () => (window as any).__home.useHome.getState().tag?.id === 'farm-market-computer')
     const tag = await page.evaluate(() => (window as any).__home.useHome.getState().tag)
@@ -315,7 +336,7 @@ test.describe('the supermarket', () => {
     await closePanel(page)
     // bought before its film starts: the coins, the shop, the XP
     f = await farm(game.page)
-    expect(f.coins).toBe(100)
+    expect(f.coins - levelPay(1, f.xp.paid)).toBe(100)
     expect(await xp(page)).toBe(xp0 + XP_FOR.shop)
     // its film plays once (src/film/films.ts), in the game's canvas, the rest of the page hidden; a tap skips it to its
     // end card (what is yours now, the XP it gave), and Continue gives the game back as it was
@@ -488,7 +509,8 @@ test.describe('the supermarket', () => {
     await page.keyboard.press('KeyE')
     await until(game, () => (window as any).__home.farm.state.market.till.coins === 0)
     const after = await farm(page)
-    expect(after.coins).toBe(before.coins + r.till.coins)
+    // (the till's XP can reach a level, whose coins come in by themselves)
+    expect(after.coins - levelPay(before.xp.paid, after.xp.paid)).toBe(before.coins + r.till.coins)
     expect(after.stats.sold).toBe(before.stats.sold + r.till.goods)
     expect(after.stats.earned).toBe(before.stats.earned + r.till.coins)
     expect(after.market.till).toEqual({ coins: 0, goods: 0 })
@@ -520,7 +542,9 @@ test.describe('the supermarket', () => {
     const xp0 = await xp(page)
     await page.keyboard.press('KeyE')
     await until(game, () => (window as any).__home.farm.state.market.till.coins === 0)
-    expect((await farm(page)).coins).toBe(before.coins + SHOP.readyAt + 50)
+    // (the till's XP reaches a level, whose coins come in by themselves)
+    const end = await farm(page)
+    expect(end.coins - levelPay(before.xp.paid, end.xp.paid)).toBe(before.coins + SHOP.readyAt + 50)
     expect(await xp(page)).toBe(xp0 + xpForSale(SHOP.readyAt + 50))
   })
 

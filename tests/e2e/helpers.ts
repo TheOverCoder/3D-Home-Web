@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { test as base, expect, type Browser, type Page } from '@playwright/test'
+import { unpaidCoins, xpAt } from '../../src/farm/xp'
 
 /** Library warnings that are known and harmless (they are warnings, but we ignore them explicitly anyway). */
 const IGNORED = [/THREE\.Clock: This module has been deprecated/, /using deprecated parameters for the initialization function/]
@@ -10,6 +11,11 @@ export const FARM_START = { x: -1.2, y: 1.4, z: 6.8 }
 
 /** The two maps (src/scene/Maps.tsx): the house on its own plot, and the farm. */
 export type MapId = 'home' | 'farm'
+
+/** The coins the levels reached between two reads of the farm's `xp.paid` brought by themselves (src/farm/state.ts,
+ *  arrive): what a count of coins leaves out to show what an action itself cost or paid (the XP it gave can reach a
+ *  level). Read `xp.paid` in the same call as the coins. */
+export const levelPay = (from: number, to: number) => unpaidCoins({ points: xpAt(to), paid: from })
 
 /** The address the app is served on (playwright.config.ts: 4185, or E2E_PORT for a second copy of the tree). */
 export const BASE = `http://localhost:${Number(process.env.E2E_PORT) || 4185}`

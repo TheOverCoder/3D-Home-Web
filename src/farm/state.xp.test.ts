@@ -213,44 +213,80 @@ describe('gainXp, the level and its coins', () => {
     expect([noPoint.x, noPoint.y, noPoint.z].every(Number.isNaN)).toBe(true)
   })
 
-  it('xpNow: the level, how far into it, and the coins waiting (not how many levels)', () => {
+  it('xpNow: the level, how far into it, and no coins waiting (a level reached paid its own)', () => {
     gainXp('build', 20) // 100 XP: level 3 (45) passed, level 4 at 90
     const now = xpNow()
     expect(now.level).toBe(levelOf(100))
     expect(now.level).toBe(4)
     expect([now.points, now.into, now.need]).toEqual([100, 100 - xpAt(4), xpAt(5) - xpAt(4)])
-    expect(now.unpaid).toBe(levelReward(2) + levelReward(3) + levelReward(4))
+    expect(now.unpaid).toBe(0)
   })
 
-  it('claiming pays every level reached at once, with a word and the coins, and only once', () => {
-    gainXp('build', 20)
+  it('a level reached by play pays its coins by itself, every level once (three at once: all three), and no XP for them', () => {
     const coins = farm.coins
+    const before = gained(() => gainXp('build', 20))
+    expect(before).toEqual({ xp: 20 * XP_FOR.build, events: 1 })
     const due = (2 + 3 + 4) * LEVELS.reward
-    expect(claimLevel()).toBe(due)
     expect(farm.coins).toBe(coins + due)
     expect(farm.xp.paid).toBe(4)
-    expect(xpNow().unpaid).toBe(0)
-    expect(useHome.getState().toast?.text).toBe(`Level 4 · + ${due} coins`)
+    expect(farm.gifts.came.map((c) => [c.level, c.coins])).toEqual([
+      [2, levelReward(2)],
+      [3, levelReward(3)],
+      [4, levelReward(4)],
+    ])
+    // nothing more to claim, and more XP within the level pays nothing
     expect(claimLevel()).toBe(0)
+    gainXp('build')
     expect(farm.coins).toBe(coins + due)
     // the next level (200 XP: level 5), its own coins only
     gainXp('build', 20)
     expect(levelOf(farm.xp.points)).toBe(5)
-    expect(claimLevel()).toBe(levelReward(5))
+    expect(farm.coins).toBe(coins + due + levelReward(5))
   })
 
-  it('claiming up to the level the chip shows (XP still flying is not claimed yet): those levels only, the rest later', () => {
-    gainXp('build', 20) // level 4 reached
+  it('claiming pays coins still waiting (set by hand: play pays its own), up to the level given, once', () => {
+    gainXp('build', 20) // level 4 reached, paid
+    farm.xp.paid = 1
     const coins = farm.coins
+    expect(xpNow().unpaid).toBe(levelReward(2) + levelReward(3) + levelReward(4))
     expect(claimLevel(3)).toBe(levelReward(2) + levelReward(3))
     expect([farm.xp.paid, farm.coins - coins, xpNow().unpaid]).toEqual([3, levelReward(2) + levelReward(3), levelReward(4)])
     expect(claimLevel(3)).toBe(0)
     expect(claimLevel(2)).toBe(0)
-    expect(farm.xp.paid).toBe(3)
     // past the level reached: only up to it; not a number: nothing
     expect(claimLevel(NaN)).toBe(0)
     expect(claimLevel(99)).toBe(levelReward(4))
     expect([farm.xp.paid, xpNow().unpaid]).toEqual([4, 0])
+    expect(useHome.getState().toast?.text).toBe(`Level 4 · + ${levelReward(4)} coins`)
+  })
+
+  it('a farm saved with levels reached and their coins not claimed (from when they waited for a Claim) is paid them as it loads, once', () => {
+    gainXp('build', 20)
+    const saved = savedNow()
+    const coins = farm.coins
+    // as such a farm was saved: level 4, paid up to level 1
+    const owed = { ...saved, xp: { points: (saved.xp as { points: number }).points, paid: 1 } }
+    const events = xpEventCount()
+    try {
+      startFrom(justSaved(owed))
+      expect(farm.coins).toBe(coins + levelReward(2) + levelReward(3) + levelReward(4))
+      expect([farm.xp.paid, xpNow().unpaid]).toEqual([4, 0])
+      // saved and loaded again: not paid twice
+      startFrom(justSaved(savedNow()))
+      expect(farm.coins).toBe(coins + levelReward(2) + levelReward(3) + levelReward(4))
+      // and no level-up show for it (a load is not play)
+      expect(xpEventCount()).toBe(events)
+    } finally {
+      switchSlot(1)
+    }
+  })
+
+  it('time away reaches no level (XP comes only from what the player does): nothing paid twice, every level reached paid', () => {
+    gainXp('build', 20)
+    const xp = farm.xp.points
+    const came = farm.gifts.came.length
+    cameBack(3 * 3600)
+    expect([farm.xp.points, farm.xp.paid, farm.gifts.came.length]).toEqual([xp, levelOf(xp), came])
   })
 
   it('only play raises the events the level-up show listens to: not a reset, a load, a switch, an import or an old farm seeded', () => {

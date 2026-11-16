@@ -13,6 +13,9 @@ import {
   buyPiece,
   buySlot,
   claimLevel,
+  giftsWaiting,
+  openGifts,
+  sawLevel,
   collect,
   collectMachine,
   currentSlot,
@@ -47,6 +50,11 @@ import {
   upgradeStore,
   water,
 } from './state'
+import { unpaidCoins, xpAt } from './xp'
+
+/** The coins the levels reached since the level `paid` brought by themselves (src/farm/state.ts, arrive): what a count
+ *  of coins leaves out to show what an action itself cost or paid (the XP it gave can reach a level). */
+export const levelPay = (paid: number) => unpaidCoins({ points: xpAt(farm.xp.paid), paid })
 
 // Saves for the unit tests (never part of the game): two written by the code before the tables, one played to, and the
 // way the game starts from a save.
@@ -288,6 +296,11 @@ export function playedSave(): Record<string, unknown> {
     tick(85)
     movePlace('oven', { x: 2, z: 2, rot: 1 })
     moveBed(4, { x: 6, z: 3, rot: 1 })
+    // the level's gifts: the newest box of the level opened out of turn, the older ones left waiting, the level's
+    // arrival told (src/farm/gifts.ts)
+    const waiting = giftsWaiting()
+    openGifts(waiting.slice(-1))
+    sawLevel()
     // the house bought, and the player back on the farm (the two maps)
     farm.apartment.owned = true
     farm.place = 'farm'

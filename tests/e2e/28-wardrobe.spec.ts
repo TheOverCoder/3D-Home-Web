@@ -143,10 +143,17 @@ test.describe('the wardrobe', () => {
       const seen: string[] = []
       const w = window as any
       w.__shows = seen
-      const look = () => {
+      const check = () => {
         const l = document.querySelector('.level-up-show') ? 'level' : document.querySelector('.garment-show') ? `garment:${document.querySelector('.garment-show b')?.textContent}` : ''
         if (l && seen[seen.length - 1] !== l) seen.push(l)
-        if (seen.length < 2 || !seen[seen.length - 1].startsWith('garment')) requestAnimationFrame(look)
+        return seen.length < 2 || !seen[seen.length - 1].startsWith('garment')
+      }
+      // at every change to the page as well as every frame: a page drawn in software under load can go longer than a
+      // show lasts between two frames
+      const mo = new MutationObserver(() => !check() && mo.disconnect())
+      mo.observe(document.body, { childList: true, subtree: true })
+      const look = () => {
+        if (check()) requestAnimationFrame(look)
       }
       look()
       w.__home.farm.gainXp('build', 1)

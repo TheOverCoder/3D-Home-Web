@@ -34,7 +34,7 @@ export function MachinePanel({ id, buying }: { id: MachineId; buying?: boolean }
       const ok = act.add(recipe, i)
       if (ok) {
         const { pan, near } = at()
-        farmSound(def.sounds.load, pan, near)
+        farmSound(def.sounds.load, pan, near, 'tick')
         playGesture('interact')
       }
       return ok

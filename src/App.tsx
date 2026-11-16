@@ -18,6 +18,7 @@ import { Intro } from './ui/Intro'
 import { ScreenModal } from './ui/ScreenModal'
 import { SettingsPanel } from './ui/SettingsPanel'
 import { coarsePointer } from './lib/device'
+import { MotionRoot } from './ui/motion'
 
 // three.js, Rapier and the whole scene load in their own chunks so the intro paints immediately. First the loader
 // fetches every file the scene needs with a progress count (and the service worker keeps them on the device);
@@ -54,8 +55,9 @@ export function App() {
       }),
     [],
   )
+  // the interface moves with Motion (src/ui/motion.tsx): its features, and less motion for whoever asks for it
   return (
-    <>
+    <MotionRoot>
       <ErrorBoundary key={attempt} fallback={null} onError={handleSceneError}>
         <Suspense fallback={null}>
           <Experience />
@@ -77,6 +79,6 @@ export function App() {
       <GraphicsNotice />
       <HudMode />
       <PhotoButton />
-    </>
+    </MotionRoot>
   )
 }

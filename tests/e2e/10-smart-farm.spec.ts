@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { test, expect, type Game } from './helpers'
+import { test, expect, levelPay, type Game } from './helpers'
 
 // What is within reach (and turning towards it), the sheep and the loom, and the line of buyers at the gate: its
 // places, how often buyers come, the upgrades for both, selling to everyone, and the line kept in the save.
@@ -154,7 +154,8 @@ test.describe('smart actions, sheep and the line at the gate', () => {
     ).toBe(15)
 
     // sell to everyone at once, from the panel at the gate
-    const coins0 = await page.evaluate(() => (window as any).__home.farm.state.coins)
+    // (with the level paid: the sale's XP reaches levels, whose coins come in by themselves)
+    const { coins: coins0, paid: paid0 } = await page.evaluate(() => ({ coins: (window as any).__home.farm.state.coins as number, paid: (window as any).__home.farm.state.xp.paid as number }))
     const offers = await page.evaluate(() => (window as any).__home.farm.waiting().reduce((s: number, v: any) => s + v.offer, 0))
     await game.teleport(5.6, 1.4, 12.3, Math.PI, -0.05)
     await nearbyIs(game, 'farm-queue')
@@ -164,7 +165,8 @@ test.describe('smart actions, sheep and the line at the gate', () => {
     await expect(page.locator('.farm-buyer')).toHaveCount(15)
     await page.locator('.farm-sell-all').click()
     await until(game, () => (window as any).__home.farm.waiting().length === 0)
-    expect(await page.evaluate(() => (window as any).__home.farm.state.coins)).toBe(coins0 + offers)
+    const sold = await page.evaluate(() => ({ coins: (window as any).__home.farm.state.coins as number, paid: (window as any).__home.farm.state.xp.paid as number }))
+    expect(sold.coins - levelPay(paid0, sold.paid)).toBe(coins0 + offers)
     await page.keyboard.press('Escape')
     await until(game, () => (window as any).__home.useHome.getState().panel === null)
     expect(game.errors, game.errors.join('\n')).toEqual([])

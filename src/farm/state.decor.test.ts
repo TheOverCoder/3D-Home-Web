@@ -28,7 +28,7 @@ import {
   tick,
   xpNow,
 } from './state'
-import { savedNow, startFrom } from './testSaves'
+import { levelPay, savedNow, startFrom } from './testSaves'
 
 // The edit mode's shop and what it sells (src/farm/decor.ts, the rules in src/farm/layout.ts): bought for its price,
 // each one dearer than the last; put down, moved, put away into the farm's store and down again for nothing; a fruit
@@ -54,8 +54,10 @@ describe('buying', () => {
     const paid: number[] = []
     for (let k = 0; k < 4; k++) {
       const before = farm.coins
+      const level = farm.xp.paid
       expect(buyDecor('lamp')).toBe(true)
-      paid.push(before - farm.coins)
+      // (what it cost: a level its XP reached brought coins of its own)
+      paid.push(before - (farm.coins - levelPay(level)))
     }
     expect(paid).toEqual([200, 240, 280, 320])
     expect(farm.layout.stored.lamp).toBe(4)

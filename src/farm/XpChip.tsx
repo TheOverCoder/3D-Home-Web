@@ -1,9 +1,12 @@
 import { m, useReducedMotion } from 'motion/react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { farmSound } from '../audio/sound'
-import { reducedMotion } from '../fx/fx'
+import { coinsToFly, reducedMotion } from '../fx/fx'
 import { onXpFlight, xpInFlight } from '../fx/xp'
 import { GarmentPic } from '../ui/GarmentPic'
+import { flyCoins, flyItem } from '../fx/coins'
+import { storeOf } from './data'
+import { iconUrl } from './icons'
 import { useHome } from '../store'
 import { art } from '../ui/art'
 import { SPRING } from '../ui/motion'
@@ -12,13 +15,16 @@ import { levelView } from './levelView'
 import { GARMENTS, type Garment } from './outfit'
 import { farm, useFarm, xpEventCount, xpNow } from './state'
 import { levelOf } from './xp'
+import { waitingBoxes } from './gifts'
 
 // The level chip at the top (src/farm/TopDash.tsx): a road from a star with the level on it to the next level and its
-// prize, its bar filling with XP as the crystals land (src/fx/xp.ts), a pulse of the star as it grows, and the coins of
-// the levels reached waiting. A tap opens the level's card (./LevelPanel.tsx): the XP to the next level, what it brings, the
-// coins to claim. LevelUp is the show of a new level (a flash, a ring, the new number) and, every fifth level, of the
-// garment it brings for the wardrobe; started by play only (xpEventCount in state.ts): a farm loaded or switched to
-// takes its level without a show.
+// prize, its bar filling with XP as the crystals land (src/fx/xp.ts), a pulse of the star as it grows, and the gift
+// boxes waiting to be opened (src/farm/gifts.ts: the chip glows, with how many at the road's end). A tap opens the
+// level's card (./LevelPanel.tsx): the XP to the next level, its gift boxes, what it brings. LevelUp is the show of a
+// new level (a flash, a ring, the new number; what the level brought by itself — its coins and its gift — flying off it
+// to the coin chip and the silo's or the barn's tank) and, every fifth level, of the garment it brings for the
+// wardrobe; started by play only (xpEventCount in state.ts): a farm loaded or switched to takes its level without a
+// show.
 
 /** The XP as the bar shows it: all the points, what is still in the air, and the count of gains from play. */
 interface Seen {
@@ -109,17 +115,19 @@ function useFirstFill(fill: { current: HTMLElement | null }) {
 }
 
 /** The level as a short road (the design lab's board "top", D): your star with the level on it, the XP still to go
- *  written over a bar that fills as the crystals land — its quarters marked, lit once passed, and its last quarter
- *  warm — and at its end the next level with its prize (the garment it brings, or its coins); the coins of the levels
- *  reached, waiting, in their place once there are some. A tap opens the level's card. */
+ *  written over a bar that fills as the crystals land — its quarters marked (where the level's gift boxes are), lit
+ *  once passed, and its last quarter warm — and at its end the next level with its prize (the garment it brings, or
+ *  its coins); the gift boxes reached and not opened, in their place once there are some, the road glowing. A tap
+ *  opens the level's card. */
 export function XpChip() {
   useFarm((s) => s.rev)
   const seen = useSeenXp()
   const still = useReducedMotion()
   const shown = Math.max(0, seen.points - seen.flying)
-  // the coins of the levels the bar has reached (a level's crystals still in the air are not paid for yet)
-  const { level, into, need, top, unpaid, gift } = levelView(shown, farm.xp.paid)
+  const { level, into, need, top, gift: garment } = levelView(shown, farm.xp.paid)
   const k = Math.min(1, into / need)
+  // the gift boxes the bar has reached and not opened (a quarter's crystals still in the air have not reached it yet)
+  const gifts = waitingBoxes(farm.gifts, shown).length
   const star = useRef<HTMLSpanElement>(null)
   const fill = useRef<HTMLSpanElement>(null)
   const shine = useRef<HTMLSpanElement>(null)
@@ -139,22 +147,23 @@ export function XpChip() {
 
   const open = () => useHome.getState().openPanel({ kind: 'level' })
   // the last quarter of a level: the road warms and the prize at its end wiggles now and then (the goal gradient)
-  const near = !top && !unpaid && k >= 0.75
+  const near = !top && k >= 0.75
   const togo = need - into
+  const boxes = `${gifts} ${gifts === 1 ? 'gift' : 'gifts'} to open`
   return (
     <m.span className="xp-line" initial={{ opacity: 0, y: -14 }} animate={{ opacity: 1, y: 0 }} transition={{ ...SPRING.pop, delay: 0.1 }}>
       <button
-        className={`farm-chip-item level top-road${unpaid ? ' ready' : ''}${near ? ' near' : ''}`}
+        className={`farm-chip-item level top-road${gifts ? ' ready' : ''}${near ? ' near' : ''}`}
         onClick={open}
-        title={unpaid ? `Level ${level}: ${unpaid} coins to claim` : `Level ${level}: ${into} of ${need} XP to level ${level + 1}`}
-        aria-label={unpaid ? `Level ${level}: ${unpaid} coins to claim` : `Level ${level}: what the next level brings`}
+        title={gifts ? `Level ${level}: ${boxes}` : `Level ${level}: ${into} of ${need} XP to level ${level + 1}`}
+        aria-label={gifts ? `Level ${level}: ${boxes}` : `Level ${level}: what the next level brings`}
       >
         <span className="xp-star" ref={star}>
           <img src={art('glowing-star')} alt="" />
           <b>{level}</b>
         </span>
         <span className="top-road-way">
-          <span className="top-road-togo">{top ? 'Top level' : unpaid ? 'Claim!' : near ? `Only ${togo} XP!` : `${togo} XP to go`}</span>
+          <span className="top-road-togo">{top ? 'Top level' : near ? `Only ${togo} XP!` : `${togo} XP to go`}</span>
           <span className="xp-bar" role="progressbar" aria-label={`Level ${level}: XP to level ${level + 1}`} aria-valuemin={0} aria-valuemax={need} aria-valuenow={into}>
             <span className="xp-bar-fill" ref={fill} style={{ width: `${k * 100}%` }}>
               <span className="top-road-clip">
@@ -168,10 +177,10 @@ export function XpChip() {
             ))}
           </span>
         </span>
-        {unpaid > 0 ? (
-          <m.span className="top-road-claim" initial={{ scale: 0, rotate: -20 }} animate={{ scale: 1, rotate: 0 }} transition={{ ...SPRING.pop, delay: 0.2 }}>
-            <img className="xp-coin" src={art('coin')} alt="" />
-            {unpaid}
+        {gifts > 0 ? (
+          <m.span className="top-road-gifts" initial={{ scale: 0, rotate: -20 }} animate={{ scale: 1, rotate: 0 }} transition={{ ...SPRING.pop, delay: 0.2 }}>
+            <img className="xp-gift" src={art('wrapped-gift')} alt="" />
+            {gifts}
           </m.span>
         ) : top ? null : (
           <span className="top-road-next">
@@ -181,7 +190,7 @@ export function XpChip() {
               animate={near && !still ? { rotate: [0, -12, 10, -6, 0], scale: [1, 1.15, 1] } : undefined}
               transition={{ delay: 1.1, duration: 0.6, repeat: Infinity, repeatDelay: 3 }}
             >
-              {gift ? <GarmentPic g={gift} /> : <img className="art" src={art('coin')} alt="" />}
+              {garment ? <GarmentPic g={garment} /> : <img className="art" src={art('coin')} alt="" />}
             </m.span>
           </span>
         )}
@@ -190,9 +199,10 @@ export function XpChip() {
   )
 }
 
-/** How long a level's show lasts, and a garment's after it. */
+/** How long a level's show lasts, and a garment's after it; when the gift the level brought flies off from it. */
 const LEVEL_MS = 2400
 const GIFT_MS = 3400
+const GIFT_FLY_MS = 650
 
 /** The show of a new level, over the scene under the compass (no pointer events, never a panel or a toast): a flash,
  *  a ring of energy and the new number, once the crystals that reached it have landed on the bar; then, for a level
@@ -203,7 +213,8 @@ export function LevelUp() {
   const reached = levelOf(seen.points)
   const landed = levelOf(Math.max(0, seen.points - seen.flying))
   const told = useRef({ events: seen.events, level: reached, pending: false })
-  const [show, setShow] = useState<{ level: number; n: number } | null>(null)
+  const [show, setShow] = useState<{ level: number; from: number; n: number } | null>(null)
+  const showEl = useRef<HTMLDivElement>(null)
   // the garments the levels shown brought, still to be shown (one after another)
   const [gifts, setGifts] = useState<Garment[]>([])
   const [gift, setGift] = useState<{ g: Garment; n: number } | null>(null)
@@ -222,7 +233,7 @@ export function LevelUp() {
       const from = s.level
       s.level = landed
       s.pending = landed < reached
-      setShow((p) => ({ level: landed, n: (p?.n ?? 0) + 1 }))
+      setShow((p) => ({ level: landed, from, n: (p?.n ?? 0) + 1 }))
       const brought = GARMENTS.filter((g) => g.level > from && g.level <= landed)
       if (brought.length) setGifts((q) => [...q, ...brought])
       farmSound('level')
@@ -232,7 +243,23 @@ export function LevelUp() {
   useEffect(() => {
     if (!show) return
     const t = window.setTimeout(() => setShow(null), LEVEL_MS)
-    return () => window.clearTimeout(t)
+    // what each level brought by itself flies off the number once it has landed: its coins to the coin chip, its gift
+    // up and on to its building's chip (where they went: the level's card tells what they were)
+    const came = farm.gifts.came.filter((c) => c.level > show.from && c.level <= show.level)
+    const fly = window.setTimeout(() => {
+      const el = showEl.current
+      if (!el || !el.getClientRects().length || reducedMotion()) return
+      const r = el.getBoundingClientRect()
+      const x = r.left + r.width / 2
+      const y = r.top + r.height * 0.62
+      const coins = came.reduce((n, c) => n + c.coins, 0)
+      if (coins > 0) flyCoins(x, y, coinsToFly(coins))
+      came.forEach((c, k) => 'item' in c.prize && flyItem(x, y, iconUrl(c.prize.item), k, storeOf(c.prize.item)))
+    }, GIFT_FLY_MS)
+    return () => {
+      window.clearTimeout(t)
+      window.clearTimeout(fly)
+    }
   }, [show])
 
   // a garment's show once the level's is over, and the next one's after it
@@ -252,7 +279,7 @@ export function LevelUp() {
     <TopSlot name="level">
       <div className="level-up" aria-live="polite">
         {show && (
-          <div className="level-up-show" key={show.n}>
+          <div className="level-up-show" key={show.n} ref={showEl}>
             <span className="level-up-flash" aria-hidden="true" />
             <span className="level-up-ring" aria-hidden="true" />
             <span className="level-up-ring late" aria-hidden="true" />

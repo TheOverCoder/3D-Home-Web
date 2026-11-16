@@ -1,9 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { LANE, isWalkInSpace } from '../data/buildings'
-import { useSettings } from '../settings'
 import { busy, useHome, type Nearby } from '../store'
 import type { ArtId } from '../ui/art'
-import { canVibrate, coarsePointer } from './device'
 import { look, turnTowards } from './look'
 import { playerState, type Point3 } from './playerState'
 import { stopWalk } from './route/walking'
@@ -361,14 +359,6 @@ export function findFar(from: Point3): FarMark[] {
   return [...byItem.values()].sort((a, b) => a.d - b.d)
 }
 
-/** Does it give the phone's short buzz: something taken, watered, shorn, sold or planted. */
-const isJob = (icon: ActionIcon | undefined) => !!icon && (icon.verb === 'pick' || icon.verb === 'shear' || icon.verb === 'water' || icon.verb === 'sell' || icon.verb === 'plant')
-
-/** A short buzz as something is done, where the phone can and the player has not turned it off. */
-function buzz() {
-  if (coarsePointer && canVibrate && useSettings.getState().vibration) navigator.vibrate(12)
-}
-
 /** Turns you to face a thing and marks it in the world until you get there: a compass mark tapped when there is no way
  *  to walk to it (src/lib/route/walker.ts), or you are already there. */
 export function guideTo(id: string) {
@@ -420,9 +410,8 @@ export function triggerInteraction(id?: string) {
     stopWalk('used')
     // turn from where the body stands (the same place the offer was worked out from), at eye height
     if (offer.reach && state.view === 'first') turnTowards({ x: playerState.position.x, y: playerState.eye.y, z: playerState.position.z }, def.aim ?? def.position)
-    const job = isJob(iconOf(def)) // (asked before it runs: after watering, the bed only says how long)
+    // (what it did is felt with its sound: farmSound in src/audio/sound.ts, through haptic in ./device.ts)
     def.run()
-    if (job) buzz()
     return
   }
   if (id === undefined && carrying) drop(dropPosition())

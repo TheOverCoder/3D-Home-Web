@@ -29,6 +29,7 @@ import {
   spawnVisitor,
   tick,
 } from './state'
+import { levelPay } from './testSaves'
 
 // The machines' queues on the farm (src/farm/state.ts, rules in src/farm/machines.ts): a job takes its ingredients as
 // it goes in and gives them back if it is taken out while it waits; jobs run one after another in play and while you
@@ -133,9 +134,12 @@ describe("a queue's places", () => {
     for (let c = QUEUE.start + 1; c <= QUEUE.max; c++) {
       const before = farm.coins
       const xp = farm.xp.points
+      const paid = farm.xp.paid
       expect(buySlot('loom')).toBe(true)
-      expect([before - farm.coins, farm.machines.loom.capacity, farm.xp.points - xp]).toEqual([QUEUE_PRICES[c], c, XP_FOR.build])
-      spent += before - farm.coins
+      // (what it cost: a level its XP reached brought coins of its own)
+      const cost = before - (farm.coins - levelPay(paid))
+      expect([cost, farm.machines.loom.capacity, farm.xp.points - xp]).toEqual([QUEUE_PRICES[c], c, XP_FOR.build])
+      spent += cost
     }
     expect(spent).toBe(Object.values(QUEUE_PRICES).reduce((a, b) => a + b, 0))
     expect(buySlot('loom')).toBe(false)
