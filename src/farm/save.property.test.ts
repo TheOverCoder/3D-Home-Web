@@ -12,6 +12,7 @@ import {
   ITEMS,
   LADDERS,
   LADDER_IDS,
+  LEVELS,
   MACHINES,
   MACHINE_IDS,
   NAMES,
@@ -37,13 +38,13 @@ import { PARCELS, PARCEL_IDS, PLACE_IDS, bedHome, canPlace, canPlaceBed, canPlac
 import { FRUIT_KINDS, SHOP as FARM_SHOP, type ShopKind } from './decor'
 import { MAX_PLACES, SHOP_LADDERS, placesOpen, shopperEvery } from './market'
 import { offersPerDay } from './contractor'
-import { levelOf } from './xp'
-import { CAME_KEPT, PER_LEVEL, boxesReached } from './gifts'
+import { FIRST_STEP, levelOf, levelProgress } from './xp'
+import { BOX_COUNT, CAME_KEPT, PER_LEVEL, boxAt, boxesReached } from './gifts'
 import { EVENT_IDS, LUCKY_GOODS, SEEN_KEPT } from './events'
 import { QUEUE, machineLevel } from './machineView'
-import { garmentById } from './outfit'
+import { garmentById, garmentsAt } from './outfit'
 import { sanitizeLook } from '../models/look'
-import { arrivalSeconds, claimDaily, farm, gateX, inLine, placesInLine, tick } from './state'
+import { arrivalSeconds, claimDaily, farm, gateX, giftsWaiting, inLine, placesInLine, tick } from './state'
 import { tripSeconds } from './tractorRoute'
 import { OLD_SAVE, OLD_SAVE_2, playedSave, savedNow, seeded, startFrom } from './testSaves'
 
@@ -568,6 +569,43 @@ describe('a save with one value turned into anything (fast-check)', () => {
         fc.property(fc.constantFrom(...where), someString, ({ base, path }, value) => check(base, path, value)),
         // half as many: the first property puts these strings in too
         { numRuns: Math.ceil(RUNS / 2) },
+      )
+    },
+    TIME,
+  )
+
+  it(
+    'a save from before the curve was marked (its XP on the first one): the same level and share, what was paid, the boxes opened and the clothes kept',
+    () => {
+      const base = baseNamed('played').save
+      /** The first curve (LEVELS.step 15), worked out here: where level L began, and the level of some points. */
+      const firstAt = (level: number) => (FIRST_STEP * level * (level - 1)) / 2
+      const firstLevel = (p: number) => {
+        let level = 1
+        while (level < LEVELS.max && firstAt(level + 1) <= p) level++
+        return level
+      }
+      fc.assert(
+        fc.property(fc.integer({ min: 0, max: firstAt(LEVELS.max) + 10_000 }), (points) => {
+          const level = firstLevel(points)
+          const top = level >= LEVELS.max
+          const into = points - firstAt(level)
+          const need = firstAt(level + 1) - firstAt(level)
+          // every box it had reached opened, its level's garment (or the last before it) worn
+          const open = top ? BOX_COUNT : boxAt(level, 0) + Math.min(PER_LEVEL - 1, Math.floor((PER_LEVEL * into) / need))
+          const shirt = garmentsAt(level)
+            .filter((g) => g.slot === 'shirt')
+            .pop()!.id
+          const outfit = { ...(base.outfit as object), shirt, seen: level }
+          const save = { ...base, xp: { points, paid: level }, gifts: { open, also: [], gave: [], came: [], seen: level }, outfit }
+          loadedParts(toJson(save))
+          expect(farmProblems(), 'as loaded').toEqual([])
+          const now = levelProgress(farm.xp.points)
+          expect(now.level).toBe(level)
+          if (!top) expect(now.into / now.need).toBeGreaterThanOrEqual(into / need)
+          expect([farm.xp.paid, farm.coins, farm.gifts.open, giftsWaiting(), farm.outfit]).toEqual([level, base.coins, open, [], outfit])
+        }),
+        { numRuns: Math.ceil(RUNS / 4) },
       )
     },
     TIME,
