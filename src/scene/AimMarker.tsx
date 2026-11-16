@@ -75,7 +75,7 @@ export function AimMarker() {
   })
 
   return (
-    <group ref={group} visible={false}>
+    <group name="aim-marker" ref={group} visible={false}>
       <mesh material={halo} renderOrder={19}>
         <ringGeometry args={[0.7, 1.12, 48]} />
       </mesh>
