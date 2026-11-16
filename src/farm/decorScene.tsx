@@ -5,7 +5,7 @@ import { AdditiveBlending, BufferAttribute, BufferGeometry, Group, MeshBasicMate
 import { inSunShadow } from '../data/layout'
 import { registerInteractable } from '../lib/interaction'
 import { Parts, setSculptGlow, shadowPart, smoothstep, type PartDef } from '../lib/sculpt'
-import type { Structure } from '../models/structures'
+import { partGeometry, type Structure } from '../models/structures'
 import { DAY, PRODUCERS } from './data'
 import { DECOR_KINDS, FRUIT, FRUIT_KINDS, type DecorKind, type FruitId, type FruitKind, type ShopKind } from './decor'
 import { decorModel, fruitParts, fruitPlantModel, fruitSpots, putFruit } from './decorModels'
@@ -106,7 +106,7 @@ function makeCrowd(kind: ShopKind, max: number): Crowd {
   let top = 0
   for (const k of keys) {
     const part = model[k]
-    const geometry = part.shape.geometry()
+    const geometry = partGeometry(part)
     top = Math.max(top, geometry.boundingBox!.max.y)
     defs[k] = { geometry, max, material: part.material, castShadow: CASTS.has(kind) && (part.castShadow ?? true), receiveShadow: part.receiveShadow ?? true }
   }
@@ -323,6 +323,10 @@ const SOLID: Partial<Record<ShopKind, Solid>> = {
   planter: { box: [0.48, 0.33, 0.24] },
   birdbath: { post: [0.45, 0.3] },
   well: { post: [0.5, 0.75] },
+  // a scarecrow: its post and stuffed body, and its arms out at your shoulders
+  'scarecrow-squire': { box: [0.7, 0.95, 0.2] },
+  'scarecrow-ploughman': { box: [0.7, 0.95, 0.2] },
+  'scarecrow-bogle': { box: [0.7, 0.95, 0.2] },
   'apple-tree': { post: [1.2, 0.18] },
   'orange-tree': { post: [1.2, 0.18] },
   'cherry-tree': { post: [1.2, 0.18] },

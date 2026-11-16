@@ -23,10 +23,10 @@ import { WALK_INS } from '../data/buildings'
 import { DECOR_KINDS, FRUIT, FRUIT_KINDS } from '../farm/decor'
 import { decorModel } from './decor'
 import { fruitParts, fruitPlantModel, fruitSpots, putFruit } from './fruit'
-// proposals in the design lab, not yet in the game (the 3D designer's boards): held to the same checks
-import { SETS as SCARECROW_SETS } from '../../lab/boards/scarecrow/models/scarecrows'
-import { kindAt, referenceModel } from '../../lab/boards/woods/models/woods'
-import { treeSpotsAll } from '../../lab/three/place'
+import { bigTreeKind, bigTreeModel, cornerTree } from './trees'
+import { CORNER_TREES } from '../data/garden'
+import { treeSpots } from '../farm/landGeometry'
+import { defaultLayout } from '../farm/layout'
 
 // Every model, in every variant and in the poses it takes in the game, run through the kit's checks (see
 // src/lib/sculpt/check.ts): every piece holds on to the rest, and the model stands on its ground. The gallery shows
@@ -374,17 +374,14 @@ export const MODEL_CHECKS: ModelCheck[] = [
     },
   },
   {
-    id: 'lab-scarecrows',
-    name: "The design lab's scarecrows (proposals, lab/boards/scarecrow): three sets of three",
+    id: 'woods',
+    name: "The farm's big trees: the woods' fourteen as a new farm has them, and the garden's three corners",
     run() {
-      return Object.values(SCARECROW_SETS).flatMap((set) => set.flatMap((one) => checkPieces(`scarecrow ${one.id}`, ...structure(one.model()))))
-    },
-  },
-  {
-    id: 'lab-woods',
-    name: "The design lab's woods (a proposal, lab/boards/woods): its tree at every one of the farm's big trees' spots",
-    run() {
-      return treeSpotsAll().flatMap((spot) => checkPieces(`${kindAt(spot)} ${spot.corner ? 'corner' : 'woods'} ${spot.index}`, ...structure(referenceModel(spot))))
+      const trees = [
+        ...treeSpots(defaultLayout()).map((t, index) => ({ height: t.height, seed: t.seed, index, corner: false })),
+        ...CORNER_TREES.map(([, , height], index) => cornerTree(index, height)),
+      ]
+      return trees.flatMap((t) => checkPieces(`${bigTreeKind(t)} ${t.corner ? 'corner' : 'woods'} ${t.index}`, ...structure(bigTreeModel(t))))
     },
   },
   {

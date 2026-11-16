@@ -5,7 +5,25 @@
 /** The edit mode shop's two tabs. */
 export type DecorTab = 'decor' | 'fruit'
 
-export type DecorKind = 'lamp' | 'lantern' | 'fence' | 'hedge' | 'path' | 'stones' | 'bench' | 'tree' | 'pine' | 'bush' | 'roses' | 'flowers' | 'planter' | 'birdbath' | 'well'
+export type DecorKind =
+  | 'lamp'
+  | 'lantern'
+  | 'fence'
+  | 'hedge'
+  | 'path'
+  | 'stones'
+  | 'bench'
+  | 'tree'
+  | 'pine'
+  | 'bush'
+  | 'roses'
+  | 'flowers'
+  | 'planter'
+  | 'birdbath'
+  | 'well'
+  | 'scarecrow-squire'
+  | 'scarecrow-ploughman'
+  | 'scarecrow-bogle'
 export type FruitKind = 'apple-tree' | 'orange-tree' | 'cherry-tree' | 'blueberry-bush' | 'raspberry-bush'
 export type ShopKind = DecorKind | FruitKind
 
@@ -20,7 +38,7 @@ export interface ShopDef {
   price: number
 }
 
-/** Decoration: light, fences and paths, seats, trees, bushes and flowers. */
+/** Decoration: light, fences and paths, seats, trees, bushes and flowers, and three scarecrows for the beds. */
 export const DECOR: Record<DecorKind, ShopDef> = {
   lamp: { id: 'lamp', tab: 'decor', name: 'Yard lamp', price: 200 },
   lantern: { id: 'lantern', tab: 'decor', name: 'Path lantern', price: 90 },
@@ -37,6 +55,9 @@ export const DECOR: Record<DecorKind, ShopDef> = {
   planter: { id: 'planter', tab: 'decor', name: 'Planter', price: 90 },
   birdbath: { id: 'birdbath', tab: 'decor', name: 'Bird bath', price: 180 },
   well: { id: 'well', tab: 'decor', name: 'Wishing well', price: 400 },
+  'scarecrow-squire': { id: 'scarecrow-squire', tab: 'decor', name: 'Squire scarecrow', price: 200 },
+  'scarecrow-ploughman': { id: 'scarecrow-ploughman', tab: 'decor', name: 'Ploughman scarecrow', price: 160 },
+  'scarecrow-bogle': { id: 'scarecrow-bogle', tab: 'decor', name: 'Bogle scarecrow', price: 180 },
 }
 
 /** Fruit trees and bushes: each bears its fruit (a producer of the farm, as the lemon tree is). */

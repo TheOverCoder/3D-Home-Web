@@ -1,11 +1,11 @@
 import { useEffect, useMemo, type ReactNode } from 'react'
 import { CuboidCollider, CylinderCollider, RigidBody } from '@react-three/rapier'
 import { CORNER_TREES } from '../data/garden'
-import { surface } from '../lib/proceduralTextures'
 import { B } from '../scene/Furnishings'
 import { StaticBatch } from '../scene/House'
-import { tree } from '../scene/flora'
-import { coopModel, lemonTreeModel, structureParts, troughModel, type Structure } from '../models/structures'
+import { coopModel, lemonTreeModel, partGeometry, structureParts, troughModel, type Structure } from '../models/structures'
+import { bigTreeModel, cornerTree } from '../models/trees'
+import { sculptMaterial } from '../lib/sculpt'
 import { barnModel, siloModel } from '../models/buildings'
 import { registerInteractable } from '../lib/interaction'
 import type { Point3 } from '../lib/playerState'
@@ -381,32 +381,23 @@ function LemonTree() {
   )
 }
 
-const CROWN_COLOURS = ['#5d7d43', '#6f8a46', '#4f6e3f']
-
-/** One of the three big trees that start in the garden's corners. Like the woods, they throw no shadow: the sun is
- *  low in the south-east and must keep reaching the windows. */
+/** One of the three big trees that start in the garden's corners: round oaks, as in the woods but a little finer
+ *  (src/models/trees.ts). Like the woods, they throw no shadow: the sun is low in the south-east and must keep
+ *  reaching the windows. */
 function BigTree({ index }: { index: number }) {
   const id = `tree${index}` as PlaceId
   const [, , height] = CORNER_TREES[index]
-  const parts = useMemo(() => tree(0, 0, height, 21 + index), [height, index])
-  useEffect(
-    () => () => {
-      parts.wood.dispose()
-      parts.crown.dispose()
-    },
-    [parts],
-  )
-  const leaves = useMemo(() => surface('grass', 1, 1), [])
-  const bark = useMemo(() => surface('veneer', 1, 1), [])
+  const parts = useMemo(() => {
+    const model = bigTreeModel(cornerTree(index, height))
+    return (['wood', 'crown'] as const).map((k) => ({ key: k, geometry: partGeometry(model[k]), material: sculptMaterial(model[k].material) }))
+  }, [height, index])
+  useEffect(() => () => parts.forEach((p) => p.geometry.dispose()), [parts])
   return (
     <>
       <Placed id={id}>
-        <mesh geometry={parts.wood}>
-          <meshStandardMaterial color="#6a5a4c" map={bark.map} normalMap={bark.normalMap} roughness={0.95} />
-        </mesh>
-        <mesh geometry={parts.crown}>
-          <meshStandardMaterial color={CROWN_COLOURS[index % 3]} map={leaves.map} normalMap={leaves.normalMap} roughnessMap={leaves.roughnessMap} roughness={1} normalScale={[1.4, 1.4]} />
-        </mesh>
+        {parts.map((p) => (
+          <mesh key={p.key} name={`tree-${p.key}`} geometry={p.geometry} material={p.material} />
+        ))}
       </Placed>
       <Body id={id} posts={[{ half: 1.2, radius: 0.32, at: [0, 1.2, 0] }]} />
     </>

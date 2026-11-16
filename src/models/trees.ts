@@ -1,29 +1,29 @@
 import { IcosahedronGeometry } from 'three'
 import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js'
-import { fbm3, merge, mixRgb, noise3, rgb, Shape, smoothstep, tube, type V3 } from '../../../../src/lib/sculpt'
-import { spin } from '../../../three/spin'
-import { mulberry } from '../../../../src/scene/flora'
-import { checkModel, modelGroup, trianglesOf, type LabModel } from '../../../three/model'
-import type { TreeSpot } from '../../../three/place'
-import type { Object3D } from 'three'
+import { fbm3, merge, mixRgb, noise3, rgb, Shape, smoothstep, spin, tube, type SculptMaterialOptions, type V3 } from '../lib/sculpt'
+import { mulberry } from '../scene/flora'
+import type { Structure } from './structures'
 
-// The woods' reference (the board: ../index.tsx): one mixed wood, made from what the user liked in B (the round tree:
-// a crown of big lumps, light on top and deep underneath, shaded as one ball) and in C (round, tall and pointed trees
-// in turn along the skyline), with fewer triangles than either. Four kinds:
+// The farm's big trees: the woods round it (src/farm/landGeometry.ts, drawn by Land.tsx) and the three in the garden's
+// corners (src/farm/Places.tsx). One mixed wood, chosen in the design lab (lab/boards/woods, D): round, tall and
+// pointed trees in turn along the skyline, each crown one skin over a cluster of lumps (seen from its middle, so no
+// lump hides inside another: every triangle is on the outside). Four kinds:
 //
-//   oak     B's round tree, its crown one skin over a cluster of lumps (seen from its middle, so no lump hides
-//           inside another: every triangle is on the outside), its creases darker; the garden's three corners too
-//   birch   a slim white trunk leaning a little, a light, small crown in three lumps
+//   oak     a round tree: a big lump in the middle and a ring of smaller ones, three on top, its creases darker; the
+//           garden's three corners too, a little finer (seen from a few metres, the woods' from twenty)
+//   birch   a slim white trunk leaning a little, marked dark, a light, small crown in a few lumps
 //   poplar  a tall flame of stacked lumps, pointed at the top, on a short trunk
 //   pine    four tiers of boughs, each with a ragged edge of bough tips that droop, dark blue-green, on a bare trunk
 //
-// Every crown is lit as one volume (its normals bent towards one ellipsoid's), coloured light where the sun is and
-// deep underneath, with a leafy relief finer than its vertices (the material's detail), as in B and C.
+// Every crown is lit as one volume (its normals bent towards one ellipsoid's: the part's `soft`), coloured light where
+// the sun is and deep underneath, with a leafy relief finer than its vertices (the material's detail). Each tree stands
+// in its own frame, the ground under its trunk at the origin, as two parts: its wood and its crown. 369 to 809
+// triangles a tree: the seventeen of a farm about 9,200 (the trees before them drew about 24,000).
 
 // ───────────────────────────── colours ─────────────────────────────
 
 type Greens = { dark: V3; mid: V3; light: V3 }
-/** The oak's three shades (the game's three: Land.tsx's '#5d7d43', '#6f8a46', '#4f6e3f'), as in B. */
+/** The oak's three shades (the woods' trees take them in turn). */
 const OAK: Greens[] = [
   { dark: rgb(0x2f5231), mid: rgb(0x4d843d), light: rgb(0x9cc45e) },
   { dark: rgb(0x375a31), mid: rgb(0x5a8e43), light: rgb(0xaccb66) },
@@ -47,18 +47,26 @@ function leafy(g: Greens, y: number, bottom: number, top: number) {
 const barkPaint = (x: number, y: number, z: number) => mixRgb(BARK, BARK_LIGHT, 0.25 + 0.35 * noise3(x * 14, y * 4, z * 14, 31))
 
 /** The crowns' material: a leafy relief finer than its vertices (the lemon tree's, sized for a tree four times it). */
-const CROWN_MATERIAL = { roughness: 0.9, detail: { scale: 3, bump: 0.12, shade: 0.1 } }
-const WOOD_MATERIAL = { roughness: 0.95, surface: { kind: 'bark' as const, size: 0.6 } }
+export const CROWN_MATERIAL: SculptMaterialOptions = { roughness: 0.9, detail: { scale: 3, bump: 0.12, shade: 0.1 } }
+/** The trunks' bark; the birch's white bark its own. */
+export const WOOD_MATERIAL: SculptMaterialOptions = { roughness: 0.95, surface: { kind: 'bark', size: 0.6 } }
+export const BIRCH_MATERIAL: SculptMaterialOptions = { roughness: 0.85, surface: { kind: 'bark', size: 0.45, bump: 0.6 } }
 
 // ───────────────────────────── the crown: one skin over a cluster of lumps ─────────────────────────────
 
+const balls = new Map<number, { dirs: V3[]; tris: number[] }>()
 /** A geodesic ball: an icosahedron with each edge cut in `n` (20·n² triangles, evenly spread), as unit directions. */
 function geodesic(n: number) {
+  const known = balls.get(n)
+  if (known) return known
   const g = mergeVertices(new IcosahedronGeometry(1, n - 1).deleteAttribute('normal').deleteAttribute('uv'), 1e-4)
   const p = g.getAttribute('position')
   const dirs: V3[] = []
   for (let i = 0; i < p.count; i++) dirs.push([p.getX(i), p.getY(i), p.getZ(i)])
-  return { dirs, tris: Array.from(g.getIndex()!.array) }
+  const ball = { dirs, tris: Array.from(g.getIndex()!.array) }
+  g.dispose()
+  balls.set(n, ball)
+  return ball
 }
 
 interface Lump {
@@ -69,7 +77,7 @@ interface Lump {
 /** The outside of a cluster of lumps, as seen from `centre` (inside the first lump): along each direction of a
  *  geodesic ball (spread as an ellipsoid `stretch` would, so a tall crown keeps its vertices even), the farthest a
  *  lump reaches, the lumps' edges blended (`soft`, metres) so they meet in rounded creases. Gives the skin, how deep
- *  in a crease each vertex is (0 on a lump, 1 deep where two meet) for the colour. */
+ *  in a crease each vertex is (0 on a lump, 1 deep where two meet) and how much it faces up on its own lump. */
 function cluster(n: number, centre: V3, stretch: V3, lumps: Lump[], soft: number) {
   const { dirs, tris } = geodesic(n)
   const shape = new Shape()
@@ -146,10 +154,11 @@ function trunk(tip: V3, r: number, ends: V3[], fork: number, paint: (x: number, 
 // ───────────────────────────── the four kinds ─────────────────────────────
 
 export type TreePart = 'wood' | 'crown'
-export type Kind = 'oak' | 'birch' | 'poplar' | 'pine'
+export type TreeKind = 'oak' | 'birch' | 'poplar' | 'pine'
 
-/** B's round tree: a big lump in the middle, five round it a little lower, one on top, its underside flatter. */
-export function oakTree(height: number, seed: number, shade: number, detail = 5): LabModel<TreePart> {
+/** A round oak: a big lump in the middle, seven round it a little lower, three on top, its underside flatter. `shade`
+ *  picks one of its three greens; `detail` how finely its crown is cut (20·detail² triangles). */
+export function oakTree(height: number, seed: number, shade: number, detail = 5): Structure<TreePart> {
   const r = mulberry(seed)
   const R = height * 0.25
   const top = height * 0.3
@@ -191,8 +200,8 @@ export function oakTree(height: number, seed: number, shade: number, detail = 5)
   }
 }
 
-/** A birch: a slim white trunk leaning a little, marked dark, under a light crown of three lumps, more open below. */
-export function birchTree(height: number, seed: number): LabModel<TreePart> {
+/** A birch: a slim white trunk leaning a little, marked dark, under a light crown of four lumps, more open below. */
+export function birchTree(height: number, seed: number): Structure<TreePart> {
   const r = mulberry(seed)
   const h = height * 0.92
   const lean = 0.08 + r() * 0.08
@@ -220,13 +229,13 @@ export function birchTree(height: number, seed: number): LabModel<TreePart> {
   }
   const ends: V3[] = [lumps[1].c, lumps[2].c].map((p): V3 => [p[0] * 0.8, p[1] - R * 0.5, p[2] * 0.8])
   return {
-    wood: { shape: trunk([c0[0], c0[1] - R * 0.2, c0[2]], h * 0.02, ends, 0.8, birchPaint), material: { roughness: 0.85, surface: { kind: 'bark' as const, size: 0.45, bump: 0.6 } } },
+    wood: { shape: trunk([c0[0], c0[1] - R * 0.2, c0[2]], h * 0.02, ends, 0.8, birchPaint), material: BIRCH_MATERIAL },
     crown: { shape: crown, material: CROWN_MATERIAL, soft: { centre, radii: [R * 1.4, R * 2.0, R * 1.4], k: 0.42 } },
   }
 }
 
 /** A Lombardy poplar: a tall flame of stacked lumps, narrowing to a point, on a short trunk. */
-export function poplarTree(height: number, seed: number): LabModel<TreePart> {
+export function poplarTree(height: number, seed: number): Structure<TreePart> {
   const r = mulberry(seed)
   const h = height * 1.12
   const base = h * 0.13
@@ -253,7 +262,7 @@ export function poplarTree(height: number, seed: number): LabModel<TreePart> {
 
 /** A pine: four tiers of boughs, each smaller than the one under it, their edges ragged with drooping tips, on a bare
  *  trunk that shows below them. */
-export function pineTree(height: number, seed: number): LabModel<TreePart> {
+export function pineTree(height: number, seed: number): Structure<TreePart> {
   const r = mulberry(seed)
   const base = height * 0.22
   const n = 4
@@ -299,31 +308,31 @@ export function pineTree(height: number, seed: number): LabModel<TreePart> {
   }
 }
 
-// ───────────────────────────── the wood round the farm ─────────────────────────────
+// ───────────────────────────── the farm's big trees ─────────────────────────────
 
-/** The fourteen spots of the woods in turn (src/farm/landGeometry.ts treeSpots: round the farm from the east): round
- *  oaks between tall poplars, pines and birches, so every stretch of skyline has round, tall and pointed shapes. The
- *  garden's three corners are oaks. */
-export const WOODS_KINDS: Kind[] = ['oak', 'pine', 'birch', 'pine', 'oak', 'poplar', 'birch', 'oak', 'pine', 'poplar', 'oak', 'birch', 'oak', 'poplar']
+/** The woods' fourteen trees in turn (landGeometry.ts treeSpots: round the farm from the east): round oaks between tall
+ *  poplars, pines and birches, so every stretch of skyline has round, tall and pointed shapes. */
+export const WOODS_KINDS: TreeKind[] = ['oak', 'pine', 'birch', 'pine', 'oak', 'poplar', 'birch', 'oak', 'pine', 'poplar', 'oak', 'birch', 'oak', 'poplar']
 
-export const kindAt = (s: TreeSpot): Kind => (s.corner ? 'oak' : WOODS_KINDS[s.index % WOODS_KINDS.length])
+/** One of the farm's big trees: the woods' `index`th, or the garden's corner `index` (always an oak). */
+export interface BigTree {
+  height: number
+  seed: number
+  index: number
+  corner: boolean
+}
 
-/** The reference's tree for a spot. */
-export function referenceModel(s: TreeSpot, kind: Kind = kindAt(s)): LabModel<TreePart> {
-  if (kind === 'birch') return birchTree(s.height, s.seed)
-  if (kind === 'poplar') return poplarTree(s.height, s.seed)
-  if (kind === 'pine') return pineTree(s.height, s.seed)
+/** The kind of a big tree. */
+export const bigTreeKind = (t: BigTree): TreeKind => (t.corner ? 'oak' : WOODS_KINDS[t.index % WOODS_KINDS.length])
+
+/** A big tree's model, in its own frame (its kind's, unless given). */
+export function bigTreeModel(t: BigTree, kind: TreeKind = bigTreeKind(t)): Structure<TreePart> {
+  if (kind === 'birch') return birchTree(t.height, t.seed)
+  if (kind === 'poplar') return poplarTree(t.height, t.seed)
+  if (kind === 'pine') return pineTree(t.height, t.seed)
   // the garden's corner trees, seen from a few metres, a little finer than the woods' (seen from twenty)
-  return oakTree(s.height, s.seed, s.index, s.corner ? 6 : 5)
+  return oakTree(t.height, t.seed, t.index, t.corner ? 6 : 5)
 }
 
-export function referenceTree(s: TreeSpot, kind?: Kind): Object3D {
-  const g = modelGroup(referenceModel(s, kind), `tree-${s.corner ? 'corner' : 'woods'}-${s.index}`)
-  g.position.set(s.x, 0, s.z)
-  return g
-}
-
-export const referenceTriangles = (s: TreeSpot, kind?: Kind) => trianglesOf(referenceModel(s, kind))
-
-/** The kit's checks on the reference's tree at every spot. */
-export const referenceChecks = (spots: TreeSpot[]) => spots.flatMap((s) => checkModel(`D · ${kindAt(s)} ${s.corner ? 'corner' : 'woods'} ${s.index}`, referenceModel(s)))
+/** The garden's corner trees' seeds (their heights are CORNER_TREES', src/data/garden.ts). */
+export const cornerTree = (index: number, height: number): BigTree => ({ height, seed: 21 + index, index, corner: true })

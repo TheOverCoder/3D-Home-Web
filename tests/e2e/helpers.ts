@@ -255,8 +255,8 @@ export async function fillFarm(page: Page): Promise<FullFarm> {
     f.state.producers.hens.stock[0] = 2
     // the farm decorated (src/farm/decor.ts, the edit mode's shop), on the free land where the house stood and round
     // it, through the game's own rules (each where it fits, or the nearest free spot): a fenced garden with a path
-    // across it, lamps and lanterns, benches, trees and bushes, flowers, a bird bath and a well, and every kind of fruit
-    // tree and bush, hung full
+    // across it, lamps and lanterns, benches, trees and bushes, flowers, a bird bath, a well and the three scarecrows,
+    // and every kind of fruit tree and bush, hung full
     const decor: [string, number, number, number][] = [
       ...[-5, -3, -1, 1, 3, 5].map((x): [string, number, number, number] => ['fence', x, -6, 0]),
       ...[-5, -3, -1].flatMap((z): [string, number, number, number][] => [
@@ -300,6 +300,9 @@ export async function fillFarm(page: Page): Promise<FullFarm> {
       ['planter', 2.5, 1.5, 0],
       ['birdbath', 3, -1, 0],
       ['well', -3, 6, 0],
+      ['scarecrow-squire', -5.5, 0.5, 0],
+      ['scarecrow-ploughman', 0, 7.5, 0],
+      ['scarecrow-bogle', 5.5, -2.5, 0],
       ...[-5, -4, -3, -2, -1, 1].map((x): [string, number, number, number] => ['stones', x, 6, 0]),
       ['apple-tree', 7.5, -2, 0],
       ['apple-tree', -6, -8, 0],

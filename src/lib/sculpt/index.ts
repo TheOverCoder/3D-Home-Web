@@ -3,7 +3,8 @@
 //
 //   1. Build its parts from the shapes (shapes.ts): `loft` for anything organic (rings along a spine — a body, a
 //      head, a limb; `round` closes an end with a smooth dome, `squircle` squares the rings), `lathe` for round
-//      things, `tube` for stems and tails, `blade` for leaves, `blob` for lumps, `ellipsoid` for eyes and beads.
+//      things (`spin` when the profile turns back on itself: a brimmed hat), `tube` for stems and tails, `blade`
+//      for leaves, `blob` for lumps, `ellipsoid` for eyes and beads.
 //   2. Colour them (core.ts): `paint` the base, `pattern` a second colour with a crisp edge (patches, seeds,
 //      stripes), `blend` soft markings over both, `shade` darker where light does not reach. Give a vertex tint 1
 //      where an instance's own colour should apply (a coat, a shirt, ripening fruit) and 0 where it must not (eyes,
@@ -20,8 +21,8 @@
 // The animals, people and crops in src/models/ are the examples to copy from.
 
 export { Shape, merge, rgb, mixRgb, noise3, fbm3, random, smoothstep, type V3 } from './core'
-export { loft, lathe, tube, ellipsoid, blade, blob, squircle, type Ring, type LoftOptions, type BladeOptions } from './shapes'
-export { sculptMaterial, setSculptDetail, setSculptGlow, sculptGlow, type SculptMaterialOptions, type SculptSurface } from './material'
+export { loft, lathe, spin, tube, ellipsoid, blade, blob, squircle, type Ring, type LoftOptions, type BladeOptions } from './shapes'
+export { sculptMaterial, ownSculptMaterial, setSculptDetail, setSculptGlow, sculptGlow, type SculptMaterialOptions, type SculptSurface } from './material'
 export { Parts, shadowPart, type PartDef } from './parts'
 export { loadSolids, solidsReady, subtract, union, intersect } from './solid'
 export { checkPieces, checkPose, posedPieces, piecesOf, describeIssue, type Issue, type CheckOptions, type Piece } from './check'

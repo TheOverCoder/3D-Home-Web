@@ -17,7 +17,8 @@ const layouts: [string, FarmLayout][] = [
   ['all the land', { ...defaultLayout(), land: [...PARCEL_IDS] }],
 ]
 
-/** Each attribute's numbers, the geometries' one after another. */
+/** Each attribute's numbers, the geometries' one after another; and their triangles' corners, each geometry's counted
+ *  on from the vertices before it (as merging them counts them), when they have an index. */
 function joined(gs: BufferGeometry[]) {
   const out: Record<string, Float32Array> = {}
   for (const name of Object.keys(gs[0].attributes)) {
@@ -30,7 +31,17 @@ function joined(gs: BufferGeometry[]) {
     }
     out[name] = all
   }
-  for (const g of gs) expect(g.index, 'triangles one by one, without an index').toBeNull()
+  const indexed = gs.filter((g) => g.index).length
+  expect(indexed === 0 || indexed === gs.length, 'all with an index, or none').toBe(true)
+  if (indexed) {
+    const corners: number[] = []
+    let base = 0
+    for (const g of gs) {
+      for (const i of g.index!.array) corners.push(base + i)
+      base += g.getAttribute('position').count
+    }
+    out.index = new Float32Array(corners)
+  }
   return out
 }
 
@@ -56,22 +67,23 @@ describe('the land in pieces', () => {
     it(`${name}: the pieces are the one mesh, in its order, a few metres each`, () => {
       const pieces = build(layout)
       const whole = buildWhole(layout)
-      // the hedge: its pieces one after another are the single mesh, number for number
+      // the hedge: its pieces one after another are the single mesh, number for number (triangles one by one)
       expect(pieces.hedge.length).toBeGreaterThan(4)
+      for (const g of pieces.hedge) expect(g.index, 'triangles one by one, without an index').toBeNull()
       same(joined(pieces.hedge), joined([whole.hedge!]))
-      // the crowns: each shade's trees in turn are that shade's mesh
+      // the crowns: the trees in turn are the one mesh, their vertices and their triangles
       expect(pieces.crowns.length).toBe(14)
-      for (let k = 0; k < 3; k++) same(joined(pieces.crowns.filter((c) => c.shade === k).map((c) => c.geometry)), joined([whole.crowns[k]]))
+      same(joined(pieces.crowns), joined([whole.crowns]))
       // a few metres across: two sections of hedge (7.5 m at most), a tree's crown
       for (const g of pieces.hedge) expect(across(g)).toBeLessThan(7.5)
-      for (const c of pieces.crowns) expect(across(c.geometry)).toBeLessThan(9)
+      for (const g of pieces.crowns) expect(across(g)).toBeLessThan(9)
     })
 
   it('made the same every time (from their seeds)', () => {
     const a = build(defaultLayout())
     const b = build(defaultLayout())
     same(joined(a.hedge), joined(b.hedge))
-    same(joined(a.crowns.map((c) => c.geometry)), joined(b.crowns.map((c) => c.geometry)))
+    same(joined(a.crowns), joined(b.crowns))
   })
 })
 

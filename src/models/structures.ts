@@ -1,4 +1,4 @@
-import { DoubleSide, MeshStandardMaterial } from 'three'
+import { BufferAttribute, DoubleSide, MeshStandardMaterial, type BufferGeometry } from 'three'
 import {
   blob,
   fbm3,
@@ -39,8 +39,45 @@ export interface StructurePart {
   castShadow?: boolean
   /** off for the insides of things (the sun's shadow map would stripe them), which are shaded dark anyway */
   receiveShadow?: boolean
+  /** its normals bent towards an ellipsoid's round `centre` with these `radii`, by `k` (0 none, 1 all): a crown of
+   *  leafy lumps lit as one soft mass, not as many small balls (the big trees: src/models/trees.ts) */
+  soft?: { centre: V3; radii: V3; k: number }
 }
 export type Structure<K extends string = string> = Record<K, StructurePart>
+
+/** Bends a geometry's normals towards an ellipsoid's (a part's `soft`). */
+function soften(g: BufferGeometry, soft: NonNullable<StructurePart['soft']>) {
+  const p = g.getAttribute('position')
+  const n = g.getAttribute('normal')
+  const out = new Float32Array(n.count * 3)
+  const [cx, cy, cz] = soft.centre
+  const [rx, ry, rz] = soft.radii
+  for (let i = 0; i < n.count; i++) {
+    // the ellipsoid's normal there: the gradient of its equation
+    let ex = (p.getX(i) - cx) / (rx * rx)
+    let ey = (p.getY(i) - cy) / (ry * ry)
+    let ez = (p.getZ(i) - cz) / (rz * rz)
+    const el = Math.hypot(ex, ey, ez) || 1
+    ex /= el
+    ey /= el
+    ez /= el
+    const x = n.getX(i) + (ex - n.getX(i)) * soft.k
+    const y = n.getY(i) + (ey - n.getY(i)) * soft.k
+    const z = n.getZ(i) + (ez - n.getZ(i)) * soft.k
+    const l = Math.hypot(x, y, z) || 1
+    out[i * 3] = x / l
+    out[i * 3 + 1] = y / l
+    out[i * 3 + 2] = z / l
+  }
+  g.setAttribute('normal', new BufferAttribute(out, 3))
+}
+
+/** A part's geometry as it is drawn (its normals softened where it asks). */
+export function partGeometry(part: StructurePart): BufferGeometry {
+  const g = part.shape.geometry()
+  if (part.soft) soften(g, part.soft)
+  return g
+}
 
 /** The pieces of a structure, for the kit's checks (src/lib/sculpt/check.ts). */
 export const structurePieces = (s: Structure) => Object.entries(s).flatMap(([k, p]) => piecesOf(k, p.shape.geometry()))
@@ -48,7 +85,7 @@ export const structurePieces = (s: Structure) => Object.entries(s).flatMap(([k, 
 /** A structure drawn with the kit: one instanced draw per part, put once where it stands. */
 export function structureParts<K extends string>(s: Structure<K>, name: string): Parts<K> {
   const defs = {} as Record<K, { geometry: ReturnType<Shape['geometry']>; max: number; material?: SculptMaterialOptions; castShadow?: boolean; receiveShadow?: boolean }>
-  for (const k of Object.keys(s) as K[]) defs[k] = { geometry: s[k].shape.geometry(), max: 1, material: s[k].material, castShadow: s[k].castShadow ?? true, receiveShadow: s[k].receiveShadow ?? true }
+  for (const k of Object.keys(s) as K[]) defs[k] = { geometry: partGeometry(s[k]), max: 1, material: s[k].material, castShadow: s[k].castShadow ?? true, receiveShadow: s[k].receiveShadow ?? true }
   const parts = new Parts<K>(defs, name)
   putStructure(parts)
   return parts

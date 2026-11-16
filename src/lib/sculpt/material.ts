@@ -227,13 +227,25 @@ export interface SculptMaterialOptions {
   glow?: number
 }
 
+/** The material for these options, one shared by every part that asks for the same (made once). */
 export function sculptMaterial(o: SculptMaterialOptions = {}): MeshStandardMaterial {
   const d = o.detail
   const sf = o.surface
   const key = `${o.roughness ?? 0.8}|${o.doubleSided ? 2 : 1}|${o.metalness ?? 0}|${d ? `${d.scale},${d.bump},${d.shade}` : ''}|${o.leaf ? 1 : 0}|${sf ? `${sf.kind},${sf.size},${sf.joint ? sf.joint.join(',') : ''},${sf.tone ?? ''},${sf.bump ?? ''},${sf.turn ? 1 : 0}` : ''}${o.tint2 ? '|tint2' : ''}${o.glow ? `|glow${o.glow}` : ''}`
   let m = cache.get(key)
   if (m) return m
-  m = new MeshStandardMaterial({ vertexColors: true, roughness: o.roughness ?? 0.8, metalness: o.metalness ?? 0, side: o.doubleSided ? DoubleSide : FrontSide })
+  m = ownSculptMaterial(o)
+  cache.set(key, m)
+  return m
+}
+
+/** A material of its own for these options, shared with nothing (the same shader as the shared one): for the pieces
+ *  of one big thing, each drawn in its own place in the drawing order (three draws materials in the order they were
+ *  made: src/farm/landGeometry.ts). Whoever makes it disposes of it. */
+export function ownSculptMaterial(o: SculptMaterialOptions = {}): MeshStandardMaterial {
+  const d = o.detail
+  const sf = o.surface
+  const m = new MeshStandardMaterial({ vertexColors: true, roughness: o.roughness ?? 0.8, metalness: o.metalness ?? 0, side: o.doubleSided ? DoubleSide : FrontSide })
   const defines: Record<string, string> = {}
   if (d) defines.SCULPT_DETAIL = ''
   if (sf) defines.SCULPT_SURFACE = ''
@@ -282,6 +294,5 @@ export function sculptMaterial(o: SculptMaterialOptions = {}): MeshStandardMater
       .replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\n#ifdef SCULPT_LEAF\nnormal *= faceDirection;\n#endif')
   }
   m.customProgramCacheKey = () => 'sculpt-v4'
-  cache.set(key, m)
   return m
 }
