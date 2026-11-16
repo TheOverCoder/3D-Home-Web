@@ -3,7 +3,8 @@
 // design opens from it, with every proposal and every state; ✓ / ✗, a note and a note pinned to a point are kept across
 // a reload and turn its card green; an answered card goes to "ready to send" and comes back; "next" goes to the next
 // design waiting; ℹ︎ shows the answers given; a screen can be asked for; the game's screen shows its rings; the lab's
-// status opens. Writes lab/check.json (the lab's status shows it) and prints each step. With the lab served
+// status opens; and a 3D board is marked as a board of the interface is, by a user whose clock is hours before its
+// round's `added` (✓ / ✗ shown on its letters and buttons, its card green, kept across a reload). Writes lab/check.json (the lab's status shows it) and prints each step. With the lab served
 // (`npm run lab`, port 5180, or the build on another port: --base):
 //
 //   node scripts/lab-check.mjs [--base http://localhost:5180/]
@@ -26,6 +27,86 @@ const report = { at: new Date().toISOString(), steps: [] }
 const step = (screen, what, ok, detail = '') => {
   report.steps.push({ screen, what, ok, detail })
   console.log(`${ok ? '✓' : '✗'} [${screen}] ${what}${detail ? ` — ${detail}` : ''}`)
+}
+
+/**
+ * A 3D board marked as the user marks one, at a moment before its round's `added` (round 6: the 3D boards' `added` was
+ * hours ahead of the user's clock, and their ✓ / ✗ never showed): ✓ on one proposal and ✗ on another show on their
+ * letters and on the buttons, the card turns green, and all of it is there again after a reload — exactly as on a board
+ * of the interface.
+ */
+async function markThreeD(s, boards) {
+  const i = boards.findIndex((b) => b.kind === '3d')
+  if (i < 0) return step(s.name, 'סימון של עיצוב תלת־ממד', true, 'אין עיצוב תלת־ממד')
+  const b = boards[i]
+  const ctx = await browser.newContext(s.ctx)
+  const p = await ctx.newPage()
+  const errors = []
+  p.on('pageerror', (e) => errors.push(e.message))
+  // the user's clock: hours before the round's own time
+  await p.clock.setFixedTime(new Date(Date.parse(`${b.added}Z`) - 5 * 3600_000))
+  const press = (loc) => (s.touch ? loc.tap() : loc.click())
+  const side = async () => {
+    if (!(await p.locator('.side.open').count())) await press(p.locator('.d-menu, .d-list').first())
+    await p.waitForTimeout(350)
+  }
+  const shut = async () => {
+    if (await p.locator('.side.floating.open').count()) await p.keyboard.press('Escape')
+    await p.waitForTimeout(300)
+  }
+  const card = p.locator('.side-list .card').nth(i)
+  const letters = b.variants.filter((v) => v !== 'today')
+  const seen = async () => {
+    const yes = await p
+      .locator('.d-var')
+      .nth(b.variants.indexOf(letters[0]))
+      .evaluate((el) => el.classList.contains('said-yes'))
+    const no = letters[1]
+      ? await p
+          .locator('.d-var')
+          .nth(b.variants.indexOf(letters[1]))
+          .evaluate((el) => el.classList.contains('said-no'))
+      : true
+    return { yes, no }
+  }
+  try {
+    await p.goto(base)
+    await p.waitForTimeout(2500)
+    await side()
+    await press(card.locator('.card-open'))
+    await p.waitForTimeout(1500)
+    await press(p.locator('.d-var').nth(b.variants.indexOf(letters[0])))
+    await p.waitForTimeout(300)
+    await press(p.locator('.d-yes'))
+    await p.waitForTimeout(200)
+    const on = (await p.locator('.d-yes').getAttribute('aria-pressed')) === 'true'
+    if (letters[1]) {
+      await press(p.locator('.d-var').nth(b.variants.indexOf(letters[1])))
+      await p.waitForTimeout(300)
+      await press(p.locator('.d-no'))
+      await p.waitForTimeout(200)
+    }
+    const now = await seen()
+    await side()
+    const green = (await card.evaluate((el) => el.classList.contains('a-yes'))) && (await card.locator('.card-said').innerText()).includes('אושר')
+    await shut()
+    await p.reload()
+    await p.waitForTimeout(2500)
+    await side()
+    await press(card.locator('.card-open'))
+    await p.waitForTimeout(1200)
+    const again = await seen()
+    step(
+      s.name,
+      `${b.title} (תלת־ממד): ✓ ו־✗ מופיעים על האותיות ועל הכפתורים, הכרטיס ירוק, וגם אחרי טעינה מחדש – כמו בעיצוב ממשק`,
+      on && now.yes && now.no && green && again.yes && again.no,
+      `שעון המשתמש לפני ${b.added}`,
+    )
+  } catch (e) {
+    step(s.name, `${b.title} (תלת־ממד): הסימון נעצר`, false, String(e.message).split('\n')[0].slice(0, 160))
+  }
+  if (errors.length) step(s.name, `${b.title} (תלת־ממד): בלי שגיאות בדף`, false, errors.slice(0, 2).join(' | '))
+  await ctx.close()
 }
 try {
   const lab = await labOf(browser, base)
@@ -202,6 +283,7 @@ try {
     }
     step(s.name, 'בלי שגיאות בדף', errors.length === 0, errors.slice(0, 2).join(' | '))
     await ctx.close()
+    await markThreeD(s, boards)
   }
 } finally {
   await browser.close()

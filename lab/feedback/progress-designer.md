@@ -29,3 +29,7 @@
 03:48 done: loading — all six on one shared stage (sky, name, disc and rays, card, ready moment); G folded into a 'back' state (away report, ✦)
 04:22 checks: npm run check passes; audit clean on all seven boards but for lists that scroll (orders upright with 3–5 orders, sideways with 5; the settings page sideways); the shared sheet now closes only on a touch that began outside it (the Office tab had closed it)
 04:23 done: lab-check 63 of 63; round 5 handed back
+
+## Round 6 (the third round of answers, 323e07f)
+09:09 start: reading the answers (orders E into the game, goals round 4, the 3D boards' marks), the lab served on :5232
+09:13 done 3: the 3D boards' marks — cause: their added (09:00) was hours ahead of the user's clock (08:56), and an answer counted only if given after added; now an answer names its round (round === added), the clock no longer decides; lab-check marks a 3D board with the clock 5 h before its added (fails on the old code, passes now)

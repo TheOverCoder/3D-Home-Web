@@ -9,8 +9,11 @@ import { BOARDS } from '../boards'
 // The database: reviews/<board> = Review, outbox/<board> = Sent, requests/screens = { ids: { <map screen id>: true } }.
 //
 // A design answered goes to the outbox ("ready to send") when the user sends it; the designer gets what is there. What
-// was said belongs to one round of a design: a new round (the board's `added`, later than the answer) waits again, and
-// the answers and the sending of the round before no longer count for it.
+// was said belongs to one round of a design: each answer and each sending keeps the round it was about (the board's
+// `added` then), and a new round (another `added`) waits again: the answers and the sending of the round before no
+// longer count for it. The round is matched by name, never by the clock: a board whose `added` is later than the
+// moment it is answered (written by hand ahead of time, or in another zone) still shows what was said about it (round 6:
+// the 3D boards' ✓ / ✗ did not show, their `added` was hours ahead).
 
 export type Verdict = 'yes' | 'no'
 
@@ -33,6 +36,8 @@ export interface Review {
   notes: Note[]
   /** when it last changed, in ms since 1970 (none: written before this was kept, taken as LEGACY_AT) */
   at?: number
+  /** the round it is about: the board's `added` when it was written (none: written before rounds were kept by name) */
+  round?: string
 }
 
 export const NO_REVIEW: Review = { verdicts: {}, notes: [] }
@@ -41,17 +46,21 @@ export const NO_REVIEW: Review = { verdicts: {}, notes: [] }
 export interface Sent {
   sent: boolean
   at: number
+  /** the round sent (the board's `added` then) */
+  round?: string
 }
 
 /** Answers kept before their time was: all of them about the rounds shown then. */
 const LEGACY_AT = Date.parse('2026-11-15T06:00Z')
-/** A board's round, from its `added` (UTC, `YYYY-MM-DDTHH:MM`). */
-const roundOf = (id: string) => {
-  const added = BOARDS.find((b) => b.id === id)?.added
-  return added ? Date.parse(`${added}Z`) || 0 : 0
+/** The round a board shows now: its `added`. */
+export const roundOf = (id: string) => BOARDS.find((b) => b.id === id)?.added ?? ''
+/** Said or sent about the round the board shows now (not one before it): by the round it names; an answer kept before
+ *  rounds were named, by its time against the round's (UTC, `YYYY-MM-DDTHH:MM`). */
+export const ofRound = (id: string, at: number | undefined, round: string | undefined) => {
+  const now = roundOf(id)
+  if (round !== undefined) return round === now
+  return (at ?? LEGACY_AT) >= (Date.parse(`${now}Z`) || 0)
 }
-/** Said or sent about the round the board shows now (not one before it). */
-const ofRound = (id: string, at: number | undefined) => (at ?? LEGACY_AT) >= roundOf(id)
 
 // the platform's database, as far as this page uses it (lab/README.md; the artifact-capabilities contract)
 interface DocSnap {
@@ -91,8 +100,9 @@ const asReview = (d: Record<string, unknown> | undefined): Review => ({
   verdicts: (d?.verdicts as Record<string, Verdict>) ?? {},
   notes: Array.isArray(d?.notes) ? (d.notes as Note[]) : [],
   at: typeof d?.at === 'number' ? d.at : undefined,
+  round: typeof d?.round === 'string' ? d.round : undefined,
 })
-const asSent = (d: Record<string, unknown> | undefined): Sent => ({ sent: d?.sent === true, at: typeof d?.at === 'number' ? d.at : 0 })
+const asSent = (d: Record<string, unknown> | undefined): Sent => ({ sent: d?.sent === true, at: typeof d?.at === 'number' ? d.at : 0, round: typeof d?.round === 'string' ? d.round : undefined })
 
 /** Where the feedback is kept: the lab's shared database, this browser only, or still asking. */
 export type Keeping = 'loading' | 'shared' | 'local'
@@ -170,27 +180,27 @@ export function useReviews() {
   /** what was said about the round shown now (the round before's, nothing) */
   const current = (k: Kept, board: string) => {
     const r = k.reviews[board]
-    return r && ofRound(board, r.at) ? r : NO_REVIEW
+    return r && ofRound(board, r.at, r.round) ? r : NO_REVIEW
   }
   const change = (board: string, edit: (r: Review) => Review) => {
-    const now = { ...edit(current(latest.current, board)), at: Date.now() }
+    const now = { ...edit(current(latest.current, board)), at: Date.now(), round: roundOf(board) }
     const k = { ...latest.current, reviews: { ...latest.current.reviews, [board]: now } }
     setKept(k)
     latest.current = k
-    if (db.current && keeping !== 'local') save(`reviews/${board}`, { verdicts: now.verdicts, notes: now.notes, at: now.at })
+    if (db.current && keeping !== 'local') save(`reviews/${board}`, { verdicts: now.verdicts, notes: now.notes, at: now.at, round: now.round })
     else writeLocal(k)
   }
   const mark = (board: string, sent: boolean) => {
-    const now: Sent = { sent, at: Date.now() }
+    const now: Sent = { sent, at: Date.now(), round: roundOf(board) }
     const k = { ...latest.current, outbox: { ...latest.current.outbox, [board]: now } }
     setKept(k)
     latest.current = k
-    if (db.current && keeping !== 'local') save(`outbox/${board}`, { sent: now.sent, at: now.at })
+    if (db.current && keeping !== 'local') save(`outbox/${board}`, { sent: now.sent, at: now.at, round: now.round })
     else writeLocal(k)
   }
   const sentNow = (board: string) => {
     const o = kept.outbox[board]
-    return !!o?.sent && ofRound(board, o.at)
+    return !!o?.sent && ofRound(board, o.at, o.round)
   }
 
   return {
