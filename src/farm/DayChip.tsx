@@ -5,8 +5,9 @@ import type { DayPhase } from './data'
 import { clockFace, phaseDef } from './day'
 import { dayNow } from './state'
 
-// The farm's time in the row at the top (role G): the phase's picture (sunrise, sun, sunset, the moon) and the hour,
-// as the farm's clocks show it (src/farm/day.ts, clockFace: the farm's ten minutes; the car's dashboard shows the same).
+// The farm's time under the compass (the dashboard's hole, src/farm/TopDash.tsx; the compass's own when it is alone at
+// the top): the phase's picture (sunrise, sun, sunset, the moon) and the hour, as the farm's clocks show it
+// (src/farm/day.ts, clockFace: the farm's ten minutes; the car's dashboard shows the same).
 
 const NAMES: Record<DayPhase, string> = { morning: 'Morning', noon: 'Noon', evening: 'Evening', night: 'Night' }
 
@@ -15,7 +16,7 @@ const NAMES: Record<DayPhase, string> = { morning: 'Morning', noon: 'Noon', even
 hearNight(() => dayNow().phase === 'night')
 
 /** The phase's picture and the hour, on its own one-second timer. */
-export function DayChip() {
+export function DayChip({ className = 'farm-chip-item day' }: { className?: string }) {
   const [, setSecond] = useState(0)
   useEffect(() => {
     const t = setInterval(() => setSecond((n) => n + 1), 1000)
@@ -24,7 +25,7 @@ export function DayChip() {
   const { hour, phase } = dayNow()
   const time = clockFace(hour)
   return (
-    <span className="farm-chip-item day" title={`${NAMES[phase]}, ${time}`}>
+    <span className={className} title={`${NAMES[phase]}, ${time}`}>
       <img src={art(phaseDef(phase).art)} alt={NAMES[phase]} />
       <b>{time}</b>
     </span>

@@ -248,10 +248,13 @@ The README has the overview; `tests/README.md` what each test guards.
   action last with its price). 44 px targets, text ≥ 15 px (never < 13). A good's picture where goods change hands
   or go into a machine is an `ItemPic` with its count (the round badge, 1 included), never the picture repeated.
 - The top of the screen has three views (`HudMode`: everything / only the compass / clear, `<html data-hud>`):
-  anything new up there must hide in the views it does not belong to (see `src/ui/Compass.css`). Its middle is one
-  column under the chips (`src/ui/TopStack.tsx`): the compass, a toast, the level-up and the first hint each in its
-  slot (`<TopSlot name>`), one under another; something new there is a slot in its place in the order, never an
-  offset from another element. `22-xp` checks every box up there, with a toast and the hint, upright and sideways.
+  anything new up there must hide in the views it does not belong to (see `src/ui/Compass.css`). The dashboard
+  (`src/farm/TopDash.tsx`: coins, the level's road, the silo and barn tanks, the line and the goals) keeps a gap
+  between its wings where the compass's slot sits; its middle is one column (`src/ui/TopStack.tsx`): the compass, a
+  toast, the level-up and the first hint each in its slot (`<TopSlot name>`), one under another; something new there
+  is a slot in its place in the order, never an offset from another element. The corner has one menu (`HudMode.tsx`:
+  edit or decorate, the top's view, settings) in every view, and the photo button only in the clear one. `22-xp`
+  checks every box up there, with a toast and the hint, upright and sideways.
 - Touch controls (`src/ui/TouchControls.tsx`, `src/lib/stick.ts`): the stick comes to the thumb in the bottom-left
   area, with three buttons over it (look where you walk, walk on, turn round); the action buttons and jump are
   bottom right. Anything new there is placed by `measure`/`place`/`leftSide` in both orientations, clear of the

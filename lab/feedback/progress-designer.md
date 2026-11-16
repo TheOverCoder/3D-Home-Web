@@ -38,3 +38,10 @@
 10:04 done 2: goals round 4 committed (E exact + Claim all ✦; F the medal case); audit clean on goals and orders; films: E swap sideways, E claim all (the film's stopped clocks froze it; real time correct), F claim spin, F swipe
 11:08 checks: npm run check passes (511 tests; one earlier run timed out a far-copies test under the machine's load, alone it passes); 17 and 25 pass (11 of 11); lab check 66 of 66 (the 3D marking step on all three screens); audit clean on every board (a scrolled-away button no longer counts as under the bar); the game's orders board shot upright and sideways (lab/map/orders-*.jpg)
 11:15 done: Show me wired (src/farm/orderPlace.ts: a good to its places, the nearest ready else the nearest; OrdersPanel on the farm only); unit test 4/4, 17 10/10, check 515
+## Round 6 (the third round of answers, 323e07f): the chosen designs built into the game
+09:01 start: top D, saves D, intro E, loading B into the game; then the clear view's photo button (asked by the coordinator)
+09:20 done: top D — the dashboard (src/farm/TopDash.tsx: coins counting in, the level's road from XpChip, tank gauges with a bubble and Open, the compass in the dashboard's hole with the hour under it), the corner menu (src/ui/HudMode.tsx: edit, the top's view, settings, with names); the pinned goal left out (it needs the goals board's pin, not chosen yet); a narrow sideways screen takes two rows
+09:45 done: saves D (src/ui/SavesPanel.tsx; the photo and the name left out: the game would have to take and keep them); the slot summary gives each farm's level
+09:50 done: loading B (src/ui/Loading.tsx: the loader's real share and time left) and intro E (src/ui/Intro.tsx): the loading screen until ready, its moment, then the menu over the farm; the farm's name and the choice of place left out
+09:55 done: the photo button (src/ui/PhotoButton.tsx): the clear view only, the game's frame shared or saved
+10:20 done: the four boards marked live (today: pictures of the new game), the map's entries, tests 11/14/17/21/22 and their README rows

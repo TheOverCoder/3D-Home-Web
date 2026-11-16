@@ -2,7 +2,7 @@
 import { test, expect, watchErrors, type Game, BASE } from './helpers'
 
 // Starting up: the loading screen's account of what it downloads, the service worker keeping it on the device (a
-// second visit loads from there), the music player and the save list on the intro, the restart in light graphics
+// second visit loads from there), the music and the saved farms in the opening menu, the restart in light graphics
 // after the graphics context is lost while starting, and the save slots (file export / import).
 
 const readyButton = (page: Game['page']) =>
@@ -24,7 +24,7 @@ test.describe('starting up', () => {
     watchErrors(page, errors)
     const t0 = Date.now()
     await page.goto('/?debug&quality=low')
-    // the intro shows at once: it does not wait for the 3D engine
+    // the loading screen shows at once: it does not wait for the 3D engine
     await expect(page.locator('.intro .load')).toBeVisible({ timeout: 30_000 })
     expect(Date.now() - t0, 'the intro appears before the 3D engine has downloaded').toBeLessThan(30_000)
     await readyButton(page)
@@ -38,7 +38,9 @@ test.describe('starting up', () => {
     expect(first.files.every((s: string) => s === 'done' || s === 'cached')).toBe(true)
     expect(first.kinds).toContain('code')
     expect(first.kinds).toContain('model')
-    await expect(page.locator('.load-head')).toContainText('Ready')
+    // ready: the loading screen has given way to the opening menu
+    await expect(page.locator('.intro .loading-screen')).toHaveCount(0)
+    await expect(page.locator('.intro-menu')).toBeVisible()
 
     // what every player downloads: the physics engine's WebAssembly as a file of its own, and none of the developer
     // tools or pages (they load only with their flag: ?tune, ?console, ?gallery, ?furniture, ?items)
@@ -63,9 +65,9 @@ test.describe('starting up', () => {
       { timeout: 60_000, polling: 1000 },
     )
 
-    // the intro's music player and save list: the music starts with the first click (it is on by default),
-    // the player pauses and plays it
-    await page.locator('.intro-tabs button', { hasText: 'Music' }).click()
+    // the opening menu's music and saved farms: the music starts with the first click (it is on by default), its page
+    // pauses and plays it
+    await page.locator('.intro-tile', { hasText: 'Music' }).click()
     await page.waitForFunction(() => (window as any).__home.music.getState().playing === true, null, { timeout: 30_000 })
     await expect(page.locator('.music-title strong')).not.toBeEmpty()
     await page.locator('.music-btn.play').click()
@@ -73,7 +75,8 @@ test.describe('starting up', () => {
     await page.locator('.music-btn[aria-label="Next track"]').click()
     await page.locator('.music-btn.play').click()
     await page.waitForFunction(() => (window as any).__home.music.getState().playing === true && (window as any).__home.music.getState().track === 1, null, { timeout: 30_000 })
-    await page.locator('.intro-tabs button', { hasText: 'Saves' }).click()
+    await page.locator('.intro-back').click()
+    await page.locator('.intro-tile', { hasText: 'Load farm' }).click()
     await expect(page.locator('.slot')).toHaveCount(3)
     await expect(page.locator('.slot.current')).toContainText('Farm 1')
 
@@ -86,7 +89,6 @@ test.describe('starting up', () => {
     })
     expect(second.statuses.every((s: string) => s === 'cached')).toBe(true)
     expect(second.fromDevice).toBe(second.total)
-    await expect(page.locator('.load-line')).toContainText('from this device')
     expect(errors, errors.join('\n')).toEqual([])
     await context.close()
   })

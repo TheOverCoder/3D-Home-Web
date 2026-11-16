@@ -1,38 +1,20 @@
 import { useEffect } from 'react'
 import { farmSound, uiClick } from '../audio/sound'
 import { coarsePointer } from '../lib/device'
-import { busy, useHome } from '../store'
+import { useHome } from '../store'
 import { art } from '../ui/art'
-import { ArrowsOutCardinal } from '../ui/glyphs'
 import { SHOP, type ShopKind } from './decor'
 import { putDown } from './DecorShop'
 import { turn, useEdit } from './edit'
 import { shopArtUrl } from './icons'
 import { PARCELS, PLACES, bedHome, canBuyParcel, isPlant, samePlacement, type ParcelId, type PlaceId } from './layout'
 import { buyLand, farm, plantOf, sendBedHome, sendHome, stockOf, storeDecor, useFarm } from './state'
-import { editHere, openEdit } from '../home/decorate'
 
-// The edit mode's controls on the screen: the button that opens it (beside the settings), and while it is open a
+// The edit mode's controls on the screen (it opens from the top corner's menu, src/ui/HudMode.tsx, or B): while it is open a
 // card along the bottom that says what to do, or about what is picked — turn a place, a bed or a piece of decoration,
 // send it back to where it started or put a piece away into the farm's store, buy a field — with the shop (the bag:
 // decoration and fruit plants, src/farm/DecorShop.tsx) and what waits in the store to be put down; and a Done button
 // where the settings were.
-
-/** Opens the edit mode for where you are (B): on the farm the farm's, in the house its own (its furniture); none in the
- *  house's garden. */
-export function EditButton() {
-  const phase = useHome((s) => s.phase)
-  const occupied = useHome(busy)
-  const mode = useHome(editHere)
-  if (phase !== 'playing' || occupied || !mode) return null
-  const farmEdit = mode === 'farm'
-  const label = farmEdit ? 'Edit the farm: move things, buy land and decoration' : 'Decorate: move, turn and put away the furniture'
-  return (
-    <button className="gear edit-open" onClick={() => openEdit()} aria-label={`${label} (B)`} title={`${farmEdit ? 'Edit the farm' : 'Decorate'} (B)`}>
-      <ArrowsOutCardinal weight="bold" />
-    </button>
-  )
-}
 
 const Coin = () => <img className="edit-coin" src={art('coin')} alt="" />
 

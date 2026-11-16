@@ -430,7 +430,7 @@ const boxes = (page: Page, crowded = false) =>
       compass: shown('.compass'),
       // the rest of the top column (src/ui/TopStack.tsx)
       column: [...shown('.toast'), ...shown('.first-hint.touch'), ...shown('.level-up-show')],
-      corner: shown('.hud-mode'),
+      corner: shown('.top-menu-btn'),
       touch: [...shown('.stick-zone'), ...shown('.stick-tool'), ...shown('#ecctrl-virtual-button'), ...shown('.act-btn')],
     }
   }, crowded)
@@ -464,6 +464,32 @@ async function layoutProblems(page: Page, show: Box | null, crowded = false) {
     if (!on(show)) out.push('the level-up show off the screen')
     for (const t of b.touch) if (overlap(show, t)) out.push(`the level-up show over ${t.what}`)
   }
+  return out
+}
+
+/** In the clear view: the photo button on the screen, a finger's size, and clear of the menu and the touch controls. */
+async function photoProblems(page: Page) {
+  const b = await page.evaluate(() => {
+    const box = (sel: string) =>
+      Array.from(document.querySelectorAll(sel))
+        .filter((e) => e.getClientRects().length > 0 && getComputedStyle(e).visibility !== 'hidden')
+        .map((e) => {
+          const r = e.getBoundingClientRect()
+          return { what: sel, x: r.x, y: r.y, width: r.width, height: r.height }
+        })
+    return {
+      width: innerWidth,
+      height: innerHeight,
+      photo: box('.photo-btn'),
+      others: [...box('.top-menu-btn'), ...box('.stick-zone'), ...box('.stick-tool'), ...box('#ecctrl-virtual-button'), ...box('.act-btn')],
+    }
+  })
+  const out: string[] = []
+  if (b.photo.length !== 1) return ['no photo button']
+  const p = b.photo[0]
+  if (!(p.x >= -1 && p.y >= -1 && p.x + p.width <= b.width + 1 && p.y + p.height <= b.height + 1)) out.push('the photo button off the screen')
+  if (p.width < 44 || p.height < 44) out.push(`the photo button ${Math.round(p.width)}×${Math.round(p.height)}`)
+  for (const o of b.others) if (overlap(p, o)) out.push(`the photo button over ${o.what}`)
   return out
 }
 
@@ -511,12 +537,20 @@ test.describe('levels on a phone', { tag: '@boot' }, () => {
       }
       await checkLayout(page, show, '390×844')
       await checkLayout(page, null, '390×844', true)
+      // the clear view: only its menu and the photo button, clear of the touch controls (none in the other views)
+      expect(await page.locator('.photo-btn').count()).toBe(0)
+      await setHud(page, 'clean')
+      await expect.poll(() => photoProblems(page), { timeout: 15_000, message: '390×844: the photo button' }).toEqual([])
+      await setHud(page, 'all')
       // turned sideways
       await page.setViewportSize({ width: 844, height: 390 })
       await page.waitForFunction(() => innerWidth > innerHeight)
       await page.waitForTimeout(1500)
       await checkLayout(page, null, '844×390')
       await checkLayout(page, null, '844×390', true)
+      await setHud(page, 'clean')
+      await expect.poll(() => photoProblems(page), { timeout: 15_000, message: '844×390: the photo button' }).toEqual([])
+      await setHud(page, 'all')
       await page.setViewportSize({ width: 390, height: 844 })
       await page.waitForTimeout(1500)
       // the coins of level 3, claimed in the level's card the chip opens

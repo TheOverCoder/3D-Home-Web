@@ -39,3 +39,9 @@ export { Wall } from '@phosphor-icons/react/dist/csr/Wall'
 export { SpeakerSimpleHigh } from '@phosphor-icons/react/dist/csr/SpeakerSimpleHigh'
 export { SpeakerSimpleSlash } from '@phosphor-icons/react/dist/csr/SpeakerSimpleSlash'
 export { LockSimpleOpen } from '@phosphor-icons/react/dist/csr/LockSimpleOpen'
+// the top of the screen's menu (src/ui/HudMode.tsx), the saved farms' files (src/ui/SavesPanel.tsx), the photo of the
+// clear view (src/ui/PhotoButton.tsx)
+export { List } from '@phosphor-icons/react/dist/csr/List'
+export { DownloadSimple } from '@phosphor-icons/react/dist/csr/DownloadSimple'
+export { UploadSimple } from '@phosphor-icons/react/dist/csr/UploadSimple'
+export { Camera } from '@phosphor-icons/react/dist/csr/Camera'

@@ -1,0 +1,31 @@
+/* the menu in the top corner (src/ui/HudMode.tsx, the design lab's board "top", D): a round button that opens into
+   three, each with its name, in every view of the top of the screen */
+.top-menu { position: fixed; z-index: 13; top: calc(max(var(--top-pad), env(safe-area-inset-top)) + 4px); right: calc(10px + env(safe-area-inset-right)); }
+.top-menu-btn {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid var(--night-line);
+  background: var(--night);
+  color: #fff;
+  box-shadow: 0 3px 12px rgba(20, 12, 6, 0.32);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.top-menu-btn svg { width: 24px; height: 24px; }
+.top-menu-btn.on { background: var(--paper); color: var(--ink); }
+.top-menu-btn:focus-visible { outline: 3px solid var(--sun); outline-offset: 2px; }
+.top-dial { position: absolute; top: calc(100% + 8px); right: 0; margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; justify-items: end; }
+.top-dial-btn { display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 0; border: 0; background: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.top-dial-btn:focus-visible { outline: 3px solid var(--sun); outline-offset: 2px; border-radius: 999px; }
+.top-dial-word { padding: 7px 12px; border-radius: 999px; background: var(--paper); color: var(--ink); font: 600 15px/1 var(--font-display); white-space: nowrap; box-shadow: 0 2px 0 var(--edge-soft), 0 3px 10px rgba(20, 12, 6, 0.25); }
+.top-dial-icon { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 50%; background: var(--paper); color: var(--ink); box-shadow: 0 3px 0 var(--edge-soft), 0 3px 10px rgba(20, 12, 6, 0.25); }
+.top-dial-icon svg { width: 22px; height: 22px; }
+/* a phone on its side is short: the three open beside the menu, from its top, so the list ends well above the jump
+   button (the touch controls own the bottom corners) */
+@media (orientation: landscape) and (max-height: 560px) {
+  .top-dial { top: 0; right: calc(100% + 8px); gap: 4px; }
+}

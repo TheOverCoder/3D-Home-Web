@@ -1,3 +1,4 @@
+import { m, useReducedMotion } from 'motion/react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { farmSound } from '../audio/sound'
 import { reducedMotion } from '../fx/fx'
@@ -5,14 +6,16 @@ import { onXpFlight, xpInFlight } from '../fx/xp'
 import { GarmentPic } from '../ui/GarmentPic'
 import { useHome } from '../store'
 import { art } from '../ui/art'
+import { SPRING } from '../ui/motion'
 import { TopSlot } from '../ui/TopStack'
+import { levelView } from './levelView'
 import { GARMENTS, type Garment } from './outfit'
 import { farm, useFarm, xpEventCount, xpNow } from './state'
-import { levelOf, levelProgress, unpaidCoins } from './xp'
+import { levelOf } from './xp'
 
-// The level chip in the row at the top (role G): a star with the level on it, a thin bar along the bottom of the row
-// that fills with XP as the crystals land (src/fx/xp.ts), a pulse of the star as it grows, and the coins of the levels
-// reached waiting. A tap opens the level's card (./LevelPanel.tsx): the XP to the next level, what it brings, the
+// The level chip at the top (src/farm/TopDash.tsx): a road from a star with the level on it to the next level and its
+// prize, its bar filling with XP as the crystals land (src/fx/xp.ts), a pulse of the star as it grows, and the coins of
+// the levels reached waiting. A tap opens the level's card (./LevelPanel.tsx): the XP to the next level, what it brings, the
 // coins to claim. LevelUp is the show of a new level (a flash, a ring, the new number) and, every fifth level, of the
 // garment it brings for the wardrobe; started by play only (xpEventCount in state.ts): a farm loaded or switched to
 // takes its level without a show.
@@ -96,19 +99,32 @@ function pulse(el: HTMLElement | null) {
   )
 }
 
-/** The level and its bar, inside `.farm-chip`: the bar is the row's last item, along its bottom. */
+/** The bar drawn from empty as the road first shows (the dashboard's opening); later changes grow by `grow`. */
+function useFirstFill(fill: { current: HTMLElement | null }) {
+  useLayoutEffect(() => {
+    const el = fill.current
+    if (!el || reducedMotion() || typeof el.animate !== 'function') return
+    el.animate([{ width: '0%' }], { duration: 700, delay: 300, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'backwards' })
+  }, [fill])
+}
+
+/** The level as a short road (the design lab's board "top", D): your star with the level on it, the XP still to go
+ *  written over a bar that fills as the crystals land — its quarters marked, lit once passed, and its last quarter
+ *  warm — and at its end the next level with its prize (the garment it brings, or its coins); the coins of the levels
+ *  reached, waiting, in their place once there are some. A tap opens the level's card. */
 export function XpChip() {
   useFarm((s) => s.rev)
   const seen = useSeenXp()
+  const still = useReducedMotion()
   const shown = Math.max(0, seen.points - seen.flying)
-  const { level, into, need } = levelProgress(shown)
-  const k = Math.min(1, into / need)
   // the coins of the levels the bar has reached (a level's crystals still in the air are not paid for yet)
-  const unpaid = unpaidCoins({ points: shown, paid: farm.xp.paid })
+  const { level, into, need, top, unpaid, gift } = levelView(shown, farm.xp.paid)
+  const k = Math.min(1, into / need)
   const star = useRef<HTMLSpanElement>(null)
   const fill = useRef<HTMLSpanElement>(null)
   const shine = useRef<HTMLSpanElement>(null)
   const before = useRef({ seen, shown, level, k })
+  useFirstFill(fill)
 
   // XP from play joins the bar: it grows with a sweep of light, the star pulses, and it rings. A farm loaded or
   // switched to (its points changed with no gain and nothing landing) is simply shown as it is.
@@ -122,33 +138,55 @@ export function XpChip() {
   }, [seen, shown, level, k])
 
   const open = () => useHome.getState().openPanel({ kind: 'level' })
-
-  const badge = (
-    <span className="xp-star" ref={star}>
-      <img src={art('glowing-star')} alt="" />
-      <b>{level}</b>
-    </span>
-  )
-  // the badge and its bar on one line, the bar taking what the line has left (a phone's narrow row: one line, not two)
+  // the last quarter of a level: the road warms and the prize at its end wiggles now and then (the goal gradient)
+  const near = !top && !unpaid && k >= 0.75
+  const togo = need - into
   return (
-    <span className="xp-line">
-      {unpaid > 0 ? (
-        <button className="farm-chip-item level ready" onClick={open} title={`Level ${level}: ${unpaid} coins to claim`} aria-label={`Level ${level}: ${unpaid} coins to claim`}>
-          {badge}
-          <img className="xp-coin" src={art('coin')} alt="" />
-          <b>{unpaid}</b>
-        </button>
-      ) : (
-        <button className="farm-chip-item level" onClick={open} title={`Level ${level}: ${into} of ${need} XP to level ${level + 1}`} aria-label={`Level ${level}: what the next level brings`}>
-          {badge}
-        </button>
-      )}
-      <div className="xp-bar" role="progressbar" aria-label={`Level ${level}: XP to level ${level + 1}`} aria-valuemin={0} aria-valuemax={need} aria-valuenow={into}>
-        <span className="xp-bar-fill" ref={fill} style={{ width: `${k * 100}%` }}>
-          <span className="xp-bar-shine" ref={shine} />
+    <m.span className="xp-line" initial={{ opacity: 0, y: -14 }} animate={{ opacity: 1, y: 0 }} transition={{ ...SPRING.pop, delay: 0.1 }}>
+      <button
+        className={`farm-chip-item level top-road${unpaid ? ' ready' : ''}${near ? ' near' : ''}`}
+        onClick={open}
+        title={unpaid ? `Level ${level}: ${unpaid} coins to claim` : `Level ${level}: ${into} of ${need} XP to level ${level + 1}`}
+        aria-label={unpaid ? `Level ${level}: ${unpaid} coins to claim` : `Level ${level}: what the next level brings`}
+      >
+        <span className="xp-star" ref={star}>
+          <img src={art('glowing-star')} alt="" />
+          <b>{level}</b>
         </span>
-      </div>
-    </span>
+        <span className="top-road-way">
+          <span className="top-road-togo">{top ? 'Top level' : unpaid ? 'Claim!' : near ? `Only ${togo} XP!` : `${togo} XP to go`}</span>
+          <span className="xp-bar" role="progressbar" aria-label={`Level ${level}: XP to level ${level + 1}`} aria-valuemin={0} aria-valuemax={need} aria-valuenow={into}>
+            <span className="xp-bar-fill" ref={fill} style={{ width: `${k * 100}%` }}>
+              <span className="top-road-clip">
+                <span className="xp-bar-shine" ref={shine} />
+              </span>
+              <span className="top-road-head" />
+            </span>
+            {/* the quarters: near goals on the way, each lit once passed */}
+            {[0.25, 0.5, 0.75].map((q) => (
+              <i key={q} className={`top-road-notch${k >= q ? ' passed' : ''}`} style={{ left: `${q * 100}%` }} />
+            ))}
+          </span>
+        </span>
+        {unpaid > 0 ? (
+          <m.span className="top-road-claim" initial={{ scale: 0, rotate: -20 }} animate={{ scale: 1, rotate: 0 }} transition={{ ...SPRING.pop, delay: 0.2 }}>
+            <img className="xp-coin" src={art('coin')} alt="" />
+            {unpaid}
+          </m.span>
+        ) : top ? null : (
+          <span className="top-road-next">
+            <i>{level + 1}</i>
+            <m.span
+              className="top-road-prize"
+              animate={near && !still ? { rotate: [0, -12, 10, -6, 0], scale: [1, 1.15, 1] } : undefined}
+              transition={{ delay: 1.1, duration: 0.6, repeat: Infinity, repeatDelay: 3 }}
+            >
+              {gift ? <GarmentPic g={gift} /> : <img className="art" src={art('coin')} alt="" />}
+            </m.span>
+          </span>
+        )}
+      </button>
+    </m.span>
   )
 }
 

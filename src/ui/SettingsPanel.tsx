@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { canVibrate, coarsePointer } from '../lib/device'
-import { GearSix, X } from './glyphs'
+import { X } from './glyphs'
 import { collectDiagnostics } from '../lib/diagnostics'
 import { DEFAULT_SETTINGS, useSettings, type Settings } from '../settings'
 import { useHome } from '../store'
@@ -67,12 +67,12 @@ const TOUCH: { action: string; how: string }[] = [
   { action: 'Jump', how: 'Jump button' },
 ]
 
-/** The gear in the corner and the panel behind it: every control, shortcut and visual option in one place. */
+/** The settings (opened from the top corner's menu, src/ui/HudMode.tsx, or Esc): every control, shortcut and visual
+ *  option in one place. */
 export function SettingsPanel() {
   const open = useHome((s) => s.settingsOpen)
   const setOpen = useHome((s) => s.setSettingsOpen)
   const phase = useHome((s) => s.phase)
-  const editing = useHome((s) => s.editing || s.decorating)
   const view = useHome((s) => s.view)
   const setView = useHome((s) => s.setView)
   const quality = useHome((s) => s.quality)
@@ -103,10 +103,6 @@ export function SettingsPanel() {
 
   return (
     <>
-      <button className={open || editing ? 'gear hidden' : 'gear'} onClick={() => setOpen(true)} aria-label="Settings and controls (Esc)" title="Settings (Esc)">
-        <GearSix weight="fill" />
-      </button>
-
       {open && (
         <div className="drawer-backdrop" onClick={() => setOpen(false)}>
           <aside className="drawer" role="dialog" aria-modal="true" aria-label="Settings" onClick={(e) => e.stopPropagation()}>

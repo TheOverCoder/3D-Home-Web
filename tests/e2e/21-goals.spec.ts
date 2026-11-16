@@ -34,6 +34,7 @@ test.describe('the goals board', () => {
     await expect(trophy.locator('b')).toHaveText('1')
     await expect(page.locator('.toast')).toContainText('Goal reached: Collect 10 eggs')
     await trophy.click()
+    await page.locator('.top-pop-open').click()
     const board = page.locator('.farm-panel[aria-label="Goals"]')
     await expect(board).toBeVisible()
     const first = board.locator('.farm-goal').first()

@@ -1,17 +1,32 @@
-import { useRef, useState } from 'react'
+import { AnimatePresence, m, useAnimate, useReducedMotion } from 'motion/react'
+import { ToggleGroup } from 'radix-ui'
+import { useRef, useState, type ReactNode } from 'react'
 import { SLOTS, currentSlot, deleteSlot, exportSlot, importSlot, slotSummary, switchSlot, useFarm, type Slot } from '../farm/state'
 import { persistStorage } from '../lib/sw'
+import { art } from './art'
+import { ArrowRight, DownloadSimple, UploadSimple } from './glyphs'
+import { EASE, PRESS, SPRING } from './motion'
+import './SavesPanel.css'
 
-// Three farms kept in this browser (no account needed): pick one to play, save one as a file on the device
-// (a backup, or to carry it to another phone or computer), load one from a file, or start one afresh.
+// The farms kept on this device, three places (the design lab's board "saves", D): three tabs at the top — each farm
+// with its level's star, a green dot on the one being played — and under them the chosen farm as a card of pictures
+// with numbers (its level, its coins, the beds growing, its animals, "Playing now" on the one being played), then one
+// big Play, and quieter its file (save it on the device, or load one into this place) and the hold to start it afresh:
+// a fill runs across while the finger stays, and only a full hold clears a farm (a slip of the finger never loses
+// one). An empty place says so in a picture and a chip (a new farm, with the coins it starts with). Sideways the card
+// on the left, the presses on the right. Its moments: a tab — the highlight slides to it and the card turns over to
+// that farm; Play — the house hops and the screen goes on into that farm; a full hold — the card turns to an empty place.
+// The opening screen's "Load farm" page (./Intro.tsx).
 
+/** How long ago, in a word or two. */
 function ago(t: number | null) {
   if (!t) return ''
   const s = (Date.now() - t) / 1000
   if (s < 90) return 'just now'
   if (s < 3600) return `${Math.round(s / 60)} min ago`
   if (s < 86400) return `${Math.round(s / 3600)} h ago`
-  return `${Math.round(s / 86400)} days ago`
+  const d = Math.round(s / 86400)
+  return `${d} day${d === 1 ? '' : 's'} ago`
 }
 
 function download(name: string, text: string) {
@@ -25,99 +40,220 @@ function download(name: string, text: string) {
   setTimeout(() => URL.revokeObjectURL(url), 2000)
 }
 
-export function SavesPanel() {
-  useFarm((s) => s.rev)
-  const [note, setNote] = useState<string | null>(null)
-  const [confirm, setConfirm] = useState<Slot | null>(null)
-  const file = useRef<HTMLInputElement>(null)
-  const target = useRef<Slot>(1)
-  const current = currentSlot()
+/** A farm's level: the game's star with the number on it. */
+export const LevelStar = ({ level, className = '' }: { level: number; className?: string }) => (
+  <span className={`level-star ${className}`} aria-label={`Level ${level}`}>
+    <img className="art" src={art('glowing-star')} alt="" />
+    <b>{level}</b>
+  </span>
+)
 
+/** The saved farms. `onPlay`: a farm chosen to play (it is the current one already: switched to, or started). */
+export function SavesPanel({ onPlay }: { onPlay: () => void }) {
+  useFarm((s) => s.rev)
+  const current = currentSlot()
+  const [pick, setPick] = useState<Slot>(current)
+  const [going, setGoing] = useState(false)
+  const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null)
+  const file = useRef<HTMLInputElement>(null)
+  const farms = SLOTS.map((n) => slotSummary(n))
+  const f = farms.find((x) => x.slot === pick) ?? farms[0]
+  const here = f.slot === current
+
+  const play = () => {
+    if (going) return
+    setGoing(true)
+    if (!here) switchSlot(f.slot)
+    setTimeout(onPlay, 320)
+  }
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0]
+    const got = e.target.files?.[0]
     e.target.value = ''
-    if (!f) return
-    const result = importSlot(target.current, await f.text())
-    setNote(result.ok ? `Farm ${target.current} loaded from “${f.name}”.` : result.error)
+    if (!got) return
+    const result = importSlot(f.slot, await got.text())
+    setNote(result.ok ? { ok: true, text: `Farm ${f.slot} loaded from “${got.name}”.` } : { ok: false, text: result.error })
     if (result.ok) void persistStorage(true)
   }
 
   return (
     <div className="saves">
-      <p className="panel-note">Kept on this device. Save a file to keep a copy or move a farm.</p>
-      <ul className="slots">
-        {SLOTS.map((n) => {
-          const s = slotSummary(n)
-          const isCurrent = n === current
-          return (
-            <li key={n} className={`slot${isCurrent ? ' current' : ''}`}>
-              <div className="slot-info">
-                <strong>
-                  Farm {n}
-                  {isCurrent && <span className="slot-badge">playing</span>}
-                </strong>
-                <span>{s.exists ? `${s.coins} coins · ${s.sold} sold · ${s.growing} beds growing · ${s.animals} animals${s.savedAt ? ` · saved ${ago(s.savedAt)}` : ''}` : 'Empty — a new farm'}</span>
+      <ToggleGroup.Root
+        className="saves-tabs slots"
+        type="single"
+        value={String(pick)}
+        onValueChange={(v) => {
+          if (!v) return
+          setPick(Number(v) as Slot)
+          setNote(null)
+        }}
+        aria-label="Your farms"
+      >
+        {farms.map((x) => (
+          <ToggleGroup.Item
+            key={x.slot}
+            value={String(x.slot)}
+            className={`saves-tab slot${x.slot === current ? ' current' : ''}`}
+            aria-label={`Farm ${x.slot}${x.slot === current ? ', playing' : ''}`}
+          >
+            {x.slot === pick && <m.span className="saves-tab-on" layoutId="saves-tab-on" transition={SPRING.pop} />}
+            <span className="saves-tab-in">
+              {x.exists ? <LevelStar level={x.level} /> : <img className="art saves-seed" src={art('seedling')} alt="" />}
+              <b>Farm {x.slot}</b>
+              {x.slot === current && <i className="saves-dot" />}
+            </span>
+          </ToggleGroup.Item>
+        ))}
+      </ToggleGroup.Root>
+      <div className="saves-body">
+        <AnimatePresence mode="popLayout" initial={false}>
+          <m.section
+            key={`${f.slot}-${f.exists}`}
+            className={`saves-card${f.exists ? '' : ' empty'}`}
+            initial={{ opacity: 0, rotateY: -40 }}
+            animate={{ opacity: 1, rotateY: 0 }}
+            exit={{ opacity: 0, rotateY: 40 }}
+            transition={{ duration: 0.28, ease: EASE.out }}
+            style={{ transformPerspective: 800 }}
+            aria-label={`Farm ${f.slot}`}
+          >
+            <m.span className="saves-pic-wrap" animate={going ? { y: [0, -18, 0], scale: [1, 1.08, 1] } : undefined} transition={{ duration: 0.32, ease: EASE.out }}>
+              <img className="art saves-pic" src={art(f.exists ? 'house-with-garden' : 'seedling')} alt="" />
+            </m.span>
+            {f.exists ? (
+              <>
+                <p className="saves-when">
+                  {here && <span className="tag ok saves-now">Playing now</span>}
+                  {f.savedAt ? `Played ${ago(f.savedAt)}` : 'Not played yet'}
+                </p>
+                <ul className="saves-stats">
+                  <li>
+                    <LevelStar level={f.level} />
+                    <span>
+                      <b>{f.level}</b> level
+                    </span>
+                  </li>
+                  <li>
+                    <img className="art" src={art('coin')} alt="" />
+                    <span>
+                      <b>{f.coins.toLocaleString('en-US')}</b> coins
+                    </span>
+                  </li>
+                  <li>
+                    <img className="art" src={art('seedling')} alt="" />
+                    <span>
+                      <b>{f.growing}</b> beds growing
+                    </span>
+                  </li>
+                  <li>
+                    <img className="art" src={art('chicken')} alt="" />
+                    <span>
+                      <b>{f.animals}</b> animals
+                    </span>
+                  </li>
+                </ul>
+              </>
+            ) : (
+              <div className="saves-empty">
+                <b>An empty place</b>
+                <span className="tag">
+                  <img src={art('coin')} alt="" />
+                  {f.coins} to start a new farm
+                </span>
               </div>
-              <div className="slot-actions">
-                {!isCurrent && (
-                  <button
-                    className="chip-btn strong"
-                    onClick={() => {
-                      switchSlot(n)
-                      setNote(`Now playing Farm ${n}.`)
-                    }}
-                  >
-                    Play
-                  </button>
-                )}
-                <button
-                  className="chip-btn"
-                  disabled={!s.exists && !isCurrent}
-                  onClick={() => {
-                    const out = exportSlot(n)
-                    download(out.name, out.text)
-                    setNote(`Saved Farm ${n} as ${out.name}.`)
-                    void persistStorage(true)
-                  }}
-                >
-                  Save file
-                </button>
-                <button
-                  className="chip-btn"
-                  onClick={() => {
-                    target.current = n
-                    file.current?.click()
-                  }}
-                >
-                  Load file
-                </button>
-                {confirm === n ? (
-                  <button
-                    className="chip-btn danger"
-                    onClick={() => {
-                      deleteSlot(n)
-                      setConfirm(null)
-                      setNote(`Farm ${n} starts afresh.`)
-                    }}
-                  >
-                    Sure? Clear it
-                  </button>
-                ) : (
-                  <button className="chip-btn" disabled={!s.exists} onClick={() => setConfirm(n)}>
-                    Clear
-                  </button>
-                )}
-              </div>
-            </li>
-          )
-        })}
-      </ul>
+            )}
+          </m.section>
+        </AnimatePresence>
+        <div className="saves-acts">
+          <m.button className="btn primary saves-go" whileTap={{ scale: 0.96, y: 3 }} transition={SPRING.pop} onClick={play}>
+            {f.exists ? (here ? 'Keep playing' : `Play Farm ${f.slot}`) : 'Start this farm'}
+            <ArrowRight weight="bold" />
+          </m.button>
+          <div className="saves-quiet">
+            <m.button
+              className="btn soft small"
+              disabled={!f.exists && !here}
+              {...PRESS}
+              onClick={() => {
+                const out = exportSlot(f.slot)
+                download(out.name, out.text)
+                setNote({ ok: true, text: `Saved Farm ${f.slot} as ${out.name}.` })
+                void persistStorage(true)
+              }}
+            >
+              <DownloadSimple weight="bold" /> Save file
+            </m.button>
+            <m.button className="btn soft small" {...PRESS} onClick={() => file.current?.click()}>
+              <UploadSimple weight="bold" /> Load file
+            </m.button>
+          </div>
+          {f.exists && (
+            <HoldToClear
+              label={`Hold to start Farm ${f.slot} afresh`}
+              onDone={() => {
+                deleteSlot(f.slot)
+                setNote({ ok: true, text: `Farm ${f.slot} starts afresh.` })
+              }}
+            >
+              Hold to start afresh
+            </HoldToClear>
+          )}
+          {note && (
+            <p className={`saves-note${note.ok ? ' ok' : ''}`} role="status">
+              {note.text}
+            </p>
+          )}
+        </div>
+      </div>
       <input ref={file} type="file" accept="application/json,.json" hidden onChange={onFile} />
-      {note && (
-        <p className="panel-note ok" role="status">
-          {note}
-        </p>
-      )}
     </div>
+  )
+}
+
+/**
+ * Hold to start a farm afresh: a fill runs across the button while the finger stays on it (1.2 s), and goes back if it
+ * lifts early. Reduced motion: the same hold, the fill without its glide back.
+ */
+export function HoldToClear({ onDone, label, children }: { onDone: () => void; label: string; children: ReactNode }) {
+  const [scope, animate] = useAnimate<HTMLButtonElement>()
+  const still = useReducedMotion()
+  const [held, setHeld] = useState(false)
+  const run = useRef<ReturnType<typeof animate> | null>(null)
+  const start = () => {
+    setHeld(true)
+    const r = animate('.hold-fill', { scaleX: [0, 1] }, { duration: 1.2, ease: 'linear' })
+    run.current = r
+    void r.then(() => {
+      // a full hold (a hold let go early is stopped, and never gets here as the one running)
+      if (run.current !== r || !scope.current) return
+      run.current = null
+      setHeld(false)
+      void animate('.hold-fill', { scaleX: 0 }, { duration: 0 })
+      onDone()
+    })
+  }
+  const stop = () => {
+    if (!held) return
+    const r = run.current
+    run.current = null
+    r?.stop()
+    setHeld(false)
+    void animate('.hold-fill', { scaleX: 0 }, { duration: still ? 0 : 0.25, ease: EASE.out })
+  }
+  return (
+    <button
+      ref={scope}
+      className={`btn soft hold-clear${held ? ' held' : ''}`}
+      aria-label={label}
+      onPointerDown={start}
+      onPointerUp={stop}
+      onPointerLeave={stop}
+      onPointerCancel={stop}
+      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && !e.repeat && !held && start()}
+      onKeyUp={stop}
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      <span className="hold-fill" aria-hidden="true" />
+      <span className="hold-words">{held ? 'Keep holding…' : children}</span>
+    </button>
   )
 }
