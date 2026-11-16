@@ -25,3 +25,5 @@
 03:14 start: level — one reference F: quarter boxes, gift button, level-up gift by itself
 03:26 done: level — one reference F (D, E removed): four boxes on the bar, a clear opening in the card's middle, a gift button for all that wait, the next level's prize comes by itself; fits upright and sideways
 03:36 done: intro — one reference E (A, D removed): a real menu (New farm, Load farm, Settings, Music, How to play, Credits), pages slide inside the card; Load farm is the saves board's D; settings only the game's own
+03:36 start: loading — one shared stage for all six
+03:48 done: loading — all six on one shared stage (sky, name, disc and rays, card, ready moment); G folded into a 'back' state (away report, ✦)

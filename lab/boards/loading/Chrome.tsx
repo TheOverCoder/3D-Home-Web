@@ -27,7 +27,7 @@ export function Chrome({
   tone?: 'plain' | 'card' | 'glass' | 'ink'
   bar?: boolean
   className?: string
-  /** SAMPLE (variant G, a feature the game does not have): a returning player's away report, shown while loading in the
+  /** SAMPLE (the state "back", a feature the game does not have): a returning player's away report, shown while loading in the
    *  tip's place — what is waiting on the farm, as pictures with counts */
   away?: Away
 }) {

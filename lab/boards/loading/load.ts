@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { iconUrl } from '../../../src/farm/icons'
 import type { LoadPhase } from '../../../src/lib/loader'
 import { art } from '../../../src/ui/art'
+import type { Away } from './Chrome'
 
 // What the loading screen is given, as the game has it (src/lib/loader.ts's useLoader, and the scene's own count and
 // attempt from src/store.ts), and what it shows from it: one overall share by LoadStatus's own formula (downloads take
@@ -26,6 +27,9 @@ export interface LoadingState {
   /** played before (slotSummary(slot).played): the press is Continue, with the farm's number */
   returning: boolean
   farm: number
+  /** SAMPLE (a feature the game does not have): a returning player's away report, shown in the tip's place while the
+   *  farm loads — what waits on it, as pictures with counts */
+  away?: Away
 }
 
 /** The game's whole download today (dist/assets-manifest.json). */
