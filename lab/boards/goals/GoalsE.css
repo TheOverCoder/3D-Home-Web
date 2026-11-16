@@ -1,12 +1,28 @@
 /* E · the spotlight over the sticker book, with a goal pinned to the top of the screen (./GoalsE.tsx). The sheet and
-   its motion: ../level/LevelSheet (`scrolls`: the goals scroll, the title swipes the sheet). */
-.v-goals-e .farm-panel { display: flex; flex-direction: column; gap: 12px; padding-top: 20px; }
+   its motion: ../level/LevelSheet (`scrolls`: the goals scroll, the title swipes the sheet). Round 6: every reward
+   inside its own card (nothing hangs over another card), the spotlight's at the end of its bar. */
+.v-goals-e .farm-panel { display: flex; flex-direction: column; gap: 12px; padding-top: 20px; overflow: hidden; }
 .v-goals-e .gd-head { display: flex; align-items: center; gap: 10px; }
 .v-goals-e .gd-head > .art { width: 40px; height: 40px; }
 .v-goals-e .gd-head h2 { margin: 0; font: 600 25px/1.1 var(--font-display); color: var(--ink); }
 .v-goals-e .gd-head .tag { margin-inline-end: auto; font-size: 15px; padding: 3px 12px; }
-.v-goals-e .farm-panel { overflow: hidden; }
-.v-goals-e .gd-body { display: flex; flex-direction: column; gap: 12px; flex: 1; min-height: 0; overflow: auto; margin: -6px -8px 0; padding: 6px 8px 4px; scrollbar-width: none; }
+.v-goals-e .gd-head .close { margin-inline-start: auto; }
+.v-goals-e .gd-all { margin-inline-end: auto; min-height: 44px; gap: 6px; padding-inline: 14px; font-size: 16px; }
+.v-goals-e .gd-all svg { width: 17px; height: 17px; }
+/* the page scrolls by itself, and fades at its foot where more is below */
+.v-goals-e .gd-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  margin: -6px -8px 0;
+  padding: 6px 8px 22px;
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent);
+}
 /* while a sticker grows into the spotlight, the rest of the page steps back a little */
 .v-goals-e .gd-grid { transition: opacity 0.2s ease-out, filter 0.2s ease-out; }
 .v-goals-e .gd-body.moving .gd-grid { opacity: 0.72; filter: saturate(0.75); }
@@ -14,65 +30,235 @@
 .v-goals-e .gd-tile { will-change: transform; }
 
 /* the bar and its count beside it: the fill shines now and then; a white mark where the step began */
-.v-goals-e .gd-barline { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.v-goals-e .gd-bar { position: relative; flex: 1; min-width: 0; height: 12px; border-radius: 999px; background: color-mix(in srgb, var(--ink) 14%, var(--paper-3)); box-shadow: inset 0 2px 2px rgba(60, 35, 10, 0.2); }
-.v-goals-e .gd-bar > i { position: absolute; inset: 0 auto 0 0; display: block; border-radius: inherit; background: linear-gradient(to bottom, color-mix(in srgb, var(--xp) 45%, #fff), var(--xp) 55%, var(--xp-lip)); overflow: hidden; }
-.v-goals-e .gd-bar.warm > i { background: linear-gradient(to bottom, rgba(255, 255, 255, 0.35), transparent 50%), linear-gradient(90deg, var(--xp) 0 45%, color-mix(in oklab, var(--xp) 45%, var(--berry)) 78%, color-mix(in oklab, var(--berry) 35%, var(--sun)) 100%); }
+.v-goals-e .gd-barline { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
+.v-goals-e .gd-bar {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink) 14%, var(--paper-3));
+  box-shadow: inset 0 2px 2px rgba(60, 35, 10, 0.2);
+}
+.v-goals-e .gd-bar > i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  display: block;
+  border-radius: inherit;
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--xp) 45%, #fff), var(--xp) 55%, var(--xp-lip));
+  overflow: hidden;
+}
+.v-goals-e .gd-bar.warm > i {
+  background:
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.35), transparent 50%),
+    linear-gradient(90deg, var(--xp) 0 45%, color-mix(in oklab, var(--xp) 45%, var(--berry)) 78%, color-mix(in oklab, var(--berry) 35%, var(--sun)) 100%);
+}
 .v-goals-e .gd-bar.done > i { background: linear-gradient(to bottom, color-mix(in srgb, var(--leaf) 45%, #fff), var(--leaf) 60%, var(--leaf-lip)); }
 .v-goals-e .gd-bar-shine { position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.6) 50%, transparent 70%); translate: -100% 0; }
-.v-goals-e .gd-bar-from { position: absolute; top: -3px; bottom: -3px; left: calc(var(--from) * 100%); width: 3px; margin-left: -1.5px; border-radius: 2px; background: #fff; box-shadow: 0 0 0 1px rgba(60, 35, 10, 0.25); }
+.v-goals-e .gd-bar-from {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  left: calc(var(--from) * 100%);
+  width: 3px;
+  margin-left: -1.5px;
+  border-radius: 2px;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgba(60, 35, 10, 0.25);
+}
 .v-goals-e .gd-bar-count { flex: none; font: 900 13px/1 var(--font-text); color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.v-goals-e .gd-barline.big .gd-bar { height: 20px; }
-.v-goals-e .gd-barline.big .gd-bar-count { font-size: 17px; }
+.v-goals-e .gd-barline.big .gd-bar { height: 18px; }
+.v-goals-e .gd-barline.big .gd-bar-count { font-size: 16px; }
+
+/* what a goal gives: one capsule, its coins and its material with how many (always inside its own card) */
+.v-goals-e .gd-gives {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  padding: 2px 9px 2px 8px;
+  border-radius: 999px;
+  background: var(--paper);
+  box-shadow: inset 0 0 0 1.5px var(--paper-3);
+}
+.v-goals-e .gd-gives .farm-coins { font: 900 14px/1 var(--font-text); color: var(--ink); }
+.v-goals-e .gd-gives .farm-coins img { width: 18px; height: 18px; }
+.v-goals-e .gd-gives .item-pic .art { width: 24px; height: 24px; }
+.v-goals-e .gd-gives .item-pic .qty { min-width: 18px; height: 18px; padding: 0 4px; font-size: 13px; inset-inline-end: -6px; bottom: -5px; }
+.v-goals-e .gd-gives.big { gap: 6px; padding: 3px 6px 3px 10px; background: #fff; box-shadow: 0 2px 0 var(--paper-3), inset 0 0 0 2px color-mix(in oklab, var(--sun) 45%, transparent); }
+.v-goals-e .gd-gives.big .farm-coins { font-size: 17px; }
+.v-goals-e .gd-gives.big .farm-coins img { width: 22px; height: 22px; }
+.v-goals-e .gd-gives.big .item-pic .art { width: 30px; height: 30px; }
 
 /* the spotlight */
 .v-goals-e .gd-spot-wrap { position: relative; z-index: 3; }
-.v-goals-e .gd-spot { position: relative; display: grid; grid-template-columns: 92px minmax(0, 1fr); grid-template-areas: 'pic text' 'gives gives' 'act act'; gap: 10px 14px; padding: 14px; border-radius: 24px; background: radial-gradient(90% 80% at 15% 20%, #fff, var(--paper-2) 70%); box-shadow: 0 4px 0 var(--paper-3); }
-.v-goals-e .gd-spot.done { background: radial-gradient(90% 80% at 15% 20%, #fff, color-mix(in oklab, var(--leaf) 14%, var(--paper)) 70%); box-shadow: 0 4px 0 color-mix(in oklab, var(--leaf) 35%, var(--paper-3)), 0 0 0 2px color-mix(in oklab, var(--leaf) 40%, transparent); }
+.v-goals-e .gd-spot {
+  position: relative;
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  grid-template-areas: 'pic text' 'act act';
+  gap: 12px 14px;
+  padding: 14px;
+  border-radius: 24px;
+  background: radial-gradient(90% 80% at 15% 20%, #fff, var(--paper-2) 70%);
+  box-shadow: 0 4px 0 var(--paper-3);
+}
+.v-goals-e .gd-spot.done {
+  background: radial-gradient(90% 80% at 15% 20%, #fff, color-mix(in oklab, var(--leaf) 14%, var(--paper)) 70%);
+  box-shadow:
+    0 4px 0 color-mix(in oklab, var(--leaf) 35%, var(--paper-3)),
+    0 0 0 2px color-mix(in oklab, var(--leaf) 40%, transparent);
+}
 .v-goals-e .gd-spot-pic { grid-area: pic; position: relative; display: grid; place-items: center; width: 92px; height: 92px; }
 .v-goals-e .gd-spot-pic .item-pic .art { width: 54px; height: 54px; }
 /* a soft light behind the goal's picture (the level card's light, smaller); it turns slowly */
-.v-goals-e .gd-glow { position: absolute; inset: -18px; z-index: -1; border-radius: 50%; background: radial-gradient(closest-side, rgba(255, 236, 160, 0.9), rgba(255, 201, 60, 0.3) 55%, transparent), repeating-conic-gradient(rgba(255, 214, 90, 0.45) 0 10deg, transparent 10deg 26deg); -webkit-mask: radial-gradient(closest-side, #000 40%, transparent); mask: radial-gradient(closest-side, #000 40%, transparent); }
-.v-goals-e .done .gd-glow { background: radial-gradient(closest-side, rgba(220, 255, 210, 0.95), rgba(44, 133, 64, 0.25) 55%, transparent), repeating-conic-gradient(rgba(140, 220, 140, 0.45) 0 10deg, transparent 10deg 26deg); }
-.v-goals-e .gd-seal { position: absolute; right: -4px; bottom: -2px; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--leaf); color: #fff; box-shadow: 0 2px 0 var(--leaf-lip), 0 0 0 3px #fff; }
+.v-goals-e .gd-glow {
+  position: absolute;
+  inset: -18px;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 236, 160, 0.9), rgba(255, 201, 60, 0.3) 55%, transparent), repeating-conic-gradient(rgba(255, 214, 90, 0.45) 0 10deg, transparent 10deg 26deg);
+  -webkit-mask: radial-gradient(closest-side, #000 40%, transparent);
+  mask: radial-gradient(closest-side, #000 40%, transparent);
+}
+.v-goals-e .done .gd-glow {
+  background: radial-gradient(closest-side, rgba(220, 255, 210, 0.95), rgba(44, 133, 64, 0.25) 55%, transparent), repeating-conic-gradient(rgba(140, 220, 140, 0.45) 0 10deg, transparent 10deg 26deg);
+}
+.v-goals-e .gd-seal {
+  position: absolute;
+  right: -4px;
+  bottom: -2px;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--leaf);
+  color: #fff;
+  box-shadow:
+    0 2px 0 var(--leaf-lip),
+    0 0 0 3px #fff;
+}
 .v-goals-e .gd-seal svg { width: 20px; height: 20px; }
-.v-goals-e .gd-spot-text { grid-area: text; display: flex; flex-direction: column; justify-content: center; gap: 3px; min-width: 0; }
+/* (room on the right for the pin in the corner) */
+.v-goals-e .gd-spot-text { grid-area: text; display: flex; flex-direction: column; justify-content: center; gap: 3px; min-width: 0; padding-inline-end: 34px; }
+.v-goals-e .gd-spot.done .gd-spot-text { padding-inline-end: 0; }
 .v-goals-e .gd-spot-text small { font: 800 13px/1.2 var(--font-text); color: var(--ink-2); letter-spacing: 0.02em; }
 .v-goals-e .gd-spot-text h3 { margin: 0; font: 600 22px/1.15 var(--font-display); color: var(--ink); }
-.v-goals-e .gd-say { align-self: flex-start; margin-top: 4px; padding: 2px 10px; border-radius: 999px; background: color-mix(in oklab, var(--xp) 14%, var(--paper)); color: var(--xp-lip); font: 800 15px/1.4 var(--font-text); }
+.v-goals-e .gd-say {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--xp) 14%, var(--paper));
+  color: var(--xp-lip);
+  font: 800 15px/1.4 var(--font-text);
+}
 .v-goals-e .warm .gd-say { background: color-mix(in oklab, var(--sun) 40%, var(--paper)); color: color-mix(in oklab, var(--berry) 75%, var(--ink)); }
 .v-goals-e .gd-say.done { background: var(--leaf); color: #fff; }
-.v-goals-e .gd-gives { grid-area: gives; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 6px 6px 12px; border-radius: 16px; background: var(--paper); }
-.v-goals-e .gd-gives > span { font: 700 15px/1 var(--font-text); color: var(--ink-2); }
-.v-goals-e .gd-spot-bar,
-.v-goals-e .gd-claim { grid-area: act; }
-.v-goals-e .gd-spot-bar { display: flex; align-items: center; gap: 8px; min-height: 28px; }
-.v-goals-e .gd-spot-bar .gd-barline { flex: 1; }
-.v-goals-e .gd-claim { min-height: 54px; font-size: 20px; gap: 8px; }
+/* the bar, and at its end what it gives (reached: Claim, and what it gives beside it) */
+.v-goals-e .gd-spot-act { grid-area: act; display: flex; align-items: center; gap: 10px; min-height: 44px; }
+.v-goals-e .gd-claim { flex: 1; min-height: 54px; font-size: 20px; gap: 8px; }
 .v-goals-e .gd-claim svg { width: 22px; height: 22px; }
+.v-goals-e .gd-pin {
+  position: absolute;
+  z-index: 2;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--paper);
+  color: var(--ink-2);
+  box-shadow: 0 2px 0 var(--paper-3);
+}
+.v-goals-e .gd-pin svg { width: 22px; height: 22px; }
+.v-goals-e .gd-pin.on { background: var(--sun); color: var(--ink); box-shadow: 0 2px 0 var(--sun-lip); }
 /* the stamp of a claim: comes down on the card with a squash */
-.v-goals-e .gd-stamp { position: absolute; z-index: 3; top: 50%; left: 50%; display: grid; place-items: center; width: 92px; height: 92px; margin: -46px 0 0 -46px; border-radius: 50%; border: 6px solid var(--leaf); color: var(--leaf); background: rgba(255, 255, 255, 0.85); box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.8); pointer-events: none; }
+.v-goals-e .gd-stamp {
+  position: absolute;
+  z-index: 3;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  width: 92px;
+  height: 92px;
+  margin: -46px 0 0 -46px;
+  border-radius: 50%;
+  border: 6px solid var(--leaf);
+  color: var(--leaf);
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.8);
+  pointer-events: none;
+}
 .v-goals-e .gd-stamp svg { width: 54px; height: 54px; }
+.v-goals-e .gd-stamp.small { width: 56px; height: 56px; margin: -28px 0 0 -28px; border-width: 4px; }
+.v-goals-e .gd-stamp.small svg { width: 32px; height: 32px; }
 
-/* the stickers: two to a row */
+/* the stickers: two to a row, each whole inside its own card (its reward at its foot) */
 .v-goals-e .gd-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
 .v-goals-e .gd-grid > li { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; }
-.v-goals-e .gd-tile { position: relative; display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 8px 8px 10px; border-radius: 18px; background: var(--paper-2); box-shadow: 0 3px 0 var(--paper-3); }
-.v-goals-e .gd-tile.done { background: #fff; box-shadow: 0 6px 0 color-mix(in oklab, var(--leaf) 40%, var(--paper-3)), 0 10px 18px rgba(40, 90, 40, 0.16), 0 0 0 2px color-mix(in oklab, var(--leaf) 45%, transparent); }
-.v-goals-e .gd-tile-main { display: flex; align-items: center; gap: 8px; min-height: 56px; padding-bottom: 4px; padding: 0; border: 0; background: none; color: var(--ink); text-align: left; }
+.v-goals-e .gd-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 8px 8px 8px;
+  border-radius: 18px;
+  background: var(--paper-2);
+  box-shadow: 0 3px 0 var(--paper-3);
+}
+.v-goals-e .gd-tile.done {
+  background: #fff;
+  box-shadow:
+    0 6px 0 color-mix(in oklab, var(--leaf) 40%, var(--paper-3)),
+    0 10px 18px rgba(40, 90, 40, 0.16),
+    0 0 0 2px color-mix(in oklab, var(--leaf) 45%, transparent);
+}
+.v-goals-e .gd-tile-main { display: flex; align-items: center; gap: 8px; min-height: 56px; padding: 0; border: 0; background: none; color: var(--ink); text-align: left; }
 .v-goals-e .gd-tile-pic { position: relative; display: grid; place-items: center; flex: none; width: 48px; height: 48px; }
 .v-goals-e .gd-tile-pic .goal-ring { scale: 0.923; }
 .v-goals-e .gd-tile-pic .item-pic .art { width: 30px; height: 30px; }
-.v-goals-e .gd-tile-text { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0; padding-inline-end: 22px; }
+.v-goals-e .gd-tile-text { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0; }
 .v-goals-e .gd-tile-text b { font: 700 15px/1.15 var(--font-text); }
-.v-goals-e .gd-far { max-width: 100%; overflow: hidden; text-overflow: ellipsis; padding: 1px 7px; border-radius: 999px; background: color-mix(in oklab, var(--xp) 12%, var(--paper)); color: var(--xp-lip); font: 800 13px/1.4 var(--font-text); white-space: nowrap; }
+.v-goals-e .gd-far {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--xp) 12%, var(--paper));
+  color: var(--xp-lip);
+  font: 800 13px/1.4 var(--font-text);
+  white-space: nowrap;
+}
 .v-goals-e .warm .gd-far { background: color-mix(in oklab, var(--sun) 45%, var(--paper)); color: color-mix(in oklab, var(--berry) 75%, var(--ink)); }
 .v-goals-e .gd-far.done { background: var(--leaf); color: #fff; }
 .v-goals-e .gd-tile .gd-bar { height: 10px; }
-.v-goals-e .gd-sticker { position: absolute; z-index: 2; top: -12px; right: -4px; display: inline-flex; align-items: center; gap: 2px; padding: 2px 7px 2px 3px; border-radius: 999px; background: var(--paper); box-shadow: 0 2px 0 var(--paper-3); font: 900 13px/1 var(--font-text); color: var(--ink); rotate: 8deg; }
-.v-goals-e .gd-sticker img { width: 18px; height: 18px; }
-.v-goals-e .gd-tile-claim { display: flex; align-items: center; justify-content: center; gap: 4px; min-height: 44px; border: 0; border-radius: 14px; background: var(--leaf); color: #fff; box-shadow: 0 3px 0 var(--leaf-lip); font: 600 17px/1 var(--font-display); }
+.v-goals-e .gd-tile-foot { display: flex; align-items: center; gap: 6px; padding-top: 6px; border-top: 2px dashed color-mix(in oklab, var(--paper-3) 80%, transparent); }
+.v-goals-e .gd-tile-foot::before { content: 'Gives'; font: 700 13px/1 var(--font-text); color: var(--ink-2); }
+.v-goals-e .gd-tile-claim {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 44px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--leaf);
+  color: #fff;
+  box-shadow: 0 3px 0 var(--leaf-lip);
+  font: 600 17px/1 var(--font-display);
+}
 .v-goals-e .gd-tile-claim svg { width: 18px; height: 18px; }
+.v-goals-e .gd-tile-pinned { position: absolute; top: 4px; left: 4px; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--sun); color: var(--ink); }
+.v-goals-e .gd-tile-pinned svg { width: 14px; height: 14px; }
 
 /* a small phone: the spotlight a little smaller, the stickers without their words of how far (the bar says it) */
 @media (max-height: 700px) and (orientation: portrait) {
@@ -84,15 +270,13 @@
   .v-goals-e .gd-spot-pic .item-pic .art { width: 44px; height: 44px; }
   .v-goals-e .gd-spot-text h3 { font-size: 19px; }
   .v-goals-e .gd-claim { min-height: 48px; }
-  .v-goals-e .gd-spot { grid-template-areas: 'pic text' 'pic gives' 'act act'; }
-  .v-goals-e .gd-gives { justify-self: start; padding: 2px 8px; }
-  .v-goals-e .gd-gives > span:first-child { display: none; }
   .v-goals-e .gd-far { display: none; }
-  .v-goals-e .gd-tile { gap: 4px; padding-block: 6px 8px; }
+  .v-goals-e .gd-tile { gap: 4px; padding-block: 6px; }
   .v-goals-e .gd-tile-main { min-height: 46px; }
   .v-goals-e .gd-tile-pic { width: 42px; height: 42px; }
   .v-goals-e .gd-tile-pic .goal-ring { scale: 0.8; }
   .v-goals-e .gd-tile-pic .item-pic .art { width: 26px; height: 26px; }
+  .v-goals-e .gd-tile-foot { padding-top: 4px; }
 }
 
 /* moving on their own once in: the light behind the spotlight turns, a shine runs along the bars now and then */
@@ -101,15 +285,15 @@
   .v-goals-e .gd-bar-shine { animation: v-goals-e-shine 3.6s ease-in-out 1.4s infinite; }
   .v-goals-e .gd-bar.warm .gd-bar-shine { animation-duration: 2s; }
 }
-@keyframes v-goals-e-turn { to { rotate: 1turn; } }
-@keyframes v-goals-e-shine { 0% { translate: -100% 0; } 40%, 100% { translate: 100% 0; } }
+@keyframes v-goals-e-turn {
+  to { rotate: 1turn; }
+}
+@keyframes v-goals-e-shine {
+  0% { translate: -100% 0; }
+  40%,
+  100% { translate: 100% 0; }
+}
 
-/* E · pinning: a pin beside the spotlight's bar, a pin on a pinned sticker */
-.v-goals-e .gd-pin { flex: none; display: grid; place-items: center; width: 44px; height: 44px; margin: -8px 0; padding: 0; border: 0; border-radius: 50%; background: var(--paper); color: var(--ink-2); box-shadow: 0 2px 0 var(--paper-3); }
-.v-goals-e .gd-pin svg { width: 22px; height: 22px; }
-.v-goals-e .gd-pin.on { background: var(--sun); color: var(--ink); box-shadow: 0 2px 0 var(--sun-lip); }
-.v-goals-e .gd-tile-pinned { position: absolute; top: 4px; left: 4px; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--sun); color: var(--ink); }
-.v-goals-e .gd-tile-pinned svg { width: 14px; height: 14px; }
 /* the tracker: in play its slot is in the column under the compass (src/ui/TopStack.tsx); here, with the sheet open
    and the top dimmed under it, it lands at the top of the screen so it is seen arriving */
 .v-goals-e-tracker {
@@ -127,7 +311,9 @@
   border: 2px solid #fff;
   border-radius: 999px;
   background: rgba(255, 247, 232, 0.94);
-  box-shadow: 0 3px 0 var(--edge-soft), 0 8px 20px rgba(40, 24, 10, 0.3);
+  box-shadow:
+    0 3px 0 var(--edge-soft),
+    0 8px 20px rgba(40, 24, 10, 0.3);
   color: var(--ink);
   pointer-events: none;
 }
@@ -139,42 +325,48 @@
 .v-goals-e-tracker-bar > i { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--xp); }
 .v-goals-e-tracker-n { font: 900 15px/1 var(--font-text); font-variant-numeric: tabular-nums; }
 
-/* a phone on its side: the spotlight a strip across the top, the stickers two to a row under it, one line each */
+/* a phone on its side: the spotlight a strip across the top (its bar leading to what it gives), the stickers two to a
+   row under it — what it is and what it gives on one line, the bar or Claim under them */
 @media (orientation: landscape) and (max-height: 560px) {
   .v-goals-e .farm-panel { gap: 6px; padding-top: 12px; }
   .v-goals-e .gd-head > .art { width: 32px; height: 32px; }
   .v-goals-e .gd-head h2 { font-size: 22px; }
   .v-goals-e .gd-body { gap: 6px; }
-  .v-goals-e .gd-spot { grid-template-columns: 56px minmax(0, 1fr) auto; grid-template-areas: 'pic text gives' 'pic act act'; align-items: center; padding: 8px 10px; gap: 4px 10px; }
-  .v-goals-e .gd-spot-pic { width: 56px; height: 56px; }
-  .v-goals-e .gd-spot-pic .goal-ring { scale: 0.61; }
-  .v-goals-e .gd-spot-pic .item-pic .art { width: 34px; height: 34px; }
+  /* the pin a cell of its own beside the words, never over what the bar leads to */
+  .v-goals-e .gd-spot { grid-template-columns: 60px minmax(0, 1fr) 44px; grid-template-areas: 'pic text pin' 'pic act act'; align-items: center; padding: 8px 10px; gap: 4px 12px; }
+  .v-goals-e .gd-spot.done { grid-template-areas: 'pic text text' 'pic act act'; }
+  .v-goals-e .gd-spot-pic { width: 60px; height: 60px; }
+  .v-goals-e .gd-spot-pic .goal-ring { scale: 0.65; }
+  .v-goals-e .gd-spot-pic .item-pic .art { width: 36px; height: 36px; }
   .v-goals-e .gd-glow { inset: -10px; }
   .v-goals-e .gd-seal { width: 26px; height: 26px; right: -6px; bottom: -4px; }
   .v-goals-e .gd-seal svg { width: 15px; height: 15px; }
-  .v-goals-e .gd-spot-text { flex-direction: row; flex-wrap: wrap; align-items: center; column-gap: 8px; }
+  .v-goals-e .gd-spot-text { flex-direction: row; flex-wrap: wrap; align-items: center; column-gap: 8px; padding-inline-end: 0; }
   .v-goals-e .gd-spot-text small { display: none; }
   .v-goals-e .gd-spot-text h3 { font-size: 18px; }
   .v-goals-e .gd-say { margin: 0; font-size: 13px; }
-  .v-goals-e .gd-gives { padding: 2px 4px 2px 8px; gap: 6px; }
-  .v-goals-e .gd-gives > span:first-child { display: none; }
+  .v-goals-e .gd-pin { position: relative; top: auto; right: auto; grid-area: pin; }
+  .v-goals-e .gd-barline.big .gd-bar { height: 14px; }
   .v-goals-e .gd-claim { min-height: 44px; font-size: 18px; }
+  .v-goals-e .gd-gives.big .item-pic .art { width: 26px; height: 26px; }
   .v-goals-e .gd-stamp { width: 64px; height: 64px; margin: -32px 0 0 -32px; border-width: 4px; }
   .v-goals-e .gd-stamp svg { width: 36px; height: 36px; }
   .v-goals-e .gd-grid { gap: 6px; }
-  .v-goals-e .gd-tile { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 0 6px; padding: 1px 8px 4px 4px; }
-  .v-goals-e .gd-tile-main { min-height: 44px; gap: 4px; }
-  .v-goals-e .gd-tile-pic { width: 34px; height: 34px; }
-  .v-goals-e .gd-tile-pic .goal-ring { scale: 0.65; }
+  .v-goals-e .gd-tile { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'main foot' 'bar bar'; align-items: center; gap: 2px 6px; padding: 2px 8px 6px 4px; }
+  .v-goals-e .gd-tile-main { grid-area: main; min-height: 44px; gap: 4px; }
+  .v-goals-e .gd-tile-pic { width: 36px; height: 36px; }
+  .v-goals-e .gd-tile-pic .goal-ring { scale: 0.69; }
   .v-goals-e .gd-tile-pic .item-pic .art { width: 22px; height: 22px; }
-  .v-goals-e .gd-tile-text { padding-inline-end: 30px; }
-  .v-goals-e .gd-tile-main { padding-bottom: 0; }
-  .v-goals-e .gd-tile-text b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  /* the whole name, on two lines if it needs them (never "Harvest …") */
+  .v-goals-e .gd-tile-text b { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: 13px; line-height: 1.1; }
   .v-goals-e .gd-far { display: none; }
-  .v-goals-e .gd-tile > .gd-tile-bar { grid-column: 1 / -1; padding-inline-start: 4px; }
-  .v-goals-e .gd-tile.done .gd-tile-text { padding-inline-end: 0; }
-  .v-goals-e .gd-tile.done .gd-sticker { display: none; }
-  .v-goals-e .gd-tile-claim { min-height: 44px; padding: 0 12px; font-size: 15px; }
-  .v-goals-e .gd-sticker { top: 3px; right: 3px; }
+  .v-goals-e .gd-tile-bar,
+  .v-goals-e .gd-tile-claim { grid-area: bar; padding-inline-start: 4px; }
+  .v-goals-e .gd-tile-claim { margin-inline-start: 4px; padding: 0 12px; font-size: 15px; }
+  .v-goals-e .gd-tile-foot { grid-area: foot; padding: 0; border: 0; }
+  /* a sticker's reward its coins only here (its material is in the spotlight's, and upright): room for its whole name */
+  .v-goals-e .gd-tile .gd-gives { padding-inline-end: 8px; }
+  .v-goals-e .gd-tile .gd-gives .item-pic { display: none; }
+  .v-goals-e .gd-tile-foot::before { display: none; }
   .v-goals-e-tracker { top: calc(max(10px, env(safe-area-inset-top)) + 4px); left: 18vw; min-width: 200px; max-width: 32vw; }
 }
