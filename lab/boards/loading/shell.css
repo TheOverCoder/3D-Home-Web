@@ -1,0 +1,81 @@
+/* What every look of the loading screen shares (./Shell.tsx): the sky, the name, the round stage, the card. A look's own
+   rules are only for its world in .ls-hero (a square the size of the disc). Every rule under .v-loading-shell. */
+.v-loading-shell {
+  --p: 0;
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  justify-items: center;
+  align-items: center;
+  gap: 8px;
+  padding: calc(env(safe-area-inset-top) + 14px) 20px calc(env(safe-area-inset-bottom) + 16px);
+  overflow: hidden;
+  color: var(--ink);
+  user-select: none;
+}
+.v-loading-shell > :not(.ls-sky, .ls-motes) { position: relative; z-index: 1; }
+
+/* the sky: dawn under a warm day that comes in with the bar */
+.v-loading-shell .ls-sky,
+.v-loading-shell .ls-sky i { position: absolute; inset: 0; }
+.v-loading-shell .ls-dawn { background: radial-gradient(90% 55% at 50% 42%, color-mix(in oklab, var(--berry) 18%, #fff), transparent 70%), linear-gradient(to bottom, color-mix(in oklab, var(--xp) 30%, var(--paper)), color-mix(in oklab, var(--berry) 22%, var(--paper)) 45%, color-mix(in oklab, var(--sun) 35%, var(--paper)) 100%); }
+.v-loading-shell .ls-day { opacity: var(--p); background: radial-gradient(100% 60% at 50% 42%, #fff, color-mix(in oklab, var(--sun) 30%, var(--paper)) 45%, transparent 80%), linear-gradient(to bottom, color-mix(in oklab, var(--sun) 22%, var(--paper)), var(--paper) 55%, color-mix(in oklab, var(--sun) 18%, var(--paper-2))); transition: opacity 0.6s ease-out; }
+.v-loading-shell.ready .ls-day { opacity: 1; }
+.v-loading-shell .ls-motes { position: absolute; inset: 0; pointer-events: none; }
+.v-loading-shell .ls-motes i { position: absolute; bottom: -10px; width: 6px; height: 6px; border-radius: 50%; background: rgba(255, 246, 220, 0.95); box-shadow: 0 0 10px 3px color-mix(in oklab, var(--sun) 55%, transparent); animation: ls-mote linear infinite; }
+.v-loading-shell .ls-motes i:nth-child(even) { width: 4px; height: 4px; }
+
+/* the name, as the opening screen draws it */
+.v-loading-shell .ls-name { display: flex; flex-direction: column; align-items: center; text-align: center; }
+.v-loading-shell .ls-name h1 { display: flex; margin: 0; white-space: pre; font: 700 clamp(44px, 12vw, 58px) / 1 var(--font-display); }
+.v-loading-shell .ls-name h1 span { display: inline-block; color: #fff; -webkit-text-stroke: 7px var(--ink); paint-order: stroke fill; text-shadow: 0 6px 0 rgba(40, 24, 10, 0.3); }
+.v-loading-shell .ls-name p { margin: 6px 0 0; font: 600 15px/1.3 var(--font-display); color: var(--ink-2); }
+
+/* the round stage: the rays, the disc, and the look's world over them, all the same size */
+.v-loading-shell .ls-stage { position: relative; display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); place-items: center; width: 100%; height: 100%; min-height: 200px; container-type: size; }
+.v-loading-shell .ls-stage > * { grid-area: 1 / 1; }
+.v-loading-shell .ls-stage > .ls-rays { position: absolute; left: 50%; top: 50%; translate: -50% -50%; }
+.v-loading-shell .ls-disc,
+.v-loading-shell .ls-hero { width: min(330px, 88cqw, 88cqh); aspect-ratio: 1; }
+.v-loading-shell .ls-disc {
+  position: relative;
+  border-radius: 50%;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 38%, #fff 0, color-mix(in oklab, var(--sun) calc(30% + var(--p) * 40%), #fff) 45%, color-mix(in oklab, var(--sun) calc(55% + var(--p) * 35%), var(--berry) 10%) 100%);
+  box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.9), 0 0 0 7px color-mix(in oklab, var(--sun-lip) 30%, transparent), 0 14px 30px rgba(120, 70, 20, 0.22);
+  transition: background 0.6s;
+}
+.v-loading-shell .ls-flash { position: absolute; inset: 0; background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.95) 50%, transparent 70%); }
+.v-loading-shell .ls-rays { width: min(520px, 140cqw, 140cqh); aspect-ratio: 1; border-radius: 50%; background: repeating-conic-gradient(color-mix(in oklab, var(--sun) 50%, #fff) 0 7deg, transparent 7deg 20deg); -webkit-mask: radial-gradient(closest-side, #000 45%, transparent 100%); mask: radial-gradient(closest-side, #000 45%, transparent 100%); animation: ls-turn 50s linear infinite; pointer-events: none; }
+.v-loading-shell .ls-hero { position: relative; display: grid; place-items: center; }
+.v-loading-shell .ls-low { width: min(360px, 100%); }
+
+/* sideways: the stage on the left, the name and the card on the right */
+.v-loading-shell.wide {
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+  grid-template-rows: auto auto;
+  grid-template-areas: 'stage name' 'stage low';
+  align-content: center;
+  column-gap: 24px;
+  row-gap: 14px;
+  padding: 10px calc(env(safe-area-inset-right) + 20px) calc(env(safe-area-inset-bottom) + 10px) calc(env(safe-area-inset-left) + 16px);
+}
+.v-loading-shell.wide .ls-stage { grid-area: stage; height: calc(100dvh - 20px); }
+.v-loading-shell.wide .ls-name { grid-area: name; align-self: end; }
+.v-loading-shell.wide .ls-name h1 { font-size: 44px; }
+.v-loading-shell.wide .ls-low { grid-area: low; align-self: start; }
+
+@keyframes ls-turn { to { rotate: 360deg; } }
+@keyframes ls-mote {
+  0% { transform: translate(0, 0); opacity: 0; }
+  12% { opacity: 1; }
+  50% { transform: translate(16px, -50vh); }
+  88% { opacity: 0.8; }
+  100% { transform: translate(-6px, -100vh); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .v-loading-shell .ls-rays,
+  .v-loading-shell .ls-motes i { animation: none; }
+  .v-loading-shell .ls-motes { display: none; }
+}

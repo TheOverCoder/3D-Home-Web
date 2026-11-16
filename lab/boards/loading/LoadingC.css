@@ -1,23 +1,13 @@
-/* C · a window onto the house (./LoadingC.tsx): the picture of the house, the camera pushing in; light beams, dust at
-   three depths, a breathing vignette, a film's black bars; the logo with a shine; the shared bar on frosted glass. */
-.v-loading-c {
-  position: fixed;
-  inset: 0;
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
-  justify-items: center;
-  padding: calc(env(safe-area-inset-top) + 9vh) 20px calc(env(safe-area-inset-bottom) + 16px);
-  overflow: hidden;
-  background: var(--ink);
-  user-select: none;
-}
-.v-loading-c > .lc3-logo,
-.v-loading-c > .lc3-low { position: relative; z-index: 5; }
+/* C · a window onto the house (./LoadingC.tsx), on the shared stage (./shell.css): a round window where the disc is, the
+   picture of the house inside it, the camera pushing in; light beams, dust at three depths, a breathing vignette, a
+   film's black bars that open when it is ready. */
+/* the round window, in the disc's place: everything of the shot is inside it */
+.v-loading-c .lc3-window { position: absolute; inset: 0; border-radius: 50%; overflow: hidden; background: var(--ink); box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.9); isolation: isolate; }
 
 /* the shot: the picture, pushed in slowly (a camera moving towards the house) */
 .v-loading-c .lc3-shot { position: absolute; inset: 0; overflow: hidden; }
 .v-loading-c .lc3-pic { position: absolute; inset: -4%; width: 108%; height: 108%; object-fit: cover; transform-origin: 60% 45%; transition: filter 0.9s ease-out; animation: lc3-push 22s ease-in-out infinite alternate; }
-.v-loading-c.ready .lc3-pic { transition: filter 0.45s cubic-bezier(0.2, 0.9, 0.3, 1); }
+.v-loading-shell.ready .lc3-pic { transition: filter 0.45s cubic-bezier(0.2, 0.9, 0.3, 1); }
 
 /* beams of warm light through the window: long soft stripes, screen-blended, turning a little and breathing */
 .v-loading-c .lc3-beams { position: absolute; inset: -30% -40%; mix-blend-mode: screen; pointer-events: none; transform-origin: 20% 0; animation: lc3-sway 14s ease-in-out infinite alternate; }
@@ -35,7 +25,7 @@
 /* the flare: four rings on a line through the light, flashing once */
 .v-loading-c .lc3-flare { position: absolute; inset: 0; mix-blend-mode: screen; pointer-events: none; }
 .v-loading-c .lc3-flare i { position: absolute; border-radius: 50%; background: radial-gradient(circle, rgba(255, 236, 180, 0.9), rgba(255, 200, 90, 0.25) 45%, transparent 70%); opacity: 0; animation: lc3-flare 1.4s ease-out 0.15s both; }
-.v-loading-c .lc3-flare i:nth-child(1) { left: 12%; top: 8%; width: 220px; height: 220px; }
+.v-loading-c .lc3-flare i:nth-child(1) { left: 6%; top: 4%; width: 140px; height: 140px; }
 .v-loading-c .lc3-flare i:nth-child(2) { left: 38%; top: 30%; width: 70px; height: 70px; animation-delay: 0.22s; }
 .v-loading-c .lc3-flare i:nth-child(3) { left: 55%; top: 46%; width: 34px; height: 34px; animation-delay: 0.28s; }
 .v-loading-c .lc3-flare i:nth-child(4) { left: 68%; top: 58%; width: 110px; height: 110px; animation-delay: 0.34s; background: radial-gradient(circle, transparent 40%, rgba(255, 210, 120, 0.4) 55%, transparent 70%); }
@@ -43,32 +33,16 @@
 .v-loading-c .lc3-vignette { position: absolute; inset: 0; background: radial-gradient(120% 90% at 50% 45%, transparent 45%, rgba(20, 12, 6, 0.65)); pointer-events: none; animation: lc3-breathe 7s ease-in-out infinite alternate; }
 
 /* a film's black bars, until it starts */
-.v-loading-c .lc3-bar { position: absolute; left: 0; right: 0; z-index: 4; height: calc(env(safe-area-inset-top) + 3vh); background: #000; pointer-events: none; }
+.v-loading-c .lc3-bar { position: absolute; left: 0; right: 0; z-index: 4; height: 16%; background: #000; pointer-events: none; }
 .v-loading-c .lc3-bar.top { top: 0; transform-origin: 50% 0; }
-.v-loading-c .lc3-bar.bottom { bottom: 0; height: calc(env(safe-area-inset-bottom) + 3vh); transform-origin: 50% 100%; }
-
-/* the logo: a shine runs across it now and then */
-.v-loading-c .lc3-logo { position: relative; align-self: start; text-align: center; }
-.v-loading-c .lc3-logo .v-loading-logo { font-size: 52px; }
-.v-loading-c .lc3-shine { position: absolute; left: 0; right: 0; top: 0; font: 700 52px/1 var(--font-display); white-space: nowrap; color: transparent; background: linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, 0.95) 50%, transparent 60%) no-repeat; background-size: 250% 100%; background-position: 160% 0; -webkit-background-clip: text; background-clip: text; animation: lc3-shine 4.5s ease-in-out 1.4s infinite; pointer-events: none; }
-.v-loading-c .lc3-logo p { margin: 8px 0 0; font: 600 17px/1.3 var(--font-display); color: #fff8ec; text-shadow: 0 2px 8px rgba(20, 12, 6, 0.8); }
-.v-loading-c .lc3-low { align-self: end; width: min(380px, 100%); margin-bottom: 5vh; }
-.v-loading-c.ready .lc3-low { margin-bottom: 0; transition: margin 0.6s ease-out 0.25s; }
-
-/* sideways: the logo on the left, the glass on the right */
-.v-loading-c.wide { grid-template-columns: minmax(0, 1fr) minmax(300px, 360px); grid-template-rows: 1fr; align-items: center; column-gap: 24px; padding: 10px calc(env(safe-area-inset-right) + 20px) calc(env(safe-area-inset-bottom) + 10px) calc(env(safe-area-inset-left) + 20px); }
-.v-loading-c.wide .lc3-logo { align-self: center; }
-.v-loading-c.wide .lc3-low { margin-bottom: 0; }
-.v-loading-c.wide .lc3-bar.top { height: 9vh; }
-.v-loading-c.wide .lc3-bar.bottom { height: 9vh; }
+.v-loading-c .lc3-bar.bottom { bottom: 0; transform-origin: 50% 100%; }
 
 @keyframes lc3-push { from { transform: scale(1) translate(0, 0); } to { transform: scale(1.12) translate(-2%, 1%); } }
 @keyframes lc3-sway { from { transform: rotate(-3deg); } to { transform: rotate(4deg); } }
 @keyframes lc3-beam { from { opacity: 0.35; } to { opacity: 0.85; } }
-@keyframes lc3-float { 0% { transform: translate(0, 30vh); opacity: 0; } 15% { opacity: 1; } 85% { opacity: 1; } 100% { transform: translate(6vw, -40vh); opacity: 0; } }
+@keyframes lc3-float { 0% { transform: translate(0, 90px); opacity: 0; } 15% { opacity: 1; } 85% { opacity: 1; } 100% { transform: translate(20px, -120px); opacity: 0; } }
 @keyframes lc3-flare { 0% { opacity: 0; transform: scale(0.6); } 30% { opacity: 1; } 100% { opacity: 0; transform: scale(1.3) translate(30px, 20px); } }
 @keyframes lc3-breathe { from { opacity: 0.85; } to { opacity: 1; } }
-@keyframes lc3-shine { 0%, 55% { background-position: 160% 0; } 85%, 100% { background-position: -60% 0; } }
 
 @media (prefers-reduced-motion: reduce) {
   .v-loading-c .lc3-pic,
@@ -76,7 +50,6 @@
   .v-loading-c .lc3-beams i,
   .v-loading-c .lc3-dust,
   .v-loading-c .lc3-flare,
-  .v-loading-c .lc3-vignette,
-  .v-loading-c .lc3-shine { animation: none; }
+  .v-loading-c .lc3-vignette { animation: none; }
   .v-loading-c .lc3-dust { display: none; }
 }

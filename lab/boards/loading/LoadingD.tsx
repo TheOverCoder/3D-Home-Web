@@ -1,16 +1,15 @@
-import { m, useReducedMotion } from 'motion/react'
-import { useEffect, useRef } from 'react'
-import { burst } from '../../../src/ui/burst'
+import { m } from 'motion/react'
 import { EASE, SPRING } from '../../../src/ui/motion'
-import { Chrome, Logo } from './Chrome'
-import { loadView, useLive, useTip, useWide, type LoadingState } from './load'
+import { loadView, useLive, type LoadingState } from './load'
+import { LoadShell } from './Shell'
 import './LoadingD.css'
 
 // D · from seed to flower: the bar is a plant growing. A seed drops into the soil and its roots draw themselves; the
 // stem rises with the share, and at each quarter of the way a pair of leaves unfolds (near goals you can see: lab/
 // CRAFT.md, The feeling of progress); near the end a bud swells at the top. Clouds race over in time-lapse and pollen
 // drifts. Its moment: ready, the bud bursts into a sunflower — its petals spring out one after another, pollen bursts
-// round it and confetti flies — and Play. Drawn lines and shapes only (SVG), light for any phone.
+// round it and confetti flies — and Play. Drawn lines and shapes only (SVG), light for any phone. Round 5: on the shared
+// stage (./Shell.tsx): the soil a mound on the disc, the sky, the name, the card and the moment the same as the others'.
 
 const LEAVES = [
   { at: 0.2, y: 0.28, side: -1 },
@@ -25,16 +24,7 @@ const STEM = 'M 150 330 C 140 290, 166 256, 150 216 C 136 180, 162 152, 150 120'
 export function LoadingD({ s: start, onPlay }: { s: LoadingState; onPlay: () => void }) {
   const s = useLive(start)
   const v = loadView(s)
-  const wide = useWide()
-  const still = useReducedMotion()
-  const [tip] = useTip()
-  const flower = useRef<SVGGElement>(null)
   const grow = v.ready ? 1 : Math.min(0.97, 0.06 + v.p * 0.9)
-  useEffect(() => {
-    if (!v.ready || still) return
-    const t = setTimeout(() => flower.current && burst(flower.current, { count: 70, spread: 110, power: 30 }), 520)
-    return () => clearTimeout(t)
-  }, [v.ready, still])
   // where on the stem a share of its length is (the leaves and the bud ride on it)
   const stemAt = (k: number) => {
     // the same curve sampled: good enough for where a leaf sits
@@ -44,24 +34,9 @@ export function LoadingD({ s: start, onPlay }: { s: LoadingState; onPlay: () => 
   }
   const top = stemAt(grow)
   return (
-    <m.div
-      className={`v-loading-d${wide ? ' wide' : ''}${v.ready ? ' ready' : ''}`}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0, y: -30, transition: { duration: 0.3, ease: [0.4, 0, 1, 1] } }}
-      transition={{ duration: 0.25 }}
-    >
-      <span className="ld-sky" aria-hidden="true" />
-      <div className="ld-clouds" aria-hidden="true">
-        <i />
-        <i />
-        <i />
-      </div>
-      <m.header className="ld-logo" initial={{ opacity: 0, y: -14 }} animate={{ opacity: 1, y: 0 }} transition={{ ...SPRING.sheet, delay: 0.05 }}>
-        <Logo small={wide} />
-      </m.header>
+    <LoadShell name="v-loading-d" v={v} onPlay={onPlay} away={s.away}>
       <div className="ld-stage">
-        <svg viewBox="0 10 300 400" className="ld-svg" aria-hidden="true">
+        <svg viewBox="-45 40 390 390" className="ld-svg" aria-hidden="true">
           <defs>
             <radialGradient id="ld-glow">
               <stop offset="0" stopColor="#fff" stopOpacity="0.9" />
@@ -107,7 +82,7 @@ export function LoadingD({ s: start, onPlay }: { s: LoadingState; onPlay: () => 
               )
             })}
             {/* the bud near the end, the flower when ready */}
-            <g transform={`translate(${top.x} ${top.y})`} ref={flower}>
+            <g transform={`translate(${top.x} ${top.y})`}>
               {v.p >= 0.84 && !v.ready && (
                 <m.g initial={{ scale: 0 }} animate={{ scale: [0, 1, 1.08, 1] }} transition={{ duration: 0.8, times: [0, 0.6, 0.8, 1] }}>
                   <ellipse className="ld-bud" rx={13} ry={17} cy={-10} />
@@ -141,9 +116,6 @@ export function LoadingD({ s: start, onPlay }: { s: LoadingState; onPlay: () => 
           ))}
         </div>
       </div>
-      <m.div className="ld-low" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ ...SPRING.sheet, delay: 0.12 }}>
-        <Chrome v={v} tip={tip} onPlay={onPlay} tone="card" />
-      </m.div>
-    </m.div>
+    </LoadShell>
   )
 }

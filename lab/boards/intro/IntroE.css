@@ -1,0 +1,231 @@
+/* E · the opening screen as a real menu (./IntroE.tsx): the name over a sun with the house, your farm, and one paper card
+   — the big button and six tiles, or the page a tile opens, sliding in its place. Sideways the name and your farm on
+   the left, the card on the right, full height. The scene behind: ./shared.css. */
+.v-intro-e {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(14px, calc(env(safe-area-inset-bottom) + 8px)) max(16px, env(safe-area-inset-left));
+  color: var(--ink);
+}
+.v-intro-e > :not(.v-intro-bg) { position: relative; }
+.v-intro-e > .ie-sun { position: absolute; left: 50%; top: 26%; width: 520px; height: 520px; margin: -260px 0 0 -260px; pointer-events: none; }
+.v-intro-e .ie-sun i { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(closest-side, rgba(255, 236, 170, 0.85), rgba(255, 201, 60, 0.35) 38%, transparent 70%), repeating-conic-gradient(from 0deg, rgba(255, 240, 200, 0.28) 0 8deg, transparent 8deg 22deg); -webkit-mask: radial-gradient(closest-side, #000 30%, transparent 100%); mask: radial-gradient(closest-side, #000 30%, transparent 100%); }
+
+/* the side: the logo, and a returning player's farm */
+.v-intro-e .ie-side { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; min-height: 0; }
+.v-intro-e .ie-logo { display: flex; flex-direction: column; align-items: center; text-align: center; transition: scale 0.3s var(--ease-pop); }
+.v-intro-e .ie-house .art { width: clamp(84px, 24vw, 120px); height: auto; margin-bottom: -10px; animation: v-intro-e-bob 3.4s ease-in-out 1s infinite; }
+.v-intro-e h1 { display: flex; margin: 0; white-space: pre; font: 700 clamp(52px, 15vw, 76px) / 1 var(--font-display); letter-spacing: 0.01em; }
+.v-intro-e h1 span { display: inline-block; color: #fff; -webkit-text-stroke: 8px var(--ink); paint-order: stroke fill; text-shadow: 0 7px 0 rgba(40, 24, 10, 0.4); }
+.v-intro-e .ie-logo p { margin: 8px 0 0; padding: 4px 14px; border-radius: 999px; background: rgba(40, 24, 10, 0.42); font: 600 17px/1.3 var(--font-display); color: #fff8ec; }
+.v-intro-e .ie-farm-wrap { width: min(420px, 100%); }
+
+/* your farm: its name and level, its coins, how long, what waits */
+.v-intro-e .ie-farm { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 8px; padding: 8px 10px 10px; border-radius: 24px; box-shadow: 0 5px 0 var(--paper-3), 0 14px 30px rgba(40, 24, 10, 0.3); }
+.v-intro-e .ie-farm-name { justify-self: start; display: flex; align-items: center; gap: 8px; min-height: 52px; max-width: 100%; padding: 0 8px 0 0; border: 0; border-radius: 18px; background: none; color: var(--ink); text-align: left; }
+.v-intro-e .ie-farm-name > span:last-child { min-width: 0; }
+.v-intro-e .ie-farm-name strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 21px/1.05 var(--font-display); }
+.v-intro-e .ie-farm-name small { display: block; white-space: nowrap; font: 700 13px/1.3 var(--font-text); color: var(--ink-2); }
+.v-intro-e .ie-farm-name small.ie-away { color: var(--leaf); }
+.v-intro-e .ie-coins { padding: 4px 12px 4px 6px; font-size: 18px; }
+.v-intro-e .ie-coins img { width: 26px; height: 26px; }
+.v-intro-e .ie-ready { grid-column: 1 / -1; display: flex; align-items: center; gap: 14px; padding: 6px 12px 8px; border-radius: 16px; background: var(--paper-2); }
+.v-intro-e .ie-ready .item-pic .art { width: 36px; height: 36px; }
+.v-intro-e .ie-more { font: 800 15px var(--font-text); color: var(--ink-2); }
+.v-intro-e .ie-buyers { margin-left: auto; }
+.v-intro-e .ie-buyers .art { width: 36px; height: 36px; }
+
+/* the foot: the card, and under it the device, the graphics and the version */
+.v-intro-e .ie-bottom { justify-self: center; display: grid; gap: 8px; width: min(420px, 100%); min-height: 0; }
+.v-intro-e .ie-foot { margin: 0; text-align: center; font: 700 13px/1.2 var(--font-text); color: rgba(255, 248, 236, 0.9); text-shadow: 0 1px 2px rgba(40, 24, 10, 0.8); }
+.v-intro-e .ie-card { display: flex; flex-direction: column; min-height: 0; max-height: calc(100dvh - 210px); padding: 12px; overflow: hidden; box-shadow: 0 6px 0 var(--paper-3), 0 18px 40px rgba(40, 24, 10, 0.35); }
+.v-intro-e .ie-menu { display: grid; gap: 12px; }
+
+/* the big button: tall, a shine passing over it now and then; while the game loads, the loading bar itself */
+.v-intro-e .ie-go { position: relative; overflow: hidden; min-height: 64px; font-size: 24px; gap: 10px; isolation: isolate; }
+.v-intro-e .ie-go-words { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 10px; }
+.v-intro-e .ie-go svg { width: 24px; height: 24px; transition: transform 0.15s var(--ease-pop); }
+.v-intro-e .ie-go.loading { background: color-mix(in srgb, var(--sun) 28%, var(--paper-2)); box-shadow: 0 5px 0 color-mix(in srgb, var(--sun-lip) 45%, var(--paper-3)); color: var(--ink-2); cursor: default; }
+.v-intro-e .ie-go.loading b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.v-intro-e .ie-go.loading::after { display: none; }
+.v-intro-e .ie-go-fill { position: absolute; inset: 0 auto 0 0; z-index: 0; border-radius: inherit; background: repeating-linear-gradient(-55deg, rgba(255, 255, 255, 0.22) 0 10px, transparent 10px 20px), linear-gradient(to bottom, color-mix(in srgb, var(--sun) 60%, #fff), var(--sun)); transition: width 0.12s linear; }
+.v-intro-e .ie-go.going svg { transform: translateX(6px); }
+.v-intro-e .ie-go::after { content: ''; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.55) 50%, transparent 65%); transform: translateX(-120%); animation: v-intro-e-shine 4.2s ease-in-out 1.4s infinite; }
+
+/* the six tiles: a picture and a word each, as today's three, three to a row */
+.v-intro-e .ie-tiles { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+.v-intro-e .ie-tiles > * { grid-column: span 2; }
+/* five tiles (the first time, New farm is the big button): the last two share the second row */
+.v-intro-e .ie-tiles:has(> :nth-child(5):last-child) > :nth-child(n + 4) { grid-column: span 3; }
+.v-intro-e .ie-tile { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 74px; padding: 8px 4px; border: 0; border-radius: 18px; background: var(--paper-2); color: var(--ink); box-shadow: 0 3px 0 var(--paper-3); font: 600 15px/1.1 var(--font-display); }
+.v-intro-e .ie-tile .art { width: 34px; height: 34px; }
+.v-intro-e .ie-tile.on { background: color-mix(in srgb, var(--sun) 28%, var(--paper)); box-shadow: 0 3px 0 color-mix(in srgb, var(--sun-lip) 50%, var(--paper-3)); }
+.v-intro-e .ie-tile-n { position: absolute; top: 6px; right: 8px; display: grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; background: var(--sun); font: 800 13px/1 var(--font-text); }
+.v-intro-e .ie-eq { position: absolute; top: 8px; right: 10px; display: none; align-items: flex-end; gap: 2px; height: 14px; }
+.v-intro-e .ie-tile.on .ie-eq { display: flex; }
+.v-intro-e .ie-eq i { width: 3px; height: 40%; border-radius: 2px; background: var(--sun-lip); animation: v-intro-e-eq 0.9s ease-in-out infinite; }
+.v-intro-e .ie-eq i:nth-child(2) { animation-delay: -0.3s; }
+.v-intro-e .ie-eq i:nth-child(3) { animation-delay: -0.6s; }
+
+/* a page: Back, its picture and title, and its body (which scrolls when it is long) */
+.v-intro-e .ie-page { display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+.v-intro-e .ie-page-head { display: flex; align-items: center; gap: 8px; }
+.v-intro-e .ie-page-head .art { width: 32px; height: 32px; }
+.v-intro-e .ie-page-head h2 { margin: 0; font: 600 23px/1.1 var(--font-display); }
+.v-intro-e .ie-back { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%; background: var(--paper-2); color: var(--ink); box-shadow: 0 3px 0 var(--paper-3); }
+.v-intro-e .ie-back svg { width: 22px; height: 22px; }
+.v-intro-e .ie-page-body { flex: 1; min-height: 0; overflow: auto; margin: 0 -4px; padding: 2px 4px 4px; overscroll-behavior: contain; scrollbar-width: thin; }
+
+/* New farm: the name on a sign, the place, what it starts with, Start */
+.v-intro-e .ie-new { display: grid; gap: 12px; }
+.v-intro-e .ie-sign { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 48px; align-items: center; column-gap: 8px; padding: 6px 6px 8px 14px; border-radius: 18px; background: var(--paper-2); box-shadow: inset 0 2px 0 rgba(60, 35, 10, 0.08); }
+.v-intro-e .ie-sign small,
+.v-intro-e .ie-places-wrap small { grid-column: 1 / -1; font: 800 13px/1.4 var(--font-text); color: var(--ink-2); letter-spacing: 0.04em; text-transform: uppercase; }
+.v-intro-e .ie-sign-name { min-width: 0; height: 44px; padding: 0; border: 0; border-bottom: 2px dashed var(--paper-3); background: none; color: var(--ink); font: 600 22px/1 var(--font-display); outline: none; }
+.v-intro-e .ie-dice { display: grid; place-items: center; width: 48px; height: 48px; padding: 0; border: 0; border-radius: 14px; background: #fff; color: var(--berry); box-shadow: 0 3px 0 var(--paper-3); }
+.v-intro-e .ie-dice svg { width: 28px; height: 28px; }
+.v-intro-e .ie-places-wrap { display: grid; gap: 4px; }
+.v-intro-e .ie-places { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 18px; background: var(--paper-2); }
+.v-intro-e .ie-place { position: relative; display: flex; align-items: center; justify-content: center; gap: 4px; min-height: 52px; padding: 0 4px; border: 0; border-radius: 14px; background: none; color: var(--ink-2); isolation: isolate; }
+.v-intro-e .ie-place[data-state='on'] { color: var(--ink); }
+.v-intro-e .ie-place-on { position: absolute; inset: 0; z-index: -1; border-radius: 14px; background: var(--paper); box-shadow: 0 2px 0 var(--paper-3), 0 0 0 2px var(--sun); }
+.v-intro-e .ie-place .art { width: 26px; height: 26px; }
+.v-intro-e .ie-place .v-intro-star { width: 32px; height: 32px; }
+.v-intro-e .ie-place .v-intro-star b { font-size: 13px; }
+.v-intro-e .ie-place b { font: 600 15px/1 var(--font-display); white-space: nowrap; }
+.v-intro-e .ie-new-gives { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 0; }
+.v-intro-e .ie-new-gives .tag { font-size: 14px; }
+.v-intro-e .ie-new-gives .tag img { width: 20px; height: 20px; }
+.v-intro-e .ie-start { min-height: 58px; font-size: 21px; gap: 8px; }
+.v-intro-e .ie-start svg { width: 22px; height: 22px; }
+
+/* Load farm: the saved farms' own design (../saves/SavesC.css), fitted to the card */
+.v-intro-e .ie-saves { display: flex; flex-direction: column; gap: 10px; }
+
+/* Settings: three tabs of rows, then what the device keeps and the reset */
+.v-intro-e .ie-settings { display: grid; gap: 10px; }
+.v-intro-e .ie-tablist { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 999px; background: var(--paper-2); }
+.v-intro-e .ie-tab { min-height: 44px; border: 0; border-radius: 999px; background: none; color: var(--ink-2); font: 600 16px/1 var(--font-display); }
+.v-intro-e .ie-tab[data-state='active'] { background: var(--paper); color: var(--ink); box-shadow: 0 2px 0 var(--paper-3), 0 0 0 2px var(--sun); }
+.v-intro-e .ie-tab-body { display: grid; gap: 2px; padding-top: 6px; }
+.v-intro-e .ie-tab-body:focus-visible { outline: none; }
+.v-intro-e .ie-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 4px 4px 4px 2px; border-bottom: 1px solid color-mix(in srgb, var(--paper-3) 60%, transparent); }
+.v-intro-e .ie-row:last-child { border-bottom: 0; }
+.v-intro-e .ie-row-words { display: flex; flex-direction: column; min-width: 0; font: 700 16px/1.2 var(--font-text); color: var(--ink); }
+.v-intro-e .ie-row-words small { font: 600 13px/1.3 var(--font-text); color: var(--ink-2); }
+/* a switch: a finger-sized button (60 × 44) with its track drawn inside it */
+.v-intro-e .ie-switch { position: relative; flex: none; width: 60px; height: 44px; padding: 0; border: 0; background: none; }
+.v-intro-e .ie-switch::before { content: ''; position: absolute; inset: 5px 2px; border-radius: 999px; background: var(--paper-3); box-shadow: inset 0 2px 3px rgba(60, 35, 10, 0.2); transition: background 0.18s; }
+.v-intro-e .ie-switch[data-state='checked']::before { background: var(--leaf); }
+.v-intro-e .ie-switch:disabled { opacity: 0.45; }
+.v-intro-e .ie-thumb { position: relative; display: block; width: 28px; height: 28px; margin-left: 5px; border-radius: 50%; background: #fff; box-shadow: 0 2px 3px rgba(0, 0, 0, 0.25); transition: translate 0.18s var(--ease-pop); }
+.v-intro-e .ie-thumb[data-state='checked'] { translate: 22px 0; }
+.v-intro-e .ie-seg { display: flex; flex: none; padding: 3px; border-radius: 999px; background: var(--paper-2); }
+.v-intro-e .ie-seg-item { min-width: 44px; min-height: 44px; padding: 0 10px; border: 0; border-radius: 999px; background: none; color: var(--ink-2); font: 700 14px/1 var(--font-text); }
+.v-intro-e .ie-seg-item[data-state='on'] { background: var(--sun); color: var(--ink); box-shadow: 0 2px 0 var(--sun-lip); }
+.v-intro-e .ie-range { display: flex; align-items: center; gap: 8px; flex: 0 1 190px; min-width: 120px; }
+.v-intro-e .ie-range output { min-width: 34px; font: 800 14px/1 var(--font-text); color: var(--ink-2); text-align: right; font-variant-numeric: tabular-nums; }
+.v-intro-e .ie-slider { position: relative; display: flex; align-items: center; flex: 1; height: 44px; touch-action: none; user-select: none; }
+.v-intro-e .ie-slider-track { position: relative; flex: 1; height: 8px; border-radius: 999px; background: var(--paper-3); }
+.v-intro-e .ie-slider-range { position: absolute; height: 100%; border-radius: 999px; background: var(--sun); }
+.v-intro-e .ie-slider-thumb { display: block; width: 26px; height: 26px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 3px var(--sun), 0 2px 4px rgba(0, 0, 0, 0.25); }
+.v-intro-e .ie-slider-thumb:focus-visible { outline: 3px solid var(--xp); outline-offset: 2px; }
+.v-intro-e .ie-keep { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; border-radius: 16px; background: var(--paper-2); }
+.v-intro-e .ie-keep .btn,
+.v-intro-e .ie-reset { min-height: 44px; }
+.v-intro-e .ie-reset { justify-self: center; }
+
+/* Music: what plays, the three round buttons, the four tracks, the volume */
+.v-intro-e .ie-music { display: grid; gap: 10px; }
+.v-intro-e .ie-now { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 18px; background: var(--paper-2); }
+.v-intro-e .ie-disc { display: grid; place-items: center; flex: none; width: 52px; height: 52px; border-radius: 50%; background: radial-gradient(circle, #fff 0 18%, var(--ink) 19% 100%); box-shadow: 0 3px 0 var(--paper-3); }
+.v-intro-e .ie-disc .art { width: 26px; height: 26px; }
+.v-intro-e .ie-now.on .ie-disc { animation: v-intro-e-spin 4s linear infinite; }
+.v-intro-e .ie-now-words { display: flex; flex-direction: column; min-width: 0; }
+.v-intro-e .ie-now-words b { font: 600 19px/1.2 var(--font-display); }
+.v-intro-e .ie-now-words small { font: 700 14px/1.3 var(--font-text); color: var(--ink-2); }
+.v-intro-e .ie-controls { display: flex; align-items: center; justify-content: center; gap: 16px; }
+.v-intro-e .ie-round { display: grid; place-items: center; width: 48px; height: 48px; padding: 0; border: 0; border-radius: 50%; background: var(--paper-2); color: var(--ink); box-shadow: 0 3px 0 var(--paper-3); }
+.v-intro-e .ie-round svg { width: 22px; height: 22px; }
+.v-intro-e .ie-round.big { width: 64px; height: 64px; background: var(--sun); box-shadow: 0 4px 0 var(--sun-lip); }
+.v-intro-e .ie-round.big svg { width: 30px; height: 30px; }
+.v-intro-e .ie-tracks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 0; padding: 0; list-style: none; }
+.v-intro-e .ie-track { display: flex; flex-direction: column; align-items: flex-start; width: 100%; min-height: 52px; padding: 6px 10px; border: 0; border-radius: 14px; background: var(--paper-2); color: var(--ink); text-align: left; }
+.v-intro-e .ie-track b { font: 600 15px/1.15 var(--font-display); }
+.v-intro-e .ie-track small { font: 600 13px/1.25 var(--font-text); color: var(--ink-2); }
+.v-intro-e .ie-track.on { background: color-mix(in srgb, var(--sun) 30%, var(--paper)); box-shadow: inset 0 0 0 2px var(--sun); }
+
+/* How to play */
+.v-intro-e .ie-help { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.v-intro-e .ie-help li { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 6px 12px; border-radius: 16px; background: var(--paper-2); }
+.v-intro-e .ie-help .art { width: 34px; height: 34px; flex: none; }
+.v-intro-e .ie-help span { display: flex; flex-direction: column; font: 600 14px/1.3 var(--font-text); color: var(--ink-2); }
+.v-intro-e .ie-help b { font: 600 17px/1.2 var(--font-display); color: var(--ink); }
+
+/* with a page open upright, the name steps back a little and the card takes the room */
+.v-intro-e.paged .ie-logo { scale: 0.8; }
+.v-intro-e.paged .ie-house,
+.v-intro-e.paged .ie-logo p { display: none; }
+.v-intro-e.paged .ie-farm-wrap { display: none; }
+.v-intro-e.paged .ie-card { max-height: calc(100dvh - 190px); }
+
+@keyframes v-intro-e-bob { 50% { transform: translateY(-5px) rotate(-1.5deg); } }
+@keyframes v-intro-e-shine { 0% { transform: translateX(-120%); } 30%, 100% { transform: translateX(120%); } }
+@keyframes v-intro-e-eq { 0%, 100% { height: 30%; } 50% { height: 100%; } }
+@keyframes v-intro-e-spin { to { rotate: 360deg; } }
+@keyframes v-intro-e-turn { to { transform: rotate(1turn); } }
+@keyframes v-intro-e-run { to { background-position: 23px 0, 0 0; } }
+@media (prefers-reduced-motion: no-preference) {
+  .v-intro-e .ie-sun i { animation: v-intro-e-turn 40s linear infinite; }
+  .v-intro-e .ie-go-fill { animation: v-intro-e-run 0.9s linear infinite; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .v-intro-e .ie-house .art,
+  .v-intro-e .ie-go::after,
+  .v-intro-e .ie-eq i,
+  .v-intro-e .ie-now.on .ie-disc { animation: none; }
+}
+
+/* a short phone upright: a smaller house and name */
+@media (orientation: portrait) and (max-height: 700px) {
+  .v-intro-e .ie-house .art { width: 76px; }
+  .v-intro-e h1 { font-size: 50px; }
+  .v-intro-e .ie-logo p { font-size: 15px; margin-top: 4px; }
+  .v-intro-e .ie-ready { display: none; }
+  .v-intro-e .ie-card { max-height: calc(100dvh - 170px); }
+  .v-intro-e .ie-tile { min-height: 64px; }
+  .v-intro-e.paged .ie-logo { display: none; }
+  .v-intro-e.paged .ie-card { max-height: calc(100dvh - 60px); }
+}
+
+/* a phone on its side: the name and your farm on the left, the card on the right, the whole height */
+@media (orientation: landscape) and (max-height: 560px) {
+  .v-intro-e { grid-template-rows: minmax(0, 1fr); grid-template-columns: minmax(0, 1fr) minmax(330px, 440px); column-gap: 20px; padding-top: 10px; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
+  .v-intro-e > .ie-sun { left: 30%; top: 40%; }
+  .v-intro-e .ie-side { gap: 10px; }
+  .v-intro-e .ie-house .art { width: 76px; }
+  .v-intro-e h1 { font-size: 52px; }
+  .v-intro-e h1 span { -webkit-text-stroke-width: 7px; }
+  .v-intro-e .ie-logo p { margin-top: 4px; font-size: 15px; }
+  .v-intro-e .ie-farm-wrap { width: min(380px, 100%); }
+  .v-intro-e .ie-farm { padding: 6px 8px 8px; }
+  .v-intro-e .ie-farm-name { min-height: 46px; }
+  .v-intro-e .ie-ready { padding: 4px 10px 6px; }
+  .v-intro-e .ie-ready .item-pic .art,
+  .v-intro-e .ie-buyers .art { width: 32px; height: 32px; }
+  .v-intro-e .ie-bottom { align-self: stretch; align-content: center; width: 100%; }
+  .v-intro-e .ie-card { max-height: calc(100dvh - 44px - env(safe-area-inset-bottom)); padding: 10px; }
+  .v-intro-e.paged .ie-card { max-height: calc(100dvh - 44px - env(safe-area-inset-bottom)); }
+  .v-intro-e.paged .ie-logo { scale: 1; }
+  .v-intro-e.paged .ie-house { display: block; }
+  .v-intro-e.paged .ie-logo p { display: inline-block; }
+  .v-intro-e.paged .ie-farm-wrap { display: block; }
+  .v-intro-e .ie-go { min-height: 58px; }
+  .v-intro-e .ie-tile { min-height: 64px; }
+  .v-intro-e .ie-page { gap: 8px; }
+  .v-intro-e .ie-page-head h2 { font-size: 20px; }
+  .v-intro-e .ie-saves .sc-card { flex-direction: row; flex-wrap: wrap; justify-content: center; }
+}

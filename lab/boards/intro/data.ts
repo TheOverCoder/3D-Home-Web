@@ -16,7 +16,12 @@ export interface Farm extends SlotSummary {
   waiting: Waiting | null
 }
 
+/** A page of the opening screen's card: its menu, or one of the pages its tiles open. */
+export type Page = 'menu' | 'new' | 'load' | 'settings' | 'music' | 'help' | 'credits'
+
 export interface IntroState {
+  /** the page the card shows as it opens (the menu when not given) */
+  page?: Page
   /** the farm the big button plays */
   slot: Slot
   farms: Farm[]
@@ -115,17 +120,16 @@ export const STATES: { id: string; name: string; data: IntroState }[] = [
   { id: 'back', name: 'שחקן חוזר – חזר אחרי 3 שעות, ובחווה מחכים לו דברים', data: { slot: 1, farms: [evening, emptyFarm(2), emptyFarm(3)] } },
   { id: 'many', name: 'שחקן עם שתי חוות שמורות – בוחר באיזו לשחק', data: { slot: 2, farms: [small, big, emptyFarm(3)] } },
   { id: 'loading', name: 'המשחק עוד נטען (62%) – שחקן חוזר; נטען עד הסוף מעצמו', data: { slot: 1, farms: [evening, emptyFarm(2), emptyFarm(3)], load: 0.62 } },
+  { id: 'new-farm', name: 'הדף New farm פתוח (שתי חוות שמורות, מקום אחד ריק)', data: { slot: 2, farms: [small, big, emptyFarm(3)], page: 'new' } },
+  { id: 'load-farm', name: 'הדף Load farm פתוח (שתי חוות שמורות)', data: { slot: 2, farms: [small, big, emptyFarm(3)], page: 'load' } },
+  { id: 'settings', name: 'הדף Settings פתוח', data: { slot: 1, farms: [evening, emptyFarm(2), emptyFarm(3)], page: 'settings' } },
+  { id: 'music', name: 'הדף Music פתוח', data: { slot: 1, farms: [evening, emptyFarm(2), emptyFarm(3)], page: 'music' } },
 ]
 
-// SAMPLE DATA for variant D of the opening screen (features the game does not have): each farm's own name, a few
-// names a new farm can be given with a roll of the dice, and what is new in the game since the player was last here.
+// SAMPLE DATA for a feature the game does not have (the opening screen's E and the saved farms' D): each farm's own
+// name, and a few names a new farm can be given with a roll of the dice.
 export const FARM_NAMES: Record<number, string> = { 1: 'Sunny Acres', 2: 'Maple Hollow', 3: 'Clover Patch' }
-export const NEW_NAMES = ['Sunny Acres', 'Honey Meadow', 'Willow Bend', 'Pumpkin Hill', 'Clover Patch', 'Bluebell Farm', 'Maple Hollow']
-export const WHATS_NEW: { art: 'trophy' | 'clipboard' | 'glowing-star'; title: string; line: string }[] = [
-  { art: 'glowing-star', title: 'A garment every fifth level', line: 'Open the wardrobe in the house to wear it.' },
-  { art: 'clipboard', title: 'Orders on the office computer', line: 'Fill a crate, send it with the tractor.' },
-  { art: 'trophy', title: 'Goals with rewards', line: 'Coins and building materials for each step.' },
-]
+export const NEW_NAMES = ['Honey Meadow', 'Willow Bend', 'Pumpkin Hill', 'Bluebell Farm', 'Sunny Acres', 'Maple Hollow', 'Clover Patch']
 
 /** A farm started afresh (the save list's Clear): empty, and the button plays a new one. */
 export const cleared = (s: IntroState, slot: Slot): IntroState => ({ ...s, farms: s.farms.map((f) => (f.slot === slot ? emptyFarm(slot) : f)) })

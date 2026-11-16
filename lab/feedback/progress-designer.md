@@ -14,3 +14,18 @@
 00:54 start 6c: saves board
 01:02 done 6c: saves board — A card per farm with ⋯, B postcards to slide, C one farm in full; clearing a farm is a hold, never a tap
 01:29 done: npm run check passes; lab check 51/51; audit clean but for scrolling lists (orders with 5 places, the postcards row in saves B). Not reached this round: action, edit, tag, touch, shop, market, seeds, store
+
+## Round 5 (the second round of answers, f707317)
+02:56 start: reading the answers, craft, boards; the lab served
+02:57 done: top — one variant, D (chosen: C+pinned goal; C merged into it), round line says so; saves — one variant, D (chosen), C merged
+02:57 start: orders
+03:07 done: orders — one reference E (D removed: the duplicate), scroll fixed (LevelSheet scrolls), sideways 3 in a row, goods fly on Put in, ghost pegs, READY tag, Office buys after a card
+03:07 start: goals
+03:13 done: goals — one reference E (D removed), a sticker grows into the spotlight (container transform), its words crisp; scroll fixed
+03:14 start: level — one reference F: quarter boxes, gift button, level-up gift by itself
+03:26 done: level — one reference F (D, E removed): four boxes on the bar, a clear opening in the card's middle, a gift button for all that wait, the next level's prize comes by itself; fits upright and sideways
+03:36 done: intro — one reference E (A, D removed): a real menu (New farm, Load farm, Settings, Music, How to play, Credits), pages slide inside the card; Load farm is the saves board's D; settings only the game's own
+03:36 start: loading — one shared stage for all six
+03:48 done: loading — all six on one shared stage (sky, name, disc and rays, card, ready moment); G folded into a 'back' state (away report, ✦)
+04:22 checks: npm run check passes; audit clean on all seven boards but for lists that scroll (orders upright with 3–5 orders, sideways with 5; the settings page sideways); the shared sheet now closes only on a touch that began outside it (the Office tab had closed it)
+04:23 done: lab-check 63 of 63; round 5 handed back

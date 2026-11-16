@@ -1,28 +1,17 @@
-/* B · the road home (./LoadingB.tsx): a countryside in planes sliding past at their own speeds over a sky going from dawn
-   to day (--day: 0 → 1, the bar's share); the tractor at the front, the shared bar (./chrome.css) in a card under it.
+/* B · the road home (./LoadingB.tsx), on the shared stage (./shell.css): through a round window, a countryside in planes
+   sliding past at their own speeds over a sky going from dawn to day (--day: 0 → 1, the bar's share); the tractor at
+   the front.
    Every colour is the game's tokens mixed: the dawn is the XP violet in the paper, the day is the sun in it; far hills
    take the sky's colour (air between), near ones the leaf. */
-.v-loading-b {
+.v-loading-b .lb-world {
   --dawn: color-mix(in oklab, var(--xp) 34%, var(--paper));
   --noon: color-mix(in oklab, var(--sun) 30%, var(--paper));
-  position: fixed;
-  inset: 0;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  justify-items: center;
-  padding: calc(env(safe-area-inset-top) + 18px) 20px calc(env(safe-area-inset-bottom) + 16px);
-  overflow: hidden;
-  background: var(--paper-2);
-  user-select: none;
 }
-.v-loading-b > :not(.lb-world) { position: relative; z-index: 2; }
-.v-loading-b .lb-logo { text-align: center; }
-.v-loading-b .lb-low { align-self: end; width: min(360px, 100%); }
-
-/* the world: the top two thirds of the screen (sideways all of it) */
-.v-loading-b .lb-world { position: absolute; inset: 0 0 32% 0; overflow: hidden; }
+/* the world: a round window where the disc is; the meadow under the road fills its foot */
+.v-loading-b .lb-world { position: absolute; inset: 0; border-radius: 50%; overflow: hidden; box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.9); isolation: isolate; }
+.v-loading-b .lb-world::after { content: ''; position: absolute; z-index: 2; left: 0; right: 0; bottom: 0; height: 17%; background: linear-gradient(to bottom, var(--leaf), var(--leaf-lip)); }
 .v-loading-b .lb-sky { position: absolute; inset: 0; background: linear-gradient(to bottom, color-mix(in oklab, var(--dawn) calc((1 - var(--day)) * 100%), var(--noon)), color-mix(in oklab, color-mix(in oklab, var(--berry) 22%, var(--paper)) calc((1 - var(--day)) * 100%), var(--paper)) 80%); }
-.v-loading-b .lb-sun { position: absolute; width: 84px; height: 84px; translate: -50% -50%; filter: drop-shadow(0 0 30px color-mix(in oklab, var(--sun) 80%, transparent)); }
+.v-loading-b .lb-sun { position: absolute; width: 64px; height: 64px; translate: -50% -50%; filter: drop-shadow(0 0 30px color-mix(in oklab, var(--sun) 80%, transparent)); }
 .v-loading-b .lb-clouds i { position: absolute; width: 120px; height: 34px; border-radius: 999px; background: rgba(255, 255, 255, 0.75); box-shadow: 30px -14px 0 4px rgba(255, 255, 255, 0.75); animation: lb-cloud 70s linear infinite; }
 .v-loading-b .lb-clouds i:nth-child(1) { top: 16%; animation-delay: -10s; }
 .v-loading-b .lb-clouds i:nth-child(2) { top: 30%; scale: 0.7; animation-duration: 95s; animation-delay: -60s; opacity: 0.8; }
@@ -31,24 +20,24 @@
 /* a plane: two copies of its picture side by side, sliding left by one copy and over again (no seam) */
 .v-loading-b .lb-plane { position: absolute; left: 0; bottom: 0; display: flex; width: 200%; animation: lb-slide var(--speed) linear infinite; }
 .v-loading-b .lb-plane svg { display: block; width: 50%; height: 100%; }
-.v-loading-b .lb-plane.far { bottom: 18%; height: 36%; }
+.v-loading-b .lb-plane.far { bottom: 34%; height: 36%; }
 .v-loading-b .lb-plane.far path { fill: color-mix(in oklab, var(--xp) 18%, color-mix(in oklab, var(--leaf) 30%, var(--paper))); }
-.v-loading-b .lb-plane.mid { bottom: 14%; height: 34%; }
+.v-loading-b .lb-plane.mid { bottom: 30%; height: 34%; }
 .v-loading-b .lb-plane.mid path { fill: color-mix(in oklab, var(--leaf) 52%, var(--paper)); }
 .v-loading-b .lb-plane.mid .lb-tree circle { fill: color-mix(in oklab, var(--leaf) 66%, var(--paper)); }
 .v-loading-b .lb-plane.mid .lb-tree rect { fill: color-mix(in oklab, var(--edge) 60%, var(--paper)); }
-.v-loading-b .lb-plane.near { bottom: 8%; height: 30%; }
+.v-loading-b .lb-plane.near { bottom: 24%; height: 30%; }
 .v-loading-b .lb-plane.near path { fill: color-mix(in oklab, var(--leaf) 80%, var(--sun)); }
 .v-loading-b .lb-plane.near .lb-tree circle { fill: var(--leaf); }
 .v-loading-b .lb-plane.near .lb-tree rect { fill: var(--edge); }
-.v-loading-b .lb-plane.front { bottom: -2%; height: 16%; z-index: 3; filter: blur(1.2px); }
+.v-loading-b .lb-plane.front { bottom: 10%; height: 16%; z-index: 3; filter: blur(1.2px); }
 .v-loading-b .lb-plane.front path { fill: var(--leaf-lip); }
 /* the road the tractor drives on, its dashes going by */
-.v-loading-b .lb-road { position: absolute; left: 0; right: 0; bottom: 0; height: 10%; background: color-mix(in oklab, var(--edge) 55%, var(--paper-3)); box-shadow: inset 0 4px 0 color-mix(in oklab, var(--edge) 70%, var(--ink)); overflow: hidden; }
+.v-loading-b .lb-road { position: absolute; left: 0; right: 0; bottom: 16%; height: 13%; background: color-mix(in oklab, var(--edge) 55%, var(--paper-3)); box-shadow: inset 0 4px 0 color-mix(in oklab, var(--edge) 70%, var(--ink)); overflow: hidden; }
 .v-loading-b .lb-road i { position: absolute; left: 0; top: 48%; width: 200%; height: 4px; background: repeating-linear-gradient(90deg, var(--paper) 0 26px, transparent 26px 60px); animation: lb-slide 4s linear infinite; }
 
 /* the tractor at the front, rocking on the bumps, dust off its back wheel */
-.v-loading-b .lb-tractor { position: absolute; bottom: 4%; z-index: 2; width: 26%; max-width: 150px; translate: -50% 0; padding: 0; border: 0; background: none; cursor: pointer; }
+.v-loading-b .lb-tractor { position: absolute; bottom: 20%; z-index: 2; width: 34%; max-width: 130px; translate: -50% 0; padding: 0; border: 0; background: none; cursor: pointer; }
 .v-loading-b .lb-tractor-in { display: block; transform-origin: 50% 100%; }
 .v-loading-b .lb-tractor img { display: block; width: 100%; height: auto; transform: scaleX(-1); animation: lb-rock 0.42s ease-in-out infinite alternate; filter: drop-shadow(0 6px 4px rgba(40, 24, 10, 0.25)); }
 .v-loading-b .lb-dust { position: absolute; left: 4%; bottom: 6%; }
@@ -57,26 +46,17 @@
 .v-loading-b .lb-dust i:nth-child(3) { animation-delay: 0.55s; }
 .v-loading-b .lb-dust i:nth-child(4) { animation-delay: 0.82s; }
 /* a signpost on the verge, going by */
-.v-loading-b .lb-sign { position: absolute; bottom: 8%; z-index: 1; display: grid; place-items: center; width: 60px; height: 60px; border: 3px solid var(--edge); border-radius: 14px; background: var(--paper); box-shadow: 0 3px 0 var(--edge); }
-.v-loading-b .lb-sign::after { content: ''; position: absolute; top: 100%; left: 50%; width: 6px; height: 26px; margin-left: -3px; background: var(--edge); }
-.v-loading-b .lb-sign img { width: 40px; height: 40px; }
+.v-loading-b .lb-sign { position: absolute; bottom: 31%; z-index: 1; display: grid; place-items: center; width: 52px; height: 52px; border: 3px solid var(--edge); border-radius: 14px; background: var(--paper); box-shadow: 0 3px 0 var(--edge); }
+.v-loading-b .lb-sign::after { content: ''; position: absolute; top: 100%; left: 50%; width: 6px; height: 18px; margin-left: -3px; background: var(--edge); }
+.v-loading-b .lb-sign img { width: 34px; height: 34px; }
 /* home: your house rolls in and the tractor parks at it */
-.v-loading-b .lb-home { position: absolute; bottom: 6%; z-index: 1; width: 34%; max-width: 190px; height: auto; translate: -50% 0; filter: drop-shadow(0 8px 6px rgba(40, 24, 10, 0.25)); }
+.v-loading-b .lb-home { position: absolute; bottom: 22%; z-index: 1; width: 40%; max-width: 150px; height: auto; translate: -50% 0; filter: drop-shadow(0 8px 6px rgba(40, 24, 10, 0.25)); }
 
 /* ready: the world comes to a stop */
-.v-loading-b.ready .lb-plane,
-.v-loading-b.ready .lb-road i { animation-play-state: paused; }
-.v-loading-b.ready .lb-tractor img { animation: none; }
-.v-loading-b.ready .lb-dust { display: none; }
-
-/* sideways: the world is the whole screen; the logo at the top left, the card on the right */
-.v-loading-b.wide { grid-template-columns: minmax(0, 1fr) minmax(300px, 360px); grid-template-rows: auto minmax(0, 1fr); padding: 12px calc(env(safe-area-inset-right) + 18px) calc(env(safe-area-inset-bottom) + 12px) calc(env(safe-area-inset-left) + 18px); column-gap: 20px; }
-.v-loading-b.wide { background: color-mix(in oklab, var(--edge) 55%, var(--paper-3)); }
-.v-loading-b.wide .lb-world { inset: 0 0 env(safe-area-inset-bottom) 0; }
-.v-loading-b.wide .lb-logo { grid-column: 1; justify-self: start; }
-.v-loading-b.wide .lb-low { grid-column: 2; grid-row: 1 / 3; align-self: center; }
-.v-loading-b.wide .lb-tractor { width: 16%; }
-.v-loading-b.wide .lb-home { width: 20%; }
+.v-loading-shell.ready .lb-plane,
+.v-loading-shell.ready .lb-road i { animation-play-state: paused; }
+.v-loading-shell.ready .lb-tractor img { animation: none; }
+.v-loading-shell.ready .lb-dust { display: none; }
 
 @keyframes lb-slide { to { translate: -50% 0; } }
 @keyframes lb-cloud { from { left: 105%; } to { left: -40%; } }

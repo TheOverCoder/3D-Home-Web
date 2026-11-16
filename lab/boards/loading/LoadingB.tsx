@@ -1,10 +1,9 @@
 import { AnimatePresence, m, useReducedMotion } from 'motion/react'
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { art } from '../../../src/ui/art'
-import { burst } from '../../../src/ui/burst'
 import { EASE, SPRING } from '../../../src/ui/motion'
-import { Chrome, Logo } from './Chrome'
-import { loadView, useLive, useTip, useWide, type LoadingState } from './load'
+import { loadView, useLive, type LoadingState } from './load'
+import { LoadShell } from './Shell'
 import './LoadingB.css'
 
 // B · the road home, round 3: a journey in layers. The tractor drives home through a countryside drawn in six planes
@@ -13,7 +12,8 @@ import './LoadingB.css'
 // along its arc. Dust puffs off the back wheel; the tractor rocks on the bumps. Each step of the loading passes as a
 // signpost on the verge (the farm on its way, building the house, the lights). Its moment: ready, the world slows to a
 // stop as your house rolls in from the right, the tractor parks at its gate with a hop, a burst of confetti, and Play.
-// A tap on the tractor makes it hop.
+// A tap on the tractor makes it hop. Round 5, on the shared stage (./Shell.tsx): the journey is seen through a round
+// window where the disc is (the sky and the name, the card and the moment are the others').
 
 /** The signpost for each step, as it passes. */
 const SIGN = { fetch: art('package'), build: art('building-construction'), light: art('sparkles'), ready: art('house-with-garden') } as const
@@ -61,32 +61,19 @@ const Trees = ({ y, n, seed }: { y: number; n: number; seed: number }) => (
 export function LoadingB({ s: start, onPlay }: { s: LoadingState; onPlay: () => void }) {
   const s = useLive(start)
   const v = loadView(s)
-  const wide = useWide()
   const still = useReducedMotion()
-  const [tip] = useTip()
   const [hop, setHop] = useState(0)
-  const tractor = useRef<HTMLButtonElement>(null)
   useEffect(() => {
     if (!v.ready) return
-    const t = setTimeout(() => {
-      setHop((n) => n + 1)
-      if (tractor.current && !still) burst(tractor.current, { count: 60, spread: 80, power: 30 })
-    }, 900)
+    const t = setTimeout(() => setHop((n) => n + 1), 900)
     return () => clearTimeout(t)
-  }, [v.ready, still])
+  }, [v.ready])
   // the sun climbs an arc as the bar fills: from the left horizon to high in the middle
   const a = Math.PI * (0.95 - v.p * 0.5)
   const sun = { left: `${50 + Math.cos(a) * 40}%`, top: `${72 - Math.sin(a) * 38}%` }
   return (
-    <m.div
-      className={`v-loading-b${wide ? ' wide' : ''}${v.ready ? ' ready' : ''}`}
-      style={{ '--day': v.p } as CSSProperties}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0, x: '-8%', transition: { duration: 0.32, ease: [0.4, 0, 1, 1] } }}
-      transition={{ duration: 0.25 }}
-    >
-      <div className="lb-world">
+    <LoadShell name="v-loading-b" v={v} onPlay={onPlay} away={s.away}>
+      <div className="lb-world" style={{ '--day': v.p } as CSSProperties}>
         <span className="lb-sky" aria-hidden="true" />
         <m.img className="art lb-sun" src={art('sun')} alt="" style={sun} initial={false} animate={sun} transition={{ type: 'spring', stiffness: 30, damping: 14 }} />
         <div className="lb-clouds" aria-hidden="true">
@@ -120,18 +107,17 @@ export function LoadingB({ s: start, onPlay }: { s: LoadingState; onPlay: () => 
               src={art('house-with-garden')}
               alt=""
               initial={{ left: '118%' }}
-              animate={{ left: wide ? '62%' : '70%' }}
+              animate={{ left: '68%' }}
               transition={{ duration: still ? 0 : 1.1, ease: EASE.out }}
             />
           )}
         </AnimatePresence>
         <m.button
-          ref={tractor}
           className="lb-tractor"
           aria-label="The tractor"
           onClick={() => setHop((n) => n + 1)}
           initial={{ left: '-30%' }}
-          animate={{ left: v.ready ? (wide ? '44%' : '40%') : wide ? '24%' : '18%' }}
+          animate={{ left: v.ready ? '40%' : '30%' }}
           transition={v.ready ? { duration: still ? 0 : 1.1, ease: EASE.out } : { ...SPRING.soft, delay: 0.15 }}
         >
           <m.span
@@ -155,12 +141,6 @@ export function LoadingB({ s: start, onPlay }: { s: LoadingState; onPlay: () => 
           ))}
         </Plane>
       </div>
-      <m.header className="lb-logo" initial={{ opacity: 0, y: -14 }} animate={{ opacity: 1, y: 0 }} transition={{ ...SPRING.sheet, delay: 0.05 }}>
-        <Logo small={wide} />
-      </m.header>
-      <m.div className="lb-low" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ ...SPRING.sheet, delay: 0.12 }}>
-        <Chrome v={v} tip={tip} onPlay={onPlay} tone="card" />
-      </m.div>
-    </m.div>
+    </LoadShell>
   )
 }

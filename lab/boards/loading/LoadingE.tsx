@@ -1,9 +1,8 @@
-import { m, useReducedMotion } from 'motion/react'
-import { useEffect, useRef, type ReactNode } from 'react'
-import { burst } from '../../../src/ui/burst'
-import { EASE, SPRING } from '../../../src/ui/motion'
-import { Chrome } from './Chrome'
-import { loadView, useLive, useTip, useWide, type LoadingState } from './load'
+import { m } from 'motion/react'
+import { type ReactNode } from 'react'
+import { SPRING } from '../../../src/ui/motion'
+import { loadView, useLive, type LoadingState } from './load'
+import { LoadShell } from './Shell'
 import './LoadingE.css'
 
 // E · the emblem builds itself: motion design in the game's colours. Soft blobs of colour drift and melt behind; in the
@@ -11,9 +10,10 @@ import './LoadingE.css'
 // square of the walls spinning in, the roof's triangle dropping, the door sliding up, the windows turning in, the
 // chimney and its puffs, the green hill wiping under it. Round it a ring fills with eight marks that light as they are
 // passed and a spark at its head. The name's letters pop in one by one and then ripple. Its moment: ready, every shape
-// takes its ink outline at once (it becomes the logo), rays burst out, confetti, and Play.
+// takes its ink outline at once (it becomes the logo), rays burst out, confetti, and Play. Round 5: on the shared stage
+// (./Shell.tsx) — the emblem is drawn on the disc, its ring round the disc's rim; the blobs and its own name are gone
+// (the shared sky and name are the same in every look), and the bar is the card's, as in the others.
 
-const NAME = '3D Home'.split('')
 const MARKS = 8
 const R = 92 // the ring's radius in the 240 × 240 box
 
@@ -34,34 +34,13 @@ function Arrive({ on, from, children }: { on: boolean; from: { x: number; y: num
 export function LoadingE({ s: start, onPlay }: { s: LoadingState; onPlay: () => void }) {
   const s = useLive(start)
   const v = loadView(s)
-  const wide = useWide()
-  const still = useReducedMotion()
-  const [tip] = useTip()
-  const emblem = useRef<SVGSVGElement>(null)
   const at = (x: number) => v.p >= x || v.ready
-  useEffect(() => {
-    if (!v.ready || still) return
-    const t = setTimeout(() => emblem.current && burst(emblem.current, { count: 80, spread: 120, power: 34 }), 380)
-    return () => clearTimeout(t)
-  }, [v.ready, still])
   const circ = 2 * Math.PI * R
   const head = -Math.PI / 2 + v.p * Math.PI * 2
   return (
-    <m.div
-      className={`v-loading-e${wide ? ' wide' : ''}${v.ready ? ' ready' : ''}`}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0, scale: 0.94, transition: { duration: 0.28, ease: [0.4, 0, 1, 1] } }}
-      transition={{ duration: 0.25 }}
-    >
-      <div className="le-blobs" aria-hidden="true">
-        <i />
-        <i />
-        <i />
-        <i />
-      </div>
+    <LoadShell name="v-loading-e" v={v} onPlay={onPlay} away={s.away}>
       <div className="le-hero">
-        <svg ref={emblem} className="le-emblem" viewBox="0 0 240 240" aria-hidden="true">
+        <svg className="le-emblem" viewBox="0 0 240 240" aria-hidden="true">
           {/* rays, when ready */}
           {v.ready && (
             <m.g
@@ -141,24 +120,7 @@ export function LoadingE({ s: start, onPlay }: { s: LoadingState; onPlay: () => 
             )}
           </g>
         </svg>
-        <h1 className="le-name" aria-label="3D Home">
-          {NAME.map((c, i) => (
-            <m.span
-              key={i}
-              aria-hidden="true"
-              initial={{ opacity: 0, scale: 0, rotate: -30, y: 20 }}
-              animate={{ opacity: 1, scale: 1, rotate: 0, y: 0 }}
-              transition={{ ...SPRING.pop, delay: 0.15 + i * 0.05 }}
-              style={{ animationDelay: `${1 + i * 0.09}s` }}
-            >
-              {c === ' ' ? ' ' : c}
-            </m.span>
-          ))}
-        </h1>
       </div>
-      <m.div className="le-low" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ ...SPRING.sheet, delay: 0.15, ease: EASE.out }}>
-        <Chrome v={v} tip={tip} onPlay={onPlay} bar={false} tone="card" />
-      </m.div>
-    </m.div>
+    </LoadShell>
   )
 }

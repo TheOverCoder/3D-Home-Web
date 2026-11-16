@@ -1,4 +1,4 @@
-import { OFFICE_UPGRADES, orderSlots, orderWait, produceById, type ProduceId } from '../../../src/farm/data'
+import { OFFICE_UPGRADES, orderSlots, orderWait, produceById, type OfficeUpgradeId, type ProduceId } from '../../../src/farm/data'
 import { cratesFor, isComplete, orderPay, orderUnits, type Order } from '../../../src/farm/orders'
 import { flyCoins } from '../../../src/fx/coins'
 import { coinsToFly } from '../../../src/fx/fx'
@@ -41,6 +41,10 @@ export const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s
 /** How many of what it still wants the silo and the barn could put in now. */
 export const canPut = (s: OrdersState, o: Order) => o.lines.reduce((n, l) => n + Math.min(Math.max(0, l.want - l.have), s.inv[l.good] ?? 0), 0)
 
+/** What Put in would move now, good by good (the pegs it would fill: the next press seen before it is made). */
+export const goingIn = (s: OrdersState, o: Order): [ProduceId, number][] =>
+  o.lines.map((l) => [l.good, Math.min(Math.max(0, l.want - l.have), s.inv[l.good] ?? 0)] as [ProduceId, number]).filter(([, n]) => n > 0)
+
 /** Put in: what there is of each good it still wants goes in. */
 export function putIn(s: OrdersState, k: number): OrdersState {
   const slot = s.slots[k]
@@ -78,25 +82,37 @@ export function paid(el: HTMLElement, coins: number) {
   burst(el, { count: 40, spread: 70, power: 24 })
 }
 
-/** The office's ladders as the shop shows them: now → next, and the price. */
-export const officeRows = (s: OrdersState) => [
-  {
-    id: 'slots' as const,
-    pic: art('clipboard'),
-    name: OFFICE_UPGRADES.slots.name,
-    now: String(orderSlots(s.office.slots)),
-    next: String(orderSlots(s.office.slots + 1)),
-    price: OFFICE_UPGRADES.slots.price + OFFICE_UPGRADES.slots.priceStep * s.office.slots,
-  },
-  {
-    id: 'wait' as const,
-    pic: art('hourglass-done'),
-    name: OFFICE_UPGRADES.wait.name,
-    now: clock(orderWait(s.office.wait)),
-    next: clock(orderWait(s.office.wait + 1)),
-    price: OFFICE_UPGRADES.wait.price + OFFICE_UPGRADES.wait.priceStep * s.office.wait,
-  },
-]
+export type OfficeId = OfficeUpgradeId
+
+/** The office's ladders as the shop shows them: its level, now → next, the price, and whether it is at its top (the
+ *  game's officeLevel, officePrice, officeMaxed: the price grows by its step each level). */
+export const officeRows = (s: OrdersState) =>
+  (['slots', 'wait'] as const).map((id) => {
+    const def = OFFICE_UPGRADES[id]
+    const level = s.office[id]
+    const show = (l: number) => (id === 'slots' ? `${orderSlots(l)} at a time` : clock(orderWait(l)))
+    return {
+      id,
+      pic: art(id === 'slots' ? 'clipboard' : 'hourglass-done'),
+      name: def.name,
+      level,
+      max: level >= def.levels,
+      now: show(level),
+      next: show(level + 1),
+      price: def.price + def.priceStep * level,
+    }
+  })
+
+/** An office upgrade bought, as the game's buyOffice does: its price paid, its level one up; a new place comes with an
+ *  order on it at once, and a faster office never lets a place wait longer than the new wait. */
+export function buyOffice(s: OrdersState, id: OfficeId): OrdersState {
+  const r = officeRows(s).find((x) => x.id === id)!
+  if (r.max || s.coins < r.price) return s
+  const office = { ...s.office, [id]: s.office[id] + 1 }
+  const slots =
+    id === 'slots' ? [...s.slots, { order: { ...NEXT[s.slots.length % NEXT.length], id: ++key } }] : s.slots.map((x) => ('wait' in x ? { wait: Math.min(x.wait, orderWait(office.wait)) } : x))
+  return { ...s, coins: s.coins - r.price, office, slots }
+}
 
 /** The next orders a place takes after a send (what a farm like this makes). */
 export const NEXT: Order[] = [

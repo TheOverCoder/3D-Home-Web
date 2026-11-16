@@ -1,5 +1,5 @@
 {
- "at": "2026-11-16T04:02:20.763Z",
+ "at": "2026-11-16T04:21:39.071Z",
  "devices": [
   "upright",
   "sideways"
@@ -26,7 +26,7 @@
    "off": []
   },
   "saves": {
-   "screens": 18,
+   "screens": 12,
    "errors": [],
    "blank": [],
    "scroll": [],
@@ -36,46 +36,28 @@
    "off": []
   },
   "orders": {
-   "screens": 18,
+   "screens": 12,
    "errors": [],
    "blank": [],
    "scroll": [],
    "small": [],
    "tiny": [],
    "under": [
-    "d/big/upright · fleeces: 0 of 3 in",
-    "d/big/upright · bottles of milk: 2 of 4 in",
-    "e/big/upright · fleeces: 0 of 3 in",
-    "e/big/upright · bottles of milk: 2 of 4 in",
-    "d/fresh/sideways · bottles of milk: 0 of 3 in",
-    "d/fresh/sideways · fleeces: 0 of 2 in",
-    "d/fresh/sideways · carrots: 0 of 6 in",
-    "d/big/sideways · lemons: 6 of 6 in",
-    "e/fresh/sideways · bottles of milk: 0 of 3 in",
-    "e/fresh/sideways · fleeces: 0 of 2 in",
-    "e/fresh/sideways · carrots: 0 of 6 in",
+    "e/fresh/upright · carrots: 0 of 6 in",
     "e/big/sideways · lemons: 6 of 6 in"
    ],
    "off": [
-    "d/big/upright · Put in 4",
-    "d/big/upright · Decline this order",
-    "d/big/upright · sheaves of wheat: 0 of 5 in",
-    "d/big/upright · Put in 2",
-    "e/big/upright · Put in 4",
+    "e/fresh/upright · Put in 9",
+    "e/big/upright · lemons: 6 of 6 in",
+    "e/big/upright · Send this order for 15 coins",
     "e/big/upright · Decline this order",
+    "e/big/upright · fleeces: 0 of 3 in",
+    "e/big/upright · bottles of milk: 2 of 4 in",
+    "e/big/upright · Put in 4",
     "e/big/upright · sheaves of wheat: 0 of 5 in",
     "e/big/upright · Put in 2",
-    "d/fresh/sideways · Put in 9",
-    "d/fresh/sideways · Decline this order",
-    "d/big/sideways · Send this order for 15 coins",
-    "d/big/sideways · fleeces: 0 of 3 in",
-    "d/big/sideways · bottles of milk: 2 of 4 in",
-    "d/big/sideways · Put in 4",
-    "d/big/sideways · sheaves of wheat: 0 of 5 in",
-    "d/big/sideways · Put in 2",
-    "e/fresh/sideways · Put in 9",
-    "e/fresh/sideways · Decline this order",
     "e/big/sideways · Send this order for 15 coins",
+    "e/big/sideways · Decline this order",
     "e/big/sideways · fleeces: 0 of 3 in",
     "e/big/sideways · bottles of milk: 2 of 4 in",
     "e/big/sideways · Put in 4",
@@ -84,7 +66,7 @@
    ]
   },
   "goals": {
-   "screens": 24,
+   "screens": 16,
    "errors": [],
    "blank": [],
    "scroll": [],
@@ -104,16 +86,6 @@
    "off": []
   },
   "top": {
-   "screens": 36,
-   "errors": [],
-   "blank": [],
-   "scroll": [],
-   "small": [],
-   "tiny": [],
-   "under": [],
-   "off": []
-  },
-  "intro": {
    "screens": 24,
    "errors": [],
    "blank": [],
@@ -123,8 +95,22 @@
    "under": [],
    "off": []
   },
+  "intro": {
+   "screens": 32,
+   "errors": [],
+   "blank": [],
+   "scroll": [],
+   "small": [],
+   "tiny": [],
+   "under": [],
+   "off": [
+    "e/settings/sideways · Film grain",
+    "e/settings/sideways · Cinema bars",
+    "e/settings/sideways · Free up space"
+   ]
+  },
   "loading": {
-   "screens": 80,
+   "screens": 84,
    "errors": [],
    "blank": [],
    "scroll": [],
@@ -134,7 +120,7 @@
    "off": []
   },
   "level": {
-   "screens": 30,
+   "screens": 24,
    "errors": [],
    "blank": [],
    "scroll": [],
