@@ -1,6 +1,6 @@
 import { AnimatePresence, m, useAnimate, useReducedMotion } from 'motion/react'
 import { Popover } from 'radix-ui'
-import { useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { art } from '../../../src/ui/art'
 import { GarmentPic } from '../../../src/ui/GarmentPic'
 import { ArrowsOutCardinal, CompassRose, EyeSlash, GearSix, SquaresFour, X } from '../../../src/ui/glyphs'
@@ -30,7 +30,14 @@ export interface Pinned {
   per: number
 }
 
-export function TopC({ s, set, pinned }: { s: TopState; set: (s: TopState) => void; pinned?: Pinned }) {
+/** What another board needs of the dashboard when it stands behind its design (lab/boards/first-steps, unlocks): no
+ *  sale stand-in (`bare`), and a way to pay coins into the coin chip from a point of the screen (`payRef`). */
+export interface Behind {
+  bare?: boolean
+  payRef?: { current: ((amount: number, from: { x: number; y: number }) => void) | null }
+}
+
+export function TopC({ s, set, pinned, bare, payRef }: { s: TopState; set: (s: TopState) => void; pinned?: Pinned } & Behind) {
   const v = topView(s)
   const lv = v.lv
   const still = useReducedMotion()
@@ -47,6 +54,9 @@ export function TopC({ s, set, pinned }: { s: TopState; set: (s: TopState) => vo
       void animateCoins(coins.current, { scale: [1, 1.12, 1] }, { duration: 0.35, ease: EASE.pop })
       void animateCoins('.v-top-c-shine', { x: ['-120%', '260%'], opacity: [0, 1, 0] }, { duration: 0.6, ease: 'easeOut' })
     }
+  })
+  useEffect(() => {
+    if (payRef) payRef.current = (amount, from) => purse.pay(amount, from, root.current)
   })
   const all = s.hud === 'all'
   const k = lv.into / lv.need
@@ -185,12 +195,14 @@ export function TopC({ s, set, pinned }: { s: TopState; set: (s: TopState) => vo
         </div>
       </div>
       {pinned && s.hud === 'all' && <Tracker p={pinned} counted={sold} />}
-      <SaleStandIn
-        onSell={(from) => {
-          purse.pay(24, from, root.current)
-          setSold((n) => n + 1)
-        }}
-      />
+      {!bare && (
+        <SaleStandIn
+          onSell={(from) => {
+            purse.pay(24, from, root.current)
+            setSold((n) => n + 1)
+          }}
+        />
+      )}
       <AnimatePresence>{opens && <Opens what={opens} onDone={() => setOpens(null)} />}</AnimatePresence>
     </div>
   )
