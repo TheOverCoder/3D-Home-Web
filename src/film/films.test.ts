@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { LADDERS, MANAGER, XP_FOR } from '../farm/data'
 import { buyLadder, buyMarket, farm, resetFarm, setRandom } from '../farm/state'
-import { savedNow, startFrom } from '../farm/testSaves'
+import { levelPay, savedNow, startFrom } from '../farm/testSaves'
 import { buyShop, filmAsked, onFilmAsked, storyStep, takeFilm, type StoryEvent, type StoryStep } from './films'
 import { FilmRun } from './run'
 import { SUPERMARKET } from './supermarket'
@@ -37,9 +37,11 @@ describe('the shop’s film', () => {
     forSale()
     const xp = farm.xp.points
     const coins = farm.coins
+    const paid = farm.xp.paid
     expect(buyShop()).toBe(true)
-    // the purchase is done before the film (the coins, the shop, the XP), and the film asked for once
-    expect([farm.market.owned, coins - farm.coins, farm.xp.points - xp]).toEqual([true, MANAGER.shopPrice, XP_FOR.shop])
+    // the purchase is done before the film (the coins, the shop, the XP), and the film asked for once (the shop's XP can
+    // reach a level, whose coins come in by themselves: left out of its price)
+    expect([farm.market.owned, coins - (farm.coins - levelPay(paid)), farm.xp.points - xp]).toEqual([true, MANAGER.shopPrice, XP_FOR.shop])
     expect(heard).toBe(1)
     expect(takeFilm()).toEqual({ id: 'shop', xp: [xp, xp + XP_FOR.shop] })
     // taken to play, it is gone: it plays once
