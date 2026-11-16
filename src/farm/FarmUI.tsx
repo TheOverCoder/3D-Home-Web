@@ -1,6 +1,7 @@
 import { BuyDecor, DecorShop } from './DecorShop'
 import { GoalsPanel } from './GoalsPanel'
 import { AwayPanel, AwayWatcher } from './AwayPanel'
+import { DailyPanel, DailyWatcher } from './DailyPanel'
 import { LevelUp } from './XpChip'
 import { LevelPanel } from './LevelPanel'
 import { WardrobePanel } from '../home/WardrobePanel'
@@ -465,9 +466,12 @@ export function FarmUI() {
       {/* the level's card goes out the way it came in (src/ui/SwipeSheet.tsx); opened again while it is still going,
           it is a new card (a key of its own each time), never the one leaving brought back */}
       <AnimatePresence>{panel?.kind === 'level' && <LevelPanel key={`level-${opening(panel)}`} />}</AnimatePresence>
+      {/* the daily gift: out the way it came in, as the level's card */}
+      <AnimatePresence>{panel?.kind === 'daily' && <DailyPanel key={`daily-${opening(panel)}`} />}</AnimatePresence>
       {panel?.kind === 'wardrobe' && <WardrobePanel />}
       <LevelUp />
       <AwayWatcher />
+      <DailyWatcher />
     </>
   )
 }

@@ -153,7 +153,7 @@ under 100 ms and nothing waits for an animation to end before the next press wor
 | **Error / not now** | a short shake (`NOPE`) and the reason in words; a toast for what is not here | `NOPE` |
 | **Appear / leave** | the container first, its blocks after with a stagger, the hero last; leaving is quicker than coming, and what leaves takes no touch | `STAGGER` + `ITEM`, `AnimatePresence` + `exit`, `SwipeSheet` |
 | **A number changes** | counts to its new value; a chip that goes up hops (sun rim), one that goes down dips (warm rim) | `CountUp`; `.hop-a/b`, `.dip-a/b` |
-| **A reward** | flies from where it came to the chip where it lives (coins to the coin chip, a good to its building's chip), on an arc, the chip hops as it lands | `flyCoins`, `flyItem(…, store)` (`src/fx/coins.ts`) |
+| **A reward** | flies from where it came to the chip where it lives (coins to the coin chip, a good to its building's chip), on an arc, the chip hops as it lands; coins paid before they fly (a gift shown on its card first) are held back from the chip's count until they take off, so it counts them in as they land | `flyCoins`, `flyItem(…, store)`, `holdCoins(n)` / `holdCoins(-n)` (`src/fx/coins.ts`) |
 | **A toggle** | the knob slides on a spring and stretches while held; a segment chosen pops | `.switch`, `.segmented` (`chosen` keyframe) |
 | **A drag** | lifts (bigger, tilted, a shadow) under the finger, follows it, lands with a spring; a swipe that is not far enough springs back | `drag`, `dragConstraints`, `onDragEnd` by offset and speed; `src/farm/machine/drag.ts` |
 | **A celebration** | once per screen, for a real moment (a level, a goal, a gift opened) | `burst` |

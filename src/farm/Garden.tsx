@@ -124,6 +124,13 @@ import {
   shopView,
   freeDecorSpot,
   plantOf,
+  calendarDay,
+  claimDaily,
+  dailyDue,
+  dailyNow,
+  dailyWaiting,
+  quietDaily,
+  setDailyClock,
 } from './state'
 import { Market } from './Market'
 import { Estate } from './Estate'
@@ -760,6 +767,17 @@ export function FarmClock() {
       openGifts,
       giftsWaiting,
       readyOnFarm,
+      // the daily gift (src/farm/daily.ts): its card's view, the claim, whether it waits or opens by itself, the tests'
+      // way to put it out of the way, and the day's clock (a moment in ms; null: the device's own)
+      daily: {
+        now: dailyNow,
+        claim: claimDaily,
+        waiting: dailyWaiting,
+        due: dailyDue,
+        quiet: quietDaily,
+        day: calendarDay,
+        clock: (ms: number | null) => setDailyClock(ms === null ? null : () => ms),
+      },
       // the wardrobe (src/farm/outfit.ts)
       wearGarment,
       sawWardrobe,

@@ -42,7 +42,7 @@ import { CAME_KEPT, PER_LEVEL, boxesReached } from './gifts'
 import { QUEUE, machineLevel } from './machineView'
 import { garmentById } from './outfit'
 import { sanitizeLook } from '../models/look'
-import { arrivalSeconds, farm, gateX, inLine, placesInLine, tick } from './state'
+import { arrivalSeconds, claimDaily, farm, gateX, inLine, placesInLine, tick } from './state'
 import { tripSeconds } from './tractorRoute'
 import { OLD_SAVE, OLD_SAVE_2, playedSave, savedNow, seeded, startFrom } from './testSaves'
 
@@ -350,6 +350,13 @@ function farmProblems(): string[] {
       unique(g.came.map((e) => e.level)),
   )
   bad('gifts.seen', Number.isInteger(g.seen) && g.seen >= 1 && g.seen <= level)
+  // the daily gift: the last day claimed (or none), a streak only once one was, the day it last opened by itself; the
+  // week's days taken, never more than the streak's place in its week, each what it gave (one prize, or the big one's
+  // three)
+  const dl = farm.daily
+  const day = (v: unknown) => Number.isInteger(v) && (v as number) >= -1
+  bad('daily', sameKeys(dl, ['last', 'streak', 'offered', 'week']) && day(dl.last) && day(dl.offered) && isCount(dl.streak) && (dl.last >= 0 || dl.streak === 0))
+  bad('daily.week', dl.week.length <= (dl.streak ? ((dl.streak - 1) % 7) + 1 : 0) && dl.week.every((d) => Array.isArray(d) && d.length <= 3 && d.every(isPrize)))
   // the ladders: a step count each, to its top; the shop's own none until the shop is yours
   const l = farm.ladders
   bad('ladders: each ladder', sameKeys(l, LADDER_IDS))
@@ -481,6 +488,10 @@ function check(name: string, path: Key[], value: unknown) {
   })
   expect(played, 'it plays on').toBe(true)
   expect(farmProblems(), 'played on').toEqual([])
+  // the day's gift, whatever the save said: once today at most
+  claimDaily()
+  expect(claimDaily(), 'the daily gift twice in a day').toBeNull()
+  expect(farmProblems(), 'the daily gift claimed').toEqual([])
 }
 
 beforeAll(() => {

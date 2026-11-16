@@ -163,6 +163,12 @@ The README has the overview; `tests/README.md` what each test guards.
   undone for free gives any. The crystals fly up from `at` (a panel's sale: from low in the middle).
 - An upgrade bought a step at a time is a row in `LADDERS` (one buy, `buyLadder`; one card, `LadderCard`; its level in
   `farm.ladders`), with `say(k)` for what step k gives.
+- The daily gift (`src/farm/daily.ts`, `farm.daily`; its card `DailyCard.tsx`, its watcher `DailyPanel.tsx`): once a
+  day of the device's calendar, a week of seven gifts that grow (the seventh the big one), rolled on the farm's dice as
+  it is claimed, goods past full, no XP; one missed day is forgiven, two start a new week, and the clock moved back
+  gives nothing twice. It opens by itself once a day on a farm that has begun, after whatever is over the game (the
+  intro, a film, the drive, the welcome-back card, a panel), and waits in the corner menu until claimed. Specs not about
+  it put it out of the way (`quietDaily`: `ready()` and `bootApp` in `helpers.ts`); `34-daily` tests it.
 - A building you walk into is a row in `WALK_INS`: its walls, rooms, doors (an `autoDoor` slides open as anyone comes
   near) and lights. The model, the colliders, the hiding pieces, the camera's limits, the action button's spaces
   (`spaceAt`), the walk-to, the footsteps and the woods' clearing all follow from the row; every floor and every inner

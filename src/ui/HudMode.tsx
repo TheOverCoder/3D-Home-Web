@@ -1,8 +1,10 @@
 import { AnimatePresence, m } from 'motion/react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useDailyWaiting } from '../farm/useDaily'
 import { editHere, openEdit } from '../home/decorate'
 import { useSettings, type Settings } from '../settings'
 import { busy, useHome } from '../store'
+import { art } from './art'
 import { ArrowsOutCardinal, CompassRose, Couch, EyeSlash, GearSix, List, SquaresFour, X } from './glyphs'
 import { MotionRoot, PRESS, SPRING } from './motion'
 import './Compass.css'
@@ -23,13 +25,16 @@ const typing = (t: EventTarget | null) => t instanceof HTMLElement && (t.isConte
  * compass; only the compass; or nothing at all, a clear view of the farm), and the settings. It keeps the corner in
  * every view, so the view can always be changed back; the view's own button cycles it and leaves the menu open, so
  * pressing it again and again goes round the three. H does the same on a keyboard. The choice is remembered;
- * the stylesheets read it from <html data-hud>. A touch anywhere else closes the menu.
+ * the stylesheets read it from <html data-hud>. A touch anywhere else closes the menu. While today's gift waits
+ * (src/farm/daily.ts: it opens by itself once a day; closed unclaimed, it waits here), the button carries a small gift
+ * that hops now and then, and the menu opens with the daily gift first.
  */
 export function HudMode() {
   const phase = useHome((s) => s.phase)
   const occupied = useHome(busy)
   const edit = useHome(editHere)
   const mode = useSettings((s) => s.hudMode)
+  const gift = useDailyWaiting()
   const [open, setOpen] = useState(false)
   const box = useRef<HTMLDivElement>(null)
   const shown = phase === 'playing' && !occupied
@@ -66,8 +71,30 @@ export function HudMode() {
   return (
     <MotionRoot>
       <div className="top-menu" ref={box}>
-        <m.button className={`top-menu-btn${open ? ' on' : ''}`} {...PRESS} onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label="Menu: edit, the top's view, settings" title="Menu">
+        <m.button
+          className={`top-menu-btn${open ? ' on' : ''}${gift ? ' gift' : ''}`}
+          {...PRESS}
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          aria-label={gift ? "Menu: today's gift waits; edit, the top's view, settings" : "Menu: edit, the top's view, settings"}
+          title="Menu"
+        >
           {open ? <X weight="bold" /> : <List weight="bold" />}
+          <AnimatePresence>
+            {gift && !open && (
+              <m.span
+                key="gift"
+                className="top-menu-gift"
+                aria-hidden="true"
+                initial={{ scale: 0, rotate: -30 }}
+                animate={{ scale: 1, rotate: 0 }}
+                exit={{ scale: 0, transition: { duration: 0.12 } }}
+                transition={SPRING.pop}
+              >
+                <img src={art('wrapped-gift')} alt="" />
+              </m.span>
+            )}
+          </AnimatePresence>
         </m.button>
         <AnimatePresence>
           {open && (
@@ -78,6 +105,18 @@ export function HudMode() {
               exit="shut"
               variants={{ open: { transition: { staggerChildren: 0.045 } }, shut: { transition: { staggerChildren: 0.03, staggerDirection: -1 } } }}
             >
+              {gift && (
+                <Dial
+                  className="daily-open"
+                  icon={<img className="art" src={art('wrapped-gift')} alt="" />}
+                  word="Daily gift"
+                  label="Daily gift: today's is waiting"
+                  onTap={() => {
+                    setOpen(false)
+                    useHome.getState().openPanel({ kind: 'daily' })
+                  }}
+                />
+              )}
               {edit && (
                 <Dial
                   className="edit-open"

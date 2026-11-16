@@ -1,6 +1,7 @@
 import { animate, m, useAnimate, useMotionValue, useReducedMotion, useTransform } from 'motion/react'
 import { Popover } from 'radix-ui'
-import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useSyncExternalStore, type ReactNode } from 'react'
+import { coinsHeld, onCoinsHeld } from '../fx/coins'
 import { useHome } from '../store'
 import { art } from '../ui/art'
 import { EASE, MotionRoot, SPRING } from '../ui/motion'
@@ -102,20 +103,22 @@ const LAND_S = 0.62
  *  src/styles.css). A level's coins, come in by themselves, are held back until its crystals land on the bar, then
  *  counted in as the level-up show's coins reach the chip (./XpChip.tsx: LevelUp flies them GIFT_FLY_MS after). */
 function Coins() {
-  const held = useLevelCoinsInAir()
+  const level = useLevelCoinsInAir()
+  // (and the daily gift's, still on its card: let go as they take off for the chip)
+  const held = level + useSyncExternalStore(onCoinsHeld, coinsHeld)
   const coins = Math.max(0, farm.coins - held)
   const still = useReducedMotion()
   const value = useMotionValue(coins)
   const text = useTransform(value, (n) => Math.round(n).toLocaleString('en-US'))
   const [chip, play] = useAnimate<HTMLSpanElement>()
   const last = useRef(coins)
-  const lastHeld = useRef(held)
+  const lastHeld = useRef(level)
   useEffect(() => {
     const from = last.current
     last.current = coins
     // a level's coins let go as its crystals land: they reach the chip from its show, a moment later
-    const fromShow = held < lastHeld.current
-    lastHeld.current = held
+    const fromShow = level < lastHeld.current
+    lastHeld.current = level
     if (coins <= from || still) {
       value.set(coins)
       if (coins < from && !still && chip.current) void play(chip.current, { scale: [1, 0.9, 1] }, { duration: 0.4, ease: EASE.pop, times: [0, 0.3, 1] })
@@ -133,7 +136,7 @@ function Coins() {
       },
     })
     return () => run.stop()
-  }, [coins, held, still, value, chip, play])
+  }, [coins, level, still, value, chip, play])
   return (
     <m.span className="farm-chip-item coins" ref={chip} title="Coins" initial={{ opacity: 0, y: -14 }} animate={{ opacity: 1, y: 0 }} transition={{ ...SPRING.pop, delay: 0.05 }}>
       <img src={art('coin')} alt="" />

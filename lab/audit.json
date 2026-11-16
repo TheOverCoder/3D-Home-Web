@@ -1,5 +1,5 @@
 {
- "at": "2026-11-16T11:31:54.841Z",
+ "at": "2026-11-16T12:31:00.817Z",
  "devices": [
   "upright",
   "sideways"
@@ -96,6 +96,16 @@
    "off": []
   },
   "level": {
+   "screens": 12,
+   "errors": [],
+   "blank": [],
+   "scroll": [],
+   "small": [],
+   "tiny": [],
+   "under": [],
+   "off": []
+  },
+  "daily": {
    "screens": 12,
    "errors": [],
    "blank": [],
