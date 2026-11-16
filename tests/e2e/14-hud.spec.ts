@@ -66,6 +66,67 @@ test.describe('the top of the screen', () => {
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem('3d-home:settings:v1') ?? '{}').hudMode)).toBe('all')
   })
 
+  test('with the daily gift and the farm news both waiting: the gift on the button’s top corner, the news’s badge on its bottom one, clear of each other and of the dashboard; the menu opens with the daily gift first, then the news', async ({
+    game,
+  }) => {
+    await game.ready('farm')
+    const { page } = game
+    // a farm that has begun, today's gift waiting (shown by itself today already, so it does not open now), and a
+    // Wednesday's harvest festival not yet seen in the news
+    await page.evaluate(() => {
+      const h = (window as any).__home
+      const f = h.farm
+      f.reset()
+      h.settings.getState().update({ hudMode: 'all' })
+      f.state.started = true
+      f.state.daily = { ...f.state.daily, offered: f.daily.day() }
+      f.daily.quiet(false)
+      h.events.set(new Date(2026, 10, 18, 13).getTime())
+    })
+    await game.teleport(-1.2, 1.4, 9.0, Math.PI / 2, -0.1)
+    const gift = page.locator('.top-menu-btn .top-menu-gift')
+    const news = page.locator('.top-menu-btn .top-badge')
+    await expect(gift).toBeVisible()
+    await expect(news).toHaveText('1')
+    // (both popped in to their full size before they are measured)
+    const boxes = () =>
+      page.evaluate(() => {
+        const rect = (el: Element) => {
+          const r = el.getBoundingClientRect()
+          return { x: r.left, y: r.top, w: r.width, h: r.height }
+        }
+        const dash = [...document.querySelectorAll('.top-dash .farm-chip-item, .top-road-gifts')].filter((el) => (el as HTMLElement).offsetParent !== null).map(rect)
+        return { gift: rect(document.querySelector('.top-menu-btn .top-menu-gift')!), news: rect(document.querySelector('.top-menu-btn .top-badge')!), dash }
+      })
+    await expect.poll(async () => (await boxes()).gift.w >= 23 && (await boxes()).news.h >= 21, { timeout: 15_000 }).toBe(true)
+    const b = await boxes()
+    const meet = (p: { x: number; y: number; w: number; h: number }, q: { x: number; y: number; w: number; h: number }) => p.x < q.x + q.w && q.x < p.x + p.w && p.y < q.y + q.h && q.y < p.y + p.h
+    expect(meet(b.gift, b.news), 'the gift and the news’s badge').toBe(false)
+    expect(b.news.y, 'the news’s badge under the gift').toBeGreaterThan(b.gift.y)
+    expect(b.dash.length).toBeGreaterThan(0)
+    for (const d of b.dash) {
+      expect(meet(b.gift, d), 'the gift and the dashboard').toBe(false)
+      expect(meet(b.news, d), 'the news’s badge and the dashboard').toBe(false)
+    }
+    // the menu: the daily gift first, then the news, edit, the view and the settings; the marks on the button go
+    await page.locator('.top-menu-btn').click()
+    const dial = page.locator('.top-dial-btn')
+    await expect(dial).toHaveCount(5)
+    expect(await dial.evaluateAll((els) => els.map((el) => [...el.classList].find((c) => c !== 'top-dial-btn')))).toEqual(['daily-open', 'news-open', 'edit-open', 'hud-mode', 'settings-open'])
+    await expect(page.locator('.news-open .top-badge')).toHaveText('1')
+    await expect(gift).toHaveCount(0)
+    await expect(news).toHaveCount(0)
+    await page.locator('.top-menu-btn').click()
+    await expect(page.locator('.top-dial')).toHaveCount(0)
+    await page.evaluate(() => {
+      const h = (window as any).__home
+      h.events.set(null)
+      h.farm.daily.quiet(true)
+      h.farm.reset()
+    })
+    expect(game.errors, game.errors.join('\n')).toEqual([])
+  })
+
   test('the compass folds what is behind you at one edge into one "+N" mark, which turns you to the nearest of them', async ({ game }) => {
     await game.ready('farm')
     const { page } = game
