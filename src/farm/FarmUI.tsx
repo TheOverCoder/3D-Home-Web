@@ -12,6 +12,7 @@ import { CarPanel } from './car/CarPanel'
 import { LadderCard } from './Ladder'
 import { MachinePanel, MachineSlotCard } from './MachinePanel'
 import './Xp.css'
+import { AnimatePresence } from 'motion/react'
 import './MarketPanel.css'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { farmSound, placeSound, uiClick } from '../audio/sound'
@@ -150,16 +151,17 @@ function StoreChip({ id }: { id: StoreId }) {
 }
 
 /** One count in the chip row. It hops when the count goes up — a harvest landing in the silo, a sale paid — so you
- *  see where it went (two class names, so that a hop right after another starts again). With `onClick` it is a
- *  button (the silo, the barn). */
+ *  see where it went, and dips when it goes down — coins spent, goods sent off — so you see where they came from (two
+ *  class names each, so that one right after another starts again). With `onClick` it is a button (the silo, the barn). */
 function ChipItem({ value, className = '', title, children, onClick, label }: { value: number; className?: string; title?: string; children: ReactNode; onClick?: () => void; label?: string }) {
   const [last, setLast] = useState(value)
-  const [hops, setHops] = useState(0)
+  const [moves, setMoves] = useState({ n: 0, up: true })
   if (value !== last) {
     setLast(value)
-    if (value > last) setHops(hops + 1)
+    setMoves({ n: moves.n + 1, up: value > last })
   }
-  const cls = `farm-chip-item${className ? ` ${className}` : ''}${hops ? (hops % 2 ? ' hop-a' : ' hop-b') : ''}`
+  const move = moves.n ? `${moves.up ? ' hop' : ' dip'}-${moves.n % 2 ? 'a' : 'b'}` : ''
+  const cls = `farm-chip-item${className ? ` ${className}` : ''}${move}`
   return onClick ? (
     <button className={cls} title={title} onClick={onClick} aria-label={label}>
       {children}
@@ -525,6 +527,14 @@ function ShopPanel() {
   )
 }
 
+/** A number for each panel opened (the store gives a new panel object each time one opens): a card's key. */
+const opened = new WeakMap<object, number>()
+let opens = 0
+const opening = (panel: object) => {
+  if (!opened.has(panel)) opened.set(panel, ++opens)
+  return opened.get(panel)
+}
+
 /** The garden's interface: the chips at the top outdoors (coins, the line, the silo and the barn) and whichever farm
  *  panel is open. */
 export function FarmUI() {
@@ -565,7 +575,9 @@ export function FarmUI() {
       {panel?.kind === 'ladder' && <LadderCard id={panel.id} />}
       {panel?.kind === 'machine' && <MachinePanel id={panel.id} />}
       {panel?.kind === 'machine-slot' && <MachineSlotCard id={panel.id} />}
-      {panel?.kind === 'level' && <LevelPanel />}
+      {/* the level's card goes out the way it came in (src/ui/SwipeSheet.tsx); opened again while it is still going,
+          it is a new card (a key of its own each time), never the one leaving brought back */}
+      <AnimatePresence>{panel?.kind === 'level' && <LevelPanel key={`level-${opening(panel)}`} />}</AnimatePresence>
       {panel?.kind === 'wardrobe' && <WardrobePanel />}
       <LevelUp />
       <AwayWatcher />

@@ -116,6 +116,8 @@ phone: the real size under their own finger).
    short stagger), presses that sink and spring back, the key moment of the screen (a bar filling, a number counting, a
    prize revealed, a burst), a way out (`exit`), and a gesture where a phone expects one (a sheet swiped down closes).
    One moment per screen, quick (an opening under 400 ms, a press under 150 ms), never in the way of the next press.
+   Then go down the micro-interaction checklist (below) for every control: press, release, hover, focus, long press,
+   disabled, success, error, appear and leave, numbers, rewards, toggles, drags, touch.
 5. **Check** every variant in every state on each device (`lab-shots` sheets), and film its opening and its main press
    (`lab-film`), then look at them. Run `node scripts/lab-audit.mjs --boards <id>`: it finds what the eye misses
    (a button under 44 px, text under 13 px, a button under the notch, an error) and the user sees it on the lab's
@@ -130,6 +132,36 @@ phone: the real size under their own finger).
    wrap the interface's root in `MotionRoot` (and a panel host in `AnimatePresence` for a way out). The board's
    `status` becomes `live` and its "today" the new one. Run `npm run check` and the e2e spec of that piece
    (`tests/README.md` says which), and look at it in the game at a phone's size.
+
+## Micro-interactions: the checklist (every board, every variant)
+
+Before you hand a design over, go down this list for every control on it and decide each line (it moves, or it does
+not on purpose). The kit already has them: `src/ui/motion.tsx` for Motion, the "micro-interactions" rules of
+`src/styles.css` for the shared CSS pieces (`.btn`, `.farm-card`, chips, the switch, the segmented control, tags on
+things, the action button), and `haptic()` in `src/lib/device.ts` for touch. Quick and never in the way: a press shows in
+under 100 ms and nothing waits for an animation to end before the next press works.
+
+| Event | What it does | With |
+|---|---|---|
+| **Press** | sinks under the finger at once (a `.btn` onto its lip, 3 px; a round or flat one scales to 0.94) | `SINK`, `PRESS`; CSS `:active` with `--t-press` (60 ms) |
+| **Release** | springs back with a small overshoot | `SPRING.pop`; CSS `--t-release` (260 ms) on `--ease-pop` |
+| **Hover** (a computer only) | lifts 1–2 px, brightens a little; a close's ✕ turns a quarter | `HOVER`; CSS under `(hover: hover) and (pointer: fine)`: never on a touch screen, where a hover sticks |
+| **Focus** (keyboard) | the sun ring closes in round it (6 px → 2 px) | `button:focus-visible`, `outline-offset` transition |
+| **Long press** | only where a hold does something (clearing a farm, a picture's name): a ring fills under the finger for `HOLD_MS` (450 ms); let go early and it springs back; never the only way to do a thing | `HOLD_MS`, `animate` on a ring |
+| **Disabled** | looks it (greyed lip) and does not move; the reason in its words ("Needs 20 more"), never a silent dead button | `.btn:disabled` |
+| **Success** | the thing that changed pops once (`DID`); a ✓ comes in where the button was (`POP`); a count goes up (`CountUp`) | `DID`, `POP`, `CountUp` |
+| **Error / not now** | a short shake (`NOPE`) and the reason in words; a toast for what is not here | `NOPE` |
+| **Appear / leave** | the container first, its blocks after with a stagger, the hero last; leaving is quicker than coming, and what leaves takes no touch | `STAGGER` + `ITEM`, `AnimatePresence` + `exit`, `SwipeSheet` |
+| **A number changes** | counts to its new value; a chip that goes up hops (sun rim), one that goes down dips (warm rim) | `CountUp`; `.hop-a/b`, `.dip-a/b` |
+| **A reward** | flies from where it came to the chip where it lives (coins to the coin chip, a good to its building's chip), on an arc, the chip hops as it lands | `flyCoins`, `flyItem(…, store)` (`src/fx/coins.ts`) |
+| **A toggle** | the knob slides on a spring and stretches while held; a segment chosen pops | `.switch`, `.segmented` (`chosen` keyframe) |
+| **A drag** | lifts (bigger, tilted, a shadow) under the finger, follows it, lands with a spring; a swipe that is not far enough springs back | `drag`, `dragConstraints`, `onDragEnd` by offset and speed; `src/farm/machine/drag.ts` |
+| **A celebration** | once per screen, for a real moment (a level, a goal, a gift opened) | `burst` |
+| **Touch (haptics)** | every action that does something is felt with its sound: a tick for work done (collect, plant, water, put in), a double for coins in (a sale, a claim), a firmer one for a thing bought or built, a roll for a gift opened or a surprise, the strongest for a level reached; a lift and a drop for a drag. Only on phones that can (Android), off with Settings' Vibration; never for a plain press, a page or a scroll | `farmSound(kind, …, feel)` maps a sound to its touch (`src/audio/sound.ts`, `FEEL`); `haptic(kind)` for anything without a sound |
+
+Reduced motion: every line still says what happened, without travel — a fade or the end state at once, no burst, no
+flight (the kit and the CSS do it; check with `--reduced`). A design that adds a control nobody has yet adds its line to
+this table and its preset to the kit.
 
 Don't waste time: one lab server left running; sheets rather than single pictures; no game e2e, CI or game stills
 while designing; reuse the motion kit and Radix rather than writing your own; the smallest board that answers the

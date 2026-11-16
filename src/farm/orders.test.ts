@@ -4,6 +4,7 @@ import { ITEMS, ORDERS, SELLABLE, TRACTOR, orderSlots, orderWait, produceById, t
 import { cratesFor, isComplete, makeOrder, mostAsked, orderPay, type Order } from './orders'
 import { buyOffice, declineOrder, farm, fillOrder, gateX, orderAt, orderPlaces, resetFarm, sendOrder, setRandom, tick, used } from './state'
 import { AWAY_SECONDS, loadingSeconds, tractorPose, tripSeconds } from './tractorRoute'
+import { levelOf } from './xp'
 
 // The order board on the office's computer and the tractor that takes the orders away (src/farm/orders.ts,
 // src/farm/state.ts, src/farm/tractorRoute.ts).
@@ -138,19 +139,22 @@ describe('the order board', () => {
   })
 
   it('one order in two brings a surprise: it goes into the barn as the order is sent', () => {
+    // (a level reached by the orders' XP brings a few materials of its own: not the orders')
+    const level0 = levelOf(farm.xp.points)
+    const byLevels = () => farm.gifts.came.filter((c) => c.level > level0).reduce((n, c) => n + ('n' in c.prize ? c.prize.n : 0), 0)
     const o = orderAt(0)!
     o.surprise = true
     stockFor(0)
     fillOrder(0)
     setRandom(() => 0.99) // the last of the six: logs
     sendOrder(0)
-    expect(farm.inv.log).toBe(1)
+    expect(farm.inv.log - byLevels()).toBe(1)
     const p = orderAt(0)!
     p.surprise = false
     stockFor(0)
     fillOrder(0)
     sendOrder(0)
-    expect(ITEMS.reduce((n, id) => n + farm.inv[id], 0)).toBe(1)
+    expect(ITEMS.reduce((n, id) => n + farm.inv[id], 0) - byLevels()).toBe(1)
   })
 
   it('the office adds places up to nine (a new order in each at once) and takes the wait down to five minutes', () => {

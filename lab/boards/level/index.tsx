@@ -1,23 +1,57 @@
+import { boxAt, boxXp, rollBox, settle, type Came, type Gifts, type Opened } from '../../../src/farm/gifts'
 import { LevelCard } from '../../../src/farm/LevelCard'
-import { levelView } from '../../../src/farm/levelView'
+import { levelView, type Ready } from '../../../src/farm/levelView'
 import { xpAt } from '../../../src/farm/xp'
 import { flyCoins } from '../../../src/fx/coins'
 import { coinsToFly } from '../../../src/fx/fx'
 import { art } from '../../../src/ui/art'
 import type { Act, Board } from '../../board'
-import { BOXES } from './gifts'
-import { LevelCardF } from './LevelCardF'
-import { beds, goods, type LevelState } from './progress'
+import { beds, goods } from './progress'
 import './board.css'
 
-// The level's card (src/farm/LevelCard.tsx): the level chip opens it. Its states from the game's own numbers.
+// The level's card (src/farm/LevelCard.tsx): the level chip opens it. In the game since the user chose F; its states
+// from the game's own pure code (levelView, and the gifts' record of src/farm/gifts.ts). What a box gave and what a
+// level brought are examples of what the farm's dice give (rollBox, rollArrival); a box opened here rolls on dice of
+// the lab's own.
+
+/** A state of the card: the farm's XP, the levels paid, the gifts' record, and what LevelPanel adds. */
+export interface LevelState {
+  points: number
+  paid: number
+  gifts: Gifts
+  /** XP gained since the card was last open */
+  gain: number
+  /** what waits on the farm now */
+  ready?: Ready
+}
+
+/** The lab's dice for a box opened here (the same box, the same prize, every time). */
+const dice = (seed: number) => () => {
+  const x = Math.sin(seed++ * 12.9898) * 43758.5453
+  return x - Math.floor(x)
+}
+/** The goods the sample farm has made (what a box may give a few of). */
+const MADE = ['lettuce', 'egg', 'wheat', 'flour'] as const
 
 /** What the game's LevelPanel does on a claim: the coins fly from the Claim button to the coin chip (src/fx/coins.ts),
  *  and the card is told the coins are paid. */
-const claimed = (v: LevelState, act: Act<LevelState>) => (button: HTMLElement) => {
+const claimed = (s: LevelState, act: Act<LevelState>) => (button: HTMLElement) => {
   const r = button.getBoundingClientRect()
+  const v = levelView(s.points, s.paid)
   if (!matchMedia('(prefers-reduced-motion: reduce)').matches) flyCoins(r.left + r.width / 2, r.top + r.height / 2, coinsToFly(v.unpaid))
-  act.set({ ...v, unpaid: 0 })
+  act.set({ ...s, paid: v.level })
+}
+
+/** What the game's openGifts does (src/farm/state.ts), on the lab's dice: the boxes reached and not open, each rolled
+ *  and marked open; what this level's gave stays on its bar. */
+const opened = (s: LevelState, act: Act<LevelState>) => (boxes: number[]) => {
+  const v = levelView(s.points, s.paid, s.gifts)
+  const list = boxes.filter((k) => v.waiting.includes(k))
+  const got: Opened[] = list.map((box) => ({ box, prize: rollBox(box, [...MADE], dice(box + 1)) }))
+  const { open, also } = settle(s.gifts.open, [...s.gifts.also, ...list])
+  const gave = [...s.gifts.gave, ...got.filter((o) => v.boxes.some((b) => b.box === o.box))].sort((a, b) => a.box - b.box)
+  act.set({ ...s, gifts: { ...s.gifts, open, also, gave } })
+  return got
 }
 
 /** The coin of the chip at the top of the still, where the game's coins land (the still is a picture: an unseen stand-in
@@ -28,21 +62,10 @@ const ChipCoin = () => (
   </span>
 )
 
-type Card = (p: { v: LevelState; onClaim: (button: HTMLElement) => void; onClose: () => void }) => ReturnType<typeof LevelCard>
-const card = (Look: Card) => (v: LevelState, act: Act<LevelState>) => (
-  <>
-    <ChipCoin />
-    <Look v={v} onClaim={claimed(v, act)} onClose={act.close} />
-  </>
-)
+/** A gifts' record: every box below `open` opened, `also` out of turn, what this level's gave, the level reached. */
+const record = (open: number, also: number[] = [], gave: Opened[] = [], came: Came[] = [], seen = 1): Gifts => ({ open, also, gave, came, seen })
 
-/** A state: the game's card for these XP, with what was gained since it was last open and what is ready on the farm. */
-const at = (points: number, paid: number, gain: number, ready?: LevelState['ready'], boxes?: string): LevelState => ({
-  ...levelView(points, paid),
-  gain,
-  ready,
-  boxes: boxes ? BOXES[boxes] : undefined,
-})
+const level = (n: number, part: number) => xpAt(n) + Math.round((xpAt(n + 1) - xpAt(n)) * part)
 
 export const levelBoard: Board<LevelState> = {
   id: 'level',
@@ -51,19 +74,19 @@ export const levelBoard: Board<LevelState> = {
   added: '2026-11-16T04:30',
   ask:
     'הפופאפ של הרמה לא נראה מקצועי לעיצוב · סיבוב 2: "שירגיש משחק ממכר – שיהיה ברור כמה הסרגל מלא, סימונים חכמים על הסרגל, והרגשה של התקדמות שנותנת היי קטן" · ' +
-    'סיבוב 3: "לשלב בצורה חכמה את C ו־B: אהבתי את התאורה מאחורי החפצים, והסרגל צריך להיות כמו במשחקים פופולריים, עם העקרונות של משחק מתגמל; לשלב את כל האנימציות בצורה יעילה."',
-  status: 'choose',
+    'סיבוב 3: "לשלב בצורה חכמה את C ו־B: אהבתי את התאורה מאחורי החפצים, והסרגל צריך להיות כמו במשחקים פופולריים, עם העקרונות של משחק מתגמל; לשלב את כל האנימציות בצורה יעילה." · ' +
+    'F נבחר: "מעולה אפשר ליישם"',
+  status: 'live',
+  chosen: 'f',
   spot: 'level',
   screen: 'level',
   round:
-    'סיבוב 5, לפי ההערה על E ("רפרנס אחד; הגלילה לא עובדת; פתיחת המתנה לא ברורה; הרמות הקודמות לא מעניינות; להתמקד בהתקדמות ובתחושת הישג; פרס קטן לפתוח כל 25% – ארבעה; כפתור מתנה למה שלא נאסף; ' +
-    'המתנה של עליית רמה נפרדת מהארבעה ונאספת לבד; את ה־random box המשתמש אוסף בעצמו, בקלות"). D ו־E ירדו – נשאר רפרנס אחד, F, בנוי מחדש: ' +
-    '(1) הגיבור הוא סרגל הרמה, מחולק לארבעה רבעים, ועל סוף כל רבע עומדת קופסה – אפורה ונעולה עד שהסרגל מגיע אליה (הבאה בתור אומרת כמה XP חסר), ואז זוהרת, קופצת ומחכה לנגיעה אחת, ואחרי שנפתחה – מה שהיא נתנה במקומה עם ✓. ' +
-    'הקופסה הרביעית (100%) מגיעה עם הרמה הבאה. (2) פתיחה ברורה: הקופסה עפה מהסרגל לאמצע הכרטיס וגדלה, רועדת כשהאור מתאסף מאחוריה, ומתפוצצת – קרני אור, קצת קונפטי, והפרס עולה ממנה גדול עם השם והכמות; Collect (או נגיעה) שולח אותו הביתה – המטבעות לצ׳יפ. ' +
-    '(3) כפתור מתנה צהוב בתחתית: "Open 3 gifts" – פותח בבת אחת את כל מה שמחכה, מהרמה הזו ומרמות קודמות (שורה של קופסאות שמתפוצצות אחת אחרי השנייה, ואז סכום). אף קופסה לא הולכת לאיבוד. ' +
-    '(4) מה שהרמה הבאה נותנת – המטבעות, בגד כל רמה חמישית והפתעה קטנה – מסומן "Comes by itself": אין יותר Claim; ברמה חדשה רואים למעלה "Level 7 reached!" ומה שנכנס לבד. ' +
-    '(5) הרמות הקודמות ירדו; במקומן – האחוז הגדול, כמה עוד (או כמה כבר), "+9 new" על מה שהרווחת, ו"רוח" של מה שמוכן בחווה. (6) הגלילה: הכל נכנס בלי גלילה לאורך ולרוחב (לרוחב – הסרגל לרוחב כל הגיליון, ומתחתיו הרמה הבאה והכפתור זה ליד זה); בטלפון קטן הגוף גולל לבד ורק הכותרת מורידה את הגיליון. ' +
-    'מצב חדש: "many" – חזרת אחרי זמן ויש הרבה קופסאות שמחכות.',
+    'F במשחק, עם הלוגיקה שלו: ארבע קופסאות בכל רמה (ב־25%, 50%, 75% ו־100%) – נעולה, מוכנה (נגיעה פותחת), פתוחה עם מה שנתנה; קופסה שלא נפתחה מחכה, ו"Open N gifts" פותח את כולן, גם מרמות קודמות. ' +
+    'מה שבקופסה נקבע בקובייה של החווה ברגע הפתיחה: מטבעות לפי הרמה, חומר בנייה, או כמה מסחורה שהחווה מייצרת; אף קופסה לא ניתנת פעמיים, ואין עליה XP. ' +
+    'המתנה של עליית רמה נכנסת לבד: כמה חומרי בנייה, שקופצים מהמספר בזמן החגיגה ועפים למחסן; בכרטיס – "Level N reached!" עם מה שנכנס. ' +
+    'המטבעות של הרמה והבגד של כל רמה חמישית – כמו קודם: המטבעות נאספים ב־Claim, עכשיו בפס "Level N reached!" למעלה. ' +
+    'כמה קופסאות יחד: אותו פרס מתאחד (כל המטבעות בתמונה אחת, כל סחורה בתמונה אחת). ' +
+    'מיקרו־אנימציות בכל הכפתורים, הכרטיסים, השבבים, התגים, המתג וכפתור הפעולה; ורטט קצר בכל פעולה שעושה משהו – טיק לאיסוף, כפול למכירה, חזק יותר לקנייה, גלגול למתנה והחזק ביותר לרמה (בטלפונים שיכולים, וכבה עם "Vibration" בהגדרות).',
   still: 'yard',
   research: [
     {
@@ -88,36 +111,65 @@ export const levelBoard: Board<LevelState> = {
     },
   ],
   states: [
-    { id: 'gift', name: 'ברמה הבאה בגד; קופסה אחת נפתחה, אחת מחכה, ועוד אחת מרמה 3', data: at(xpAt(4) + 40, 2, 9, beds('lettuce', 6), 'gift') },
-    { id: 'almost', name: 'כמעט: חסרים 10 XP, שלוש הקופסאות נפתחו, ומה שמוכן בחווה מספיק', data: at(xpAt(9) + 125, 9, 14, beds('carrot', 8), 'almost') },
-    { id: 'fresh', name: 'רמה חדשה (7): מה שהיא נתנה נכנס לבד; הקופסה האחרונה של רמה 6 מחכה', data: at(xpAt(7) + 6, 7, 6, goods('egg', 4), 'fresh') },
-    { id: 'later', name: 'שליש מהרמה: קופסה אחת מוכנה ועוד שתיים מרמה 5', data: at(xpAt(6) + 30, 6, 5, undefined, 'later') },
-    { id: 'many', name: 'חזרת אחרי זמן: הרבה קופסאות מחכות', data: at(xpAt(12) + 144, 12, 20, beds('tomato', 4), 'many') },
-    { id: 'top', name: 'הרמה העליונה', data: at(xpAt(500) + 1, 500, 0, undefined, 'top') },
+    {
+      id: 'gift',
+      name: 'ברמה הבאה בגד; קופסה אחת נפתחה, אחת מחכה, ועוד אחת מרמה 3',
+      data: { points: level(4, 0.6), paid: 4, gifts: record(boxAt(3, 3), [boxAt(4, 0)], [{ box: boxAt(4, 0), prize: { coins: 5 } }], [], 4), gain: 9, ready: beds('lettuce', 6) },
+    },
+    {
+      id: 'almost',
+      name: 'כמעט: חסרים 10 XP, שלוש הקופסאות נפתחו, ומה שמוכן בחווה מספיק',
+      data: {
+        points: xpAt(10) - 10,
+        paid: 9,
+        gifts: record(
+          boxAt(9, 3),
+          [],
+          [
+            { box: boxAt(9, 0), prize: { coins: 10 } },
+            { box: boxAt(9, 1), prize: { item: 'plank', n: 1 } },
+            { box: boxAt(9, 2), prize: { item: 'egg', n: 4 } },
+          ],
+          [],
+          9,
+        ),
+        gain: 14,
+        ready: beds('carrot', 8),
+      },
+    },
+    {
+      id: 'fresh',
+      name: 'רמה חדשה (7): המתנה שלה נכנסה לבד והמטבעות מחכים ל־Claim; הקופסה האחרונה של רמה 6 מחכה',
+      data: { points: xpAt(7) + 6, paid: 6, gifts: record(boxAt(6, 3), [], [], [{ level: 7, prize: { item: 'brick', n: 2 } }], 6), gain: 6, ready: goods('egg', 4) },
+    },
+    {
+      id: 'later',
+      name: 'שליש מהרמה: קופסה אחת מוכנה ועוד שתיים מרמה 5',
+      data: { points: level(6, 0.34), paid: 6, gifts: record(boxAt(5, 2), [], [], [], 6), gain: 5 },
+    },
+    {
+      id: 'many',
+      name: 'חזרת אחרי זמן: הרבה קופסאות מחכות',
+      data: { points: boxXp(boxAt(12, 2)) + 4, paid: 12, gifts: record(boxAt(10, 3), [], [], [], 12), gain: 20, ready: beds('tomato', 4) },
+    },
+    { id: 'top', name: 'הרמה העליונה', data: { points: xpAt(500) + 1, paid: 500, gifts: record(boxAt(500, 0), [], [], [], 500), gain: 0 } },
   ],
   variants: [
     {
       id: 'today',
-      name: 'היום',
-      note: 'מה שיש במשחק עכשיו.',
-      motion: 'הגיליון מחליק פנימה, והבגד קופץ. באיסוף המטבעות עפים לצ׳יפ. אין גרירה לסגירה, והוא נעלם ביציאה בלי תנועה.',
-      render: card(LevelCard),
-    },
-    {
-      id: 'f',
-      name: 'התקדמות שפותחים',
+      name: 'במשחק (F)',
       note:
         'הסרגל של הרמה הוא הגיבור: ארבעה רבעים, ועל סוף כל אחד קופסה – נעולה (עם כמה XP חסר לבאה), מוכנה (זוהרת וקופצת: נגיעה פותחת), או פתוחה (מה שנתנה עם ✓). ' +
-        'מעליו האחוז הגדול וכמה עוד לרמה הבאה; בקצה – הכוכב של הרמה הבאה. מתחת: מה הרמה הבאה נותנת, "Comes by itself" (בלי Claim), וכפתור צהוב אחד כשמחכות קופסאות – "Open 3 gifts", כולל מרמות קודמות.',
+        'מעליו האחוז הגדול וכמה עוד; בקצה – הכוכב של הרמה הבאה. מתחת: מה הרמה הבאה נותנת (מטבעות, בגד או מתי הבגד הבא, ומתנה שנכנסת לבד), וכפתור צהוב אחד כשמחכות קופסאות – "Open 3 gifts", כולל מרמות קודמות. ' +
+        'רמה חדשה: "Level 7 reached!" למעלה, עם המתנה שנכנסה והמטבעות ל־Claim.',
       motion:
         'הגיליון עולה, הסרגל מתמלא ממה שהיה למה שיש (מה שהרווחת בוהק, "+9 new" קופץ), והקופסאות המוכנות קופצות ומתנדנדות מדי פעם. ' +
-        'פתיחה: הקופסה עפה לאמצע הכרטיס וגדלה, רועדת, ומתפוצצת עם קרני אור וקונפטי – הפרס עולה גדול עם השם והמספר; Collect – המטבעות עפים לצ׳יפ, והקופסה על הסרגל הופכת לפרס עם ✓. ' +
-        'כמה קופסאות: שורה שמתפוצצת אחת אחרי השנייה, ואז הסכום. גרירה למטה (לרוחב: ימינה) על הכותרת סוגרת.',
-      adds: 'ארבע קופסאות הפתעה בכל רמה (ב־25%, 50%, 75% ו־100%) שהשחקן פותח בנגיעה, כפתור שפותח את כל מה שמחכה (גם מרמות קודמות), ומה שהרמה נותנת (מטבעות, בגד, הפתעה קטנה) נכנס לבד בלי Claim. הנתונים כאן לדוגמה.',
-      render: (v, act) => (
+        'פתיחה: הקופסה עפה לאמצע הכרטיס וגדלה, רועדת, ומתפוצצת עם קרני אור וקונפטי – הפרס עולה גדול עם השם והמספר; Collect – המטבעות עפים לצ׳יפ והסחורה למחסן שלה. ' +
+        'Claim שוקע על השפה שלו והופך ל־✓ עם המטבעות סופרים. גרירה למטה (לרוחב: ימינה) על הכותרת סוגרת, והגיליון יוצא כמו שנכנס.',
+      render: (s, act) => (
         <>
           <ChipCoin />
-          <LevelCardF v={v} boxes={v.boxes ?? { opened: [], missed: [] }} onClose={act.close} />
+          <LevelCard v={{ ...levelView(s.points, s.paid, s.gifts, { gain: s.gain, ready: s.ready }) }} onOpen={opened(s, act)} onClaim={claimed(s, act)} onClose={act.close} />
         </>
       ),
     },

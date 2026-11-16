@@ -17,14 +17,19 @@
   box-shadow: 0 0 0 2px #fff, 0 4px 12px rgba(20, 12, 6, 0.35);
   pointer-events: auto;
   cursor: pointer;
-  animation: thing-tag-in 0.4s var(--ease-pop) both;
+  /* (backwards, not both: a fill held after it ends would hold its scale over the press's) */
+  animation: thing-tag-in 0.4s var(--ease-pop) backwards;
   -webkit-tap-highlight-color: transparent;
 }
-.thing-tag:active { scale: 0.9; }
+.thing-tag { transition: scale var(--t-release) var(--ease-pop); }
+@media (hover: hover) and (pointer: fine) {
+  .thing-tag:hover { scale: 1.08; }
+}
+.thing-tag:active { scale: 0.88; transition-duration: var(--t-press); }
 .thing-gear img { width: 30px; height: 30px; animation: thing-gear-spin 7s linear infinite; }
 /* a price tag: the coin and what it costs (Nunito), the coin rocking a little (the tag itself holds still, a steady
    target); a price the coins do not reach yet shows in red */
-.thing-price { padding: 0 14px 0 7px; background: color-mix(in srgb, var(--paper) 94%, transparent); animation: thing-price-in 0.4s var(--ease-pop) both; }
+.thing-price { padding: 0 14px 0 7px; background: color-mix(in srgb, var(--paper) 94%, transparent); animation: thing-price-in 0.4s var(--ease-pop) backwards; }
 .thing-price img { width: 28px; height: 28px; filter: drop-shadow(0 1px 1px rgba(60, 35, 5, 0.3)); animation: thing-coin-rock 3.2s 0.4s ease-in-out infinite; }
 .thing-price b { font: 800 19px/1 var(--font-text); font-variant-numeric: tabular-nums; }
 .thing-price.short b { color: var(--berry); }

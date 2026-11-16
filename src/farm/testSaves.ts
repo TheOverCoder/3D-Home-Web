@@ -13,6 +13,9 @@ import {
   buyPiece,
   buySlot,
   claimLevel,
+  giftsWaiting,
+  openGifts,
+  sawLevel,
   collect,
   collectMachine,
   currentSlot,
@@ -288,6 +291,11 @@ export function playedSave(): Record<string, unknown> {
     tick(85)
     movePlace('oven', { x: 2, z: 2, rot: 1 })
     moveBed(4, { x: 6, z: 3, rot: 1 })
+    // the level's gifts: the newest box of the level opened out of turn, the older ones left waiting, the level's
+    // arrival told (src/farm/gifts.ts)
+    const waiting = giftsWaiting()
+    openGifts(waiting.slice(-1))
+    sawLevel()
     // the house bought, and the player back on the farm (the two maps)
     farm.apartment.owned = true
     farm.place = 'farm'

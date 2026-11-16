@@ -1,6 +1,7 @@
 import { animate, useMotionValue, useTransform } from 'motion/react'
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { SPRING } from '../../ui/motion'
+import { haptic } from '../../lib/device'
 
 // Drag and drop for the machine panel, by finger and by mouse: Motion moves a picture (the ghost) that follows the
 // finger, the panel says what lies under it as it moves (`onOver`) and what a drop does (`onDrop`). No library of its
@@ -101,7 +102,7 @@ export function useDragDrop<P>({
     animate(oy, s.touch ? -ABOVE : -4, SPRING.pop)
     animate(scale, 1.22, SPRING.pop)
     animate(rotate, -6, SPRING.pop)
-    navigator.vibrate?.(8)
+    haptic('lift')
     setLifted({ payload: s.payload, src: s.src, size, touch: s.touch })
     cb.current.onLift?.(s.payload)
     over()
@@ -133,7 +134,7 @@ export function useDragDrop<P>({
       land(from.current, null)
       return
     }
-    navigator.vibrate?.(12)
+    haptic('drop')
     // where it lands is known once the panel has drawn the change: two frames on
     requestAnimationFrame(() =>
       requestAnimationFrame(() => {

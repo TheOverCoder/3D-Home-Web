@@ -200,7 +200,7 @@ export function SettingsPanel() {
               </Row>
               <MusicPlayer compact />
               {coarsePointer && canVibrate && (
-                <Row label="Vibration" hint="A short buzz as you harvest, water or plant">
+                <Row label="Vibration" hint="A buzz as you collect, sell, buy, open a gift or reach a level">
                   <Toggle id="set-vibration" label="Vibration" checked={settings.vibration} onChange={(vibration) => update({ vibration })} />
                 </Row>
               )}

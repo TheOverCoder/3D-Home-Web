@@ -3,6 +3,9 @@ import { farmSound } from '../audio/sound'
 import { reducedMotion } from '../fx/fx'
 import { onXpFlight, xpInFlight } from '../fx/xp'
 import { GarmentPic } from '../ui/GarmentPic'
+import { flyItem } from '../fx/coins'
+import { storeOf } from './data'
+import { iconUrl } from './icons'
 import { useHome } from '../store'
 import { art } from '../ui/art'
 import { TopSlot } from '../ui/TopStack'
@@ -152,9 +155,10 @@ export function XpChip() {
   )
 }
 
-/** How long a level's show lasts, and a garment's after it. */
+/** How long a level's show lasts, and a garment's after it; when the gift the level brought flies off from it. */
 const LEVEL_MS = 2400
 const GIFT_MS = 3400
+const GIFT_FLY_MS = 650
 
 /** The show of a new level, over the scene under the compass (no pointer events, never a panel or a toast): a flash,
  *  a ring of energy and the new number, once the crystals that reached it have landed on the bar; then, for a level
@@ -165,7 +169,8 @@ export function LevelUp() {
   const reached = levelOf(seen.points)
   const landed = levelOf(Math.max(0, seen.points - seen.flying))
   const told = useRef({ events: seen.events, level: reached, pending: false })
-  const [show, setShow] = useState<{ level: number; n: number } | null>(null)
+  const [show, setShow] = useState<{ level: number; from: number; n: number } | null>(null)
+  const showEl = useRef<HTMLDivElement>(null)
   // the garments the levels shown brought, still to be shown (one after another)
   const [gifts, setGifts] = useState<Garment[]>([])
   const [gift, setGift] = useState<{ g: Garment; n: number } | null>(null)
@@ -184,7 +189,7 @@ export function LevelUp() {
       const from = s.level
       s.level = landed
       s.pending = landed < reached
-      setShow((p) => ({ level: landed, n: (p?.n ?? 0) + 1 }))
+      setShow((p) => ({ level: landed, from, n: (p?.n ?? 0) + 1 }))
       const brought = GARMENTS.filter((g) => g.level > from && g.level <= landed)
       if (brought.length) setGifts((q) => [...q, ...brought])
       farmSound('level')
@@ -194,7 +199,19 @@ export function LevelUp() {
   useEffect(() => {
     if (!show) return
     const t = window.setTimeout(() => setShow(null), LEVEL_MS)
-    return () => window.clearTimeout(t)
+    // the gift each level brought by itself pops up out of the number and flies to its building's chip, once the
+    // number has landed (where it went: the level's card tells what it was)
+    const gifts = farm.gifts.came.filter((c) => c.level > show.from && c.level <= show.level)
+    const fly = window.setTimeout(() => {
+      const el = showEl.current
+      if (!el || !el.getClientRects().length || reducedMotion()) return
+      const r = el.getBoundingClientRect()
+      gifts.forEach((c, k) => 'item' in c.prize && flyItem(r.left + r.width / 2, r.top + r.height * 0.62, iconUrl(c.prize.item), k, storeOf(c.prize.item)))
+    }, GIFT_FLY_MS)
+    return () => {
+      window.clearTimeout(t)
+      window.clearTimeout(fly)
+    }
   }, [show])
 
   // a garment's show once the level's is over, and the next one's after it
@@ -214,7 +231,7 @@ export function LevelUp() {
     <TopSlot name="level">
       <div className="level-up" aria-live="polite">
         {show && (
-          <div className="level-up-show" key={show.n}>
+          <div className="level-up-show" key={show.n} ref={showEl}>
             <span className="level-up-flash" aria-hidden="true" />
             <span className="level-up-ring" aria-hidden="true" />
             <span className="level-up-ring late" aria-hidden="true" />

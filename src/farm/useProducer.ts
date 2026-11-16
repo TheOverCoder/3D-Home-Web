@@ -42,7 +42,7 @@ export function producerOffer(id: ProducerId, i: number, at: { stand: Point3; ai
       playGesture('interact')
       onCollect?.()
       const { pan, near } = placeSound(at.aim.x, at.aim.z)
-      farmSound(def.sound, pan, near)
+      farmSound(def.sound, pan, near, 'tick')
       farmFx('harvest', at.aim.x, def.sparkle, at.aim.z, { good: def.good })
     },
   }

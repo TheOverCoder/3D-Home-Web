@@ -56,9 +56,10 @@ const POP = 520 // ms: up it pops, and shows itself
 const HOLD = 420
 const TO_CHIP = 640
 
-/** The barn's picture in the chip row at the top, where a surprise lands, or null when it is not on the screen. */
-function barnChip(): DOMRect | null {
-  const el = document.querySelector('.farm-chip-item.barn img')
+/** The barn's (or the silo's) picture in the chip row at the top, where a surprise lands, or null when it is not on the
+ *  screen. */
+function storeChip(store: 'barn' | 'silo'): DOMRect | null {
+  const el = document.querySelector(`.farm-chip-item.${store} img`)
   if (!el || el.getClientRects().length === 0) return null
   const r = el.getBoundingClientRect()
   return r.width > 0 ? r : null
@@ -66,12 +67,13 @@ function barnChip(): DOMRect | null {
 
 /**
  * A surprise found at the screen point (x, y): its picture pops up there with a little bounce, shows itself a
- * moment, then flies on an arc into the barn's chip (or, with the chip hidden, fades where it is). `order`: the k-th
- * of several found at once, a moment after the one before. The toast names it too: this shows where it went.
+ * moment, then flies on an arc into the barn's chip (or the silo's, for a good kept there; with the chip hidden, it
+ * fades where it is). `order`: the k-th of several found at once, a moment after the one before. The toast names it
+ * too: this shows where it went.
  */
-export function flyItem(x: number, y: number, src: string, order = 0): boolean {
+export function flyItem(x: number, y: number, src: string, order = 0, store: 'barn' | 'silo' = 'barn'): boolean {
   if (typeof document.body.animate !== 'function') return false
-  const to = barnChip()
+  const to = storeChip(store)
   const img = document.createElement('img')
   img.src = src
   img.alt = ''

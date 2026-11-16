@@ -1,4 +1,4 @@
-import { LazyMotion, MotionConfig, animate, m, useMotionValue, useReducedMotion, useTransform, type Transition } from 'motion/react'
+import { LazyMotion, MotionConfig, animate, m, useMotionValue, useReducedMotion, useTransform, type Transition, type Variants } from 'motion/react'
 import { useEffect, type ReactNode } from 'react'
 
 // The interface's motion: Motion for React (motion.dev) — springs, gestures (a press, a drag, a swipe), elements coming
@@ -38,8 +38,38 @@ export const EASE = {
   sheet: [0.05, 0.7, 0.1, 1],
 } as const
 
-/** A button's press: `<m.button {...PRESS}>` sinks a little under the finger and springs back. */
+// The micro-interactions (the designer's checklist, .claude/agents/ui-designer.md): every one quick, never in the way of
+// the next press, and nothing for whoever prefers less motion (MotionConfig, above; the CSS ones in src/styles.css stop
+// under prefers-reduced-motion). The game's shared pieces — .btn, cards, chips, tags, the switch, the action button —
+// do the same in CSS (src/styles.css, "micro-interactions"): use these where a piece moves with Motion.
+
+/** A press: `<m.button {...PRESS}>` sinks a little under the finger and springs back (a round or flat button). */
 export const PRESS = { whileTap: { scale: 0.94 }, transition: SPRING.pop } as const
+/** A press of a button on its lip (.btn, .primary): it goes down onto the lip and springs back up. */
+export const SINK = { whileTap: { scale: 0.97, y: 3 }, transition: SPRING.pop } as const
+/** On a computer's pointer only (Motion's hover never answers a touch): a target lifts a little to say it can be
+ *  pressed. */
+export const HOVER = { whileHover: { y: -2, transition: SPRING.pop } } as const
+
+/** A block of a sheet that comes in a moment after the one before (its container: STAGGER). */
+export const ITEM: Variants = {
+  hidden: { opacity: 0, y: 14 },
+  show: { opacity: 1, y: 0, transition: SPRING.pop },
+}
+/** A container whose blocks (ITEM) come in one by one: the container first, the hero last. */
+export const STAGGER: Variants = { show: { transition: { delayChildren: 0.06, staggerChildren: 0.045 } } }
+/** Something that appears in place (a badge, a chip, a ✓): it pops up; it leaves quicker, shrinking (`exit="out"`). */
+export const POP: Variants = {
+  hidden: { opacity: 0, scale: 0.6 },
+  show: { opacity: 1, scale: 1, transition: SPRING.pop },
+  out: { opacity: 0, scale: 0.8, transition: { duration: 0.12 } },
+}
+/** It worked: a little pop, bigger and home (`animate(el, DID.keyframes, DID.options)`). */
+export const DID = { keyframes: { scale: [1, 1.14, 1] }, options: { duration: 0.32, ease: EASE.out } } as const
+/** Not now: a short shake from side to side (an error; a press that cannot do anything yet). */
+export const NOPE = { keyframes: { x: [0, -7, 6, -4, 2, 0] }, options: { duration: 0.32, ease: 'easeOut' } } as const
+/** A long press: how long a finger rests before it counts as a hold (shorter is a tap). */
+export const HOLD_MS = 450
 
 /** A number that counts to `to` (from `from`, 0 at first): the XP into a level, the coins of a claim. */
 export function CountUp({ to, from = 0, duration = 0.9, format = whole }: { to: number; from?: number; duration?: number; format?: (n: number) => string }) {

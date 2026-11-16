@@ -16,7 +16,7 @@ export interface Settings {
   music: boolean // background music (generated in the browser, nothing is downloaded)
   musicVolume: number // 0..1, under the sound volume
   musicTrack: number
-  vibration: boolean // a short buzz as an action is done (phones that can: Android)
+  vibration: boolean // a touch as an action is done (phones that can: Android; src/lib/device.ts, haptic)
   hudMode: 'all' | 'compass' | 'clean' // the top of the screen: everything, only the compass, or nothing (the button in the corner, or H)
   followMove: boolean // touch: the view turns towards where you walk with the stick (the button beside it)
 }

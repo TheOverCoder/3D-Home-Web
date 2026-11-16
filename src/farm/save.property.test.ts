@@ -38,6 +38,7 @@ import { FRUIT_KINDS, SHOP as FARM_SHOP, type ShopKind } from './decor'
 import { MAX_PLACES, SHOP_LADDERS, placesOpen, shopperEvery } from './market'
 import { offersPerDay } from './contractor'
 import { levelOf } from './xp'
+import { CAME_KEPT, PER_LEVEL, boxesReached } from './gifts'
 import { QUEUE, machineLevel } from './machineView'
 import { garmentById } from './outfit'
 import { sanitizeLook } from '../models/look'
@@ -199,8 +200,9 @@ function alsoChanges(part: string): RegExp | null {
   if (part === 'ladders' || part.startsWith('ladders.')) return /^(market|contractor)(\.|$)/
   // the shop's own ladders count only once the shop is yours (src/farm/market.ts, clampLevels)
   if (part === 'market' || part.startsWith('market.')) return /^ladders(\.|$)/
-  // the level decides which garments the wardrobe has, so what can be worn (src/farm/outfit.ts)
-  if (part === 'xp' || part.startsWith('xp.')) return /^outfit(\.|$)/
+  // the level decides which garments the wardrobe has, so what can be worn (src/farm/outfit.ts), and the boxes it
+  // reached on the levels' bars, so which can be open (src/farm/gifts.ts)
+  if (part === 'xp' || part.startsWith('xp.')) return /^(outfit|gifts)(\.|$)/
   return null
 }
 
@@ -212,7 +214,7 @@ function free(base: Base, path: Key[], names: string[]): (name: string) => boole
   // a farm from before the goals starts each where its counts are: they follow the stats and what it has got
   if (base.old && /^(stats|got)(\.|$)/.test(at)) coupled.push(/^goals(\.|$)/)
   // and its XP starts from what it did (src/farm/xp.ts, seedXp), and so what the wardrobe has
-  if (base.old && /^stats(\.|$)/.test(at)) coupled.push(/^(xp|outfit)(\.|$)/)
+  if (base.old && /^stats(\.|$)/.test(at)) coupled.push(/^(xp|outfit|gifts)(\.|$)/)
   return (n) => touched.includes(n) || coupled.some((r) => r.test(n))
 }
 
@@ -326,6 +328,24 @@ function farmProblems(): string[] {
   const wears = (id: unknown, slot: string) => typeof id === 'string' && garmentById(id)?.slot === slot && garmentById(id)!.level <= level
   bad('outfit', sameKeys(o, ['shirt', 'trousers', 'hat', 'seen']) && wears(o.shirt, 'shirt') && wears(o.trousers, 'trousers') && (o.hat === null || wears(o.hat, 'hat')))
   bad('outfit.seen', Number.isInteger(o.seen) && o.seen >= 1 && o.seen <= level)
+  // the level's gifts: no box opened past those the XP reached, those out of turn past the ones in turn (each once, in
+  // order); what the level's boxes gave only for its own boxes opened; the levels reached up to this one, each once;
+  // what the card told up to this level
+  const g = farm.gifts
+  const reached = boxesReached(xp.points)
+  const isPrize = (p: unknown) => {
+    const x = p as Record<string, unknown>
+    return (sameKeys(x, ['coins']) && isCount(x.coins) && (x.coins as number) >= 1) || (sameKeys(x, ['item', 'n']) && produceIds.includes(x.item as string) && isCount(x.n, 99) && (x.n as number) >= 1)
+  }
+  const done = (k: number) => k < g.open || g.also.includes(k)
+  bad('gifts', sameKeys(g, ['open', 'also', 'gave', 'came', 'seen']) && isCount(g.open, reached))
+  bad('gifts.also', g.also.every((k, i) => isCount(k) && k > g.open && k < reached && (i === 0 || k > g.also[i - 1])) && !g.also.includes(g.open))
+  bad('gifts.gave', g.gave.every((e) => sameKeys(e, ['box', 'prize']) && isPrize(e.prize) && done(e.box) && Math.floor(e.box / PER_LEVEL) + 1 === level) && unique(g.gave.map((e) => e.box)))
+  bad(
+    'gifts.came',
+    g.came.length <= CAME_KEPT && g.came.every((e) => sameKeys(e, ['level', 'prize']) && isPrize(e.prize) && isCount(e.level, level) && e.level >= 2) && unique(g.came.map((e) => e.level)),
+  )
+  bad('gifts.seen', Number.isInteger(g.seen) && g.seen >= 1 && g.seen <= level)
   // the ladders: a step count each, to its top; the shop's own none until the shop is yours
   const l = farm.ladders
   bad('ladders: each ladder', sameKeys(l, LADDER_IDS))

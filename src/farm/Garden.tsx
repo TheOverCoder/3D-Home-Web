@@ -81,6 +81,9 @@ import {
   gainXp,
   xpNow,
   claimLevel,
+  openGifts,
+  giftsWaiting,
+  readyOnFarm,
   xpEventCount,
   wearGarment,
   sawWardrobe,
@@ -752,6 +755,10 @@ export function FarmClock() {
       xpNow,
       claimLevel,
       xpEventCount,
+      // the level's gifts (src/farm/gifts.ts)
+      openGifts,
+      giftsWaiting,
+      readyOnFarm,
       // the wardrobe (src/farm/outfit.ts)
       wearGarment,
       sawWardrobe,

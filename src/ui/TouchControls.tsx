@@ -77,9 +77,12 @@ const edgeLeft = (left: number, bottom: number): CSSProperties => ({
 })
 
 function ActionButton({ action, main, size, at }: { action: Nearby; main?: boolean; size: number; at: { right: number; bottom: number } }) {
+  // a ring goes out from it as a finger presses it (two class names, so a press right after another starts it again)
+  const [rings, setRings] = useState(0)
   return (
     <button
-      className={`act-btn${main ? ' main' : ''}`}
+      className={`act-btn${main ? ' main' : ''}${rings ? (rings % 2 ? ' ring-a' : ' ring-b') : ''}`}
+      onPointerDown={() => setRings((n) => n + 1)}
       data-verb={action.icon?.verb ?? 'pick'}
       style={{ ...edge(at.right, at.bottom), width: size, height: size }}
       aria-label={action.label}

@@ -145,20 +145,3 @@
   .garment-show,
   .garment-show .garment-pic { animation: none; }
 }
-
-/* the level's card (LevelPanel.tsx): its bar, what the next level brings (a garment big), and when the next garment is */
-.level-card-bar { position: relative; height: 10px; margin: 0 0 14px; border-radius: 999px; background: var(--paper-3); overflow: hidden; }
-.level-card-bar span { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: linear-gradient(90deg, var(--xp), color-mix(in srgb, var(--xp) 60%, #fff)); }
-.level-next { padding: 10px 12px 12px; border-radius: var(--r-card); background: var(--paper-2); }
-.level-next h3 { margin: 0 0 8px; font: 600 18px/1.2 var(--font-display); color: var(--ink); }
-.level-next.gift { background: color-mix(in srgb, var(--sun) 22%, var(--paper-2)); box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--sun) 70%, transparent); }
-.level-rewards { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.level-gift { display: flex; align-items: center; gap: 10px; flex: 1 1 200px; min-width: 0; }
-.level-gift .garment-pic .art { width: 84px; height: 84px; animation: pop 0.45s var(--ease-pop) both; }
-.level-gift > span { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; }
-.level-gift b { font: 800 17px/1.2 var(--font-text); color: var(--ink); }
-.level-coins { display: inline-flex; align-items: center; gap: 4px; font: 800 20px/1 var(--font-text); color: var(--ink); }
-.level-coins .art { width: 34px; height: 34px; }
-.level-later { display: flex; align-items: center; gap: 8px; margin: 12px 0 0; color: var(--ink-2); font: 500 15px/1.3 var(--font-text); }
-.level-later .garment-pic .art { width: 44px; height: 44px; }
-.level-later b { color: var(--ink); }
