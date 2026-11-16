@@ -42,14 +42,18 @@ against it before it is shown.
   laugh, and it lands because it is the only one.
 - **Always show who speaks**: the bubble points to the speaker, the speaker's name in their colour; the film works
   with the sound off. [Xbox accessibility guideline 104][xag]
-- **Every line is heard, in its speaker's voice, never in words.** A babble made from the line's own text — a sound a
-  syllable, a hiss for an s, a pause at a comma, a rise at a question mark — carries the character and the mood while
-  the bubble carries the meaning. A voice is a few numbers (pitch, pace, the head's size, brightness, rasp): the boss
-  quick and nasal, the big man slow and deep, the player low and level. The same text always sounds the same, so a
-  changed line costs nothing to "record". [Animalese][animalese] · [Reigns' deterministic babble][reigns] ·
-  [Banjo-Kazooie's gibberish][banjo] · [formant synthesis][formant]
-- **The words come up as they are said**, and the speaker's head dips on each syllable: picture, voice and words
-  agree, silent too.
+- **Every line is heard in words, in clear English, in its speaker's voice.** The device's own speech voices read it
+  (speechSynthesis: on every phone, nothing downloaded or recorded, a changed line costs nothing); a character is a
+  voice (a man's or a woman's, a different one each where the device has several), a pitch and a pace, and the mood
+  moves them: the boss quick and a little high, the big man slow and deep, the player low and level. A babble made from
+  the text (Animalese) carried the mood but not the meaning — the user could not follow it (round 3) — so it is left
+  only for a device with no English voice. Phones speak only after a touch: Sound, or any tap on the film.
+  [SpeechSynthesis][speech] · [touch first on phones][speechios] · [Animalese][animalese]
+- **Plain English.** School English, followed on first hearing: a subject and a verb ("You? Buy my shop?", not "With
+  what?"), no idioms ("mint condition", "heavy one"), numbers as they are said ("fourteen ninety-nine"). Give a line
+  the time its speaker takes to say it; a voice hurried past 1.2× is no longer clear. [Plain language][plain]
+- **The words come up as they are said** (the voice's own word boundaries), and the speaker's head dips with the
+  syllables: picture, voice and words agree, silent too. [boundary][boundary]
 
 ## 3. The camera
 
@@ -80,6 +84,15 @@ against it before it is shown.
   one who answers without turning to look is the cool one, and no camera has to look back at the farm.
 - **Walls are a set's, not a prison.** A wall between the camera and its subject is left out (wild walls); never one
   behind the subject, or the outside shows through.
+- **Light the faces while they talk.** A key from in front, on the side the face turns to (short key: the far cheek
+  lit, the near one in shade — cinema's usual), a rim from behind against the camera to part them from the set, and the
+  set's own light stepped back so the faces are the brightest thing (the picture's edges darkened). Colours from the
+  scene's sources: a desk lamp's warm key, a cold night edge; where a prop is the light (the case's gold) the key steps
+  back. The rim only from medium in, close and narrow: in a full shot it lights the walls, not them. [Short key][short]
+  · [a key and a rim per shot in game cinematics][cry]
+- **A body acts at its joints.** A head nods at the foot of its neck: turned about its own middle, the neck slid out
+  of the collar (round 3). When a body part leaves its place, the fix is the rig's (the people engine), for every film
+  and the game. [Rigify: bones where the body bends][rig]
 
 ## 4. Rhythm
 
@@ -132,8 +145,9 @@ end card.
 
 ## How a film is made here
 
-A film is data (`lab/films/format.ts`): its cast (the people engine's looks, and their voices: `lab/films/voice.ts`),
-its set (the game's own rows), its shots (what they frame, from where, how big, at what angle, how the camera moves),
+A film is data (`lab/films/format.ts`): its cast (the people engine's looks, and their voices: `lab/films/voice.ts`,
+read aloud by `lab/films/speak.ts`), its set (the game's own rows), its shots (what they frame, from where, how big, at
+what angle, how the camera moves),
 its lines, its moves and its cues. The player (`lab/films/Player.tsx`) plays any film from that data on the game's own models
 (`src/models/person.ts`, `src/models/market.ts`, `src/models/goods.ts`) and the game's own sound engine, framing each
 shot for the screen it is on, and leaving out the walls in the camera's way. A new film is a new data file; a change
@@ -173,6 +187,10 @@ the camera, the people engine for the cast, Motion for the overlay, a procedural
 [blizzard]: https://www.pcgamer.com/blizzard-cinematic-emotion/
 [skip]: https://feedme.design/the-problem-with-mandatory-cutscenes-in-games
 [animalese]: https://geolojosh.itch.io/goodlands/devlog/314373/how-to-animal-crossing-dialogue-sounds
-[reigns]: https://disasterpeace.com/blog/tag.Reigns
-[banjo]: https://vgfacts.com/franchise/banjokazooie/trivia-11545
-[formant]: https://www.asel.udel.edu/speech/tutorials/synthesis/vspace2.html
+[speech]: https://developer.mozilla.org/en-US/docs/Web/API/SpeechSynthesis
+[speechios]: https://docs.responsivevoice.org/guides/browser-support/
+[boundary]: https://developer.mozilla.org/en-US/docs/Web/API/SpeechSynthesisUtterance/boundary_event
+[plain]: https://www.plainlanguage.gov/guidelines/
+[short]: https://neiloseman.com/introduction-short-key-lighting/
+[cry]: https://www.cryengine.com/docs/static/engines/cryengine-3/categories/1114113/pages/15011053
+[rig]: https://docs.blender.org/manual/en/4.0/addons/rigging/rigify/bone_positioning.html

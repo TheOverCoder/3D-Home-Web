@@ -32,7 +32,7 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { Sky } from 'three-stdlib'
 import { LANE, SUN } from '../../src/data/layout'
 import { BACK, BAYS, HALL, LOT, MANAGER_SPOT, MARKET_WALKIN } from '../../src/data/market'
-import { DAY, LADDERS, MANAGER, SHOP, type ProduceId } from '../../src/farm/data'
+import { DAY, LADDERS, MANAGER, SHOP, type DayPhase, type ProduceId } from '../../src/farm/data'
 import { treeSpots } from '../../src/farm/landGeometry'
 import { defaultLayout } from '../../src/farm/layout'
 import { managerPct } from '../../src/farm/market'
@@ -59,8 +59,10 @@ import { speakingAt, voiceOfLook, VOICES, type Speech, type Voice } from './voic
 // shot. Round the market, the part of the world that is the same on every farm: the game's sky and haze, its lawn, the
 // lane, and the woods on the market's side of the lane (no field the player buys ever moves them). The player's own
 // farm lies across the lane; the films never turn to it (`looksAtFarm`, ./set.ts), so the lab shows no farm that is
-// not theirs — in the game, a film plays in the scene the game already draws, and whatever is there is theirs. `frame(t)` puts everything where the film has it at t; it keeps no state of its own between frames but what
-// it built, so any moment can be drawn at once.
+// not theirs — in the game, a film plays in the scene the game already draws, and whatever is there is theirs. While a
+// scene talks, the shots on people have a light of their own (a film's key and rim, `portrait`). `frame(t)` puts
+// everything where the film has it at t; it keeps no state of its own between frames but what it built, so any moment
+// can be drawn at once.
 
 // ───────────────────────────── the people ─────────────────────────────
 
@@ -128,6 +130,23 @@ function tint(from: string, warm: number, to: (typeof TINT)['sun']) {
   else if (warm < 0) c.lerp(to.cool, -warm * to.k[1])
   return c
 }
+
+/** The characters' light while a scene talks, by its time of day, from the scene's own sources: the key (its colour
+ *  and how much light it brings to the faces, lux), the rim from behind (the same), and how far the light round them
+ *  steps back (the sky's fill, the rooms' lights and the moon through the walls the camera leaves out: the faces the
+ *  brightest thing in the picture). At night the desk
+ *  lamp's warm key and a cold edge, as from the hall's window; by day a soft key and the low sun's warm edge. */
+const PORTRAIT: Record<DayPhase, { key: string; keyLux: number; rim: string; rimLux: number; fill: number; rooms: number; sun: number }> = {
+  morning: { key: '#fff0d8', keyLux: 1.8, rim: '#ffd38c', rimLux: 12, fill: 0.6, rooms: 0.8, sun: 1 },
+  noon: { key: '#fff6ea', keyLux: 1.6, rim: '#fff1d6', rimLux: 10, fill: 0.65, rooms: 0.9, sun: 1 },
+  evening: { key: '#ffc48a', keyLux: 2.6, rim: '#ffd6a0', rimLux: 12, fill: 0.55, rooms: 0.6, sun: 0.8 },
+  night: { key: '#ffc98f', keyLux: 3.0, rim: '#9cc2ff', rimLux: 18, fill: 0.4, rooms: 0.38, sun: 0.45 },
+}
+/** How far the key stands from the faces it lights, how high (radians), how much wider than the faces its cone is (m),
+ *  and how far past them it reaches (times its distance: the walls behind stay dark); the rim behind them, close and
+ *  high, a narrow cone that ends just past the faces (it must not light the set). */
+const KEY = { far: 2.3, up: 0.6, wide: 0.6, reach: 2.4 }
+const RIM = { far: 1.5, up: 0.95, wide: 0.3, reach: 1.7 }
 
 // ───────────────────────────── pictures on the set ─────────────────────────────
 
@@ -430,6 +449,8 @@ const SHELF_GOODS: ProduceId[] = ['tomato', 'carrot', 'strawberry', 'pumpkin', '
 
 export interface FrameInfo {
   shot: number
+  /** how much the shot has the characters' light (0..1): the picture's edges darken with it */
+  portrait: number
   /** the speaker's head on the screen (px from the top left), when on it */
   speaker: { x: number; y: number } | null
   /** the camera looks across the lane at the farm (which in the lab is not the player's): never in a film */
@@ -437,6 +458,8 @@ export interface FrameInfo {
 }
 
 const HEAD = PERSON.hipsY + PERSON.headY + 0.02
+/** The head's middle above its joint (the foot of its neck), in the rig's units. */
+const SKULL = new Vector3(0, -PERSON.neckY, 0)
 
 export class FilmStage {
   readonly root = new Group()
@@ -448,7 +471,15 @@ export class FilmStage {
   private people: Parts
   private hemi = new HemisphereLight()
   private sun = new DirectionalLight()
+  /** the sky's fill and the sun at the scene's time of day, before a talking scene steps them back */
+  private fill = 0
+  private sunlight = 0
   private rooms: PointLight[] = []
+  /** how much each room's light is on (the lights coming on: the `lights` prop) */
+  private roomsOn: number[] = MARKET_WALKIN.lights.map(() => 1)
+  /** the characters' light: a key and a rim (kept in the scene at no strength when off, so no shader is made again) */
+  private key = new SpotLight('#ffffff', 0, 0, 0.5, 0.85, 2)
+  private rim = new SpotLight('#ffffff', 0, 0, 0.4, 0.6, 2)
   private lamp = new SpotLight('#ffd9a8', 5, 6, 0.75, 0.6, 2)
   private door = MARKET_WALKIN.autoDoor!
   private leaves = slidingDoorParts(this.door)
@@ -459,6 +490,8 @@ export class FilmStage {
   private screen: { mesh: Mesh; g: CanvasRenderingContext2D; t: CanvasTexture; last: string }
   private windowGlow: Mesh
   private case = briefcase()
+  /** how open the case is (its gold light on), this frame */
+  private caseGlow = 0
   private box = cardboardBox()
   private light = ''
   private head = new Vector3()
@@ -547,7 +580,7 @@ export class FilmStage {
     }
     this.lamp.position.set(MANAGER_SPOT.x - 0.6, 2.4, MANAGER_SPOT.z - 0.9)
     this.lamp.target.position.set(MANAGER_SPOT.x - 0.2, 0.8, MANAGER_SPOT.z - 0.5)
-    this.root.add(this.lamp, this.lamp.target)
+    this.root.add(this.lamp, this.lamp.target, this.key, this.key.target, this.rim, this.rim.target)
   }
 
   /** The shell without the walls left out for this camera: every wall piece between it and what it films (a film
@@ -573,9 +606,10 @@ export class FilmStage {
     if (phase === this.light) return
     this.light = phase
     const m = DAY.phases.find((p) => p.id === phase)?.mood ?? DAY.phases[1].mood
-    this.sun.intensity = NOON.sun * m.sun
+    this.sunlight = NOON.sun * m.sun
     this.sun.color.copy(tint(NOON.sunColor, m.warm, TINT.sun))
-    this.hemi.intensity = 1.1 * m.sky
+    this.fill = 1.1 * m.sky
+    this.hemi.intensity = this.fill
     this.hemi.color.copy(tint(NOON.sky, m.warm, TINT.sky))
     this.hemi.groundColor.set(NOON.ground)
     this.background.copy(tint(NOON.background, m.warm, TINT.haze).multiplyScalar(m.sky))
@@ -592,7 +626,7 @@ export class FilmStage {
     if (c) {
       const m = now.get(name)!
       const h = (lookOf(this.tl.film.cast[name].look).height ?? 1) * HEAD
-      if (live) c.rig.head.getWorldPosition(this.head)
+      if (live) c.rig.head.localToWorld(this.head.copy(SKULL))
       return { x: m.x, y: 0, z: m.z, head: live ? this.head.y + 0.02 : h, h: h + 0.15, w: 0.55, heading: m.heading, person: true }
     }
     if (name === 'case' || name === 'box') {
@@ -680,14 +714,82 @@ export class FilmStage {
     let speaker: FrameInfo['speaker'] = null
     if (line && now.get(line.item.who)?.visible) {
       const c = this.cast.find((x) => x.id === line.item.who)!
-      c.rig.head.getWorldPosition(this.head)
+      c.rig.head.localToWorld(this.head.copy(SKULL))
       this.head.y += 0.12
       camera.updateMatrixWorld()
       const p = this.head.clone().project(camera)
       if (p.z < 1 && Math.abs(p.x) < 1 && Math.abs(p.y) < 1) speaker = { x: ((p.x + 1) / 2) * size.width, y: ((1 - p.y) / 2) * size.height }
     }
+    // the characters' light, while the scene talks: on the people the shot looks at
+    const talks = scene.shots.some((x) => x.say?.length)
+    const faces = talks ? on.filter((n) => tl.film.cast[n] && now.get(n)?.visible).map((n) => this.subject(n, now, props, true)) : []
+    // (the rim only where faces are big: in a full shot it lights more of the set than of them; the key steps back where
+    // the open case's gold is the light on them)
+    const near = ['extreme', 'close', 'medium'].includes(cam.size ?? 'medium')
+    const portrait = this.portrait(faces, camera.position, scene.light, scene.side ?? 1, near, 1 - 0.65 * this.caseGlow)
+    const p = PORTRAIT[scene.light]
+    this.hemi.intensity = this.fill * (talks ? p.fill : 1)
+    this.sun.intensity = this.sunlight * (talks ? p.sun : 1)
+    this.rooms.forEach((r, i) => (r.intensity = MARKET_WALKIN.lights[i].intensity * this.roomsOn[i] * (talks ? p.rooms : 1)))
     camera.getWorldDirection(this.dir)
-    return { shot: at.index, speaker, farm: looksAtFarm(camera.position, this.dir) }
+    return { shot: at.index, portrait, speaker, farm: looksAtFarm(camera.position, this.dir) }
+  }
+
+  /** The characters' light (FILM.md, the camera: light the faces): the key from in front of them on the side they turn
+   *  to (short lighting: the far cheek lit, the near one in shade, the face modelled), the rim from behind against the
+   *  camera (a line of light parting them from what is behind; `rim` false: none), both aimed at the faces and as strong
+   *  whatever their distance. Its colours and strength are the scene's time of day's (`PORTRAIT`), the key's times
+   *  `key`. Off (no faces): no light. */
+  private portrait(faces: Subject[], eye: Vector3, phase: DayPhase, side: number, rim: boolean, key: number) {
+    if (!faces.length) {
+      this.key.intensity = 0
+      this.rim.intensity = 0
+      return 0
+    }
+    const p = PORTRAIT[phase]
+    const mid = faces.reduce((v, s) => v.add(new Vector3(s.x, s.head - 0.1, s.z)), new Vector3()).multiplyScalar(1 / faces.length)
+    const spread = Math.max(0, ...faces.map((s) => Math.hypot(s.x - mid.x, s.z - mid.z) * 2))
+    // towards the camera on the ground, and the camera's right
+    const v = new Vector3(eye.x - mid.x, 0, eye.z - mid.z).normalize()
+    const right = new Vector3(v.z, 0, -v.x)
+    // the side the first face turns to (facing the camera square: the scene's side)
+    const turn = right.dot(new Vector3(Math.sin(faces[0].heading), 0, Math.cos(faces[0].heading)))
+    const s = Math.abs(turn) > 0.2 ? Math.sign(turn) : side
+    const put = (light: SpotLight, dir: Vector3, far: number, o: typeof KEY, lux: number, color: string) => {
+      light.position.copy(mid).addScaledVector(dir.normalize(), far * Math.cos(o.up))
+      light.position.y += far * Math.sin(o.up)
+      light.target.position.copy(mid)
+      light.angle = Math.min(0.9, Math.atan((spread / 2 + o.wide) / far) * (light === this.key ? 1.3 : 1))
+      light.distance = far * o.reach
+      light.color.set(color)
+      // as bright on the faces wherever it stands: lux times the distance squared, over what its reach leaves at them
+      // (three's falloff to nothing at `distance`)
+      light.intensity = (lux * far * far) / (1 - o.reach ** -4) ** 2
+      light.target.updateMatrixWorld()
+    }
+    put(
+      this.key,
+      v
+        .clone()
+        .multiplyScalar(0.6)
+        .addScaledVector(right, s * 0.85),
+      KEY.far + spread * 0.5,
+      KEY,
+      p.keyLux * key,
+      p.key,
+    )
+    put(
+      this.rim,
+      v
+        .clone()
+        .multiplyScalar(-0.85)
+        .addScaledVector(right, -s * 0.55),
+      RIM.far + spread * 0.3,
+      RIM,
+      rim ? p.rimLux : 0,
+      p.rim,
+    )
+    return 1
   }
 
   private placeProps(props: Map<string, PropNow>, now: Map<string, MemberNow>, t: number) {
@@ -710,6 +812,7 @@ export class FilmStage {
         }
         c.hinge.rotation.x = -p.open * 1.85
         c.light.intensity = p.open * 9
+        this.caseGlow = c.outer.visible ? p.open : 0
         ;(c.glow.material as MeshBasicMaterial).opacity = p.open * 0.9
         c.glow.lookAt(c.glow.getWorldPosition(new Vector3()).add(new Vector3(0, 0, 1)))
       } else if (kind === 'box') {
@@ -741,7 +844,7 @@ export class FilmStage {
         const on = (at: number) => (k >= at ? 1 : 0)
         ;(this.sign.material as MeshStandardMaterial).emissiveIntensity = 0.06 + 1.1 * on(0.2)
         ;(this.windowGlow.material as MeshBasicMaterial).opacity = 0.04 + 0.55 * on(0.55)
-        this.rooms[0].intensity = MARKET_WALKIN.lights[0].intensity * (0.12 + 1.1 * on(0.9))
+        this.roomsOn[0] = 0.12 + 1.1 * on(0.9)
       } else if (kind === 'goods') {
         // the shelves filling, a place after a place, with the farm's goods (the market's own crowd of them)
         const fill = Math.floor(p.open * BAYS.length + 0.001)

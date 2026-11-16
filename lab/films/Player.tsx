@@ -11,6 +11,7 @@ import { ArrowCounterClockwise, SkipForward } from '../../src/ui/glyphs'
 import { PRESS, SPRING } from '../../src/ui/motion'
 import { lineAt, lint, timeline, type Film, type FxAt, type Line, type Timeline } from './format'
 import { Score } from './score'
+import { Talker } from './speak'
 import { FilmStage, lookOf, voicesOf, type FrameInfo } from './stage3d'
 import { lintSpeech, speechOf, wordsBy, type Speech } from './voice'
 import './Player.css'
@@ -19,9 +20,10 @@ import './Player.css'
 // what wraps it in the game's own look — the letterbox, the lines in the game's paper bubbles (the speaker's name in
 // the colour of their shirt, standing over where they are on the screen), a typed caption, the picture's effects (a flash, a
 // glint, coins, confetti), Skip from the first second and, at the end, the card with what the player got. Each line is
-// said aloud in its speaker's voice (./voice.ts), its words coming up in the bubble as they are said. Sound is the
-// game's: it starts with the film when the page has been touched (the game's Buy button is that touch); otherwise the
-// 🔊 button starts the film again with it.
+// read aloud in words, in its speaker's voice (./speak.ts, ./voice.ts), its words coming up in the bubble as they are
+// said. In the shots that look at people while a scene talks, the picture's edges darken (the stage lights the faces:
+// ./stage3d.ts). Sound is the game's: it starts with the film when the page has been touched (the game's Buy button is
+// that touch); otherwise the 🔊 button starts the film again with it.
 
 interface Beat {
   shot: number
@@ -50,7 +52,14 @@ export function FilmPlayer({ film, from = 0, sound = true, onClose }: { film: Fi
   const voices = useMemo(() => voicesOf(film), [film])
   const speech = useMemo(() => speechOf(tl, voices), [tl, voices])
   const byLine = useMemo(() => new Map(speech.flatMap((s) => (s.line === null ? [] : [[s.line, s] as const]))), [speech])
-  const score = useMemo(() => new Score(tl, speech, voices), [tl, speech, voices])
+  // (the cast in the order of who says most: the best voices go to them)
+  const talker = useMemo(() => {
+    const lines = (id: string) => speech.filter((s) => s.who === id).length
+    const cast = Object.entries(film.cast).map(([id, m]) => ({ id, female: lookOf(m.look).sex === 'f' }))
+    return new Talker(cast.sort((a, b) => lines(b.id) - lines(a.id)))
+  }, [film, speech])
+  const score = useMemo(() => new Score(tl, speech, voices, talker), [tl, speech, voices, talker])
+  const vignette = useRef<HTMLDivElement>(null)
   const view = useRef<FrameInfo | null>(null)
   const [beat, setBeat] = useState<Beat>({ shot: -1, line: null, said: 0, caption: null, ended: false })
   const [fx, setFx] = useState<Burst[]>([])
@@ -139,7 +148,8 @@ export function FilmPlayer({ film, from = 0, sound = true, onClose }: { film: Fi
     const ended = t >= tl.length - 1e-3
     const key = line ? tl.lines.indexOf(line) : -1
     const spoken: Speech | undefined = line ? byLine.get(key) : undefined
-    const said = !line ? 0 : reduced || !spoken ? 99 : wordsBy(spoken.u, t - line.t)
+    // (the words its speech voice has reached, or by the film's clock when none reads it)
+    const said = !line ? 0 : reduced || !spoken ? 99 : (score.words(spoken) ?? wordsBy(spoken.u, t - line.t))
     setBeat((b) =>
       b.shot === shot && (b.line?.key ?? -1) === key && b.said === said && b.caption === caption && b.ended === ended ? b : { shot, line: line ? { ...line.item, key } : null, said, caption, ended },
     )
@@ -151,6 +161,7 @@ export function FilmPlayer({ film, from = 0, sound = true, onClose }: { film: Fi
       } else setFx((list) => [...list.slice(-4), { fx: f, key }])
     }
     score.tick(t)
+    if (vignette.current) vignette.current.style.opacity = info.portrait.toFixed(2)
     const el = bubble.current
     const box = bubbleBox.current
     if (el && box) {
@@ -192,7 +203,8 @@ export function FilmPlayer({ film, from = 0, sound = true, onClose }: { film: Fi
   const who = beat.line ? film.cast[beat.line.who] : null
   const shirt = who ? colourOf(lookOf(who.look).shirt) : '#fff7e8'
   return (
-    <m.div className="film" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
+    // (any touch on the film lets a phone speak the lines: it speaks only once a touch has made it)
+    <m.div className="film" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }} onPointerDown={() => talker.unlock()}>
       <Canvas
         className="film-canvas"
         shadows
@@ -204,6 +216,7 @@ export function FilmPlayer({ film, from = 0, sound = true, onClose }: { film: Fi
       >
         <Stage tl={tl} speech={speech} now={now} reduced={reduced} onFrame={onFrame} />
       </Canvas>
+      <div ref={vignette} className="film-vignette" aria-hidden="true" />
       <div className={`film-bars${beat.ended ? ' out' : ''}`} aria-hidden="true">
         <i />
         <i />

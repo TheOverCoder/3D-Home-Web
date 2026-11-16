@@ -1,23 +1,25 @@
 import type { Mood, Timeline } from './format'
 
-// The characters' voices: each line "read aloud" in the way game characters talk (Animal Crossing, Banjo-Kazooie,
-// Reigns): not words, a babble made from the line's own text, so it has its rhythm — one sound for each syllable, a
-// hiss for an s, a click for a t, a pause at a comma, a rise at a question mark — in a voice of the character's own.
-// Nothing is recorded: the babble is a buzz shaped into vowels by three formant filters (./score.ts, `speak`).
+// The characters' voices. Each line is read aloud in words, in clear English, by the device's own speech voices
+// (./speak.ts: every phone has them, nothing is downloaded), each character with a voice of their own at their own
+// pitch and pace (`readingOf`). Where a device has no English voice (and offline, for measuring the score), a line is
+// said as game characters talk (Animal Crossing, Banjo-Kazooie, Reigns): a babble made from the line's own text — one
+// sound for each syllable, a hiss for an s, a click for a t, a pause at a comma, a rise at a question mark — a buzz
+// shaped into vowels by three formant filters (./score.ts, `speak`).
 //
 // A voice is a few numbers (`Voice`). The game's fixed characters have theirs (`VOICES`), anyone else gets one from their
-// look (a woman's is higher, a tall man's deeper), and a film may tune any of them in its cast (`Member.voice`). The same
-// line in the same voice always sounds the same (the babble's dice are the line's own letters), so a film never needs
-// recording again when a line changes: the text is the script and the voice.
+// look (a woman's is higher, a tall man's deeper), and a film may tune any of them in its cast (`Member.voice`). Nothing
+// is recorded, so a film never needs recording again when a line changes: the text is the script and the voice.
 //
-// Pure: `utter` turns a line into syllables on a clock; `level` and `wordsBy` say how loud the voice is and how many
-// words have been said at a moment, for the speaker's nods and the bubble's words.
+// Pure: `utter` turns a line into syllables on a clock (the voice's pace, the speaker's nods); `level` and `wordsBy` say
+// how loud the voice is and how many words have been said at a moment; `spokenOf` and `readingOf` are what a speech voice
+// is given.
 
 /** How someone sounds. */
 export interface Voice {
   /** the voice's middle pitch, Hz: a man about 110, a woman about 210 */
   pitch: number
-  /** syllables a second */
+  /** syllables a second (people talk at about 4.4, `SPEECH_PACE`; quick 5, slow under 4) */
   speed: number
   /** how big the head it comes out of is: the vowels' resonances are divided by it (a man 1, a woman 0.85, a big man 1.15) */
   size: number
@@ -32,16 +34,52 @@ export interface Voice {
 /** The game's fixed characters: the same voice in every film. */
 export const VOICES: Record<'manager' | 'contractor', Voice> = {
   /** a salesman: quick, a little high and nasal, up and down */
-  manager: { pitch: 128, speed: 7.4, size: 0.97, bright: 0.85, rasp: 0.04, swing: 0.9 },
+  manager: { pitch: 128, speed: 4.8, size: 0.97, bright: 0.85, rasp: 0.04, swing: 0.9 },
   /** a big man of few words: slow, deep, a rough edge */
-  contractor: { pitch: 84, speed: 4.6, size: 1.16, bright: 0.38, rasp: 0.32, swing: 0.3 },
+  contractor: { pitch: 84, speed: 3.9, size: 1.16, bright: 0.38, rasp: 0.32, swing: 0.3 },
 }
 
 /** A voice for someone with none of their own, from their look: a woman's higher and smaller, a tall one's deeper. */
 export function voiceOfLook(look: { sex?: 'f' | 'm'; height?: number }): Voice {
   const h = look.height ?? 1
   const f = look.sex === 'f'
-  return { pitch: (f ? 205 : 112) / h ** 1.5, speed: 5.8, size: (f ? 0.86 : 1) * h, bright: f ? 0.6 : 0.5, rasp: 0.05, swing: f ? 0.7 : 0.5 }
+  return { pitch: (f ? 205 : 112) / h ** 1.5, speed: 4.5, size: (f ? 0.86 : 1) * h, bright: f ? 0.6 : 0.5, rasp: 0.05, swing: f ? 0.7 : 0.5 }
+}
+
+/** How quickly a speech voice talks at its own rate, syllables a second: a voice's `speed` over it is the rate it reads
+ *  at. */
+export const SPEECH_PACE = 4.4
+
+const clamp = (x: number, a: number, b: number) => Math.min(b, Math.max(a, x))
+
+/** What a speech voice is given to read a line in a character's voice and mood: its pitch (the character's over a man's
+ *  or a woman's middle pitch, as the speech voice is one already) and its rate (their pace and the mood's, and as much
+ *  quicker as the line must be said to fit its time, `squeeze`). Kept within what is still clear. */
+export function readingOf(v: Voice, mood: Mood = 'flat', squeeze = 1, female = false) {
+  const d = DELIVERY[mood]
+  return {
+    pitch: clamp(((v.pitch * d.pitch) / (female ? 205 : 112)) ** 1.3, 0.5, 1.7),
+    rate: clamp((v.speed * d.speed * squeeze) / SPEECH_PACE, 0.75, 1.2),
+  }
+}
+
+/** A line as a speech voice is given it, and where each of its written words begins there (for the bubble's words as
+ *  they are said): a number as it is said ("1,498" fourteen ninety-eight, as money is counted), "%" percent. */
+export function spokenOf(text: string): { text: string; starts: number[] } {
+  let out = ''
+  const starts: number[] = []
+  for (const w of text.split(/\s+/).filter(Boolean)) {
+    if (out) out += ' '
+    starts.push(out.length)
+    out += w
+      .replace(/^(…|\.\.\.)/, '')
+      .replace(/’/g, "'")
+      .replace(/\d{1,3}(,\d{3})+|\d+/g, (d) => numberWords(Number(d.replace(/,/g, ''))).replace(/\bninty\b/g, 'ninety'))
+      .replace(/%/g, ' percent')
+      .replace(/&/g, 'and')
+      .replace(/…/g, '...')
+  }
+  return { text: out, starts }
 }
 
 /** How a mood changes the way a line is said: slower or quicker, higher or lower, more or less up and down. */
@@ -451,6 +489,9 @@ export interface Speech {
   /** film seconds */
   t: number
   who: string
+  /** what is said, and how */
+  text: string
+  mood?: Mood
   u: Utterance
   /** its line in the timeline's lines, or null for one with no bubble */
   line: number | null
@@ -461,11 +502,11 @@ export function speechOf(tl: Timeline, voices: Record<string, Voice>): Speech[] 
   const out: Speech[] = []
   tl.lines.forEach((l, i) => {
     const v = voices[l.item.who]
-    if (v) out.push({ t: l.t, who: l.item.who, u: utter(l.item.text, v, l.item.mood, l.end - l.t - 0.2), line: i })
+    if (v) out.push({ t: l.t, who: l.item.who, text: l.item.text, mood: l.item.mood, u: utter(l.item.text, v, l.item.mood, l.end - l.t - 0.2), line: i })
   })
   for (const c of tl.cues) {
     const v = c.item.voice ? voices[c.item.voice] : undefined
-    if (v && c.item.text) out.push({ t: c.t, who: c.item.voice!, u: utter(c.item.text, v, c.item.mood, 2.5), line: null })
+    if (v && c.item.text) out.push({ t: c.t, who: c.item.voice!, text: c.item.text, mood: c.item.mood, u: utter(c.item.text, v, c.item.mood, 2.5), line: null })
   }
   return out.sort((a, b) => a.t - b.t)
 }
