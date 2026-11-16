@@ -1,7 +1,7 @@
 // Levels (src/farm/state.ts gainXp, src/farm/XpChip.tsx): every thing you do on the farm is worth some XP
 // (XP_FOR in ./data), and XP makes levels. From level L to the next takes LEVELS.step · L, so each level takes longer
-// than the one before: level 2 comes at 15, level 5 at 150, level 10 at 675, the top level (LEVELS.max, 500) at
-// 1,871,250. Reaching level L pays LEVELS.reward · L coins, claimed in the level's card (the level chip opens it);
+// than the one before: level 2 comes at 30, level 5 at 300, level 10 at 1,350, the top level (LEVELS.max, 500) at
+// 3,742,500. Reaching level L pays LEVELS.reward · L coins, claimed in the level's card (the level chip opens it);
 // every fifth level brings a garment too (./outfit.ts). Pure: everything here reads numbers, nothing changes the farm.
 
 import { LEVELS } from './data'

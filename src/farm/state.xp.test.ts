@@ -214,18 +214,18 @@ describe('gainXp, the level and its coins', () => {
   })
 
   it('xpNow: the level, how far into it, and no coins waiting (a level reached paid its own)', () => {
-    gainXp('build', 20) // 100 XP: level 3 (45) passed, level 4 at 90
+    gainXp('build', 40) // 200 XP: level 3 (90) passed, level 4 at 180
     const now = xpNow()
-    expect(now.level).toBe(levelOf(100))
+    expect(now.level).toBe(levelOf(200))
     expect(now.level).toBe(4)
-    expect([now.points, now.into, now.need]).toEqual([100, 100 - xpAt(4), xpAt(5) - xpAt(4)])
+    expect([now.points, now.into, now.need]).toEqual([200, 200 - xpAt(4), xpAt(5) - xpAt(4)])
     expect(now.unpaid).toBe(0)
   })
 
   it('a level reached by play pays its coins by itself, every level once (three at once: all three), and no XP for them', () => {
     const coins = farm.coins
-    const before = gained(() => gainXp('build', 20))
-    expect(before).toEqual({ xp: 20 * XP_FOR.build, events: 1 })
+    const before = gained(() => gainXp('build', 40))
+    expect(before).toEqual({ xp: 40 * XP_FOR.build, events: 1 })
     const due = (2 + 3 + 4) * LEVELS.reward
     expect(farm.coins).toBe(coins + due)
     expect(farm.xp.paid).toBe(4)
@@ -238,14 +238,14 @@ describe('gainXp, the level and its coins', () => {
     expect(claimLevel()).toBe(0)
     gainXp('build')
     expect(farm.coins).toBe(coins + due)
-    // the next level (200 XP: level 5), its own coins only
+    // the next level (305 XP: level 5), its own coins only
     gainXp('build', 20)
     expect(levelOf(farm.xp.points)).toBe(5)
     expect(farm.coins).toBe(coins + due + levelReward(5))
   })
 
   it('claiming pays coins still waiting (set by hand: play pays its own), up to the level given, once', () => {
-    gainXp('build', 20) // level 4 reached, paid
+    gainXp('build', 40) // level 4 reached, paid
     farm.xp.paid = 1
     const coins = farm.coins
     expect(xpNow().unpaid).toBe(levelReward(2) + levelReward(3) + levelReward(4))
@@ -261,7 +261,7 @@ describe('gainXp, the level and its coins', () => {
   })
 
   it('a farm saved with levels reached and their coins not claimed (from when they waited for a Claim) is paid them as it loads, once', () => {
-    gainXp('build', 20)
+    gainXp('build', 40)
     const saved = savedNow()
     const coins = farm.coins
     // as such a farm was saved: level 4, paid up to level 1

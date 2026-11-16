@@ -161,6 +161,9 @@ The README has the overview; `tests/README.md` what each test guards.
 - A thing the player does gives XP: `gainXp(action, n, at)` once, in the lowest function every way to it goes through
   (`XP_FOR` in `data.ts`; a sale is worth its coins); never in `tick`, `goOn` or `cameBack`, and nothing that can be
   undone for free gives any. The crystals fly up from `at` (a panel's sale: from low in the middle).
+- The pace is guarded: `src/sim` plays a new farm with no screen (a good player's list of priorities, the game's own
+  functions) and `PACE` (`src/sim/targets.ts`, held by `pace.test.ts`) bounds the minutes to each level and the waits
+  of the first hour; a new feature's numbers (prices, times, XP) are tuned against `npm run sim`.
 - An upgrade bought a step at a time is a row in `LADDERS` (one buy, `buyLadder`; one card, `LadderCard`; its level in
   `farm.ladders`), with `say(k)` for what step k gives.
 - The daily gift (`src/farm/daily.ts`, `farm.daily`; its card `DailyCard.tsx`, its watcher `DailyPanel.tsx`): once a

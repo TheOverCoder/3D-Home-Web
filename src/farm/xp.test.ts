@@ -18,15 +18,15 @@ function valid(xp: Xp) {
 describe('the curve', () => {
   it('level 1 at 0, and from level L to the next takes LEVELS.step · L', () => {
     expect(xpAt(1)).toBe(0)
-    expect(xpAt(2)).toBe(15)
-    expect(xpAt(5)).toBe(150)
-    expect(xpAt(10)).toBe(675)
+    expect(xpAt(2)).toBe(30)
+    expect(xpAt(5)).toBe(300)
+    expect(xpAt(10)).toBe(1350)
     for (let L = 1; L < TOP; L++) expect(xpAt(L + 1) - xpAt(L)).toBe(LEVELS.step * L)
   })
 
-  it('500 levels, each harder to reach than the one before; the top one at 1,871,250 XP', () => {
+  it('500 levels, each harder to reach than the one before; the top one at 3,742,500 XP', () => {
     expect(TOP).toBe(500)
-    expect(xpAt(TOP)).toBe(1_871_250)
+    expect(xpAt(TOP)).toBe(3_742_500)
     for (let L = 2; L < TOP; L++) expect(xpAt(L + 1) - xpAt(L)).toBeGreaterThan(xpAt(L) - xpAt(L - 1))
   })
 
@@ -50,8 +50,8 @@ describe('the curve', () => {
   })
 
   it('the progress of a level: the points into it and to the next; at the top, a full bar and no next', () => {
-    expect(levelProgress(0)).toEqual({ level: 1, into: 0, need: 15, top: false })
-    expect(levelProgress(xpAt(5) + 7)).toEqual({ level: 5, into: 7, need: 75, top: false })
+    expect(levelProgress(0)).toEqual({ level: 1, into: 0, need: 30, top: false })
+    expect(levelProgress(xpAt(5) + 7)).toEqual({ level: 5, into: 7, need: 150, top: false })
     expect(levelProgress(xpAt(TOP))).toEqual({ level: TOP, into: 1, need: 1, top: true })
     expect(levelProgress(MAX)).toEqual({ level: TOP, into: 1, need: 1, top: true })
   })
@@ -61,8 +61,8 @@ describe('the curve', () => {
     expect(levelOf(NaN)).toBe(1)
     expect(levelOf(-1)).toBe(1)
     expect(levelOf(-Infinity)).toBe(1)
-    expect(levelOf(14.99)).toBe(1)
-    expect(levelOf(15.5)).toBe(2)
+    expect(levelOf(29.99)).toBe(1)
+    expect(levelOf(30.5)).toBe(2)
     expect(levelOf(MAX)).toBe(TOP)
     for (const p of [2 ** 53, 2 ** 60, 1e300, Number.MAX_VALUE, Infinity]) expect(levelOf(p), String(p)).toBe(TOP)
     expect(performance.now() - t0).toBeLessThan(1000)

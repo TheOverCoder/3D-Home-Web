@@ -587,8 +587,10 @@ export const NAMES = ['Maya', 'Noa', 'Daniel', 'Yael', 'Omer', 'Tamar', 'Eitan',
 export const XP_FOR = { plant: 1, water: 1, harvest: 2, collect: 1, make: 2, build: 5, goal: 5, shop: 25, order: 5, home: 40 } as const
 export type XpAction = keyof typeof XP_FOR
 /** From level L to the next takes `step · L` XP, so each level takes longer than the one before; reaching level L pays
- *  `reward · L` coins (claimed in the level's card). `max` is the top level: past it XP still counts, the level stays. */
-export const LEVELS = { step: 15, reward: 10, max: 500 } as const
+ *  `reward · L` coins (claimed in the level's card). `max` is the top level: past it XP still counts, the level stays.
+ *  `step` is set against the pace a new farm is held to (`npm run sim`, PACE in src/sim/targets.ts: at 15 a good
+ *  player reached level 15 in about 34 minutes; at 30, in about 72). */
+export const LEVELS = { step: 30, reward: 10, max: 500 } as const
 
 // ───────────────────────────── the supermarket ─────────────────────────────
 
