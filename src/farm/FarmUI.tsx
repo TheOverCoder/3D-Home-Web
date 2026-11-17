@@ -2,6 +2,7 @@ import { BuyDecor, DecorShop } from './DecorShop'
 import { GoalsPanel } from './GoalsPanel'
 import { AwayPanel, AwayWatcher } from './AwayPanel'
 import { DailyPanel, DailyWatcher } from './DailyPanel'
+import { StepHint } from './FirstSteps'
 import { LevelUp } from './XpChip'
 import { LevelPanel } from './LevelPanel'
 import { WardrobePanel } from '../home/WardrobePanel'
@@ -556,6 +557,7 @@ export function FarmUI() {
       <AwayWatcher />
       <NewsWatcher />
       <DailyWatcher />
+      <StepHint />
     </>
   )
 }

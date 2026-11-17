@@ -1,15 +1,13 @@
 import { useEffect, useState } from 'react'
 import { farmSound, uiClick } from '../audio/sound'
 import { playGesture } from '../lib/gestures'
-import { allInteractables, groundDistance, interactable } from '../lib/interaction'
-import { playerState } from '../lib/playerState'
 import { useWalk, walkTo } from '../lib/route/walking'
 import { useHome } from '../store'
 import type { OfficeUpgradeId, ProduceId } from './data'
 import { OrdersBoard } from './orderBoard/OrdersBoard'
 import { officeRows, type OrdersActions, type OrdersView } from './orderBoard/view'
-import { nearestPlace, placesOf } from './orderPlace'
-import { buyOffice, contractorHere, declineOrder, farm, fillOrder, orderWaitSeconds, sendOrder, useFarm } from './state'
+import { buyOffice, declineOrder, farm, fillOrder, orderWaitSeconds, sendOrder, useFarm } from './state'
+import { placeFor } from './walkTargets'
 
 // The order board on the office's computer (the action button at the office opens it): the designed board
 // (./orderBoard/OrdersBoard.tsx, which draws an OrdersView and calls OrdersActions) fed with the farm's, with the game's
@@ -62,24 +60,6 @@ const actions: OrdersActions = {
     }
     return ok
   },
-}
-
-/** Where to walk to for a good: the nearest place it is made with it ready to take, else the nearest (null: none on
- *  this map; a building material: the contractor, while he is in). */
-export function placeFor(good: ProduceId): string | null {
-  const from = playerState.position
-  return nearestPlace(
-    placesOf(
-      good,
-      farm.beds,
-      allInteractables().map((d) => d.id),
-      contractorHere(),
-    ).map((id) => {
-      const def = interactable(id)!
-      const r = def.ready?.()
-      return { id, ready: !!r && r.item === good, d: groundDistance(from.x, from.z, def.position, def.box) }
-    }),
-  )
 }
 
 /** "Show me": the board closes (a panel open would stop the walk at once) and you walk there, as from the compass. A

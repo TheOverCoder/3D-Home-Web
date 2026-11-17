@@ -2337,6 +2337,8 @@ export const stepsBusy = () => !stepsQuiet && !farm.firstSteps.over
 /** The steps passed and not shown yet (the hint's ✓ takes them). */
 const passedNow: StepDef[] = []
 export const takePassed = () => passedNow.splice(0)
+/** The steps passed and not taken yet, left where they are (the hint shows the last of them until it takes them). */
+export const passedWaiting = (): readonly StepDef[] => passedNow
 /** Skipped from the hint: over, nothing more paid. */
 export function skipSteps() {
   farm.firstSteps = skipped(farm.firstSteps)
