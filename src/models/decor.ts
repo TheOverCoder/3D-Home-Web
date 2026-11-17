@@ -1,5 +1,5 @@
 import { Matrix4, Quaternion, Vector3 } from 'three'
-import { blob, ellipsoid, fbm3, lathe, loft, merge, noise3, random, rgb, Shape, smoothstep, squircle, tube, type Ring, type SculptMaterialOptions, type V3 } from '../lib/sculpt'
+import { blob, ellipsoid, fbm3, lathe, loft, merge, noise3, random, rgb, Shape, smoothstep, spin, squircle, tube, type Ring, type SculptMaterialOptions, type V3 } from '../lib/sculpt'
 import type { DecorKind } from '../farm/decor'
 import { scarecrowModel } from './scarecrows'
 import { grain, mix, slab, type Structure } from './structures'
@@ -722,22 +722,33 @@ function birdbath(): Structure<'stone' | 'water'> {
   }
 }
 
+/** The well's wall, [radius, height] round the outside of its cross-section: up the outside, over the rim of flat
+ *  stones and down the shaft to the water. It turns back on itself, so it is turned with `spin`, every ring in one frame
+ *  (`lathe` turns each ring with its spine: where the profile turns down, its rings flip, and the band between twists). */
+export const WELL_WALL: [number, number][] = [
+  [0.6, 0],
+  [0.6, 0.6],
+  [0.63, 0.625],
+  [0.63, 0.69],
+  [0.6, 0.715],
+  [0.47, 0.715],
+  [0.45, 0.69],
+  [0.45, 0.3],
+  [0, 0.3],
+]
+/** The well's bucket, the same way: up its staves outside, over the rim and down inside to its floor. */
+export const WELL_BUCKET: [number, number][] = [
+  [0, 0.79],
+  [0.08, 0.79],
+  [0.098, 0.96],
+  [0.088, 0.965],
+  [0.072, 0.815],
+  [0, 0.815],
+]
+
 function well(): Structure<'stone' | 'wood' | 'roof' | 'water'> {
   // the wall: courses of stone round a shaft, a rim of flat stones on top; dark down the shaft
-  const stone = lathe(
-    [
-      [0.6, 0],
-      [0.6, 0.6],
-      [0.63, 0.625],
-      [0.63, 0.69],
-      [0.6, 0.715],
-      [0.47, 0.715],
-      [0.45, 0.69],
-      [0.45, 0.3],
-      [0, 0.3],
-    ],
-    { seg: 20, steps: 1 },
-  )
+  const stone = spin(WELL_WALL, 20)
     .paint((x, y, z) => {
       const r = Math.hypot(x, z)
       const inside = r < 0.455 && y < 0.7
@@ -781,17 +792,7 @@ function well(): Structure<'stone' | 'wood' | 'roof' | 'water'> {
   ).paint(() => IRON, 0)
   // the bucket hanging on its rope above the shaft: staves with two iron hoops, a bail
   const bz = 0.055
-  const bucket = lathe(
-    [
-      [0, 0.79],
-      [0.08, 0.79],
-      [0.098, 0.96],
-      [0.088, 0.965],
-      [0.072, 0.815],
-      [0, 0.815],
-    ],
-    { seg: 12, steps: 1 },
-  )
+  const bucket = spin(WELL_BUCKET, 12)
     .paint((_x, y) => (y < 0.82 ? mix(WOOD, WOOD_DARK, 0.6) : WOOD), 0)
     .pattern((_x, y) => (Math.abs(y - 0.83) < 0.012 || Math.abs(y - 0.935) < 0.012 ? 1 : 0), IRON)
     .place([0, 0, bz])
