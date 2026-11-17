@@ -1,4 +1,5 @@
 import { isAnimal, lookOf, voicesOf } from './cast'
+import { lintStage } from './checks'
 import { lint, timeline, type Film, type Timeline } from './format'
 import { Score } from './score'
 import { Talker } from './speak'
@@ -113,9 +114,10 @@ export class FilmRun {
     return () => void this.restarts.delete(f)
   }
 
-  /** What the film breaks of lab/FILM.md's countable rules (its lines' lengths and times, its shots, its names). */
+  /** What the film breaks of lab/FILM.md's countable rules (its lines' lengths and times, its shots, its names), and of
+   *  its set's (./checks.ts: walls, people through each other, someone framed who is not there). */
   problems() {
-    return [...lint(this.film), ...lintSpeech(this.speech)]
+    return [...lint(this.film), ...lintSpeech(this.speech), ...lintStage(this.film)]
   }
 
   /** Its sound stopped (the film closed). */

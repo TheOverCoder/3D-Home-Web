@@ -5,6 +5,8 @@ import { pauseMusic, playMusic, useMusic } from '../audio/music'
 import { duckAmbient } from '../audio/sound'
 import { farm } from '../farm/state'
 import { debugSet } from '../lib/debug'
+import { loadSolids } from '../lib/sculpt'
+import { envIntensity } from '../scene/Lighting'
 import { loadFilmOverlay } from '../ui/FilmLayer'
 import { askFilm, filmAsked, onFilmAsked, storyControls, storyStep, takeFilm, useStory, type FilmAsk, type FilmId, type StoryEvent } from './films'
 import type { FilmRun, FrameInfo } from './run'
@@ -154,12 +156,15 @@ export function StoryFilm() {
       const asked = performance.now()
       const stale = () => playing !== p || p.token !== token
       try {
-        const [story] = await Promise.all([import('./story'), loadFilmOverlay(), wait(STORY_FADE_MS + 20)])
+        // (the tools' films build their props with the solid engine: loaded with the farm, waited for here)
+        const [story] = await Promise.all([import('./story'), loadFilmOverlay(), wait(STORY_FADE_MS + 20), loadSolids()])
         if (stale()) return
         timing.loaded = Math.round(performance.now() - asked)
         if (!p.run) p.run = new story.FilmRun(story.FILMS[p.ask.id])
         if (!p.stage) {
           p.stage = new story.FilmStage(p.run.tl, p.run.speech, farm.outfit)
+          // (the game's own light all round: its environment, as strong as the game has it)
+          p.stage.environment(p.scene, get().scene.environment, envIntensity())
           p.scene.add(p.stage.root)
           p.scene.background = p.stage.background
           p.scene.fog = p.stage.fog

@@ -1,4 +1,5 @@
 import type { DayPhase, ToolKind } from '../farm/data'
+import type { ToolStyle } from '../models/tools'
 import type { Voice } from './voice'
 
 // A film is data: who is in it (looks from the game's people engine), the scenes it plays in (a place the game has, its
@@ -18,8 +19,9 @@ export type Look = 'player' | 'manager' | 'contractor' | { roll: number } | { he
 /** The animals that have a tool: the farm's own (src/farm/data.ts, TOOLS). */
 export type { ToolKind }
 
-/** A place to stand: a named mark of the set (./set.ts: 'desk', 'boss', 'door'…) or a point, metres on the ground. */
-export type Spot = string | { x: number; z: number; heading?: number }
+/** A place to stand: a named mark of the set (./set.ts: 'desk', 'boss', 'door'…) or a point, metres on the ground (`y`:
+ *  up on something — a hen in a nest hops up to it). */
+export type Spot = string | { x: number; z: number; heading?: number; y?: number }
 
 export interface Member {
   /** the name on their lines */
@@ -60,8 +62,39 @@ export interface Cam {
   shake?: number
 }
 
-/** The poses the player knows (./poses.ts). A pose holds until the next; walking moves the legs under any of them. */
-export type Pose = 'stand' | 'talk' | 'laugh' | 'point' | 'snap' | 'carry' | 'surprise' | 'count' | 'shake' | 'wave' | 'shrug' | 'slump' | 'cheer' | 'box' | 'cool' | 'type' | 'freeze'
+/** The poses the player knows (./poses.ts). A pose holds until the next; walking moves the legs under any of them (a
+ *  fast walk is a run). An animal acts with its body: `surprise` is its head up, still (alert); `slump` its head hung;
+ *  `kick` a cow's hind leg thrown back; anything else, grazing and looking about. */
+export type Pose =
+  | 'stand'
+  | 'talk'
+  | 'laugh'
+  | 'point'
+  | 'snap'
+  | 'carry'
+  | 'surprise'
+  | 'count'
+  | 'shake'
+  | 'wave'
+  | 'shrug'
+  | 'slump'
+  | 'cheer'
+  | 'box'
+  | 'cool'
+  | 'type'
+  | 'freeze'
+  // bent down to set something down or pick it up; hands on the hips (waiting, sure of oneself); a hand over the eyes;
+  // scratching the head (puzzled); squatting low (milking, peering); arms up in front of the face (something flies at
+  // them); clapping; creeping on bent knees; (an animal's) a kick
+  | 'stoop'
+  | 'hips'
+  | 'facepalm'
+  | 'scratch'
+  | 'crouch'
+  | 'flinch'
+  | 'clap'
+  | 'sneak'
+  | 'kick'
 
 /** How a line is said: its bubble's look, and a little of the speaker's body. */
 export type Mood = 'flat' | 'smug' | 'shock' | 'warm' | 'sad' | 'cool'
@@ -82,31 +115,38 @@ export interface Act {
   /** walk there (a path: one spot after another), at `pace` m/s */
   to?: Spot | Spot[]
   pace?: number
-  /** turn to face someone (a cast id) or a heading in degrees */
+  /** turn to face someone (a cast id), a thing, a prop, a mark, or a heading in degrees; with `to`, once arrived */
   face?: string | number
   /** put on stage at a spot at once (between scenes), or take off it */
   put?: Spot
   off?: boolean
+  /** a sheep's fleece now (0 just shorn … 1 full), grown or cut over `over` seconds (0.5) */
+  wool?: number
+  over?: number
 }
 
-export type PropKind = 'case' | 'box' | 'banner' | 'screen' | 'lights' | 'goods' | 'crate' | 'tool'
+export type PropKind = 'case' | 'box' | 'banner' | 'screen' | 'lights' | 'goods' | 'crate' | 'tool' | 'piece' | 'nestbox'
 
 /** A prop: the briefcase, the boss's box, the banner over the sign, the computer's screen, the shop's lights, the crate,
  *  the tool. */
 export interface PropAct {
   at: number
   prop: string
-  /** who holds it (a cast id) or where it stands (a spot) */
+  /** who holds it (a cast id), where it stands (a spot), or `'down'`: set down on the ground in front of whoever held it */
   on?: string | Spot
   /** how open (a lid, a banner unrolled, lights on, shelves filled): 0..1, eased over `over` seconds (0.45) */
   open?: number
   over?: number
-  /** what it shows (the screen: 'sale' or 'yours'; a tool: how many goods are in it, or 'ground', 'tipped') */
+  /** what it shows (the screen: 'sale' or 'yours'; a tool: how many goods are in it; a piece alone: 'tipped', 'head') */
   show?: string
+  /** thrown: it flies in an arc, tumbling, from where it is to a spot (landing there) or to a cast member (landing on
+   *  their head, or in their hands), taking `over` seconds (0.6) */
+  to?: string | Spot
 }
 
-/** Music the player composes as it plays (./score.ts), and stings. */
-export type Track = 'muzak' | 'tension' | 'beat'
+/** Music the player composes as it plays (./score.ts), and stings: the shop's muzak, a tension pulse, a boom-bap beat,
+ *  and a sneak (plucked strings on tiptoe: someone creeping up). */
+export type Track = 'muzak' | 'tension' | 'beat' | 'sneak'
 export type Sting =
   | 'thud'
   | 'glow'
@@ -123,6 +163,12 @@ export type Sting =
   | 'door'
   | 'level'
   | 'swell'
+  // a cartoon's: a cork's pop (a piece clicks into place, an egg), a spring (a hop), a slide whistle down (a fall, a
+  // flop), a bonk (something hits a head)
+  | 'pop'
+  | 'boing'
+  | 'slide'
+  | 'bonk'
   // the animals' own sounds, the game's (src/audio/sound.ts): a hen, the rooster, a cow, a sheep, milking, shearing
   | 'cluck'
   | 'crow'
@@ -143,8 +189,15 @@ export interface Cue {
 }
 
 /** What the picture does over the scene: a white flash, a glint across the screen, coins and confetti, a gold glow,
- *  sparkles, or one of the game's own chips popping up in the middle (a price: `art` and `text`). */
-export type Fx = 'flash' | 'glint' | 'coins' | 'confetti' | 'glow' | 'sparkle' | 'tag'
+ *  sparkles, one of the game's own chips popping up in the middle (a price: `art` and `text`), or an iris closing on the
+ *  shot's first subject (a cartoon's end: it stops small round them, and shuts as the film ends). */
+export type ScreenFx = 'flash' | 'glint' | 'coins' | 'confetti' | 'glow' | 'sparkle' | 'tag' | 'iris'
+/** What happens in the world, at a cast member, a prop or a thing (`on`): a puff of dust on the ground, feathers
+ *  flying, a splash of milk, tufts of wool, stars round a head, a pop of sparkles (./sparks.ts: drawn in the scene, so
+ *  they stay where they happened as the camera moves). */
+export type WorldFx = 'dust' | 'feathers' | 'splash' | 'tufts' | 'stars' | 'pop'
+export type Fx = ScreenFx | WorldFx
+export const WORLD_FX: readonly WorldFx[] = ['dust', 'feathers', 'splash', 'tufts', 'stars', 'pop']
 
 export interface FxAt {
   at: number
@@ -152,6 +205,8 @@ export interface FxAt {
   /** a chip's picture (src/ui/art.ts) and words */
   art?: string
   text?: string
+  /** a world effect's place: a cast id, a prop or a thing of the set (where it is at that moment) */
+  on?: string
 }
 
 export interface Shot {
@@ -216,10 +271,14 @@ export interface Film {
   cast: Record<string, Member>
   /** the animals in its pen (its cast's `{ herd: i }`), and whose tool its `tool` props are */
   herd?: ToolKind
+  /** the tool's look (src/models/tools.ts: a, b or c, the skin the player chose; left out: a) */
+  style?: ToolStyle
   /** the props and where they start: the briefcase, the boss's box, the banner, the screen, the shop's lights and goods;
    *  a wooden crate (carried like the box, `open` its sides falling away); the herd's tool (`open` its pieces rising into
-   *  place; `show` what is in it, a number of goods, or the bucket alone before it hangs: 'ground', 'tipped') */
-  props: Record<string, { kind: PropKind; on?: string | Spot; open?: number; show?: string }>
+   *  place; `show` what is in it, a number of goods); one of the tool's pieces alone (`piece`: its id in
+   *  src/models/tools.ts — the pail, the shears; `show` 'tipped' knocked over, 'head' upside down on its holder's head);
+   *  the hens' old nest box (`show` its eggs) */
+  props: Record<string, { kind: PropKind; on?: string | Spot; open?: number; show?: string; piece?: string }>
   scenes: Scene[]
   end: EndCard
 }
@@ -247,7 +306,8 @@ export interface Timeline {
   length: number
   shots: ShotAt[]
   lines: (Timed<Line> & { end: number })[]
-  acts: Timed<Act>[]
+  /** every act, with the place of the scene it is in (a walk goes round that set's solids) */
+  acts: (Timed<Act> & { place: Scene['place'] })[]
   props: Timed<PropAct>[]
   cues: Timed<Cue>[]
   fx: Timed<FxAt>[]
@@ -276,7 +336,7 @@ export function timeline(film: Film): Timeline {
       pieces.push({ t, w, k })
       shots.push({ start: t, end: t + shot.len, scene, shot, index: shots.length })
       for (const l of shot.say ?? []) lines.push({ t: t + l.at, end: t + l.at + (l.hold ?? readTime(l.text)), item: l })
-      for (const a of shot.do ?? []) acts.push({ t: w + a.at * k, item: a })
+      for (const a of shot.do ?? []) acts.push({ t: w + a.at * k, item: a, place: scene.place })
       for (const p of shot.props ?? []) props.push({ t: w + p.at * k, item: p })
       for (const c of shot.hear ?? []) cues.push({ t: t + c.at, item: c })
       for (const f of shot.fx ?? []) fx.push({ t: t + f.at, item: f })
@@ -310,7 +370,8 @@ export function lineAt(tl: Timeline, t: number) {
 
 /** What a film breaks of FILM.md's rules that can be counted: lines over 38 characters, a line that runs past the
  *  next one or past its shot's scene, shots shorter than half a second or longer than 6, a film over 45 s, a cast id
- *  or prop no one declared. Empty when it keeps them. */
+ *  or prop no one declared, a jump cut, an effect on no one, an iris before the last shot. Empty when it keeps them.
+ *  (What needs the set — a walk through a wall, someone framed who is not there — is ./checks.ts, `lintStage`.) */
 export function lint(film: Film): string[] {
   const tl = timeline(film)
   const out: string[] = []
@@ -331,6 +392,22 @@ export function lint(film: Film): string[] {
     for (const who of [s.shot.cam.on].flat()) if (!film.cast[who] && !film.props[who] && !THINGS.includes(who)) out.push(`shot ${s.index + 1} frames "${who}": no one and nothing by that name`)
     if (s.scene.place === 'pen' && !film.herd) out.push(`shot ${s.index + 1} is in the pen: the film has no herd`)
   }
+  // a cut to the same frame again (the same subjects, size and angle, from less than 30° away) is a jump cut
+  for (let i = 1; i < tl.shots.length; i++) {
+    const [a, b] = [tl.shots[i - 1], tl.shots[i]]
+    if (a.scene !== b.scene) continue
+    const same = (x: Cam, y: Cam) =>
+      [x.on].flat().join() === [y.on].flat().join() &&
+      (x.size ?? 'medium') === (y.size ?? 'medium') &&
+      (x.angle ?? 'eye') === (y.angle ?? 'eye') &&
+      (typeof x.from === 'number' && typeof y.from === 'number' ? Math.abs(x.from - y.from) < 30 : x.from === y.from)
+    if (same(a.shot.cam, b.shot.cam)) out.push(`shot ${i + 1} is shot ${i} again (a jump cut): change its size or angle, or move it 30°`)
+  }
+  const named = (id: string) => !!film.cast[id] || !!film.props[id] || THINGS.includes(id)
+  for (const f of tl.fx) {
+    if (WORLD_FX.includes(f.item.fx as WorldFx) && (!f.item.on || !named(f.item.on))) out.push(`a ${f.item.fx} at ${f.t.toFixed(1)} s on "${f.item.on ?? ''}": no one and nothing by that name`)
+    if (f.item.fx === 'iris' && f.t < tl.shots[tl.shots.length - 1].start) out.push(`the iris closes at ${f.t.toFixed(1)} s: only in the last shot`)
+  }
   for (const a of tl.acts) if (!film.cast[a.item.who]) out.push(`an act of "${a.item.who}": no one by that name`)
   for (const p of tl.props) if (!film.props[p.item.prop]) out.push(`a prop "${p.item.prop}" the film does not have`)
   for (const m of Object.values(film.cast)) if (typeof m.look === 'object' && 'herd' in m.look && !film.herd) out.push(`${m.name} is of a herd: the film has none`)
@@ -344,4 +421,4 @@ export function lint(film: Film): string[] {
 }
 
 /** The things of a set a camera can frame (and any of the film's props, by its id). */
-export const THINGS = ['shop', 'sign', 'door', 'screen', 'desk', 'case', 'till', 'box', 'shelves', 'aisle', 'pen', 'gate', 'post', 'nests']
+export const THINGS = ['shop', 'sign', 'door', 'screen', 'desk', 'case', 'till', 'box', 'shelves', 'aisle', 'pen', 'gate', 'post', 'nests', 'stand']

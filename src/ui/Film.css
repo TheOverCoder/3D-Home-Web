@@ -18,6 +18,17 @@
    player sets its opacity, at once on each cut) */
 .film-vignette { position: absolute; inset: 0; z-index: 1; opacity: 0; pointer-events: none; background: radial-gradient(ellipse 75% 70% at 50% 46%, transparent 52%, rgba(8, 6, 4, 0.34) 78%, rgba(8, 6, 4, 0.62) 100%); }
 .film.game:not(.step-film) .film-vignette { visibility: hidden; }
+/* the picture's grade: the time of day's light washed over it, warm from where the sun is and cool in the shade (soft
+   light: it tints, never greys); and an iris closing on the hero at a cartoon's end (the player sets its middle and size
+   every frame) */
+.film-grade { position: absolute; inset: 0; z-index: 1; pointer-events: none; mix-blend-mode: soft-light; opacity: 0.55; }
+.film-grade[data-light='morning'] { background: linear-gradient(160deg, rgba(255, 196, 120, 0.75), rgba(255, 226, 180, 0.2) 45%, rgba(60, 90, 140, 0.35)); }
+.film-grade[data-light='noon'] { background: linear-gradient(170deg, rgba(255, 238, 200, 0.5), transparent 50%, rgba(40, 70, 90, 0.3)); }
+.film-grade[data-light='evening'] { background: linear-gradient(165deg, rgba(255, 150, 80, 0.85), rgba(255, 120, 110, 0.25) 50%, rgba(70, 40, 110, 0.45)); }
+.film-grade[data-light='night'] { background: linear-gradient(180deg, rgba(60, 90, 170, 0.45), transparent 55%, rgba(255, 170, 90, 0.25)); }
+.film.game:not(.step-film) .film-grade { visibility: hidden; }
+.film-iris { position: absolute; inset: 0; z-index: 2; pointer-events: none; visibility: hidden; --ix: 50%; --iy: 50%; --ir: 100vmax;
+  background: radial-gradient(circle at var(--ix) var(--iy), transparent var(--ir), #000 calc(var(--ir) + 1.5px)); }
 
 /* the letterbox: in as the film starts, out for the end card */
 .film-bars i { position: absolute; left: 0; right: 0; z-index: 2; background: #000; pointer-events: none; transition: transform 0.6s var(--ease-sheet); animation: film-bar-in 0.7s var(--ease-sheet) both; }

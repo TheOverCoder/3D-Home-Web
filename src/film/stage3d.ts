@@ -25,7 +25,9 @@ import {
   Vector2,
   Vector3,
   type BufferGeometry,
+  type Scene,
   type ShaderMaterial,
+  type Texture,
   type WebGLRenderer,
 } from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
@@ -47,8 +49,9 @@ import { surface } from '../lib/proceduralTextures'
 import { tree } from '../scene/flora'
 import { shotCamera, type Subject } from './camera'
 import { isAnimal, lookOf } from './cast'
-import { lineAt, shotAt, type Timeline } from './format'
+import { lineAt, shotAt, WORLD_FX, type ShotAt, type Size, type Timeline, type WorldFx } from './format'
 import { bodyOf, PenSet, type Animal } from './pen'
+import { Sparks, type Burst } from './sparks'
 import { poseRig } from './poses'
 import { looksAtFarm, PEN_GROVE, PEN_MIDDLE, THINGS_AT, WILD } from './set'
 import { memberAt, propAt, type MemberNow, type PropNow } from './stage'
@@ -64,7 +67,10 @@ import { speakingAt, type Speech } from './voice'
 // a farm that is not theirs (the game plays it on this stage too, on its own renderer: ./StoryFilm.tsx). While a
 // scene talks, the shots on people have a light of their own (a film's key and rim, `portrait`). `frame(t)` puts
 // everything where the film has it at t; it keeps no state of its own between frames but what it built, so any moment
-// can be drawn at once.
+// can be drawn at once. What a shot needs of the set is decided once for the whole shot, from where its camera stands at
+// its start, middle and end: the walls and fence sections left out of it, and outdoors where the sun stands (cheated round
+// the subjects as a film's crew does: a wide shot lit from over the camera's shoulder, a near one from behind them, the
+// key on their faces) — so nothing comes and goes while a shot runs.
 
 // ───────────────────────────── light ─────────────────────────────
 
@@ -104,6 +110,23 @@ const PORTRAIT: Record<DayPhase, { key: string; keyLux: number; rim: string; rim
  *  high, a narrow cone that ends just past the faces (it must not light the set). */
 const KEY = { far: 2.3, up: 0.6, wide: 0.6, reach: 2.4 }
 const RIM = { far: 1.5, up: 0.95, wide: 0.3, reach: 1.7 }
+
+/** The sun's height over the horizon in each time of day when a shot outdoors places it (degrees). */
+const SUN_HIGH: Record<DayPhase, number> = { morning: 26, noon: 46, evening: 17, night: 34 }
+/** Where the sun stands for each size of shot outdoors: degrees round the subjects from the camera (0 behind the camera,
+ *  180 behind them) — a wide shot lit from over the camera's shoulder (the place reads), a full one from the side, a
+ *  near one from behind (a line of light round them; the key lights their faces). */
+const SUN_ROUND: Record<Size, number> = { wide: 50, full: 105, medium: 140, close: 145, extreme: 145 }
+/** Half the sun's shadow box round a shot's subjects (m): the nearer the shot, the sharper its shadows. */
+const SHADOW_BOX: Record<Size, number> = { extreme: 5, close: 5, medium: 6, full: 8, wide: 14 }
+
+/** What a shot needs of the set, the same from its first frame to its last: the market's walls and the pen's fence
+ *  sections left out (between its camera and what it films), and outdoors where the sun stands. */
+interface ShotSet {
+  walls: number[]
+  fence: number[]
+  sun: { at: Vector3; from: Vector3; box: number } | null
+}
 
 // ───────────────────────────── pictures on the set ─────────────────────────────
 
@@ -415,8 +438,14 @@ export interface FrameInfo {
   portrait: number
   /** the speaker's head on the screen (px from the top left), when on it */
   speaker: { x: number; y: number } | null
+  /** the shot's first subject on the screen (px from the top left): where an iris closes */
+  focus: { x: number; y: number } | null
+  /** the scene's time of day (the picture's grade) */
+  light: DayPhase
   /** the camera looks across the lane at the farm (which in the lab is not the player's): never in a film */
   farm: boolean
+  /** someone (not filmed) standing between the camera and the shot's first subject, hiding it: never in a film */
+  blocked: string | null
 }
 
 const HEAD = PERSON.hipsY + PERSON.headY + 0.02
@@ -442,6 +471,9 @@ export class FilmStage {
   private people: Parts
   private hemi = new HemisphereLight()
   private sun = new DirectionalLight()
+  /** the light all round (the game's own environment: its metals have a sky to show), how strong at noon, and the scene
+   *  it lights (null: none, the sky's fill makes up for it) */
+  private env: { scene: Scene | null; texture: Texture | null; noon: number } = { scene: null, texture: null, noon: 0 }
   /** the sky's fill and the sun at the scene's time of day, before a talking scene steps them back */
   private fill = 0
   private sunlight = 0
@@ -467,8 +499,11 @@ export class FilmStage {
   private box = cardboardBox()
   private light = ''
   private head = new Vector3()
-  private hand = new Vector3()
   private dir = new Vector3()
+  /** each shot's set (by shot and screen shape), worked out at its first frame */
+  private sets = new Map<string, ShotSet>()
+  /** the world's effects and the air's motes */
+  private sparks = new Sparks()
 
   /** `outfit`: what the player wears in it (the game's save; the lab's, the one every farm starts in) */
   constructor(
@@ -550,9 +585,10 @@ export class FilmStage {
       this.cast.push({ id, rig, hipsY: rig.hips.position.y, seed: i * 1.7 + 0.4 })
     })
     if (film.herd && places.has('pen')) {
-      this.pen = new PenSet(film.herd, film.props, this.animals.length)
+      this.pen = new PenSet(film.herd, film.props, this.animals.length, film.style ?? 'a')
       this.root.add(this.pen.group)
     }
+    this.root.add(this.sparks.crowd, this.sparks.motes)
     market.add(this.case.outer, this.box)
     // light: the sky and the ground, the sun (casting), the rooms' lights from the market's row, the desk lamp
     this.aimSun(film.scenes[0]?.place ?? 'market')
@@ -583,14 +619,19 @@ export class FilmStage {
     this.sun.target.updateMatrixWorld()
   }
 
-  /** The shell without the walls left out for this camera: every wall piece between it and what it films (a film
-   *  set's wild walls), and any the shot names. Each set of walls is built once and kept. */
-  private shell(eye: Vector3, targets: Vector3[], named: string[]) {
+  /** The walls left out for a camera: every wall piece between it and what it films (a film set's wild walls), and any
+   *  the shot names. */
+  private wallsOut(eye: Vector3, targets: Vector3[], named: string[]) {
     const walls = MARKET_WALKIN.walls
     const tests = named.map((o) => WILD[o]).filter(Boolean)
     // (each way stops a little short of what it films: a sign on a wall is filmed, not its wall cut away)
     const short = targets.map((p) => eye.clone().lerp(p, 0.95))
-    const out = walls.flatMap((b, i) => (tests.some((t) => t(b)) || short.some((p) => crosses(eye, p, b)) ? [i] : []))
+    return walls.flatMap((b, i) => (tests.some((t) => t(b)) || short.some((p) => crosses(eye, p, b)) ? [i] : []))
+  }
+
+  /** The shell without the walls given. Each set of walls is built once and kept. */
+  private shell(out: number[]) {
+    const walls = MARKET_WALKIN.walls
     const key = out.join(',')
     let s = this.shells.get(key)
     if (!s) {
@@ -601,6 +642,13 @@ export class FilmStage {
     for (const [k, other] of this.shells) other.group.visible = k === key
   }
 
+  /** The light all round the film, as the game has it (src/scene/Lighting.tsx: its environment and how strong it is at
+   *  noon), in the scene the film is drawn in; the day turns it down as it turns down the sky. */
+  environment(scene: Scene, texture: Texture | null, noon: number) {
+    this.env = { scene, texture, noon }
+    this.light = ''
+  }
+
   /** The scene's time of day: the sun's, the sky's and the haze's colours and strength. */
   private dayLight(phase: string) {
     if (phase === this.light) return
@@ -608,7 +656,12 @@ export class FilmStage {
     const m = DAY.phases.find((p) => p.id === phase)?.mood ?? DAY.phases[1].mood
     this.sunlight = NOON.sun * m.sun
     this.sun.color.copy(tint(NOON.sunColor, m.warm, TINT.sun))
-    this.fill = 1.1 * m.sky
+    // (with the environment's light all round, the sky's fill is half what it is without)
+    this.fill = (this.env.texture ? 0.55 : 1.1) * m.sky
+    if (this.env.scene) {
+      this.env.scene.environment = this.env.texture
+      this.env.scene.environmentIntensity = this.env.noon * m.sky
+    }
     this.hemi.intensity = this.fill
     this.hemi.color.copy(tint(NOON.sky, m.warm, TINT.sky))
     this.hemi.groundColor.set(NOON.ground)
@@ -626,7 +679,7 @@ export class FilmStage {
     if (a && this.pen) {
       const m = now.get(name)!
       const b = bodyOf(this.pen.kind, a.n)
-      return { x: m.x, y: b.y, z: m.z, head: b.y, h: b.h, w: b.w, long: b.long, heading: m.heading, person: false }
+      return { x: m.x, y: b.y + m.y, z: m.z, head: b.y + m.y, h: b.h, w: b.w, long: b.long, heading: m.heading, person: false, animal: true }
     }
     const pen = this.pen && props.has(name) ? this.pen.frameOf(name, props.get(name)!, now) : null
     if (pen) return { ...pen, head: pen.y, person: false }
@@ -648,12 +701,156 @@ export class FilmStage {
 
   /** Where a holder's right hand is (on the rig as posed this frame), or near it before it is posed. */
   private handOf(id: string, now: Map<string, MemberNow>) {
-    const c = this.cast.find((x) => x.id === id)!
+    return this.handsOf(id, now)[1]
+  }
+
+  /** A holder's two hands (left, right) as posed this frame. */
+  private handsOf(id: string, now: Map<string, MemberNow>): [Vector3, Vector3] {
+    const c = this.cast.find((x) => x.id === id)
+    const m = now.get(id)
+    if (!c || !m) return [new Vector3(), new Vector3()]
     c.rig.root.updateMatrixWorld(true)
-    this.hand.set(0, -0.33, 0.03).applyMatrix4(c.rig.elbowR.matrixWorld)
-    const m = now.get(id)!
-    if (Math.hypot(this.hand.x - m.x, this.hand.z - m.z) > 1.5) this.hand.set(m.x, 0.7, m.z)
-    return this.hand.clone()
+    const l = new Vector3(0, -0.33, 0.03).applyMatrix4(c.rig.elbowL.matrixWorld)
+    const r = new Vector3(0, -0.33, 0.03).applyMatrix4(c.rig.elbowR.matrixWorld)
+    for (const h of [l, r]) if (Math.hypot(h.x - m.x, h.z - m.z) > 1.5) h.set(m.x, 0.7, m.z)
+    return [l, r]
+  }
+
+  /** The top of a cast member's head as posed this frame. */
+  private headOf(id: string) {
+    const c = this.cast.find((x) => x.id === id)
+    if (!c) return new Vector3()
+    c.rig.root.updateMatrixWorld(true)
+    return c.rig.head.localToWorld(new Vector3(0, -PERSON.neckY + 0.14, 0))
+  }
+
+  /** Where the camera stands at film time t, and the points it films, found from where everyone is (not as posed: any
+   *  moment of a shot can be asked for, the rigs stay as they are). */
+  private viewOf(t: number, size: { width: number; height: number }, reduced: boolean) {
+    const tl = this.tl
+    const at = shotAt(tl, t)
+    const w = tl.world(t)
+    const ws = tl.world(at.end - 1e-3)
+    const now = new Map<string, MemberNow>()
+    const end = new Map<string, MemberNow>()
+    for (const c of [...this.cast, ...this.animals]) {
+      now.set(c.id, memberAt(tl, c.id, w))
+      end.set(c.id, memberAt(tl, c.id, ws))
+    }
+    const props = new Map<string, PropNow>()
+    for (const id of Object.keys(tl.film.props)) props.set(id, propAt(tl, id, w))
+    const cam = at.shot.cam
+    const on = [cam.on].flat()
+    const shoulder = typeof cam.from === 'string' && tl.film.cast[cam.from] ? cam.from : null
+    const lineOf = at.scene.line
+    const view = shotCamera(cam, {
+      from: on.map((n) => this.subject(n, end, props, false)),
+      now: on.map((n) => this.subject(n, now, props, false)),
+      shoulder: shoulder ? { from: this.subject(shoulder, end, props, false), now: this.subject(shoulder, now, props, false) } : undefined,
+      line: lineOf ? [this.subject(lineOf[0], now, props, false), this.subject(lineOf[1], now, props, false)] : undefined,
+      side: at.scene.side ?? 1,
+      south: at.scene.place === 'pen',
+      aspect: size.width / Math.max(1, size.height),
+      u: (t - at.start) / at.shot.len,
+      secs: t - at.start,
+      reduced,
+    })
+    const seen = [view.look, ...on.map((n) => this.subject(n, now, props, false)).map((x) => new Vector3(x.x, x.person ? x.head : x.y, x.z))]
+    if (shoulder) {
+      const n = this.subject(shoulder, now, props, false)
+      seen.push(new Vector3(n.x, n.head, n.z))
+    }
+    return { view, seen }
+  }
+
+  /** What a shot needs of the set (`ShotSet`), worked out from its camera at its start, middle and end. */
+  private shotSet(at: ShotAt, size: { width: number; height: number }, reduced: boolean): ShotSet {
+    const key = `${at.index}|${(size.width / Math.max(1, size.height)).toFixed(2)}|${reduced}`
+    let set = this.sets.get(key)
+    if (set) return set
+    const walls = new Set<number>()
+    const fence = new Set<number>()
+    const named = [...(at.scene.open ?? []), ...(at.shot.open ?? [])]
+    let mid: ReturnType<FilmStage['viewOf']> | null = null
+    for (const k of [0.02, 0.5, 0.98]) {
+      const v = this.viewOf(at.start + at.shot.len * k, size, reduced)
+      if (k === 0.5) mid = v
+      if (this.market) for (const i of this.wallsOut(v.view.pos, v.seen, named)) walls.add(i)
+      if (this.pen) for (const i of this.pen.inTheWay(v.view.pos, v.seen)) fence.add(i)
+    }
+    // outdoors (the pen, or a camera outside the market's rooms), the sun round the subjects for the shot's size
+    let sun: ShotSet['sun'] = null
+    const eye = mid!.view.pos
+    const inside = [HALL, BACK].some((r) => eye.x > r.x0 && eye.x < r.x1 && eye.z > r.z0 && eye.z < r.z1)
+    if (at.scene.place === 'pen' || !inside) {
+      const look = mid!.view.look
+      const toward = new Vector3(eye.x - look.x, 0, eye.z - look.z).normalize()
+      const sz = at.shot.cam.size ?? 'medium'
+      const a = ((at.scene.side ?? 1) * SUN_ROUND[sz] * Math.PI) / 180
+      const flat = new Vector3(toward.x * Math.cos(a) + toward.z * Math.sin(a), 0, -toward.x * Math.sin(a) + toward.z * Math.cos(a))
+      const up = (SUN_HIGH[at.scene.light] * Math.PI) / 180
+      sun = { at: new Vector3(look.x, 0, look.z), from: flat.multiplyScalar(Math.cos(up)).setY(Math.sin(up)), box: SHADOW_BOX[sz] }
+    }
+    set = { walls: [...walls].sort((x, y) => x - y), fence: [...fence].sort((x, y) => x - y), sun }
+    this.sets.set(key, set)
+    return set
+  }
+
+  /** The sun for a shot: outdoors where the shot places it (its shadow's box round the subjects), else over the place. */
+  private placeSun(set: ShotSet, place: keyof typeof SUN_AT) {
+    const cam = this.sun.shadow.camera
+    if (!set.sun) {
+      this.aimSun(place)
+      if (cam.right !== 14) {
+        Object.assign(cam, { left: -14, right: 14, top: 14, bottom: -14 })
+        cam.updateProjectionMatrix()
+      }
+      return
+    }
+    const { at, from, box } = set.sun
+    this.sun.position.copy(at).addScaledVector(from, 24)
+    this.sun.target.position.copy(at)
+    this.sun.target.updateMatrixWorld()
+    if (cam.right !== box) {
+      Object.assign(cam, { left: -box, right: box, top: box, bottom: -box })
+      cam.updateProjectionMatrix()
+    }
+  }
+
+  /** The world's effects going on at film time t: each where it happened (stars round a head, following it). */
+  private bursts(t: number): Burst[] {
+    const tl = this.tl
+    const out: Burst[] = []
+    tl.fx.forEach((f, i) => {
+      const fx = f.item.fx as WorldFx
+      if (!WORLD_FX.includes(fx) || !f.item.on || t < f.t || t > f.t + 2.4) return
+      const w0 = tl.world(f.t)
+      const place = this.placeOf(f.item.on, fx === 'stars' ? tl.world(t) : w0)
+      if (place) out.push({ fx, age: tl.world(t) - w0, at: place.at, mid: place.mid, seed: i + 1 })
+    })
+    return out
+  }
+
+  /** Where a cast member, a prop or a thing is at world time w: its foot, and its middle's (a person: their head's)
+   *  height over it. */
+  private placeOf(id: string, w: number): { at: Vector3; mid: number } | null {
+    const tl = this.tl
+    if (tl.film.cast[id]) {
+      const m = memberAt(tl, id, w)
+      const a = this.animals.find((x) => x.id === id)
+      const mid = a && this.pen ? bodyOf(this.pen.kind, a.n).y : (lookOf(tl.film.cast[id].look, this.outfit).height ?? 1) * (HEAD - 0.1)
+      return { at: new Vector3(m.x, m.y, m.z), mid }
+    }
+    if (tl.film.props[id]) {
+      const p = propAt(tl, id, w)
+      const now = new Map<string, MemberNow>()
+      if (p.holder) now.set(p.holder, memberAt(tl, p.holder, w))
+      const f = this.pen?.frameOf(id, p, now)
+      if (f) return { at: new Vector3(f.x, 0, f.z), mid: f.y }
+      return { at: new Vector3(p.x, p.y, p.z), mid: 0.3 }
+    }
+    const t = THINGS_AT[id]
+    return t ? { at: new Vector3(t.x, 0, t.z), mid: t.y } : null
   }
 
   frame(t: number, camera: PerspectiveCamera, size: { width: number; height: number }, reduced: boolean): FrameInfo {
@@ -678,7 +875,6 @@ export class FilmStage {
     this.people.end()
     for (const a of this.animals) now.set(a.id, memberAt(tl, a.id, w))
     this.pen?.animals(this.animals, now, w)
-    this.aimSun(scene.place)
     // the props
     const props = new Map<string, PropNow>()
     for (const id of Object.keys(tl.film.props)) props.set(id, propAt(tl, id, w))
@@ -704,6 +900,7 @@ export class FilmStage {
       shoulder: shoulder ? { from: this.subject(shoulder, startNow, props, false), now: this.subject(shoulder, now, props, true) } : undefined,
       line: lineOf ? [this.subject(lineOf[0], now, props, false), this.subject(lineOf[1], now, props, false)] : undefined,
       side: scene.side ?? 1,
+      south: scene.place === 'pen',
       aspect: size.width / Math.max(1, size.height),
       u: (t - at.start) / at.shot.len,
       secs: t - at.start,
@@ -716,9 +913,15 @@ export class FilmStage {
       const n = this.subject(shoulder, now, props, true)
       seen.push(new Vector3(n.x, n.head, n.z))
     }
-    if (this.market) this.shell(view.pos, seen, [...(scene.open ?? []), ...(at.shot.open ?? [])])
-    // (in the pen, the fence's sections in the camera's way are left out the same way)
-    this.pen?.fences(view.pos, seen)
+    // the shot's set: the walls and fence sections out of its way, the sun where it stands (the same all through it)
+    const set = this.shotSet(at, size, reduced)
+    if (this.market) this.shell(set.walls)
+    this.pen?.fences(set.fence)
+    this.placeSun(set, scene.place)
+    // the world's effects, and outdoors by day the air's motes round what the shot looks at
+    camera.updateMatrixWorld()
+    const day = scene.light !== 'night' && !!set.sun
+    this.sparks.draw(this.bursts(t), camera, day ? view.look : null, day ? 1 : 0, w)
     if (Math.abs(camera.fov - view.fov) > 0.01) {
       camera.fov = view.fov
       camera.updateProjectionMatrix()
@@ -733,19 +936,53 @@ export class FilmStage {
       const p = this.head.clone().project(camera)
       if (p.z < 1 && Math.abs(p.x) < 1 && Math.abs(p.y) < 1) speaker = { x: ((p.x + 1) / 2) * size.width, y: ((1 - p.y) / 2) * size.height }
     }
-    // the characters' light, while the scene talks: on the people the shot looks at
-    const talks = scene.shots.some((x) => x.say?.length)
-    const faces = talks ? on.filter((n) => tl.film.cast[n] && now.get(n)?.visible).map((n) => this.subject(n, now, props, true)) : []
-    // (the rim only where faces are big: in a full shot it lights more of the set than of them; the key steps back where
-    // the open case's gold is the light on them)
-    const near = ['extreme', 'close', 'medium'].includes(cam.size ?? 'medium')
-    const portrait = this.portrait(faces, camera.position, scene.light, scene.side ?? 1, near, 1 - 0.65 * this.caseGlow)
+    // the subjects' light: a key on whoever (and whatever) the shot is on, a rim behind them in a near shot; a wide shot
+    // is the sun's and the sky's alone. (the rim only where faces are big: in a full shot it lights more of the set than
+    // of them; the key steps back where the open case's gold is the light on them)
+    const sized = cam.size ?? 'medium'
+    const lit = sized === 'wide' ? [] : on.filter((n) => (tl.film.cast[n] ? now.get(n)?.visible : true)).map((n) => this.subject(n, now, props, true))
+    const near = ['extreme', 'close', 'medium'].includes(sized)
+    const keyed = this.portrait(lit, camera.position, scene.light, scene.side ?? 1, near, 1 - 0.65 * this.caseGlow)
     const p = PORTRAIT[scene.light]
-    this.hemi.intensity = this.fill * (talks ? p.fill : 1)
-    this.sun.intensity = this.sunlight * (talks ? p.sun : 1)
-    this.rooms.forEach((r, i) => (r.intensity = MARKET_WALKIN.lights[i].intensity * this.roomsOn[i] * (talks ? p.rooms : 1)))
+    // (the light round them steps back while they are keyed: outdoors the sky's fill a little, the sun not at all — it is
+    // their rim; indoors as the portrait has it)
+    const out = !!set.sun
+    this.hemi.intensity = this.fill * (keyed ? (out ? 0.8 : p.fill) : 1)
+    this.sun.intensity = this.sunlight * (keyed && !out ? p.sun : 1)
+    this.rooms.forEach((r, i) => (r.intensity = MARKET_WALKIN.lights[i].intensity * this.roomsOn[i] * (keyed ? p.rooms : 1)))
     camera.getWorldDirection(this.dir)
-    return { shot: at.index, portrait, speaker, farm: looksAtFarm(camera.position, this.dir) }
+    // the first subject on the screen (an iris closes on it)
+    let focus: FrameInfo['focus'] = null
+    if (on.length) {
+      const f = this.subject(on[0], now, props, true)
+      const q = new Vector3(f.x, f.person ? f.head - 0.1 : f.y, f.z).project(camera)
+      if (q.z < 1) focus = { x: ((q.x + 1) / 2) * size.width, y: ((1 - q.y) / 2) * size.height }
+    }
+    return { shot: at.index, portrait: keyed ? 1 : 0.55, speaker, focus, light: scene.light, farm: looksAtFarm(camera.position, this.dir), blocked: this.blocking(on, now, props, camera.position) }
+  }
+
+  /** Who of the cast not filmed stands across the line from the camera to the first subject's middle (their body as an
+   *  upright cylinder), hiding it. */
+  private blocking(on: string[], now: Map<string, MemberNow>, props: Map<string, PropNow>, eye: Vector3) {
+    // (a place framed wide is not hidden by whoever crosses it)
+    if (!on.length || THINGS_AT[on[0]]) return null
+    const s = this.subject(on[0], now, props, false)
+    const to = new Vector3(s.x, s.person ? s.head - 0.25 : s.y, s.z)
+    for (const [id, m] of now) {
+      if (on.includes(id) || !m.visible) continue
+      const a = this.animals.find((x) => x.id === id)
+      const body = a && this.pen ? bodyOf(this.pen.kind, a.n) : null
+      const r = body ? body.w / 2 : 0.22
+      const top = body ? body.h : 1.7
+      // the nearest point of the line to their middle, on the ground; and the line's height there
+      const dx = to.x - eye.x
+      const dz = to.z - eye.z
+      const k = Math.max(0, Math.min(1, ((m.x - eye.x) * dx + (m.z - eye.z) * dz) / (dx * dx + dz * dz || 1)))
+      if (k < 0.05 || k > 0.92) continue
+      const y = eye.y + (to.y - eye.y) * k
+      if (Math.hypot(eye.x + dx * k - m.x, eye.z + dz * k - m.z) < r * 0.8 && y < top + m.y && y > m.y) return this.tl.film.cast[id].name
+    }
+    return null
   }
 
   /** The characters' light (FILM.md, the camera: light the faces): the key from in front of them on the side they turn
@@ -808,7 +1045,14 @@ export class FilmStage {
   private placeProps(props: Map<string, PropNow>, now: Map<string, MemberNow>, t: number) {
     for (const [id, p] of props) {
       const kind = this.tl.film.props[id].kind
-      if (kind === 'crate' || kind === 'tool') this.pen?.props(id, p, now)
+      if (kind === 'crate' || kind === 'tool' || kind === 'piece' || kind === 'nestbox')
+        this.pen?.props(
+          id,
+          p,
+          now,
+          (who) => this.handsOf(who, now),
+          (who) => this.headOf(who),
+        )
       else if (kind === 'case') {
         const c = this.case
         const holder = p.holder ? now.get(p.holder) : null
@@ -894,6 +1138,7 @@ export class FilmStage {
     // the crowds out of the game's list of those in a scene (src/lib/sculpt/parts.ts, liveParts), then every shape
     for (const p of [this.people, this.fittings, this.leaves, ...this.shells.values()]) p?.dispose()
     this.pen?.dispose()
+    this.sparks.dispose()
     this.root.traverse((o: Object3D) => {
       const mesh = o as Mesh
       mesh.geometry?.dispose?.()
