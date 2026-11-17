@@ -1,4 +1,4 @@
-import { lookOf, voicesOf } from './cast'
+import { isAnimal, lookOf, voicesOf } from './cast'
 import { lint, timeline, type Film, type Timeline } from './format'
 import { Score } from './score'
 import { Talker } from './speak'
@@ -34,7 +34,10 @@ export class FilmRun {
     this.speech = speechOf(this.tl, this.voices)
     // (the cast in the order of who says most: the best voices go to them)
     const lines = (id: string) => this.speech.filter((s) => s.who === id).length
-    const cast = Object.entries(film.cast).map(([id, m]) => ({ id, female: lookOf(m.look).sex === 'f' }))
+    // (the animals say nothing: no speech voice goes to them)
+    const cast = Object.entries(film.cast)
+      .filter(([, m]) => !isAnimal(m.look))
+      .map(([id, m]) => ({ id, female: lookOf(m.look).sex === 'f' }))
     this.talker = new Talker(cast.sort((a, b) => lines(b.id) - lines(a.id)))
     this.score = new Score(this.tl, this.speech, this.voices, this.talker)
     this.clock = { origin: null, base: Math.max(0, Math.min(from, this.tl.length)), paused: false }

@@ -1,5 +1,5 @@
 {
- "at": "2026-11-17T06:45:57.876Z",
+ "at": "2026-11-17T06:59:06.717Z",
  "devices": [
   "upright",
   "sideways"
@@ -242,6 +242,36 @@
     "b/afar/sideways · Mill, level 2 — what it gives 87×34",
     "c/afar/sideways · Mill, level 2 — what it gives 87×34"
    ],
+   "tiny": [],
+   "under": [],
+   "off": []
+  },
+  "film-shears": {
+   "screens": 10,
+   "errors": [],
+   "blank": [],
+   "scroll": [],
+   "small": [],
+   "tiny": [],
+   "under": [],
+   "off": []
+  },
+  "film-milk-bucket": {
+   "screens": 10,
+   "errors": [],
+   "blank": [],
+   "scroll": [],
+   "small": [],
+   "tiny": [],
+   "under": [],
+   "off": []
+  },
+  "film-coop": {
+   "screens": 8,
+   "errors": [],
+   "blank": [],
+   "scroll": [],
+   "small": [],
    "tiny": [],
    "under": [],
    "off": []

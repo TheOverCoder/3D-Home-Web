@@ -46,17 +46,19 @@ import { putSlidingDoor, slidingDoorParts } from '../models/slidingDoor'
 import { surface } from '../lib/proceduralTextures'
 import { tree } from '../scene/flora'
 import { shotCamera, type Subject } from './camera'
-import { lookOf } from './cast'
+import { isAnimal, lookOf } from './cast'
 import { lineAt, shotAt, type Timeline } from './format'
+import { bodyOf, PenSet, type Animal } from './pen'
 import { poseRig } from './poses'
-import { looksAtFarm, THINGS_AT, WILD } from './set'
+import { looksAtFarm, PEN_GROVE, PEN_MIDDLE, THINGS_AT, WILD } from './set'
 import { memberAt, propAt, type MemberNow, type PropNow } from './stage'
 import { speakingAt, type Speech } from './voice'
 
 // The film's stage in three.js: the market built from the game's own models and rows (its shell, fittings, goods,
-// sliding door and sign), the cast on the people engine's rigs (one crowd, one draw a part), the props, the light of
-// the scene's time of day (the game's DAY table, turned as the game's Lighting.tsx turns it), and the camera of the
-// shot. Round the market, the part of the world that is the same on every farm: the game's sky and haze, its lawn, the
+// sliding door and sign) when the film plays there, the pen (./pen.ts: the farm's fence sections, the film's herd from
+// the game's own animals, the crate and the tool) when it plays there, the cast on the people engine's rigs (one crowd,
+// one draw a part), the props, the light of the scene's time of day (the game's DAY table, turned as the game's
+// Lighting.tsx turns it), and the camera of the shot. Round the market, the part of the world that is the same on every farm: the game's sky and haze, its lawn, the
 // lane, and the woods on the market's side of the lane (no field the player buys ever moves them). The player's own
 // farm lies across the lane; the films never turn to it (`looksAtFarm`, ./set.ts), so neither the lab nor the game shows
 // a farm that is not theirs (the game plays it on this stage too, on its own renderer: ./StoryFilm.tsx). While a
@@ -340,8 +342,8 @@ function leaf(color: string) {
 
 /** What is round the market on every farm: the lawn (src/scene/Exterior.tsx), the lane past the gate, and the woods'
  *  trees on the market's side of the lane (src/farm/landGeometry.ts, as Land.tsx draws them: three shades of crown,
- *  the trunks), from the game's own rows and functions. */
-function surroundings() {
+ *  the trunks), from the game's own rows and functions; and `grove`, more of the same trees (the pen's, behind it). */
+function surroundings(grove: readonly (readonly [number, number, number, number])[] = []) {
   const group = new Group()
   const grass = surface('grass', 130, 130)
   const lawn = new Mesh(new PlaneGeometry(400, 400), new MeshStandardMaterial({ map: grass.map, normalMap: grass.normalMap, roughnessMap: grass.roughnessMap, roughness: 1 }))
@@ -366,6 +368,11 @@ function surroundings() {
     const parts = tree(t.x, t.z, t.height, t.seed)
     wood.push(parts.wood)
     crowns[i % 3].push(parts.crown)
+  })
+  grove.forEach(([x, z, height, seed], i) => {
+    const parts = tree(x, z, height, seed)
+    wood.push(parts.wood)
+    crowns[(i + 1) % 3].push(parts.crown)
   })
   const bark = surface('veneer', 1, 1)
   if (wood.length) group.add(new Mesh(mergeGeometries(wood)!, new MeshStandardMaterial({ color: '#6a5a4c', map: bark.map, normalMap: bark.normalMap, roughness: 0.95 })))
@@ -416,6 +423,10 @@ const HEAD = PERSON.hipsY + PERSON.headY + 0.02
 /** The head's middle above its joint (the foot of its neck), in the rig's units. */
 const SKULL = new Vector3(0, -PERSON.neckY, 0)
 
+/** Where the sun is aimed while a scene plays in each place (its shadow's box round it), and how far it stands off. */
+const SUN_AT = { market: { x: 10, z: 19 }, pen: PEN_MIDDLE }
+const SUN_OFF = [12, 15, 10] as const
+
 export class FilmStage {
   readonly root = new Group()
   readonly background = new Color()
@@ -423,6 +434,11 @@ export class FilmStage {
   private sky = new Sky()
   private shells = new Map<string, Parts>()
   private cast: { id: string; rig: PersonRig; hipsY: number; seed: number }[] = []
+  /** the film's herd, in the pen (null: the film has no pen) */
+  private pen: PenSet | null = null
+  private animals: Animal[] = []
+  /** the market's set (null: the film never plays there): its shell's pieces, its fittings, its goods, its door */
+  private market: Group | null = null
   private people: Parts
   private hemi = new HemisphereLight()
   private sun = new DirectionalLight()
@@ -437,9 +453,9 @@ export class FilmStage {
   private rim = new SpotLight('#ffffff', 0, 0, 0.4, 0.6, 2)
   private lamp = new SpotLight('#ffd9a8', 5, 6, 0.75, 0.6, 2)
   private door = MARKET_WALKIN.autoDoor!
-  private leaves = slidingDoorParts(this.door)
-  private fittings = marketFittingsParts()
-  private goods = new MarketGoods()
+  private leaves: ReturnType<typeof slidingDoorParts> | null = null
+  private fittings: Parts | null = null
+  private goods: MarketGoods | null = null
   private filled = -1
   private sign: Mesh
   private banner: Mesh
@@ -461,20 +477,30 @@ export class FilmStage {
     private outfit: Outfit = DEFAULT_OUTFIT,
   ) {
     const film = tl.film
-    // the sky, the lawn, the lane and the woods; the lot's gravel, the rooms' tiles
+    const places = new Set(film.scenes.map((x) => x.place))
+    // the sky, the lawn, the lane and the woods (and the pen's grove); the lot's gravel, the rooms' tiles
     this.sky.scale.setScalar(SKY.distance)
     const u = (this.sky.material as ShaderMaterial).uniforms
     u.turbidity.value = SKY.turbidity
     u.rayleigh.value = SKY.rayleigh
     u.mieCoefficient.value = SKY.mieCoefficient
     u.mieDirectionalG.value = SKY.mieDirectionalG
-    this.root.add(this.sky, surroundings())
+    this.root.add(this.sky, surroundings(places.has('pen') ? PEN_GROVE : []))
+    // the market, only for a film that plays in it (everything of it under one group)
+    const market = new Group()
+    if (places.has('market')) {
+      this.market = market
+      this.root.add(market)
+      this.leaves = slidingDoorParts(this.door)
+      this.fittings = marketFittingsParts()
+      this.goods = new MarketGoods()
+    }
     for (const r of LOT) {
       const lot = new Mesh(new PlaneGeometry(r.x1 - r.x0, r.z1 - r.z0), new MeshStandardMaterial({ color: '#b9ad97', roughness: 0.95 }))
       lot.rotation.x = -Math.PI / 2
       lot.position.set((r.x0 + r.x1) / 2, 0.004, (r.z0 + r.z1) / 2)
       lot.receiveShadow = true
-      this.root.add(lot)
+      market.add(lot)
     }
     for (const [r, a, b] of [
       [HALL, '#e9e3d6', '#d9d1c1'],
@@ -486,10 +512,10 @@ export class FilmStage {
       floor.rotation.x = -Math.PI / 2
       floor.position.set((r.x0 + r.x1) / 2, 0.012, (r.z0 + r.z1) / 2)
       floor.receiveShadow = true
-      this.root.add(floor)
+      market.add(floor)
     }
     // the market's fittings, its goods, its sliding door
-    this.root.add(this.fittings.group, this.goods.group, this.leaves.group)
+    if (this.fittings && this.goods && this.leaves) market.add(this.fittings.group, this.goods.group, this.leaves.group)
     // the sign, the banner over it, the computer's screen, the shop window lit from inside
     const signMap = signPicture()
     this.sign = new Mesh(
@@ -511,19 +537,25 @@ export class FilmStage {
     this.windowGlow = new Mesh(new PlaneGeometry(2.0, 1.35), new MeshBasicMaterial({ color: '#ffdca0', transparent: true, opacity: 0, blending: AdditiveBlending, depthWrite: false }))
     this.windowGlow.position.set(9.2, 1.375, HALL.z0 - 0.17)
     this.windowGlow.rotation.y = Math.PI
-    this.root.add(this.sign, this.banner, screen, this.windowGlow)
-    // the cast, one crowd
+    market.add(this.sign, this.banner, screen, this.windowGlow)
+    // the cast, one crowd; the animals in the pen's herd
     const ids = Object.keys(film.cast)
-    this.people = personParts(ids.length)
+    const people = ids.filter((id) => !isAnimal(film.cast[id].look))
+    this.people = personParts(Math.max(1, people.length))
     this.root.add(this.people.group)
     ids.forEach((id, i) => {
-      const rig = new PersonRig(lookOf(film.cast[id].look, this.outfit))
+      const look = film.cast[id].look
+      if (isAnimal(look)) return void this.animals.push({ id, n: look.herd, seed: i * 1.7 + 0.4 })
+      const rig = new PersonRig(lookOf(look, this.outfit))
       this.cast.push({ id, rig, hipsY: rig.hips.position.y, seed: i * 1.7 + 0.4 })
     })
-    this.root.add(this.case.outer, this.box)
+    if (film.herd && places.has('pen')) {
+      this.pen = new PenSet(film.herd, film.props, this.animals.length)
+      this.root.add(this.pen.group)
+    }
+    market.add(this.case.outer, this.box)
     // light: the sky and the ground, the sun (casting), the rooms' lights from the market's row, the desk lamp
-    this.sun.position.set(12 + 10, 9 + 6, 10 + 19)
-    this.sun.target.position.set(10, 0, 19)
+    this.aimSun(film.scenes[0]?.place ?? 'market')
     this.sun.castShadow = true
     this.sun.shadow.mapSize.set(1024, 1024)
     Object.assign(this.sun.shadow.camera, { left: -14, right: 14, top: 14, bottom: -14, near: 1, far: 70 })
@@ -534,11 +566,21 @@ export class FilmStage {
       const p = new PointLight(l.color, l.intensity, l.distance, 2)
       p.position.set(l.x, l.y, l.z)
       this.rooms.push(p)
-      this.root.add(p)
+      market.add(p)
     }
     this.lamp.position.set(MANAGER_SPOT.x - 0.6, 2.4, MANAGER_SPOT.z - 0.9)
     this.lamp.target.position.set(MANAGER_SPOT.x - 0.2, 0.8, MANAGER_SPOT.z - 0.5)
-    this.root.add(this.lamp, this.lamp.target, this.key, this.key.target, this.rim, this.rim.target)
+    market.add(this.lamp, this.lamp.target)
+    this.root.add(this.key, this.key.target, this.rim, this.rim.target)
+  }
+
+  /** The sun over a place: aimed at its middle, its shadow's box round it. */
+  private aimSun(place: keyof typeof SUN_AT) {
+    const at = SUN_AT[place]
+    if (this.sun.target.position.x === at.x && this.sun.target.position.z === at.z) return
+    this.sun.position.set(at.x + SUN_OFF[0], SUN_OFF[1], at.z + SUN_OFF[2])
+    this.sun.target.position.set(at.x, 0, at.z)
+    this.sun.target.updateMatrixWorld()
   }
 
   /** The shell without the walls left out for this camera: every wall piece between it and what it films (a film
@@ -580,6 +622,14 @@ export class FilmStage {
   }
 
   private subject(name: string, now: Map<string, MemberNow>, props: Map<string, PropNow>, live: boolean): Subject {
+    const a = this.animals.find((x) => x.id === name)
+    if (a && this.pen) {
+      const m = now.get(name)!
+      const b = bodyOf(this.pen.kind, a.n)
+      return { x: m.x, y: b.y, z: m.z, head: b.y, h: b.h, w: b.w, long: b.long, heading: m.heading, person: false }
+    }
+    const pen = this.pen && props.has(name) ? this.pen.frameOf(name, props.get(name)!, now) : null
+    if (pen) return { ...pen, head: pen.y, person: false }
     const c = this.cast.find((x) => x.id === name)
     if (c) {
       const m = now.get(name)!
@@ -626,6 +676,9 @@ export class FilmStage {
       c.rig.write(this.people)
     }
     this.people.end()
+    for (const a of this.animals) now.set(a.id, memberAt(tl, a.id, w))
+    this.pen?.animals(this.animals, now, w)
+    this.aimSun(scene.place)
     // the props
     const props = new Map<string, PropNow>()
     for (const id of Object.keys(tl.film.props)) props.set(id, propAt(tl, id, w))
@@ -636,11 +689,11 @@ export class FilmStage {
     const gap = (x: number, z: number) => Math.hypot(Math.max(d.x0 - x, 0, x - d.x1), Math.max(d.z0 - z, 0, z - d.z1))
     let open = 0
     for (const m of now.values()) if (m.visible) open = Math.max(open, Math.min(1, Math.max(0, (2.7 - gap(m.x, m.z)) / 0.7)))
-    putSlidingDoor(this.leaves, d, open)
+    if (this.leaves) putSlidingDoor(this.leaves, d, open)
     // the camera: placed for where everyone is at the shot's end (a walk ends in the picture), looking where they are now
     const ws = tl.world(at.end - 1e-3)
     const startNow = new Map<string, MemberNow>()
-    for (const c of this.cast) startNow.set(c.id, memberAt(tl, c.id, ws))
+    for (const c of [...this.cast, ...this.animals]) startNow.set(c.id, memberAt(tl, c.id, ws))
     const cam = at.shot.cam
     const on = [cam.on].flat()
     const shoulder = typeof cam.from === 'string' && tl.film.cast[cam.from] ? cam.from : null
@@ -663,7 +716,9 @@ export class FilmStage {
       const n = this.subject(shoulder, now, props, true)
       seen.push(new Vector3(n.x, n.head, n.z))
     }
-    this.shell(view.pos, seen, [...(scene.open ?? []), ...(at.shot.open ?? [])])
+    if (this.market) this.shell(view.pos, seen, [...(scene.open ?? []), ...(at.shot.open ?? [])])
+    // (in the pen, the fence's sections in the camera's way are left out the same way)
+    this.pen?.fences(view.pos, seen)
     if (Math.abs(camera.fov - view.fov) > 0.01) {
       camera.fov = view.fov
       camera.updateProjectionMatrix()
@@ -753,7 +808,8 @@ export class FilmStage {
   private placeProps(props: Map<string, PropNow>, now: Map<string, MemberNow>, t: number) {
     for (const [id, p] of props) {
       const kind = this.tl.film.props[id].kind
-      if (kind === 'case') {
+      if (kind === 'crate' || kind === 'tool') this.pen?.props(id, p, now)
+      else if (kind === 'case') {
         const c = this.case
         const holder = p.holder ? now.get(p.holder) : null
         c.outer.visible = !p.holder || !!holder?.visible
@@ -806,7 +862,7 @@ export class FilmStage {
       } else if (kind === 'goods') {
         // the shelves filling, a place after a place, with the farm's goods (the market's own crowd of them)
         const fill = Math.floor(p.open * BAYS.length + 0.001)
-        if (fill !== this.filled) {
+        if (fill !== this.filled && this.goods) {
           this.filled = fill
           this.goods.put(
             BAYS.map((_, i) => ({ good: i < fill ? SHELF_GOODS[i % SHELF_GOODS.length] : null, units: i < fill ? SHOP.units : 0, pct: SHOP.pct.start })),
@@ -836,11 +892,12 @@ export class FilmStage {
 
   dispose() {
     // the crowds out of the game's list of those in a scene (src/lib/sculpt/parts.ts, liveParts), then every shape
-    for (const p of [this.people, this.fittings, this.leaves, ...this.shells.values()]) p.dispose()
+    for (const p of [this.people, this.fittings, this.leaves, ...this.shells.values()]) p?.dispose()
+    this.pen?.dispose()
     this.root.traverse((o: Object3D) => {
       const mesh = o as Mesh
       mesh.geometry?.dispose?.()
     })
-    this.goods.dispose()
+    this.goods?.dispose()
   }
 }

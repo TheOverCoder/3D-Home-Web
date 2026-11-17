@@ -16,6 +16,9 @@ import { firstStepsBoard } from './boards/first-steps'
 import { animalToolsBoard } from './boards/animal-tools'
 import { shopAnimalsBoard } from './boards/shop-animals'
 import { premiumRemotesBoard } from './boards/premium-remotes'
+import { filmCoopBoard } from './boards/film-coop'
+import { filmMilkBucketBoard } from './boards/film-milk-bucket'
+import { filmShearsBoard } from './boards/film-shears'
 
 /** Every board of the lab, newest first. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -23,6 +26,9 @@ export const BOARDS: Board<any>[] = [
   premiumRemotesBoard,
   shopAnimalsBoard,
   animalToolsBoard,
+  filmShearsBoard,
+  filmMilkBucketBoard,
+  filmCoopBoard,
   firstStepsBoard,
   unlocksBoard,
   dailyBoard,

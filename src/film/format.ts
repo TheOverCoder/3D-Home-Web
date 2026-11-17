@@ -1,4 +1,4 @@
-import type { DayPhase } from '../farm/data'
+import type { DayPhase, ToolKind } from '../farm/data'
 import type { Voice } from './voice'
 
 // A film is data: who is in it (looks from the game's people engine), the scenes it plays in (a place the game has, its
@@ -9,8 +9,14 @@ import type { Voice } from './voice'
 // is on (a phone upright or sideways), so a film names who and what to see, never where the camera stands. Nothing here knows a model, a
 // coordinate or a colour: those come from the game, so a film keeps working when the game's looks change.
 
-/** Someone from the people engine: the player as dressed now, the game's fixed characters, or a roll of its dice. */
-export type Look = 'player' | 'manager' | 'contractor' | { roll: number }
+/** Someone from the people engine: the player as dressed now, the game's fixed characters, or a roll of its dice; or one
+ *  of the film's herd (`Film.herd`), the i-th of it as the game draws its animals (the hens: the rooster first, as the
+ *  run has him, then the hens; the cows by coat, the sheep by face). An animal acts with its body alone: it walks,
+ *  turns, grazes and looks up, and says nothing (its sound is a cue's sting: `cluck`, `moo`, `baa`…). */
+export type Look = 'player' | 'manager' | 'contractor' | { roll: number } | { herd: number }
+
+/** The animals that have a tool: the farm's own (src/farm/data.ts, TOOLS). */
+export type { ToolKind }
 
 /** A place to stand: a named mark of the set (./set.ts: 'desk', 'boss', 'door'…) or a point, metres on the ground. */
 export type Spot = string | { x: number; z: number; heading?: number }
@@ -40,8 +46,9 @@ export type Angle = 'eye' | 'low' | 'ground' | 'high' | 'top'
 export type Move = 'still' | 'push' | 'pull' | 'crane' | 'orbit' | 'drift' | 'punch'
 
 export interface Cam {
-  /** what is framed: cast ids or things of the set ('shop', 'sign', 'door', 'screen', 'desk', 'shelves', 'aisle', 'till', and
-   *  the props 'case' and 'box') */
+  /** what is framed: cast ids (an animal of the herd too), things of the set ('shop', 'sign', 'door', 'screen', 'desk',
+   *  'shelves', 'aisle', 'till'; in the pen 'pen', 'gate', 'post', 'nests'), or a prop by its id ('case', 'box', a crate, a
+   *  tool) */
   on: string | string[]
   /** where the camera stands: over a cast member's shoulder (their id), beside the scene's line ('side'), or degrees
    *  round the (first) subject from its front. Left out: a three-quarter view from the scene's side. */
@@ -82,7 +89,10 @@ export interface Act {
   off?: boolean
 }
 
-/** A prop: the briefcase, the boss's box, the banner over the sign, the computer's screen, the shop's lights. */
+export type PropKind = 'case' | 'box' | 'banner' | 'screen' | 'lights' | 'goods' | 'crate' | 'tool'
+
+/** A prop: the briefcase, the boss's box, the banner over the sign, the computer's screen, the shop's lights, the crate,
+ *  the tool. */
 export interface PropAct {
   at: number
   prop: string
@@ -91,13 +101,35 @@ export interface PropAct {
   /** how open (a lid, a banner unrolled, lights on, shelves filled): 0..1, eased over `over` seconds (0.45) */
   open?: number
   over?: number
-  /** what it shows (the screen: 'sale' or 'yours') */
+  /** what it shows (the screen: 'sale' or 'yours'; a tool: how many goods are in it, or 'ground', 'tipped') */
   show?: string
 }
 
 /** Music the player composes as it plays (./score.ts), and stings. */
 export type Track = 'muzak' | 'tension' | 'beat'
-export type Sting = 'thud' | 'glow' | 'scratch' | 'snap' | 'whoosh' | 'clunk' | 'coins' | 'till' | 'trombone' | 'riser' | 'drop' | 'tick' | 'door' | 'level' | 'swell'
+export type Sting =
+  | 'thud'
+  | 'glow'
+  | 'scratch'
+  | 'snap'
+  | 'whoosh'
+  | 'clunk'
+  | 'coins'
+  | 'till'
+  | 'trombone'
+  | 'riser'
+  | 'drop'
+  | 'tick'
+  | 'door'
+  | 'level'
+  | 'swell'
+  // the animals' own sounds, the game's (src/audio/sound.ts): a hen, the rooster, a cow, a sheep, milking, shearing
+  | 'cluck'
+  | 'crow'
+  | 'moo'
+  | 'baa'
+  | 'milk'
+  | 'shear'
 
 export interface Cue {
   at: number
@@ -140,8 +172,9 @@ export interface Shot {
 }
 
 export interface Scene {
-  /** the place: the set the player builds from the game's rows */
-  place: 'market'
+  /** the place: the set the player builds from the game's rows — the market, or a pen of the film's herd (its fence of
+   *  the farm's own fence sections on the lawn by the woods, the same for every player: ./set.ts, PEN) */
+  place: 'market' | 'pen'
   /** the game's time of day (src/farm/data.ts, DAY): its light */
   light: DayPhase
   /** the two who talk: the camera keeps to one side of the line between them (the 180° rule), `side` 1 or −1 */
@@ -181,8 +214,12 @@ export interface Film {
   logline: string
   turn: string
   cast: Record<string, Member>
-  /** the props and where they start */
-  props: Record<string, { kind: 'case' | 'box' | 'banner' | 'screen' | 'lights' | 'goods'; on?: string | Spot; open?: number; show?: string }>
+  /** the animals in its pen (its cast's `{ herd: i }`), and whose tool its `tool` props are */
+  herd?: ToolKind
+  /** the props and where they start: the briefcase, the boss's box, the banner, the screen, the shop's lights and goods;
+   *  a wooden crate (carried like the box, `open` its sides falling away); the herd's tool (`open` its pieces rising into
+   *  place; `show` what is in it, a number of goods, or the bucket alone before it hangs: 'ground', 'tipped') */
+  props: Record<string, { kind: PropKind; on?: string | Spot; open?: number; show?: string }>
   scenes: Scene[]
   end: EndCard
 }
@@ -278,25 +315,33 @@ export function lint(film: Film): string[] {
   const tl = timeline(film)
   const out: string[] = []
   if (tl.length > 45) out.push(`the film is ${tl.length.toFixed(1)} s: at most 45`)
+  const animal = (id: string) => {
+    const look = film.cast[id]?.look
+    return typeof look === 'object' && 'herd' in look
+  }
   for (const l of tl.lines) {
     if (l.item.text.length > 38) out.push(`"${l.item.text}" is ${l.item.text.length} characters: at most 38`)
     if (!film.cast[l.item.who]) out.push(`"${l.item.text}": no one called ${l.item.who}`)
+    if (animal(l.item.who)) out.push(`"${l.item.text}": an animal says nothing (its sound is a sting)`)
     if (l.end > tl.length + 0.01) out.push(`"${l.item.text}" runs past the end`)
   }
   for (let i = 1; i < tl.lines.length; i++) if (tl.lines[i].t < tl.lines[i - 1].end - 0.05) out.push(`"${tl.lines[i].item.text}" starts before "${tl.lines[i - 1].item.text}" is read`)
   for (const s of tl.shots) {
     if (s.shot.len < 0.5 || s.shot.len > 6) out.push(`shot ${s.index + 1} is ${s.shot.len} s: between 0.5 and 6`)
-    for (const who of [s.shot.cam.on].flat()) if (!film.cast[who] && !THINGS.includes(who)) out.push(`shot ${s.index + 1} frames "${who}": no one and nothing by that name`)
+    for (const who of [s.shot.cam.on].flat()) if (!film.cast[who] && !film.props[who] && !THINGS.includes(who)) out.push(`shot ${s.index + 1} frames "${who}": no one and nothing by that name`)
+    if (s.scene.place === 'pen' && !film.herd) out.push(`shot ${s.index + 1} is in the pen: the film has no herd`)
   }
   for (const a of tl.acts) if (!film.cast[a.item.who]) out.push(`an act of "${a.item.who}": no one by that name`)
   for (const p of tl.props) if (!film.props[p.item.prop]) out.push(`a prop "${p.item.prop}" the film does not have`)
+  for (const m of Object.values(film.cast)) if (typeof m.look === 'object' && 'herd' in m.look && !film.herd) out.push(`${m.name} is of a herd: the film has none`)
   for (const c of tl.cues)
     if (c.item.voice !== undefined) {
       if (!film.cast[c.item.voice]) out.push(`a sound of "${c.item.voice}": no one by that name`)
+      if (animal(c.item.voice)) out.push(`a sound of "${c.item.voice}": an animal's is a sting`)
       if (!c.item.text) out.push(`a sound of "${c.item.voice}" with nothing to say`)
     }
   return out
 }
 
-/** The things of a set a camera can frame. */
-export const THINGS = ['shop', 'sign', 'door', 'screen', 'desk', 'case', 'till', 'box', 'shelves', 'aisle']
+/** The things of a set a camera can frame (and any of the film's props, by its id). */
+export const THINGS = ['shop', 'sign', 'door', 'screen', 'desk', 'case', 'till', 'box', 'shelves', 'aisle', 'pen', 'gate', 'post', 'nests']
