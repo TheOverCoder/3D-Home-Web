@@ -972,19 +972,6 @@ button.farm-chip-item:focus-visible { outline: 3px solid var(--sun); outline-off
 /* a surprise a buyer brings (the order board's own look: src/farm/orderBoard/OrdersBoard.css) */
 .farm-surprise { width: 30px; height: 30px; filter: drop-shadow(0 2px 2px rgba(60, 35, 10, 0.2)); }
 .farm-surprise.small { width: 24px; height: 24px; }
-/* the goals board: a card like an order's — its picture, what to do and how far, what it gives; reached, green */
-.farm-goals { display: flex; flex-direction: column; gap: 8px; }
-.farm-goal { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 6px 12px; padding: 10px 12px; border-radius: var(--r-card); background: var(--paper-2); border: 2px solid transparent; }
-.farm-goal.ok { border-color: #8fd18a; background: #f1fae9; }
-.farm-goal > .item-pic .art { width: 48px; height: 48px; }
-.farm-goal-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.farm-goal-text strong { font-family: var(--font-display); font-weight: 600; font-size: 17px; color: var(--ink); }
-.farm-goal-bar { height: 8px; border-radius: 999px; background: var(--paper-3); overflow: hidden; }
-.farm-goal-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--leaf); }
-.farm-goal-count { font-size: 14px; color: var(--ink-2); }
-.farm-goal-reward { display: flex; align-items: center; gap: 8px; }
-.farm-goal-reward .item-pic .art { width: 36px; height: 36px; }
-.farm-goal > .btn { grid-column: 1 / -1; justify-self: end; min-width: 120px; min-height: 44px; }
 
 /* the shop: a picture, the name and one line, its price on the button */
 .farm-shop { display: grid; gap: 8px; }
