@@ -1,6 +1,7 @@
 import type { ProduceId } from './data'
 import { PER_LEVEL, boxAt, boxOf, boxXp, boxesReached, isOpen, waitingBoxes, type Gifts, type Prize } from './gifts'
 import { garmentAt, nextGarment, type Garment } from './outfit'
+import type { UnlockId } from './unlocks'
 import { levelProgress, levelReward, unpaidCoins } from './xp'
 
 // What the level's card shows (./LevelCard.tsx draws it), from the XP and the gifts' record alone: pure, so the design
@@ -49,11 +50,14 @@ export interface LevelView {
   gain: number
   /** what is ready on the farm now */
   ready?: Ready
+  /** what the next level opens (src/farm/unlocks.ts: shown under "At level N"; none while everything is open) */
+  opens: UnlockId[]
 }
 
 /** The card for this many XP points, the levels up to `paid` already claimed; `gifts` the boxes' record (none: every box
- *  reached counts as opened); `more` what the farm adds (the XP gained since the card was last open, what is ready). */
-export function levelView(points: number, paid: number, gifts?: Gifts, more: { gain?: number; ready?: Ready | null } = {}): LevelView {
+ *  reached counts as opened); `more` what the farm adds (the XP gained since the card was last open, what is ready,
+ *  what the next level opens). */
+export function levelView(points: number, paid: number, gifts?: Gifts, more: { gain?: number; ready?: Ready | null; opens?: UnlockId[] } = {}): LevelView {
   const { level, into, need, top } = levelProgress(points)
   const gift = top ? undefined : garmentAt(level + 1)
   const reached = boxesReached(points)
@@ -82,5 +86,6 @@ export function levelView(points: number, paid: number, gifts?: Gifts, more: { g
     arrived,
     gain: Math.max(0, Math.floor(more.gain ?? 0)),
     ready: top ? undefined : (more.ready ?? undefined),
+    opens: top ? [] : (more.opens ?? []),
   }
 }

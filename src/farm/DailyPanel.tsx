@@ -1,10 +1,9 @@
 import { useEffect } from 'react'
 import { farmSound } from '../audio/sound'
-import { useStory } from '../film/films'
-import { useFilm } from '../film/state'
 import { useHome } from '../store'
+import { gameFree, useGameFree } from '../ui/useGameFree'
 import { DailyCard } from './DailyCard'
-import { awaySummary, claimDaily, currentSlot, dailyDue, dailyNow, offerDaily, useFarm } from './state'
+import { claimDaily, currentSlot, dailyDue, dailyNow, offerDaily, useFarm } from './state'
 import { useCalendarDay } from './useDaily'
 
 // The daily gift (src/farm/daily.ts): its card reads the farm (how it looks: ./DailyCard.tsx), and the watcher opens it
@@ -29,25 +28,20 @@ const BEAT_MS = 900
 let decided = ''
 
 export function DailyWatcher() {
-  const playing = useHome((s) => s.phase === 'playing' && s.mapReady && !s.curtain)
-  const busy = useHome((s) => !!(s.panel || s.editing || s.decorating || s.screen || s.settingsOpen || s.toast))
-  const film = useFilm((s) => s.on !== null)
-  const story = useStory((s) => s.on !== null)
-  const away = useFarm(() => awaySummary() !== null)
+  // (nothing over the game: src/ui/useGameFree.ts; a toast too)
+  const free = useGameFree({ toast: true })
   const slot = useFarm(() => currentSlot())
   const day = useCalendarDay()
-  const free = playing && !busy && !film && !story && !away
   useEffect(() => {
     const key = `${slot}:${day}`
     if (!free || decided === key) return
     const t = window.setTimeout(() => {
-      const s = useHome.getState()
       // (still nothing over the game: a panel may have opened in the same moment)
-      if (s.panel || s.screen || s.settingsOpen || s.editing || s.decorating || s.toast || awaySummary()) return
+      if (!gameFree({ toast: true })) return
       decided = key
       if (!dailyDue()) return
       offerDaily()
-      s.openPanel({ kind: 'daily' })
+      useHome.getState().openPanel({ kind: 'daily' })
     }, BEAT_MS)
     return () => window.clearTimeout(t)
   }, [free, slot, day])

@@ -13,18 +13,21 @@ import { SPRING } from '../ui/motion'
 import { TopSlot } from '../ui/TopStack'
 import { levelView } from './levelView'
 import { GARMENTS, type Garment } from './outfit'
-import { farm, useFarm, xpEventCount, xpNow } from './state'
+import { farm, opensOn, useFarm, xpEventCount, xpNow } from './state'
 import { levelOf } from './xp'
 import { waitingBoxes } from './gifts'
+import { openedBetween, type UnlockId } from './unlocks'
+import { Unlocked } from './Unlocked'
+import { useGameFree } from '../ui/useGameFree'
 
 // The level chip at the top (src/farm/TopDash.tsx): a road from a star with the level on it to the next level and its
 // prize, its bar filling with XP as the crystals land (src/fx/xp.ts), a pulse of the star as it grows, and the gift
 // boxes waiting to be opened (src/farm/gifts.ts: the chip glows, with how many at the road's end). A tap opens the
 // level's card (./LevelPanel.tsx): the XP to the next level, its gift boxes, what it brings. LevelUp is the show of a
 // new level (a flash, a ring, the new number; what the level brought by itself — its coins and its gift — flying off it
-// to the coin chip and the silo's or the barn's tank) and, every fifth level, of the garment it brings for the
-// wardrobe; started by play only (xpEventCount in state.ts): a farm loaded or switched to takes its level without a
-// show.
+// to the coin chip and the silo's or the barn's tank), every fifth level of the garment it brings for the wardrobe,
+// and then of what it opened ("Unlocked!", ./Unlocked.tsx, once nothing is over the game); started by play only
+// (xpEventCount in state.ts): a farm loaded or switched to takes its level without a show.
 
 /** The XP as the bar shows it: all the points, what is still in the air, and the count of gains from play. */
 interface Seen {
@@ -227,6 +230,10 @@ export function LevelUp() {
   // the garments the levels shown brought, still to be shown (one after another)
   const [gifts, setGifts] = useState<Garment[]>([])
   const [gift, setGift] = useState<{ g: Garment; n: number } | null>(null)
+  // what the levels shown opened, still to be shown (a reveal for each level, once nothing is over the game)
+  const [opened, setOpened] = useState<{ level: number; opens: UnlockId[] }[]>([])
+  const [reveal, setReveal] = useState<{ level: number; opens: UnlockId[]; n: number } | null>(null)
+  const free = useGameFree()
 
   useEffect(() => {
     const s = told.current
@@ -245,6 +252,8 @@ export function LevelUp() {
       setShow((p) => ({ level: landed, from, n: (p?.n ?? 0) + 1 }))
       const brought = GARMENTS.filter((g) => g.level > from && g.level <= landed)
       if (brought.length) setGifts((q) => [...q, ...brought])
+      const opens = openedBetween(from, landed, opensOn)
+      if (opens.length) setOpened((q) => [...q, ...opens])
       farmSound('level')
     }
   }, [seen, reached, landed])
@@ -283,6 +292,13 @@ export function LevelUp() {
     const t = window.setTimeout(() => setGift(null), GIFT_MS)
     return () => window.clearTimeout(t)
   }, [gift])
+  // what the level opened, once its show and its garments are over and nothing is over the game (a panel the level was
+  // reached in, the edit mode): one reveal after another
+  useEffect(() => {
+    if (show || gift || gifts.length || reveal || !opened.length || !free) return
+    setReveal((p) => ({ ...opened[0], n: (p?.n ?? 0) + 1 }))
+    setOpened((q) => q.slice(1))
+  }, [show, gift, gifts, reveal, opened, free])
 
   return (
     <TopSlot name="level">
@@ -296,6 +312,7 @@ export function LevelUp() {
             <b className="level-up-number">{show.level}</b>
           </div>
         )}
+        {reveal && <Unlocked key={`u${reveal.n}`} level={reveal.level} opens={reveal.opens} onDone={() => setReveal(null)} />}
         {!show && gift && (
           <div className="garment-show" key={`g${gift.n}`}>
             <span className="garment-show-rays" aria-hidden="true" />

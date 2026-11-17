@@ -202,6 +202,9 @@
   .level-card .level-later { display: none; }
   .level-card .lf-next-name { display: none; }
   .level-card .lf-next .lf-auto { grid-area: tag; font-size: 13px; }
+  /* what the next level opens: its pictures alone take the place of "Comes by itself" */
+  .level-card .lf-next .unlock-row { grid-area: tag; justify-self: center; }
+  .level-card .lf-next:has(.unlock-row) .lf-auto { display: none; }
   .level-card .lf-next-garment .art { width: 48px; height: 48px; }
   .level-card .lf-next-coins { font-size: 17px; padding-block: 2px; }
   .level-card .lf-next-coins .art { width: 24px; height: 24px; }
