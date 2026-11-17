@@ -7,7 +7,7 @@ import { MACHINES, RECIPES, produceById, storeOf, type ProduceId } from '../../.
 import { iconUrl } from '../../../src/farm/icons'
 import { MachinePanelView } from '../../../src/farm/machine/MachinePanelView'
 import { SAMPLES, sampleActions, sampleView } from '../../../src/farm/machine/sample'
-import { sourceOf } from '../../../src/farm/orderBoard/sources'
+import { sourceOf } from '../../../src/farm/goods/sources'
 import '../../../src/farm/orderBoard/OrdersBoard.css'
 import { art } from '../../../src/ui/art'
 import { ItemPic } from '../../../src/ui/ItemPic'
