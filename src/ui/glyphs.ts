@@ -47,3 +47,5 @@ export { UploadSimple } from '@phosphor-icons/react/dist/csr/UploadSimple'
 export { Camera } from '@phosphor-icons/react/dist/csr/Camera'
 // the farm news, in the corner menu (src/ui/HudMode.tsx, src/farm/news)
 export { Newspaper } from '@phosphor-icons/react/dist/csr/Newspaper'
+// the goals board's medals won (src/farm/GoalsCard.tsx)
+export { Medal } from '@phosphor-icons/react/dist/csr/Medal'

@@ -1,0 +1,252 @@
+/* The goals board (GoalsCard.tsx, the design lab's F): the medal case. Every medal is gold (the sun and its lip), the
+   goods on their faces in their own full colours. Upright: the shelf of medals, the steps, what to do and the case of
+   small medals; sideways: the shelf on the left, the rest on the right. The sheet and its motion: SwipeSheet (`scrolls`:
+   the body scrolls on a small phone, the title moves the sheet). Every rule under .goals-card. */
+.goals-card .farm-panel { display: flex; flex-direction: column; gap: 10px; padding-top: 20px; overflow: hidden; }
+/* Motion presses these (SINK, PRESS): no CSS transition fighting it over their transform */
+.goals-card .btn,
+.goals-card .farm-panel .close { transition: box-shadow 0.1s ease-out, filter 0.15s, outline-offset 0.18s var(--ease-sheet); }
+.goals-card .btn:active:not(:disabled),
+.goals-card .farm-panel .close:active { transform: none; }
+
+/* the title: the trophy, "Goals", the medals won, how many wait, the close */
+.goals-card .gc-head { display: flex; align-items: center; gap: 8px; margin: 0; }
+.goals-card .gc-head > .art { width: 40px; height: 40px; }
+.goals-card .gc-head h2 { margin: 0; font: 600 25px/1.1 var(--font-display); color: var(--ink); }
+.goals-card .gc-head .tag { font-size: 15px; padding: 3px 10px; }
+.goals-card .gc-won { gap: 4px; }
+.goals-card .gc-won svg { width: 18px; height: 18px; color: var(--sun-lip); }
+.goals-card .gc-head .close { margin-inline-start: auto; }
+.goals-card .gc-body { display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 0; overflow: auto; margin: 0 -8px; padding: 0 8px 8px; scrollbar-width: none; }
+
+/* a gold medal: the ribbon behind, the coin (a milled rim, a sunk face with the goal's picture), the ring round it */
+.goals-card .gc-medal {
+  --size: 44px;
+  --ring: 0.09;
+  --m: var(--sun);
+  --m-lip: var(--sun-lip);
+  --m-hi: color-mix(in oklab, var(--sun) 25%, #fff);
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--size);
+  height: var(--size);
+  flex: none;
+}
+.goals-card .gc-medal.big { --size: 148px; --ring: 0.065; }
+.goals-card .gc-ring { position: absolute; z-index: 2; inset: 0; width: 100%; height: 100%; }
+.goals-card .gc-ring-track { fill: none; stroke: var(--paper-3); }
+.goals-card .gc-ring-fill { fill: none; stroke: var(--xp); stroke-linecap: round; }
+.goals-card .gc-ring.warm .gc-ring-fill { stroke: color-mix(in oklab, var(--berry) 45%, var(--sun)); }
+.goals-card .gc-ring.done .gc-ring-fill { stroke: var(--leaf); }
+.goals-card .gc-ribbon { position: absolute; z-index: 0; top: 58%; left: 50%; width: 46%; height: 52%; translate: -50% 0; }
+.goals-card .gc-ribbon::before,
+.goals-card .gc-ribbon::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: 46%;
+  height: 100%;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%);
+  box-shadow: inset 0 -6px 0 rgba(0, 0, 0, 0.12);
+}
+.goals-card .gc-ribbon::before { left: 0; background: linear-gradient(90deg, var(--berry), var(--berry-lip)); rotate: 14deg; transform-origin: 100% 0; }
+.goals-card .gc-ribbon::after { right: 0; background: linear-gradient(90deg, var(--xp-lip), var(--xp)); rotate: -14deg; transform-origin: 0 0; }
+.goals-card .gc-coin {
+  position: absolute;
+  z-index: 1;
+  inset: calc(var(--size) * var(--ring) + 2px);
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 26%, var(--m-hi) 0 10%, transparent 34%), repeating-conic-gradient(color-mix(in oklab, var(--m) 70%, var(--m-lip)) 0 3deg, var(--m) 3deg 6deg);
+  box-shadow:
+    0 3px 0 var(--m-lip),
+    0 6px 10px rgba(40, 24, 10, 0.25);
+  overflow: hidden;
+}
+/* the face: a light gold, so the good on it shows in its own colours */
+.goals-card .gc-face {
+  position: absolute;
+  inset: 9%;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: radial-gradient(circle at 36% 30%, color-mix(in oklab, var(--sun) 10%, #fff), color-mix(in oklab, var(--sun) 30%, var(--paper)) 50%, color-mix(in oklab, var(--sun) 58%, var(--paper)));
+  box-shadow:
+    inset 0 3px 5px color-mix(in oklab, var(--sun-lip) 55%, transparent),
+    inset 0 -2px 0 rgba(255, 255, 255, 0.6);
+}
+.goals-card .gc-face .item-pic .art { width: calc(var(--size) * 0.46); height: calc(var(--size) * 0.46); filter: drop-shadow(0 2px 1px rgba(40, 24, 10, 0.3)); }
+/* reached: a light runs over it now and then, and it glows */
+.goals-card .gc-shine {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, 0.75) 48%, transparent 60%);
+  translate: -120% 0;
+  opacity: 0;
+}
+.goals-card .gc-medal.done .gc-shine { opacity: 1; }
+.goals-card .gc-medal.done::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: -12%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in oklab, var(--sun) 60%, #fff), transparent);
+}
+
+/* the shelf: the big medal in the middle on a pool of light, the others beside it, turned away */
+.goals-card .gc-stage-col { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.goals-card .gc-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 178px;
+  overflow: hidden;
+  perspective: 700px;
+  touch-action: pan-y;
+  border-radius: 24px;
+  background: radial-gradient(60% 70% at 50% 46%, #fff, var(--paper-2) 75%);
+  box-shadow: inset 0 2px 0 var(--paper-3);
+}
+.goals-card .gc-track { position: absolute; inset: 0; display: grid; place-items: center; transform-style: preserve-3d; }
+.goals-card .gc-slot { position: absolute; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: none; transform-style: preserve-3d; }
+.goals-card .gc-slot.on { cursor: grab; }
+.goals-card .gc-hold,
+.goals-card .gc-spin { display: grid; place-items: center; transform-style: preserve-3d; }
+.goals-card .gc-pedestal {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  width: 120px;
+  height: 14px;
+  margin-left: -60px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(40, 24, 10, 0.22), transparent);
+  pointer-events: none;
+}
+
+/* the steps: those won gold, the one being won ringed and breathing, the next empty */
+.goals-card .gc-steps { display: flex; align-items: center; gap: 6px; min-height: 18px; }
+.goals-card .gc-steps i { width: 14px; height: 14px; border-radius: 50%; background: var(--paper-3); box-shadow: inset 0 1px 2px rgba(40, 24, 10, 0.25); }
+.goals-card .gc-steps i.won,
+.goals-card .gc-steps i.now { background: radial-gradient(circle at 35% 30%, color-mix(in oklab, var(--sun) 25%, #fff), var(--sun) 55%, var(--sun-lip)); box-shadow: 0 1px 0 var(--sun-lip); }
+.goals-card .gc-steps i.now {
+  width: 18px;
+  height: 18px;
+  box-shadow:
+    0 0 0 3px #fff,
+    0 0 0 5px color-mix(in oklab, var(--sun-lip) 70%, transparent);
+}
+
+/* what to do: the step, the words, how far, the bar leading to what it gives (reached: Claim in the bar's place) */
+.goals-card .gc-info-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.goals-card .gc-info { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 12px 12px; border-radius: 22px; background: var(--paper-2); text-align: center; }
+.goals-card .gc-info.done { background: color-mix(in oklab, var(--leaf) 12%, var(--paper)); box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--leaf) 35%, transparent); }
+.goals-card .gc-step { font: 800 13px/1.2 var(--font-text); color: var(--ink-2); letter-spacing: 0.04em; text-transform: uppercase; }
+.goals-card .gc-info h3 { margin: 0; font: 600 22px/1.15 var(--font-display); color: var(--ink); }
+.goals-card .gc-say { padding: 2px 10px; border-radius: 999px; background: color-mix(in oklab, var(--xp) 14%, var(--paper)); color: var(--xp-lip); font: 800 15px/1.4 var(--font-text); }
+.goals-card .gc-info.warm .gc-say { background: color-mix(in oklab, var(--sun) 40%, var(--paper)); color: color-mix(in oklab, var(--berry) 75%, var(--ink)); }
+.goals-card .gc-info.done .gc-say { background: var(--leaf); color: #fff; }
+.goals-card .gc-act { display: flex; align-items: center; gap: 10px; align-self: stretch; min-height: 48px; margin-top: 4px; }
+.goals-card .gc-barline { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+.goals-card .gc-count { font: 900 15px/1 var(--font-text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.goals-card .gc-bar {
+  position: relative;
+  flex: 1;
+  height: 16px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink) 14%, var(--paper-3));
+  box-shadow: inset 0 2px 2px rgba(60, 35, 10, 0.2);
+  overflow: hidden;
+}
+.goals-card .gc-bar > i { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: linear-gradient(to bottom, color-mix(in srgb, var(--xp) 45%, #fff), var(--xp) 55%, var(--xp-lip)); }
+.goals-card .gc-info.warm .gc-bar > i {
+  background:
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.35), transparent 50%),
+    linear-gradient(90deg, var(--xp) 0 45%, color-mix(in oklab, var(--xp) 45%, var(--berry)) 78%, color-mix(in oklab, var(--berry) 35%, var(--sun)) 100%);
+}
+.goals-card .gc-claim { flex: 1; min-height: 52px; font-size: 20px; gap: 8px; }
+.goals-card .gc-claim svg { width: 22px; height: 22px; }
+.goals-card .gc-gives {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow:
+    0 2px 0 var(--paper-3),
+    inset 0 0 0 2px color-mix(in oklab, var(--sun) 45%, transparent);
+}
+.goals-card .gc-gives .farm-coins { font: 900 17px/1 var(--font-text); color: var(--ink); }
+.goals-card .gc-gives .farm-coins img { width: 22px; height: 22px; }
+.goals-card .gc-gives .item-pic .art { width: 28px; height: 28px; }
+
+/* the case: every goal on the board as a small medal; the one in the middle raised; one reached bobs with a green dot */
+.goals-card .gc-case {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 4px;
+  padding: 6px;
+  border-radius: 20px;
+  background: color-mix(in oklab, var(--edge) 25%, var(--paper-2));
+  box-shadow: inset 0 3px 6px rgba(60, 35, 10, 0.18);
+}
+.goals-card .gc-thumb { position: relative; display: grid; place-items: center; min-width: 44px; min-height: 52px; padding: 0; border: 0; border-radius: 14px; background: none; }
+.goals-card .gc-thumb.on { background: var(--paper); box-shadow: 0 2px 0 var(--paper-3); }
+.goals-card .gc-thumb .gc-ribbon { display: none; }
+.goals-card .gc-thumb .gc-coin { box-shadow: 0 2px 0 var(--m-lip); }
+.goals-card .gc-thumb .gc-face { inset: 7%; }
+.goals-card .gc-thumb .gc-face .item-pic .art { width: 22px; height: 22px; }
+.goals-card .gc-dot { position: absolute; top: 3px; right: 3px; width: 12px; height: 12px; border-radius: 50%; background: var(--leaf); box-shadow: 0 0 0 2px #fff; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .goals-card .gc-medal.done .gc-shine { animation: gc-shine 3.2s ease-in-out 0.8s infinite; }
+  .goals-card .gc-steps i.now { animation: gc-now 1.8s ease-in-out infinite; }
+}
+@keyframes gc-shine {
+  0% { translate: -120% 0; }
+  45%,
+  100% { translate: 120% 0; }
+}
+@keyframes gc-now {
+  50% { scale: 1.15; }
+}
+
+/* a small phone: a smaller shelf, a little less room round the words */
+@media (max-height: 700px) and (orientation: portrait) {
+  .goals-card .farm-panel { gap: 8px; padding-top: 16px; }
+  .goals-card .gc-stage { height: 156px; }
+  .goals-card .gc-medal.big { --size: 128px; }
+  .goals-card .gc-info h3 { font-size: 19px; }
+}
+
+/* a phone on its side: the shelf and its steps on the left, what to do and the case on the right */
+@media (orientation: landscape) and (max-height: 560px) {
+  .goals-card .farm-panel { gap: 6px; padding-top: calc(12px + env(safe-area-inset-top)); }
+  .goals-card .gc-head > .art { width: 32px; height: 32px; }
+  .goals-card .gc-head h2 { font-size: 22px; }
+  .goals-card .gc-body { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr); align-items: start; gap: 10px; }
+  .goals-card .gc-stage { height: 212px; }
+  .goals-card .gc-medal.big { --size: 132px; }
+  .goals-card .gc-medal:not(.big) { --size: 40px; }
+  .goals-card .gc-info { gap: 2px; padding: 8px 10px 10px; }
+  .goals-card .gc-info h3 { font-size: 18px; }
+  .goals-card .gc-say { font-size: 13px; }
+  .goals-card .gc-act { flex-wrap: wrap; justify-content: center; gap: 6px; min-height: 44px; }
+  .goals-card .gc-barline { flex-basis: 100%; }
+  .goals-card .gc-claim { min-height: 44px; font-size: 18px; }
+  .goals-card .gc-case { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px; padding: 4px; }
+  .goals-card .gc-thumb { min-height: 46px; }
+  .goals-card .gc-thumb .gc-face .item-pic .art { width: 20px; height: 20px; }
+}
+/* a short phone on its side: a smaller shelf */
+@media (orientation: landscape) and (max-height: 400px) {
+  .goals-card .gc-stage { height: 176px; }
+  .goals-card .gc-medal.big { --size: 116px; }
+}

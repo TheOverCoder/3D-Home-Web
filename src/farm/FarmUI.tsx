@@ -452,7 +452,6 @@ export function FarmUI() {
       {/* one element for both: the card that asks for an upgrade opens over the board, never a board again */}
       {(panel?.kind === 'orders' || panel?.kind === 'office-upgrade') && <OrdersPanel asking={panel.kind === 'office-upgrade' ? panel.id : null} />}
       {panel?.kind === 'away' && <AwayPanel />}
-      {panel?.kind === 'goals' && <GoalsPanel />}
       {panel?.kind === 'manager' && <ManagerPanel />}
       {panel?.kind === 'market' && <MarketPanel />}
       {panel?.kind === 'market-place' && <MarketPlacePanel place={panel.place} />}
@@ -467,6 +466,8 @@ export function FarmUI() {
       {/* the level's card goes out the way it came in (src/ui/SwipeSheet.tsx); opened again while it is still going,
           it is a new card (a key of its own each time), never the one leaving brought back */}
       <AnimatePresence>{panel?.kind === 'level' && <LevelPanel key={`level-${opening(panel)}`} />}</AnimatePresence>
+      {/* the goals board (the medal case): out the way it came in, as the level's card */}
+      <AnimatePresence>{panel?.kind === 'goals' && <GoalsPanel key={`goals-${opening(panel)}`} />}</AnimatePresence>
       {/* the farm news (the corner menu's): the week's events and the lucky draw, going out the way it came in */}
       <AnimatePresence>{panel?.kind === 'news' && <NewsPanel key={`news-${opening(panel)}`} />}</AnimatePresence>
       {/* the daily gift: out the way it came in, as the level's card */}
