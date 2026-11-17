@@ -7,7 +7,7 @@
 // each picture is that moment exactly, however slow the machine), one sheet per screen, and the film's lint (lab/FILM.md
 // rules that can be counted). Effects that fire at a moment (a flash, a glint) are passed by a seek: watch those with
 // scripts/lab-film.mjs. Each moment also says when the camera looks across the lane at the farm (a film never does:
-// src/film/set.ts, looksAtFarm). The second: the score rendered offline (src/film/score.ts, render: the music, the
+// src/film/set.ts, looksAtFarm), and when someone stands between the camera and the shot's subject, hiding it. The second: the score rendered offline (src/film/score.ts, render: the music, the
 // voices and the stings) and its loudness every half second, so a cue too quiet, a voice lost under the music or a
 // drop too loud shows without listening; --wav writes it to a file to listen to. The game's own sounds (coins, the
 // till, a level) are not in it.
@@ -82,13 +82,17 @@ try {
       if (lint.length) console.log(`lint: ${lint.join(' · ')}`)
       const shots = []
       const farm = []
+      const hidden = []
       for (const t of ts) {
         await page.evaluate((t) => window.__filmPlayer.seek(t), t)
         await page.waitForTimeout(Number(a.wait ?? 900))
-        if (await page.evaluate(() => window.__filmPlayer.view()?.farm)) farm.push(t)
+        const view = await page.evaluate(() => window.__filmPlayer.view())
+        if (view?.farm) farm.push(t)
+        if (view?.blocked) hidden.push(`${t} s (${view.blocked})`)
         shots.push({ png: await page.screenshot(), w: spec.w, label: `${t} s` })
       }
       if (farm.length) console.log(`${device}: the camera looks at the farm at ${farm.join(', ')} s`)
+      if (hidden.length) console.log(`${device}: the shot's subject is hidden behind someone at ${hidden.join(', ')}`)
       const file = join(out, `${board}-moments-${device}.png`)
       await writeFile(file, await sheet(browser, shots, { cols: spec.w > spec.h ? 3 : 6, scale: Number(a.scale ?? 0.5), title: `${board} · ${device}` }))
       console.log(file)

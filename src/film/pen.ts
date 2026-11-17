@@ -1,18 +1,4 @@
-import {
-  BoxGeometry,
-  BufferAttribute,
-  CircleGeometry,
-  CylinderGeometry,
-  Group,
-  Matrix4,
-  Mesh,
-  MeshStandardMaterial,
-  SphereGeometry,
-  TorusGeometry,
-  Vector3,
-  type BufferGeometry,
-  type Object3D,
-} from 'three'
+import { BoxGeometry, BufferAttribute, Box3, Group, Matrix4, Mesh, MeshStandardMaterial, SphereGeometry, Vector3, type BufferGeometry, type Object3D } from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { Parts, smoothstep, type PartDef } from '../lib/sculpt'
 import { chickenParts, putChicken } from '../models/chicken'
@@ -21,18 +7,19 @@ import { decorModel, SECTION_HALF } from '../models/decor'
 import { GOODS } from '../models/goods'
 import { putSheep, sheepParts } from '../models/sheep'
 import { partGeometry } from '../models/structures'
+import { GOODS_PART, nestSpots, toolProp, type ToolLook, type ToolProp as ToolModel, type ToolStyle } from '../models/tools'
 import type { ToolKind } from './format'
-import { PEN } from './set'
+import { PEN, PEN_TOOL } from './set'
 import type { MemberNow, PropNow } from './stage'
 
 // The pen of the animal tools' films (plans/animal-tools.md §4), as a film set: the farm's own fence sections round it
 // (src/models/decor.ts, one crowd), its gate standing open into it, the film's herd from the game's own animals (their
 // crowds and poses: src/models/chicken.ts, cow.ts, sheep.ts) grazing, pecking and looking about when they are not walking
-// to a mark, and the two props every tool's film has: the crate the contractor brings (its sides fall away as it opens)
-// and the tool itself (its pieces rising into place). The tool's look is a stand-in made of plain shapes until the 3D
-// designer's model is chosen (lab board `tools-3d`): it is all in `toolModel`, so that model drops in there and every
-// film follows. Like the market's walls, a fence section between the camera and what it films is left out of that
-// frame (a film set's wild walls), never one behind.
+// to a mark, and the props of every tool's film: the crate the contractor carries in both hands (its sides fall away as
+// it opens), the tool itself as the 3D designer made it (src/models/tools.ts, in the style the film is given: its pieces
+// rising into place one after another), one of its pieces alone (the pail kicked over, the shears in a hand), and the
+// hens' old nest box. Like the market's walls, a fence section between the camera and what it films may be left out of
+// a shot (a film set's wild walls): decided once for the whole shot (./stage3d.ts), never frame by frame.
 
 // ───────────────────────────── the fence ─────────────────────────────
 
@@ -113,6 +100,8 @@ export const BODY: Record<ToolKind, { h: number; w: number; long: number; y: num
 const ROOSTER = 1.28
 /** The stage's stride: its walks' phase a metre (./stage.ts). */
 const STRIDE = 5.2
+/** A hen sitting in a nest is drawn this big (the nests are a hen's size: she settles into the straw, her legs in it). */
+const SITTING = 0.75
 
 export interface Animal {
   id: string
@@ -128,20 +117,24 @@ export function bodyOf(kind: ToolKind, n: number) {
   return { h: b.h * k, w: b.w * k, long: b.long * k, y: b.y * k }
 }
 
+/** The herd's crowd as an animal's put sees it, but up off the ground by `lift`, `scale` times its size, and (a cow)
+ *  with her right hind leg thrown back by `kick` radians and her tail up: the game's own models and poses, moved. */
+function moved(parts: Parts, lift: number, scale: number, kick: number): Parts {
+  // (the right hind leg is the hind part on her right, −x; the tail goes up as it kicks)
+  const thrown = (k: string, x: number) => (!kick ? 0 : k.startsWith('tail') ? -0.8 * kick : k.startsWith('hind') && x < 0 ? kick : 0)
+  const put = (k: string, x: number, y: number, z: number, rx = 0, ...rest: unknown[]) => (parts.put as (...a: unknown[]) => void)(k, x, y, z, rx + thrown(k, x), ...rest)
+  const at = (x: number, y: number, z: number, heading = 0, s = 1) => parts.at(x, y + lift, z, heading, s * scale)
+  return { at, put } as unknown as Parts
+}
+
+/** How far a cow's kick is thrown back, `s` seconds after it began: out fast, back slower. */
+const kickAt = (s: number) => 1.25 * (s < 0.12 ? Math.sin((s / 0.12) * (Math.PI / 2)) : Math.max(0, 1 - (s - 0.12) / 0.4))
+
 // ───────────────────────────── the props ─────────────────────────────
 
 const WOOD = new MeshStandardMaterial({ color: '#b98a55', roughness: 0.85 })
 const WOOD_DARK = new MeshStandardMaterial({ color: '#7a5634', roughness: 0.9 })
-const RED = new MeshStandardMaterial({ color: '#b5523a', roughness: 0.8 })
-const TRIM = new MeshStandardMaterial({ color: '#e9e2d2', roughness: 0.75 })
 const STRAW = new MeshStandardMaterial({ color: '#d9c18a', roughness: 1 })
-// (no reflections to show on the set: metals are mostly their own colour)
-const ZINC = new MeshStandardMaterial({ color: '#c9d0d4', roughness: 0.4, metalness: 0.15 })
-const IRON = new MeshStandardMaterial({ color: '#4a4a4f', roughness: 0.55, metalness: 0.2 })
-const MILK = new MeshStandardMaterial({ color: '#f6f3ea', roughness: 0.25 })
-const WICKER = new MeshStandardMaterial({ color: '#b08a52', roughness: 0.95 })
-const STEEL = new MeshStandardMaterial({ color: '#dfe4e8', roughness: 0.3, metalness: 0.2 })
-const HANDLE = new MeshStandardMaterial({ color: '#c0392b', roughness: 0.55 })
 
 const box = (w: number, h: number, d: number, m: MeshStandardMaterial, x = 0, y = 0, z = 0) => {
   const mesh = new Mesh(new BoxGeometry(w, h, d), m)
@@ -172,7 +165,7 @@ function bake<T extends Object3D>(g: T): T {
       const colour = new Float32Array(n * 3)
       for (let i = 0; i < n; i++) material.color.toArray(colour, i * 3)
       shape.setAttribute('color', new BufferAttribute(colour, 3))
-      shapes.push(shape)
+      shapes.push(shape.index ? shape.toNonIndexed() : shape)
       done.push(mesh)
     }
     for (const c of o.children) walk(c)
@@ -191,17 +184,18 @@ function bake<T extends Object3D>(g: T): T {
   return g
 }
 
+/** The crate's size: a little narrower than the carry's hands are apart, so they hold it by its sides. */
+export const CRATE = { w: 0.56, d: 0.42, h: 0.42 }
+
 /** The crate: slatted boards round a floor, its lid on its back side; its origin on the floor's middle, its front +z.
  *  As it opens its sides fall flat outwards, the lid with the back. */
 function crateModel() {
-  const W = 0.62
-  const D = 0.46
-  const H = 0.46
+  const { w: W, d: D, h: H } = CRATE
   const group = new Group()
   group.add(box(W, 0.03, D, WOOD_DARK, 0, 0.015, 0))
   const panel = (w: number) => {
     const p = new Group()
-    for (const y of [0.07, 0.22, 0.37]) p.add(box(w, 0.11, 0.02, WOOD, 0, y, 0))
+    for (const y of [0.065, 0.2, 0.335]) p.add(box(w, 0.1, 0.02, WOOD, 0, y, 0))
     for (const x of [-w / 2 + 0.04, w / 2 - 0.04]) p.add(box(0.06, H - 0.02, 0.025, WOOD_DARK, x, H / 2, 0.012))
     return bake(p)
   }
@@ -224,7 +218,7 @@ function crateModel() {
   // the lid, on the back's top
   const lid = new Group()
   lid.position.set(0, H - 0.02, 0)
-  for (const x of [-0.2, 0, 0.2]) lid.add(box(0.19, 0.02, D, WOOD, x, 0.01, D / 2))
+  for (const x of [-0.18, 0, 0.18]) lid.add(box(0.17, 0.02, D, WOOD, x, 0.01, D / 2))
   hinges[1].g.children[0].add(bake(lid))
   return {
     group,
@@ -243,211 +237,72 @@ function crateModel() {
   }
 }
 
-/** A tool's look: its pieces (each rising into place in turn as it opens), what it holds, its size for the camera. */
-interface ToolModel {
-  root: Group
-  pieces: Object3D[]
-  /** where each good in it goes (in the root's frame), and how big the good is drawn there */
-  slots: Vector3[]
-  good: 'egg' | 'milk' | 'wool'
-  goodScale: number
-  /** the camera's frame of it: its middle (in the root's frame), its height and width */
-  frame: { at: Vector3; h: number; w: number }
-  /** the milk's height in the bucket (0..1) */
-  level?: (k: number) => void
-  /** the bucket alone, before it hangs on the post: standing, or knocked over in its spilt milk */
-  alone?: (how: 'ground' | 'tipped' | null) => void
+/** The hens' old nest box, as the farm draws it (src/farm/Places.tsx): a wooden box on a post, straw in it, its
+ *  origin at the post's foot, its open side +z. */
+function oldNestModel() {
+  const g = new Group()
+  g.add(box(0.4, 0.03, 0.44, WOOD, 0, 0.615, 0))
+  g.add(box(0.4, 0.2, 0.03, WOOD, 0, 0.7, -0.22))
+  g.add(box(0.03, 0.12, 0.44, WOOD, -0.2, 0.66, 0))
+  g.add(box(0.03, 0.12, 0.44, WOOD, 0.2, 0.66, 0))
+  g.add(box(0.06, 0.6, 0.06, WOOD_DARK, 0, 0.3, -0.12))
+  const straw = new Mesh(new SphereGeometry(0.17, 10, 6), STRAW)
+  straw.scale.set(1.05, 0.2, 1.1)
+  straw.position.set(0, 0.635, 0)
+  g.add(straw)
+  return bake(g)
 }
 
-/** The tool of each herd, as a stand-in until the 3D designer's model is chosen: in the frame of the gate's east post
- *  (its foot the origin, +z out of the pen towards the lane, +x to the viewer's right). The coop: six red nests in a
- *  row along the fence, east of the post, each with its straw (the first one is the hens' old nest); the bucket: an
- *  iron arm on the post and a zinc pail hanging from it; the shears: a wicker basket by the post and the shears on it. */
-function toolModel(kind: ToolKind): ToolModel {
-  const root = new Group()
-  const pieces: Object3D[] = []
-  const slots: Vector3[] = []
-  if (kind === 'hens') {
-    // each nest a red box on the ground against the fence, open to the front, a hen's height inside, its roof sloping
-    // to the front, straw on its floor, and a tray in front where her eggs roll out (a roll-away nest: they are taken
-    // from outside)
-    for (let k = 0; k < 6; k++) {
-      const nest = new Group()
-      nest.position.set(-(0.27 + k * 0.31), 0, 0.28)
-      nest.add(box(0.3, 0.03, 0.52, WOOD_DARK, 0, 0.015, 0))
-      nest.add(box(0.3, 0.5, 0.02, RED, 0, 0.25, -0.25))
-      for (const x of [-0.145, 0.145]) nest.add(box(0.02, 0.5, 0.52, RED, x, 0.25, 0))
-      nest.add(box(0.3, 0.025, 0.14, TRIM, 0, 0.045, 0.32))
-      nest.add(box(0.3, 0.03, 0.02, TRIM, 0, 0.07, 0.39))
-      const straw = new Mesh(new SphereGeometry(0.13, 10, 6), STRAW)
-      straw.scale.set(1.05, 0.22, 1.7)
-      straw.position.set(0, 0.03, -0.02)
-      straw.receiveShadow = true
-      nest.add(straw)
-      const roof = box(0.32, 0.03, 0.6, RED, 0, 0.52, 0.03)
-      roof.rotation.x = 0.2
-      nest.add(roof)
-      root.add(bake(nest))
-      pieces.push(nest)
-      // (the eggs on the tray)
-      slots.push(new Vector3(nest.position.x, 0.058, 0.6))
-    }
-    const ridge = box(1.9, 0.045, 0.07, TRIM, -1.045, 0.58, 0.07)
-    root.add(ridge)
-    pieces.push(ridge)
-    // (the eggs a little bigger than life: they are what the shot is about, on a phone)
-    return { root, pieces, slots, good: 'egg', goodScale: 1.5, frame: { at: new Vector3(-1.05, 0.3, 0.33), h: 0.62, w: 2.0 } }
-  }
-  if (kind === 'cows') {
-    const arm = new Group()
-    arm.add(box(0.035, 0.035, 0.26, IRON, 0, 0.93, 0.13))
-    const hook = new Mesh(new TorusGeometry(0.03, 0.007, 6, 12, Math.PI * 1.4), IRON)
-    hook.position.set(0, 0.9, 0.24)
-    hook.rotation.y = Math.PI / 2
-    arm.add(hook)
-    root.add(bake(arm))
-    pieces.push(arm)
-    // the pail: its foot's middle at its origin; open at the top
-    const pail = new Group()
-    const body = new Mesh(new CylinderGeometry(0.15, 0.12, 0.3, 20, 1, true), ZINC)
-    body.material = ZINC
-    body.position.y = 0.15
-    body.castShadow = true
-    pail.add(body)
-    const floor = new Mesh(new CircleGeometry(0.12, 20), ZINC)
-    floor.rotation.x = -Math.PI / 2
-    floor.position.y = 0.01
-    pail.add(floor)
-    const rim = new Mesh(new TorusGeometry(0.15, 0.012, 6, 24), ZINC)
-    rim.rotation.x = Math.PI / 2
-    rim.position.y = 0.3
-    pail.add(rim)
-    const handle = new Mesh(new TorusGeometry(0.15, 0.007, 6, 20, Math.PI), IRON)
-    handle.position.y = 0.3
-    pail.add(handle)
-    const milk = new Mesh(new CircleGeometry(0.135, 20), MILK)
-    milk.rotation.x = -Math.PI / 2
-    milk.visible = false
-    milk.userData.keep = true
-    pail.add(milk)
-    bake(pail)
-    // the spilt milk, when it is knocked over
-    const puddle = new Mesh(new CircleGeometry(0.3, 18), MILK)
-    puddle.rotation.x = -Math.PI / 2
-    puddle.scale.set(1.3, 0.8, 1)
-    puddle.position.set(0.32, 0.006, 0.05)
-    puddle.visible = false
-    const hang = new Group()
-    hang.position.set(0, 0.6, 0.24)
-    hang.add(pail)
-    root.add(hang, puddle)
-    pieces.push(hang)
-    return {
-      root,
-      pieces,
-      slots,
-      good: 'milk',
-      goodScale: 1,
-      frame: { at: new Vector3(0, 0.62, 0.15), h: 1.05, w: 0.6 },
-      level(k) {
-        milk.visible = k > 0
-        milk.position.y = 0.03 + 0.24 * Math.min(1, k)
-        milk.scale.setScalar(0.85 + 0.15 * Math.min(1, k))
-      },
-      alone(how) {
-        arm.visible = how === null
-        puddle.visible = how === 'tipped'
-        hang.position.set(how === null ? 0 : 0, how === null ? 0.6 : how === 'tipped' ? 0.12 : 0, how === null ? 0.24 : 0)
-        hang.rotation.set(0, 0, how === 'tipped' ? -Math.PI / 2 + 0.08 : 0)
-        hang.scale.setScalar(1)
-      },
-    }
-  }
-  const basket = new Group()
-  basket.position.set(-0.5, 0, 0.42)
-  const weave = new Mesh(new CylinderGeometry(0.25, 0.19, 0.3, 18, 3, true), WICKER)
-  weave.position.y = 0.15
-  weave.castShadow = true
-  basket.add(weave)
-  const bottom = new Mesh(new CircleGeometry(0.19, 18), WICKER)
-  bottom.rotation.x = -Math.PI / 2
-  bottom.position.y = 0.01
-  basket.add(bottom)
-  const lip = new Mesh(new TorusGeometry(0.25, 0.018, 6, 24), WOOD_DARK)
-  lip.rotation.x = Math.PI / 2
-  lip.position.y = 0.3
-  basket.add(lip)
-  for (const s of [-1, 1]) {
-    const ear = new Mesh(new TorusGeometry(0.05, 0.012, 6, 12, Math.PI), WOOD_DARK)
-    ear.position.set(s * 0.25, 0.3, 0)
-    ear.rotation.y = Math.PI / 2
-    basket.add(ear)
-  }
-  root.add(bake(basket))
-  pieces.push(basket)
-  // the shears on a peg on the post: two blades crossed at the pivot, their red grips below
-  const shears = new Group()
-  shears.position.set(0, 0.8, 0.08)
-  shears.add(box(0.03, 0.03, 0.08, IRON, 0, 0.12, -0.03))
-  for (const s of [-1, 1]) {
-    const half = new Group()
-    half.rotation.z = s * 0.22
-    half.add(box(0.035, 0.2, 0.01, STEEL, 0, 0.1, 0))
-    const grip = new Mesh(new TorusGeometry(0.04, 0.012, 6, 14), HANDLE)
-    grip.position.set(0, -0.06, 0)
-    half.add(grip)
-    shears.add(half)
-  }
-  root.add(bake(shears))
-  pieces.push(shears)
-  for (const [x, y, z] of [
-    [-0.07, 0.1, -0.06],
-    [0.08, 0.1, -0.03],
-    [0, 0.1, 0.08],
-    [0, 0.26, 0],
-  ])
-    slots.push(new Vector3(basket.position.x + x, y, basket.position.z + z))
-  return { root, pieces, slots, good: 'wool', goodScale: 0.82, frame: { at: new Vector3(-0.25, 0.45, 0.25), h: 1.05, w: 1.1 } }
-}
+const LOOKS: Record<ToolKind, ToolLook> = { hens: 'nests', cows: 'pail', sheep: 'shears' }
 
-/** The pieces of a tool rise into place in turn as it opens (0..1): from under the ground, small, with a little
- *  overshoot as each lands. */
-function rise(pieces: Object3D[], rest: Vector3[], open: number) {
-  const n = pieces.length
-  pieces.forEach((p, i) => {
-    const k = Math.max(0, Math.min(1, open * n - i))
-    const c = 1.7
-    const e = k <= 0 ? 0 : 1 + (c + 1) * (k - 1) ** 3 + c * (k - 1) ** 2
-    p.visible = k > 0
-    p.position.set(rest[i].x, rest[i].y - (1 - e) * 0.5, rest[i].z)
-    p.scale.setScalar(0.35 + 0.65 * e)
-  })
-}
-
-interface ToolProp {
+/** The tool, as the game will draw it, in the film's style: its pieces rising one after another (`open`), what waits
+ *  in it (the milk, the wool: its goods part, shown while there are any; the eggs on its nests), its frame for the
+ *  camera (the model's own box). */
+interface ToolNow {
   model: ToolModel
-  rest: Vector3[]
-  goods: Parts
+  /** the goods piece (the milk, the wool), and its size full */
+  goods: Group | null
+  /** where the eggs lie on its nests (the model's frame), drawn by `eggs` */
+  slots: Vector3[]
+  eggs: Parts | null
   keys: string[]
+  /** the model's box in its own frame */
+  bounds: Box3
+}
+
+/** One piece of a tool alone (the pail, the shears): its group moved so the piece's foot is its origin. */
+interface PieceNow {
+  model: ToolModel
+  root: Group
+  /** how tall and wide it is, and its middle's height over its foot */
+  h: number
+  w: number
 }
 
 // ───────────────────────────── the pen ─────────────────────────────
 
-const hold = new Vector3()
 const m4 = new Matrix4()
+const v = new Vector3()
 
 export class PenSet {
   readonly group = new Group()
   private sections = sections()
+  /** the fence sections left out of this shot ('-': not drawn yet) */
+  private hidden = '-'
   private fence: Parts
   private herd: Parts
   private crates = new Map<string, ReturnType<typeof crateModel>>()
-  private tools = new Map<string, ToolProp>()
+  private tools = new Map<string, ToolNow>()
+  private pieces = new Map<string, PieceNow>()
+  private nests = new Map<string, { root: Group; eggs: Parts; keys: string[] }>()
+  /** the coop's nests in the world, where a hen sits in each (the film's style) */
+  private seats: Vector3[] = []
 
   constructor(
     readonly kind: ToolKind,
-    props: Record<string, { kind: string }>,
+    props: Record<string, { kind: string; piece?: string }>,
     animals: number,
+    readonly style: ToolStyle = 'a',
   ) {
     const model = decorModel('fence')
     const defs: Record<string, PartDef> = {}
@@ -456,42 +311,92 @@ export class PenSet {
     // every coat or face its own: the herd's whole crowd is small
     this.herd = kind === 'hens' ? chickenParts(Math.max(6, animals)) : kind === 'cows' ? cowParts(2) : sheepParts(Math.max(4, animals))
     this.group.add(this.fence.group, this.herd.group)
+    const look = LOOKS[kind]
+    const eggParts = (n: number, name: string) => {
+      const egg = GOODS.egg()
+      const keys = Object.keys(egg)
+      const d: Record<string, PartDef> = {}
+      for (const k of keys) d[k] = { geometry: egg[k].shape.geometry(), max: n, material: egg[k].material, castShadow: true }
+      return { parts: new Parts(d, name), keys }
+    }
     for (const [id, p] of Object.entries(props)) {
       if (p.kind === 'crate') {
         const c = crateModel()
         this.crates.set(id, c)
         this.group.add(c.group)
       } else if (p.kind === 'tool') {
-        const m = toolModel(kind)
-        const good = GOODS[m.good]()
-        const keys = Object.keys(good)
-        const gdefs: Record<string, PartDef> = {}
-        for (const k of keys) gdefs[k] = { geometry: good[k].shape.geometry(), max: Math.max(1, m.slots.length), material: good[k].material, castShadow: true }
-        const goods = new Parts(gdefs, `film-tool-${m.good}`)
-        this.tools.set(id, { model: m, rest: m.pieces.map((x) => x.position.clone()), goods, keys })
-        this.group.add(m.root, goods.group)
+        const m = toolProp(look, style)
+        // (its pieces come up out of the crate, set down in front of it)
+        for (const piece of m.pieces) piece.from = [0, -0.35, 0.95]
+        m.open(1)
+        const bounds = new Box3().setFromObject(m.group)
+        const goods = m.pieces.find((x) => x.group.children.some((c) => c.name.endsWith(`-${GOODS_PART}`)))?.group ?? null
+        // the eggs on the nests' fronts (half again their size: they are what the shot is about, on a phone)
+        const slots = look === 'nests' ? nestSpots(style).map(([x, y, z]) => new Vector3(x, y, z + 0.08)) : []
+        const e = slots.length ? eggParts(slots.length, `film-tool-eggs`) : null
+        this.tools.set(id, { model: m, goods, slots, eggs: e?.parts ?? null, keys: e?.keys ?? [], bounds })
+        this.group.add(m.group)
+        if (e) this.group.add(e.parts.group)
+        // where a hen sits in each nest: on its straw, a little back from the eggs
+        if (look === 'nests') this.seats = nestSpots(style).map(([x, y, z]) => this.toWorld(x, y - 0.05, z - 0.03))
+      } else if (p.kind === 'piece') {
+        const m = toolProp(look, style)
+        m.open(1)
+        const piece = m.pieces.find((x) => x.id === p.piece) ?? m.pieces[m.pieces.length - 1]
+        for (const x of m.pieces) x.group.visible = x === piece
+        // the piece's foot at the origin
+        const b = new Box3().setFromObject(piece.group)
+        const root = new Group()
+        m.group.position.set(-(b.min.x + b.max.x) / 2, -b.min.y, -(b.min.z + b.max.z) / 2)
+        root.add(m.group)
+        this.pieces.set(id, { model: m, root, h: b.max.y - b.min.y, w: Math.max(b.max.x - b.min.x, b.max.z - b.min.z) })
+        this.group.add(root)
+      } else if (p.kind === 'nestbox') {
+        const root = oldNestModel()
+        const e = eggParts(3, 'film-old-nest-eggs')
+        this.nests.set(id, { root, eggs: e.parts, keys: e.keys })
+        this.group.add(root, e.parts.group)
       }
     }
-    this.fences(null, [])
+    this.fences([])
   }
 
-  /** The fence, but the sections between the camera at `eye` and the points it films, and any right at the lens (a post
-   *  a hand from it would fill a side of the picture), when the camera is low enough for them to be in its way (none:
-   *  all of it). */
-  fences(eye: Vector3 | null, seen: Vector3[]) {
-    this.fence.begin()
-    for (const s of this.sections) {
+  /** A point of the tool's model frame in the world (the tool at its place, its front to the lane). */
+  private toWorld(x: number, y: number, z: number) {
+    const c = Math.cos(PEN_TOOL.heading)
+    const s = Math.sin(PEN_TOOL.heading)
+    return new Vector3(PEN_TOOL.x + x * c + z * s, y, PEN_TOOL.z - x * s + z * c)
+  }
+
+  /** The fence sections between the camera at `eye` and the points it films, and any right at the lens (a post a hand
+   *  from it would fill a side of the picture), when the camera is low enough for them to be in its way. */
+  inTheWay(eye: Vector3, seen: Vector3[]) {
+    const out: number[] = []
+    this.sections.forEach((s, i) => {
       // (each way stops a little short of what it films: what stands in the fence is filmed, not its fence cut away)
-      if (eye && seen.some((p) => through(eye, eye.clone().lerp(p, 0.92), s))) continue
-      if (eye && eye.y < 1.6 && Math.hypot(Math.max(s.x0 - eye.x, 0, eye.x - s.x1), Math.max(s.z0 - eye.z, 0, eye.z - s.z1)) < 0.9) continue
+      if (seen.some((p) => through(eye, eye.clone().lerp(p, 0.92), s))) out.push(i)
+      else if (eye.y < 1.6 && Math.hypot(Math.max(s.x0 - eye.x, 0, eye.x - s.x1), Math.max(s.z0 - eye.z, 0, eye.z - s.z1)) < 0.9) out.push(i)
+    })
+    return out
+  }
+
+  /** The fence, but the sections given (a shot's: the same from its first frame to its last). */
+  fences(hidden: number[]) {
+    const key = hidden.join(',')
+    if (key === this.hidden) return
+    this.hidden = key
+    this.fence.begin()
+    this.sections.forEach((s, i) => {
+      if (hidden.includes(i)) return
       this.fence.at(s.x, 0, s.z, s.heading)
       for (const k of Object.keys(this.fence.meshes)) this.fence.put(k, 0, 0, 0)
-    }
+    })
     this.fence.end()
   }
 
-  /** The herd where the film has them at world time `w`: walking where they walk, and between walks grazing (pecking),
-   *  looking about, or looking up (`surprise`: alert, head up, still); frozen where a freeze holds them. */
+  /** The herd where the film has them at world time `w`: walking where they walk (a hop up into a nest), and between
+   *  walks grazing (pecking), looking about, or looking up (`surprise`: alert, head up, still), head hung (`slump`), a
+   *  kick (`kick`: a cow's hind leg); a hen in a nest sits in its straw; frozen where a freeze holds them. */
   animals(list: Animal[], now: Map<string, MemberNow>, w: number) {
     const parts = this.herd
     const legs = BODY[this.kind].legs / STRIDE
@@ -501,32 +406,45 @@ export class PenSet {
       if (!m?.visible) continue
       const p = m.pose
       const t = p.frozenAt ?? w
-      const alert = p.pose === 'surprise' ? p.blend : p.was === 'surprise' ? 1 - p.blend : 0
-      const calm = (1 - alert) * (1 - p.walk)
+      const was = (q: string) => (p.pose === q ? p.blend : p.was === q ? 1 - p.blend : 0)
+      const alert = was('surprise')
+      const sad = was('slump')
+      const calm = (1 - alert) * (1 - p.walk) * (1 - sad)
       // head down about half the time, each at her own time
-      const graze = calm * smoothstep(0.05, 0.55, Math.sin(t * 0.45 + a.seed * 1.7))
+      const graze = calm * smoothstep(0.05, 0.55, Math.sin(t * 0.45 + a.seed * 1.7)) + sad * 0.55
       const look = calm * (1 - graze) * Math.sin(t * 0.5 + a.seed * 2) * 0.35
       const phase = p.phase * legs
-      if (this.kind === 'hens') putChicken(parts, a.n === 0, Math.max(0, a.n - 1), m.x, m.z, m.heading, { phase, stride: p.walk, peck: graze * Math.max(0, Math.sin(t * 9 + a.seed)), look: look * 2 })
-      else if (this.kind === 'cows') putCow(parts, a.n, m.x, m.z, m.heading, { phase, stride: p.walk, graze, tail: t * 1.6 + a.seed, chew: t * 5 + a.seed, look })
-      else putSheep(parts, a.n, m.x, m.z, m.heading, { phase, stride: p.walk, graze, wool: 1, chew: t * 6 + a.seed, look })
+      // a hen up in a nest (not mid-hop): settled in the straw of the nearest of the style's nests
+      let lift = m.y
+      let scale = 1
+      if (this.kind === 'hens' && m.y > 0.3 && p.walk === 0 && this.seats.length) {
+        const seat = this.seats.reduce((b, s) => (Math.hypot(s.x - m.x, s.z - m.z) < Math.hypot(b.x - m.x, b.z - m.z) ? s : b))
+        if (Math.hypot(seat.x - m.x, seat.z - m.z) < 0.2) {
+          lift = seat.y
+          scale = SITTING
+        }
+      }
+      const kick = p.pose === 'kick' ? kickAt(p.since) : p.was === 'kick' ? kickAt(p.wasSince) : 0
+      const put = lift || scale !== 1 || kick ? moved(parts, lift, scale, kick) : parts
+      if (this.kind === 'hens')
+        putChicken(put, a.n === 0, Math.max(0, a.n - 1), m.x, m.z, m.heading, { phase, stride: p.walk, peck: scale !== 1 ? 0 : graze * Math.max(0, Math.sin(t * 9 + a.seed)), look: look * 2 })
+      else if (this.kind === 'cows') putCow(put, a.n, m.x, m.z, m.heading, { phase, stride: p.walk, graze: kick ? 0 : graze, tail: t * 1.6 + a.seed, chew: t * 5 + a.seed, look: kick ? 0.6 : look })
+      else putSheep(put, a.n, m.x, m.z, m.heading, { phase, stride: p.walk, graze, wool: m.wool, chew: t * 6 + a.seed, look })
     }
     parts.end()
   }
 
-  /** Where a held crate goes: in front of its holder, in both arms (the `box` pose), as the manager's box. */
-  private held(holder: MemberNow) {
-    const f = new Vector3(Math.sin(holder.heading), 0, Math.cos(holder.heading))
-    return hold.set(holder.x, 0.66, holder.z).addScaledVector(f, 0.4)
-  }
-
-  /** The crate and the tool props this frame. */
-  props(id: string, p: PropNow, now: Map<string, MemberNow>) {
+  /** The crate, the tool, a piece, the nest box this frame. `hands`: a holder's two hands in the world (the crate is
+   *  carried between them, the pail and the shears in the right one), `head` the top of their head. */
+  props(id: string, p: PropNow, now: Map<string, MemberNow>, hands: (who: string) => [Vector3, Vector3], head: (who: string) => Vector3) {
     const crate = this.crates.get(id)
     if (crate) {
       const holder = p.holder ? now.get(p.holder) : null
-      if (holder) {
-        crate.group.position.copy(this.held(holder))
+      if (holder && p.holder) {
+        // between the hands, at the middle of its sides
+        const [l, r] = hands(p.holder)
+        crate.group.position.copy(l).add(r).multiplyScalar(0.5)
+        crate.group.position.y -= CRATE.h / 2
         crate.group.rotation.set(0, holder.heading, 0)
       } else {
         crate.group.position.set(p.x, p.y, p.z)
@@ -536,50 +454,103 @@ export class PenSet {
       crate.group.visible = there && (p.holder ? !!holder?.visible : true)
       return
     }
+    const piece = this.pieces.get(id)
+    if (piece) {
+      const holder = p.holder ? now.get(p.holder) : null
+      piece.root.visible = p.holder ? !!holder?.visible : true
+      piece.root.rotation.set(0, 0, 0)
+      if (holder && p.holder) {
+        if (p.show === 'head') {
+          // upside down on their head, its rim over their eyes
+          piece.root.position.copy(head(p.holder))
+          piece.root.position.y += piece.h - 0.13
+          piece.root.rotation.set(Math.PI, -holder.heading, 0)
+        } else {
+          // hanging from the right hand
+          piece.root.position.copy(hands(p.holder)[1])
+          piece.root.position.y -= piece.h * 0.85
+          piece.root.rotation.set(0, holder.heading, 0)
+        }
+      } else if (p.fly) {
+        piece.root.position.set(p.x, p.y, p.z)
+        piece.root.rotation.set(p.fly.spin, p.heading, p.fly.spin * 0.4)
+      } else if (p.show === 'tipped') {
+        // on its side on the ground
+        piece.root.position.set(p.x, piece.w / 2, p.z)
+        piece.root.rotation.set(0, p.heading, Math.PI / 2 - 0.1)
+      } else {
+        piece.root.position.set(p.x, p.y, p.z)
+        piece.root.rotation.set(0, p.heading, 0)
+      }
+      return
+    }
+    const nest = this.nests.get(id)
+    if (nest) {
+      nest.root.position.set(p.x, 0, p.z)
+      nest.root.rotation.set(0, p.heading, 0)
+      nest.root.updateMatrixWorld(true)
+      const n = Math.max(0, Math.floor(Number(p.show) || 0))
+      nest.eggs.begin()
+      for (let i = 0; i < Math.min(3, n); i++) {
+        v.set(-0.08 + i * 0.08, 0.66, 0.08 - (i % 2) * 0.06).applyMatrix4(nest.root.matrixWorld)
+        nest.eggs.at(v.x, v.y, v.z, p.heading + i, 1.4)
+        for (const k of nest.keys) nest.eggs.put(k, 0, 0, 0)
+      }
+      nest.eggs.end()
+      return
+    }
     const tool = this.tools.get(id)
     if (!tool) return
     const m = tool.model
-    m.root.position.set(p.x, p.y, p.z)
-    m.root.rotation.set(0, p.heading, 0)
-    const alone = p.show === 'ground' || p.show === 'tipped' ? p.show : null
-    rise(m.pieces, tool.rest, alone ? 1 : p.open)
-    m.alone?.(alone)
-    // what is in it: a number of goods (the milk: how full the pail is of the herd's three)
-    const n = alone ? 0 : Math.max(0, Math.floor(Number(p.show) || 0))
-    m.level?.(alone === 'tipped' ? 0 : n / 3)
-    m.root.updateMatrixWorld(true)
-    tool.goods.begin()
-    if (m.good !== 'milk')
-      for (let i = 0; i < Math.min(n, m.slots.length); i++) {
-        // (a good in a piece still rising waits for it)
-        const piece = m.good === 'egg' ? m.pieces[i] : m.pieces[0]
-        if (!piece.visible) continue
-        const at = m.slots[i].clone().applyMatrix4(m4.copy(m.root.matrixWorld))
-        tool.goods.at(at.x, at.y, at.z, p.heading + 0.4 * (i % 2 ? 1 : -1), m.goodScale)
-        for (const k of tool.keys) tool.goods.put(k, 0, 0, 0)
+    m.group.position.set(p.x, p.y, p.z)
+    m.group.rotation.set(0, p.heading, 0)
+    m.open(p.open)
+    // what is in it: a number of goods (the milk and the wool: its goods part, as full as the herd's three make it)
+    const n = Math.max(0, Math.floor(Number(p.show) || 0))
+    if (tool.goods) tool.goods.visible = tool.goods.visible && n > 0
+    if (tool.eggs) {
+      m.group.updateMatrixWorld(true)
+      tool.eggs.begin()
+      for (let i = 0; i < Math.min(n, tool.slots.length); i++) {
+        // (an egg in a nest still rising waits for it)
+        if (p.open < 0.999) continue
+        v.copy(tool.slots[i]).applyMatrix4(m4.copy(m.group.matrixWorld))
+        tool.eggs.at(v.x, v.y, v.z, p.heading + 0.4 * (i % 2 ? 1 : -1), 1.5)
+        for (const k of tool.keys) tool.eggs.put(k, 0, 0, 0)
       }
-    tool.goods.end()
+      tool.eggs.end()
+    }
   }
 
   /** A prop as the camera frames it (world): its middle, height and width; null if it is not the pen's. */
   frameOf(id: string, p: PropNow, now: Map<string, MemberNow>) {
     if (this.crates.has(id)) {
       const holder = p.holder ? now.get(p.holder) : null
-      const at = holder ? this.held(holder).clone() : new Vector3(p.x, p.y, p.z)
-      return { x: at.x, y: at.y + 0.23, z: at.z, h: 0.5, w: 0.62, heading: holder ? holder.heading : p.heading }
+      const at = holder ? new Vector3(holder.x + Math.sin(holder.heading) * 0.36, 1.0 - CRATE.h / 2, holder.z + Math.cos(holder.heading) * 0.36) : new Vector3(p.x, p.y, p.z)
+      return { x: at.x, y: at.y + CRATE.h / 2, z: at.z, h: CRATE.h + 0.08, w: CRATE.w, heading: holder ? holder.heading : p.heading }
     }
+    const piece = this.pieces.get(id)
+    if (piece) {
+      const holder = p.holder ? now.get(p.holder) : null
+      if (holder) return { x: holder.x, y: p.show === 'head' ? 1.7 : 0.9, z: holder.z, h: piece.h + 0.2, w: piece.w + 0.2, heading: holder.heading }
+      return { x: p.x, y: p.y + piece.h / 2, z: p.z, h: piece.h + 0.1, w: piece.w + 0.1, heading: p.heading }
+    }
+    if (this.nests.has(id)) return { x: p.x, y: 0.55, z: p.z, h: 0.75, w: 0.55, heading: p.heading }
     const tool = this.tools.get(id)
     if (!tool) return null
-    const alone = p.show === 'ground' || p.show === 'tipped'
-    const f = alone ? { at: new Vector3(0, 0.15, 0), h: 0.4, w: 0.45 } : tool.model.frame
+    const b = tool.bounds
     const c = Math.cos(p.heading)
     const s = Math.sin(p.heading)
+    const fx = (b.min.x + b.max.x) / 2
+    const fz = (b.min.z + b.max.z) / 2
     // the frame's middle turned with the tool (+z its front)
-    return { x: p.x + f.at.x * c + f.at.z * s, y: f.at.y, z: p.z - f.at.x * s + f.at.z * c, h: f.h, w: f.w, heading: p.heading }
+    return { x: p.x + fx * c + fz * s, y: (b.min.y + b.max.y) / 2, z: p.z - fx * s + fz * c, h: b.max.y - b.min.y, w: b.max.x - b.min.x, heading: p.heading }
   }
 
   dispose() {
-    for (const p of [this.fence, this.herd, ...[...this.tools.values()].map((t) => t.goods)]) p.dispose()
+    for (const p of [this.fence, this.herd, ...[...this.tools.values()].flatMap((t) => (t.eggs ? [t.eggs] : [])), ...[...this.nests.values()].map((n) => n.eggs)]) p.dispose()
+    for (const t of this.tools.values()) t.model.dispose()
+    for (const t of this.pieces.values()) t.model.dispose()
     this.group.traverse((o) => (o as Mesh).geometry?.dispose?.())
   }
 }

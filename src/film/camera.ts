@@ -18,6 +18,8 @@ export interface Subject {
   w: number
   heading: number
   person: boolean
+  /** an animal: framed by its own height, its head in a close shot (as a person's face is) */
+  animal?: boolean
   /** how long it is along its heading (an animal: a cow seen from the side is wide), m */
   long?: number
 }
@@ -31,6 +33,8 @@ export interface CamNow {
 /** The height of the picture at the subject (m) for each size: a person, and a thing (times its height). */
 const PERSON_FRAME: Record<Size, number> = { extreme: 0.34, close: 0.62, medium: 1.15, full: 2.4, wide: 4.4 }
 const THING_FRAME: Record<Size, number> = { extreme: 1.25, close: 1.7, medium: 2.4, full: 3.2, wide: 4.6 }
+/** An animal's (times its height): a close shot is its head and neck, a full one all of it with room round it. */
+const ANIMAL_FRAME: Record<Size, number> = { extreme: 0.55, close: 0.9, medium: 1.6, full: 2.6, wide: 4.6 }
 /** The lens (vertical degrees, sideways) for each size: longer for the close ones, as a film's. */
 const LENS: Record<Size, number> = { extreme: 28, close: 32, medium: 38, full: 44, wide: 48 }
 /** How far above (+) or below (−) the look point the camera is, in radians of pitch. */
@@ -41,6 +45,7 @@ const out = (k: number) => 1 - (1 - Math.min(1, Math.max(0, k))) ** 3
 
 /** The point a shot looks at on a subject, for its size. */
 function lookPoint(s: Subject, size: Size) {
+  if (s.animal && (size === 'close' || size === 'extreme')) return new Vector3(s.x + Math.sin(s.heading) * (s.long ?? 0) * 0.3, s.h * 0.8, s.z + Math.cos(s.heading) * (s.long ?? 0) * 0.3)
   if (!s.person) return new Vector3(s.x, s.y, s.z)
   const y = size === 'extreme' || size === 'close' ? s.head : size === 'medium' ? s.head - 0.32 : size === 'full' ? s.head * 0.58 : s.head * 0.5
   return new Vector3(s.x, y, s.z)
@@ -59,6 +64,9 @@ export interface CamContext {
   /** the scene's line (its two people where they are) and its side */
   line?: [Subject, Subject]
   side: number
+  /** the camera stays on the lane's side of what it films (north of it, looking south at the woods: the pen's films
+   *  never look across the lane at the player's own farm, FILM.md) */
+  south?: boolean
   aspect: number
   /** through the shot (0..1) and seconds into it */
   u: number
@@ -124,9 +132,15 @@ export function shotCamera(cam: Cam, c: CamContext): CamNow {
       const b = facing(first.heading - 0.6)
       dir = n ? (a.dot(n) >= b.dot(n) ? a : b) : a
     } else dir = facing(first.heading)
+    // (on the lane's side: an angle that would stand the camera south of them, looking at the farm, is turned to the
+    // north of them, the same side of them east or west)
+    if (c.south && dir.z > -0.5) {
+      dir.z = -Math.max(0.5, Math.abs(dir.z))
+      dir.x = (Math.sign(dir.x) || 1) * Math.sqrt(1 - dir.z * dir.z)
+    }
     // how big a picture: the size, or the subjects' own spread up and down
     const tall = Math.max(
-      ...c.from.map((s) => (s.person ? PERSON_FRAME[size] : THING_FRAME[size] * s.h)),
+      ...c.from.map((s) => (s.person ? PERSON_FRAME[size] : (s.animal ? ANIMAL_FRAME[size] : THING_FRAME[size]) * s.h)),
       c.from.length > 1 ? Math.max(...c.from.map((s) => lookPoint(s, size).y)) - Math.min(...c.from.map((s) => lookPoint(s, size).y)) + PERSON_FRAME[size] : 0,
     )
     const across = new Vector3(-dir.z, 0, dir.x)

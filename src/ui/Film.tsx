@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { audioGraph, farmSound } from '../audio/sound'
 import { levelProgress } from '../farm/xp'
 import { storyControls, useStory, type FilmId, type StoryStep } from '../film/films'
-import { lineAt, type EndCard, type FxAt, type Line } from '../film/format'
+import { lineAt, WORLD_FX, type EndCard, type FxAt, type Line, type Timeline, type WorldFx } from '../film/format'
 import type { FilmRun, FrameInfo } from '../film/run'
 import { wordsBy, type Speech } from '../film/voice'
 import { lookOf } from '../film/cast'
@@ -15,7 +15,8 @@ import './Film.css'
 
 // What wraps a film (src/film): the letterbox, the lines in the game's paper bubbles (the speaker's name in the colour
 // of their shirt, standing over where they are on the screen, the words coming up as their voice says them), a typed
-// caption, the picture's effects (a flash, a glint, coins, confetti), Sound, Skip, and the end card — what the player
+// caption, the picture's effects (a flash, a glint, coins, confetti, an iris closing on the hero), the picture's grade
+// (a wash of the time of day's light over it), Sound, Skip, and the end card — what the player
 // got, as progress: the level bar filling with the XP it gave (a level reached is a show of its own), what is theirs
 // now, and what it opens next. One overlay for the game (`StoryOverlay`: over the game's canvas, the film drawn on it
 // by src/film/StoryFilm.tsx, a tap anywhere skipping) and the design lab (lab/films/Player.tsx: `FilmScreen` over its
@@ -31,6 +32,19 @@ interface Beat {
 }
 
 type Burst = { fx: FxAt; key: number }
+
+/** How open a film's iris is at t (its radius, as a share of the screen's diagonal: 1 all open), and where it closes:
+ *  shut to a small round on its subject over 0.7 s from its moment, held there, shut the rest of the way in the film's
+ *  last third of a second (a cartoon's end: the hero gets the last beat inside it). Null: no iris now. */
+export function irisAt(tl: Timeline, t: number) {
+  const f = tl.fx.find((x) => x.item.fx === 'iris')
+  if (!f || t < f.t) return null
+  const close = Math.min(1, (t - f.t) / 0.7)
+  const small = 0.13
+  const r = 1 - (1 - small) * (1 - (1 - close) ** 3)
+  const shut = Math.max(0, Math.min(1, (t - (tl.length - 0.35)) / 0.35))
+  return r * (1 - shut)
+}
 
 /** A look's colour as #rrggbb. */
 const hex = (c: unknown) => {
@@ -73,6 +87,8 @@ export function FilmScreen({
   const film = run.film
   const reduced = !!useReducedMotion()
   const vignette = useRef<HTMLDivElement>(null)
+  const grade = useRef<HTMLDivElement>(null)
+  const iris = useRef<HTMLDivElement>(null)
   // (a film opened at its end shows its end card at once, before its first frame)
   const [beat, setBeat] = useState<Beat>(() => ({ shot: -1, line: null, said: 0, caption: null, ended: run.ended }))
   const [fx, setFx] = useState<Burst[]>([])
@@ -126,11 +142,27 @@ export function FilmScreen({
       while (fxNext.current < tl.fx.length && tl.fx[fxNext.current].t <= t) {
         const k = fxNext.current
         const f = tl.fx[fxNext.current++].item
+        // (the world's effects are the stage's, drawn in the scene; the iris is drawn below, every frame)
+        if (WORLD_FX.includes(f.fx as WorldFx) || f.fx === 'iris') continue
         if (f.fx === 'confetti') burst({ x: innerWidth / 2, y: innerHeight * 0.38 }, { count: 110, spread: 90, power: 34 })
         else setFx((list) => [...list.slice(-4), { fx: f, key: k }])
       }
       run.score.tick(t)
       if (vignette.current) vignette.current.style.opacity = info.portrait.toFixed(2)
+      if (grade.current && grade.current.dataset.light !== info.light) grade.current.dataset.light = info.light
+      const el0 = iris.current
+      if (el0) {
+        const r = irisAt(tl, t)
+        el0.style.visibility = r === null || ended ? 'hidden' : 'visible'
+        if (r !== null) {
+          const w = el0.clientWidth || innerWidth
+          const h = el0.clientHeight || innerHeight
+          const at = info.focus ?? { x: w / 2, y: h / 2 }
+          el0.style.setProperty('--ix', `${at.x.toFixed(0)}px`)
+          el0.style.setProperty('--iy', `${at.y.toFixed(0)}px`)
+          el0.style.setProperty('--ir', `${(r * Math.hypot(w, h)).toFixed(1)}px`)
+        }
+      }
       const el = bubble.current
       const box = bubbleBox.current
       if (el && box) {
@@ -170,7 +202,9 @@ export function FilmScreen({
   const shirt = who ? hex(lookOf(who.look).shirt) : '#fff7e8'
   return (
     <>
+      <div ref={grade} className="film-grade" aria-hidden="true" />
       <div ref={vignette} className="film-vignette" aria-hidden="true" />
+      <div ref={iris} className="film-iris" aria-hidden="true" />
       <div className={`film-bars${showFilm ? '' : ' out'}`} aria-hidden="true">
         <i />
         <i />

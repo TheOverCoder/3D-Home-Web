@@ -4,8 +4,8 @@ import type { Talker } from './speak'
 import type { Speech, Utterance, Voice } from './voice'
 
 // A film's music and stings, composed as it plays, as the game's own music is (src/audio/music.ts): oscillators and
-// noise, nothing downloaded. Three tracks — the shop's muzak (a bossa nova out of a ceiling speaker), a tension pulse
-// (a heartbeat and a clock) and a boom-bap beat — and short stings on the moments. The game's own sounds (coins, the
+// noise, nothing downloaded. Four tracks — the shop's muzak (a bossa nova out of a ceiling speaker), a tension pulse
+// (a heartbeat and a clock), a boom-bap beat and a sneak (plucked strings on tiptoe) — and short stings on the moments. The game's own sounds (coins, the
 // till, a level) are the game's (src/audio/sound.ts, farmSound), so the film sounds like the game; it plays through
 // the game's volume. The lines are read aloud in words by the device's speech voices as the film reaches them
 // (./speak.ts); where there are none, and offline, they are said in a babble made here (./voice.ts: a buzz shaped into
@@ -130,7 +130,7 @@ export class Synth {
     const g = this.bus(track)
     g.gain.cancelScheduledValues(a)
     g.gain.setValueAtTime(1, a)
-    const bpm = track === 'muzak' ? 112 : track === 'tension' ? 100 : 90
+    const bpm = track === 'muzak' ? 112 : track === 'tension' ? 100 : track === 'sneak' ? 104 : 90
     const beat = 60 / bpm
     const bar = beat * 4
     for (let k = 0; ; k++) {
@@ -139,6 +139,7 @@ export class Synth {
       if (t + bar <= a) continue
       if (track === 'muzak') this.muzakBar(g, t, beat, k, a, b)
       else if (track === 'tension') this.tensionBar(g, t, beat, k, a, b)
+      else if (track === 'sneak') this.sneakBar(g, t, beat, k, a, b)
       else this.beatBar(g, t, beat, k, a, b)
     }
   }
@@ -190,6 +191,46 @@ export class Synth {
     for (let i = 0; i < 4; i++) if (on(t + i * beat)) this.noise(g, t + i * beat, { type: 'bandpass', f: i % 2 ? 2600 : 3400, q: 6, gain: 0.08, decay: 0.03 })
     // a low string held under it, opening a little more each bar
     if (on(t)) this.saw(g, t, midi(31 + (k % 2)), { gain: 0.06, attack: 0.4, decay: beat * 4, cut: 260 + k * 90, cut1: 420 + k * 120, voices: 2 })
+  }
+
+  /** A plucked string: a quick bright attack, gone in a moment. */
+  private pluck(g: AudioNode, t: number, n: number, gain: number) {
+    this.tone(g, t, midi(n), { type: 'triangle', gain, decay: 0.16 })
+    this.tone(g, t, midi(n + 12), { gain: gain * 0.25, decay: 0.07 })
+    this.noise(g, t, { type: 'bandpass', f: midi(n) * 6, q: 3, gain: gain * 0.12, decay: 0.012 })
+  }
+
+  private sneakBar(g: AudioNode, t: number, beat: number, k: number, a: number, b: number) {
+    const on = (x: number) => x >= a && x < b
+    // E minor on tiptoe: the bass creeping up a step at a time and back, a beat's rest where a foot hangs in the air
+    const walk =
+      k % 2 === 0
+        ? [
+            [0, 40],
+            [1, 43],
+            [1.5, 44],
+            [2, 45],
+            [3, 46],
+          ]
+        : [
+            [0, 47],
+            [1, 46],
+            [1.5, 45],
+            [2, 43],
+            [3.5, 39],
+          ]
+    for (const [at, n] of walk) if (on(t + at * beat)) this.pluck(g, t + at * beat, n, 0.42)
+    // high plucks answering, two tiptoes
+    for (const [at, n] of [
+      [2.5, 76],
+      [2.75, 79],
+    ])
+      if (on(t + at * beat)) this.pluck(g, t + at * beat, n + (k % 2 ? -2 : 0), 0.08)
+    // a brush on the off-beats
+    for (let i = 0; i < 4; i++) {
+      const x = t + (i + 0.5) * beat
+      if (on(x)) this.noise(g, x, { type: 'highpass', f: 7000, gain: 0.035, decay: 0.05 })
+    }
   }
 
   private beatBar(g: AudioNode, t: number, beat: number, k: number, a: number, b: number) {
@@ -454,6 +495,42 @@ export class Synth {
         break
       case 'door':
         this.noise(o, t, { type: 'bandpass', f: 900, f1: 2000, q: 1, gain: 0.08, attack: 0.15, decay: 0.4 })
+        break
+      case 'pop':
+        // a cork's pop: a blip falling fast, a click on it
+        this.tone(o, t, 900, { gain: 0.32, decay: 0.07, f1: 280 })
+        this.noise(o, t, { type: 'bandpass', f: 3000, q: 2, gain: 0.22, decay: 0.012 })
+        break
+      case 'boing': {
+        // a spring: a tone bending up, wobbling as it goes
+        const osc = this.ac.createOscillator()
+        osc.frequency.setValueAtTime(170, t)
+        osc.frequency.exponentialRampToValueAtTime(480, t + 0.35)
+        const wob = this.ac.createOscillator()
+        wob.frequency.value = 17
+        const depth = this.ac.createGain()
+        depth.gain.value = 45
+        wob.connect(depth).connect(osc.frequency)
+        const g = this.ac.createGain()
+        this.env(g, t, 0.3, 0.01, 0.42)
+        osc.connect(g).connect(o)
+        for (const x of [osc, wob]) {
+          x.start(t)
+          x.stop(t + 0.5)
+        }
+        break
+      }
+      case 'slide':
+        // a slide whistle, down: something falls flat
+        this.tone(o, t, 1500, { gain: 0.16, attack: 0.03, decay: 0.55, f1: 260 })
+        this.tone(o, t, 3000, { gain: 0.02, attack: 0.03, decay: 0.5, f1: 520 })
+        break
+      case 'bonk':
+        // something hollow hits a head: a woodblock's knock, a little ring after it
+        this.tone(o, t, 540, { gain: 0.5, decay: 0.12, f1: 360 })
+        this.tone(o, t, 1220, { gain: 0.14, decay: 0.05 })
+        this.noise(o, t, { type: 'lowpass', f: 1600, gain: 0.3, decay: 0.03 })
+        this.tone(o, t + 0.02, 2600, { gain: 0.035, decay: 0.35 })
         break
       case 'swell':
         for (const n of [60, 64, 67, 72, 76]) this.saw(o, t, midi(n), { gain: 0.05, attack: 0.8, decay: 1.4, cut: 900, cut1: 3500, voices: 2 })

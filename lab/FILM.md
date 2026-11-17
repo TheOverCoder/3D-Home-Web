@@ -36,6 +36,11 @@ against it before it is shown.
 - **The build is one shot.** The crate lands, opens and becomes the tool, its pieces rising one after another with a
   click each; the building itself happens off screen, as a game's builder does it overnight. [Stardew Valley: the
   coop][coop]
+- **Show the tries, don't tell them.** "Three pails this week" is a line; three pails flying (the third onto the
+  player's head) is a gag. A montage of failed tries is a story of its own, and the third that breaks it is the turn
+  (round 2: "no story"). [Chicken Run's opening][chicken]
+- **A cartoon's last beat: the iris.** It closes on the hero, stops small round them for one more gag (the rooster
+  crows inside it), then shuts. Once, at the end. [Iris shot][iris]
 - **Promise only what play gives.** The film shows what the act really does in the game; anything more (a new sign, a
   title) is a note for the game, not a lie in the film.
 
@@ -97,13 +102,31 @@ against it before it is shown.
 - **Small things that matter are drawn a little big.** Eggs on a nest's tray are a few pixels on a phone: the thing a
   shot is about may be half again its size (the coop's eggs), never what only dresses the set.
 - **Walls are a set's, not a prison.** A wall between the camera and its subject is left out (wild walls); never one
-  behind the subject, or the outside shows through.
+  behind the subject, or the outside shows through. **And only on a cut:** what a shot leaves out is decided once for
+  the whole shot, from its camera at its start, middle and end (round 2: "the fence disappears and comes back").
+  Better still, stage so nothing has to go: what happens outside the pen happens in front of its fence.
+- **The pen's camera keeps to the lane's side by itself.** An angle that would stand it south of its subjects (looking
+  north, at the player's farm) is turned to their north, the same side east or west: turn the animal to the camera for
+  its look into the lens, rather than the camera round it.
+- **Nobody walks through anything.** A walk goes round the set's solids (walls, desks, the fence, the tool) and round
+  whoever stands still, by itself; the checks report anyone still in a wall, two walking through each other, someone
+  framed off stage, and the picture tool someone standing between the camera and its subject (round 2: "they pass
+  through walls and things"; the shop's shoppers walked through the boss).
+- **What is carried is between the hands.** The crate rides where the hands are (the carry pose worked out on the
+  rig's arms: hands on its sides, the body leaning back against it), is set down with a stoop, a thud and dust, and a
+  shot's camera takes props where they are at its end, so setting something down never jolts it (round 2).
+- **An animal's close-up is its head.** Framed by its own height (a sheep's close-up is a sheep's face, not a metre
+  of meadow), and nobody of the cast in the way.
 - **Light the faces while they talk.** A key from in front, on the side the face turns to (short key: the far cheek
   lit, the near one in shade — cinema's usual), a rim from behind against the camera to part them from the set, and the
   set's own light stepped back so the faces are the brightest thing (the picture's edges darkened). Colours from the
   scene's sources: a desk lamp's warm key, a cold night edge; where a prop is the light (the case's gold) the key steps
   back. The rim only from medium in, close and narrow: in a full shot it lights the walls, not them. [Short key][short]
   · [a key and a rim per shot in game cinematics][cry]
+- **Outdoors, cheat the sun per shot.** Wide: over the camera's shoulder, so the place reads; full: from the side;
+  near: behind them, a line of light round them, a key on whatever the shot is on (an animal, a tool too), its shadow
+  box tight round them. Always the same side of the scene's line. And the game's own light all round (its
+  environment): without it metal is black. [ASC, Follow the Sun][sun]
 - **A body acts at its joints.** A head nods at the foot of its neck: turned about its own middle, the neck slid out
   of the collar (round 3). When a body part leaves its place, the fix is the rig's (the people engine), for every film
   and the game. [Rigify: bones where the body bends][rig]
@@ -173,6 +196,13 @@ plays it on its own canvas when its moment asks (`src/film/films.ts`, `StoryFilm
 (`lab/films/Player.tsx`). A new film is a new data file; a change to the game's people or places needs no change to
 the films.
 
+The kit (`src/film/kit.ts`) is what films of a kind share, written once: shot presets that carry a rule (`lens`, the
+look into the lens; `hero`; `reaction`; `establish`), cue helpers (`drop`: riser, silence, hit; `beats`), and the tool
+films' delivery (`carryIn`, `setDown`, `build`: its clicks timed on the model's own pieces, whatever the style). A
+film of a tool is a function of the tool's style (`coopFilm(style)`), so the skin the player chose plays. The checks
+(`src/film/checks.ts`, `lintStage`; and `lint` in `format.ts`: jump cuts, effects on no one) run in the films' tests,
+in the lab's player and in `moments.mjs`: a film is shown with none.
+
 Why this and not a library: Remotion's Player would play a composition in the browser, but its licence asks companies
 of four or more for a paid company licence, and it is made for videos, not for a game's own 3D scene. Theatre.js keys
 animation in a studio (AGPL) and has had no release since 2024. A pre-rendered video cannot show the player's clothes
@@ -180,6 +210,9 @@ or follow the game's looks, and weighs megabytes on a phone. The game already ha
 the camera, the people engine for the cast, Motion for the overlay, a procedural sound engine.
 
 [mckee]: https://mckeestory.com/do-your-scenes-turn/
+[chicken]: https://nepalitimes.com/fowl-play-on-screen
+[iris]: https://en.wikipedia.org/wiki/Iris_shot
+[sun]: https://theasc.com/blog/shot-craft/follow-the-sun
 [pixar]: https://fs.blog/22-rules-pixar-uses-to-create-appealing-stories/
 [shaun]: https://www.btlnews.com/awards/directors-mark-burton-and-richard-starzak-excel-in-non-verbal-dialog-in-shaun-the-sheep/
 [gromit]: https://www.acmi.net.au/stories-and-ideas/wallace-gromit-humour-comedy-style/

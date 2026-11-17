@@ -1,5 +1,5 @@
 {
- "at": "2026-11-17T06:59:06.717Z",
+ "at": "2026-11-17T18:40:18.179Z",
  "devices": [
   "upright",
   "sideways"
@@ -247,7 +247,7 @@
    "off": []
   },
   "film-shears": {
-   "screens": 10,
+   "screens": 14,
    "errors": [],
    "blank": [],
    "scroll": [],
@@ -257,7 +257,7 @@
    "off": []
   },
   "film-milk-bucket": {
-   "screens": 10,
+   "screens": 14,
    "errors": [],
    "blank": [],
    "scroll": [],
@@ -267,7 +267,7 @@
    "off": []
   },
   "film-coop": {
-   "screens": 8,
+   "screens": 14,
    "errors": [],
    "blank": [],
    "scroll": [],

@@ -94,7 +94,7 @@ describe('the shop’s film', () => {
   it('its clock starts with its first frame; a skip takes it to its end; Watch again from its start', () => {
     let now = 1000
     const run = new FilmRun(SUPERMARKET, 0, () => now)
-    const info: FrameInfo = { shot: 0, portrait: 0, speaker: null, farm: false }
+    const info: FrameInfo = { shot: 0, portrait: 0, speaker: null, focus: null, light: 'night', farm: false, blocked: null }
     expect(run.length).toBeGreaterThan(15)
     expect(run.length).toBeLessThanOrEqual(45)
     expect(run.problems()).toEqual([])
