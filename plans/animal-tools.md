@@ -116,102 +116,20 @@ at its top by 127–138 minutes and its "holds" ladder by 147–162; neither rem
 
 ## 2. Rules (`src/farm/state.ts`, pure parts in `src/farm/tools.ts`)
 
-- **Owning.** `ladderOpen` for an `at: 'shop'` row: not maxed and its `needs` met. `buyLadder` unchanged but one line:
-  a `-tool` row calls `toolBought(kind)`. XP `build`, as every step. The film is asked by the card's buy
-  (`buyWithFilm(id)` in `src/film/films.ts`, as `buyShop` wraps `buyMarket`), never by `buyLadder`: tests and the sim
-  buy with no film.
-- **What a tool changes.** One function, `maxOf(id)`: with the tool, `TOOL.hold.from + ladders[k-hold]`; without,
-  `PRODUCERS[id].max`. `growProducer`, `collectable`, `ready`, `load` and time away read it. A herd that shares one
-  nest (the hens) gets a place each with its tool: `ownEach(id) = !shared || toolOwned(id)`, the clock ×hens only for a
-  shared nest. `toolBought` splits the nest once (`spreadNest`): every egg kept, dealt round the nests, hen i's clock
-  `every − (every − T + i·every) / hens` (T the shared clock), so the next eggs come when they would have. Looks keep
-  the row's numbers (a sheep looks full from 2 fleeces; the nest box shows up to its six eggs, summed).
-- **Taking.** `collect` splits into `takeFrom(id, i, most, at?)` (today's rule: as much as the store has room for, up
-  to `most`; stats, `got`, a surprise roll a good, `gainXp('collect', n)`, the clock restarted when an animal is
-  emptied but the hens') and `collect` (= `takeFrom` + its toast). `toolTake(kind, spot?)` takes the tool's per tap
-  (1 at first) from the spot tapped, or with none from the fullest (ties: the first); no toast but a surprise's;
-  `bump`, `save` (throttled). What does not fit stays on the animal; nothing is taken twice. Crystals from low in the
-  middle, as a panel's.
-- **The button, the compass, "Show me".** With its tool, a herd's own offers go (`Herd.tsx` registers them only while
-  `!toolOwned`, `useProducer('hens')` only before the coop). `useTool(kind)` registers the tool's offer at its `stand`
-  under the producer's own `action` id (`farm-nest`, `farm-cow`, `farm-sheep`), so the compass, the route, `placesOf`
-  and the first steps' "collect eggs" need nothing. Goods waiting and room: an action
-  `{ verb: PRODUCERS[k].verb, item, word }`, and **E opens the tool's panel** (the machine's way). No room: a status
-  with `full: 'barn'`. Nothing waiting: a status with the seconds to the next. `ready()`: an animal full and room. A gear
-  opens the panel whenever you look at it.
-- **Time away, saves, `load()`.** Time away needs nothing (`goOn` grows to `maxOf`; the report sums the arrays).
-  `load()` reads `data.ladders` before the producers (moved up) and `savedProducer` takes the farm being loaded: with the
-  coop a nest a hen, clamped to `maxOf`; a farm from before has no tool ladders and loads as today. No new field.
-- **Where is it made.** `sourceOf` moves to `src/farm/goods/sources.ts` (the board imports it there), plus one row: a
-  building material is "A surprise · the contractor sells them", and `placesOf` gives the contractor while he is in.
-  One pure function picks the button under the words, `goFor(good, ctx)` (`src/farm/goods/go.ts`):
-  1. the machines' remote owned and the good made at a machine → open that machine (`{ kind: 'machine', id, from }`);
-  2. the animals' remote owned and the good an animal gives whose tool is owned → open that tool
-     (`{ kind: 'tool', tool, from }`): only tools the player owns;
-  3. else on the farm with a place for it → "Show me" (today's walk);
-  4. else the words alone.
+**Built (round 1).** `maxOf`, `toolOwned`, `perTap`, `takeFrom`/`collect`, `toolTake`, `toolBought` (`spreadNest`) and
+`toolView` in `state.ts`; `goFor`, `sourceOf`, `placesOf` in `src/farm/goods/`; `load()` reads the ladders first.
 
-  Offered wherever a good's picture stands in a panel and is not inside another button: the silo and the barn, the line
-  at the gate, the orders board, the machine panel (a short recipe's missing ingredient), the market's and contractor's
-  panels, the welcome-back card, the daily and level gifts. Never on the action button, the compass, the top's chips or
-  a seed packet.
-- **The remotes.** Opened only from that bubble, on either map; the machine's and the tool's panels are unchanged (their
-  actions work from anywhere); ✕ and swipe go back to `from`; sounds are the interface's when opened from afar. They
-  never add a job or take anything by themselves, never open from a menu or the top, never walk.
+## 3. Interface
 
-## 3. Interface (after the ✓; the designers' choices, these are the constraints)
+**Built (round 2: A, C with the upgrades in the tool, B).** The shop in `src/farm/shop/` (a card per animal, the remotes'
+velvet tiles); the tool panel `src/farm/tool/ToolPanelView.tsx` + `ToolPanel.tsx` (its upgrades as chips with
+`LadderCard`, Skins), `useTool.ts`; `src/ui/GoodPic.tsx` and the remote's tag (`src/farm/goods/ways.ts`), on the base of
+CLAUDE.md "Interface".
 
-- **One tool panel for all three.** `src/farm/toolView.ts` (types), `src/farm/tool/ToolPanelView.tsx` (the design, fed
-  only these; `sample.ts` for the lab), `src/farm/ToolPanel.tsx` (the farm's, with the producer's own `sound` on each
-  tap and `haptic('tick')`):
+## 4. The films
 
-  ```ts
-  export interface ToolView {
-    kind: ToolKind; name: string; good: ProduceId; look: 'nests' | 'pail' | 'shears'
-    spots: { name: string; has: number; most: number; next: number }[] // each nest, cow or sheep; next: 0..1 to the next
-    perTap: number; room: number; store: StoreId
-    ladders: { id: LadderId; now: string; next: string | null; price: number }[] // its two upgrades, as chips
-  }
-  export interface ToolActions { tap(spot?: number): number; upgrade(id: LadderId): void }
-  ```
-
-  A tap: the target squishes (`PRESS`), the goods fly into the barn's chip (`flyInto`/`storeChip`, `machine/fly.ts`),
-  the counts tick down; no room, the targets off and the barn chip red. Targets ≥ 44 px; Enter or Space taps on a
-  computer. Coop: a nest a hen (a heap with its number at 10) with a ring to her next egg. Bucket: one pail filling with
-  the herd's milk, the cows as chips. Shears: shears over a wool basket, the sheep as chips.
-- **The shop.** `ShopPanel` leaves `FarmUI.tsx` for `src/farm/shop/`: `upgradesView()` (pure) and `ShopCard.tsx`. Its
-  animal section: per kind its herd row, its tool (locked: "6/6 hens"), its two ladders; then the two premium cards.
-  Herd rows buy as today and keep Part B's `LockTag`; tool, ladder and remote rows open `LadderCard` (`from` the shop).
-- **The bubble.** `src/ui/GoodPic.tsx`: an `ItemPic` that opens the orders board's chosen bubble (name, source, the
-  `goFor` button); the board keeps its own lines through a slot; `OrdersActions.show/canShow` become `go`/`onGo`.
-- **The premium look.** One class, `.premium`, from the tokens (`--sun`, `--sun-lip`, the coin's gold) and a slow
-  Motion shimmer (still with less motion): the remotes' shop cards and ladder cards, the bubble's "Open the mill" /
-  "Open the coop", and a small "Remote" chip on a panel opened from afar.
-
-**Lab boards, one round, one link** (`npm run lab:build`, the Artifact tool with `capabilities: {db: {}}`):
-
-| Board | Kind (who) | Today | Variants, states | `adds` |
-|---|---|---|---|---|
-| `animal-tools` | ui (interface designer) | the per-animal prompt | A the place itself, B a card per animal with one big target, C the goods as a pile, animals as portraits. States: coop, bucket, shears; 10 a spot at 5 a tap; barn full; nothing waiting | ✦ tools |
-| `shop-animals` | ui (interface designer) | today's shop | A tabs (Farm · Animals · ★), B a band per animal (herd → tool → upgrades), C a card per animal. States: tool locked, for sale, owned, all at the top | ✦ tools in the shop |
-| `premium-remotes` | ui (interface designer) | the orders bubble | the premium look A, B, C on: both remotes' shop cards and cards, the bubble's "Open the mill" and "Open the coop" (silo, line, machine panel), a panel opened from afar with its way back. States: no remote, one, both, in the house | ✦ remotes |
-| `film-coop` | film (film director) | — | the coop's build film, upright and sideways | ✦ |
-| `film-milk-bucket` | film (film director) | — | the bucket's build film | ✦ |
-| `film-shears` | film (film director) | — | the shears' build film | ✦ |
-| `tools-3d` | 3d (3D designer) | the fences as they are | A, B, C, each a family of the three tools; states coop, bucket, shears: at the game's distance, close, with the herd; ≤ 800 triangles each | ✦ |
-
-## 4. The films (`src/film/coop.ts`, `bucket.ts`, `shears.ts`; the film director's)
-
-Three films, one per animal, each its own story (FILM.md: turn and logline first; 15–20 s, 6–8 shots), asked once by
-its card's buy, skippable to its end card, nothing in the save (as the shop's). `FilmId` gets `coop`, `bucket`,
-`shears`; `FILMS` one row each. Seeds the director may take or leave: the hens laying in odd places until the coop
-stands; a cow kicking over the pail until the bucket hangs on the post; a sheep bolting from the shears until the
-basket waits by the gate. End card: the tool's picture, its XP (`XP_FOR.build`), owns the tool, next its first steps
-("3 a nest → 4", "1 a tap → 2"). What all three share is the stage's, built once: a place `'pen'`
-(`Scene.place: 'market' | 'pen'`, the film's `herd: ToolKind`) made from the game's own pieces (the decor's fence
-sections, the kind's animals from their crowd parts with their idle and one walk to a mark, the tool's model from
-`tools-3d`) on the stage's lawn, woods and sky, the same for every player (never their farm: `looksAtFarm`); props
-`crate` and `tool` (`open` 0..1: its pieces rise into place). No new rig, no new music engine.
+**Built.** `src/film/coop.ts`, `bucket.ts`, `shears.ts` on the `'pen'` stage (the film director's); `buyWithFilm` in
+`src/film/films.ts` plays each once when its card buys the tool (style `'a'`), never `buyLadder`.
 
 ## 5. What not to build
 
@@ -234,18 +152,10 @@ sections, the kind's animals from their crowd parts with their idle and one walk
 | `src/models/weights.test.ts`, `checks.ts`, `gallery.ts` | the three tool models |
 | `src/sim/pace.test.ts` | `PACE` (and its tools row) still holds with the tools for sale |
 
-**One e2e spec**, `38-animal-tools` (after Part B's `36` and C's `37`), farm map: the shop's animal section; the coop
-locked until six hens, bought through its card, its film once (`__home.story.state()`, id `coop`, a tap to its end
-card, as `23-market`); E at the nest opens six nests, a tap takes one egg and the barn counts (the hens' clocks set to 0
-first, read in the same call), a per-tap step bought from its chip takes two; the cows' tool (through the hook):
-`farm-cow-0` gone, `farm-cow` opens the bucket; the silo's wheat "Grows in a bed" with "Show me", the barn's flour "Made
-at the mill"; the machines' remote turns it into "Open the mill" (`.premium`), its ✕ back to the barn; the animals'
-remote turns the barn's eggs into "Open the coop", milk stays "Show me" until the bucket is owned; `@boot` a phone: the
-coop panel on screen upright and sideways, clear of the touch controls. `tests/README.md` gets its rows.
+**Built.** `38-animal-tools` (the shop's coop and its film, E at the nest, a tap, an upgrade from its chip, the bucket's
+place, where is it made, both remotes, a phone `@boot`); `25-button`'s `plenty()` owns the three tools.
 
-**Existing specs:** `25-button`'s `plenty()` fills the herds and owns the three tools (their offers each open a panel with
-something to press). `helpers.ts` `fillFarm` owns every tool at its top (run `05`'s and `16`'s farm groups once).
-`17-stores-orders` keeps "Show me" by its words. No other spec changes: no farm owns a tool unless a test buys one.
+**Still to do with step 8:** `helpers.ts` `fillFarm` owns every tool at its top (run `05`'s and `16`'s farm groups once).
 
 ## 7. Order of work (small commits, each `npm run check` green)
 
@@ -267,15 +177,15 @@ something to press). `helpers.ts` `fillFarm` owns every tool at its top (run `05
 
 **Round 2, after the ✓** (only the chosen variants):
 
-5. The shop: `ShopPanel` out of `FarmUI.tsx` first, then the animal section and the premium cards.
-6. The tool panel, `useTool`, the herds' offers switched; `38` (tools), `25-button`'s `plenty`.
-7. `GoodPic` in the panels, the premium look, both remotes' panels with their way back; `38` (goods, remotes).
+5. **Built.** The shop out of `FarmUI.tsx` into `src/farm/shop/` (`upgradesView`, `ShopCard`, `ShopPanel`): a card per
+   animal (C), the tool's upgrades in its own panel (the user's note), the remotes as velvet tiles; `LadderCard` premium.
+6. **Built.** The tool panel (A, built further: the place itself, taps flying into the barn, times at a glance, full and
+   empty states, its upgrades as chips, Skins), `useTool` taking the herds' offers' place; `25-button`'s `plenty`.
+7. **Built.** `GoodPic` in the orders board, the silo and the barn, the line at the gate, a machine's short recipe and
+   the tool panel; the premium look (B, night velvet) and both remotes' panels with their tag and way back; `38`.
 8. The tool models at their fences (3D designer), gallery, checks, weights; `fillFarm`; `05`/`16` farm groups.
-9. The films (film director): the `'pen'` place once, then the three films, `buyWithFilm` on the card; `films.test.ts`.
-10. `tests/README.md`; this file replaced by its summary.
-
-5, 6, 8 and 9 run at once (9 with stand-in boxes until 8's models land); 7 after 5 (both touch `FarmUI.tsx`). Locally:
-`npm run check` and only `38` (and `05`/`16`'s farm groups after 8); the rest is CI's.
+9. **Built.** The films (film director) and their hook, `buyWithFilm` on the card; `films.test.ts`.
+10. **Built.** `tests/README.md`; the base in CLAUDE.md "Interface" and `lab/README.md`; this file's summaries.
 
 ## Decided (2026-11-17)
 

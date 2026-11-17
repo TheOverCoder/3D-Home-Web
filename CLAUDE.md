@@ -296,6 +296,11 @@ The README has the overview; `tests/README.md` what each test guards.
   there rather than drawing one; credit anything new in `src/data/credits.ts`. A good of the farm is pictured by
   its model (`src/models/goods.ts`, `iconUrl` in `src/farm/icons.ts`): a new good gets a model there, and after
   changing one, save the pictures again with `node scripts/render-item-art.mjs` (dev server up).
+- Build a panel on the base: motion presets in `src/ui/motion.tsx` (`PRESS`, `SINK`, `SQUISH`, `TIP`, `POP`, `DID`,
+  `NOPE`, `ARRIVE`, `REVEAL`, `DEAL`, `FLIP`, `SHIMMER`, `SHEET`), surfaces and tokens in `src/styles.css` ("the base":
+  `.wood`, `.velvet` and its premium tokens, `.ribbon`, `.chip`, `.count`, `.stars`, `.shine`, `.sheet-heading`), and the
+  shared pieces: `PanelSheet` (a sheet from the edge), `GoodPic` (a good's picture that says where it is made: use it
+  where a good's picture stands outside a button), `flyGoods` (`src/ui/fly.ts`), `Shell` for a centred card.
 - A panel: picture, a few-word title, chips, at most one line of text, at most two buttons (Cancel first, the
   action last with its price). 44 px targets, text ≥ 15 px (never < 13). A good's picture where goods change hands
   or go into a machine is an `ItemPic` with its count (the round badge, 1 included), never the picture repeated.
