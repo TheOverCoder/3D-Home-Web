@@ -53,6 +53,100 @@ export const MARKS: Record<string, Mark> = {
   desk: { x: MANAGER_SPOT.x - 0.15, z: (DESK.z0 + DESK.z1) / 2, heading: Math.PI, y: DESK.y1 + 0.02 },
 }
 
+// ───────────────────────────── the pen ─────────────────────────────
+
+/** The pen the animal tools' films play in (plans/animal-tools.md §4): a fence of the farm's own fence sections
+ *  (src/models/decor.ts, 2 m each) round a patch of the lawn on the market's side of the lane, between two of the woods'
+ *  trees — the same for every player, never their own farm. Its north side faces the lane, with the gate in it; the
+ *  tool stands at the gate's east post, outside, facing the lane (each tool's model places itself round that post), and
+ *  the herd comes to the fence behind it from inside. The camera films it from the lane's side, looking south at the
+ *  woods. `x0`… are its fence lines, `gate` the gap in the north side. */
+export const PEN = { x0: -6.5, x1: 1.5, z0: 21, z1: 27, gate: { x0: -2.5, x1: -0.5 } } as const
+
+const N = Math.PI
+const E = Math.PI / 2
+const W = -Math.PI / 2
+/** The pen's middle (the sun is aimed there while a scene plays in it). */
+export const PEN_MIDDLE = { x: (PEN.x0 + PEN.x1) / 2, z: (PEN.z0 + PEN.z1) / 2 }
+/** A few more of the woods' trees behind the pen and at its sides (x, z, height, seed: src/scene/flora.ts, tree), so
+ *  wherever the camera looks from the lane's side there are woods behind the herd, not an empty lawn. */
+export const PEN_GROVE = [
+  [-3.4, 31.2, 8.4, 71],
+  [1.6, 32.6, 7.6, 72],
+  [-9.2, 28.8, 9.0, 73],
+  [5.4, 30.0, 8.2, 74],
+  [-10.8, 25.4, 7.8, 75],
+] as const
+const POST = { x: PEN.gate.x1, z: PEN.z0 }
+
+/** The pen's marks: the tool's post, the gate, where the crate is put down, where people stand outside, and the herd's
+ *  places inside (by the tool, in a line, out in the grass, in the corners). */
+const PEN_MARKS: Record<string, Mark> = {
+  /** the gate's east post: the tool stands here, outside, facing the lane */
+  post: { ...POST, heading: N },
+  /** the gate's middle, and a step inside it */
+  gate: { x: (PEN.gate.x0 + PEN.gate.x1) / 2, z: PEN.z0, heading: N },
+  'in-gate': { x: (PEN.gate.x0 + PEN.gate.x1) / 2, z: PEN.z0 + 0.9, heading: N },
+  /** where the crate is put down: in front of the tool's east end (it opens and shrinks away as the tool rises) */
+  drop: { x: POST.x + 1.7, z: POST.z - 0.95, heading: N },
+  /** outside, east of the post, looking along the fence at what waits in front of the gate */
+  barber: { x: POST.x + 1.25, z: POST.z - 0.5, heading: W },
+  /** outside, west of the gate, looking at the post; and beside the post, in front of the gate */
+  outside: { x: PEN.gate.x0 - 0.7, z: PEN.z0 - 0.7, heading: E },
+  'by-post': { x: POST.x - 0.8, z: POST.z - 0.75, heading: E },
+  /** the way in along the fence from the east (out of the picture), and where one coming that way stops, the crate in
+   *  his arms over its place */
+  east: { x: PEN.x1 + 3.5, z: PEN.z0 - 1.0, heading: W },
+  aside: { x: POST.x + 2.1, z: POST.z - 0.95, heading: W },
+  /** inside, a little west of the gate: where a cow is milked (her pail by her hind legs, the milker at her side), or a
+   *  sheep grazes */
+  milk: { x: PEN.gate.x0 - 1.6, z: PEN.z0 + 2.6, heading: N },
+  pail: { x: PEN.gate.x0 - 2.0, z: PEN.z0 + 3.05, heading: N },
+  milker: { x: PEN.gate.x0 - 2.55, z: PEN.z0 + 3.0, heading: E },
+  /** behind the sheep at the milking place, creeping up */
+  'creep-from': { x: PEN.gate.x0 - 1.0, z: PEN.z0 + 4.6, heading: N },
+  creep: { x: PEN.gate.x0 - 1.45, z: PEN.z0 + 3.75, heading: N },
+}
+// the hens (out of their run, as hens are by day): in each of the coop's six nests along the fence, looking out; just in
+// front of each; and a huddle at the first, all pushing towards it
+for (let k = 0; k < 6; k++) {
+  const x = POST.x + 0.27 + k * 0.31
+  PEN_MARKS[`nest-${k}`] = { x, z: POST.z - 0.24, heading: N }
+  PEN_MARKS[`front-${k}`] = { x, z: POST.z - 0.6, heading: 0 }
+}
+;[
+  [0, -0.66, 0],
+  [-0.3, -0.74, 0.4],
+  [0.29, -0.78, -0.45],
+  [-0.12, -1.0, 0.15],
+  [0.2, -1.06, -0.2],
+  [-0.42, -1.1, 0.6],
+  [0.04, -1.38, 0],
+].forEach(([x, z, heading], k) => (PEN_MARKS[`huddle-${k}`] = { x: POST.x + 0.27 + x, z: POST.z + z, heading }))
+/** where the rooster struts to: in front of the coop, towards the lane */
+PEN_MARKS.strut = { x: POST.x + 0.3, z: POST.z - 2.2, heading: N }
+// the cows: side by side at the fence by the post (noses to it), and out in the grass
+;[0.55, 1.5, -0.55].forEach((x, k) => (PEN_MARKS[`stall-${k}`] = { x: POST.x + x, z: PEN.z0 + 1.25, heading: N }))
+// the sheep: a line along the fence's outside, from the gate westwards, each facing the one in front
+for (let k = 0; k < 4; k++) PEN_MARKS[`queue-${k}`] = { x: POST.x - 0.6 - k * 1.2, z: PEN.z0 - 0.6, heading: E }
+// out in the grass, and the far corners (where a herd scatters to)
+;[
+  [-2.6, 1.3, 1.2],
+  [0.7, 0.7, -2.2],
+  [2.7, 1.6, 0.8],
+  [-1.2, 2.0, -0.4],
+  [-3.0, -1.4, 2.4],
+  [3.1, -0.6, -1.9],
+  [-0.4, -1.3, 2.9],
+].forEach(([x, z, heading], k) => (PEN_MARKS[`field-${k}`] = { x: PEN_MIDDLE.x + x, z: PEN_MIDDLE.z + z, heading }))
+;[
+  [PEN.x0 + 0.8, PEN.z1 - 0.8, -0.8],
+  [PEN.x1 - 0.8, PEN.z1 - 0.9, 0.9],
+  [PEN.x0 + 0.7, PEN.z0 + 1.3, -2.4],
+  [PEN.x1 - 1.0, PEN.z1 - 2.3, 1.6],
+].forEach(([x, z, heading], k) => (PEN_MARKS[`corner-${k}`] = { x, z, heading }))
+Object.assign(MARKS, PEN_MARKS)
+
 const points = (steps: Step[]): Mark[] => steps.flatMap((s) => ('to' in s ? [s.to] : []))
 
 /** Named ways, a mark after a mark: the game's own scripts. */
@@ -102,6 +196,11 @@ export const THINGS_AT: Record<string, Thing> = {
   aisle: { x: (HALL.x0 + HALL.x1) / 2, y: 1.0, z: (SHELF_RUN.z0 + 19.15) / 2, h: 2.2, w: 1.4, heading: -Math.PI / 2 },
   /** the shelves along the hall's south wall: the first three places, facing the door */
   shelves: { x: (BAYS[0].x + BAYS[2].x) / 2, y: 1.0, z: SHELF_RUN.z0, h: 1.8, w: BAYS[2].x - BAYS[0].x + 0.6, heading: Math.PI },
+  /** the pen, its gate and the tool's post (seen from the lane), and the run of the coop's nests along the fence */
+  pen: { x: PEN_MIDDLE.x, y: 0.6, z: PEN_MIDDLE.z, h: 1.4, w: PEN.x1 - PEN.x0, heading: Math.PI },
+  gate: { x: (PEN.gate.x0 + PEN.gate.x1) / 2, y: 0.5, z: PEN.z0, h: 1.0, w: PEN.gate.x1 - PEN.gate.x0 + 0.4, heading: Math.PI },
+  post: { x: POST.x, y: 0.6, z: POST.z - 0.2, h: 1.2, w: 0.7, heading: Math.PI },
+  nests: { x: POST.x + 1.05, y: 0.55, z: POST.z - 0.3, h: 0.9, w: 2.1, heading: Math.PI },
 }
 
 /** The walls a camera may leave out, as a film set's wild walls: each a test on a wall box of the market's row. */

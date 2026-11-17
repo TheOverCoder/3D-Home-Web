@@ -27,6 +27,15 @@ against it before it is shown.
   in games, CHI 2016][peak]
 - **No conflict? Use four beats.** For a cosy moment: introduce, develop, twist (a change of viewpoint), settle
   (kishōtenketsu, as Nintendo builds levels). [Wikipedia][kisho] · [Suzy Cube on Mario 3D Land][kisho2]
+- **An animal's gag needs no words.** If a joke needs dialogue, drop it (Shaun the Sheep's rule): the herd acts with
+  its body (a walk, a turn, its head up) and speaks in the game's own sounds (a cluck, a moo, a bleat, the snip of the
+  shears); the people say the one or two lines. [Burton and Starzak on Shaun the Sheep][shaun]
+- **The look into the lens is the animal's line.** After the gag, one held beat of the animal looking straight at us
+  (Gromit, Oliver Hardy) shares the joke with the audience: Daisy after the kick, Dolly at the snip. [ACMI on Wallace &
+  Gromit][gromit]
+- **The build is one shot.** The crate lands, opens and becomes the tool, its pieces rising one after another with a
+  click each; the building itself happens off screen, as a game's builder does it overnight. [Stardew Valley: the
+  coop][coop]
 - **Promise only what play gives.** The film shows what the act really does in the game; anything more (a new sign, a
   title) is a note for the game, not a lie in the film.
 
@@ -82,6 +91,11 @@ against it before it is shown.
   empty colour. In the game the film plays in the live scene, so whatever does show is theirs.
 - **For the last word, two side by side beat shot and reverse shot.** Both facing us, square, the shop behind: the
   one who answers without turning to look is the cool one, and no camera has to look back at the farm.
+- **A fence is a set's too.** In the pen a fence section between the camera and the herd is left out like a wall, and
+  so is one right at the lens (a post a hand away fills a side of the picture); the herd is filmed from the lane's side,
+  so the camera looks at the woods, never back at the farm.
+- **Small things that matter are drawn a little big.** Eggs on a nest's tray are a few pixels on a phone: the thing a
+  shot is about may be half again its size (the coop's eggs), never what only dresses the set.
 - **Walls are a set's, not a prison.** A wall between the camera and its subject is left out (wild walls); never one
   behind the subject, or the outside shows through.
 - **Light the faces while they talk.** A key from in front, on the side the face turns to (short key: the far cheek
@@ -167,6 +181,9 @@ the camera, the people engine for the cast, Motion for the overlay, a procedural
 
 [mckee]: https://mckeestory.com/do-your-scenes-turn/
 [pixar]: https://fs.blog/22-rules-pixar-uses-to-create-appealing-stories/
+[shaun]: https://www.btlnews.com/awards/directors-mark-burton-and-richard-starzak-excel-in-non-verbal-dialog-in-shaun-the-sheep/
+[gromit]: https://www.acmi.net.au/stories-and-ideas/wallace-gromit-humour-comedy-style/
+[coop]: https://stardewvalleywiki.com/Coop
 [late]: https://nofilmschool.com/start-late-leave-early
 [hitch]: https://nofilmschool.com/alfred-hitchcock-and-francois-truffaut-explain-surprise-vs-suspense
 [reveal]: https://www.pcgamer.com/behind-the-addictive-psychology-and-seductive-art-of-loot-boxes/

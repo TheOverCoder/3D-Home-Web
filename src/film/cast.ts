@@ -38,8 +38,16 @@ function playerLook(outfit: Outfit): PersonLook {
   }
 }
 
+/** Whether a cast member is one of the film's herd (an animal, drawn by the stage from the herd's own crowd). */
+export const isAnimal = (look: Look): look is { herd: number } => typeof look === 'object' && 'herd' in look
+
+/** An animal has no person's look: what asks for one (the colour of a speaker's name; an animal never speaks) gets the
+ *  plainest, never drawn. */
+const NOBODY: PersonLook = { ...rollLook(random(1)), shirt: '#f3ead8', basket: false }
+
 /** A cast member's look: the player in `outfit`, the manager and the contractor as the game has them, or a roll. */
 export function lookOf(look: Look, outfit: Outfit = DEFAULT_OUTFIT): PersonLook {
+  if (isAnimal(look)) return NOBODY
   if (look === 'player') return playerLook(outfit)
   if (look === 'manager') return steadyLook(1723, MANAGER_LOOK)
   if (look === 'contractor') return steadyLook(9157, CONTRACTOR_LOOK)

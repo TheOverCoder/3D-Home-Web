@@ -1,5 +1,5 @@
 {
- "at": "2026-11-16T22:31:26.996Z",
+ "at": "2026-11-17T06:59:06.717Z",
  "devices": [
   "upright",
   "sideways"
@@ -184,6 +184,36 @@
     "c/decor/sideways · Path lantern: opens at level 7",
     "c/decor/sideways · Bench: opens at level 7"
    ],
+   "off": []
+  },
+  "film-shears": {
+   "screens": 10,
+   "errors": [],
+   "blank": [],
+   "scroll": [],
+   "small": [],
+   "tiny": [],
+   "under": [],
+   "off": []
+  },
+  "film-milk-bucket": {
+   "screens": 10,
+   "errors": [],
+   "blank": [],
+   "scroll": [],
+   "small": [],
+   "tiny": [],
+   "under": [],
+   "off": []
+  },
+  "film-coop": {
+   "screens": 8,
+   "errors": [],
+   "blank": [],
+   "scroll": [],
+   "small": [],
+   "tiny": [],
+   "under": [],
    "off": []
   }
  }

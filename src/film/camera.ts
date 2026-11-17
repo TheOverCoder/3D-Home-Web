@@ -18,6 +18,8 @@ export interface Subject {
   w: number
   heading: number
   person: boolean
+  /** how long it is along its heading (an animal: a cow seen from the side is wide), m */
+  long?: number
 }
 
 export interface CamNow {
@@ -89,9 +91,10 @@ export function shotCamera(cam: Cam, c: CamContext): CamNow {
     const back = new Vector3(near.x - far.x, 0, near.z - far.z).normalize()
     const side = n ?? new Vector3(-back.z, 0, back.x)
     const k = size === 'close' || size === 'extreme' ? 0.55 : size === 'medium' ? 0.8 : 1.3
-    // (over a shoulder onto a thing, further aside: the thing is small and the head near)
-    const aside = (upright ? 0.24 : 0.36) * Math.min(1.2, k + 0.3) + (far.person ? 0 : 0.22)
-    pos = new Vector3(near.x, near.head + 0.1, near.z).addScaledVector(back, 0.62 * k + 0.1).addScaledVector(side, aside)
+    // (over a shoulder onto a thing, further aside: the thing is small and the head near; behind an animal, behind its
+    // back half too)
+    const aside = (upright ? 0.24 : 0.36) * Math.min(1.2, k + 0.3) + (far.person ? 0 : 0.22) + (near.long ?? 0) * 0.25
+    pos = new Vector3(near.x, near.head + 0.1, near.z).addScaledVector(back, 0.62 * k + 0.1 + (near.long ?? 0) / 2).addScaledVector(side, aside)
     const f = lookPoint(c.now[0], size)
     const nh = lookPoint(c.shoulder.now, size)
     look = f.multiplyScalar(0.88).addScaledVector(nh, 0.12)
@@ -129,13 +132,18 @@ export function shotCamera(cam: Cam, c: CamContext): CamNow {
     const across = new Vector3(-dir.z, 0, dir.x)
     const xs = c.from.map((s) => across.dot(new Vector3(s.x, 0, s.z)))
     // a thing is as wide as its face looks from here (seen along its length, a run of shelves is narrow)
+    // (an animal is as wide as its body across and its length along its heading, as it stands to the camera)
     const width = (s: Subject) =>
-      s.person ? (size === 'close' || size === 'extreme' ? 0.42 : 0.6) : Math.max(0.4, s.w * 1.1 * Math.abs(across.dot(new Vector3(Math.cos(s.heading), 0, -Math.sin(s.heading)))))
+      s.person
+        ? size === 'close' || size === 'extreme'
+          ? 0.42
+          : 0.6
+        : Math.max(0.4, s.w * 1.1 * Math.abs(across.dot(new Vector3(Math.cos(s.heading), 0, -Math.sin(s.heading)))), (s.long ?? 0) * 1.1 * Math.abs(across.dot(facing(s.heading))))
     const wide = Math.max(...xs) - Math.min(...xs) + Math.max(...c.from.map(width))
     const tanV = Math.tan(((fov / 2) * Math.PI) / 180)
     let d = Math.max(tall / 2 / tanV, wide / 2 / (tanV * c.aspect)) * (angle === 'ground' ? 0.85 : 1)
     // from the floor, a thing up on a wall is seen from far enough to look over what juts out under it (an awning)
-    if (angle === 'ground' && c.from.every((s) => !s.person)) d = Math.max(d, 4.5)
+    if (angle === 'ground' && c.from.every((s) => !s.person && s.y > 1.2)) d = Math.max(d, 4.5)
     // the move: in, out, round, sideways, or a comic punch in at the start
     const u = ease(c.u)
     let pitch = PITCH[angle] * (angle === 'low' && (size === 'close' || size === 'extreme') ? 0.6 : 1)

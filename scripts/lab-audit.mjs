@@ -88,7 +88,8 @@ try {
         page.removeAllListeners('pageerror')
         page.removeAllListeners('console')
         page.on('pageerror', (e) => errors.push(e.message))
-        page.on('console', (m) => m.type() === 'error' && !/favicon/.test(m.text()) && errors.push(m.text()))
+        // (the browser's own ask for a favicon is no error of the board's: its message names it only in its location)
+        page.on('console', (m) => m.type() === 'error' && !/favicon/.test(`${m.text()} ${m.location().url}`) && errors.push(m.text()))
         for (const state of b.states) {
           const where = `${variant}/${state}/${device}`
           errors.length = 0

@@ -14,8 +14,18 @@ import type { Speech, Utterance, Voice } from './voice'
 
 const midi = (n: number) => 440 * 2 ** ((n - 69) / 12)
 
-/** The sounds that are the game's own. */
-const GAME: Partial<Record<Sting, Parameters<typeof farmSound>[0]>> = { coins: 'coins', till: 'till', level: 'level' }
+/** The sounds that are the game's own (the animals' too: the hens, the rooster, the cows, the sheep, milking, shearing). */
+const GAME: Partial<Record<Sting, Parameters<typeof farmSound>[0]>> = {
+  coins: 'coins',
+  till: 'till',
+  level: 'level',
+  cluck: 'cluck',
+  crow: 'crow',
+  moo: 'moo',
+  baa: 'baa',
+  milk: 'milk',
+  shear: 'shear',
+}
 
 export class Synth {
   private white: AudioBuffer
