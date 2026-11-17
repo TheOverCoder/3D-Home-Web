@@ -122,8 +122,8 @@ export function bodyOf(kind: ToolKind, n: number) {
 function moved(parts: Parts, lift: number, scale: number, kick: number): Parts {
   // (the right hind leg is the hind part on her right, −x; the tail goes up as it kicks)
   const thrown = (k: string, x: number) => (!kick ? 0 : k.startsWith('tail') ? -0.8 * kick : k.startsWith('hind') && x < 0 ? kick : 0)
-  const put: Parts['put'] = (k, x, y, z, rx = 0, ...rest) => parts.put(k, x, y, z, rx + thrown(k, x), ...rest)
-  const at: Parts['at'] = (x, y, z, heading, s = 1) => parts.at(x, y + lift, z, heading, s * scale)
+  const put = (k: string, x: number, y: number, z: number, rx = 0, ...rest: unknown[]) => (parts.put as (...a: unknown[]) => void)(k, x, y, z, rx + thrown(k, x), ...rest)
+  const at = (x: number, y: number, z: number, heading = 0, s = 1) => parts.at(x, y + lift, z, heading, s * scale)
   return { at, put } as unknown as Parts
 }
 
