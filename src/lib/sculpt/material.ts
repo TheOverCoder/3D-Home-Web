@@ -125,18 +125,25 @@ const COLOR_FRAGMENT = `
 #endif
 `
 
-// the relief tilts the normal along its slope on screen (as a bump map does)
+// the relief tilts the normal along its slope (as a bump map does). The slope is measured on the triangle itself (its
+// own facing, from how the surface moves across the screen), then laid across the drawn normal. Measured against the
+// drawn normal instead, it grows as one over the cosine between the two: where a model's normals are bent far from its
+// triangles (a crown lit as one ball, a smooth normal round a sharp rim like a pine tier's), the relief tipped the
+// normal right over, away from every light, and the dark rims came out as black specks in a line.
 const BUMP_NORMAL = `
 #if defined( SCULPT_DETAIL ) || defined( SCULPT_SURFACE )
 	if ( sculptDetailOn > 0.5 ) {
 		vec3 sigmaX = dFdx( - vViewPosition );
 		vec3 sigmaY = dFdy( - vViewPosition );
-		vec3 r1 = cross( sigmaY, normal );
-		vec3 r2 = cross( normal, sigmaX );
-		float det = dot( sigmaX, r1 ) * faceDirection;
 		vec2 dH = vec2( dFdx( sculptBump ), dFdy( sculptBump ) );
-		vec3 grad = sign( det ) * ( dH.x * r1 + dH.y * r2 );
-		normal = normalize( abs( det ) * normal - grad );
+		// the triangle's facing, and the area of a pixel on it
+		vec3 facing = cross( sigmaX, sigmaY );
+		float area = max( length( facing ), 1e-20 );
+		facing /= area;
+		// the slope along the triangle, then only its part across the drawn normal
+		vec3 grad = ( dH.x * cross( sigmaY, facing ) + dH.y * cross( facing, sigmaX ) ) / area;
+		grad -= dot( grad, normal ) * normal;
+		normal = normalize( normal - faceDirection * grad );
 	}
 #endif
 `
