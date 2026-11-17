@@ -1,0 +1,407 @@
+/* A · the place itself (./AnimalToolsA.tsx): the coop's nest box, the milk pail, the basket under the shears — drawn
+   from the tokens (the wood is the edge's brown, the straw the sun's) — with the herd as chips beside. Sideways the
+   place stands on the left of the sheet and the chips, upgrades and line on its right. */
+
+.v-animal-tools-a .ata-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.v-animal-tools-a .ata-side {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.v-animal-tools-a.mp-right .ata-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  grid-template-areas: 'hero side' 'herd side';
+  align-items: start;
+  gap: 8px 12px;
+}
+.v-animal-tools-a.mp-right .ata-hero {
+  grid-area: hero;
+}
+.v-animal-tools-a.mp-right .ata-herd {
+  grid-area: herd;
+}
+.v-animal-tools-a.mp-right .ata-side {
+  grid-area: side;
+}
+.v-animal-tools-a.mp-right .ata-stage.ata-on-nests {
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+}
+.v-animal-tools-a.mp-right .ata-nest {
+  min-height: 0;
+}
+.v-animal-tools-a.mp-right .ata-box {
+  gap: 6px;
+  padding: 8px;
+}
+.v-animal-tools-a.mp-right .ata-vessel {
+  min-height: 0;
+  height: 172px;
+}
+.v-animal-tools-a.mp-right .ata-herd {
+  flex-wrap: nowrap;
+  gap: 4px;
+}
+.v-animal-tools-a.mp-right .ata-chip {
+  flex-direction: column;
+  gap: 0;
+  min-height: 0;
+  padding: 2px 2px 4px;
+  border-radius: 14px;
+}
+.v-animal-tools-a.mp-right .ata-chip-name {
+  font-size: 13px;
+}
+.v-animal-tools-a.mp-right .ata-chip-n {
+  position: absolute;
+  right: 0;
+  top: 22px;
+  min-width: 22px;
+  height: 22px;
+  font-size: 13px;
+  box-shadow: 0 0 0 2px #fff;
+}
+.v-animal-tools-a.mp-right .ata-chip {
+  position: relative;
+}
+.v-animal-tools-a.mp-right .ata-side {
+  gap: 8px;
+}
+.v-animal-tools-a.mp-right .at-ups {
+  grid-template-columns: 1fr;
+}
+
+/* ── the coop: a nest box of planks, a dark cubby for every hen ── */
+.v-animal-tools-a .ata-box {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px;
+  border-radius: 20px;
+  background: repeating-linear-gradient(180deg, var(--edge) 0 26px, color-mix(in srgb, var(--edge) 78%, var(--ink)) 26px 28px);
+  box-shadow:
+    0 4px 0 color-mix(in srgb, var(--edge) 60%, var(--ink)),
+    inset 0 2px 0 rgba(255, 255, 255, 0.18);
+}
+.v-animal-tools-a .ata-nest {
+  position: relative;
+  aspect-ratio: 1 / 0.9;
+  min-height: 76px;
+  padding: 0;
+  border: 0;
+  border-radius: 16px;
+  background: radial-gradient(ellipse at 50% 20%, color-mix(in srgb, var(--ink) 62%, var(--edge)), var(--ink));
+  box-shadow:
+    inset 0 4px 8px rgba(0, 0, 0, 0.45),
+    0 2px 0 rgba(255, 255, 255, 0.16);
+  overflow: hidden;
+}
+.v-animal-tools-a .ata-straw {
+  position: absolute;
+  left: 9%;
+  right: 9%;
+  bottom: 8%;
+  height: 38%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 35%, var(--sun) 0 35%, var(--sun-lip) 80%);
+  box-shadow: inset 0 -4px 0 rgba(110, 70, 10, 0.35);
+}
+.v-animal-tools-a .ata-eggs {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 22%;
+  height: 46%;
+}
+.v-animal-tools-a .ata-egg {
+  position: absolute;
+  width: 36%;
+  height: auto;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.35));
+}
+.v-animal-tools-a .ata-egg.e0 {
+  left: 32%;
+  bottom: 0;
+}
+.v-animal-tools-a .ata-egg.e1 {
+  left: 14%;
+  bottom: 4%;
+  rotate: -14deg;
+}
+.v-animal-tools-a .ata-egg.e2 {
+  left: 50%;
+  bottom: 4%;
+  rotate: 12deg;
+}
+.v-animal-tools-a .ata-egg.e3 {
+  left: 32%;
+  bottom: 34%;
+  rotate: 6deg;
+}
+/* how many, always (1 included): the game's round badge */
+.v-animal-tools-a .ata-n {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 7px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(59, 42, 30, 0.82);
+  color: #fff;
+  font: 800 15px/1 var(--font-text);
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.6);
+}
+/* the hen, laying: her ring fills to her next egg (gone while her nest is full) */
+.v-animal-tools-a .ata-hen {
+  position: absolute;
+  left: 5px;
+  top: 5px;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--paper) 92%, transparent);
+}
+.v-animal-tools-a .ata-hen img {
+  width: 22px;
+  height: 22px;
+}
+.v-animal-tools-a .ata-ring {
+  position: absolute;
+  inset: 0;
+}
+.v-animal-tools-a .ata-nest.full {
+  box-shadow:
+    inset 0 4px 8px rgba(0, 0, 0, 0.45),
+    0 0 0 3px var(--sun),
+    0 0 14px color-mix(in srgb, var(--sun) 60%, transparent);
+}
+.v-animal-tools-a .ata-nest.empty .ata-straw {
+  opacity: 0.75;
+}
+
+/* ── the pail and the basket: one big target with the herd's total on it ── */
+.v-animal-tools-a .ata-vessel {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 196px;
+  padding: 10px 0 8px;
+  border: 0;
+  border-radius: 24px;
+  background: radial-gradient(ellipse at 50% 70%, color-mix(in srgb, var(--leaf) 26%, var(--paper-2)), var(--paper-2) 70%);
+  box-shadow: inset 0 2px 0 rgba(158, 123, 87, 0.16);
+}
+.v-animal-tools-a .ata-total {
+  position: absolute;
+  right: 12px;
+  top: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px 4px 5px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 2px 0 var(--paper-3);
+  font: 800 19px/1 var(--font-text);
+  font-variant-numeric: tabular-nums;
+}
+.v-animal-tools-a .ata-total img {
+  width: 28px;
+  height: 28px;
+}
+.v-animal-tools-a .ata-top {
+  position: absolute;
+  left: 50%;
+  top: 18%;
+  width: 1px;
+  height: 1px;
+}
+
+/* the pail: wooden staves, two hoops, a handle, the milk rising inside */
+.v-animal-tools-a .ata-pail {
+  position: relative;
+  display: block;
+  width: 132px;
+  height: 150px;
+}
+.v-animal-tools-a .ata-handle {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  top: 0;
+  height: 70px;
+  border: 5px solid var(--ink-2);
+  border-bottom: 0;
+  border-radius: 60px 60px 0 0;
+}
+.v-animal-tools-a .ata-staves {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 112px;
+  clip-path: polygon(0 0, 100% 0, 88% 100%, 12% 100%);
+  background: repeating-linear-gradient(90deg, var(--edge) 0 20px, color-mix(in srgb, var(--edge) 75%, var(--ink)) 20px 22px);
+  overflow: hidden;
+}
+.v-animal-tools-a .ata-milk {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(180deg, #fff, var(--paper) 60%);
+  box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.9);
+  opacity: 0.94;
+}
+.v-animal-tools-a .ata-hoop {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 7px;
+  background: var(--ink-2);
+}
+.v-animal-tools-a .ata-hoop.h1 {
+  top: 16px;
+}
+.v-animal-tools-a .ata-hoop.h2 {
+  bottom: 16px;
+}
+
+/* the basket of wool, the shears over it (they snip as a tap takes) */
+.v-animal-tools-a .ata-basket {
+  position: relative;
+  display: block;
+  width: 168px;
+  height: 160px;
+}
+.v-animal-tools-a .ata-basket-pic {
+  position: absolute;
+  left: 14px;
+  bottom: 0;
+  width: 140px;
+  height: 140px;
+}
+.v-animal-tools-a .ata-wool {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 74px;
+  height: 58px;
+}
+.v-animal-tools-a .ata-wool img {
+  position: absolute;
+  width: 46px;
+  height: 46px;
+  filter: drop-shadow(0 2px 2px rgba(60, 35, 10, 0.25));
+}
+.v-animal-tools-a .ata-wool .w0 {
+  left: 34%;
+  bottom: 0;
+}
+.v-animal-tools-a .ata-wool .w1 {
+  left: 4%;
+  bottom: 0;
+}
+.v-animal-tools-a .ata-wool .w2 {
+  left: 64%;
+  bottom: 0;
+}
+.v-animal-tools-a .ata-wool .w3 {
+  left: 18%;
+  bottom: 22px;
+}
+.v-animal-tools-a .ata-wool .w4 {
+  left: 50%;
+  bottom: 22px;
+}
+.v-animal-tools-a .ata-wool .w5 {
+  left: 34%;
+  bottom: 40px;
+}
+.v-animal-tools-a .ata-wool .w6 {
+  left: 6%;
+  bottom: 40px;
+}
+.v-animal-tools-a .ata-shears {
+  position: absolute;
+  right: -16px;
+  top: -6px;
+  width: 64px;
+  height: 64px;
+  transform-origin: 30% 70%;
+}
+.v-animal-tools-a .ata-shears img {
+  width: 100%;
+  height: 100%;
+  rotate: 30deg;
+  filter: drop-shadow(0 3px 2px rgba(60, 35, 10, 0.3));
+}
+.v-animal-tools-a .ata-vessel.empty .ata-total {
+  color: var(--ink-2);
+}
+
+/* the herd as chips: the animal in its ring, her name, what waits */
+.v-animal-tools-a .ata-herd {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+.v-animal-tools-a .ata-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 48px;
+  padding: 3px 12px 3px 3px;
+  border: 0;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink);
+  box-shadow:
+    0 3px 0 var(--paper-3),
+    0 0 0 1.5px var(--edge-soft);
+  font: 700 15px/1 var(--font-text);
+}
+.v-animal-tools-a .ata-chip-pic {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+}
+.v-animal-tools-a .ata-chip-pic img {
+  width: 26px;
+  height: 26px;
+}
+.v-animal-tools-a .ata-chip-n {
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(59, 42, 30, 0.82);
+  color: #fff;
+  font: 800 14px/1 var(--font-text);
+  font-variant-numeric: tabular-nums;
+}
+.v-animal-tools-a .ata-chip.full {
+  box-shadow:
+    0 3px 0 var(--sun-lip),
+    0 0 0 2.5px var(--sun);
+}
+.v-animal-tools-a .ata-chip.empty .ata-chip-n {
+  background: var(--paper-3);
+  color: var(--ink-2);
+}

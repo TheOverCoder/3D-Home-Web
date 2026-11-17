@@ -1,0 +1,127 @@
+/* What the shop's variants share (./parts.tsx): its rows (today's .farm-shop-item), the lock's chip, a heading, a row
+   that just changed (it shines once), and the remotes' stand-in premium look (the premium-remotes board chooses it). */
+
+.sa-in {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.sa-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 2px -2px;
+  font: 600 18px/1 var(--font-display);
+  color: var(--ink);
+  scroll-margin-top: 58px;
+}
+.sa-row {
+  position: relative;
+}
+.sa-row .farm-shop-text {
+  min-width: 0;
+}
+.sa-row .farm-shop-text strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sa-pic {
+  position: relative;
+  display: grid;
+  flex: none;
+}
+.sa-pic .art {
+  width: 56px;
+  height: 56px;
+}
+.sa-btn {
+  min-width: 84px;
+}
+.sa-btn svg {
+  width: 20px;
+  height: 20px;
+}
+.sa-btn-locked {
+  --b: var(--paper-2);
+  --b-ink: var(--ink-2);
+  --b-lip: var(--paper-3);
+}
+
+/* locked: the picture faded, the reason as a chip (a level: the sun's; something to have first: the paper's) */
+.sa-locked .sa-pic .art {
+  opacity: 0.5;
+  filter: grayscale(0.7);
+}
+.sa-lock {
+  gap: 4px;
+}
+.sa-lock svg {
+  width: 14px;
+  height: 14px;
+}
+.sa-lock.level {
+  background: var(--sun);
+  color: var(--ink);
+}
+.sa-lock.need {
+  background: var(--paper-3);
+  color: var(--ink);
+}
+
+/* just bought or just opened: a light crosses it once */
+.sa-fresh {
+  position: relative;
+  overflow: hidden;
+}
+.sa-fresh::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.85) 50%, transparent 70%);
+  translate: -110% 0;
+  animation: sa-shine 0.7s ease-out 0.05s both;
+  pointer-events: none;
+}
+@keyframes sa-shine {
+  to {
+    translate: 110% 0;
+  }
+}
+
+/* the remotes, until the premium board's look is chosen: a sun rim and the crown */
+.sa-premium {
+  box-shadow:
+    0 0 0 2.5px var(--sun),
+    0 3px 0 var(--sun-lip);
+  background: color-mix(in srgb, var(--sun) 12%, #fff);
+}
+.sa-crown-glyph {
+  position: absolute;
+  right: -8px;
+  top: -8px;
+  width: 22px;
+  height: 22px;
+  color: var(--sun-lip);
+  filter: drop-shadow(0 1px 0 #fff);
+}
+.sa-crown {
+  position: absolute;
+  right: -14px;
+  top: -12px;
+  width: 30px;
+  height: 30px;
+  rotate: 16deg;
+}
+.sa-premium-card .farm-panel {
+  box-shadow:
+    0 0 0 3px var(--sun),
+    var(--shadow-sheet);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sa-fresh::before {
+    animation: none;
+  }
+}

@@ -1,5 +1,5 @@
 {
- "at": "2026-11-16T22:31:26.996Z",
+ "at": "2026-11-17T06:45:57.876Z",
  "devices": [
   "upright",
   "sideways"
@@ -184,6 +184,66 @@
     "c/decor/sideways · Path lantern: opens at level 7",
     "c/decor/sideways · Bench: opens at level 7"
    ],
+   "off": []
+  },
+  "animal-tools": {
+   "screens": 48,
+   "errors": [],
+   "blank": [],
+   "scroll": [],
+   "small": [],
+   "tiny": [],
+   "under": [],
+   "off": []
+  },
+  "shop-animals": {
+   "screens": 40,
+   "errors": [],
+   "blank": [],
+   "scroll": [],
+   "small": [],
+   "tiny": [],
+   "under": [
+    "today/locked/upright · Sprinklers: yours",
+    "today/new/upright · Buy Sprinklers, for 60 coins",
+    "a/owned/upright · Holds more, 4 a cow, for 150 coins",
+    "a/top/upright · Holds more: yours",
+    "b/locked/upright · Buy A longer queue, 9 in line, for 66 co",
+    "b/owned/upright · Buy A busier lane, Every 1:30, for 75 co",
+    "b/top/upright · West field: yours",
+    "b/new/upright · West field: Level 9",
+    "c/sale/upright · Buy A busier lane, Every 1:30, for 75 co",
+    "c/top/upright · A longer queue: yours",
+    "c/new/upright · A busier lane: Level 6",
+    "today/locked/sideways · Buy A busier lane, Every 1:30, for 75 co",
+    "today/top/sideways · A busier lane: yours",
+    "today/new/sideways · Buy A busier lane, Every 1:45, for 50 co",
+    "a/sale/sideways · Milk bucket, for 400 coins",
+    "a/owned/sideways · More a tap, 3 a tap, for 150 coins",
+    "a/top/sideways · More a tap: yours",
+    "c/sale/sideways · Hens",
+    "c/sale/sideways · Cows",
+    "c/sale/sideways · Sheep",
+    "c/owned/sideways · More a tap, 3 a tap, for 150 coins",
+    "c/top/sideways · More a tap: yours"
+   ],
+   "off": []
+  },
+  "premium-remotes": {
+   "screens": 72,
+   "errors": [],
+   "blank": [],
+   "scroll": [],
+   "small": [
+    "a/afar/upright · Mill, level 2 — what it gives 87×34",
+    "b/afar/upright · Mill, level 2 — what it gives 87×34",
+    "c/afar/upright · Mill, level 2 — what it gives 87×34",
+    "a/afar/sideways · Mill, level 2 — what it gives 87×34",
+    "b/afar/sideways · Mill, level 2 — what it gives 87×34",
+    "c/afar/sideways · Mill, level 2 — what it gives 87×34"
+   ],
+   "tiny": [],
+   "under": [],
    "off": []
   }
  }

@@ -1,0 +1,70 @@
+/* A · gold leaf (./PremiumRemotesA.tsx): what is premium is the sun's yellow made into gold — a light top, a deep lip
+   — with the crown in ink and a slow light crossing it now and then. The cards are paper edged in gold. A panel
+   opened from afar wears a gold tab on its top corner: "‹ Barn" and "Remote". */
+
+.v-premium-remotes-a .pr-premium {
+  --b: var(--sun);
+  --b-ink: var(--ink);
+  --b-lip: var(--sun-lip);
+  background: linear-gradient(140deg, color-mix(in srgb, var(--sun) 40%, #fff) 0%, var(--sun) 42%, color-mix(in srgb, var(--sun) 72%, var(--sun-lip)) 100%);
+  color: var(--ink);
+  box-shadow:
+    0 4px 0 var(--sun-lip),
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.7),
+    0 8px 16px rgba(40, 24, 10, 0.2);
+}
+.v-premium-remotes-a .pr-crown {
+  color: var(--ink);
+}
+
+/* the shop's cards: paper, a gold edge, a warm light from their top */
+.v-premium-remotes-a .pr-premium-card {
+  background: linear-gradient(160deg, color-mix(in srgb, var(--sun) 28%, #fff), #fff 58%);
+  color: var(--ink);
+  box-shadow:
+    0 0 0 2.5px var(--sun),
+    0 4px 0 var(--sun-lip);
+}
+.v-premium-remotes-a .pr-premium-card .pr-shine {
+  width: 30%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.85), transparent);
+}
+.v-premium-remotes-a .pr-premium-card.owned {
+  background: color-mix(in srgb, var(--sun) 14%, #fff);
+}
+.v-premium-remotes-a .pr-heading .pr-crown {
+  color: var(--sun-lip);
+}
+.v-premium-remotes-a.pr-ask .farm-panel {
+  box-shadow:
+    0 0 0 3px var(--sun),
+    var(--shadow-sheet);
+  background: linear-gradient(170deg, color-mix(in srgb, var(--sun) 20%, var(--paper)), var(--paper) 45%);
+}
+.v-premium-remotes-a.pr-ask .farm-buy {
+  background: linear-gradient(140deg, color-mix(in srgb, var(--sun) 40%, #fff), var(--sun) 42%, color-mix(in srgb, var(--sun) 72%, var(--sun-lip)));
+}
+
+/* the bubble: its open button is the widest thing in it */
+.v-premium-remotes-a.pr-pop .pr-go {
+  align-self: stretch;
+  justify-content: center;
+}
+
+/* from afar: a gold tab on the sheet's corner */
+.v-premium-remotes-a.pr-root .pr-tag-a {
+  filter: drop-shadow(0 4px 8px rgba(40, 24, 10, 0.3));
+}
+.v-premium-remotes-a .pr-tag-a .pr-back {
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 3px 0 var(--paper-3);
+}
+.v-premium-remotes-a .pr-tag-a .pr-tag-word {
+  min-height: 36px;
+}
+.v-premium-remotes-a .pr-tag-a.wide {
+  flex-direction: column;
+  align-items: flex-end;
+  transform-origin: 100% 50%;
+}

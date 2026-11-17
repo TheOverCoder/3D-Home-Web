@@ -1,0 +1,282 @@
+/* What the premium board's variants share (./parts.tsx): the scenes' layout — a good as a button, the line's buyers,
+   the oven's recipe, the shop's premium cards, the tag of a panel opened from afar — with no premium look of their own
+   (each variant's file gives it, under .v-premium-remotes-a/b/c). */
+
+.pr-good {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  border-radius: 14px;
+}
+.pr-good .item-pic .art {
+  width: 52px;
+  height: 52px;
+}
+.pr-pop > div {
+  gap: 3px;
+  max-width: 260px;
+}
+.pr-pop .pr-go {
+  margin-top: 6px;
+}
+.pr-far {
+  margin-top: 4px;
+  font: 700 13px/1.2 var(--font-text);
+  color: var(--ink-2);
+}
+
+/* a premium button: room for its crown, its picture and the light that crosses it */
+.pr-go,
+.pr-buy {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  gap: 6px;
+}
+.pr-go {
+  min-height: 44px;
+  padding: 0 14px 0 10px;
+  font-size: 16px;
+}
+.pr-go-pic {
+  width: 26px;
+  height: 26px;
+}
+.pr-shine {
+  position: absolute;
+  z-index: -1;
+  top: -20%;
+  bottom: -20%;
+  left: 0;
+  width: 38%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.75), transparent);
+  transform: translateX(-140%);
+  pointer-events: none;
+}
+.pr-crown {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+.pr-waves {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+.pr-wave {
+  grid-area: 1 / 1;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid var(--sun);
+  opacity: 0;
+}
+
+/* the line's buyers and the oven's recipe */
+.pr-line {
+  display: grid;
+  gap: 8px;
+}
+.pr-buyer .art {
+  width: 52px;
+  height: 52px;
+}
+.pr-wants {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.pr-wants .item-pic .art {
+  width: 46px;
+  height: 46px;
+}
+.pr-recipe {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--r-card);
+  background: #fff;
+  box-shadow: 0 4px 0 var(--paper-3);
+}
+.pr-recipe-pic {
+  width: 60px;
+  height: 60px;
+}
+.pr-recipe-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pr-recipe-text strong {
+  font: 600 18px/1.1 var(--font-display);
+}
+.pr-needs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.pr-need .item-pic .art {
+  width: 38px;
+  height: 38px;
+}
+.pr-need .pr-good {
+  min-width: 44px;
+  min-height: 44px;
+}
+.pr-need.short .pr-good {
+  background: #fde1da;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--berry) 45%, transparent);
+}
+.pr-missing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--berry) 12%, var(--paper));
+  color: var(--berry-lip);
+  font: 700 15px/1.2 var(--font-text);
+}
+.pr-missing .art {
+  width: 28px;
+  height: 28px;
+}
+
+/* the shop's premium cards */
+.pr-shop {
+  display: grid;
+  gap: 10px;
+}
+.pr-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 2px 0;
+  font: 600 18px/1 var(--font-display);
+  color: var(--ink);
+}
+.pr-card {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 76px;
+  padding: 10px 12px 10px 10px;
+  border-radius: var(--r-card);
+}
+.pr-card-pic {
+  position: relative;
+  display: grid;
+  flex: none;
+}
+.pr-card-pic .art {
+  width: 54px;
+  height: 54px;
+}
+.pr-card-crown {
+  position: absolute;
+  right: -12px;
+  top: -12px;
+  width: 30px;
+  height: 30px;
+  rotate: 16deg;
+  filter: drop-shadow(0 2px 2px rgba(60, 35, 10, 0.25));
+}
+.pr-card-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.pr-card-text strong {
+  font: 600 17px/1.15 var(--font-display);
+}
+.pr-card-text small {
+  font: 700 14px/1.25 var(--font-text);
+  opacity: 0.85;
+}
+.pr-buy {
+  min-width: 108px;
+}
+.pr-card.locked .pr-card-pic .art {
+  opacity: 0.5;
+  filter: grayscale(0.7);
+}
+.pr-need-tool {
+  gap: 4px;
+  background: var(--paper-3);
+  color: var(--ink);
+}
+.pr-need-tool svg {
+  width: 14px;
+  height: 14px;
+}
+.pr-ask .at-ask-pic {
+  overflow: visible;
+}
+
+/* the tag of a panel opened from afar: over everything, on the sheet's edge */
+.pr-tag {
+  position: fixed;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transform-origin: 0 50%;
+}
+.pr-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 0 14px 0 8px;
+  border: 0;
+  border-radius: 999px;
+  font: 600 16px/1 var(--font-display);
+}
+.pr-back svg {
+  width: 18px;
+  height: 18px;
+}
+.pr-tag-word {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 34px;
+  padding: 0 12px 0 9px;
+  border-radius: 999px;
+  font: 700 14px/1 var(--font-text);
+  letter-spacing: 0.02em;
+}
+.pr-tag-word svg {
+  width: 17px;
+  height: 17px;
+}
+
+/* between two panels: the shade held while the next one's comes in */
+.pr-bridge {
+  position: fixed;
+  inset: 0;
+  z-index: 41;
+  background: rgba(40, 24, 10, 0.4);
+  pointer-events: none;
+}
