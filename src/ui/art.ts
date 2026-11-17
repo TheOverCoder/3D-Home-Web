@@ -24,6 +24,7 @@ export type ArtId =
   | 'ear-of-corn'
   | 'ewe'
   | 'fallen-leaf'
+  | 'farmer'
   | 'fire'
   | 'floppy-disk'
   | 'four-leaf-clover'

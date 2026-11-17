@@ -1,0 +1,73 @@
+/* A new farm's next step (src/farm/FirstSteps.tsx), in its slot of the top column: the farmer's round portrait and a
+   paper bubble with its tail towards it — the step's picture, its words, its reward; a tap walks there. The clear view
+   leaves it out. */
+.step-hint { position: relative; display: grid; justify-items: center; max-width: 100%; }
+:root[data-hud='clean'] .step-hint { display: none; }
+.step-talk { display: flex; align-items: center; max-width: 100%; pointer-events: auto; }
+.step-face {
+  display: grid;
+  place-items: end center;
+  flex: none;
+  width: 56px;
+  height: 56px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 30%, #fff, var(--paper-2) 70%);
+  box-shadow: 0 0 0 3px #fff, 0 4px 10px rgba(40, 24, 10, 0.35);
+}
+.step-face img { width: 54px; height: 54px; margin-bottom: -6px; }
+.step-face.small { width: 46px; height: 46px; }
+.step-face.small img { width: 44px; height: 44px; }
+.step-said { position: relative; display: flex; min-width: 0; }
+.step-bubble {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  max-width: min(300px, calc(100vw - 116px));
+  min-height: 52px;
+  margin-left: 12px;
+  padding: 6px 12px 6px 8px;
+  border: 3px solid #fff;
+  border-radius: 20px;
+  background: var(--paper);
+  color: var(--ink);
+  text-align: left;
+  box-shadow: 0 3px 0 var(--edge-soft), 0 10px 24px rgba(40, 24, 10, 0.3);
+  -webkit-tap-highlight-color: transparent;
+}
+/* its tail, towards the face: a white edge and the paper inside it */
+.step-bubble::before,
+.step-bubble::after { content: ''; position: absolute; top: 50%; border-style: solid; border-color: transparent; border-left-width: 0; }
+.step-bubble::before { left: -14px; margin-top: -10px; border-width: 10px 11px 10px 0; border-right-color: #fff; }
+.step-bubble::after { left: -8px; margin-top: -6px; border-width: 6px 7px 6px 0; border-right-color: var(--paper); }
+.step-pic { width: 34px; height: 34px; }
+.step-words { position: relative; flex: 1 1 auto; min-width: 0; font: 600 17px/1.15 var(--font-display); }
+.step-ghost { visibility: hidden; }
+.step-reward { display: inline-flex; align-items: center; gap: 2px; flex: none; padding: 2px 9px 2px 4px; border-radius: 999px; background: color-mix(in srgb, var(--sun) 30%, #fff); font: 900 15px/1.2 var(--font-text); font-variant-numeric: tabular-nums; }
+.step-reward img { width: 20px; height: 20px; }
+/* done: a green stamp on the bubble's corner */
+.step-tick { position: absolute; top: -12px; right: 18px; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--leaf); color: #fff; box-shadow: 0 0 0 3px #fff, 0 3px 6px rgba(20, 60, 20, 0.35); }
+.step-tick svg { width: 18px; height: 18px; }
+.step-bubble.done { border-color: color-mix(in srgb, var(--leaf) 45%, #fff); }
+/* walking there: the bubble's rim in sun, breathing, and a walker on its corner */
+.step-walk { position: absolute; top: -10px; left: 6px; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--sun); color: var(--ink); box-shadow: 0 0 0 2px #fff; }
+.step-walk svg { width: 13px; height: 13px; }
+.step-bubble.going { border-color: var(--sun); box-shadow: 0 3px 0 var(--sun-lip), 0 0 0 4px color-mix(in srgb, var(--sun) 30%, transparent), 0 10px 24px rgba(40, 24, 10, 0.3); }
+@media (prefers-reduced-motion: no-preference) {
+  .step-bubble.going { animation: step-going 1.4s ease-in-out infinite; }
+}
+@keyframes step-going { 50% { box-shadow: 0 3px 0 var(--sun-lip), 0 0 0 8px color-mix(in srgb, var(--sun) 16%, transparent), 0 10px 24px rgba(40, 24, 10, 0.3); } }
+.step-bubble.going::before { border-right-color: var(--sun); }
+/* the ✕ on the bubble's corner: small to the eye, a finger's size to touch */
+.step-x { position: absolute; top: -18px; right: -12px; z-index: 1; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; background: none; }
+.step-x i { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--night); color: #fff; box-shadow: 0 0 0 2px #fff; }
+.step-x svg { width: 12px; height: 12px; }
+/* the question, in the bubble: Keep, Skip */
+.step-bubble.ask { flex-wrap: wrap; gap: 6px 8px; padding: 8px 8px 8px 12px; }
+.step-answers { display: flex; gap: 8px; }
+/* the last card: its place in the column, the farmer beside it, and the sum of the coins beside "All set!" */
+.step-final { position: relative; display: flex; align-items: center; gap: 6px; }
+.step-final .tag.step-sum { background: color-mix(in srgb, var(--sun) 30%, #fff); color: var(--ink); font-size: 15px; }
+.step-final .tag.step-sum img { width: 20px; height: 20px; }

@@ -13,6 +13,7 @@ import { storeOf, type ProduceId } from './data'
 import { prizeWords, type Opened, type Prize } from './gifts'
 import { iconUrl } from './icons'
 import type { BoxView, LevelView } from './levelView'
+import { UnlockRow } from './Unlocked'
 import './LevelCard.css'
 
 // How the level's card looks (the design layer: the design lab, lab/boards/level, shows it with no game round it; the
@@ -294,7 +295,7 @@ function GiftBox({ b, next, onOpen }: { b: BoxView; next: boolean; onOpen: (el: 
 }
 
 /** What the next level brings, all of it by itself as it is reached: its coins, its garment every fifth level (else a
- *  small picture of the next garment and its level), and a gift. */
+ *  small picture of the next garment and its level), and a gift; and under them, what it opens, a small card each. */
 function Next({ v }: { v: LevelView }) {
   const next = v.level + 1
   return (
@@ -327,6 +328,7 @@ function Next({ v }: { v: LevelView }) {
       <span className="tag ok lf-auto">
         <Check weight="bold" /> Comes by itself
       </span>
+      {v.opens.length > 0 && <UnlockRow ids={v.opens} />}
     </m.section>
   )
 }

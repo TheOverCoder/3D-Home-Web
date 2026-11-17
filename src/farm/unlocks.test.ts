@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { CROPS, LEVELS, MACHINES, MACHINE_IDS, PRODUCERS, START_COINS, UPGRADES, type ProduceId } from './data'
 import { SHOP } from './decor'
 import { PARCELS, PARCEL_IDS } from './layout'
-import { UNLOCKS, UNLOCK_IDS, lockedAt, machineOpensAt, opensAt, recipeUnlock, unlockLevel, unlockName, type UnlockId } from './unlocks'
+import { UNLOCKS, UNLOCK_IDS, lockedAt, machineOpensAt, openedBetween, opensAt, recipeUnlock, unlockLevel, unlockName, type UnlockId } from './unlocks'
 
 // What each level opens (src/farm/unlocks.ts): one row for every thing a farm buys, plants or puts into a machine,
 // nothing open before what it needs, and the first hour opening something at every level.
@@ -65,6 +65,16 @@ describe('what each level opens', () => {
     expect(lockedAt('crop:wheat', UNLOCKS['crop:wheat'])).toBeNull()
     expect(lockedAt('crop:lettuce', 1)).toBeNull()
     for (const m of MACHINE_IDS) expect(machineOpensAt(m)).toBe(Math.min(...MACHINES[m].recipes.map((r) => UNLOCKS[recipeUnlock(m, r.id)])))
+  })
+
+  it('what levels reached together opened, one reveal for each level that opened something', () => {
+    expect(openedBetween(1, 2)).toEqual([{ level: 2, opens: opensAt(2) }])
+    expect(openedBetween(1, 4).map((o) => o.level)).toEqual([2, 3, 4])
+    expect(openedBetween(3, 3)).toEqual([])
+    // past the table's last row nothing more; and with everything open (the farm's answer then), nothing at all
+    const last = Math.max(...Object.values(UNLOCKS))
+    expect(openedBetween(last, last + 5)).toEqual([])
+    expect(openedBetween(1, 6, () => [])).toEqual([])
   })
 
   it('names each thing in a few words', () => {

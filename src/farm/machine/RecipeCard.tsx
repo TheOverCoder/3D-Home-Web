@@ -5,6 +5,7 @@ import { iconUrl } from '../icons'
 import type { RecipeView } from '../machineView'
 import { Clock } from '../../ui/glyphs'
 import { ItemPic } from '../../ui/ItemPic'
+import { LockTag } from '../../ui/LockTag'
 import { EASE, SPRING } from '../../ui/motion'
 import { HOLD, type Axis } from './drag'
 import { Bump } from './parts'
@@ -12,7 +13,8 @@ import { clock, timesCan, type Payload } from './queue'
 
 // A recipe, as a card to pick up: what it makes (its picture, raised on a lip: a thing to take), its time, and what it
 // takes — each ingredient's picture with how many the farm has of how many it needs (short: red). Drag it into a place
-// of the queue, or tap it: it goes into the next free one.
+// of the queue, or tap it: it goes into the next free one. Not open yet at the farm's level: faded, the level it opens
+// at on the berry ribbon where its time was; a tap shakes it and says so.
 
 const cap = (t: string) => t[0].toUpperCase() + t.slice(1)
 
@@ -43,18 +45,19 @@ export function RecipeCard({
   opening: boolean
 }) {
   const made = produceById(r.makes)
-  const short = timesCan(r) === 0
+  const locked = r.locked !== undefined
+  const short = !locked && timesCan(r) === 0
   const pic = useRef<HTMLSpanElement>(null)
   const [scope, animate] = useAnimate()
   useEffect(() => {
     if (shake && scope.current) void animate(scope.current, { x: [0, -7, 6, -4, 2, 0] }, { duration: 0.36 })
   }, [shake, scope, animate])
   const needs = Object.entries(r.needs) as [ProduceId, number][]
-  const label = `${cap(made.name)}, ${clock(r.seconds)}: takes ${needs.map(([k, n]) => `${n} ${n === 1 ? produceById(k).name : produceById(k).plural} (you have ${r.have[k] ?? 0})`).join(', ')}${r.can ? ' — add to the queue' : short ? ' — not enough in store' : ' — the queue is full'}`
+  const label = `${cap(made.name)}, ${clock(r.seconds)}: takes ${needs.map(([k, n]) => `${n} ${n === 1 ? produceById(k).name : produceById(k).plural} (you have ${r.have[k] ?? 0})`).join(', ')}${r.can ? ' — add to the queue' : locked ? ` — opens at level ${r.locked}` : short ? ' — not enough in store' : ' — the queue is full'}`
   return (
     <m.button
       ref={scope}
-      className={`mp-recipe${short ? ' short' : ''}${full && !short ? ' full' : ''}${carried ? ' carried' : ''}${shake ? ' told' : ''}`}
+      className={`mp-recipe${locked ? ' locked' : ''}${short ? ' short' : ''}${full && !short && !locked ? ' full' : ''}${carried ? ' carried' : ''}${shake ? ' told' : ''}`}
       aria-label={label}
       aria-disabled={!r.can}
       data-recipe={r.id}
@@ -72,10 +75,14 @@ export function RecipeCard({
       </span>
       <span className="mp-recipe-top">
         <b>{cap(made.name)}</b>
-        <span className="tag mp-recipe-time">
-          <Clock weight="bold" />
-          {clock(r.seconds)}
-        </span>
+        {locked ? (
+          <LockTag level={r.locked!} />
+        ) : (
+          <span className="tag mp-recipe-time">
+            <Clock weight="bold" />
+            {clock(r.seconds)}
+          </span>
+        )}
       </span>
       <span className="mp-recipe-needs">
         {needs.map(([k, n]) => {

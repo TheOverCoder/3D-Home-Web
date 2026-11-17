@@ -3,12 +3,13 @@ import { farmSound, uiClick } from '../audio/sound'
 import { coarsePointer } from '../lib/device'
 import { useHome } from '../store'
 import { art } from '../ui/art'
+import { LockTag } from '../ui/LockTag'
 import { SHOP, type ShopKind } from './decor'
 import { putDown } from './DecorShop'
 import { turn, useEdit } from './edit'
 import { shopArtUrl } from './icons'
 import { PARCELS, PLACES, bedHome, canBuyParcel, isPlant, samePlacement, type ParcelId, type PlaceId } from './layout'
-import { buyLand, farm, plantOf, sendBedHome, sendHome, stockOf, storeDecor, useFarm } from './state'
+import { buyLand, farm, lockOf, plantOf, sendBedHome, sendHome, stockOf, storeDecor, useFarm } from './state'
 
 // The edit mode's controls on the screen (it opens from the top corner's menu, src/ui/HudMode.tsx, or B): while it is open a
 // card along the bottom that says what to do, or about what is picked — turn a place, a bed or a piece of decoration,
@@ -189,7 +190,9 @@ function ParcelCard({ id }: { id: ParcelId }) {
   useFarm((s) => s.rev)
   const def = PARCELS[id]
   const owned = farm.layout.land.includes(id)
-  const open = canBuyParcel(farm.layout, id)
+  // (not open yet at the farm's level: the level it opens at, and no Buy)
+  const lock = lockOf(`parcel:${id}`)
+  const open = canBuyParcel(farm.layout, id) && lock === null
   const afford = farm.coins >= def.price
   const first = def.after?.map((a) => PARCELS[a].name.toLowerCase()).join(' or the ')
   return (
@@ -197,6 +200,10 @@ function ParcelCard({ id }: { id: ParcelId }) {
       <h3>{def.name}</h3>
       {owned ? (
         <p className="fit-ok">It is yours: move things onto it.</p>
+      ) : lock !== null ? (
+        <p className="edit-lock">
+          <LockTag level={lock} words={`Opens at level ${lock}`} /> Room beyond the hedge, once the farm gets there.
+        </p>
       ) : !open ? (
         <p>Next to land you have not got yet: buy the {first} first.</p>
       ) : (

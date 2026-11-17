@@ -3,11 +3,12 @@ import { farmSound } from '../audio/sound'
 import { useHome } from '../store'
 import { LevelCard } from './LevelCard'
 import { levelView } from './levelView'
-import { currentSlot, farm, openGifts, readyOnFarm, sawLevel, useFarm } from './state'
+import { currentSlot, farm, openGifts, opensOn, readyOnFarm, sawLevel, useFarm } from './state'
+import { levelOf } from './xp'
 
 // The level's card (the level chip at the top opens it): how far into the level, its four gift boxes (open what the
-// bar has reached, and every one waiting from before), what the next level brings, and what the level just reached
-// brought by itself. It reads the farm; how it looks is ./LevelCard.tsx.
+// bar has reached, and every one waiting from before), what the next level brings and opens, and what the level just
+// reached brought by itself. It reads the farm; how it looks is ./LevelCard.tsx.
 
 /** The XP the card showed when it was last open (this visit, this farm): what was gained since lights up on its bar. */
 let shown: { slot: number; points: number } | null = null
@@ -24,6 +25,7 @@ export function LevelPanel() {
     shown = { slot: currentSlot(), points: farm.xp.points }
     sawLevel()
   }, [])
-  const v = { ...levelView(farm.xp.points, farm.xp.paid, farm.gifts, { gain: opened.gain, ready: readyOnFarm() }), arrived: opened.arrived }
+  const opens = opensOn(levelOf(farm.xp.points) + 1)
+  const v = { ...levelView(farm.xp.points, farm.xp.paid, farm.gifts, { gain: opened.gain, ready: readyOnFarm(), opens }), arrived: opened.arrived }
   return <LevelCard v={v} onOpen={openGifts} onClose={close} onReveal={() => farmSound('surprise')} />
 }

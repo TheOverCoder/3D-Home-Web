@@ -48,7 +48,7 @@ export const CREDITS: Credit[] = [
   { what: 'Fabric Pattern 07 normal map (woven fabrics)', by: 'Poly Haven', license: 'CC0', url: 'https://polyhaven.com/a/fabric_pattern_07' },
   { what: 'Inter typeface (3D labels), via @pmndrs/assets', by: 'The Inter Project Authors', license: 'SIL OFL 1.1', url: 'https://rsms.me/inter/' },
   {
-    what: 'Fluent Emoji 3D (interface art: coin, basket, shop and menu pictures, the orders clipboard, the tractor, the surprise gift, the XP crystal, the market, the manager and the contractor, the times of day, the car, the house for sale, its key and the estate agent, the farm news and its events (the newspaper, the clover, the corn, the lightning, the calendar), the calendar of the daily gift and the flame of its streak; the tools of the animals (the nest, the bucket, the scissors) and the premium crown; the app icon)',
+    what: 'Fluent Emoji 3D (interface art: coin, basket, shop and menu pictures, the orders clipboard, the tractor, the surprise gift, the XP crystal, the market, the manager and the contractor, the times of day, the car, the house for sale, its key and the estate agent, the farm news and its events (the newspaper, the clover, the corn, the lightning, the calendar), the calendar of the daily gift and the flame of its streak; the tools of the animals (the nest, the bucket, the scissors) and the premium crown; the farmer who walks a new farm through its first steps; the app icon)',
     by: 'Microsoft Corporation',
     license: 'MIT',
     url: 'https://github.com/microsoft/fluentui-emoji',

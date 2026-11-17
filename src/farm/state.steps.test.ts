@@ -136,7 +136,7 @@ describe('a new farm walked through its first steps', () => {
     expect(stepNow()?.id).toBe('water')
   })
 
-  it('quiet (the tests’ default, and the game’s until the hint shows): nothing shown, passed or paid', () => {
+  it('quiet (the tests’ default, and a ?debug page’s): nothing shown, passed or paid', () => {
     quietSteps(true)
     PLAY.plant()
     PLAY.eggs()

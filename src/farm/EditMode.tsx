@@ -6,7 +6,8 @@ import { uiClick } from '../audio/sound'
 import { useHome } from '../store'
 import { dragTo, drop, editCamera, editView, keyOf, shownAt, shownPlacement, thingOf, useEdit, type Pick } from './edit'
 import { BLOCKERS, PARCELS, PARCEL_IDS, PLACE_IDS, bedRect, canBuyParcel, decorRect, doorway, footprint, landBounds, type ParcelId, type PlaceId, type Rect, type Thing } from './layout'
-import { farm, useFarm } from './state'
+import { farm, lockOf, useFarm } from './state'
+import { LockTag } from '../ui/LockTag'
 
 // The farm's edit mode, in the scene: the view from above, and the hand that moves things. The camera flies up
 // from wherever you are to look down on the farm (north at the top of the screen); drag the ground to look round,
@@ -434,7 +435,9 @@ function ParcelOverlay({ id }: { id: ParcelId }) {
   const picked = useEdit((s) => s.picked?.kind === 'parcel' && s.picked.id === id)
   const def = PARCELS[id]
   if (farm.layout.land.includes(id)) return null
-  const open = canBuyParcel(farm.layout, id)
+  // not open yet at the farm's level: the level it opens at for the price (src/farm/unlocks.ts)
+  const lock = lockOf(`parcel:${id}`)
+  const open = canBuyParcel(farm.layout, id) && lock === null
   const r = def.rect
   return (
     <>
@@ -442,7 +445,7 @@ function ParcelOverlay({ id }: { id: ParcelId }) {
       <Html position={[(r.minX + r.maxX) / 2, 0.2, (r.minZ + r.maxZ) / 2]} center zIndexRange={[12, 11]}>
         <button className={`edit-sale${open ? '' : ' locked'}${picked ? ' on' : ''}`} onClick={() => useEdit.getState().pick({ kind: 'parcel', id })} onPointerDown={(e) => e.stopPropagation()}>
           <strong>{def.name}</strong>
-          <span>{open ? `${def.price} coins` : 'not yet'}</span>
+          {lock !== null ? <LockTag level={lock} /> : <span>{open ? `${def.price} coins` : 'not yet'}</span>}
         </button>
       </Html>
     </>

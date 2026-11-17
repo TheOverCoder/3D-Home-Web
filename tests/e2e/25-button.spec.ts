@@ -11,7 +11,9 @@ import { LEVELS } from '../../src/farm/data'
 // does a job (pick, water, plant, sell, make) and opens something instead opens something to press: a card its
 // button, a panel a button besides Close and Cancel (a sale's panel a Sell). A shop or a board (`shop`, `watch`) may
 // open with nothing you can afford or send yet: you look at what is there. Each is pressed where it stands (the
-// player put at it), the same way the button presses it (`run`), and what it opened is closed again.
+// player put at it), the same way the button presses it (`run`), and what it opened is closed again. With the levels'
+// locks on (src/farm/unlocks.ts), a price tag of a thing not open yet carries its level and no price, and its card has
+// nothing to buy with.
 
 /** Panels that only show what there is, and may offer nothing to press. */
 const SHOWS = ['store', 'away', 'goals']
@@ -93,6 +95,18 @@ const sweep = (page: Page, farmName: string) =>
           if (!pressable(document.querySelector('.farm-panel'), sale)) out.push(`${what} opens the ${s.panel.kind} panel with nothing to press${sale ? ' (no Sell)' : ''}`)
         }
       }
+      // the tags of what is not open yet at the farm's level: the level, no price, and a card with no Build or Buy
+      for (const def of h.interactables()) {
+        close()
+        const tag = def.tag?.()
+        if (!tag || tag.locked === undefined) continue
+        const what = `${farmName}: ${def.id}'s tag ("${tag.label}", level ${tag.locked})`
+        if (tag.price !== undefined) out.push(`${what} is locked and has a price`)
+        tag.open()
+        for (let i = 0; i < 150 && h.useHome.getState().panel && !document.querySelector('.farm-panel'); i++) await new Promise((r) => setTimeout(r, 20))
+        if (document.querySelector('.farm-panel .farm-buy:not(:disabled)')) out.push(`${what} opens a card that buys`)
+        pressed++
+      }
       close()
       p.x = at.x
       p.z = at.z
@@ -165,6 +179,20 @@ async function random(page: Page, seed: number) {
   }, seed)
 }
 
+/** A new farm at level 1 with the levels' locks on, as a player's (src/farm/unlocks.ts; a ?debug page has everything
+ *  open), and coins for anything: what the level has not opened is offered nowhere, and its price tags buy nothing. */
+async function locked(page: Page) {
+  await page.evaluate(() => {
+    const f = (window as any).__home.farm
+    f.reset()
+    f.unlocks.all(false)
+    f.setHour(12)
+    f.freezeDay(true)
+    f.state.coins = 5000
+    f.useFarm.setState((s: any) => ({ rev: s.rev + 1 }))
+  })
+}
+
 async function check(game: Game, name: string) {
   const r = await sweep(game.page, name)
   console.log(`${name}: ${r.pressed} things pressed`)
@@ -192,6 +220,11 @@ test.describe('the action button', () => {
         add(await check(game, `${map}: random ${seed}`))
       }
     }
+    // a new farm with its locks on (the farm's map: what a level opens is the farm's)
+    await game.ready('farm')
+    await locked(game.page)
+    add(await check(game, 'farm: locked'))
+    await game.page.evaluate(() => (window as any).__home.farm.unlocks.all(true))
     // enough was pressed to mean something
     expect(pressed).toBeGreaterThan(40)
     expect(problems, problems.join('\n')).toEqual([])

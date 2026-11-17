@@ -741,11 +741,14 @@ const rollGifts = () => Array.from({ length: eventSpeed('gifts') }, () => random
 
 // ───────────────────────────── what each level opens: the locks ─────────────────────────────
 
-/** Everything open whatever the level. Until the locks show in the game (plans/first-hour.md, B5) that is everywhere:
- *  a lock nobody can see would only be a button that does nothing. From then: under Vitest and on a ?debug page unless
- *  it says &unlocks=on (the tests buy what they need), until a test turns the locks on; the game's own pages lock by
- *  the level. */
-const allOpenByDefault = () => true
+/** Everything open whatever the level: under Vitest and on a ?debug page unless it says &unlocks=on (the tests buy what
+ *  they need), until a test turns the locks on; the game's own pages lock by the level. */
+function allOpenByDefault() {
+  if (import.meta.env.MODE === 'test') return true
+  if (typeof location === 'undefined') return false
+  const q = new URLSearchParams(location.search)
+  return q.has('debug') && q.get('unlocks') !== 'on'
+}
 let allOpen = allOpenByDefault()
 /** For the tests and the simulation: everything open (true), or locked by the level as in play (false). */
 export function unlockAll(on: boolean) {
@@ -1401,7 +1404,8 @@ export function machineView(id: MachineId): MachineView {
     can: canAddJob(id, r),
     ...lockField(lockOf(recipeUnlock(id, r.id))),
   }))
-  const price = slotPrice(id)
+  // (a machine not open yet sells no place: its places open with it)
+  const price = machineLock(id) === null ? slotPrice(id) : null
   return { id, name: def.name, level, capacity: m.capacity, slots, recipes, upgrade: price === null ? null : { capacity: m.capacity + 1, price } }
 }
 
@@ -2317,10 +2321,14 @@ export function tick(dt: number) {
 
 // ───────────────────────────── a new farm's first steps ─────────────────────────────
 
-/** The first steps (src/farm/firstSteps.ts) are quiet — nothing shown, passed or paid — until their hint is in the game
- *  (plans/first-hour.md, C3): everywhere until then. From then: they run on the game's own pages; under Vitest and on
- *  a ?debug page unless it says &steps=on, they are quiet until a test turns them on. */
-const stepsQuietByDefault = () => true
+/** The first steps (src/farm/firstSteps.ts) run on the game's own pages; under Vitest and on a ?debug page unless it says
+ *  &steps=on they are quiet — nothing shown, passed or paid — until a test turns them on. */
+function stepsQuietByDefault() {
+  if (import.meta.env.MODE === 'test') return true
+  if (typeof location === 'undefined') return false
+  const q = new URLSearchParams(location.search)
+  return q.has('debug') && q.get('steps') !== 'on'
+}
 let stepsQuiet = stepsQuietByDefault()
 /** For the tests and the simulation: the steps quiet (true), or running as on a new farm's own pages (false). */
 export function quietSteps(on: boolean) {
@@ -2334,6 +2342,8 @@ export const stepsBusy = () => !stepsQuiet && !farm.firstSteps.over
 /** The steps passed and not shown yet (the hint's ✓ takes them). */
 const passedNow: StepDef[] = []
 export const takePassed = () => passedNow.splice(0)
+/** The steps passed and not taken yet, left where they are (the hint shows the last of them until it takes them). */
+export const passedWaiting = (): readonly StepDef[] => passedNow
 /** Skipped from the hint: over, nothing more paid. */
 export function skipSteps() {
   farm.firstSteps = skipped(farm.firstSteps)

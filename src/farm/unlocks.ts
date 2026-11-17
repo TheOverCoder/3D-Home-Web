@@ -102,6 +102,18 @@ export const lockedAt = (id: UnlockId, level: number): number | null => (unlockL
 /** What reaching a level opens, in the table's order (none past the last row). */
 export const opensAt = (level: number): UnlockId[] => UNLOCK_IDS.filter((id) => UNLOCKS[id] === level)
 
+/** What the levels from `from` (not counted) up to `to` opened, level by level, those that opened nothing left out:
+ *  the "Unlocked!" reveals after a level's show (one for each). `at`: what a level opens (the farm's own answer, which
+ *  is nothing while everything is open). */
+export function openedBetween(from: number, to: number, at: (level: number) => UnlockId[] = opensAt): { level: number; opens: UnlockId[] }[] {
+  const out: { level: number; opens: UnlockId[] }[] = []
+  for (let level = from + 1; level <= to; level++) {
+    const opens = at(level)
+    if (opens.length) out.push({ level, opens })
+  }
+  return out
+}
+
 /** A machine's recipe in the table. */
 export const recipeUnlock = (machine: MachineId, recipe: string) => `recipe:${machine}:${recipe}` as UnlockId
 

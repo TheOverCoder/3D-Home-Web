@@ -36,8 +36,8 @@ import { levelOf, xpAt } from './xp'
 
 // What each level opens, on the farm (src/farm/unlocks.ts; the gates in src/farm/state.ts): a thing not open yet is
 // refused where it is bought, planted or put into a machine, and nothing is spent; the level it opens at opens it; what
-// the farm has already stays and works (only buying is locked); and with the locks off — the tests' default, and the
-// game's until the locks show — everything is open whatever the level.
+// the farm has already stays and works (only buying is locked); and with the locks off — the tests' default, and a
+// ?debug page's — everything is open whatever the level.
 
 /** Everything was open as the farm loaded, before any test turned the locks on. */
 const openAtFirst = UNLOCK_IDS.every((id) => lockOf(id) === null)
@@ -109,6 +109,9 @@ describe('the locks, at level 1', () => {
         MACHINES.mill.recipes.find((r) => r.id === 'wheat')!,
       ),
     ).toBe(false)
+    // a machine not open yet sells no place in its queue; one open does
+    expect(machineView('oven').upgrade).toBeNull()
+    expect(machineView('loom').upgrade).not.toBeNull()
     // what is open has no lock
     expect(machineView('loom').recipes[0].locked).toBeUndefined()
     expect(shopView().filter((v) => unlockLevel(`decor:${v.kind}`) === 1 && v.locked !== undefined)).toEqual([])
