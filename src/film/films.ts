@@ -1,17 +1,18 @@
 import { create } from 'zustand'
-import { buyMarket, farm } from '../farm/state'
+import { LADDERS, type LadderId, type ToolKind } from '../farm/data'
+import { buyLadder, buyMarket, farm } from '../farm/state'
 import type { FilmRun } from './run'
 import { primeSpeech } from './prime'
 
 // The films a moment of play opens (the film director's: .claude/agents/film-director.md, lab/FILM.md). The moment's
 // own act asks for its film once it has happened — buying the shop from its card asks for "Under New Management"
-// (./supermarket.ts) — and the film player in the scene (./StoryFilm.tsx) plays it on the game's own canvas, the
+// (./supermarket.ts), an animal's tool from its card its build film (./coop.ts, ./bucket.ts, ./shears.ts) — and the film player in the scene (./StoryFilm.tsx) plays it on the game's own canvas, the
 // overlay (src/ui/Film.tsx) over it: its lines, Skip (a tap anywhere), and the end card with what the player got. A
 // film asked for plays once: nothing of it is in the save, so a reload, a farm loaded or another slot plays none.
 // What the moment did is done before the film starts (the coins, the shop, the XP: as it always was); the film only
 // shows it, and nothing changes when it ends.
 
-export type FilmId = 'shop'
+export type FilmId = 'shop' | 'coop' | 'bucket' | 'shears'
 
 /** A film asked for: which, and the player's XP before and after its moment (the end card's bar fills between them). */
 export interface FilmAsk {
@@ -51,6 +52,20 @@ export function buyShop(): boolean {
   const before = farm.xp.points
   if (!buyMarket()) return false
   askFilm({ id: 'shop', xp: [before, farm.xp.points] })
+  return true
+}
+
+/** Each animal's tool's build film. */
+const TOOL_FILM: Record<ToolKind, FilmId> = { hens: 'coop', cows: 'bucket', sheep: 'shears' }
+
+/** Buys a ladder's step from its card (src/farm/Ladder.tsx), and a tool's own step (the coop, the bucket, the shears)
+ *  then plays its build film (once); whether it was bought. The buying is the farm's (buyLadder), all of it before the
+ *  film: tests and the simulation buy with buyLadder and ask for no film. */
+export function buyWithFilm(id: LadderId): boolean {
+  const before = farm.xp.points
+  if (!buyLadder(id)) return false
+  const tool = LADDERS[id].tool
+  if (tool?.part === 'tool') askFilm({ id: TOOL_FILM[tool.kind], xp: [before, farm.xp.points] })
   return true
 }
 

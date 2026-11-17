@@ -6,7 +6,8 @@ import { art, type ArtId } from '../ui/art'
 import { ArrowRight, Check, Crown } from '../ui/glyphs'
 import { LADDERS, TOOLS, type LadderId } from './data'
 import { ladderPrice } from './market'
-import { buyLadder, farm, ladderLevel, ladderMaxed, ladderOpen, useFarm } from './state'
+import { buyWithFilm } from '../film/films'
+import { farm, ladderLevel, ladderMaxed, ladderOpen, useFarm } from './state'
 
 // Upgrade ladders (LADDERS in ./data; buyLadder in ./state): one row (its name, what it is now → after the next step,
 // its price on the button) and one card that asks before a step is bought, for every ladder — as the office shows its
@@ -97,7 +98,8 @@ export function LadderCard({ id, onBack }: { id: LadderId; onBack?: () => void }
   const back = () => (onBack ? onBack() : from ? openPanel(from) : close())
   const premium = !!def.premium
   const confirm = () => {
-    if (!armed || !buyLadder(id)) return
+    // (a tool's own step plays its build film: src/film/films.ts)
+    if (!armed || !buyWithFilm(id)) return
     farmSound('build')
     playGesture('interact')
     back()

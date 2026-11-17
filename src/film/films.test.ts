@@ -1,9 +1,10 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { LADDERS, MANAGER, XP_FOR } from '../farm/data'
+import { LADDERS, MANAGER, PRODUCERS, TOOL_KINDS, XP_FOR, mostAnimals, toolLadder } from '../farm/data'
 import { buyLadder, buyMarket, farm, resetFarm, setRandom } from '../farm/state'
 import { levelPay, savedNow, startFrom } from '../farm/testSaves'
-import { buyShop, filmAsked, onFilmAsked, storyStep, takeFilm, type StoryEvent, type StoryStep } from './films'
+import { buyShop, buyWithFilm, filmAsked, onFilmAsked, storyStep, takeFilm, type StoryEvent, type StoryStep } from './films'
+import { FILMS } from './story'
 import { FilmRun } from './run'
 import { SUPERMARKET } from './supermarket'
 import type { FrameInfo } from './stage3d'
@@ -120,5 +121,38 @@ describe('the shop’s film', () => {
     run.restart(12, true)
     now += 4000
     expect(run.now()).toBe(12)
+  })
+})
+
+describe('the tools’ films', () => {
+  /** A herd full (the tool's need), and coins for anything. */
+  const fullHerd = (kind: (typeof TOOL_KINDS)[number]) => {
+    farm.coins = 100_000
+    farm.producers[kind].animals = mostAnimals(kind)
+    farm.producers[kind].stock = PRODUCERS[kind].herd?.shared ? [0] : Array.from({ length: mostAnimals(kind) }, () => 0)
+    farm.producers[kind].timer = farm.producers[kind].stock.map(() => 0)
+  }
+
+  it('each tool bought from its card asks for its own build film once, after the purchase; its upgrades and buyLadder ask for none', () => {
+    const film = { hens: 'coop', cows: 'bucket', sheep: 'shears' } as const
+    for (const kind of TOOL_KINDS) {
+      fullHerd(kind)
+      const xp = farm.xp.points
+      expect(buyWithFilm(toolLadder(kind, 'tool'))).toBe(true)
+      expect(farm.ladders[toolLadder(kind, 'tool')]).toBe(1)
+      expect(takeFilm()).toEqual({ id: film[kind], xp: [xp, xp + XP_FOR.build] })
+      expect(takeFilm()).toBe(null)
+      // owned: no second purchase, no second film; a step of its upgrades plays none
+      expect(buyWithFilm(toolLadder(kind, 'tool'))).toBe(false)
+      expect(buyWithFilm(toolLadder(kind, 'hold'))).toBe(true)
+      expect(filmAsked()).toBe(null)
+      // each has its film to play, in the style the user chose at purchase
+      expect(FILMS[film[kind]].style ?? 'a').toBe('a')
+    }
+    // the farm's own buy (tests, the simulation): no film
+    resetFarm()
+    fullHerd('hens')
+    expect(buyLadder('hens-tool')).toBe(true)
+    expect(filmAsked()).toBe(null)
   })
 })

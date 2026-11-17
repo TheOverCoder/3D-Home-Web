@@ -1,5 +1,8 @@
 import type { FilmId } from './films'
 import type { Film } from './format'
+import { BUCKET } from './bucket'
+import { COOP } from './coop'
+import { SHEARS } from './shears'
 import { SUPERMARKET } from './supermarket'
 
 // The heavy part of a moment's film (./StoryFilm.tsx loads it the first time one plays, so the game's start carries
@@ -8,5 +11,5 @@ import { SUPERMARKET } from './supermarket'
 export { FilmRun } from './run'
 export { FilmStage } from './stage3d'
 
-/** The film each moment opens (./films.ts). */
-export const FILMS: Record<FilmId, Film> = { shop: SUPERMARKET }
+/** The film each moment opens (./films.ts): the tools' in their first style, as the user chose them at purchase. */
+export const FILMS: Record<FilmId, Film> = { shop: SUPERMARKET, coop: COOP, bucket: BUCKET, shears: SHEARS }
