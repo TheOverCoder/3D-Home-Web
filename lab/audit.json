@@ -1,5 +1,5 @@
 {
- "at": "2026-11-16T22:31:26.996Z",
+ "at": "2026-11-17T06:50:48.777Z",
  "devices": [
   "upright",
   "sideways"
@@ -184,6 +184,16 @@
     "c/decor/sideways · Path lantern: opens at level 7",
     "c/decor/sideways · Bench: opens at level 7"
    ],
+   "off": []
+  },
+  "tools-3d": {
+   "screens": 72,
+   "errors": [],
+   "blank": [],
+   "scroll": [],
+   "small": [],
+   "tiny": [],
+   "under": [],
    "off": []
   }
  }

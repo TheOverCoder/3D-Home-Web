@@ -1,0 +1,13 @@
+/* The tools' board (./ToolsView.tsx): the "build" button over the 3D view, close up: bottom left, on the zoom buttons'
+   row (the hint under it), clear of the notch and the home bar. */
+.tools-build {
+  position: absolute;
+  z-index: 1;
+  left: calc(env(safe-area-inset-left, 0px) + 14px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 66px);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 18px;
+}
