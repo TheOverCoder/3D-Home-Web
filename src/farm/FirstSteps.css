@@ -1,23 +1,9 @@
-/* A new farm's next step (src/farm/FirstSteps.tsx), in its slot of the top column: the farmer's round portrait and a
-   paper bubble with its tail towards it — the step's picture, its words, its reward; a tap walks there. The clear view
-   leaves it out. */
+/* A new farm's next step (src/farm/FirstSteps.tsx), in its slot of the top column: the farmer's round portrait
+   (./FarmerFace.css) and a paper bubble with its tail towards it — the step's picture, its words, its reward; a tap
+   walks there. The clear view leaves it out. */
 .step-hint { position: relative; display: grid; justify-items: center; max-width: 100%; }
 :root[data-hud='clean'] .step-hint { display: none; }
 .step-talk { display: flex; align-items: center; max-width: 100%; pointer-events: auto; }
-.step-face {
-  display: grid;
-  place-items: end center;
-  flex: none;
-  width: 56px;
-  height: 56px;
-  overflow: hidden;
-  border-radius: 50%;
-  background: radial-gradient(circle at 50% 30%, #fff, var(--paper-2) 70%);
-  box-shadow: 0 0 0 3px #fff, 0 4px 10px rgba(40, 24, 10, 0.35);
-}
-.step-face img { width: 54px; height: 54px; margin-bottom: -6px; }
-.step-face.small { width: 46px; height: 46px; }
-.step-face.small img { width: 44px; height: 44px; }
 .step-said { position: relative; display: flex; min-width: 0; }
 .step-bubble {
   position: relative;

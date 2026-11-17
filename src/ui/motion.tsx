@@ -68,6 +68,21 @@ export const POP: Variants = {
 export const DID = { keyframes: { scale: [1, 1.14, 1] }, options: { duration: 0.32, ease: EASE.out } } as const
 /** Not now: a short shake from side to side (an error; a press that cannot do anything yet). */
 export const NOPE = { keyframes: { x: [0, -7, 6, -4, 2, 0] }, options: { duration: 0.32, ease: 'easeOut' } } as const
+
+// A face's moves (the farmer's moods, src/farm/FarmerFace.tsx): each from rest and home again, played over the whole
+// portrait as its face comes (`animate(el, HOP.keyframes, HOP.options)`); whoever prefers less motion gets none.
+/** Happy: a little hop, leaning back as it goes up. */
+export const HOP = { keyframes: { y: [0, -10, 0], rotate: [0, -10, 0] }, options: { duration: 0.45, ease: 'easeOut' } } as const
+/** Curious (a question, a wink): the head tilts to one side, stays a moment, and comes back. */
+export const TILT = { keyframes: { rotate: [0, -13, -13, 0] }, options: { duration: 0.9, ease: 'easeInOut' } } as const
+/** Encouraging: a nod, twice. */
+export const NOD = { keyframes: { y: [0, 4, 0, 3, 0], rotate: [0, 3, 0, 2, 0] }, options: { duration: 0.7, ease: 'easeInOut' } } as const
+/** Surprised: squashed flat, stretched up, and home. */
+export const SQUASH = { keyframes: { scaleX: [1, 1.16, 0.92, 1.03, 1], scaleY: [1, 0.82, 1.1, 0.98, 1] }, options: { duration: 0.5, ease: 'easeOut' } } as const
+/** A laugh: a quick little shake from side to side, bobbing (NOPE says no; this one giggles). */
+export const GIGGLE = { keyframes: { rotate: [0, -7, 7, -6, 6, -3, 0], y: [0, -2, 0, -2, 0, -1, 0] }, options: { duration: 0.6, ease: 'easeInOut' } } as const
+/** A sigh: sinks a little, slowly, and comes back up. */
+export const SIGH = { keyframes: { y: [0, 5, 5, 0], scaleY: [1, 0.94, 0.94, 1] }, options: { duration: 1.1, ease: 'easeInOut' } } as const
 /** A long press: how long a finger rests before it counts as a hold (shorter is a tap). */
 export const HOLD_MS = 450
 

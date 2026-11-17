@@ -14,6 +14,27 @@ import { levelOf } from './xp'
 
 export type StepId = 'plant' | 'eggs' | 'water' | 'harvest' | 'sell' | 'shear' | 'weave' | 'order'
 
+/** How the farmer feels as he says a line: his face (`farmer-<mood>` in src/ui/art.ts, made by
+ *  scripts/render-farmer-faces.mjs) and how he moves as it comes (src/farm/FarmerFace.tsx). */
+export type FarmerMood = 'cheerful' | 'proud' | 'excited' | 'curious' | 'encouraging' | 'surprised' | 'laughing' | 'winking' | 'pleading' | 'sighing'
+export const FARMER_MOODS: readonly FarmerMood[] = ['cheerful', 'proud', 'excited', 'curious', 'encouraging', 'surprised', 'laughing', 'winking', 'pleading', 'sighing']
+
+/** The hint's moments besides a step's own line: a step just done (its tick), the walk a tap started, the skip
+ *  question, the last card ("All set!"), and a tap with nowhere to walk to yet. */
+export type Moment = 'passed' | 'walk' | 'ask' | 'final' | 'nowhere'
+export const MOMENT_MOODS: Readonly<Record<Moment, FarmerMood>> = {
+  // well done: he beams and hops
+  passed: 'proud',
+  // off you go: a nod, that way
+  walk: 'encouraging',
+  // "Skip the tips?": he would rather you stayed
+  ask: 'pleading',
+  // every step done: stars in his eyes
+  final: 'excited',
+  // nothing to walk to yet (no bed at that stage, no egg laid): a sigh, and the bubble shakes
+  nowhere: 'sighing',
+}
+
 /** Where a tap on the hint walks you (src/lib/route/walking.ts, walkTo): an interactable by its id; where a good
  *  comes from (`placeFor` beside the order board's "Show me": the nearest with it ready, else the nearest); or the
  *  nearest bed at the first of these stages the farm has one at. */
@@ -21,8 +42,10 @@ export type StepTarget = { id: string } | { good: ProduceId } | { bed: readonly 
 
 export interface StepDef {
   id: StepId
-  /** the hint's words: a few, telling what to do */
+  /** the hint's words: a few, telling what to do, in the farmer's voice */
   say: string
+  /** how he says them (his face and his move match the words) */
+  mood: FarmerMood
   /** its picture: one of the farm's goods (its model), or a piece of interface art */
   pic: { item: ProduceId } | { art: ArtId }
   /** done: the farm's numbers show it (never a count that can go down again) */
@@ -41,25 +64,50 @@ const reached =
     goalById(goal).measure(f) >= n
 
 /** The steps, in order: a crop from seed to sale with an egg collected while it grows, a fleece woven at the loom
- *  (both there on a new farm), and the first order sent — every lesson of the farm's loop, on what a new farm has. */
+ *  (both there on a new farm), and the first order sent — every lesson of the farm's loop, on what a new farm has.
+ *  Each line is the farmer's, said as he feels it: hello and off we go (cheerful), the hens have laid (surprised),
+ *  go on, water them (encouraging), the first crop is ripe (excited, stars in his eyes), a word in your ear about the
+ *  buyers (winking), a sheep's haircut (laughing), what the loom makes (curious), the last one (proud). */
 export const FIRST_STEPS: readonly StepDef[] = [
-  { id: 'plant', say: 'Plant some seeds', pic: { art: 'seedling' }, done: (f) => f.planted.length > 0, target: { bed: ['empty'] }, reward: { coins: 10 }, needs: ['crop:lettuce'] },
-  { id: 'eggs', say: 'Collect the eggs', pic: { item: 'egg' }, done: reached('eggs'), target: { good: 'egg' }, reward: { coins: 5 } },
+  {
+    id: 'plant',
+    say: "Let's plant some seeds!",
+    mood: 'cheerful',
+    pic: { art: 'seedling' },
+    done: (f) => f.planted.length > 0,
+    target: { bed: ['empty'] },
+    reward: { coins: 10 },
+    needs: ['crop:lettuce'],
+  },
+  { id: 'eggs', say: 'Ooh, eggs! Collect them', mood: 'surprised', pic: { item: 'egg' }, done: reached('eggs'), target: { good: 'egg' }, reward: { coins: 5 } },
   // (beds watered by the player: `stats.watered`; sprinklers water by themselves; a crop harvested was watered)
   {
     id: 'water',
-    say: 'Water your seedlings',
+    say: 'Now water your seedlings',
+    mood: 'encouraging',
     pic: { art: 'droplet' },
     done: (f) => f.stats.watered > 0 || f.sprinkler || reached('harvest')(f),
     target: { bed: ['thirsty', 'growing'] },
     reward: { coins: 5 },
   },
-  { id: 'harvest', say: 'Harvest your crop', pic: { art: 'basket' }, done: reached('harvest'), target: { bed: ['ripe', 'thirsty', 'growing'] }, reward: { coins: 10 } },
-  { id: 'sell', say: 'Sell at the gate', pic: { art: 'people-queue' }, done: reached('sell'), target: { id: 'farm-queue' }, reward: { coins: 10 } },
-  { id: 'shear', say: 'Shear a sheep', pic: { item: 'wool' }, done: reached('wool'), target: { good: 'wool' }, reward: { coins: 5 } },
-  { id: 'weave', say: 'Weave cloth at the loom', pic: { item: 'cloth' }, done: reached('cloth'), target: { good: 'cloth' }, reward: { coins: 10 }, needs: ['recipe:loom:wool'] },
-  { id: 'order', say: 'Send an order', pic: { art: 'tractor' }, done: reached('orders'), target: { id: 'farm-office' }, reward: { coins: 25 } },
+  { id: 'harvest', say: 'Ripe! Harvest your crop', mood: 'excited', pic: { art: 'basket' }, done: reached('harvest'), target: { bed: ['ripe', 'thirsty', 'growing'] }, reward: { coins: 10 } },
+  { id: 'sell', say: 'Psst… sell at the gate', mood: 'winking', pic: { art: 'people-queue' }, done: reached('sell'), target: { id: 'farm-queue' }, reward: { coins: 10 } },
+  { id: 'shear', say: 'Haircut! Shear a sheep', mood: 'laughing', pic: { item: 'wool' }, done: reached('wool'), target: { good: 'wool' }, reward: { coins: 5 } },
+  {
+    id: 'weave',
+    say: 'Weave cloth at the loom?',
+    mood: 'curious',
+    pic: { item: 'cloth' },
+    done: reached('cloth'),
+    target: { good: 'cloth' },
+    reward: { coins: 10 },
+    needs: ['recipe:loom:wool'],
+  },
+  { id: 'order', say: 'Last one: send an order!', mood: 'proud', pic: { art: 'tractor' }, done: reached('orders'), target: { id: 'farm-office' }, reward: { coins: 25 } },
 ]
+
+/** How the farmer feels now: a step's line as he says it (its own mood), or one of the hint's moments. */
+export const moodFor = (step: StepDef | null, moment: Moment | null): FarmerMood => (moment ? MOMENT_MOODS[moment] : (step?.mood ?? 'cheerful'))
 
 /** The steps end by themselves on a farm this far on: they are for a new farm (and the daily gift, which waits for
  *  them, never waits on one that has grown past them). */

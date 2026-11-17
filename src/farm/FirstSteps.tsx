@@ -14,7 +14,8 @@ import { Reveal } from '../ui/Reveal'
 import { TopSlot } from '../ui/TopStack'
 import { useGameFree } from '../ui/useGameFree'
 import { storeOf } from './data'
-import { FIRST_STEPS, type StepDef } from './firstSteps'
+import { FarmerFace } from './FarmerFace'
+import { FIRST_STEPS, MOMENT_MOODS, moodFor, type Moment, type StepDef } from './firstSteps'
 import { iconUrl } from './icons'
 import { farm, passedWaiting, skipSteps, stepNow, takePassed, useFarm } from './state'
 import { stepTarget } from './walkTargets'
@@ -23,15 +24,18 @@ import './FirstSteps.css'
 // A new farm's first steps (./firstSteps.ts; the design lab's board "first-steps", C, the user's choice): the farm's
 // neighbour, a round portrait under the compass, says the step in a word bubble — its picture, its words typed in, its
 // reward — and a tap on the bubble walks you there (the compass's own walk: walkTo, ./walkTargets.ts; again, it stops;
-// nowhere to go, it shakes). Done (the farm passes it a frame later, src/farm/state.ts), a tick is stamped on the
-// bubble, the reward flies to its chip, the farmer hops, and the next line comes; one done under a panel plays when
-// the panel closes. After the last, "All set!" with every step's picture ticked and all the coins they gave, and
+// nowhere to go, it shakes). His face is the mood of what he says (./FarmerFace.tsx: each line's own, and the
+// moments': a nod as you walk, a sigh with nowhere to go, pleading at the skip question), changing as the line types
+// in. Done (the farm passes it a frame later, src/farm/state.ts), a tick is stamped on the bubble, the reward flies to
+// its chip, the farmer beams and hops, and the next line comes; one done under a panel plays when the panel closes.
+// After the last, "All set!" with every step's picture ticked and all the coins they gave, stars in his eyes, and
 // confetti once. The ✕ on the bubble's corner asks "Skip the tips?" there in the bubble: Keep, or Skip (over for good).
 // Shown on the farm while nothing is over the game; the clear view leaves it out.
 
-/** How long a step's tick shows before the next comes in; how long the last card stays. */
+/** How long a step's tick shows before the next comes in; how long the last card stays; how long he sighs. */
 const DONE_MS = 1150
 const FINAL_MS = 4200
+const NOWHERE_MS = 1400
 
 /** A step's picture: one of the farm's goods (its model), or a piece of interface art. */
 export const picOf = (s: StepDef) => ('item' in s.pic ? iconUrl(s.pic.item) : art(s.pic.art))
@@ -57,21 +61,6 @@ function Typed({ text }: { text: string }) {
   )
 }
 
-/** The farmer's face, a little round portrait; it hops as a step is done. */
-function Face({ hop, small }: { hop?: boolean; small?: boolean }) {
-  return (
-    <m.span
-      className={`step-face${small ? ' small' : ''}`}
-      aria-hidden="true"
-      initial={{ opacity: 0, scale: 0.4 }}
-      animate={hop ? { opacity: 1, scale: 1, y: [0, -10, 0], rotate: [0, -10, 0] } : { opacity: 1, scale: 1, y: 0, rotate: 0 }}
-      transition={hop ? { duration: 0.45, ease: 'easeOut' } : SPRING.pop}
-    >
-      <img src={art('farmer')} alt="" draggable={false} />
-    </m.span>
-  )
-}
-
 /** The last card: "All set!", every step's picture ticked, and every coin they gave — confetti once, as it lands. */
 function Finale() {
   const at = useRef<HTMLDivElement>(null)
@@ -81,7 +70,7 @@ function Finale() {
   }, [])
   return (
     <m.div ref={at} className="step-final" layout="position" exit={{ opacity: 0, transition: { duration: 0.3 } }} transition={SPRING.pop}>
-      <Face small />
+      <FarmerFace mood={MOMENT_MOODS.final} small />
       <Reveal
         word="All set!"
         note={
@@ -112,21 +101,33 @@ export function StepHint() {
   // the walk a tap started (the bubble glows while it goes on)
   const [goingTo, setGoingTo] = useState<string | null>(null)
   const walking = useWalk((s) => s.id)
+  // a tap with nowhere to walk to yet: the farmer sighs a moment (a timer of its own: a step passing clears the others)
+  const [nowhere, setNowhere] = useState(false)
+  const sigh = useRef(0)
+  const still = useReducedMotion()
   // the bubble on the screen now and its reward (each kept as it comes in: one going out leaves them be)
   const reward = useRef<HTMLSpanElement | null>(null)
   const bubble = useRef<HTMLButtonElement | null>(null)
   const timers = useRef<number[]>([])
   const later = (f: () => void, ms: number) => timers.current.push(window.setTimeout(f, ms))
-  useEffect(() => () => timers.current.forEach((t) => window.clearTimeout(t)), [])
+  useEffect(
+    () => () => {
+      timers.current.forEach((t) => window.clearTimeout(t))
+      window.clearTimeout(sigh.current)
+    },
+    [],
+  )
 
   // the steps the farm passed (a frame after it did them), shown while the hint is: the tick, the reward flying to its
-  // chip, the farmer's hop, then the next step — or, after the last, the card "All set!"
+  // chip, the farmer beaming and hopping, then the next step — or, after the last, the card "All set!"
   useEffect(() => {
     if (!active) return
     const passed = takePassed()
     if (!passed.length) return
     timers.current.forEach((t) => window.clearTimeout(t))
     timers.current = []
+    window.clearTimeout(sigh.current)
+    setNowhere(false)
     setShown((s) => (s && passed.includes(s) ? s : passed[passed.length - 1]))
     setPhase('done')
     haptic('sale')
@@ -162,15 +163,22 @@ export function StepHint() {
   const def = shown ?? waiting[waiting.length - 1] ?? now
   const done = phase === 'done'
   const going = goingTo !== null && walking === goingTo && phase === 'show'
+  // what the farmer feels besides the line he says (./firstSteps.ts, MOMENT_MOODS)
+  const moment: Moment | null = done ? 'passed' : phase === 'ask' ? 'ask' : nowhere ? 'nowhere' : going ? 'walk' : null
 
   const walk = () => {
     if (!def || phase !== 'show') return
     const id = stepTarget(def.target)
     if (!id) {
-      if (bubble.current) void animate(bubble.current, NOPE.keyframes, NOPE.options)
+      if (bubble.current && !still) void animate(bubble.current, NOPE.keyframes, NOPE.options)
+      window.clearTimeout(sigh.current)
+      setNowhere(true)
+      sigh.current = window.setTimeout(() => setNowhere(false), NOWHERE_MS)
       return
     }
     uiClick()
+    window.clearTimeout(sigh.current)
+    setNowhere(false)
     walkTo(id)
     setGoingTo(id)
   }
@@ -200,7 +208,7 @@ export function StepHint() {
           ) : (
             def && (
               <m.div key="talk" className="step-talk" layout="position" exit={{ opacity: 0, y: -10, transition: { duration: 0.2, ease: 'easeIn' } }}>
-                <Face hop={done} />
+                <FarmerFace mood={moodFor(def, moment)} beat={`${def.id}:${moment ?? 'says'}`} />
                 <AnimatePresence mode="wait" initial={false}>
                   {phase === 'ask' ? (
                     <m.div

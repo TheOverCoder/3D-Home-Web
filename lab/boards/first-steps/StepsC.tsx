@@ -1,17 +1,19 @@
 import { AnimatePresence, m, useReducedMotion } from 'motion/react'
 import { useEffect, useState } from 'react'
+import { FarmerFace } from '../../../src/farm/FarmerFace'
+import { MOMENT_MOODS, moodFor, type Moment } from '../../../src/farm/firstSteps'
 import { art } from '../../../src/ui/art'
 import { Check, PersonSimpleWalk, X } from '../../../src/ui/glyphs'
 import { POP, SPRING } from '../../../src/ui/motion'
 import { coinsOf, picOf, STEPS, type StepsState } from './data'
 import { Backdrop, Column, Finale, Others, StandIn, usePay, useSteps, WalkNote, type Steps } from './parts'
-import farmer from './farmer.webp'
 import './StepsC.css'
 
-// C · a word bubble from a farmer's face: the farm's neighbour (SAMPLE picture: Fluent Emoji 3D's farmer, MIT, kept in
-// this board's folder) says each step in a bubble — its picture, its words typed in, its reward — and a tap on the
-// bubble walks you there. Done, a tick is stamped on the bubble, the coins fly, the farmer hops, and the next line
-// comes. The ✕ sits on the bubble's corner. Every rule of its CSS is under .v-first-steps-c.
+// C · a word bubble from a farmer's face, as the game has it (src/farm/FirstSteps.tsx): the farm's neighbour says each
+// step in a bubble — its picture, its words typed in, its reward — and a tap on the bubble walks you there. His face is
+// the game's own (src/farm/FarmerFace.tsx), in the mood of what he says: each line's, and the moments' (the walk, a step
+// done, the skip question, "All set!"). Done, a tick is stamped on the bubble, the coins fly, he beams and hops, and
+// the next line comes. The ✕ sits on the bubble's corner. Every rule of its CSS is under .v-first-steps-c.
 
 /** The words typed in a letter at a time (all at once for whoever prefers less motion); the rest of the line is kept,
  *  unseen, so the bubble is its full size from the start and nothing moves as the letters come. */
@@ -34,27 +36,14 @@ function Typed({ text }: { text: string }) {
   )
 }
 
-/** The farmer's face, a little round portrait; it hops when a step is done. */
-function Face({ hop, small }: { hop?: boolean; small?: boolean }) {
-  return (
-    <m.span
-      className={`v-first-steps-c-face${small ? ' small' : ''}`}
-      initial={{ opacity: 0, scale: 0.4 }}
-      animate={hop ? { opacity: 1, scale: 1, y: [0, -10, 0], rotate: [0, -10, 0] } : { opacity: 1, scale: 1, y: 0, rotate: 0 }}
-      transition={hop ? { duration: 0.45, ease: 'easeOut' } : SPRING.pop}
-    >
-      <img src={farmer} alt="" draggable={false} />
-    </m.span>
-  )
-}
-
 function Talk({ st }: { st: Steps }) {
   const def = STEPS[st.k]
   const done = st.phase === 'done'
   const asking = st.phase === 'ask'
+  const moment: Moment | null = done ? 'passed' : asking ? 'ask' : st.walking ? 'walk' : null
   return (
     <m.div className="v-first-steps-c-talk" layout="position" exit={{ opacity: 0, y: -10, transition: { duration: 0.2, ease: 'easeIn' } }}>
-      <Face hop={done} />
+      <FarmerFace mood={moodFor(def, moment)} beat={`${def.id}:${moment ?? 'says'}`} />
       <AnimatePresence mode="popLayout" initial={false}>
         {asking ? (
           <m.div
@@ -137,7 +126,7 @@ export function StepsC({ s, onClose }: { s: StepsState; onClose: () => void }) {
         {s.play === 'full' && <Others />}
         <AnimatePresence mode="popLayout">
           {shown && <Talk key="talk" st={st} />}
-          {st.phase === 'final' && <Finale key="final" face={<Face small />} />}
+          {st.phase === 'final' && <Finale key="final" face={<FarmerFace mood={MOMENT_MOODS.final} small />} />}
         </AnimatePresence>
       </Column>
       <StandIn st={st} />

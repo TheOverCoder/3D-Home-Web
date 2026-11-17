@@ -1,19 +1,6 @@
-/* C · a word bubble from a farmer's face (./StepsC.tsx): a round portrait, a paper bubble with its tail towards it. */
+/* C · a word bubble from a farmer's face (./StepsC.tsx): the game's round portrait (src/farm/FarmerFace.css), a paper
+   bubble with its tail towards it. */
 .v-first-steps-c-talk { display: flex; align-items: center; max-width: 100%; pointer-events: auto; }
-.v-first-steps-c-face {
-  display: grid;
-  place-items: end center;
-  flex: none;
-  width: 56px;
-  height: 56px;
-  overflow: hidden;
-  border-radius: 50%;
-  background: radial-gradient(circle at 50% 30%, #fff, var(--paper-2) 70%);
-  box-shadow: 0 0 0 3px #fff, 0 4px 10px rgba(40, 24, 10, 0.35);
-}
-.v-first-steps-c-face img { width: 54px; height: 54px; margin-bottom: -6px; }
-.v-first-steps-c-face.small { width: 46px; height: 46px; }
-.v-first-steps-c-face.small img { width: 44px; height: 44px; }
 .v-first-steps-c-said { position: relative; display: flex; min-width: 0; }
 .v-first-steps-c-bubble {
   position: relative;
