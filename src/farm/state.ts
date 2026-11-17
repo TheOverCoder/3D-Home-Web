@@ -2320,10 +2320,14 @@ export function tick(dt: number) {
 
 // ───────────────────────────── a new farm's first steps ─────────────────────────────
 
-/** The first steps (src/farm/firstSteps.ts) are quiet — nothing shown, passed or paid — until their hint is in the game
- *  (plans/first-hour.md, C3): everywhere until then. From then: they run on the game's own pages; under Vitest and on
- *  a ?debug page unless it says &steps=on, they are quiet until a test turns them on. */
-const stepsQuietByDefault = () => true
+/** The first steps (src/farm/firstSteps.ts) run on the game's own pages; under Vitest and on a ?debug page unless it says
+ *  &steps=on they are quiet — nothing shown, passed or paid — until a test turns them on. */
+function stepsQuietByDefault() {
+  if (import.meta.env.MODE === 'test') return true
+  if (typeof location === 'undefined') return false
+  const q = new URLSearchParams(location.search)
+  return q.has('debug') && q.get('steps') !== 'on'
+}
 let stepsQuiet = stepsQuietByDefault()
 /** For the tests and the simulation: the steps quiet (true), or running as on a new farm's own pages (false). */
 export function quietSteps(on: boolean) {
