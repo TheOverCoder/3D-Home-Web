@@ -624,9 +624,90 @@ export const CONTRACTOR = { buys: 10, sells: 100, offers: 3, discountStep: 10 } 
  *  then the car drives you there (src/farm/car). He keeps the office's hours (HOURS.estate). */
 export const ESTATE = { price: 4000 } as const
 
+// ───────────────────────────── the animals' tools ─────────────────────────────
+
+/** The producers with a herd the shop sells, each with a tool once the herd is full: the hens a coop, the cows a milk
+ *  bucket, the sheep shears (plans/animal-tools.md). */
+export type ToolKind = 'hens' | 'cows' | 'sheep'
+export const TOOL_KINDS: readonly ToolKind[] = ['hens', 'cows', 'sheep']
+/** A tool's three ladders (LADDERS, below): the tool itself, how much each of its places holds, how many a tap takes. */
+export type ToolPart = 'tool' | 'hold' | 'tap'
+
+/** What every animal's tool shares: one change here changes them all. Step k of a ladder costs price[0] + price[1]·k.
+ *  A tool changes how you take and how much waits, never what you get: the same goods, XP and surprises a good as
+ *  collecting one by one, and nothing comes faster. */
+export const TOOL = {
+  price: 400,
+  // the most each animal's place holds (a nest, a cow, a sheep)
+  hold: { from: 3, to: 10, price: [150, 75] },
+  // how many one tap takes
+  tap: { from: 1, to: 10, price: [100, 50] },
+} as const
+
+/** What differs between the tools: only how each looks and where it stands. */
+export interface ToolDef {
+  /** 'Coop', 'Milk bucket', 'Shears' */
+  name: string
+  blurb: string
+  /** its picture in the shop and on its card */
+  art: ArtId
+  /** the one word under the action button */
+  word: string
+  /** what one of its places is called, in "3 a nest" */
+  spot: string
+  /** what its panel draws where the goods wait */
+  look: 'nests' | 'pail' | 'shears'
+  /** its place at the fence, in its pen's frame (it moves with the pen): where you stand, what you look at, reach */
+  stand: [number, number, number]
+  aim: [number, number, number]
+  reach: number
+}
+
+/** The coop at the nest box (where the hens' nest is collected today), the bucket on the pasture's gate post outside
+ *  the gate, the shears and their basket on the fold's gate post: the 3D designer places each model, and these follow. */
+export const TOOLS: Record<ToolKind, ToolDef> = {
+  hens: {
+    name: 'Coop',
+    blurb: 'A nest for every hen: collect the eggs a tap at a time.',
+    art: 'nest-with-eggs',
+    word: 'Collect',
+    spot: 'nest',
+    look: 'nests',
+    stand: [NEST.x - 0.45, 0.9, NEST.z],
+    aim: [NEST.x, 0.66, NEST.z],
+    reach: 2.2,
+  },
+  cows: {
+    name: 'Milk bucket',
+    blurb: 'Milk the whole herd from the gate, a tap at a time.',
+    art: 'bucket',
+    word: 'Milk',
+    spot: 'cow',
+    look: 'pail',
+    stand: [PASTURE.minX - 0.85, 1.0, PASTURE.gateZ + PASTURE.gateWidth / 2 + 0.15],
+    aim: [PASTURE.minX - 0.12, 0.95, PASTURE.gateZ + PASTURE.gateWidth / 2 + 0.15],
+    reach: 2.2,
+  },
+  sheep: {
+    name: 'Shears',
+    blurb: 'Shear the whole flock from the gate, a tap at a time.',
+    art: 'scissors',
+    word: 'Shear',
+    spot: 'sheep',
+    look: 'shears',
+    stand: [FOLD.gateX - FOLD.gateWidth / 2 - 0.15, 1.0, FOLD.maxZ + 0.85],
+    aim: [FOLD.gateX - FOLD.gateWidth / 2 - 0.15, 0.8, FOLD.maxZ + 0.12],
+    reach: 2.2,
+  },
+}
+
+/** The two premium remotes' price (the user's: the simulation never tunes it). */
+export const REMOTE_PRICE = 10_000
+
 // ───────────────────────────── upgrade ladders ─────────────────────────────
 
-export type LadderId = 'rate' | 'places' | 'group' | 'pace' | 'stock' | 'discount'
+export type ToolLadderId = `${ToolKind}-${ToolPart}`
+export type LadderId = 'rate' | 'places' | 'group' | 'pace' | 'stock' | 'discount' | ToolLadderId | 'machine-remote' | 'animal-remote'
 export interface Ladder {
   name: string
   blurb: string
@@ -636,7 +717,60 @@ export interface Ladder {
   price: readonly [number, number]
   /** what having k steps means, in a few words (the card shows now → next) */
   say: (k: number) => string
+  /** bought in the farm shop (its crystals from the shed; its card goes back there) */
+  at?: 'shop'
+  /** what it waits for: a herd full (every animal the shop sells), another ladder at its top, or any one of these at
+   *  theirs */
+  needs?: { herd?: ProducerId; ladder?: LadderId; anyOf?: readonly LadderId[] }
+  /** a tool's row: whose, and which of its three */
+  tool?: { kind: ToolKind; part: ToolPart }
+  /** the premium look (the remotes) */
+  premium?: true
 }
+
+/** What a thing bought once says: yours, or not yet. */
+const once = (k: number) => (k > 0 ? 'Yours' : 'In the shop')
+
+/** Each tool's three ladders, from TOOL and TOOLS (as FRUIT_PRODUCERS makes the fruit plants' producers): the tool,
+ *  once its herd is full; then, once it is yours, how much each of its places holds and how many a tap takes. */
+function TOOL_LADDERS(): Record<ToolLadderId, Ladder> {
+  return Object.fromEntries(
+    TOOL_KINDS.flatMap((kind): [ToolLadderId, Ladder][] => {
+      const t = TOOLS[kind]
+      const tool: ToolLadderId = `${kind}-tool`
+      return [
+        [tool, { name: t.name, blurb: t.blurb, levels: 1, price: [TOOL.price, 0], say: once, at: 'shop', needs: { herd: kind }, tool: { kind, part: 'tool' } }],
+        [
+          `${kind}-hold`,
+          {
+            name: `${t.name}: holds more`,
+            blurb: `Each ${t.spot} holds one more.`,
+            levels: TOOL.hold.to - TOOL.hold.from,
+            price: TOOL.hold.price,
+            say: (k) => `${TOOL.hold.from + k} a ${t.spot}`,
+            at: 'shop',
+            needs: { ladder: tool },
+            tool: { kind, part: 'hold' },
+          },
+        ],
+        [
+          `${kind}-tap`,
+          {
+            name: `${t.name}: more a tap`,
+            blurb: 'Each tap takes one more.',
+            levels: TOOL.tap.to - TOOL.tap.from,
+            price: TOOL.tap.price,
+            say: (k) => `${TOOL.tap.from + k} a tap`,
+            at: 'shop',
+            needs: { ladder: tool },
+            tool: { kind, part: 'tap' },
+          },
+        ],
+      ]
+    }),
+  ) as Record<ToolLadderId, Ladder>
+}
+
 /** Every upgrade bought one step at a time, as rows: one buy (src/farm/state.ts, buyLadder), one card
  *  (src/farm/Ladder.tsx), one place in the save (farm.ladders). When each may be bought: `ladderOpen` in state.ts. */
 export const LADDERS: Record<LadderId, Ladder> = {
@@ -646,8 +780,34 @@ export const LADDERS: Record<LadderId, Ladder> = {
   pace: { name: 'A busier shop', blurb: 'Shoppers come more often.', levels: 4, price: [100, 60], say: (k) => `Every ${SHOP.every - SHOP.faster * k} s` },
   stock: { name: 'More pieces', blurb: 'The contractor brings more pieces a day.', levels: 2, price: [250, 250], say: (k) => `${CONTRACTOR.offers + k} pieces a day` },
   discount: { name: 'A better deal', blurb: 'His pieces cost less.', levels: 5, price: [120, 60], say: (k) => `${CONTRACTOR.sells - CONTRACTOR.discountStep * k} coins a piece` },
+  ...TOOL_LADDERS(),
+  // the two premium remotes: a tap on a good in a panel opens the machine that makes it, or the tool of the animal that
+  // gives it (only a tool you own: so the animals' remote waits for one)
+  'machine-remote': {
+    name: 'Machine remote',
+    blurb: 'Tap a good in any panel to open the machine that makes it.',
+    levels: 1,
+    price: [REMOTE_PRICE, 0],
+    say: once,
+    at: 'shop',
+    premium: true,
+  },
+  'animal-remote': {
+    name: 'Animal remote',
+    blurb: 'Tap a good in any panel to open the tool of the animals that give it.',
+    levels: 1,
+    price: [REMOTE_PRICE, 0],
+    say: once,
+    at: 'shop',
+    needs: { anyOf: TOOL_KINDS.map((k): LadderId => `${k}-tool`) },
+    premium: true,
+  },
 }
 export const LADDER_IDS = Object.keys(LADDERS) as LadderId[]
+/** A tool's ladder of one kind (its own, how much it holds, how many a tap takes). */
+export const toolLadder = (kind: ToolKind, part: ToolPart): ToolLadderId => `${kind}-${part}`
+/** Whether a producer has a tool the shop sells (the hens, the cows, the sheep). */
+export const isToolKind = (id: string): id is ToolKind => (TOOL_KINDS as readonly string[]).includes(id)
 
 // ───────────────────────────── the day ─────────────────────────────
 

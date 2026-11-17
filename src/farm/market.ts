@@ -32,13 +32,18 @@ export const ladderPrice = (id: LadderId, k: number) => LADDERS[id].price[0] + L
 /** The ladders of your own shop: none can be climbed before the shop is yours. */
 export const SHOP_LADDERS: readonly LadderId[] = ['places', 'group', 'pace']
 /** Saved ladder levels read back: whole numbers from 0 to each ladder's top. Given `owned: false` (the shop is not
- *  yours), the shop's own ladders are 0 too. */
+ *  yours), the shop's own ladders are 0 too; and a ladder that needs another at its top (a tool's upgrades, the tool)
+ *  is 0 while that one is not. */
 export function clampLevels(raw: unknown, owned?: boolean): Record<LadderId, number> {
   const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
   const out = {} as Record<LadderId, number>
   for (const id of LADDER_IDS) {
     const v = r[id]
     out[id] = typeof v === 'number' && Number.isFinite(v) && !(owned === false && SHOP_LADDERS.includes(id)) ? Math.max(0, Math.min(LADDERS[id].levels, Math.floor(v))) : 0
+  }
+  for (const id of LADDER_IDS) {
+    const need = LADDERS[id].needs?.ladder
+    if (need && out[need] < LADDERS[need].levels) out[id] = 0
   }
   return out
 }

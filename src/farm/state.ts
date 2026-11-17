@@ -24,6 +24,7 @@ import {
   PRODUCER_IDS,
   QUEUE_LEVELS,
   SELLABLE,
+  SHED,
   SLOT_LEVELS,
   START_COINS,
   STORES,
@@ -149,6 +150,7 @@ import {
 import { FRUIT, FRUIT_KINDS, SHOP as FARM_SHOP, nextPrice, type FruitKind, type ShopItemView, type ShopKind } from './decor'
 import { lockedAt, machineOpensAt, opensAt, recipeUnlock, type UnlockId } from './unlocks'
 import { advance, currentStep, sanitizeSteps, skipped, stepsFresh, type StepDef, type StepsRecord } from './firstSteps'
+import { needsMet } from './tools'
 import { PIECES, type PieceType } from '../home/catalogue'
 import { canMoveOpening, canPlacePiece, defaultHome, findFreeSpot, sanitizeHome, type HomeFit, type HomeLayout, type HomePiece } from '../home/layout'
 import { floorById, paintById, type OpeningAt } from '../home/shell'
@@ -2490,7 +2492,9 @@ export function sawWardrobe() {
 
 // ───────────────────────────── the supermarket ─────────────────────────────
 
-/** Where the crystals and the coins fly from: the manager, the computer, the till, the contractor. */
+/** Where the crystals and the coins fly from: the farm shop's shed, the manager, the computer, the till, the
+ *  contractor. */
+const AT_SHED: At = { x: SHED.x, y: 1.6, z: SHED.z }
 const AT_MANAGER: At = { x: MANAGER_SPOT.x, y: 1.6, z: MANAGER_SPOT.z }
 const AT_SCREEN: At = { x: SCREEN.x, y: SCREEN.y, z: SCREEN.z }
 const AT_TILL: At = { x: TILL.x, y: TILL.y, z: TILL.z }
@@ -2581,17 +2585,19 @@ export const ladderLevel = (id: LadderId) => farm.ladders[id]
 export const ladderMaxed = (id: LadderId) => farm.ladders[id] >= LADDERS[id].levels
 export const ladderNextPrice = (id: LadderId) => ladderPrice(id, farm.ladders[id])
 
-/** Whether a ladder's next step can be bought now (its place is open, not at its top): the manager's rate while the
- *  shop is not yours, the shop's own once it is, the contractor's while he is there. */
+/** Whether a ladder's next step can be bought now (its place is open, not at its top): the farm shop's once what it
+ *  waits for is there (a tool its herd full, a tool's upgrades the tool, the animals' remote a tool; src/farm/tools.ts),
+ *  the manager's rate while the shop is not yours, the shop's own once it is, the contractor's while he is there. */
 export function ladderOpen(id: LadderId): boolean {
   if (ladderMaxed(id)) return false
+  if (LADDERS[id].at === 'shop') return needsMet(LADDERS[id].needs, farm)
   if (id === 'rate') return !farm.market.owned
   if (SHOP_LADDERS.includes(id)) return farm.market.owned
   return contractorHere()
 }
 
-/** Where the crystals of a ladder's step fly from: the one you bought it from. */
-const ladderAt = (id: LadderId) => (id === 'rate' ? AT_MANAGER : SHOP_LADDERS.includes(id) ? AT_SCREEN : AT_CONTRACTOR)
+/** Where the crystals of a ladder's step fly from: the one you bought it from (the farm shop's: its shed). */
+const ladderAt = (id: LadderId) => (LADDERS[id].at === 'shop' ? AT_SHED : id === 'rate' ? AT_MANAGER : SHOP_LADDERS.includes(id) ? AT_SCREEN : AT_CONTRACTOR)
 
 /** Buys a ladder's next step (its card asked first); whether it was bought. It works at once: a busier shop's next
  *  visit comes no later than the new wait, more pieces bring one more today, a better deal is the price from now on. */

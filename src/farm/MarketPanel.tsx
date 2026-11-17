@@ -202,7 +202,7 @@ function ClosedPlace() {
     <button
       className="market-place closed"
       disabled={!ladderOpen('places')}
-      onClick={() => openPanel({ kind: 'ladder', id: 'places', from: 'market' })}
+      onClick={() => openPanel({ kind: 'ladder', id: 'places', from: { kind: 'market' } })}
       aria-label={`Open place ${placesOpen(k) + 1} for ${price} coins`}
     >
       <span className="market-slot" aria-hidden="true" />

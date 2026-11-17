@@ -360,10 +360,14 @@ function farmProblems(): string[] {
   const day = (v: unknown) => Number.isInteger(v) && (v as number) >= -1
   bad('daily', sameKeys(dl, ['last', 'streak', 'offered', 'week']) && day(dl.last) && day(dl.offered) && isCount(dl.streak) && (dl.last >= 0 || dl.streak === 0))
   bad('daily.week', dl.week.length <= (dl.streak ? ((dl.streak - 1) % 7) + 1 : 0) && dl.week.every((d) => Array.isArray(d) && d.length <= 3 && d.every(isPrize)))
-  // the ladders: a step count each, to its top; the shop's own none until the shop is yours
+  // the ladders: a step count each, to its top; the shop's own none until the shop is yours; a tool's upgrades none
+  // without the tool
   const l = farm.ladders
   bad('ladders: each ladder', sameKeys(l, LADDER_IDS))
-  for (const id of LADDER_IDS) bad(`ladders.${id}`, isCount(l[id], LADDERS[id].levels) && (farm.market.owned || !SHOP_LADDERS.includes(id) || l[id] === 0))
+  for (const id of LADDER_IDS) {
+    const need = LADDERS[id].needs?.ladder
+    bad(`ladders.${id}`, isCount(l[id], LADDERS[id].levels) && (farm.market.owned || !SHOP_LADDERS.includes(id) || l[id] === 0) && (!need || l[need] >= LADDERS[need].levels || l[id] === 0))
+  }
   // the shop: ten places, those not open empty; an open place a good that sells (kept when sold out) or none, its units
   // up to a place's, its price in range on its step; the till and the countdown; a shop not yours holds nothing
   const m = farm.market

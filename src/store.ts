@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { DOOR, LAMPS, PICKUPS, type RoomId, type Vec3 } from './data/layout'
 import type { ActionIcon } from './lib/interaction'
+import type { LadderId, ToolKind } from './farm/data'
 import type { Place } from './farm/state'
 
 /** Picture quality tier: high = full film look, medium = the look without the costliest passes, low = plain and fast. */
@@ -59,8 +60,9 @@ export type Panel =
   | { kind: 'car' } // the car: where it drives you (the house once it is yours, the farm)
   | { kind: 'estate' } // the estate agent: the house for sale, its price, or that it is yours
   | { kind: 'house-buy' } // the card that asks before the house is bought
-  | { kind: 'ladder'; id: 'rate' | 'places' | 'group' | 'pace' | 'stock' | 'discount'; from?: 'manager' | 'market' | 'contractor' } // the card that asks before a ladder's step is bought (from: the panel to go back to)
-  | { kind: 'machine'; id: 'mill' | 'loom' | 'oven' } // a machine: its queue of jobs, what it makes, its level and its places
+  | { kind: 'ladder'; id: LadderId; from?: Panel } // the card that asks before a ladder's step is bought (from: the panel to go back to)
+  | { kind: 'machine'; id: 'mill' | 'loom' | 'oven'; from?: Panel } // a machine: its queue of jobs, what it makes, its level and its places (from: opened from another panel, its ✕ goes back there)
+  | { kind: 'tool'; tool: ToolKind; from?: Panel } // an animal's tool: each of its places and what waits there, taken a tap at a time (from: as a machine's)
   | { kind: 'machine-slot'; id: 'mill' | 'loom' | 'oven' } // the card that asks before a machine's next place is bought
   | { kind: 'news' } // the farm news: the week's events on now and coming, and the lucky draw (src/farm/news)
 
