@@ -307,38 +307,6 @@
 .ob-flights { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
 .ob-flights img { position: absolute; left: 0; top: 0; width: 36px; height: 36px; filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.25)); }
 
-/* the bubble of a good touched: its name, how many are in, what the store holds, where it comes from */
-.ob-pop { z-index: 80; }
-.ob-pop > div {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  min-width: 150px;
-  max-width: 240px;
-  padding: 8px 12px 10px;
-  border: 2px solid #fff;
-  border-radius: 16px;
-  background: var(--paper);
-  box-shadow:
-    0 3px 0 var(--paper-3),
-    0 10px 24px rgba(40, 24, 10, 0.3);
-  color: var(--ink);
-  text-align: center;
-  transform-origin: 50% 100%;
-}
-.ob-pop-name { font: 600 19px/1.15 var(--font-display); text-transform: capitalize; }
-.ob-pop-state { font: 800 14px/1.3 var(--font-text); color: var(--xp-lip); }
-.ob-pop-state.in { color: var(--leaf); }
-.ob-pop-store { font: 700 13px/1.3 var(--font-text); color: var(--ink-2); }
-.ob-pop-arrow { fill: var(--paper); }
-.ob-src { display: flex; align-items: center; gap: 6px; margin-top: 4px; padding: 4px 8px; border-radius: 12px; background: var(--paper-2); font: 700 14px/1.25 var(--font-text); text-align: left; }
-.ob-src > .art { width: 30px; height: 30px; flex: none; }
-.ob-from { display: inline-flex; align-items: center; gap: 2px; vertical-align: middle; }
-.ob-from .item-pic .art { width: 22px; height: 22px; }
-.ob-show { margin-top: 6px; min-height: 44px; gap: 6px; }
-.ob-show svg { width: 16px; height: 16px; }
-
 @media (prefers-reduced-motion: reduce) {
   .ob-pegs i.soon { animation: none; }
 }

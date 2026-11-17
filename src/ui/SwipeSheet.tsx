@@ -1,5 +1,6 @@
 import { animate, m, useDragControls, useIsPresent, useMotionValue, useTransform, type PanInfo, type Variants } from 'motion/react'
-import { useEffect, useRef, useSyncExternalStore, type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
+import { useSideways } from './sheetMode'
 import { SPRING } from './motion'
 import './SwipeSheet.css'
 
@@ -9,19 +10,7 @@ import './SwipeSheet.css'
 // right) closes it. While it goes out it takes no touch and is no longer a dialog: the next press goes to what is under
 // it at once. It keeps the game's panel classes (.farm-backdrop, .farm-panel), so a panel's own CSS holds.
 
-const SIDEWAYS = '(orientation: landscape) and (max-height: 560px)'
-
-/** A phone on its side (the game's CSS lays a sheet on the right then). */
-export function useSideways() {
-  return useSyncExternalStore(
-    (changed) => {
-      const q = matchMedia(SIDEWAYS)
-      q.addEventListener('change', changed)
-      return () => q.removeEventListener('change', changed)
-    },
-    () => matchMedia(SIDEWAYS).matches,
-  )
-}
+export { useSideways } from './sheetMode'
 
 const away = (wide: boolean) => (wide ? { x: '104%', y: 0 } : { x: 0, y: '104%' })
 const SHEET: Variants = {

@@ -6,7 +6,7 @@ import type { RecipeView } from '../machineView'
 import { Clock } from '../../ui/glyphs'
 import { ItemPic } from '../../ui/ItemPic'
 import { LockTag } from '../../ui/LockTag'
-import { EASE, SPRING } from '../../ui/motion'
+import { EASE, NOPE, SPRING } from '../../ui/motion'
 import { HOLD, type Axis } from './drag'
 import { Bump } from './parts'
 import { clock, timesCan, type Payload } from './queue'
@@ -50,7 +50,7 @@ export function RecipeCard({
   const pic = useRef<HTMLSpanElement>(null)
   const [scope, animate] = useAnimate()
   useEffect(() => {
-    if (shake && scope.current) void animate(scope.current, { x: [0, -7, 6, -4, 2, 0] }, { duration: 0.36 })
+    if (shake && scope.current) void animate(scope.current, NOPE.keyframes, NOPE.options)
   }, [shake, scope, animate])
   const needs = Object.entries(r.needs) as [ProduceId, number][]
   const label = `${cap(made.name)}, ${clock(r.seconds)}: takes ${needs.map(([k, n]) => `${n} ${n === 1 ? produceById(k).name : produceById(k).plural} (you have ${r.have[k] ?? 0})`).join(', ')}${r.can ? ' — add to the queue' : locked ? ` — opens at level ${r.locked}` : short ? ' — not enough in store' : ' — the queue is full'}`

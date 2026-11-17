@@ -1,18 +1,18 @@
 import { AnimatePresence, m, useDragControls, useIsPresent, useReducedMotion, type PanInfo, type Variants } from 'motion/react'
-import { Popover, Tabs } from 'radix-ui'
-import { useEffect, useRef, useState, useSyncExternalStore, type Ref } from 'react'
+import { Tabs } from 'radix-ui'
+import { useEffect, useRef, useState, type Ref } from 'react'
 import { flyCoins } from '../../fx/coins'
 import { coinsToFly } from '../../fx/fx'
 import { art } from '../../ui/art'
 import { burst } from '../../ui/burst'
-import { ArrowRight, Check, NavigationArrow, X } from '../../ui/glyphs'
-import { ItemPic } from '../../ui/ItemPic'
-import { EASE, MotionRoot, PRESS, SPRING } from '../../ui/motion'
+import { ArrowRight, Check, X } from '../../ui/glyphs'
+import { GoodPic } from '../../ui/GoodPic'
+import { ARRIVE, EASE, MotionRoot, PRESS, SHEET, SPRING, swipedAway } from '../../ui/motion'
+import { useSheetMode } from '../../ui/sheetMode'
 import { Coins } from '../../ui/Shell'
 import type { OfficeUpgradeId, ProduceId } from '../data'
 import { iconUrl } from '../icons'
 import { cratesFor, isComplete, type Order } from '../orders'
-import { sourceOf } from '../goods/sources'
 import { canPut, clock, goingIn, nameOf, type OfficeRow, type OrdersActions, type OrdersView } from './view'
 import './OrdersBoard.css'
 
@@ -26,7 +26,8 @@ import './OrdersBoard.css'
 // in would add now: the next press seen before it is made), or empty (still to make). At its foot one press: Put in N
 // (yellow when it would fill the order: "Put in 4 · ready"), then Send (green), the plank glowing and a READY tag
 // swinging onto its nail. A touch on a good says its name, how many are in, what the store holds and where it comes
-// from; with too few in store, "Show me" closes the board and walks you there (on the farm, where the game gives it). A place whose order was declined counts down on a ring. The office's two upgrades are a tab of their own, each
+// from; with too few in store, its way there (src/ui/GoodPic.tsx: "Show me" walks you there on the farm, a remote opens
+// the machine or the tool from afar). A place whose order was declined counts down on a ring. The office's two upgrades are a tab of their own, each
 // bought through a card that asks first.
 //
 // Its moments: Put in — the goods fly from the press into their lines on an arc, one after another, the pegs fill
@@ -58,31 +59,6 @@ export function OrdersBoard(p: OrdersBoardProps) {
   )
 }
 
-type Mode = 'bottom' | 'right' | 'middle'
-const SIDEWAYS = '(orientation: landscape) and (max-height: 560px)'
-const UPRIGHT = '(max-width: 520px)'
-const watch = (q: string) => (changed: () => void) => {
-  const l = matchMedia(q)
-  l.addEventListener('change', changed)
-  return () => l.removeEventListener('change', changed)
-}
-/** Upright a sheet at the bottom, sideways on the right, on a tablet or a computer in the middle. */
-function useMode(): Mode {
-  const wide = useSyncExternalStore(watch(SIDEWAYS), () => matchMedia(SIDEWAYS).matches)
-  const narrow = useSyncExternalStore(watch(UPRIGHT), () => matchMedia(UPRIGHT).matches)
-  return wide ? 'right' : narrow ? 'bottom' : 'middle'
-}
-
-const away = (mode: Mode) => (mode === 'right' ? { x: '104%', y: 0, opacity: 1 } : mode === 'bottom' ? { x: 0, y: '104%', opacity: 1 } : { x: 0, y: 40, opacity: 0 })
-const SHEET: Variants = {
-  hidden: away,
-  show: { x: 0, y: 0, opacity: 1, transition: SPRING.sheet },
-  out: (mode: Mode) => ({ ...away(mode), transition: { duration: 0.2, ease: [0.4, 0, 1, 1] } }),
-}
-/** How far (px) or how fast (px/s) a swipe must go for the sheet to close; short of it, it springs back. */
-const FAR = 110
-const FAST = 500
-
 /** A good flying from the press into its line: from (x, y) to (tx, ty), its picture. */
 interface Flight {
   id: number
@@ -104,7 +80,7 @@ interface Held {
 let flightId = 0
 
 function Board({ v, act, asking, onAsk, onClose }: OrdersBoardProps) {
-  const mode = useMode()
+  const mode = useSheetMode()
   const still = useReducedMotion()
   const [tab, setTabNow] = useState(asking ? 'office' : 'orders')
   // the sheet keeps the tallest height it had from one tab to the other (it never jumps under the finger)
@@ -204,11 +180,7 @@ function Board({ v, act, asking, onAsk, onClose }: OrdersBoardProps) {
     burst(at, { count: 40, spread: 70, power: 24 })
   }
 
-  const letGo = (_: unknown, i: PanInfo) => {
-    const far = mode === 'right' ? i.offset.x : i.offset.y
-    const fast = mode === 'right' ? i.velocity.x : i.velocity.y
-    if (far > FAR || (far > 24 && fast > FAST)) setLeaving(true)
-  }
+  const letGo = (_: unknown, i: PanInfo) => swipedAway(mode, i) && setLeaving(true)
 
   return (
     <div className={`ob-root ob-${mode}`}>
@@ -242,7 +214,7 @@ function Board({ v, act, asking, onAsk, onClose }: OrdersBoardProps) {
             }}
           >
             <i className="ob-grab" aria-hidden="true" />
-            <m.img className="art ob-head-art" src={art('clipboard')} alt="" initial={{ scale: 0.4, rotate: -20 }} animate={{ scale: 1, rotate: 0 }} transition={SPRING.soft} />
+            <m.img className="art ob-head-art" src={art('clipboard')} alt="" {...ARRIVE} />
             <h2>Orders</h2>
             <Tabs.List className="ob-tablist" aria-label="Orders and the office">
               <Tabs.Trigger value="orders" className="ob-tab">
@@ -288,8 +260,6 @@ function Board({ v, act, asking, onAsk, onClose }: OrdersBoardProps) {
                         onPut={put}
                         onSend={send}
                         onDecline={(k) => act.decline(k)}
-                        onShow={act.show}
-                        canShow={act.canShow}
                       />
                     ) : (
                       <Waiting key={`wait-${k}`} left={slot.wait} full={v.wait} delay={opening ? 0.14 + k * 0.07 : 0} />
@@ -371,8 +341,6 @@ function Plank({
   onPut,
   onSend,
   onDecline,
-  onShow,
-  canShow,
 }: {
   ref?: Ref<HTMLElement>
   o: Order
@@ -390,8 +358,6 @@ function Plank({
   onPut: (k: number, el: HTMLElement) => void
   onSend: (k: number, el: HTMLElement) => void
   onDecline: (k: number) => void
-  onShow?: (good: ProduceId) => void
-  canShow?: (good: ProduceId) => boolean
 }) {
   const still = useReducedMotion()
   // on its way out (sent, declined) it is no longer one of the board's orders
@@ -457,19 +423,7 @@ function Plank({
       </div>
       <ul className="ob-lines">
         {o.lines.map((l) => (
-          <Line
-            key={l.good}
-            id={`${o.id}:${l.good}`}
-            good={l.good}
-            want={l.want}
-            have={l.have}
-            soon={soon.get(l.good) ?? 0}
-            store={inv[l.good] ?? 0}
-            pop={pop}
-            setPop={setPop}
-            onShow={onShow && canShow?.(l.good) !== false ? onShow : undefined}
-            still={!!still}
-          />
+          <Line key={l.good} id={`${o.id}:${l.good}`} good={l.good} want={l.want} have={l.have} soon={soon.get(l.good) ?? 0} store={inv[l.good] ?? 0} pop={pop} setPop={setPop} still={!!still} />
         ))}
       </ul>
       <div className="ob-foot">
@@ -506,8 +460,9 @@ function Plank({
 }
 
 /** A good of an order, carved on its line: its picture with how many it still wants (a ✓ once all are in), its name,
- *  and a peg for each one asked — in, coming with the next Put in (a dashed ring), or still to make. A touch says its
- *  name in a bubble, how many are in, what the store holds and where it comes from. */
+ *  and a peg for each one asked — in, coming with the next Put in (a dashed ring), or still to make. A touch opens its
+ *  bubble (src/ui/GoodPic.tsx): its name, how many are in and what the store holds, where it comes from, and — while
+ *  the store is short of it — the way there ("Show me", or a remote's "Open"). */
 function Line({
   id,
   good,
@@ -517,7 +472,6 @@ function Line({
   store,
   pop,
   setPop,
-  onShow,
   still,
 }: {
   id: string
@@ -528,59 +482,34 @@ function Line({
   store: number
   pop: string | null
   setPop: (key: string | null) => void
-  onShow?: (good: ProduceId) => void
   still: boolean
 }) {
   const left = Math.max(0, want - have)
-  const src = sourceOf(good)
   return (
     <li className={`ob-line${left === 0 ? ' in' : ''}`}>
-      <Popover.Root open={pop === id} onOpenChange={(o) => setPop(o ? id : null)}>
-        <Popover.Trigger asChild>
-          <m.button className="ob-good" data-good={good} aria-label={`${nameOf(good, want)}: ${have} of ${want} in`} whileTap={{ scale: 0.9, rotate: -6 }} transition={SPRING.pop}>
-            <ItemPic id={good} count={left > 0 ? left : undefined} />
-            <AnimatePresence>
-              {left === 0 && (
-                <m.b key="in" className="ob-in" initial={{ scale: 0, rotate: -40 }} animate={{ scale: 1, rotate: 0 }} transition={{ ...SPRING.pop, delay: still ? 0 : Math.min(0.5, 0.05 * want) }}>
-                  <Check weight="bold" />
-                </m.b>
-              )}
-            </AnimatePresence>
-          </m.button>
-        </Popover.Trigger>
-        <Popover.Portal>
-          <Popover.Content className="ob-pop" side="top" sideOffset={6} collisionPadding={12}>
-            <m.div initial={{ opacity: 0, scale: 0.85, y: 6 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={SPRING.pop}>
-              <b className="ob-pop-name">{nameOf(good, 1)}</b>
-              <span className={`ob-pop-state${left === 0 ? ' in' : ''}`}>{left === 0 ? `All ${want} in` : `${have} of ${want} in · ${left} more`}</span>
-              <span className="ob-pop-store">{store > 0 ? `${store} in store` : 'None in store'}</span>
-              <span className="ob-src">
-                <img className="art" src={src.pic} alt="" />
-                <span>
-                  {src.words}
-                  {src.from && (
-                    <span className="ob-from">
-                      {' '}
-                      from{' '}
-                      {src.from.map((f) => (
-                        <ItemPic key={f} id={f} />
-                      ))}
-                    </span>
-                  )}
-                </span>
-              </span>
-              {onShow && left > store && (
-                <Popover.Close asChild>
-                  <button className="btn soft small ob-show" onClick={() => onShow(good)}>
-                    <NavigationArrow weight="fill" /> Show me
-                  </button>
-                </Popover.Close>
-              )}
-            </m.div>
-            <Popover.Arrow className="ob-pop-arrow" width={14} height={7} />
-          </Popover.Content>
-        </Popover.Portal>
-      </Popover.Root>
+      <GoodPic
+        good={good}
+        count={left > 0 ? left : undefined}
+        className="ob-good"
+        label={`${nameOf(good, want)}: ${have} of ${want} in`}
+        open={pop === id}
+        onOpenChange={(o) => setPop(o ? id : null)}
+        walk={left > store}
+        lines={
+          <>
+            <span className={`ob-pop-state${left === 0 ? ' in' : ''}`}>{left === 0 ? `All ${want} in` : `${have} of ${want} in · ${left} more`}</span>
+            <span className="ob-pop-store">{store > 0 ? `${store} in store` : 'None in store'}</span>
+          </>
+        }
+      >
+        <AnimatePresence>
+          {left === 0 && (
+            <m.b key="in" className="ob-in" initial={{ scale: 0, rotate: -40 }} animate={{ scale: 1, rotate: 0 }} transition={{ ...SPRING.pop, delay: still ? 0 : Math.min(0.5, 0.05 * want) }}>
+              <Check weight="bold" />
+            </m.b>
+          )}
+        </AnimatePresence>
+      </GoodPic>
       <span className="ob-name">{nameOf(good, want)}</span>
       <m.span
         className="ob-pegs"

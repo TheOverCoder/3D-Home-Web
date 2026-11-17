@@ -6,33 +6,11 @@
    Motion moves it (Motion for React): no CSS animation of the sheet here; loops (a glow, a bob) only for whoever
    does not prefer less motion, and never on an element Motion moves (they would fight over its transform). */
 
-.mp-root { position: fixed; inset: 0; z-index: 42; display: grid; overflow: hidden; }
-.mp-shade { position: absolute; inset: 0; background: rgba(40, 24, 10, 0.4); }
-.mp-sheet { position: relative; z-index: 1; display: flex; flex-direction: column; min-height: 0; color: var(--ink); background: var(--paper); border: 3px solid #fff; box-shadow: var(--shadow-sheet); overflow: hidden; outline: none; }
-.mp-sheet img { -webkit-user-drag: none; -webkit-touch-callout: none; user-select: none; }
-/* it is one of the game's panels (.farm-panel: what the game and its tests know a panel by), drawn its own way */
-.mp-sheet.farm-panel { padding: 0; overflow: hidden; animation: none; }
-.mp-sheet .mp-head { margin: 0; }
-.mp-bottom { place-items: end center; }
-.mp-bottom .mp-sheet { width: 100%; max-height: 92dvh; border-radius: var(--r-sheet) var(--r-sheet) 0 0; border-bottom: 0; }
-.mp-right { place-items: stretch end; }
-.mp-right .mp-sheet { width: min(610px, max(76vw, 520px)); height: 100dvh; max-height: none; border-radius: var(--r-sheet) 0 0 var(--r-sheet); border-right: 0; }
-.mp-middle { place-items: center; padding: 16px; }
-.mp-middle .mp-sheet { width: min(620px, 100%); max-height: calc(100dvh - 32px); border-radius: var(--r-sheet); }
 
 /* the top: the machine's picture, its name, the level chip and how long the queue still works; ✕. It is where a
    swipe takes the sheet away (the grabber says so) */
-.mp-head { position: relative; display: flex; align-items: center; gap: 12px; padding: 16px 16px 10px; touch-action: none; flex: none; }
-.mp-grab { position: absolute; top: 6px; left: 50%; width: 40px; height: 5px; margin-left: -20px; border-radius: 3px; background: var(--paper-3); pointer-events: none; }
-.mp-middle .mp-grab { display: none; }
-.mp-head-art { width: 56px; height: 56px; margin: -6px 0 -4px; }
-.mp-head-text { flex: 1; min-width: 0; }
-.mp-sheet .mp-head h2 { margin: 0; font: 600 25px/1.1 var(--font-display); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mp-sub { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 5px; min-height: 30px; }
 .mp-total { gap: 4px; font-variant-numeric: tabular-nums; }
 .mp-total svg { width: 15px; height: 15px; }
-.mp-round { flex: none; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%; background: var(--paper-2); color: var(--ink); box-shadow: 0 3px 0 var(--paper-3); }
-.mp-round svg { width: 22px; height: 22px; }
 
 /* the level chip: a small ring of the way to the next level round the number, and the word */
 .mp-level-wrap { display: inline-flex; }
@@ -42,9 +20,6 @@
 .mp-level-ring { position: relative; display: grid; place-items: center; width: 30px; height: 30px; }
 .mp-level-ring svg { position: absolute; inset: 0; }
 .mp-level-ring b { position: relative; font: 800 14px/1 var(--font-text); }
-.mp-ring-track { stroke: color-mix(in srgb, var(--paper-3) 80%, var(--edge-soft)); }
-.mp-ring-fill { stroke: var(--sun-lip); }
-.mp-ring-ghost { stroke: var(--sun); opacity: 0.75; }
 
 /* ── the queue: a tray of wells ── */
 .mp-body { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
@@ -116,16 +91,8 @@
 .mp-collect-pics .art + .art { margin-left: -14px; }
 .mp-collect-n { display: grid; place-items: center; min-width: 28px; height: 28px; padding: 0 7px; border-radius: 999px; background: var(--ink); color: var(--sun); font: 800 15px/1 var(--font-text); font-variant-numeric: tabular-nums; }
 .mp-collect::after { content: ''; position: absolute; inset: -4px; border-radius: inherit; box-shadow: 0 0 18px 4px color-mix(in srgb, var(--sun) 70%, transparent); opacity: 0; pointer-events: none; }
-.mp-note { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 52px; margin: 0; padding: 6px 14px; border-radius: 999px; font: 700 15px/1.2 var(--font-text); color: var(--ink-2); text-align: center; }
-.mp-note .art { width: 30px; height: 30px; }
-.mp-note svg { width: 18px; height: 18px; flex: none; }
 .mp-note.hint { color: var(--ink-2); }
 .mp-note.hint svg { width: 22px; height: 22px; color: var(--sun-lip); }
-.mp-note.calm { background: #fff; color: var(--ink); box-shadow: 0 2px 0 var(--paper-3); }
-.mp-count { font: 800 16px/1 var(--font-text); font-variant-numeric: tabular-nums; }
-.mp-note.bad { background: color-mix(in srgb, var(--berry) 12%, var(--paper)); color: var(--berry-lip); }
-.mp-note.good { background: color-mix(in srgb, var(--leaf) 13%, var(--paper)); color: var(--leaf-lip); }
-.mp-note.xp { background: color-mix(in srgb, var(--xp) 14%, var(--paper)); color: var(--xp-lip); }
 .mp-note.float { position: absolute; z-index: 2; left: 8px; right: 8px; bottom: calc(100% + 6px); min-height: 40px; box-shadow: 0 6px 16px rgba(40, 24, 10, 0.18); }
 .mp-xp-pic { filter: hue-rotate(48deg) saturate(1.3) brightness(1.08) drop-shadow(0 0 2px var(--sun)); }
 
@@ -186,7 +153,6 @@
 .mp-coach img { width: 100%; height: 100%; object-fit: contain; opacity: 0.85; filter: drop-shadow(0 6px 6px rgba(40, 24, 10, 0.3)); }
 .mp-coach svg { position: absolute; right: -14px; bottom: -16px; width: 38px; height: 38px; color: #fff; filter: drop-shadow(0 0 1.5px var(--ink)) drop-shadow(0 3px 3px rgba(40, 24, 10, 0.4)); }
 /* goods flying (to the Collect button, to the barn's chip, into a place) */
-.mp-fly { position: fixed; z-index: 81; pointer-events: none; object-fit: contain; filter: drop-shadow(0 4px 3px rgba(60, 35, 10, 0.3)); will-change: transform, opacity; }
 
 /* the card that asks before a place is bought */
 .mp-buy-card { z-index: 90; width: min(280px, calc(100vw - 24px)); padding: 12px 14px 14px; border-radius: var(--r-card); color: var(--ink); }
@@ -240,11 +206,6 @@
 .mp-lv-arrow svg { width: 16px; height: 16px; }
 
 /* ── a phone on its side: the sheet on the right, the queue and the recipes side by side ── */
-.mp-right .mp-head { padding: calc(8px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) 8px 22px; gap: 10px; }
-.mp-right .mp-grab { top: 50%; left: 8px; width: 5px; height: 40px; margin: -20px 0 0; }
-.mp-right .mp-head-art { width: 42px; height: 42px; margin: -4px 0; }
-.mp-right .mp-sheet .mp-head h2 { font-size: 21px; }
-.mp-right .mp-sub { margin-top: 3px; }
 .mp-right .mp-body { display: grid; grid-template-columns: clamp(230px, 32vw, 262px) minmax(0, 1fr); align-items: start; }
 .mp-right .mp-queue { margin: 0 0 0 16px; padding: 8px; }
 .mp-right .mp-places { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }

@@ -1,7 +1,7 @@
-// Goods flying on the page (the Web Animations API, over everything): a done job's picture from its place in the queue
-// into the Collect button, then from the button up into the store's chip at the top of the screen (the barn's, where
-// what the machines make is kept). Each on an arc of its own, one a moment after another; nothing for whoever prefers
-// less motion (the counts change all the same).
+// Goods flying on the page (the Web Animations API, over everything; the base's flying-goods helper): a machine's done
+// job from its place in the queue into the Collect button and up into the barn's chip at the top of the screen, an
+// egg from its nest into the barn's chip on the tool's panel. Each on an arc of its own, one a moment after another;
+// nothing for whoever prefers less motion (the counts change all the same).
 
 const still = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
 
@@ -29,7 +29,7 @@ export function flyInto(flights: Flight[], to: DOMRect, o: { size?: number; stag
           const img = document.createElement('img')
           img.src = f.src
           img.alt = ''
-          img.className = 'mp-fly'
+          img.className = 'goods-fly'
           img.setAttribute('aria-hidden', 'true')
           img.draggable = false
           const x = f.from.left + f.from.width / 2
@@ -69,4 +69,29 @@ export function storeChip(store: 'silo' | 'barn'): DOMRect | null {
   if (!el || el.getClientRects().length === 0) return null
   const r = el.getBoundingClientRect()
   return r.width > 0 ? r : null
+}
+
+/** A good's picture flying from one element to another, up to `most` of them (`n` goods: never more pictures than fit
+ *  the eye); `landed(i, k)` as each arrives with how many it stands for (the last carries the rest), so a count can go
+ *  up as they land. Resolves when the last has landed (at once with motion reduced or nothing to fly from or to). */
+export function flyGoods(
+  src: string,
+  n: number,
+  from: Element | null,
+  to: Element | null,
+  o: { most?: number; size?: number; stagger?: number; duration?: number; landed?: (i: number, k: number) => void } = {},
+) {
+  const a = from?.getBoundingClientRect()
+  const b = to?.getBoundingClientRect()
+  const pics = Math.max(0, Math.min(n, o.most ?? 5))
+  const each = (i: number) => (i === pics - 1 ? n - (pics - 1) : 1)
+  if (!a || !b || !b.width || !pics) {
+    if (n > 0) o.landed?.(0, n)
+    return Promise.resolve()
+  }
+  return flyInto(
+    Array.from({ length: pics }, () => ({ src, from: a })),
+    b,
+    { size: o.size, stagger: o.stagger, duration: o.duration, landed: (i) => o.landed?.(i, each(i)) },
+  )
 }

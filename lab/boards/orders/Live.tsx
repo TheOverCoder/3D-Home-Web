@@ -36,9 +36,6 @@ export function Live({ s, act }: { s: OrdersState; act: Act<OrdersState> }) {
       act.set(next)
       return true
     },
-    // "Show me": in the game the board closes and you walk to where the good is made; here it closes (and opens again)
-    show: () => act.close(),
-    canShow: () => true,
   }
   return <OrdersBoard v={viewOf(s)} act={acts} asking={asking} onAsk={setAsking} onClose={act.close} />
 }

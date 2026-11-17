@@ -25,6 +25,18 @@
   --xp-glow: rgba(140, 110, 255, 0.55);
   --night: rgba(48, 34, 24, 0.9);
   --night-line: rgba(255, 255, 255, 0.16);
+  /* the surfaces (the base, below: .paper, .wood, .velvet): the farm's planks, and the night velvet of what is premium
+     with its gold words and sun rim (the premium token set) */
+  --wood: var(--edge);
+  --wood-line: color-mix(in srgb, var(--edge) 78%, var(--ink));
+  --wood-lip: color-mix(in srgb, var(--edge) 60%, var(--ink));
+  --velvet: var(--ink);
+  --velvet-glow: color-mix(in srgb, var(--ink) 72%, var(--sun-lip));
+  --velvet-lip: color-mix(in srgb, var(--ink) 70%, #000);
+  --gold: color-mix(in srgb, var(--sun) 72%, #fff);
+  --gold-rim: color-mix(in srgb, var(--sun) 70%, transparent);
+  /* the berry ribbon (.ribbon): the level card's, a locked thing's level, the daily gift's day */
+  --ribbon: linear-gradient(var(--berry), color-mix(in srgb, var(--berry) 80%, var(--berry-lip)));
   --font-display: 'Fredoka Variable', 'Fredoka', ui-rounded, 'Nunito Variable', system-ui, sans-serif;
   --font-text: 'Nunito Variable', 'Nunito', 'Fredoka Variable', ui-rounded, system-ui, sans-serif;
   --r-sheet: 28px;
@@ -159,15 +171,7 @@ button:focus-visible { outline: 3px solid var(--sun); outline-offset: 2px; }
 /* a thing not open yet (src/ui/LockTag.tsx): its picture faded and grey, and the level it opens at on the level card's
    berry ribbon, notched at both ends, where its price would be — across a card's top corner, or the tag itself */
 .locked .art { filter: grayscale(1) brightness(1.15); opacity: 0.5; }
-.lock-tag {
-  display: inline-block;
-  padding: 3px 14px 4px;
-  color: #fff;
-  background: linear-gradient(var(--berry), color-mix(in srgb, var(--berry) 80%, var(--berry-lip)));
-  font: 600 14px/1.15 var(--font-display);
-  white-space: nowrap;
-  clip-path: polygon(0 0, 100% 0, calc(100% - 8px) 50%, 100% 100%, 0 100%, 8px 50%);
-}
+.lock-tag { display: inline-block; padding: 3px 14px 4px; font: 600 14px/1.15 var(--font-display); white-space: nowrap; }
 .lock-tag.big { padding: 14px 22px 15px; font-size: 17px; }
 .lock-corner { position: absolute; top: 0; left: 0; z-index: 1; width: 78px; height: 78px; overflow: hidden; border-top-left-radius: var(--r-card); pointer-events: none; }
 .lock-corner .lock-tag { position: absolute; top: 16px; left: -30px; width: 124px; padding: 3px 0; text-align: center; font-size: 13px; rotate: -45deg; clip-path: none; box-shadow: 0 2px 4px rgba(60, 20, 10, 0.3); }
@@ -175,6 +179,40 @@ button:focus-visible { outline: 3px solid var(--sun); outline-offset: 2px; }
 .lock-corner.right .lock-tag { left: auto; right: -30px; rotate: 45deg; }
 .farm-grid.compact .lock-corner { width: 64px; height: 64px; }
 .farm-grid.compact .lock-corner .lock-tag { top: 11px; left: -34px; width: 116px; }
+
+/* ───────── the base: the surfaces, the ribbon, chips and the premium look every panel draws with ─────────
+   (CLAUDE.md, "Interface"; the motion that goes with them: src/ui/motion.tsx) */
+/* the berry ribbon, notched at both ends (--notch: how deep) */
+.ribbon { --notch: 8px; color: #fff; background: var(--ribbon); clip-path: polygon(0 0, 100% 0, calc(100% - var(--notch)) 50%, 100% 100%, 0 100%, var(--notch) 50%); }
+/* the farm's planks: a nest box, a crate (the order board's dark wood is its own) */
+.wood { background: repeating-linear-gradient(180deg, var(--wood) 0 26px, var(--wood-line) 26px 28px); box-shadow: 0 4px 0 var(--wood-lip), inset 0 2px 0 rgba(255, 255, 255, 0.18); }
+/* night velvet: what is premium (the remotes) is dark among the paper, its words gold, a sun rim round it */
+.velvet { background: radial-gradient(120% 140% at 20% 0%, var(--velvet-glow), var(--velvet) 62%); color: var(--gold); box-shadow: 0 4px 0 var(--velvet-lip), inset 0 0 0 1.5px var(--gold-rim), 0 8px 16px rgba(40, 24, 10, 0.25); }
+.btn.velvet { --b: var(--velvet); --b-ink: var(--gold); --b-lip: var(--velvet-lip); position: relative; overflow: hidden; isolation: isolate; background: radial-gradient(120% 140% at 20% 0%, var(--velvet-glow), var(--velvet) 62%); box-shadow: 0 4px 0 var(--b-lip), inset 0 0 0 1.5px var(--gold-rim), 0 8px 16px rgba(40, 24, 10, 0.25); }
+.btn.velvet:disabled { --b-ink: color-mix(in srgb, var(--gold) 55%, var(--paper-3)); background: var(--velvet); }
+.crown { width: 20px; height: 20px; flex: none; color: var(--sun); }
+/* two small stars that twinkle on a velvet card (its ::before and ::after): still with less motion */
+.stars { position: relative; isolation: isolate; }
+.stars::before, .stars::after { content: ''; position: absolute; z-index: -1; width: 9px; height: 9px; background: var(--sun); clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); opacity: 0.6; pointer-events: none; }
+.stars::before { left: 46%; top: 12px; }
+.stars::after { left: 64%; bottom: 12px; width: 7px; height: 7px; }
+@media (prefers-reduced-motion: no-preference) {
+  .stars::before, .stars::after { animation: twinkle 2.8s ease-in-out infinite; }
+  .stars::after { animation-delay: 1.3s; }
+}
+@keyframes twinkle { 0%, 100% { opacity: 0.15; transform: scale(0.6); } 50% { opacity: 1; transform: scale(1.15); } }
+/* a light that crosses a thing (Motion's SHIMMER moves it; its parent clips it) */
+.shine { position: absolute; z-index: -1; top: -20%; bottom: -20%; left: 0; width: 38%; background: linear-gradient(100deg, transparent, color-mix(in srgb, var(--sun) 35%, transparent), transparent); transform: translateX(-140%); pointer-events: none; }
+/* a chip you tap (an animal, an upgrade): white on its lip, a finger's height; .on the sun's ring */
+.chip { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 3px 12px 3px 3px; border: 0; border-radius: 999px; background: #fff; color: var(--ink); font: 700 15px/1 var(--font-text); box-shadow: 0 3px 0 var(--paper-3), 0 0 0 1.5px var(--edge-soft); }
+.chip.on { box-shadow: 0 3px 0 var(--sun-lip), 0 0 0 2.5px var(--sun); }
+.chip[aria-disabled='true'] { background: var(--paper-2); box-shadow: none; cursor: default; }
+/* how many, on a picture's corner or after a name: the dark round badge (.item-pic's, bolder) */
+.count { min-width: 24px; height: 24px; padding: 0 6px; display: inline-grid; place-items: center; border-radius: 999px; background: rgba(59, 42, 30, 0.82); color: #fff; font: 800 14px/1 var(--font-text); font-variant-numeric: tabular-nums; }
+.count.none { background: var(--paper-3); color: var(--ink-2); }
+/* a heading inside a sheet: its picture and a few words */
+.sheet-heading { display: flex; align-items: center; gap: 6px; margin: 6px 2px -2px; font: 600 18px/1 var(--font-display); color: var(--ink); }
+.sheet-heading svg { width: 18px; height: 18px; }
 
 .eyebrow { margin: 0 0 6px; font: 600 12px/1.4 var(--font-display); letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); }
 
@@ -1051,6 +1089,55 @@ button.farm-chip-item:focus-visible { outline: 3px solid var(--sun); outline-off
   .farm-shop-blurb { display: none; }
 }
 @keyframes sheet-in { from { transform: translateX(36px); opacity: 0; } }
+
+/* ── the panel sheet (src/ui/PanelSheet.tsx; first the machine panel's, now every sheet's that comes from its edge:
+   the machine panel, the animals' tools): a paper sheet from the bottom upright, on the right sideways, in the middle
+   on a computer; its head the picture, a title of a few words, a row of chips and ✕, swiped away by its top ── */
+.mp-root { position: fixed; inset: 0; z-index: 42; display: grid; overflow: hidden; }
+.mp-shade { position: absolute; inset: 0; background: rgba(40, 24, 10, 0.4); }
+.mp-sheet { position: relative; z-index: 1; display: flex; flex-direction: column; min-height: 0; color: var(--ink); background: var(--paper); border: 3px solid #fff; box-shadow: var(--shadow-sheet); overflow: hidden; outline: none; }
+.mp-sheet img { -webkit-user-drag: none; -webkit-touch-callout: none; user-select: none; }
+/* it is one of the game's panels (.farm-panel: what the game and its tests know a panel by), drawn its own way */
+.mp-sheet.farm-panel { padding: 0; overflow: hidden; animation: none; }
+.mp-sheet .mp-head { margin: 0; }
+.mp-bottom { place-items: end center; }
+.mp-bottom .mp-sheet { width: 100%; max-height: 92dvh; border-radius: var(--r-sheet) var(--r-sheet) 0 0; border-bottom: 0; }
+.mp-right { place-items: stretch end; }
+.mp-right .mp-sheet { width: min(610px, max(76vw, 520px)); height: 100dvh; max-height: none; border-radius: var(--r-sheet) 0 0 var(--r-sheet); border-right: 0; }
+.mp-middle { place-items: center; padding: 16px; }
+.mp-middle .mp-sheet { width: min(620px, 100%); max-height: calc(100dvh - 32px); border-radius: var(--r-sheet); }
+.mp-head { position: relative; display: flex; align-items: center; gap: 12px; padding: 16px 16px 10px; touch-action: none; flex: none; }
+.mp-grab { position: absolute; top: 6px; left: 50%; width: 40px; height: 5px; margin-left: -20px; border-radius: 3px; background: var(--paper-3); pointer-events: none; }
+.mp-middle .mp-grab { display: none; }
+.mp-head-art { width: 56px; height: 56px; margin: -6px 0 -4px; }
+.mp-head-text { flex: 1; min-width: 0; }
+.mp-sheet .mp-head h2 { margin: 0; font: 600 25px/1.1 var(--font-display); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mp-sub { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 5px; min-height: 30px; }
+.mp-round { flex: none; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%; background: var(--paper-2); color: var(--ink); box-shadow: 0 3px 0 var(--paper-3); }
+.mp-round svg { width: 22px; height: 22px; }
+/* a ring of the way to what comes next (src/farm/machine/parts.tsx, Ring) */
+.mp-ring-track { stroke: color-mix(in srgb, var(--paper-3) 80%, var(--edge-soft)); }
+.mp-ring-fill { stroke: var(--sun-lip); }
+.mp-ring-ghost { stroke: var(--sun); opacity: 0.75; }
+/* the sheet's line: what a press did, or why it did nothing */
+.mp-note { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 52px; margin: 0; padding: 6px 14px; border-radius: 999px; font: 700 15px/1.2 var(--font-text); color: var(--ink-2); text-align: center; }
+.mp-note .art { width: 30px; height: 30px; }
+.mp-note svg { width: 18px; height: 18px; flex: none; }
+.mp-note.calm { background: #fff; color: var(--ink); box-shadow: 0 2px 0 var(--paper-3); }
+.mp-count { font: 800 16px/1 var(--font-text); font-variant-numeric: tabular-nums; }
+.mp-note.bad { background: color-mix(in srgb, var(--berry) 12%, var(--paper)); color: var(--berry-lip); }
+.mp-note.good { background: color-mix(in srgb, var(--leaf) 13%, var(--paper)); color: var(--leaf-lip); }
+.mp-note.xp { background: color-mix(in srgb, var(--xp) 14%, var(--paper)); color: var(--xp-lip); }
+.mp-right .mp-head { padding: calc(8px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) 8px 22px; gap: 10px; }
+.mp-right .mp-grab { top: 50%; left: 8px; width: 5px; height: 40px; margin: -20px 0 0; }
+.mp-right .mp-head-art { width: 42px; height: 42px; margin: -4px 0; }
+.mp-right .mp-sheet .mp-head h2 { font-size: 21px; }
+.mp-right .mp-sub { margin-top: 3px; }
+/* PanelSheet's body: its blocks one under another, scrolling inside the sheet (sideways: clear of the notch) */
+.ps-body { display: flex; flex-direction: column; gap: 10px; flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 16px calc(14px + env(safe-area-inset-bottom)); }
+.mp-right .ps-body { gap: 8px; padding: 0 calc(12px + env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) 22px; }
+/* goods flying on the page (src/ui/fly.ts) */
+.goods-fly { position: fixed; z-index: 81; pointer-events: none; object-fit: contain; filter: drop-shadow(0 4px 3px rgba(60, 35, 10, 0.3)); will-change: transform, opacity; }
 @media (pointer: coarse) {
   .farm-key { display: none; }
   /* the room name sits under the coin chip on a touch screen */
@@ -1155,6 +1242,39 @@ button.farm-chip-item:focus-visible { outline: 3px solid var(--sun); outline-off
   -webkit-backdrop-filter: blur(3px);
   backdrop-filter: blur(3px);
 }
+
+/* ── a good's picture that says where it is made (src/ui/GoodPic.tsx): the ItemPic as a button, a finger's size ── */
+.good-pic { position: relative; display: inline-grid; place-items: center; min-width: 44px; min-height: 44px; padding: 0; border: 0; border-radius: 14px; background: none; color: inherit; }
+/* its bubble (the order board's chosen one): its name, how many the farm keeps, where it comes from, one button */
+.ob-pop { z-index: 80; }
+.ob-pop > div { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 150px; max-width: 260px; padding: 8px 12px 10px; border: 2px solid #fff; border-radius: 16px; background: var(--paper); box-shadow: 0 3px 0 var(--paper-3), 0 10px 24px rgba(40, 24, 10, 0.3); color: var(--ink); text-align: center; transform-origin: 50% 100%; }
+.ob-pop-name { font: 600 19px/1.15 var(--font-display); text-transform: capitalize; }
+.ob-pop-state { font: 800 14px/1.3 var(--font-text); color: var(--xp-lip); }
+.ob-pop-state.in { color: var(--leaf); }
+.ob-pop-store { font: 700 13px/1.3 var(--font-text); color: var(--ink-2); }
+.ob-pop-arrow { fill: var(--paper); }
+.ob-src { display: flex; align-items: center; gap: 6px; margin-top: 4px; padding: 4px 8px; border-radius: 12px; background: var(--paper-2); font: 700 14px/1.25 var(--font-text); text-align: left; }
+.ob-src > .art { width: 30px; height: 30px; flex: none; }
+.ob-from { display: inline-flex; align-items: center; gap: 2px; vertical-align: middle; }
+.ob-from .item-pic .art { width: 22px; height: 22px; }
+.ob-show { margin-top: 6px; min-height: 44px; gap: 6px; }
+.ob-show svg { width: 16px; height: 16px; }
+/* a remote's button in it (night velvet): the crown, the panel's picture, its gold words; its waves go out as it is pressed */
+.good-open { align-self: stretch; margin-top: 6px; padding: 0 14px 0 10px; gap: 6px; font-size: 16px; }
+.good-open-pic { width: 26px; height: 26px; }
+.good-waves { position: absolute; inset: 0; z-index: -1; display: grid; place-items: center; pointer-events: none; }
+.good-wave { grid-area: 1 / 1; width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--sun); opacity: 0; }
+/* a panel opened from afar: a dark pill over its sheet with the way back, and "Remote" (sideways beside its head) */
+.remote-tag { position: fixed; z-index: 70; display: flex; align-items: center; gap: 6px; translate: -50% 0; filter: drop-shadow(0 4px 8px rgba(20, 12, 6, 0.4)); }
+.remote-tag.wide { translate: none; flex-direction: column; align-items: flex-end; }
+.remote-back { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; padding: 0 14px 0 8px; border: 0; border-radius: 999px; background: var(--ink); color: var(--paper); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--paper) 30%, transparent); font: 600 16px/1 var(--font-display); }
+.remote-back svg { width: 18px; height: 18px; }
+.remote-word { display: inline-flex; align-items: center; gap: 5px; min-height: 36px; padding: 0 12px 0 9px; border-radius: 999px; font: 700 14px/1 var(--font-text); letter-spacing: 0.02em; }
+.remote-word svg { width: 17px; height: 17px; color: var(--sun); }
+@media (prefers-reduced-motion: no-preference) {
+  .remote-cast { animation: remote-cast 1.6s ease-out 0.4s 2; }
+}
+@keyframes remote-cast { 0% { opacity: 1; } 40% { opacity: 0.35; } 100% { opacity: 1; } }
 
 /* ── a machine asking before it takes its ingredients: a small card over the action button (src/ui/ConfirmCard.tsx) ── */
 .confirm-card {

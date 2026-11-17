@@ -301,7 +301,7 @@ function Next({ v }: { v: LevelView }) {
   return (
     <m.section className={`level-next lf-next${v.gift ? ' gift' : ''}`} variants={ITEM} aria-label={`What level ${next} brings`}>
       <span className="lf-next-light" aria-hidden="true" />
-      <h3>At level {next}</h3>
+      <h3 className="ribbon">At level {next}</h3>
       <div className="lf-next-row">
         {v.gift && (
           <span className="lf-next-garment">

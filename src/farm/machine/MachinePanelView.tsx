@@ -1,5 +1,5 @@
-import { AnimatePresence, m, useAnimate, useDragControls, useReducedMotion, type PanInfo, type Variants } from 'motion/react'
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { AnimatePresence, m, useAnimate, useDragControls, useReducedMotion, type PanInfo } from 'motion/react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { produceById, storeOf } from '../data'
 import { iconUrl } from '../icons'
@@ -7,11 +7,12 @@ import type { MachineActions, MachineView, QueueSlot, RecipeView } from '../mach
 import { art, type ArtId } from '../../ui/art'
 import { burst } from '../../ui/burst'
 import { CaretLeft, Check, Clock, HandGrabbing, LockSimple, X } from '../../ui/glyphs'
-import { MotionRoot, PRESS, SPRING } from '../../ui/motion'
+import { ARRIVE, MotionRoot, PRESS, SHEET, SPRING, swipedAway } from '../../ui/motion'
+import { useSheetMode } from '../../ui/sheetMode'
 import { useDragDrop, type Axis } from './drag'
-import { flyInto, storeChip } from './fly'
+import { flyInto, storeChip } from '../../ui/fly'
 import { LevelChip, LevelPage } from './MachineLevel'
-import { Bump, useCountdown, useSideways } from './parts'
+import { Bump, useCountdown } from './parts'
 import { QueueGrid, type QueueHandlers } from './QueueGrid'
 import { cells as cellsOf, clock, dropOf, nextKeys, nextTarget, queueLeft, timesCan, type CellKind, type Drop, type Hit, type KeyOp, type Payload, type Target } from './queue'
 import { RecipeCard } from './RecipeCard'
@@ -48,31 +49,6 @@ export function MachinePanelView(p: MachinePanelProps) {
 /** The picture at the top of each machine's panel. */
 const PICTURE: Record<string, ArtId> = { oven: 'shortcake', mill: 'sheaf-of-rice', loom: 'yarn' }
 const cap = (t: string) => t[0].toUpperCase() + t.slice(1)
-
-type Mode = 'bottom' | 'right' | 'middle'
-const UPRIGHT = '(max-width: 520px)'
-function useMode(): Mode {
-  const wide = useSideways()
-  const narrow = useSyncExternalStore(
-    (changed) => {
-      const q = matchMedia(UPRIGHT)
-      q.addEventListener('change', changed)
-      return () => q.removeEventListener('change', changed)
-    },
-    () => matchMedia(UPRIGHT).matches,
-  )
-  return wide ? 'right' : narrow ? 'bottom' : 'middle'
-}
-
-const away = (mode: Mode) => (mode === 'right' ? { x: '104%', y: 0, opacity: 1 } : mode === 'bottom' ? { x: 0, y: '104%', opacity: 1 } : { x: 0, y: 40, opacity: 0 })
-const SHEET: Variants = {
-  hidden: away,
-  show: { x: 0, y: 0, opacity: 1, transition: SPRING.sheet },
-  out: (mode: Mode) => ({ ...away(mode), transition: { duration: 0.2, ease: [0.4, 0, 1, 1] } }),
-}
-/** How far (px) or how fast (px/s) a swipe must go for the sheet to close; short of it, it springs back. */
-const FAR = 110
-const FAST = 500
 
 /** Each job's key, following the changes the panel asks for (./queue.ts, nextKeys). */
 function useJobKeys(slots: QueueSlot[]) {
@@ -134,7 +110,7 @@ interface Note {
 }
 
 function Panel({ v, act, coins, onClose, buying }: MachinePanelProps) {
-  const mode = useMode()
+  const mode = useSheetMode()
   const still = useReducedMotion()
   const [page, setPageNow] = useState<'queue' | 'level'>('queue')
   // the sheet keeps its height from one page to the other (the level's page is shorter: the sheet must not jump)
@@ -399,11 +375,7 @@ function Panel({ v, act, coins, onClose, buying }: MachinePanelProps) {
     return () => window.removeEventListener('keydown', key, true)
   })
 
-  const letGo = (_: unknown, i: PanInfo) => {
-    const far = mode === 'right' ? i.offset.x : i.offset.y
-    const fast = mode === 'right' ? i.velocity.x : i.velocity.y
-    if (far > FAR || (far > 24 && fast > FAST)) setLeaving(true)
-  }
+  const letGo = (_: unknown, i: PanInfo) => swipedAway(mode, i) && setLeaving(true)
 
   const total = useCountdown(queueLeft(v.slots))
   const working = v.slots.find((s) => s.state === 'working')
@@ -448,16 +420,7 @@ function Panel({ v, act, coins, onClose, buying }: MachinePanelProps) {
           <i className="mp-grab" aria-hidden="true" />
           <AnimatePresence mode="popLayout" initial={false}>
             {page === 'queue' ? (
-              <m.img
-                key="pic"
-                className="art mp-head-art"
-                src={art(PICTURE[v.id] ?? 'gear')}
-                alt=""
-                initial={{ scale: 0.4, rotate: -20 }}
-                animate={{ scale: 1, rotate: 0 }}
-                exit={{ scale: 0.4, opacity: 0 }}
-                transition={SPRING.soft}
-              />
+              <m.img key="pic" className="art mp-head-art" src={art(PICTURE[v.id] ?? 'gear')} alt="" {...ARRIVE} exit={{ scale: 0.4, opacity: 0 }} />
             ) : (
               <m.button
                 key="back"

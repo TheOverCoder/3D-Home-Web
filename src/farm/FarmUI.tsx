@@ -48,6 +48,8 @@ import { iconUrl } from './icons'
 import { OrdersPanel } from './OrdersPanel'
 import { StorePanel, StoreUpgradePanel } from './StorePanel'
 import { ItemPic } from '../ui/ItemPic'
+import { GoodWaysContext } from '../ui/GoodPic'
+import { GAME_WAYS } from './goods/ways'
 import { LockCorner, LockTag, opensWords, useNope } from '../ui/LockTag'
 import { ARM_MS, Coins, Purse, Shell } from '../ui/Sheet'
 import { art, type ArtId } from '../ui/art'
@@ -515,7 +517,8 @@ export function FarmUI() {
   const editing = useHome((s) => s.editing)
   if (phase !== 'playing') return null
   return (
-    <>
+    // every good's picture in these panels says where it is made, and its way there (src/ui/GoodPic.tsx)
+    <GoodWaysContext.Provider value={GAME_WAYS}>
       {(outdoors || panel || editing) && <TopDash />}
       <EditPanel />
       <DecoratePanel />
@@ -559,6 +562,6 @@ export function FarmUI() {
       <NewsWatcher />
       <DailyWatcher />
       <StepHint />
-    </>
+    </GoodWaysContext.Provider>
   )
 }
