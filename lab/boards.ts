@@ -13,10 +13,16 @@ import { newsBoard } from './boards/news'
 import { dailyBoard } from './boards/daily'
 import { unlocksBoard } from './boards/unlocks'
 import { firstStepsBoard } from './boards/first-steps'
+import { animalToolsBoard } from './boards/animal-tools'
+import { shopAnimalsBoard } from './boards/shop-animals'
+import { premiumRemotesBoard } from './boards/premium-remotes'
 
 /** Every board of the lab, newest first. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const BOARDS: Board<any>[] = [
+  premiumRemotesBoard,
+  shopAnimalsBoard,
+  animalToolsBoard,
   firstStepsBoard,
   unlocksBoard,
   dailyBoard,

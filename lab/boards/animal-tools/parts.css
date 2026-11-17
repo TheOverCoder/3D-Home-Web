@@ -1,0 +1,208 @@
+/* What the tool panels of the animal-tools board share (./parts.tsx): the machine panel's sheet (MachinePanel.css), a
+   little narrower sideways (a tool has less to show than a queue and its recipes), its head with the per-tap chip and
+   the barn's, the two upgrades as chips, the line under them. Every rule under .at-…; each variant's own middle is in
+   its own file (.v-animal-tools-a/b/c). */
+
+.at-root .at-sheet {
+  overflow: hidden;
+}
+.at-root.mp-right .at-sheet {
+  width: min(500px, 62vw);
+}
+.at-root.mp-middle .at-sheet {
+  width: min(560px, 100%);
+}
+.at-head-art {
+  width: 56px;
+  height: 56px;
+  margin: -6px 0 -4px;
+}
+.mp-right .at-head-art {
+  width: 42px;
+  height: 42px;
+  margin: -4px 0;
+}
+.at-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 16px calc(14px + env(safe-area-inset-bottom));
+}
+.mp-right .at-body {
+  padding: 0 calc(12px + env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) 22px;
+  gap: 8px;
+}
+
+/* the head's chips: how many a tap takes, and the barn (red when there is no room) */
+.at-pertap {
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.at-pertap img {
+  width: 22px;
+  height: 22px;
+  margin-block: -3px;
+}
+.at-pertap b {
+  font: 800 15px/1 var(--font-text);
+}
+.at-pertap-word {
+  font: 700 13px/1 var(--font-text);
+  color: var(--ink-2);
+}
+.at-barn {
+  gap: 3px;
+  font-variant-numeric: tabular-nums;
+}
+.at-barn img {
+  width: 24px;
+  height: 24px;
+  margin-block: -4px;
+}
+.at-barn b {
+  display: inline-block;
+  font: 800 15px/1 var(--font-text);
+}
+.at-barn-of {
+  font: 700 13px/1 var(--font-text);
+  color: var(--ink-2);
+}
+.at-barn.full {
+  background: #fde1da;
+  color: #9a2c1c;
+}
+.at-barn.full .at-barn-of {
+  color: #9a2c1c;
+}
+
+/* the two upgrades: a chip each, now → next and the price, and its steps as small pegs */
+.at-ups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.at-up {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 3px 5px;
+  min-height: 52px;
+  padding: 6px 8px 12px;
+  border: 0;
+  border-radius: 16px;
+  background: #fff;
+  color: var(--ink);
+  font: 700 14px/1.15 var(--font-text);
+  box-shadow:
+    0 3px 0 var(--paper-3),
+    0 0 0 1.5px var(--edge-soft);
+}
+.at-up .effect-arrow {
+  width: 13px;
+  height: 13px;
+  opacity: 0.55;
+}
+.at-up-now {
+  color: var(--ink-2);
+}
+.at-up-next {
+  font-weight: 800;
+}
+.at-up-price {
+  display: inline-flex;
+  padding: 2px 7px 2px 3px;
+  border-radius: 999px;
+  background: var(--sun);
+  box-shadow: 0 2px 0 var(--sun-lip);
+  font-size: 14px;
+}
+.at-up-price .farm-coins img {
+  width: 18px;
+  height: 18px;
+}
+.at-up.max {
+  background: var(--paper-2);
+  box-shadow: none;
+  cursor: default;
+}
+.at-up .tag.ok {
+  padding: 2px 8px;
+  font-size: 13px;
+}
+.at-up .tag.ok svg {
+  width: 14px;
+  height: 14px;
+}
+.at-up-steps {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 5px;
+  display: flex;
+  gap: 2px;
+}
+.at-up-steps i {
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--paper-3);
+}
+.at-up-steps i.on {
+  background: var(--sun-lip);
+}
+
+/* the line under them: what a tap did, or what waits */
+.at-said {
+  min-height: 48px;
+  display: grid;
+}
+.at-said .mp-note {
+  min-height: 44px;
+  font-size: 15px;
+}
+.mp-right .at-said {
+  min-height: 44px;
+}
+.mp-right .at-said .mp-note {
+  min-height: 40px;
+  font-size: 14px;
+}
+
+/* a target that can take nothing now (no room in the barn): it says so by its look and still answers a tap */
+.at-off {
+  filter: grayscale(0.6);
+  opacity: 0.62;
+}
+
+/* the prompt of today: the round action button and the line over it (the game's classes), placed as the game would */
+.at-today {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+.at-today .act-btn,
+.at-today .prompt {
+  pointer-events: auto;
+}
+/* on a computer there is no round button: the line over it is the button */
+@media (pointer: fine) {
+  .at-today .act-btn {
+    display: none;
+  }
+}
+
+/* the ladder card's picture, with room for a badge on its corner */
+.at-ask-pic {
+  position: relative;
+  flex: none;
+  display: grid;
+}
+.at-ask {
+  z-index: 60;
+}

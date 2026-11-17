@@ -1,0 +1,234 @@
+/* B · a band per animal (./ShopAnimalsB.tsx): the kind on the left, then a road of four round stops joined by a line
+   (green as far as it is bought), the next stop ringed in sun and breathing, locked ones greyed with their lock. */
+
+.v-shop-animals-b {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.v-shop-animals-b .sab-jump {
+  position: sticky;
+  top: -2px;
+  z-index: 2;
+  display: flex;
+  gap: 6px;
+  padding: 2px 0 6px;
+  background: linear-gradient(var(--paper) 80%, transparent);
+}
+.v-shop-animals-b .sab-jump button {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--paper-2);
+  color: var(--ink);
+  font: 600 15px/1 var(--font-display);
+  box-shadow: 0 2px 0 var(--paper-3);
+  transition: transform var(--t-release) var(--ease-pop);
+}
+.v-shop-animals-b .sab-jump button:active {
+  transform: scale(0.95);
+  transition-duration: var(--t-press);
+}
+.v-shop-animals-b .sab-jump img {
+  width: 22px;
+  height: 22px;
+}
+.v-shop-animals-b .sab-crown {
+  width: 18px;
+  height: 18px;
+  color: var(--sun-lip);
+}
+
+.v-shop-animals-b .sab-band {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  align-items: start;
+  gap: 6px;
+  padding: 10px 8px 8px 6px;
+  border-radius: 22px;
+  background: var(--paper-2);
+}
+.v-shop-animals-b .sab-who {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding-top: 2px;
+}
+.v-shop-animals-b .sab-who img {
+  width: 40px;
+  height: 40px;
+}
+.v-shop-animals-b .sab-who b {
+  font: 600 15px/1.1 var(--font-display);
+}
+.v-shop-animals-b .sab-count {
+  font: 800 13px/1 var(--font-text);
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.v-shop-animals-b .sab-road {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.v-shop-animals-b .sab-stop {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+}
+/* the line from this stop to the next: green as far as it is bought */
+.v-shop-animals-b .sab-stop:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  top: 25px;
+  left: calc(50% + 26px);
+  right: calc(-50% + 26px);
+  height: 5px;
+  border-radius: 3px;
+  background: var(--paper-3);
+}
+.v-shop-animals-b .sab-stop.done:not(:last-child)::after {
+  background: var(--leaf);
+}
+.v-shop-animals-b .sab-dot {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow:
+    0 3px 0 var(--paper-3),
+    0 0 0 1.5px var(--edge-soft);
+}
+.v-shop-animals-b .sab-dot img {
+  width: 34px;
+  height: 34px;
+}
+.v-shop-animals-b .sab-dot img.sab-small {
+  width: 26px;
+  height: 26px;
+  margin-top: -12px;
+}
+.v-shop-animals-b .sab-k {
+  position: absolute;
+  bottom: 3px;
+  font: 800 13px/1 var(--font-text);
+  color: var(--ink-2);
+}
+.v-shop-animals-b .sab-plus {
+  position: absolute;
+  left: -3px;
+  top: -3px;
+  width: 20px;
+  height: 20px;
+  padding: 3px;
+  border-radius: 50%;
+  background: var(--leaf);
+  color: #fff;
+  box-shadow: 0 0 0 2px #fff;
+}
+.v-shop-animals-b .sab-mark {
+  position: absolute;
+  right: -4px;
+  top: -4px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px #fff;
+}
+.v-shop-animals-b .sab-mark svg {
+  width: 13px;
+  height: 13px;
+}
+.v-shop-animals-b .sab-mark.ok {
+  background: var(--leaf);
+  color: #fff;
+}
+.v-shop-animals-b .sab-mark.lock {
+  background: var(--ink-2);
+  color: #fff;
+}
+.v-shop-animals-b .sab-stop.done .sab-dot {
+  background: color-mix(in srgb, var(--leaf) 12%, #fff);
+  box-shadow: 0 3px 0 color-mix(in srgb, var(--leaf) 30%, var(--paper-3));
+}
+.v-shop-animals-b .sab-stop.locked .sab-dot img {
+  opacity: 0.45;
+  filter: grayscale(0.7);
+}
+/* the next to buy: a sun ring that breathes */
+.v-shop-animals-b .sab-stop.next .sab-dot {
+  box-shadow:
+    0 3px 0 var(--sun-lip),
+    0 0 0 3px var(--sun),
+    0 0 16px color-mix(in srgb, var(--sun) 60%, transparent);
+  animation: sab-breathe 2.4s ease-in-out infinite;
+}
+@keyframes sab-breathe {
+  50% {
+    box-shadow:
+      0 3px 0 var(--sun-lip),
+      0 0 0 5px var(--sun),
+      0 0 22px color-mix(in srgb, var(--sun) 70%, transparent);
+  }
+}
+.v-shop-animals-b .sab-say {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 700 13px/1.15 var(--font-text);
+  color: var(--ink);
+}
+.v-shop-animals-b .sab-price {
+  display: inline-flex;
+  padding: 2px 8px 2px 4px;
+  border-radius: 999px;
+  background: var(--sun);
+  box-shadow: 0 2px 0 var(--sun-lip);
+  font-size: 13px;
+}
+.v-shop-animals-b .sab-price .farm-coins img {
+  width: 17px;
+  height: 17px;
+}
+.v-shop-animals-b .sab-stop:not(.next) .sab-price {
+  background: #fff;
+  box-shadow: 0 0 0 1.5px var(--edge-soft);
+}
+.v-shop-animals-b .sab-why {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 700 13px/1.15 var(--font-text);
+  color: var(--ink-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v-shop-animals-b .sab-stop.next .sab-dot {
+    animation: none;
+  }
+}
