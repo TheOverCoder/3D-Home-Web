@@ -8,7 +8,7 @@ import { DID, NOPE } from './motion'
 
 /** The ribbon: "Level N", or words of its own ("Opens at level 5"). `big`: where a button stood (a card's Build). */
 export function LockTag({ level, words, big }: { level: number; words?: string; big?: boolean }) {
-  return <span className={`lock-tag${big ? ' big' : ''}`}>{words ?? `Level ${level}`}</span>
+  return <span className={`lock-tag ribbon${big ? ' big' : ''}`}>{words ?? `Level ${level}`}</span>
 }
 
 /** The ribbon across a card's top corner: its left one; a row's (`right`) its right one, where its button was. */

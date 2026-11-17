@@ -86,6 +86,52 @@ export const SIGH = { keyframes: { y: [0, 5, 5, 0], scaleY: [1, 0.94, 0.94, 1] }
 /** A long press: how long a finger rests before it counts as a hold (shorter is a tap). */
 export const HOLD_MS = 450
 
+// The presets the panels share (the base: CLAUDE.md, "Interface"). Each is named for what it says, not how it moves.
+
+/** A target goods are taken from (a nest, the pail, an animal's chip): it squishes under the finger and springs back. */
+export const SQUISH = { whileTap: { scale: 0.92, y: 2 }, transition: SPRING.pop } as const
+/** A good's picture tapped to say where it is made: it tips, as a thing picked up to look at. */
+export const TIP = { whileTap: { scale: 0.9, rotate: -6 }, transition: SPRING.pop } as const
+/** A panel's picture at its top as the panel comes in: it turns in from small (`<m.img {...ARRIVE}>`). */
+export const ARRIVE = { initial: { scale: 0.4, rotate: -20 }, animate: { scale: 1, rotate: 0 }, transition: SPRING.soft } as const
+/** Something that appears beside what it is about (a good's bubble, a line of a panel): from a little smaller and
+ *  lower, popping into place. */
+export const REVEAL = { initial: { opacity: 0, scale: 0.85, y: 6 }, animate: { opacity: 1, scale: 1, y: 0 }, transition: SPRING.pop } as const
+/** Cards dealt one after another into a row (`custom` each card's place): each slides in a moment after the one before
+ *  (`initial="hidden" animate="show"`). */
+export const DEAL: Variants = {
+  hidden: { opacity: 0, x: 30 },
+  show: (i: number = 0) => ({ opacity: 1, x: 0, transition: { ...SPRING.pop, delay: 0.06 * i } }),
+}
+/** A card turned over to show what changed on it (a step bought: its new words): `animate(el, FLIP.keyframes,
+ *  FLIP.options)`. */
+export const FLIP = { keyframes: { rotateX: [80, 0], opacity: [0.3, 1] }, options: { duration: 0.42, ease: EASE.pop } } as const
+/** A slow light that crosses a premium thing again and again (`<m.i className="shine" {...SHIMMER(delay)}>`, in a
+ *  parent that clips it): it stands still, out of sight, for whoever prefers less motion. */
+export const SHIMMER = (delay = 0.6) => ({
+  initial: { x: '-140%' },
+  animate: { x: ['-140%', '240%'] },
+  transition: { duration: 1.2, ease: 'easeInOut', repeat: Infinity, repeatDelay: 3.2, delay } satisfies Transition,
+})
+
+/** How a sheet stands: at the bottom (a phone upright), on the right (a phone on its side), in the middle (a computer). */
+export type SheetMode = 'bottom' | 'right' | 'middle'
+const away = (mode: SheetMode) => (mode === 'right' ? { x: '104%', y: 0, opacity: 1 } : mode === 'bottom' ? { x: 0, y: '104%', opacity: 1 } : { x: 0, y: 40, opacity: 0 })
+/** A sheet coming in on the sheet's spring from its edge and going out quicker the same way (`custom` its mode;
+ *  `initial="hidden"`, `animate={leaving ? 'out' : 'show'}`). */
+export const SHEET: Variants = {
+  hidden: away,
+  show: { x: 0, y: 0, opacity: 1, transition: SPRING.sheet },
+  out: (mode: SheetMode) => ({ ...away(mode), transition: { duration: 0.2, ease: [0.4, 0, 1, 1] } }),
+}
+/** Whether a finger's swipe of a sheet (down upright, right sideways) went far enough or fast enough to close it;
+ *  short of it, the sheet springs back. */
+export function swipedAway(mode: SheetMode, i: { offset: { x: number; y: number }; velocity: { x: number; y: number } }) {
+  const far = mode === 'right' ? i.offset.x : i.offset.y
+  const fast = mode === 'right' ? i.velocity.x : i.velocity.y
+  return far > 110 || (far > 24 && fast > 500)
+}
+
 /** A number that counts to `to` (from `from`, 0 at first): the XP into a level, the coins of a claim. */
 export function CountUp({ to, from = 0, duration = 0.9, format = whole }: { to: number; from?: number; duration?: number; format?: (n: number) => string }) {
   const still = useReducedMotion()

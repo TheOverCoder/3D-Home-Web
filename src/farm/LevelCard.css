@@ -109,7 +109,7 @@
   isolation: isolate;
 }
 .level-card .lf-next-light { position: absolute; z-index: -1; left: 50%; top: 52%; width: 360px; height: 360px; margin: -180px 0 0 -180px; border-radius: 50%; background: repeating-conic-gradient(rgba(255, 255, 255, 0.55) 0 9deg, transparent 9deg 24deg); -webkit-mask: radial-gradient(circle, #000 10%, transparent 60%); mask: radial-gradient(circle, #000 10%, transparent 60%); animation: level-card-spin 40s linear infinite; }
-.level-card .lf-next h3 { margin: 0; padding: 3px 18px 4px; color: #fff; background: linear-gradient(var(--berry), color-mix(in srgb, var(--berry) 80%, var(--berry-lip))); font: 600 16px/1.2 var(--font-display); clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 50%, 100% 100%, 0 100%, 10px 50%); white-space: nowrap; }
+.level-card .lf-next h3 { --notch: 10px; margin: 0; padding: 3px 18px 4px; font: 600 16px/1.2 var(--font-display); white-space: nowrap; }
 .level-card .lf-next-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 14px; }
 .level-card .lf-next-garment .art { width: 76px; height: 76px; filter: drop-shadow(0 6px 6px rgba(120, 60, 10, 0.25)); }
 .level-card .lf-next-coins { display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px 4px 6px; border-radius: 999px; background: #fff; box-shadow: 0 3px 0 var(--paper-3); font: 900 20px/1 var(--font-text); color: var(--ink); font-variant-numeric: tabular-nums; }

@@ -125,7 +125,8 @@ async function plenty(page: Page) {
     f.setHour(12)
     f.freezeDay(true)
     f.state.coins = 100_000
-    // every herd full and its tool the farm's (src/farm/ToolStands.tsx: each at its fence, its gear opens its skins shop)
+    // every herd full and its tool the farm's (src/farm/ToolStands.tsx: each at its fence; its place takes the animals'
+    // own offers and opens the tool's panel, src/farm/useTool.ts, whose Skins opens its skins shop)
     for (let i = 0; i < 10; i++) for (const id of ['hen', 'cow', 'sheep']) f.buy(id)
     for (const kind of ['hens', 'cows', 'sheep']) f.buyLadder(`${kind}-tool`)
     f.state.storage.silo = 30

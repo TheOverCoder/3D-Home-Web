@@ -93,7 +93,9 @@ finger, with its states to switch between.
 (`still: 'yard'`, or `'none'` for a page of its own), the screens it is for (`devices`, upright and sideways when not
 given) and where it stands (`status`, `chosen`, and `round`: what changed since the last one). Each variant is a
 component and a CSS file of its own in that folder, every rule under a class of its own (`.v-level-a …`), with a `note`
-(what is different) and a `motion` line (what moves and when). Its `render(state, act)` draws it; `act.set` changes the
+(what is different) and a `motion` line (what moves and when). A variant draws with the game's base (CLAUDE.md,
+"Interface": the presets of `src/ui/motion.tsx`, the surfaces and the premium tokens of `src/styles.css`, `PanelSheet`,
+`GoodPic`, `flyGoods`) rather than its own copies, so what is chosen is built as it was seen. Its `render(state, act)` draws it; `act.set` changes the
 state as a press would (a claim), `act.close` lets it go out and opens it again.
 
 Who works here: the interface designer (`.claude/agents/ui-designer.md`).

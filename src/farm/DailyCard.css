@@ -133,11 +133,9 @@
   position: relative;
   z-index: 1;
   margin-top: -6px;
+  --notch: 10px;
   padding: 3px 20px 4px;
-  color: #fff;
-  background: linear-gradient(var(--berry), color-mix(in srgb, var(--berry) 80%, var(--berry-lip)));
   font: 600 17px/1.2 var(--font-display);
-  clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 50%, 100% 100%, 0 100%, 10px 50%);
   white-space: nowrap;
 }
 

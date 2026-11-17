@@ -388,22 +388,26 @@ describe('the tool panel’s view', () => {
       name: 'Milk bucket',
       good: 'milk',
       look: 'pail',
+      art: 'bucket',
+      animal: 'cow',
       spots: [
-        { name: 'Bella', has: 3, most: 3, next: 0 },
-        { name: 'Mazal', has: 1, most: 3, next: 0.5 },
-        { name: 'Daisy', has: 0, most: 3, next: 0 },
+        { name: 'Bella', has: 3, most: 3, next: 0, seconds: 0 },
+        { name: 'Mazal', has: 1, most: 3, next: 0.5, seconds: PRODUCERS.cows.every - 22.5 + 0.5 },
+        { name: 'Daisy', has: 0, most: 3, next: 0, seconds: PRODUCERS.cows.every },
       ],
       perTap: 1,
       room: 7,
       store: 'barn',
+      stored: capacity('barn') - 7,
+      capacity: capacity('barn'),
       ladders: [
-        { id: 'cows-hold', now: '3 a cow', next: '4 a cow', price: TOOL.hold.price[0] },
-        { id: 'cows-tap', now: '1 a tap', next: '2 a tap', price: TOOL.tap.price[0] },
+        { id: 'cows-hold', part: 'hold', name: 'Holds more', now: '3 a cow', next: '4 a cow', price: TOOL.hold.price[0], k: 0, steps: TOOL.hold.to - TOOL.hold.from },
+        { id: 'cows-tap', part: 'tap', name: 'More a tap', now: '1 a tap', next: '2 a tap', price: TOOL.tap.price[0], k: 0, steps: TOOL.tap.to - TOOL.tap.from },
       ],
     })
     ownTool('hens')
     expect(toolView('hens').spots.map((s) => s.name)).toEqual(['Nest 1', 'Nest 2', 'Nest 3', 'Nest 4', 'Nest 5', 'Nest 6'])
     for (let k = 0; k < LADDERS['hens-tap'].levels; k++) buyLadder('hens-tap')
-    expect(toolView('hens').ladders[1]).toEqual({ id: 'hens-tap', now: '10 a tap', next: null, price: ladderNextPrice('hens-tap') })
+    expect(toolView('hens').ladders[1]).toMatchObject({ id: 'hens-tap', now: '10 a tap', next: null, price: ladderNextPrice('hens-tap'), k: LADDERS['hens-tap'].levels })
   })
 })

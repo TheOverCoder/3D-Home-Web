@@ -17,9 +17,9 @@ import './SkinShop.css'
 // A tool's skins shop (the user's request on the tools' board: each player picks how each tool looks, and buys the
 // looks in a shop of their own): the tool's three skins side by side on round stages, each with its picture, its name and
 // one button — Worn, Wear, or its price, which opens the card that asks first (its picture big, Cancel, an armed Buy).
-// Opened from the gear on the tool at its fence (src/farm/ToolStands.tsx) or from the tool's panel
-// (`openPanel({ kind: 'skins', tool })`). How it looks is SkinShopCard and SkinBuyCard, fed only with ./skinsView.ts;
-// SkinShop reads the farm and does the buying (src/farm/state.ts: buySkin, wearSkin).
+// Opened from the tool's panel (its Skins: `openPanel({ kind: 'skins', tool, from })`, its ✕ back there). How it looks
+// is SkinShopCard and SkinBuyCard, fed only with ./skinsView.ts; SkinShop reads the farm and does the buying
+// (src/farm/state.ts: buySkin, wearSkin).
 
 /** A coins chip, from the view (the purse as the panel was drawn). */
 const CoinChip = ({ n }: { n: number }) => (

@@ -1,0 +1,144 @@
+/* ───────── an animal's tool, its panel (./ToolPanelView.tsx; the lab's animal-tools board, A) ─────────
+   The panel sheet (src/styles.css) a little narrower sideways (a tool has less to show than a machine's queue): the
+   place itself — the coop's nest box under its roof, the pail on the grass, the basket on the straw — drawn from the
+   tokens (the wood is the base's .wood, the straw the sun's), the herd as chips, the two upgrades as chips, the line.
+   Sideways the place stands on the left of the sheet and the upgrades and the line on its right. Every rule under
+   .tool-panel. Loops only for whoever does not prefer less motion. */
+
+.tool-panel.mp-right .mp-sheet { width: min(560px, 66vw); }
+.tool-panel.mp-middle .mp-sheet { width: min(560px, 100%); }
+.tool-panel .ps-body { gap: 12px; }
+
+/* the head's chips: how many a tap takes (the good says where it comes from), and the barn (red with no room) */
+.tool-panel .tp-pertap { gap: 3px; padding-block: 0; font-variant-numeric: tabular-nums; }
+.tool-panel .tp-pertap b { font: 800 15px/1 var(--font-text); }
+.tool-panel .tp-pertap-word { font: 700 13px/1 var(--font-text); color: var(--ink-2); }
+.tool-panel .tp-good { min-width: 32px; min-height: 32px; margin: -4px -2px -4px -4px; }
+.tool-panel .tp-good .item-pic .art { width: 26px; height: 26px; }
+/* (a finger's room round the small picture) */
+.tool-panel .tp-good::before { content: ''; position: absolute; inset: -6px; }
+.tool-panel .tp-barn { gap: 3px; font-variant-numeric: tabular-nums; }
+.tool-panel .tp-barn img { width: 24px; height: 24px; margin-block: -4px; }
+.tool-panel .tp-barn b { display: inline-block; font: 800 15px/1 var(--font-text); }
+.tool-panel .tp-barn-of { font: 700 13px/1 var(--font-text); opacity: 0.8; }
+
+.tool-panel .tp-stage { display: flex; flex-direction: column; gap: 10px; }
+.tool-panel .tp-side { display: flex; flex-direction: column; gap: 10px; }
+.tool-panel .tp-hero { position: relative; }
+/* no room for what waits: the place goes grey and still answers a tap (with why); the ribbon across it says so */
+.tool-panel .tp-hero.off .tp-box, .tool-panel .tp-hero.off .tp-vessel > span:not(.tp-total), .tool-panel .tp-animal.off .tp-animal-pic { filter: grayscale(0.65); opacity: 0.7; }
+.tool-panel .tp-full { position: absolute; left: 50%; top: 42%; z-index: 2; translate: -50% -50%; rotate: -4deg; padding: 6px 24px 7px; font: 600 20px/1.1 var(--font-display); white-space: nowrap; pointer-events: none; filter: drop-shadow(0 4px 6px rgba(60, 20, 10, 0.35)); --notch: 10px; }
+
+/* ── the coop: a little roof of shingles over a nest box of planks, a dark cubby for every hen ── */
+.tool-panel .tp-coop { position: relative; padding-top: 28px; }
+.tool-panel .tp-roof { position: absolute; left: -8px; right: -8px; top: 0; height: 36px; background: repeating-linear-gradient(180deg, transparent 0 10px, rgba(60, 10, 0, 0.18) 10px 12px), repeating-linear-gradient(90deg, var(--berry) 0 18px, color-mix(in srgb, var(--berry) 82%, var(--berry-lip)) 18px 20px); clip-path: polygon(0 100%, 20% 0, 80% 0, 100% 100%); box-shadow: inset 0 -4px 0 var(--berry-lip); }
+.tool-panel .tp-box { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 10px; border-radius: 6px 6px 20px 20px; }
+.tool-panel .tp-nest { position: relative; aspect-ratio: 1 / 0.92; min-height: 84px; padding: 0; border: 0; border-radius: 16px; background: radial-gradient(ellipse at 50% 20%, color-mix(in srgb, var(--ink) 62%, var(--edge)), var(--ink)); box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.45), 0 2px 0 rgba(255, 255, 255, 0.16); overflow: hidden; color: #fff; }
+.tool-panel .tp-straw { position: absolute; left: 9%; right: 9%; bottom: 8%; height: 36%; border-radius: 50%; background: radial-gradient(ellipse at 50% 35%, var(--sun) 0 35%, var(--sun-lip) 80%); box-shadow: inset 0 -4px 0 rgba(110, 70, 10, 0.35); }
+.tool-panel .tp-nest.empty .tp-straw { opacity: 0.75; }
+.tool-panel .tp-eggs { position: absolute; left: 0; right: 0; bottom: 20%; height: 46%; }
+.tool-panel .tp-egg { position: absolute; width: 34%; height: auto; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.35)); }
+.tool-panel .tp-egg.e0 { left: 33%; bottom: 0; }
+.tool-panel .tp-egg.e1 { left: 15%; bottom: 4%; rotate: -14deg; }
+.tool-panel .tp-egg.e2 { left: 51%; bottom: 4%; rotate: 12deg; }
+.tool-panel .tp-egg.e3 { left: 33%; bottom: 34%; rotate: 6deg; }
+/* how many, always (0 too, quieter): the dark round badge */
+.tool-panel .tp-n { position: absolute; right: 6px; bottom: 6px; box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.6); }
+.tool-panel .tp-nest .tp-n.none { background: rgba(255, 255, 255, 0.25); color: #fff; }
+/* the hen, laying: her ring fills to her next egg */
+.tool-panel .tp-hen { position: absolute; left: 5px; top: 5px; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: color-mix(in srgb, var(--paper) 92%, transparent); }
+.tool-panel .tp-hen img { width: 22px; height: 22px; }
+.tool-panel .tp-ring { position: absolute; inset: 0; }
+/* the time to her next, at a glance (Full once it holds all it can) */
+.tool-panel .tp-when { display: inline-flex; align-items: center; gap: 2px; font: 800 13px/1 var(--font-text); font-variant-numeric: tabular-nums; }
+.tool-panel .tp-when svg { width: 12px; height: 12px; }
+.tool-panel .tp-nest .tp-when { position: absolute; right: 6px; top: 8px; padding: 3px 6px; border-radius: 999px; background: rgba(0, 0, 0, 0.35); color: #fff; }
+.tool-panel .tp-nest .tp-when.full { background: var(--sun); color: var(--ink); }
+.tool-panel .tp-nest.full { box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.45), 0 0 0 3px var(--sun), 0 0 14px color-mix(in srgb, var(--sun) 60%, transparent); }
+
+/* ── the pail and the basket: one big target with the herd's total on it ── */
+.tool-panel .tp-vessel { position: relative; display: grid; place-items: center; width: 100%; min-height: 188px; padding: 10px 0 8px; border: 0; border-radius: 24px; color: var(--ink); box-shadow: inset 0 2px 0 rgba(158, 123, 87, 0.16); overflow: hidden; }
+/* the pail stands on the grass, the basket on the straw */
+.tool-panel.tp-pail .tp-vessel { background: radial-gradient(ellipse 70% 32% at 50% 88%, color-mix(in srgb, var(--leaf) 48%, var(--paper-2)), transparent 70%), radial-gradient(ellipse at 50% 70%, color-mix(in srgb, var(--leaf) 18%, var(--paper-2)), var(--paper-2) 70%); }
+.tool-panel.tp-shears .tp-vessel { background: radial-gradient(ellipse 70% 30% at 50% 90%, color-mix(in srgb, var(--sun) 50%, var(--paper-2)), transparent 70%), var(--paper-2); }
+.tool-panel .tp-total { position: absolute; right: 12px; top: 10px; display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px 4px 5px; border-radius: 999px; background: #fff; box-shadow: 0 2px 0 var(--paper-3); font: 800 19px/1 var(--font-text); font-variant-numeric: tabular-nums; }
+.tool-panel .tp-total img { width: 28px; height: 28px; }
+.tool-panel .tp-total b { display: inline-block; }
+.tool-panel .tp-vessel.empty .tp-total { color: var(--ink-2); }
+.tool-panel .tp-vessel.full .tp-total { background: var(--sun); box-shadow: 0 2px 0 var(--sun-lip); }
+.tool-panel .tp-top { position: absolute; left: 50%; top: 22%; width: 1px; height: 1px; }
+/* the pail: wooden staves, two hoops, a handle, the milk rising inside with a little froth */
+.tool-panel .tp-pail { position: relative; display: block; width: 132px; height: 150px; }
+.tool-panel .tp-handle { position: absolute; left: 14px; right: 14px; top: 0; height: 70px; border: 5px solid var(--ink-2); border-bottom: 0; border-radius: 60px 60px 0 0; }
+.tool-panel .tp-staves { position: absolute; left: 0; right: 0; bottom: 0; height: 112px; clip-path: polygon(0 0, 100% 0, 88% 100%, 12% 100%); background: repeating-linear-gradient(90deg, var(--wood) 0 20px, var(--wood-line) 20px 22px); overflow: hidden; }
+.tool-panel .tp-milk { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(180deg, #fff, var(--paper) 60%); box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.9), inset 0 7px 0 -3px color-mix(in srgb, var(--paper-3) 60%, #fff); opacity: 0.95; }
+.tool-panel .tp-hoop { position: absolute; left: 0; right: 0; height: 7px; background: var(--ink-2); }
+.tool-panel .tp-hoop.h1 { top: 16px; }
+.tool-panel .tp-hoop.h2 { bottom: 16px; }
+/* the basket of wool, the shears over it (they snip as a tap takes) */
+.tool-panel .tp-basket { position: relative; display: block; width: 168px; height: 160px; }
+.tool-panel .tp-basket-pic { position: absolute; left: 14px; bottom: 0; width: 140px; height: 140px; }
+.tool-panel .tp-wool { position: absolute; left: 24px; right: 24px; bottom: 74px; height: 58px; }
+.tool-panel .tp-wool img { position: absolute; width: 46px; height: 46px; filter: drop-shadow(0 2px 2px rgba(60, 35, 10, 0.25)); }
+.tool-panel .tp-wool .w0 { left: 34%; bottom: 0; }
+.tool-panel .tp-wool .w1 { left: 4%; bottom: 0; }
+.tool-panel .tp-wool .w2 { left: 64%; bottom: 0; }
+.tool-panel .tp-wool .w3 { left: 18%; bottom: 22px; }
+.tool-panel .tp-wool .w4 { left: 50%; bottom: 22px; }
+.tool-panel .tp-wool .w5 { left: 34%; bottom: 40px; }
+.tool-panel .tp-wool .w6 { left: 6%; bottom: 40px; }
+.tool-panel .tp-shears { position: absolute; right: -16px; top: -6px; width: 64px; height: 64px; transform-origin: 30% 70%; }
+.tool-panel .tp-shears img { width: 100%; height: 100%; rotate: 30deg; filter: drop-shadow(0 3px 2px rgba(60, 35, 10, 0.3)); }
+
+/* the herd as chips: the animal in her ring, her name and her time, what waits */
+.tool-panel .tp-herd { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.tool-panel .tp-animal { min-height: 52px; padding: 3px 6px 3px 3px; gap: 6px; }
+.tool-panel .tp-animal-pic { position: relative; display: grid; place-items: center; width: 42px; height: 42px; flex: none; }
+.tool-panel .tp-animal-pic img { width: 26px; height: 26px; }
+.tool-panel .tp-animal-text { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+.tool-panel .tp-animal-name { font: 700 15px/1 var(--font-text); }
+.tool-panel .tp-animal .tp-when { color: var(--ink-2); }
+.tool-panel .tp-animal .tp-when.full { color: var(--sun-lip); }
+
+/* the two upgrades: a chip each — its words, now → next, the price, a peg a step */
+.tool-panel .tp-ups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; perspective: 600px; }
+.tool-panel .tp-up { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 56px; padding: 6px 8px 13px; border: 0; border-radius: 16px; background: #fff; color: var(--ink); font: 700 15px/1.15 var(--font-text); box-shadow: 0 3px 0 var(--paper-3), 0 0 0 1.5px var(--edge-soft); transform-origin: 50% 0; }
+.tool-panel .tp-up-name { font: 600 15px/1.1 var(--font-display); color: var(--ink-2); }
+.tool-panel .tp-up-say { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; justify-content: center; }
+.tool-panel .tp-up-say .effect-arrow { width: 13px; height: 13px; opacity: 0.55; }
+.tool-panel .tp-up-now { color: var(--ink-2); }
+.tool-panel .tp-up-say b { font-weight: 800; }
+.tool-panel .tp-up-price { display: inline-flex; padding: 2px 8px 2px 3px; border-radius: 999px; background: var(--sun); box-shadow: 0 2px 0 var(--sun-lip); font-size: 15px; }
+.tool-panel .tp-up.short .tp-up-price { background: var(--paper-2); box-shadow: 0 2px 0 var(--paper-3); color: var(--ink-2); }
+.tool-panel .tp-up.max { background: var(--paper-2); box-shadow: none; cursor: default; }
+.tool-panel .tp-up .tag.ok svg { width: 14px; height: 14px; }
+.tool-panel .tp-up-steps { position: absolute; left: 12px; right: 12px; bottom: 5px; display: flex; gap: 2px; }
+.tool-panel .tp-up-steps i { flex: 1; height: 3px; border-radius: 2px; background: var(--paper-3); }
+.tool-panel .tp-up-steps i.on { background: var(--sun-lip); }
+
+.tool-panel .tp-said { min-height: 48px; display: grid; }
+.tool-panel .tp-said .mp-note { min-height: 44px; }
+.tool-panel .tp-skins { align-self: center; gap: 6px; }
+.tool-panel .tp-skins svg { width: 18px; height: 18px; }
+
+/* ── a phone on its side: the place on the left of the sheet, the upgrades and the line on its right ── */
+.tool-panel.mp-right .ps-body { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); align-items: start; gap: 10px 12px; }
+.tool-panel.mp-right .tp-ups { grid-template-columns: 1fr; gap: 6px; }
+.tool-panel.mp-right .tp-up { min-height: 48px; padding: 4px 8px 11px; flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 2px 6px; }
+.tool-panel.mp-right .tp-up-name { width: 100%; text-align: center; font-size: 14px; }
+.tool-panel.mp-right .tp-box { gap: 6px; padding: 8px; }
+.tool-panel.mp-right .tp-nest { min-height: 0; }
+.tool-panel.mp-right .tp-coop { padding-top: 18px; }
+.tool-panel.mp-right .tp-roof { height: 24px; }
+.tool-panel.mp-right .tp-vessel { min-height: 0; height: 168px; }
+.tool-panel.mp-right .tp-herd { gap: 4px; }
+.tool-panel.mp-right .tp-animal { padding-inline-end: 4px; }
+.tool-panel.mp-right .tp-animal-name { font-size: 14px; }
+.tool-panel.mp-right .tp-said { min-height: 44px; }
+.tool-panel.mp-right .tp-said .mp-note { min-height: 40px; font-size: 14px; padding: 4px 10px; }
+
+/* a full nest breathes its glow; a full pail or basket's total too */
+@media (prefers-reduced-motion: no-preference) {
+  .tool-panel .tp-nest.full::after { content: ''; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 14px 2px color-mix(in srgb, var(--sun) 70%, transparent); animation: tp-glow 1.8s ease-in-out infinite; pointer-events: none; }
+}
+@keyframes tp-glow { 0%, 100% { opacity: 0.2; } 50% { opacity: 0.9; } }

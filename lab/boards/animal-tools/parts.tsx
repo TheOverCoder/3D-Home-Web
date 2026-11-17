@@ -2,7 +2,7 @@ import { AnimatePresence, animate, m, useAnimate, useDragControls, useReducedMot
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from 'react'
 import { produceById } from '../../../src/farm/data'
 import { iconUrl } from '../../../src/farm/icons'
-import { flyInto } from '../../../src/farm/machine/fly'
+import { flyInto } from '../../../src/ui/fly'
 import { Bump } from '../../../src/farm/machine/parts'
 import '../../../src/farm/machine/MachinePanel.css'
 import '../../../src/farm/MarketPanel.css'

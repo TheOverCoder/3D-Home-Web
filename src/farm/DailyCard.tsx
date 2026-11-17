@@ -396,7 +396,7 @@ function GiftBox({ day, big, peek, state }: { day: number; big: boolean; peek: P
           </m.span>
         </m.span>
       </m.span>
-      <m.b className="dg-ribbon" variants={RIBBON}>
+      <m.b className="dg-ribbon ribbon" variants={RIBBON}>
         {big ? 'Day 7 · Big gift' : `Day ${day}`}
       </m.b>
     </m.div>

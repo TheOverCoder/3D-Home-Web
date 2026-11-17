@@ -7,7 +7,7 @@ import type { Point3 } from '../lib/playerState'
 import { PRODUCERS, STORES, count, storeOf, type ProducerId } from './data'
 import { usePlacement } from './edit'
 import { toWorld } from './layout'
-import { animalName, collect, collectable, farm, maxOf } from './state'
+import { animalName, collect, collectable, farm, maxOf, toolOwned, useFarm } from './state'
 
 // What a producer offers on the action button (PRODUCERS in src/farm/data.ts): take what it holds — pick the lemons,
 // collect the eggs, milk a cow, shear a sheep — into the silo or the barn, as much as it has room for. With no room
@@ -48,14 +48,17 @@ export function producerOffer(id: ProducerId, i: number, at: { stand: Point3; ai
   }
 }
 
-/** A producer that stands in its place (the lemon tree, the nest box): its offer, where the place stands now. */
+/** A producer that stands in its place (the lemon tree, the nest box): its offer, where the place stands now — until
+ *  its tool is yours (the hens' coop): the tool's offer takes its place then (./useTool.ts). */
 export function useProducer(id: ProducerId) {
   const p = usePlacement(PRODUCERS[id].place!)
+  const tool = useFarm(() => toolOwned(id) !== null)
   useEffect(() => {
+    if (tool) return
     const point = ([x, y, z]: [number, number, number]): Point3 => {
       const [wx, wz] = toWorld(p, x, z)
       return { x: wx, y, z: wz }
     }
     return registerInteractable(producerOffer(id, 0, { stand: point(PRODUCERS[id].stand), aim: point(PRODUCERS[id].aim) }))
-  }, [id, p])
+  }, [id, p, tool])
 }

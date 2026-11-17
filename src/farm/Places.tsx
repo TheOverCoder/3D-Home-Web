@@ -15,6 +15,7 @@ import { usePlacement, useShownPlacement } from './edit'
 import { alongBoundary, toWorld, turnOf, type PlaceId } from './layout'
 import { capacity, farm, room, toolOwned, useFarm, used, waitingFor } from './state'
 import { useProducer } from './useProducer'
+import { useTool } from './useTool'
 
 // The farm's movable places — the hen run with its coop, the cows' pasture, the sheep fold, the silo, the barn, the
 // lemon tree and the three big trees — each drawn in its own frame inside a group that stands where the layout puts it (or where the
@@ -147,9 +148,11 @@ function HenRunBody() {
   )
 }
 
-/** The nest box: the eggs are collected from outside the run (src/farm/useProducer.ts). */
+/** The nest box: the eggs are collected from outside the run (src/farm/useProducer.ts), and with the coop at its place
+ *  by the fence (src/farm/useTool.ts). */
 function Nest() {
   useProducer('hens')
+  useTool('hens')
   return null
 }
 

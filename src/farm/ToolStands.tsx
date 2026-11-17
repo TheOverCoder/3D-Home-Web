@@ -1,17 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Mesh, type Material } from 'three'
 import { debugSet } from '../lib/debug'
-import { registerInteractable } from '../lib/interaction'
-import type { Point3 } from '../lib/playerState'
 import { loadSolids, merge, solidsReady, type Parts } from '../lib/sculpt'
 import { lodReady, sunEnough, sunLodsLater } from '../lib/sculpt/lod'
 import { shadowOnly } from '../lib/sculpt/sun'
 import { structureParts, type Structure } from '../models/structures'
 import { GOODS_PART, TOOL_PLACES, modelBox, placedBox, toolModel } from '../models/tools'
-import { useHome } from '../store'
 import { TOOLS, TOOL_KINDS, type ToolKind } from './data'
-import { usePlacement } from './edit'
-import { toWorld } from './layout'
 import { Body, Placed } from './Places'
 import { skinsView } from './skinsView'
 import { buySkin, farm, skinOwned, skinWorn, toolOwned, useFarm, wearSkin } from './state'
@@ -24,7 +19,8 @@ import { buySkin, farm, skinOwned, skinWorn, toolOwned, useFarm, wearSkin } from
 // the drawing pass leaves it out where it cannot be seen; its shadow is one mesh of all its parts that cast, drawn only
 // into the sun's map from its copy for the sun (as the furniture's: src/lib/sculpt/sun.ts) — one draw there, not one
 // for each of its materials (the wool in the basket, which comes and goes, casts on its own). A box round it is solid.
-// On it, a gear opens its skins shop (src/farm/SkinShop.tsx): looked at, never the action button's.
+// Its place is the tool's on the action button (src/farm/useTool.ts: E and a gear open its panel, whose Skins opens its
+// skins shop, src/farm/SkinShop.tsx): one way in, never two gears on one tool.
 
 /** The coop's cut nests need the solid engine (src/lib/sculpt/solid.ts): it starts loading with the farm. */
 void loadSolids()
@@ -74,9 +70,6 @@ function toolShadow(model: Structure, material: Material, name: string) {
   }
 }
 
-/** Opens a tool's skins shop. */
-const openSkins = (tool: ToolKind) => useHome.getState().openPanel({ kind: 'skins', tool })
-
 function ToolStand({ kind }: { kind: ToolKind }) {
   const look = TOOLS[kind].look
   const { place, at, turn } = TOOL_PLACES[look]
@@ -112,29 +105,6 @@ function ToolStand({ kind }: { kind: ToolKind }) {
   useEffect(() => {
     if (built) putTool(built.parts, waiting)
   }, [built, waiting])
-
-  // its gear: the skins shop, on the thing you look at (its top, above where its own offer is looked at)
-  const p = usePlacement(place)
-  const top = built?.top ?? 1
-  useEffect(() => {
-    const w = ([x, y, z]: [number, number, number]): Point3 => {
-      const [wx, wz] = toWorld(p, x, z)
-      return { x: wx, y, z: wz }
-    }
-    const t = TOOLS[kind]
-    const crown: [number, number, number] = [t.aim[0], top - 0.12, t.aim[2]]
-    return registerInteractable({
-      id: `farm-skins-${kind}`,
-      label: `${t.name}: its skins`,
-      position: w(t.stand),
-      aim: w(crown),
-      radius: t.reach,
-      // (a gear only: never on the action button)
-      enabled: () => false,
-      tag: () => ({ kind: 'gear', label: `${t.name}: its skins`, at: w([t.aim[0], top + 0.1, t.aim[2]]), open: () => openSkins(kind) }),
-      run: () => openSkins(kind),
-    })
-  }, [kind, p, top])
 
   return (
     <>

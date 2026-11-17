@@ -49,3 +49,8 @@ export { Camera } from '@phosphor-icons/react/dist/csr/Camera'
 export { Newspaper } from '@phosphor-icons/react/dist/csr/Newspaper'
 // the goals board's medals won (src/farm/GoalsCard.tsx)
 export { Medal } from '@phosphor-icons/react/dist/csr/Medal'
+// the premium remotes (src/ui/GoodPic.tsx, the shop's premium tiles): the crown, and a remote's waves
+export { Crown } from '@phosphor-icons/react/dist/csr/Crown'
+export { Broadcast } from '@phosphor-icons/react/dist/csr/Broadcast'
+// an animal tool's skins (src/farm/tool/ToolPanelView.tsx)
+export { PaintBrush } from '@phosphor-icons/react/dist/csr/PaintBrush'

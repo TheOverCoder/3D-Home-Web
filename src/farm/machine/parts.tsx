@@ -1,23 +1,9 @@
 import { animate, m, useMotionValue, useTransform, type MotionValue } from 'motion/react'
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { clock } from './queue'
 
-// Small parts of the machine panel: which way the phone is held, a clock that runs down on its own between the
+// Small parts of the machine panel: a clock that runs down on its own between the
 // views the game gives, and the progress of a job as a motion value (the ring round its place, its time left).
-
-const SIDEWAYS = '(orientation: landscape) and (max-height: 560px)'
-
-/** A phone on its side (the game's CSS lays its sheets on the right then). */
-export function useSideways() {
-  return useSyncExternalStore(
-    (changed) => {
-      const q = matchMedia(SIDEWAYS)
-      q.addEventListener('change', changed)
-      return () => q.removeEventListener('change', changed)
-    },
-    () => matchMedia(SIDEWAYS).matches,
-  )
-}
 
 /** A job's progress 0 … 1, running on by itself from what the view said (`left` of `seconds`), straight (a timer). */
 export function useJobProgress(seconds: number, left: number, running: boolean): MotionValue<number> {
