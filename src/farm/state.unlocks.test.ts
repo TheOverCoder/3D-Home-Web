@@ -109,6 +109,9 @@ describe('the locks, at level 1', () => {
         MACHINES.mill.recipes.find((r) => r.id === 'wheat')!,
       ),
     ).toBe(false)
+    // a machine not open yet sells no place in its queue; one open does
+    expect(machineView('oven').upgrade).toBeNull()
+    expect(machineView('loom').upgrade).not.toBeNull()
     // what is open has no lock
     expect(machineView('loom').recipes[0].locked).toBeUndefined()
     expect(shopView().filter((v) => unlockLevel(`decor:${v.kind}`) === 1 && v.locked !== undefined)).toEqual([])

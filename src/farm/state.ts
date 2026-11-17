@@ -1404,7 +1404,8 @@ export function machineView(id: MachineId): MachineView {
     can: canAddJob(id, r),
     ...lockField(lockOf(recipeUnlock(id, r.id))),
   }))
-  const price = slotPrice(id)
+  // (a machine not open yet sells no place: its places open with it)
+  const price = machineLock(id) === null ? slotPrice(id) : null
   return { id, name: def.name, level, capacity: m.capacity, slots, recipes, upgrade: price === null ? null : { capacity: m.capacity + 1, price } }
 }
 
