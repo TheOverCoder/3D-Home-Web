@@ -169,9 +169,11 @@ test.describe("a new farm's first steps", () => {
             out.push(`the step off the screen (${Math.round(step.left)}–${Math.round(step.right)}, ${Math.round(step.top)}–${Math.round(step.bottom)})`)
           w.__column = out
         }, 30)
-        h.useHome.getState().showToast('+ 8 lettuces', 'lettuce')
         for (let i = 0; i < 200 && h.farm.xpNow().level < 2; i++) h.farm.gainXp('sale', 10)
       })
+      // the toast once the level's show stands (its XP lands first, slower on a page drawn in software): both together
+      await expect(page.locator('.level-up-show')).toBeVisible({ timeout: 20_000 })
+      await page.evaluate(() => (window as any).__home.useHome.getState().showToast('+ 8 lettuces', 'lettuce'))
       await expect.poll(() => page.evaluate(() => (window as any).__column), { timeout: 20_000, message: `${size.width}×${size.height}: the top column` }).toEqual([])
       await page.evaluate(() => window.clearInterval((window as any).__watch))
     }
