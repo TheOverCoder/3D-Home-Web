@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Mesh, type Material } from 'three'
 import { debugSet } from '../lib/debug'
 import { registerInteractable } from '../lib/interaction'
 import type { Point3 } from '../lib/playerState'
-import { loadSolids, solidsReady, type Parts } from '../lib/sculpt'
-import { structureParts } from '../models/structures'
+import { loadSolids, merge, solidsReady, type Parts } from '../lib/sculpt'
+import { lodReady, sunEnough, sunLodsLater } from '../lib/sculpt/lod'
+import { shadowOnly } from '../lib/sculpt/sun'
+import { structureParts, type Structure } from '../models/structures'
 import { GOODS_PART, TOOL_PLACES, modelBox, placedBox, toolModel } from '../models/tools'
 import { useHome } from '../store'
 import { TOOLS, TOOL_KINDS, type ToolKind } from './data'
@@ -18,9 +21,10 @@ import { buySkin, farm, skinOwned, skinWorn, toolOwned, useFarm, wearSkin } from
 // wears — the coop where the nest box was (src/farm/Places.tsx leaves the box out; the eggs lie in its nests,
 // src/farm/Plants.tsx), the milk bucket by the pasture's gate, the shears and their basket by the fold's. What waits to
 // be taken (the milk in the pail, the wool in the basket) is drawn while some waits. Each is a crowd of one model, so
-// the drawing pass leaves it out where it cannot be seen and the sun's map draws it from its copies (src/lib/sculpt);
-// a box round it is solid. On it, a gear opens its skins shop (src/farm/SkinShop.tsx): looked at, never the action
-// button's.
+// the drawing pass leaves it out where it cannot be seen; its shadow is one mesh of all its parts that cast, drawn only
+// into the sun's map from its copy for the sun (as the furniture's: src/lib/sculpt/sun.ts) — one draw there, not one
+// for each of its materials (the wool in the basket, which comes and goes, casts on its own). A box round it is solid.
+// On it, a gear opens its skins shop (src/farm/SkinShop.tsx): looked at, never the action button's.
 
 /** The coop's cut nests need the solid engine (src/lib/sculpt/solid.ts): it starts loading with the farm. */
 void loadSolids()
@@ -41,6 +45,35 @@ function putTool(parts: Parts, goods: boolean) {
   parts.end()
 }
 
+/** A tool's shadow: every part of it that casts (but what waits to be taken), merged into one mesh drawn only into the
+ *  sun's map, whole until its copy for the sun is made, then from the coarsest copy that keeps its shadow to the texel
+ *  (`sunEnough`; it stands at its own size). `material`: one of the model's, for the side it casts from. */
+function toolShadow(model: Structure, material: Material, name: string) {
+  const shapes = Object.entries(model)
+    .filter(([k, part]) => k !== GOODS_PART && (part.castShadow ?? true))
+    .map(([, part]) => part.shape)
+  const whole = merge(...shapes).geometry()
+  const mesh = shadowOnly(new Mesh(whole, material))
+  mesh.name = `${name}-sun`
+  let gone = false
+  void lodReady().then(() =>
+    sunLodsLater(whole, (copies) => {
+      let copy = null
+      for (const c of copies) if (sunEnough(c.error, 1)) copy = c
+      if (gone || !copy) return
+      mesh.geometry = copy.geometry
+      shadowOnly(mesh, whole, copy.geometry)
+    }),
+  )
+  return {
+    mesh,
+    dispose() {
+      gone = true
+      whole.dispose()
+    },
+  }
+}
+
 /** Opens a tool's skins shop. */
 const openSkins = (tool: ToolKind) => useHome.getState().openPanel({ kind: 'skins', tool })
 
@@ -55,8 +88,12 @@ function ToolStand({ kind }: { kind: ToolKind }) {
     if (!solids) return null
     const model = toolModel(look, style)
     const b = placedBox(look, modelBox(model))
+    // the crowd casts only what waits to be taken: the rest's shadow is one mesh (toolShadow)
+    const seen = Object.fromEntries(Object.entries(model).map(([k, part]) => [k, k === GOODS_PART ? part : { ...part, castShadow: false }])) as Structure
+    const parts = structureParts(seen, `tool-${kind}`)
     return {
-      parts: structureParts(model, `tool-${kind}`),
+      parts,
+      shadow: toolShadow(model, Object.values(parts.meshes)[0].material as Material, `tool-${kind}`),
       // solid: a box round it, from the ground up (in its place's frame)
       body: {
         half: [(b.max[0] - b.min[0]) / 2, b.max[1] / 2, (b.max[2] - b.min[2]) / 2] as [number, number, number],
@@ -65,7 +102,13 @@ function ToolStand({ kind }: { kind: ToolKind }) {
       top: b.max[1],
     }
   }, [solids, look, style, kind])
-  useEffect(() => () => built?.parts.dispose(), [built])
+  useEffect(
+    () => () => {
+      built?.parts.dispose()
+      built?.shadow.dispose()
+    },
+    [built],
+  )
   useEffect(() => {
     if (built) putTool(built.parts, waiting)
   }, [built, waiting])
@@ -95,7 +138,14 @@ function ToolStand({ kind }: { kind: ToolKind }) {
 
   return (
     <>
-      <Placed id={place}>{built && <primitive object={built.parts.group} position={at} rotation-y={turn} />}</Placed>
+      <Placed id={place}>
+        {built && (
+          <group position={at} rotation-y={turn}>
+            <primitive object={built.parts.group} />
+            <primitive object={built.shadow.mesh} />
+          </group>
+        )}
+      </Placed>
       {built && <Body id={place} boxes={[built.body]} />}
     </>
   )
