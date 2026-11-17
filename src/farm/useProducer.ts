@@ -7,7 +7,7 @@ import type { Point3 } from '../lib/playerState'
 import { PRODUCERS, STORES, count, storeOf, type ProducerId } from './data'
 import { usePlacement } from './edit'
 import { toWorld } from './layout'
-import { animalName, collect, collectable, farm } from './state'
+import { animalName, collect, collectable, farm, maxOf } from './state'
 
 // What a producer offers on the action button (PRODUCERS in src/farm/data.ts): take what it holds — pick the lemons,
 // collect the eggs, milk a cow, shear a sheep — into the silo or the barn, as much as it has room for. With no room
@@ -31,7 +31,7 @@ export function producerOffer(id: ProducerId, i: number, at: { stand: Point3; ai
     radius: def.reach,
     enabled: () => n() > 0,
     // full (no room for more), it goes on the compass: worth the walk (not while its building has no room for it)
-    ready: () => (n() >= def.max && fits() > 0 ? { item: def.good, count: fits() } : null),
+    ready: () => (n() >= maxOf(id) && fits() > 0 ? { item: def.good, count: fits() } : null),
     label: () => {
       if (!fits()) return `${store.name} full · ${name ? `${name} has` : 'waiting:'} ${count(def.good, n())}`
       return name ? `${def.word} ${name} · ${count(def.good, fits())}` : `${def.word} ${count(def.good, fits())}`

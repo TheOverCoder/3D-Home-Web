@@ -4,7 +4,7 @@ import { useHome } from '../store'
 import { Coins, Purse, Shell, useArmed } from '../ui/Sheet'
 import { art, type ArtId } from '../ui/art'
 import { ArrowRight, Check } from '../ui/glyphs'
-import { LADDERS, type LadderId } from './data'
+import { LADDERS, TOOLS, type LadderId } from './data'
 import { ladderPrice } from './market'
 import { buyLadder, farm, ladderLevel, ladderMaxed, ladderOpen, useFarm } from './state'
 
@@ -12,8 +12,12 @@ import { buyLadder, farm, ladderLevel, ladderMaxed, ladderOpen, useFarm } from '
 // its price on the button) and one card that asks before a step is bought, for every ladder — as the office shows its
 // upgrades (src/farm/orderBoard/OrdersBoard.tsx, OfficeUpgrade and OfficeCard).
 
-/** Each ladder's picture. */
-const LADDER_ART: Record<LadderId, ArtId> = { rate: 'coin', places: 'package', group: 'shopping-cart', pace: 'person-running', stock: 'building-construction', discount: 'coin' }
+/** Each ladder's picture: a tool's three its tool's, the premium remotes a crown. */
+const LADDER_ART: Partial<Record<LadderId, ArtId>> = { rate: 'coin', places: 'package', group: 'shopping-cart', pace: 'person-running', stock: 'building-construction', discount: 'coin' }
+const ladderArt = (id: LadderId): ArtId => {
+  const def = LADDERS[id]
+  return def.tool ? TOOLS[def.tool.kind].art : (LADDER_ART[id] ?? 'crown')
+}
 
 /** What a ladder means now → after its next step (now only, at its top), as two chips that wrap on a narrow screen. */
 function Say({ id }: { id: LadderId }) {
@@ -39,15 +43,14 @@ export function LadderRow({ id }: { id: LadderId }) {
   useFarm((s) => s.rev)
   const openPanel = useHome((s) => s.openPanel)
   // the panel this row is on (the manager's, the computer, the contractor's), for its card to go back to
-  const kind = useHome((s) => s.panel?.kind)
-  const from = kind === 'manager' || kind === 'market' || kind === 'contractor' ? kind : undefined
+  const from = useHome((s) => s.panel) ?? undefined
   const def = LADDERS[id]
   const k = ladderLevel(id)
   const max = ladderMaxed(id)
   const price = ladderPrice(id, k)
   return (
     <div className={`farm-shop-item ladder-row${max ? ' owned' : ''}`}>
-      <img className="art" src={art(LADDER_ART[id])} alt="" />
+      <img className="art" src={art(ladderArt(id))} alt="" />
       <div className="farm-shop-text">
         <strong>{def.name}</strong>
         <div className="farm-shop-tags">
@@ -80,7 +83,7 @@ export function LadderCard({ id }: { id: LadderId }) {
   const price = ladderPrice(id, ladderLevel(id))
   const open = ladderOpen(id) && !max
   const afford = open && farm.coins >= price
-  const back = () => (from ? openPanel({ kind: from }) : close())
+  const back = () => (from ? openPanel(from) : close())
   const confirm = () => {
     if (!armed || !buyLadder(id)) return
     farmSound('build')
@@ -90,7 +93,7 @@ export function LadderCard({ id }: { id: LadderId }) {
   return (
     <Shell
       title={def.name}
-      art={art(LADDER_ART[id])}
+      art={art(ladderArt(id))}
       sub={
         <>
           <Purse />

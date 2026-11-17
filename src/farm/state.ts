@@ -24,6 +24,7 @@ import {
   PRODUCER_IDS,
   QUEUE_LEVELS,
   SELLABLE,
+  SHED,
   SLOT_LEVELS,
   START_COINS,
   STORES,
@@ -66,7 +67,10 @@ import {
   SHOP,
   XP_FOR,
   type LadderId,
+  type ToolKind,
   type XpAction,
+  TOOLS,
+  toolLadder,
 } from './data'
 import { sanitizeXp, savedOnToday, seedXp, levelOf, levelReward, xpAt, unpaidCoins, xpForSale, type Xp } from './xp'
 import { CAME_KEPT, boxOf, boxesReached, giftsFor, isOpen as giftOpen, rollArrival, rollBox, sanitizeGifts, settle, waitingBoxes, type Gifts, type Opened, type Prize } from './gifts'
@@ -149,6 +153,8 @@ import {
 import { FRUIT, FRUIT_KINDS, SHOP as FARM_SHOP, nextPrice, type FruitKind, type ShopItemView, type ShopKind } from './decor'
 import { lockedAt, machineOpensAt, opensAt, recipeUnlock, type UnlockId } from './unlocks'
 import { advance, currentStep, sanitizeSteps, skipped, stepsFresh, type StepDef, type StepsRecord } from './firstSteps'
+import { fullest, mostAt, needsMet, ownsEach, perTapOf, spreadNest, toolOf, type Steps } from './tools'
+import type { ToolView } from './toolView'
 import { PIECES, type PieceType } from '../home/catalogue'
 import { canMoveOpening, canPlacePiece, defaultHome, findFreeSpot, sanitizeHome, type HomeFit, type HomeLayout, type HomePiece } from '../home/layout'
 import { floorById, paintById, type OpeningAt } from '../home/shell'
@@ -293,16 +299,15 @@ let KEY = keyFor(slot)
 export const currentSlot = () => slot
 const produceIds = PRODUCE.map((p) => p.id)
 const emptyInv = () => Object.fromEntries(produceIds.map((id) => [id, 0])) as Record<ProduceId, number>
-/** Each of a herd's animals gives her own (a count and a clock for each), or they share one (the hens' nest). */
-const ownEach = (id: ProducerId) => {
-  const herd = PRODUCERS[id].herd
-  return !!herd && !herd.shared
-}
-/** How many counts a producer keeps, with this many animals. */
-const stocksFor = (id: ProducerId, animals: number) => (ownEach(id) ? animals : 1)
+/** Each of a herd's animals gives her own (a count and a clock for each), or they share one (the hens' nest, until the
+ *  coop gives each hen hers: src/farm/tools.ts). */
+const ownEach = (id: ProducerId) => ownsEach(id, farm.ladders)
+/** How many counts a producer keeps, with this many animals (and these ladders: a tool may give each her own). */
+const stocksFor = (id: ProducerId, animals: number, ladders: Steps) => (ownsEach(id, ladders) ? animals : 1)
 function freshProducer(id: ProducerId): ProducerState {
   const animals = PRODUCERS[id].herd?.start ?? 0
-  const n = stocksFor(id, animals)
+  // (a new farm has no tools)
+  const n = stocksFor(id, animals, {})
   return { animals, stock: Array.from({ length: n }, () => PRODUCERS[id].fresh), timer: Array.from({ length: n }, () => 0) }
 }
 /** A board of empty places: a new order comes in each straight away. */
@@ -393,21 +398,25 @@ const OLD_PRODUCERS: Partial<Record<ProducerId, { stock: string; timer: string; 
   sheep: { stock: 'wool', timer: 'woolTimer', animals: 'sheep' },
 }
 
-/** A producer as saved (or as a save from before the tables kept it), made safe. */
-function savedProducer(id: ProducerId, raw: Record<string, unknown>): ProducerState {
+/** A producer as saved (or as a save from before the tables kept it), made safe, on a farm with these ladders: with
+ *  its tool, a count and a clock for each animal (the coop: a nest a hen), each up to the tool's most. */
+function savedProducer(id: ProducerId, raw: Record<string, unknown>, ladders: Steps): ProducerState {
   const def = PRODUCERS[id]
   const old = OLD_PRODUCERS[id]
   const saved = field(raw.producers, id)
+  // (a save from before the tables kept a list for the cows and the sheep, one count for the nest: it had no tools)
+  const oldList = ownsEach(id, {})
   const p = isObject(saved)
     ? saved
     : old
-      ? { animals: old.animals ? raw[old.animals] : undefined, stock: ownEach(id) ? raw[old.stock] : [raw[old.stock]], timer: ownEach(id) ? raw[old.timer] : [raw[old.timer]] }
+      ? { animals: old.animals ? raw[old.animals] : undefined, stock: oldList ? raw[old.stock] : [raw[old.stock]], timer: oldList ? raw[old.timer] : [raw[old.timer]] }
       : {}
   const animals = def.herd ? int(p.animals, def.herd.start, def.herd.start, def.herd.max) : 0
-  const n = stocksFor(id, animals)
+  const n = stocksFor(id, animals, ladders)
+  const most = mostAt(id, ladders)
   return {
     animals,
-    stock: Array.from({ length: n }, (_, i) => int(field(p.stock, i), def.fresh, 0, def.max)),
+    stock: Array.from({ length: n }, (_, i) => int(field(p.stock, i), def.fresh, 0, most)),
     timer: Array.from({ length: n }, (_, i) => clock(field(p.timer, i), def.every)),
   }
 }
@@ -562,8 +571,12 @@ function load(text: string | null = readRaw(KEY)): { data: FarmData; savedAt: nu
     BEDS.forEach((def, i) => {
       if (def.expansion && data.expansions[def.expansion]) data.beds[i].built = true
     })
+    // the ladders first: the animals' tools among them decide how their producers are kept (a farm from before them:
+    // as on a new farm; while the shop is not yours, its own ladders read back as 0: only the manager's rate, the
+    // contractor's two and the farm shop's)
+    data.ladders = clampLevels(raw.ladders, field(raw.market, 'owned') === true)
     // the tree, the nest, the animals and the machines (a save from before the tables kept each in fields of its own)
-    for (const id of PRODUCER_IDS) data.producers[id] = savedProducer(id, raw)
+    for (const id of PRODUCER_IDS) data.producers[id] = savedProducer(id, raw, data.ladders)
     for (const id of MACHINE_IDS) data.machines[id] = savedMachine(id, raw)
     data.queueLevel = int(raw.queueLevel, 0, 0, QUEUE_LEVELS)
     data.paceLevel = int(raw.paceLevel, 0, 0, PACE_LEVELS)
@@ -619,9 +632,7 @@ function load(text: string | null = readRaw(KEY)): { data: FarmData; savedAt: nu
     data.firstSteps = sanitizeSteps(raw.firstSteps)
     // the clothes: as saved, each one the wardrobe has at the farm's level (a farm from before it: what it always wore)
     data.outfit = sanitizeOutfit(raw.outfit, levelOf(data.xp.points))
-    // the ladders, the market, the contractor and the day (a farm from before them: as on a new farm)
-    // (while the shop is not yours, its own ladders read back as 0: only the manager's rate and the contractor's two)
-    data.ladders = clampLevels(raw.ladders, field(raw.market, 'owned') === true)
+    // the market, the contractor and the day (a farm from before them: as on a new farm)
     data.market = sanitizeMarket(raw.market, data.ladders)
     data.contractor = sanitizeContractor(raw.contractor, offersPerDay(data.ladders.stock))
     data.day = { t: dayClock(field(raw.day, 't')) }
@@ -1017,20 +1028,24 @@ export function animalName(id: ProducerId, i: number) {
 /** How many of what a producer holds would go in now (as many as its building has room for). */
 export const collectable = (id: ProducerId, i = 0) => Math.min(stockOf(id, i), roomFor(PRODUCERS[id].good))
 
-/** Takes what a producer holds into its building — picks the lemons, collects the eggs, milks a cow, shears a sheep —
- *  as much as there is room for, and starts the wait for the next one again once all of it is taken (but the hens':
- *  they lay on). What does not fit stays where it is. Each egg, bottle and fleece (each picking of the tree) may turn
- *  up a surprise, which flies up from `at`. */
-export function collect(id: ProducerId, i = 0, at?: { x: number; y: number; z: number }) {
+/** A producer's tool when it is yours (the hens' coop, the cows' bucket, the sheep's shears), else null. */
+export const toolOwned = (id: ProducerId): ToolKind | null => toolOf(id, farm.ladders)
+/** The most that waits at each of a producer's places before no more come: its tool's, with the tool (src/farm/tools.ts),
+ *  else its own (PRODUCERS). Growing, the compass, a save read and time away all ask it. */
+export const maxOf = (id: ProducerId) => mostAt(id, farm.ladders)
+/** How many one tap of a tool takes now. */
+export const perTap = (kind: ToolKind) => perTapOf(kind, farm.ladders)
+
+/** Takes up to `most` of what a producer holds at its place `i` (an animal, a nest; the tree's 0) into its building,
+ *  as much as there is room for: counted (the stats, what the farm has got), each good (or each picking of the tree) a
+ *  chance of a surprise flying up from `at`, its XP; an animal emptied starts her wait for the next one again (but the
+ *  hens: they lay on). What does not fit stays where it is. How many went in, and the surprises found. */
+function takeFrom(id: ProducerId, i: number, most: number, at?: At): { n: number; items: ItemId[] } {
   const def = PRODUCERS[id]
   const p = farm.producers[id]
   const has = p.stock[i] ?? 0
-  if (!has) return 0
-  const n = store(def.good, has)
-  if (!n) {
-    toast(`The ${STORES[storeOf(def.good)].name.toLowerCase()} is full`, storeOf(def.good))
-    return 0
-  }
+  const n = store(def.good, Math.min(has, Math.max(0, Math.floor(most))))
+  if (!n) return { n: 0, items: [] }
   p.stock[i] = has - n
   if (!def.keepsClock && !p.stock[i]) p.timer[i] = 0
   farm.stats.harvested += n
@@ -1038,11 +1053,102 @@ export function collect(id: ProducerId, i = 0, at?: { x: number; y: number; z: n
   const items = rollItems(def.surprise === 'each' ? n : 1, def.surprise === 'each' ? ITEM_ODDS.unit : ITEM_ODDS.harvest, random)
   gainItems(items, at)
   gainXp('collect', n, at)
+  return { n, items }
+}
+
+/** Takes what a producer holds into its building — picks the lemons, collects the eggs, milks a cow, shears a sheep —
+ *  as much as there is room for, and starts the wait for the next one again once all of it is taken (but the hens':
+ *  they lay on). What does not fit stays where it is. Each egg, bottle and fleece (each picking of the tree) may turn
+ *  up a surprise, which flies up from `at`. */
+export function collect(id: ProducerId, i = 0, at?: At) {
+  const def = PRODUCERS[id]
+  const has = stockOf(id, i)
+  if (!has) return 0
+  const { n, items } = takeFrom(id, i, has, at)
+  if (!n) {
+    toast(`The ${STORES[storeOf(def.good)].name.toLowerCase()} is full`, storeOf(def.good))
+    return 0
+  }
   const left = n < has ? ` · the ${STORES[storeOf(def.good)].name.toLowerCase()} is full` : ''
   toast(`+ ${count(def.good, n)}${left}${surpriseWords(items)}`, items[0] ?? def.good)
   bump()
   save()
   return n
+}
+
+/**
+ * One tap of an animal's tool (its panel): takes as many as a tap takes (1, more with its ladder) from the place tapped
+ * — a nest, a cow, a sheep — or, with none chosen, from the fullest (ties: the first), as much as the barn has room for:
+ * the same goods, XP and surprises a good as collecting one by one. What does not fit stays on the animal. The crystals
+ * fly from low in the middle, as a panel's; no toast but a surprise's. How many were taken (0: none, nothing spent).
+ */
+export function toolTake(kind: ToolKind, spot?: number): number {
+  if (!toolOwned(kind)) return 0
+  const stock = farm.producers[kind].stock
+  const i = spot ?? fullest(stock)
+  if (!Number.isInteger(i) || i < 0 || i >= stock.length) return 0
+  const { n, items } = takeFrom(kind, i, perTap(kind))
+  if (!n) return 0
+  if (items.length) toast(surpriseWords(items).replace(/^ · /, ''), items[0])
+  bump()
+  save()
+  return n
+}
+
+/** A tool has come: with the coop, the hens' one nest becomes a nest a hen, every egg kept and the next eggs coming
+ *  when they would have (src/farm/tools.ts, spreadNest); the cows and the sheep give their own already. */
+function toolBought(kind: ToolKind) {
+  const def = PRODUCERS[kind]
+  const p = farm.producers[kind]
+  if (!def.herd?.shared || p.stock.length === p.animals) return
+  const { stock, timer } = spreadNest(
+    p.stock.reduce((a, b) => a + b, 0),
+    p.timer[0] ?? 0,
+    p.animals,
+    def.every,
+  )
+  p.stock = stock
+  p.timer = timer
+}
+
+/** The eggs the nest box shows: what the hens have laid, all their nests together, up to the six it has room for (with
+ *  the coop each hen has her own nest; the box looks as it always did). */
+export const eggsShown = () =>
+  Math.min(
+    PRODUCERS.hens.max,
+    farm.producers.hens.stock.reduce((a, b) => a + b, 0),
+  )
+
+/** What an animal's tool panel shows (src/farm/toolView.ts): each of its places (a hen's nest, a cow, a sheep) with
+ *  what waits there, its most and the way to the next one; how many a tap takes, the room in the barn, and its two
+ *  upgrades as chips. */
+export function toolView(kind: ToolKind): ToolView {
+  const def = PRODUCERS[kind]
+  const t = TOOLS[kind]
+  const p = farm.producers[kind]
+  const most = maxOf(kind)
+  const spot = t.spot[0].toUpperCase() + t.spot.slice(1)
+  return {
+    kind,
+    name: t.name,
+    good: def.good,
+    look: t.look,
+    spots: p.stock.map((has, i) => ({
+      name: animalName(kind, i) || `${spot} ${i + 1}`,
+      has,
+      most,
+      // (a clock counts to `every`, however fast it runs)
+      next: has >= most ? 0 : Math.min(1, (p.timer[i] ?? 0) / def.every),
+    })),
+    perTap: perTap(kind),
+    room: roomFor(def.good),
+    store: storeOf(def.good),
+    ladders: (['hold', 'tap'] as const).map((part) => {
+      const id = toolLadder(kind, part)
+      const k = farm.ladders[id]
+      return { id, now: LADDERS[id].say(k), next: ladderMaxed(id) ? null : LADDERS[id].say(k + 1), price: ladderNextPrice(id) }
+    }),
+  }
 }
 
 /** One more animal (from the shop): she has nothing to give yet. */
@@ -1062,20 +1168,22 @@ export const woolliness = (i: number) => {
   return Math.min(1, (n + (n < max ? (farm.producers.sheep.timer[i] ?? 0) / every : 0)) / max)
 }
 
-/** The clock runs on (the hens' as many times as fast as there are of them): one more for every `every` seconds, up
- *  to the most that waits; a fleece that is full stops there, its clock held at 0 until it is shorn. */
+/** The clock runs on (a shared nest's as many times as fast as there are hens): one more for every `every` seconds, up
+ *  to the most that waits (its tool's, with one: maxOf); a fleece that is full stops there, its clock held at 0 until
+ *  it is shorn. */
 function growProducer(id: ProducerId, dt: number) {
   const def = PRODUCERS[id]
   const p = farm.producers[id]
-  const rate = def.herd?.shared ? p.animals : 1
+  const rate = def.herd?.shared && !ownEach(id) ? p.animals : 1
+  const max = maxOf(id)
   p.stock.forEach((_, i) => {
-    if (def.holdsFull && p.stock[i] >= def.max) return
+    if (def.holdsFull && p.stock[i] >= max) return
     p.timer[i] += dt * rate
-    while (p.timer[i] >= def.every && !(def.holdsFull && p.stock[i] >= def.max)) {
+    while (p.timer[i] >= def.every && !(def.holdsFull && p.stock[i] >= max)) {
       p.timer[i] -= def.every
-      if (p.stock[i] < def.max) p.stock[i]++
+      if (p.stock[i] < max) p.stock[i]++
     }
-    if (def.holdsFull && p.stock[i] >= def.max) p.timer[i] = 0
+    if (def.holdsFull && p.stock[i] >= max) p.timer[i] = 0
   })
 }
 
@@ -2490,7 +2598,9 @@ export function sawWardrobe() {
 
 // ───────────────────────────── the supermarket ─────────────────────────────
 
-/** Where the crystals and the coins fly from: the manager, the computer, the till, the contractor. */
+/** Where the crystals and the coins fly from: the farm shop's shed, the manager, the computer, the till, the
+ *  contractor. */
+const AT_SHED: At = { x: SHED.x, y: 1.6, z: SHED.z }
 const AT_MANAGER: At = { x: MANAGER_SPOT.x, y: 1.6, z: MANAGER_SPOT.z }
 const AT_SCREEN: At = { x: SCREEN.x, y: SCREEN.y, z: SCREEN.z }
 const AT_TILL: At = { x: TILL.x, y: TILL.y, z: TILL.z }
@@ -2581,17 +2691,19 @@ export const ladderLevel = (id: LadderId) => farm.ladders[id]
 export const ladderMaxed = (id: LadderId) => farm.ladders[id] >= LADDERS[id].levels
 export const ladderNextPrice = (id: LadderId) => ladderPrice(id, farm.ladders[id])
 
-/** Whether a ladder's next step can be bought now (its place is open, not at its top): the manager's rate while the
- *  shop is not yours, the shop's own once it is, the contractor's while he is there. */
+/** Whether a ladder's next step can be bought now (its place is open, not at its top): the farm shop's once what it
+ *  waits for is there (a tool its herd full, a tool's upgrades the tool, the animals' remote a tool; src/farm/tools.ts),
+ *  the manager's rate while the shop is not yours, the shop's own once it is, the contractor's while he is there. */
 export function ladderOpen(id: LadderId): boolean {
   if (ladderMaxed(id)) return false
+  if (LADDERS[id].at === 'shop') return needsMet(LADDERS[id].needs, farm)
   if (id === 'rate') return !farm.market.owned
   if (SHOP_LADDERS.includes(id)) return farm.market.owned
   return contractorHere()
 }
 
-/** Where the crystals of a ladder's step fly from: the one you bought it from. */
-const ladderAt = (id: LadderId) => (id === 'rate' ? AT_MANAGER : SHOP_LADDERS.includes(id) ? AT_SCREEN : AT_CONTRACTOR)
+/** Where the crystals of a ladder's step fly from: the one you bought it from (the farm shop's: its shed). */
+const ladderAt = (id: LadderId) => (LADDERS[id].at === 'shop' ? AT_SHED : id === 'rate' ? AT_MANAGER : SHOP_LADDERS.includes(id) ? AT_SCREEN : AT_CONTRACTOR)
 
 /** Buys a ladder's next step (its card asked first); whether it was bought. It works at once: a busier shop's next
  *  visit comes no later than the new wait, more pieces bring one more today, a better deal is the price from now on. */
@@ -2602,6 +2714,7 @@ export function buyLadder(id: LadderId): boolean {
   if (id === 'stock') contractorDay()
   farm.coins -= price
   farm.ladders[id] += 1
+  if (LADDERS[id].tool?.part === 'tool') toolBought(LADDERS[id].tool.kind)
   if (id === 'pace') farm.market.nextIn = Math.min(farm.market.nextIn, shopperEvery(farm.ladders.pace))
   if (id === 'stock') {
     // the piece most wanted that he has not brought today (or any)

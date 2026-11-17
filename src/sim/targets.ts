@@ -29,4 +29,6 @@ export const PACE = {
   } as Record<number, readonly [number, number]>,
   /** in the first `within` minutes, no stretch with nothing useful to do longer than `most` minutes */
   idle: { within: 60, most: 5 },
+  /** each animal's tool (plans/animal-tools.md) is bought within `within` minutes of play after its herd is full */
+  tools: { within: 20 },
 } as const

@@ -91,8 +91,19 @@ describe('the ladders', () => {
 
   it('saved levels read back whole, from 0 to each top; broken ones are 0', () => {
     for (const raw of [undefined, null, 'x', 4, [], {}, { rate: 'all' }, { rate: NaN, places: -Infinity }]) expect(clampLevels(raw), JSON.stringify(raw)).toEqual(NONE)
-    expect(clampLevels({ rate: 2.9, places: 99, group: -2, pace: 1, stock: Infinity, discount: 5, extra: 3 })).toEqual({ rate: 2, places: 7, group: 0, pace: 1, stock: 0, discount: 5 })
+    expect(clampLevels({ rate: 2.9, places: 99, group: -2, pace: 1, stock: Infinity, discount: 5, extra: 3 })).toEqual({ ...NONE, rate: 2, places: 7, group: 0, pace: 1, stock: 0, discount: 5 })
     expect(clampLevels(TOP)).toEqual(TOP)
+  })
+
+  it("a tool's upgrades read back only with the tool: without it they are 0 (a hand-edited save)", () => {
+    expect(clampLevels({ 'hens-tool': 1, 'hens-hold': 4, 'hens-tap': 9, 'cows-hold': 3, 'cows-tap': 2, 'sheep-tool': 0, 'sheep-hold': 7 })).toEqual({
+      ...NONE,
+      'hens-tool': 1,
+      'hens-hold': 4,
+      'hens-tap': 9,
+    })
+    // (the animals' remote waits for a tool to be bought, not to be kept: it stays)
+    expect(clampLevels({ 'animal-remote': 1, 'machine-remote': 1 })).toEqual({ ...NONE, 'animal-remote': 1, 'machine-remote': 1 })
   })
 
   it('a shop not yours has none of its own ladders; the manager and the contractor keep theirs', () => {

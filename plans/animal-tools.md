@@ -41,7 +41,7 @@ export type ToolPart = 'tool' | 'hold' | 'tap'
 
 /** What every animal's tool shares: one change here changes them all. Step k of a ladder costs price[0] + price[1]·k. */
 export const TOOL = {
-  price: 400,
+  price: 100,                                              // 400 in the first draft; the sim's (below)
   hold: { from: 3, to: 10, price: [150, 75] },             // the most each animal's place holds (a nest, a cow, a sheep)
   tap: { from: 1, to: 10, price: [100, 50] },              // how many one tap takes
 } as const
@@ -77,8 +77,8 @@ premium?: true                                          // the premium look
 `LADDERS = { …today's six, ...TOOL_LADDERS(), 'machine-remote', 'animal-remote' }`:
 
 - `${k}-tool` (1 step, `TOOL.price`, `needs: { herd: k }`), `${k}-hold` (7 steps, 3 → 10, "3 a nest" / "3 a cow"),
-  `${k}-tap` (9 steps, 1 → 10, "1 a tap"), both `needs: { ladder: `${k}-tool` }`. Each kind: 400 + 2,625 + 2,700 =
-  5,725 coins; the three, 17,175.
+  `${k}-tap` (9 steps, 1 → 10, "1 a tap"), both `needs: { ladder: `${k}-tool` }`. Each kind: 100 (the sim's price,
+  below) + 2,625 + 2,700 = 5,425 coins; the three, 16,275.
 - `machine-remote`: 1 step, 10,000, `premium`, no needs. `animal-remote`: 1 step, 10,000, `premium`,
   `needs: { anyOf: ['hens-tool', 'cows-tool', 'sheep-tool'] }`.
 
@@ -90,11 +90,29 @@ takes any `LadderId`, its `from` a `Panel` (one rule: opened from another panel,
 is held back by its herd requirement alone (the herds' upgrades are locked at levels 2, 6 and 7: `upgrade:hen`,
 `upgrade:cow`, `upgrade:sheep`), its ladders by the tool, the machines' remote by its price, the animals' remote by its
 price and a tool. The sim (`src/sim/policy.ts`): `forSale()` adds every `at: 'shop'` ladder that `ladderOpen` allows
-at `SHOP` (the tools at 400, their steps from 150 and 100, the two remotes at 10,000 each); `worthCollecting` reads
+at `SHOP` (the tools at `TOOL.price`, their steps from 150 and 100, the two remotes at 10,000 each); `worthCollecting` reads
 `maxOf`; with a tool owned, its collect move goes to the tool and calls `toolTake` once a tap, each tap costing
 `WALK.tap` (0.3 s, a new number in `play.ts`), so the "per tap" ladder shows. `PACE` gets one row: each tool is bought
 within 20 minutes of play after its herd is full. `npm run sim` prints when each tool and remote was bought; tune only
 `TOOL`'s numbers (the remotes' price is the user's), and put the before/after here.
+
+**Set by the sim (step 4).** The good player buys the cheapest thing for sale; at 400 a tool came an hour or more after
+its herd (the coop 59–70 minutes after the six hens), far outside the `PACE` row. Only `TOOL.price` moved: 400 → 100
+(the steps stay 150 + 75·k and 100 + 50·k). At 120 the coop still came 20–25 minutes after the hens; at 100 it comes
+15–19 minutes after them on seeds 1–11 (the bucket and the shears 4–12 minutes after their herds). Minutes of play,
+seeds 1–3 (`SIM_TOOLS=off npm run sim` plays without them):
+
+| | level 5 | level 10 | level 15 | coop (after six hens) | bucket (after three cows) | shears (after four sheep) |
+|---|---|---|---|---|---|---|
+| no tools for sale (before) | 6:27–7:10 | 26:31–29:29 | 66:01–72:48 | — | — | — |
+| tools at 400 (the plan's) | 6:27–7:10 | 26:31–29:29 | 65:19–72:48 | 61:59–72:55 (+59–70) | 84:59–91:21 (+68–76) | 99:16–114:48 (+85–100) |
+| tools at 100 (after) | 6:27–7:10 | 25:55–28:25 | 58:26–65:12 | 17:40–21:31 (+15–19) | 19:40–22:09 (+4–8) | 22:26–23:30 (+8–9) |
+
+Levels to 8 are the same to the second (a tool comes after level 8); from there the tools' `build` steps (51 of them, 5
+XP each) and the goods that no longer spill from a full nest bring level 15 four to nine minutes sooner, well inside
+its band. The herds are full at about 3 (hens), 12–17 (cows) and 14–15 (sheep) minutes; every tool's "a tap" ladder is
+at its top by 127–138 minutes and its "holds" ladder by 147–162; neither remote is bought within three hours (seeds
+1–3: 10,000 is far past what the good player keeps).
 
 ## 2. Rules (`src/farm/state.ts`, pure parts in `src/farm/tools.ts`)
 
@@ -234,11 +252,18 @@ something to press). `helpers.ts` `fillFarm` owns every tool at its top (run `05
 **Round 1, side by side.** The seven boards (interface designer, film director, 3D designer), one link; and the logic
 (main agent), invisible on a farm without a tool:
 
-1. Data: `TOOL`, `TOOLS`, the generated ladders, both remotes, the `Ladder` fields, `ladderOpen`, the `Panel` types;
-   `tools.test.ts`.
-2. Engine: `maxOf`, `ownEach`, `takeFrom`/`toolTake`, `toolBought`, `load()`'s order, `toolView`; `state.tools.test.ts`.
-3. Goods: `sourceOf` moved, `goFor`, the material's source; `go.test.ts`.
-4. The sim: the tools and remotes for sale, `WALK.tap`, the `PACE` row; tune `TOOL` with `npm run sim`; report here.
+1. **Built.** `TOOL`, `TOOLS` (with `spot`: "nest", "cow", "sheep"), `TOOL_LADDERS()`, `REMOTE_PRICE` and the four
+   `Ladder` fields in `src/farm/data.ts`; `needsMet` in `src/farm/tools.ts`, asked by `ladderOpen`; `clampLevels` reads a
+   tool's upgrades back as 0 without the tool; the `Panel` types; the four pictures; `tools.test.ts`.
+2. **Built.** `maxOf`, `toolOwned`, `perTap`, `takeFrom`/`collect`, `toolTake`, `toolBought` (`spreadNest`), `eggsShown`,
+   `toolView` in `src/farm/state.ts` (pure parts in `tools.ts`, the view's types in `toolView.ts`); `load()` reads the
+   ladders first; `useProducer`'s `ready` asks `maxOf`; `state.tools.test.ts`, and the save's property test knows them.
+3. **Built.** `src/farm/goods/sources.ts` (moved; a material "A surprise · the contractor sells them"),
+   `src/farm/goods/go.ts` (`goFor`, `machineOf`, `animalsOf`); `placesOf` gives `farm-contractor` while he is in
+   (`placeFor` asks `contractorHere`); `go.test.ts`, `orderPlace.test.ts`.
+4. **Built.** The sim buys the farm shop's ladders (`sellTools`, `SIM_TOOLS=off`), collects with a tool a tap at a time
+   (`WALK.tap` 0.3 s), reports each herd full and each step bought; `PACE.tools` (20 minutes) in `pace.test.ts`;
+   `TOOL.price` 400 → 100 (§1, "Set by the sim").
 
 **Round 2, after the ✓** (only the chosen variants):
 

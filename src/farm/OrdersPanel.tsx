@@ -9,7 +9,7 @@ import type { OfficeUpgradeId, ProduceId } from './data'
 import { OrdersBoard } from './orderBoard/OrdersBoard'
 import { officeRows, type OrdersActions, type OrdersView } from './orderBoard/view'
 import { nearestPlace, placesOf } from './orderPlace'
-import { buyOffice, declineOrder, farm, fillOrder, orderWaitSeconds, sendOrder, useFarm } from './state'
+import { buyOffice, contractorHere, declineOrder, farm, fillOrder, orderWaitSeconds, sendOrder, useFarm } from './state'
 
 // The order board on the office's computer (the action button at the office opens it): the designed board
 // (./orderBoard/OrdersBoard.tsx, which draws an OrdersView and calls OrdersActions) fed with the farm's, with the game's
@@ -65,7 +65,7 @@ const actions: OrdersActions = {
 }
 
 /** Where to walk to for a good: the nearest place it is made with it ready to take, else the nearest (null: none on
- *  this map). */
+ *  this map; a building material: the contractor, while he is in). */
 export function placeFor(good: ProduceId): string | null {
   const from = playerState.position
   return nearestPlace(
@@ -73,6 +73,7 @@ export function placeFor(good: ProduceId): string | null {
       good,
       farm.beds,
       allInteractables().map((d) => d.id),
+      contractorHere(),
     ).map((id) => {
       const def = interactable(id)!
       const r = def.ready?.()
