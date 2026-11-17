@@ -298,7 +298,10 @@ function Panel({ v, act, coins, onClose, buying }: MachinePanelProps) {
   // ── a recipe tapped: into the next free place (its picture flies there); can't: why ──
   const tap = (r: RecipeView, pic: HTMLElement | null) => {
     if (!r.can) {
-      if (timesCan(r) === 0) {
+      if (r.locked !== undefined) {
+        setShakes((s) => ({ ...s, [r.id]: (s[r.id] ?? 0) + 1 }))
+        say(`Opens at level ${r.locked}`, 'bad')
+      } else if (timesCan(r) === 0) {
         setShakes((s) => ({ ...s, [r.id]: (s[r.id] ?? 0) + 1 }))
         say(`Not enough for a ${produceById(r.makes).name}`, 'bad')
       } else {

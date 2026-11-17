@@ -22,7 +22,23 @@ import { farmFx } from '../fx/fx'
 import { playGesture } from '../lib/gestures'
 import { playerState } from '../lib/playerState'
 import { useHome } from '../store'
-import { BEDS, BED_BOX, CROPS, EXPANSIONS, PACE_LEVELS, PRODUCERS, QUEUE_LEVELS, UPGRADES, arrivalEvery, queuePlaces, type BedDef, type CropId } from './data'
+import {
+  BEDS,
+  BED_BOX,
+  CROPS,
+  EXPANSIONS,
+  PACE_LEVELS,
+  PRODUCERS,
+  QUEUE_LEVELS,
+  UPGRADES,
+  arrivalEvery,
+  queuePlaces,
+  type BedDef,
+  type CropDef,
+  type CropId,
+  type Upgrade,
+  type UpgradeId,
+} from './data'
 import { EditPanel } from './EditPanel'
 import { TopDash } from './TopDash'
 import { DecoratePanel } from '../home/DecoratePanel'
@@ -31,9 +47,11 @@ import { iconUrl } from './icons'
 import { OrdersPanel } from './OrdersPanel'
 import { StorePanel, StoreUpgradePanel } from './StorePanel'
 import { ItemPic } from '../ui/ItemPic'
+import { LockCorner, LockTag, opensWords, useNope } from '../ui/LockTag'
 import { ARM_MS, Coins, Purse, Shell } from '../ui/Sheet'
 import { art, type ArtId } from '../ui/art'
 import { ArrowRight, Check, Clock, Users, X } from '../ui/glyphs'
+import { openFirst, UPGRADE_ART } from './unlockArt'
 import {
   acceptOffer,
   animals,
@@ -50,6 +68,7 @@ import {
   farm,
   fixBed,
   inLine,
+  lockOf,
   owned,
   placesInLine,
   plantBeds,
@@ -66,11 +85,62 @@ const cap = (s: string) => s[0].toUpperCase() + s.slice(1)
 
 const seconds = (s: number) => (s < 60 ? `${s} s` : `${Math.round((s / 60) * 10) / 10} min`)
 
+/** A crop's seeds, as the packets show it: open, or not yet (the level it opens at). */
+const cropLock = (c: CropDef) => lockOf(`crop:${c.id}`)
+
+/** A seed packet: its picture, its name, how long it grows and what its seeds cost (a key on a computer) — or, not open
+ *  yet at the farm's level, faded with the level it opens at across its corner (a tap shakes it). */
+function SeedCard({ c, k, perBed, onChoose }: { c: CropDef; k: number | null; perBed: boolean; onChoose: (crop: CropId) => void }) {
+  const lock = cropLock(c)
+  const [scope, nope] = useNope<HTMLButtonElement>()
+  const stock = (
+    <span className={`tag farm-stock${farm.inv[c.id] ? '' : ' none'}`} title={`${farm.inv[c.id]} in the silo`} aria-label={`${farm.inv[c.id]} in the silo`}>
+      <img src={iconUrl('silo')} alt="" />
+      {farm.inv[c.id]}
+    </span>
+  )
+  const time = (
+    <span className="tag">
+      <Clock weight="bold" />
+      {seconds(c.growSeconds)}
+    </span>
+  )
+  if (lock !== null)
+    return (
+      <button ref={scope} className="farm-card locked" aria-disabled="true" aria-label={`${cap(c.plural)}: ${opensWords(lock)}`} onClick={nope}>
+        <LockCorner level={lock} />
+        {stock}
+        <img className="art" src={iconUrl(c.id)} alt="" />
+        <span className="farm-card-name">{cap(c.plural)}</span>
+        <span className="farm-card-tags">{time}</span>
+      </button>
+    )
+  return (
+    <button className="farm-card" disabled={farm.coins < c.seedCost} onClick={() => onChoose(c.id)}>
+      {k !== null && <kbd className="farm-key">{k}</kbd>}
+      {stock}
+      <img className="art" src={iconUrl(c.id)} alt="" />
+      <span className="farm-card-name">{cap(c.plural)}</span>
+      <span className="farm-card-tags">
+        {time}
+        <span className="tag">
+          <img src={art('coin')} alt="" />
+          {c.seedCost}
+          {perBed ? '/bed' : ''}
+        </span>
+      </span>
+    </button>
+  )
+}
+
 function SeedsPanel({ bed }: { bed: number }) {
   useFarm((s) => s.rev)
   const close = useHome((s) => s.closePanel)
   // every empty bed within reach gets the same seeds (as far as the coins go), but one set to grow something else
   const beds = useMemo(() => bedsNear(bed, 'empty', playerState.position.x, playerState.position.z).filter((i) => i === bed || !farm.beds[i].fixed), [bed])
+  // what is open first, then what a level opens next (in the order the levels come); the keys 1–9 go to the open ones
+  const crops = openFirst(CROPS, cropLock)
+  const open = crops.filter((c) => cropLock(c) === null)
   const choose = (crop: CropId) => {
     if (!plantBeds(bedsForSeeds(bed, crop, playerState.position.x, playerState.position.z), crop)) return
     const at = bedSpot(bed)
@@ -81,8 +151,8 @@ function SeedsPanel({ bed }: { bed: number }) {
   }
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const n = Number(e.key)
-      if (n >= 1 && n <= CROPS.length && farm.coins >= CROPS[n - 1].seedCost) choose(CROPS[n - 1].id)
+      const c = open[Number(e.key) - 1]
+      if (c && farm.coins >= c.seedCost) choose(c.id)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -90,30 +160,9 @@ function SeedsPanel({ bed }: { bed: number }) {
   return (
     <Shell title={beds.length > 1 ? `Plant ${beds.length} beds` : 'Plant seeds'} art={art('seedling')} sub={<Purse />} onClose={close}>
       <div className="farm-grid">
-        {CROPS.map((c, i) => {
-          const afford = farm.coins >= c.seedCost
-          return (
-            <button key={c.id} className="farm-card" disabled={!afford} onClick={() => choose(c.id)}>
-              <kbd className="farm-key">{i + 1}</kbd>
-              <span className={`tag farm-stock${farm.inv[c.id] ? '' : ' none'}`} title={`${farm.inv[c.id]} in the silo`} aria-label={`${farm.inv[c.id]} in the silo`}>
-                <img src={iconUrl('silo')} alt="" />
-                {farm.inv[c.id]}
-              </span>
-              <img className="art" src={iconUrl(c.id)} alt="" />
-              <span className="farm-card-name">{cap(c.plural)}</span>
-              <span className="farm-card-tags">
-                <span className="tag">
-                  <Clock weight="bold" />
-                  {seconds(c.growSeconds)}
-                </span>
-                <span className="tag">
-                  <img src={art('coin')} alt="" />
-                  {c.seedCost}
-                  {beds.length > 1 ? '/bed' : ''}
-                </span>
-              </span>
-            </button>
-          )
+        {crops.map((c) => {
+          const k = open.indexOf(c)
+          return <SeedCard key={c.id} c={c} k={k >= 0 ? k + 1 : null} perBed={beds.length > 1} onChoose={choose} />
         })}
       </div>
     </Shell>
@@ -139,14 +188,31 @@ function BedPanel({ bed }: { bed: number }) {
           <img className="art" src={art('seedling')} alt="" />
           <span className="farm-card-name">I choose</span>
         </button>
-        {CROPS.map((c) => (
-          <button key={c.id} className="farm-card" aria-pressed={fixed === c.id} onClick={() => choose(c.id)}>
-            <img className="art" src={iconUrl(c.id)} alt="" />
-            <span className="farm-card-name">{cap(c.plural)}</span>
-          </button>
+        {openFirst(CROPS, cropLock).map((c) => (
+          <BedChoice key={c.id} c={c} on={fixed === c.id} onChoose={choose} />
         ))}
       </div>
     </Shell>
+  )
+}
+
+/** A crop a bed can be set to grow: its picture and name; not open yet, faded with its level (a tap shakes it). */
+function BedChoice({ c, on, onChoose }: { c: CropDef; on: boolean; onChoose: (crop: CropId) => void }) {
+  const lock = cropLock(c)
+  const [scope, nope] = useNope<HTMLButtonElement>()
+  return (
+    <button
+      ref={scope}
+      className={`farm-card${lock !== null ? ' locked' : ''}`}
+      aria-pressed={on}
+      aria-disabled={lock !== null || undefined}
+      aria-label={lock !== null ? `${cap(c.plural)}: ${opensWords(lock)}` : undefined}
+      onClick={() => (lock !== null ? nope() : onChoose(c.id))}
+    >
+      {lock !== null && <LockCorner level={lock} />}
+      <img className="art" src={iconUrl(c.id)} alt="" />
+      <span className="farm-card-name">{cap(c.plural)}</span>
+    </button>
   )
 }
 
@@ -169,8 +235,10 @@ function BuildPanel({ bed }: { bed: number }) {
   const blurb = field ? field.blurb : 'One more raised bed to plant in.'
   const price = field ? field.price : (def.price ?? 0)
   const afford = farm.coins >= price
+  // a field not open yet at the farm's level: the card says when, where its Build was
+  const lock = lockOf(def.expansion ? `upgrade:${def.expansion}` : 'bed')
   const confirm = () => {
-    if (!armed || !afford) return
+    if (!armed || !afford || lock !== null) return
     const ok = def.expansion ? buy(def.expansion) : buildBed(bed)
     if (!ok) return
     const { pan, near } = placeSound(def.x, def.z)
@@ -186,15 +254,21 @@ function BuildPanel({ bed }: { bed: number }) {
         <button className="btn soft" onClick={close}>
           Not now
         </button>
-        <button className={`btn farm-buy${armed ? '' : ' arming'}`} disabled={!afford} aria-disabled={!armed} onClick={confirm}>
-          {afford ? (
-            <>
-              Build · <Coins n={price} />
-            </>
-          ) : (
-            <>Needs {price - farm.coins} more</>
-          )}
-        </button>
+        {lock !== null ? (
+          <span role="note" className="farm-lock">
+            <LockTag big level={lock} words={`Opens at level ${lock}`} />
+          </span>
+        ) : (
+          <button className={`btn farm-buy${armed ? '' : ' arming'}`} disabled={!afford} aria-disabled={!armed} onClick={confirm}>
+            {afford ? (
+              <>
+                Build · <Coins n={price} />
+              </>
+            ) : (
+              <>Needs {price - farm.coins} more</>
+            )}
+          </button>
+        )}
       </div>
     </Shell>
   )
@@ -312,24 +386,11 @@ function QueuePanel() {
   )
 }
 
-/** Each upgrade's picture in the shop. */
-const UPGRADE_ART: Record<string, ArtId> = {
-  east: 'seedling',
-  west: 'sheaf-of-rice',
-  queue: 'people-queue',
-  pace: 'person-running',
-  cow: 'cow',
-  sheep: 'ewe',
-  hen: 'chicken',
-  sprinkler: 'droplet',
-  compost: 'fallen-leaf',
-}
-
 const bedsIn = (e: 'east' | 'west') => BEDS.filter((b) => b.expansion === e).length
 
 /** Where an upgrade stands: how many times it has been bought, how many it can be, and what it changes — now and
  *  after the next one ("5 → 6" places in the line), so a card says what it does in numbers, not words. */
-function upgradeStep(id: string): { level: number; levels: number; icon: ReactNode; now: string; next: string | null } {
+function upgradeStep(id: UpgradeId): { level: number; levels: number; icon: ReactNode; now: string; next: string | null } {
   const glyph = (a: ArtId) => <img src={art(a)} alt="" />
   // another animal: how many there are, of how many there can be
   const herd = UPGRADES.find((u) => u.id === id)?.herd
@@ -357,6 +418,23 @@ function upgradeStep(id: string): { level: number; levels: number; icon: ReactNo
   }
 }
 
+/** An upgrade not open yet at the farm's level: its picture faded, its name and line, the level it opens at across its
+ *  corner where the price was (a tap shakes it). */
+function LockedUpgrade({ u, lock }: { u: Upgrade; lock: number }) {
+  const [scope, nope] = useNope<HTMLDivElement>()
+  return (
+    <div ref={scope} className="farm-shop-item locked" onClick={nope}>
+      <LockCorner level={lock} right />
+      <img className="art" src={art(UPGRADE_ART[u.id])} alt="" />
+      <div className="farm-shop-text">
+        <strong>{u.name}</strong>
+        <small className="farm-shop-blurb">{u.blurb}</small>
+      </div>
+      <span className="prompt-sr">{`${u.name}: ${opensWords(lock)}`}</span>
+    </div>
+  )
+}
+
 /** The farm shop: a card per upgrade — its picture, its name, which level the next one is ("Level 2", or Max once
  *  there are no more) and what it changes ("👥 5 → 6"), and its price. */
 function ShopPanel() {
@@ -365,14 +443,16 @@ function ShopPanel() {
   return (
     <Shell title="Shop" art={art('shopping-bags')} sub={<Purse />} onClose={close}>
       <div className="farm-shop">
-        {UPGRADES.map((u) => {
+        {openFirst(UPGRADES, (u) => lockOf(`upgrade:${u.id}`)).map((u) => {
+          const lock = lockOf(`upgrade:${u.id}`)
+          if (lock !== null) return <LockedUpgrade key={u.id} u={u} lock={lock} />
           const has = owned(u.id)
           const price = upgradePrice(u.id)
           const step = upgradeStep(u.id)
           const repeat = step.levels > 1
           return (
             <div key={u.id} className={`farm-shop-item${has ? ' owned' : ''}`}>
-              <img className="art" src={art(UPGRADE_ART[u.id] ?? 'package')} alt="" />
+              <img className="art" src={art(UPGRADE_ART[u.id])} alt="" />
               <div className="farm-shop-text">
                 <strong>{u.name}</strong>
                 <div className="farm-shop-tags">

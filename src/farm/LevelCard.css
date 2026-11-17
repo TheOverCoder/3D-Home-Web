@@ -75,7 +75,7 @@
 /* the last box (the level itself) leans in from the bar's end so it never hangs over the next level's star */
 .level-card .lf-box:nth-child(4) { translate: -78% 0; }
 .level-card .lf-box .art { position: relative; width: 42px; height: 42px; }
-.level-card .lf-box.locked .art { filter: grayscale(1) brightness(1.15); opacity: 0.5; }
+/* (a locked box's picture is faded by the game's one rule for what is locked: .locked .art, src/styles.css) */
 .level-card .lf-box-lock { position: absolute; right: 2px; bottom: 2px; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--ink-2); color: #fff; }
 .level-card .lf-box-lock svg { width: 11px; height: 11px; }
 /* how far the next box is, under the bar at its place */

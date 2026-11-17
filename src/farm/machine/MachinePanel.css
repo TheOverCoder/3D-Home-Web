@@ -153,6 +153,11 @@
 .mp-recipe.short .mp-recipe-pic { background: var(--paper-3); }
 .mp-recipe.short .mp-recipe-pic .art { filter: grayscale(0.7); opacity: 0.7; }
 .mp-recipe.full { cursor: not-allowed; opacity: 0.72; }
+/* not open yet: a shade darker, its picture faded (the game's .locked .art), the level it opens at where its time was */
+.mp-recipe.locked { background: var(--paper-2); box-shadow: 0 3px 0 var(--paper-3); cursor: default; }
+.mp-recipe.locked .mp-recipe-pic { background: var(--paper-3); }
+.mp-recipe.locked .mp-recipe-top b { color: var(--ink-2); }
+.mp-recipe.locked .lock-tag { flex: none; font-size: 13px; padding: 2px 12px 3px; }
 .mp-recipe.full .mp-recipe-pic { background: var(--paper-2); }
 /* being carried: its picture is the one in the air */
 .mp-recipe.carried { box-shadow: 0 0 0 2.5px var(--sun), 0 4px 0 var(--sun-lip); }

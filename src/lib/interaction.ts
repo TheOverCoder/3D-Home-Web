@@ -39,6 +39,8 @@ export interface ActionIcon {
   makes?: { from: string; to: string }[]
   /** a status: what is ready here cannot be taken, its building is full (the silo or the barn: its picture, how full) */
   full?: 'silo' | 'barn'
+  /** a status: it is not open yet, the level it opens at (src/farm/unlocks.ts): `item`'s picture beside the ribbon */
+  locked?: number
 }
 
 export interface InteractableDef {
@@ -91,6 +93,8 @@ export interface Tag {
   at: Point3
   /** a price tag's coins */
   price?: number
+  /** a price tag of a thing not open yet: the level it opens at, shown instead of the price (it has none) */
+  locked?: number
   open: () => void
 }
 

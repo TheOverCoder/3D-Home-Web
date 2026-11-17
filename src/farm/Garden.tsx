@@ -260,9 +260,18 @@ const priceOf = (index: number) => {
   const def = BEDS[index]
   return def.expansion ? EXPANSIONS[def.expansion].price : def.price
 }
+/** What opens this plot at a level (src/farm/unlocks.ts): its field, or building a bed. */
+const plotUnlock = (index: number) => {
+  const e = BEDS[index].expansion
+  return e ? (`upgrade:${e}` as const) : ('bed' as const)
+}
+/** The level this plot (or its field) opens at, while it is locked; null once open. */
+const plotLock = (index: number) => lockOf(plotUnlock(index))
 const priceLabel = (index: number) => {
   const def = BEDS[index]
-  return def.expansion ? `Expand the farm: ${EXPANSIONS[def.expansion].name} · ${priceOf(index)} coins` : `Build a bed · ${priceOf(index)} coins`
+  const lock = plotLock(index)
+  const what = def.expansion ? `Expand the farm: ${EXPANSIONS[def.expansion].name}` : 'Build a bed'
+  return `${what} · ${lock !== null ? `opens at level ${lock}` : `${priceOf(index)} coins`}`
 }
 
 /** The beds near where you stand at `stage`, the one in front of you first: one press does them all (ripe ones: as many
@@ -272,15 +281,17 @@ const bedsInReach = (index: number, stage: BedStage) =>
 
 /** An empty bed set to always grow one crop (its gear): the action button buys those seeds and plants them, in every
  *  empty bed within reach set to the same crop, as far as the coins go. Null for a bed where you choose each time. */
-/** The fewest coins any seeds cost: with less, an empty bed can plant nothing. */
-const CHEAPEST_SEEDS = Math.min(...CROPS.map((c) => c.seedCost))
+/** The fewest coins any seeds open at the farm's level cost: with less, an empty bed can plant nothing. */
+const cheapestSeeds = () => Math.min(...CROPS.filter((c) => lockOf(`crop:${c.id}`) === null).map((c) => c.seedCost))
 /** An empty bed that can plant nothing (no coins for any seeds): a status saying what is missing, not a button that
  *  opens packets all out of reach (tests/e2e/25-button found it). */
-const noSeeds = (index: number) => bedStage(index) === 'empty' && farm.coins < CHEAPEST_SEEDS
+const noSeeds = (index: number) => bedStage(index) === 'empty' && farm.coins < cheapestSeeds()
 
+/** (a bed set to a crop not open at the farm's level — a save from before the locks — plants nothing by itself: the
+ *  button opens the packets, else it would offer a press that does nothing) */
 function fixedPlanting(index: number): { crop: CropDef; beds: number[] } | null {
   const id = farm.beds[index].fixed
-  if (!id) return null
+  if (!id || lockOf(`crop:${id}`) !== null) return null
   const crop = cropById(id)
   const beds = bedsInReach(index, 'empty').filter((i) => farm.beds[i].fixed === id)
   const n = Math.min(beds.length, Math.floor(farm.coins / Math.max(1, crop.seedCost)))
@@ -341,10 +352,13 @@ function Bed({ index }: { index: number }) {
   const icon = useRef<Sprite>(null)
   // a staked plot carries a price board; a piece of land to buy has one board, on its first plot
   const lead = def.expansion ? BEDS.find((b) => b.expansion === def.expansion)!.index === index : true
+  // (not open yet at the farm's level: the level it opens at for the price)
+  const lock = plotLock(index)
   const sign = useMemo(() => {
-    if (def.expansion) return lead ? signTexture(['EXPAND', `${EXPANSIONS[def.expansion].price} coins`], 512, 256, '#2f3a2c', '#f3ead8') : null
-    return def.price ? signTexture(['NEW BED', `${def.price} coins`], 512, 256) : null
-  }, [def.expansion, def.price, lead])
+    const price = lock !== null ? `LEVEL ${lock}` : `${priceOf(index)} coins`
+    if (def.expansion) return lead ? signTexture(['EXPAND', price], 512, 256, '#2f3a2c', '#f3ead8') : null
+    return def.price ? signTexture(['NEW BED', price], 512, 256) : null
+  }, [def.expansion, def.price, lead, lock, index])
   const openPanel = useHome((s) => s.openPanel)
   const showToast = useHome((s) => s.showToast)
   const geo = bedGeometries()
@@ -387,7 +401,7 @@ function Bed({ index }: { index: number }) {
     enabled: () => !forSale(index),
     hint: () => (bedStage(index) === 'empty' && !noSeeds(index) ? '1–9 seeds' : undefined),
     // with no coins for any seeds: what is missing, as pictures (the coin and how many the cheapest seeds cost)
-    needs: () => (noSeeds(index) ? [{ item: 'coin', count: CHEAPEST_SEEDS }] : null),
+    needs: () => (noSeeds(index) ? [{ item: 'coin', count: cheapestSeeds() }] : null),
     // watering or harvesting here does every like bed in reach: the same press from any of them (planting already
     // reads the same from each: "Plant seeds", "Plant lettuces in 2 beds")
     same: () => {
@@ -403,7 +417,7 @@ function Bed({ index }: { index: number }) {
       const stage = bedStage(index)
       if (forSale(index)) return priceLabel(index)
       if (stage === 'empty') {
-        if (noSeeds(index)) return `Seeds from ${CHEAPEST_SEEDS} coins`
+        if (noSeeds(index)) return `Seeds from ${cheapestSeeds()} coins`
         const r = fixedPlanting(index)
         if (!r) return 'Plant seeds'
         const cost = r.crop.seedCost * r.beds.length
@@ -468,7 +482,10 @@ function Bed({ index }: { index: number }) {
     tag: () => {
       const at = { x: spot.x, y: BED.h + 0.25, z: spot.z }
       const open = () => openPanel({ kind: forSale(index) ? 'build' : 'bed', bed: index })
-      return forSale(index) ? { kind: 'price', label: priceLabel(index), price: priceOf(index), at, open } : { kind: 'gear', label: 'What this bed grows', at, open }
+      if (!forSale(index)) return { kind: 'gear', label: 'What this bed grows', at, open }
+      // not open yet at the farm's level: the level it opens at instead of its price (the card says so too)
+      const lock = plotLock(index)
+      return lock !== null ? { kind: 'price', label: priceLabel(index), locked: lock, at, open } : { kind: 'price', label: priceLabel(index), price: priceOf(index), at, open }
     },
   })
 

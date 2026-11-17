@@ -14,6 +14,7 @@ import { TopSlot } from './TopStack'
 import { ConfirmCard } from './ConfirmCard'
 import { ArrowRight, Clock } from './glyphs'
 import { ItemPic } from './ItemPic'
+import { LockTag } from './LockTag'
 
 /** Room name that fades in when you walk into a new room, like a film title: outdoors, the house's garden or the farm. */
 function RoomTitle() {
@@ -138,12 +139,20 @@ function actionPictures(icon: ActionIcon | undefined, mark: Verb | undefined): R
  * What is on its way, as pictures: the thing (how many) and how long; at the oven with something missing, what is
  * missing (each with how many) → the cake it is for, and at the gate with nothing the line wants, what it asks for
  * (each with how many more) → the line; at a machine with nothing to work on, what it makes from what; with the
- * silo or the barn full, what waits here (how many) → the building and how full it is (50/50). Null when there is
- * nothing to draw it with (the label is shown instead).
+ * silo or the barn full, what waits here (how many) → the building and how full it is (50/50); not open yet, its
+ * picture faded and the level it opens at. Null when there is nothing to draw it with (the label is shown instead).
  */
 function statusPictures(status: Nearby): ReactNode {
   const icon = status.icon
   const arrow = <ArrowRight weight="bold" className="prompt-arrow" />
+  // not open yet at the farm's level (a machine whose every recipe is locked): its picture and the level it opens at
+  if (icon?.locked !== undefined)
+    return (
+      <span className="prompt-goods locked" aria-hidden="true">
+        {(icon.item || icon.art) && <Pic src={icon.item ? good(icon.item) : art(icon.art!)} />}
+        <LockTag level={icon.locked} />
+      </span>
+    )
   if (icon?.full)
     return (
       <span className="prompt-goods" aria-hidden="true">

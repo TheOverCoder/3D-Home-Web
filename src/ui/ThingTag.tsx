@@ -8,13 +8,16 @@ import { tagOf } from '../lib/interaction'
 import { touchLayout } from '../lib/stick'
 import { busy, useHome } from '../store'
 import { art } from './art'
+import { LockTag, useNope } from './LockTag'
 import './ThingTag.css'
 
 // The tag on the thing you look at: a gear when something can be set about it (a bed: what it always grows), a price
 // tag — a coin and the price — when it is for sale (a staked-out bed to build, a field to buy). It turns up on the
 // thing itself, a little above and to the right of where you look, and stays whole on the screen (clear of the touch
 // controls) when the thing is near an edge; tap it (or press G) to open its card, which asks before anything is
-// spent. Never on the action button: that only ever does what one press does.
+// spent. Never on the action button: that only ever does what one press does. A thing not open yet at the farm's level
+// (src/farm/unlocks.ts) wears the level it opens at instead of a price — the berry ribbon is the tag — and a tap shakes
+// it, then opens the same card, which says so.
 
 const typing = (t: EventTarget | null) => t instanceof HTMLElement && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)
 
@@ -52,6 +55,7 @@ export function ThingTag() {
   const playing = useHome((s) => s.phase === 'playing')
   useFarm((s) => s.rev) // a price tag shows whether the coins are there
   const button = useRef<HTMLButtonElement>(null)
+  const [lockRef, nope] = useNope<HTMLButtonElement>()
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -69,6 +73,26 @@ export function ThingTag() {
   if (!tag || !live) return null
   const price = live.kind === 'price'
   const short = price && farm.coins < (live.price ?? 0)
+  if (live.locked !== undefined)
+    return (
+      <Html key={`${tag.id}|lock`} position={[live.at.x, live.at.y, live.at.z]} center calculatePosition={placeTag(lockRef)} zIndexRange={[12, 11]} wrapperClass="thing-tag-anchor">
+        <button
+          ref={lockRef}
+          className="thing-tag thing-lock"
+          onClick={() => {
+            uiClick()
+            nope()
+            window.setTimeout(live.open, 320)
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+          aria-label={live.label}
+          title={coarsePointer ? undefined : `${live.label} (G)`}
+        >
+          <LockTag level={live.locked} />
+          {!coarsePointer && <kbd>G</kbd>}
+        </button>
+      </Html>
+    )
   return (
     <Html key={`${tag.id}|${live.kind}`} position={[live.at.x, live.at.y, live.at.z]} center calculatePosition={placeTag(button)} zIndexRange={[12, 11]} wrapperClass="thing-tag-anchor">
       <button

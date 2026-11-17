@@ -1,20 +1,23 @@
 import { farmSound, uiClick } from '../audio/sound'
 import { useHome } from '../store'
 import { art } from '../ui/art'
+import { LockCorner, LockTag, opensWords, useNope } from '../ui/LockTag'
 import { Coins, Purse, Shell, useArmed } from '../ui/Sheet'
 import { Check } from '../ui/glyphs'
 import { SHOP, type DecorTab, type ShopItemView, type ShopKind } from './decor'
 import { editView, useEdit } from './edit'
 import { iconUrl, shopArtUrl } from './icons'
 import { isShopKind } from './layout'
-import { buyDecor, decorOwned, decorPrice, farm, freeDecorSpot, placeDecor, shopView, useFarm } from './state'
+import { buyDecor, decorOwned, decorPrice, farm, freeDecorSpot, lockOf, placeDecor, shopView, useFarm } from './state'
+import { openFirst } from './unlockArt'
 
 // The edit mode's shop (the bag on its card): the farm's decoration — lights, fences and hedges, paths, a bench, trees,
 // bushes and flowers — and, on a tab of its own, the fruit trees and bushes, each with its picture, how many the farm
 // has and what the next one costs (each one dearer than the last: src/farm/decor.ts, nextPrice). A kind opens its card
 // first — its picture, what it costs and what you have, Cancel or Buy (armed a moment after it opens) — and once bought
 // it stands at the free spot nearest the middle of the view, picked, so a drag moves it on (with no room it waits in the
-// farm's store, on the edit mode's card).
+// farm's store, on the edit mode's card). A kind not open yet at the farm's level is shown after the open ones, faded,
+// with the level it opens at across its corner (a tap shakes it); its card has no Buy.
 
 const TABS: { id: DecorTab; name: string }[] = [
   { id: 'decor', name: 'Decoration' },
@@ -38,6 +41,16 @@ export function putDown(kind: ShopKind): boolean {
 /** One kind on a shop's card: its picture, its name, how many the farm has, and the next one's price. */
 function ShopCard({ item }: { item: ShopItemView }) {
   const open = useHome((s) => s.openPanel)
+  const [scope, nope] = useNope<HTMLButtonElement>()
+  if (item.locked !== undefined)
+    return (
+      <button ref={scope} className="farm-card decor-card locked" aria-disabled="true" aria-label={`${item.name}: ${opensWords(item.locked)}`} onClick={nope}>
+        <LockCorner level={item.locked} />
+        <img className="art" src={shopArtUrl(item.kind)} alt="" />
+        <span className="farm-card-name">{item.name}</span>
+        <span className="farm-card-tags">{item.fruit && <img className="decor-fruit" src={iconUrl(item.fruit)} alt="" />}</span>
+      </button>
+    )
   return (
     <button
       className="farm-card decor-card"
@@ -71,7 +84,10 @@ export function DecorShop({ tab }: { tab: DecorTab }) {
   useFarm((s) => s.rev)
   const close = useHome((s) => s.closePanel)
   const open = useHome((s) => s.openPanel)
-  const items = shopView().filter((i) => i.tab === tab)
+  const items = openFirst(
+    shopView().filter((i) => i.tab === tab),
+    (i) => i.locked ?? null,
+  )
   return (
     <Shell title={tab === 'decor' ? 'Decoration' : 'Fruit trees'} art={art(tab === 'decor' ? 'shopping-bags' : 'seedling')} sub={<Purse />} onClose={close}>
       <div className="edit-actions deco-tabs decor-tabs" role="tablist" aria-label="The farm shop">
@@ -110,9 +126,10 @@ export function BuyDecor({ item }: { item: string }) {
   const price = decorPrice(item)
   const owned = decorOwned(item)
   const afford = farm.coins >= price
+  const lock = lockOf(`decor:${item}`)
   const back = () => open({ kind: 'decor-shop', tab: def.tab })
   const buy = () => {
-    if (!armed || !afford) return
+    if (!armed || !afford || lock !== null) return
     close()
     if (!buyDecor(item)) return
     farmSound('build', 0, 1)
@@ -133,15 +150,21 @@ export function BuyDecor({ item }: { item: string }) {
         <button className="btn soft" onClick={back}>
           Cancel
         </button>
-        <button className={`btn farm-buy${armed ? '' : ' arming'}`} disabled={!afford} aria-disabled={!armed} onClick={buy}>
-          {afford ? (
-            <>
-              Buy · <Coins n={price} />
-            </>
-          ) : (
-            <>Needs {price - farm.coins} more</>
-          )}
-        </button>
+        {lock !== null ? (
+          <span role="note" className="farm-lock">
+            <LockTag big level={lock} words={`Opens at level ${lock}`} />
+          </span>
+        ) : (
+          <button className={`btn farm-buy${armed ? '' : ' arming'}`} disabled={!afford} aria-disabled={!armed} onClick={buy}>
+            {afford ? (
+              <>
+                Buy · <Coins n={price} />
+              </>
+            ) : (
+              <>Needs {price - farm.coins} more</>
+            )}
+          </button>
+        )}
       </div>
     </Shell>
   )

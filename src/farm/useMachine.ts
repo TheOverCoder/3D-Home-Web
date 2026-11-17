@@ -8,14 +8,17 @@ import type { Point3 } from '../lib/playerState'
 import { useHome } from '../store'
 import { MACHINES, STORES, count, inputOf, storeOf, type MachineId, type ProduceId, type Recipe } from './data'
 import { usePlacement } from './edit'
-import { canAddJob, clockText, collectMachine, farm, machineCollectable, machineDone, machinePoint, machineSecondsLeft, machineStage, machineToDo } from './state'
+import { canAddJob, clockText, collectMachine, farm, lockOf, machineCollectable, machineDone, machineLock, machinePoint, machineSecondsLeft, machineStage, machineToDo } from './state'
+import { recipeUnlock, unlockLevel } from './unlocks'
 
 // A machine on the action button (MACHINES in src/farm/data.ts): the mill, the loom and the oven, each working through
 // a queue of jobs. The button takes out what is done; otherwise, while something can go into the queue, it opens the
 // machine's panel (its queue, what it makes, its level): nothing goes in on the button itself. With nothing to add, a
 // status says how long the queue still works, that the barn is full, or what the machine wants. A gear on it opens the
 // panel whenever you look at it. It dings as each job is done and makes its working sound now and then; the work
-// level it gives back (0 … 1, eased) drives its moving parts.
+// level it gives back (0 … 1, eased) drives its moving parts. While every recipe of it is locked at the farm's level
+// (src/farm/unlocks.ts) and nothing is in its queue, a status says the level it opens at; what it says it makes, or
+// wants, is only ever of its open recipes.
 
 /** Whole seconds to go, rounded as the clock in the labels is. */
 const whole = (seconds: number) => Math.max(0, Math.ceil(seconds))
@@ -31,11 +34,23 @@ const lacking = (needs: Partial<Record<ProduceId, number>>) =>
     return more > 0 ? [{ item, count: more }] : []
   })
 
-/** The recipe you are closest to having everything for (fewest things still to get). */
+/** A machine's recipes open at the farm's level (all of them, if none is: the machine then says when it opens). */
+function openRecipes(id: MachineId): Recipe[] {
+  const open = MACHINES[id].recipes.filter((r) => lockOf(recipeUnlock(id, r.id)) === null)
+  return open.length ? open : MACHINES[id].recipes
+}
+
+/** The open recipe you are closest to having everything for (fewest things still to get). */
 function nearest(id: MachineId) {
   const short = (r: Recipe) => Object.entries(r.needs).reduce((t, [k, n]) => t + Math.max(0, (n ?? 0) - farm.inv[k as ProduceId]), 0)
-  return MACHINES[id].recipes.reduce((best, r) => (short(r) < short(best) ? r : best))
+  return openRecipes(id).reduce((best, r) => (short(r) < short(best) ? r : best))
 }
+
+/** Locked, with nothing in its queue: the level it opens at (else null: it works as ever, whatever it holds). */
+const lockedIdle = (id: MachineId) => (machineStage(id) === 'idle' ? machineLock(id) : null)
+
+/** What a locked machine shows on its status: what its first recipe to open makes. */
+const firstToOpen = (id: MachineId) => MACHINES[id].recipes.reduce((a, r) => (unlockLevel(recipeUnlock(id, r.id)) < unlockLevel(recipeUnlock(id, a.id)) ? r : a))
 
 /** The first recipe that can go into the queue now (null: none). */
 const addable = (id: MachineId) => MACHINES[id].recipes.find((r) => canAddJob(id, r)) ?? null
@@ -60,6 +75,8 @@ function main(id: MachineId): InteractableDef {
     aim: around(id, def.aim),
     radius: def.reach,
     label: () => {
+      const locked = lockedIdle(id)
+      if (locked !== null) return `${def.name} · opens at level ${locked}`
       const done = machineDone(id)
       if (machineCollectable(id)) return done.length === 1 ? def.words.done(done[0].recipe, machineCollectable(id)) : `Collect ${listed(done)}`
       if (addable(id)) return `${def.words.word} · add to the queue`
@@ -70,8 +87,10 @@ function main(id: MachineId): InteractableDef {
       if (done.length) return `${STORES[storeOf(done[0].item)].name} full · ${listed(done)} waiting`
       return def.words.idle(nearest(id))
     },
-    needs: () => (machineStage(id) === 'idle' && !addable(id) && !def.picture ? lacking(nearest(id).needs) : null),
+    needs: () => (machineStage(id) === 'idle' && lockedIdle(id) === null && !addable(id) && !def.picture ? lacking(nearest(id).needs) : null),
     icon: (): ActionIcon => {
+      const locked = lockedIdle(id)
+      if (locked !== null) return { verb: 'wait', item: firstToOpen(id).makes, locked }
       if (machineCollectable(id)) return collectIcon(id)
       const r = addable(id)
       // what one of its jobs makes: the press opens the queue, nothing goes in yet
@@ -81,7 +100,7 @@ function main(id: MachineId): InteractableDef {
       const done = machineDone(id)
       if (done.length) return { verb: 'wait', item: done[0].item, count: done.reduce((n, g) => n + g.count, 0), full: storeOf(done[0].item) }
       // nothing to work on: a status that says what is missing (or what it makes from what), never a button
-      if (def.picture) return { verb: 'wait', item: def.picture, makes: def.recipes.map((x) => ({ from: inputOf(x), to: x.makes })) }
+      if (def.picture) return { verb: 'wait', item: def.picture, makes: openRecipes(id).map((x) => ({ from: inputOf(x), to: x.makes })) }
       return { verb: 'wait', item: nearest(id).makes }
     },
     // on the compass once the whole queue is done (and what is done fits)
