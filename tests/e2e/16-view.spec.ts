@@ -536,6 +536,9 @@ const YARD: Pose[] = [
   { name: 'gate, the line', x: 4.2, z: 10.8, yaw: P - 0.5, pitch: -0.05 },
   { name: 'gate, along the line', x: 5.6, z: 12.2, yaw: 1.25, pitch: -0.05 },
   { name: 'yard, the office and the tractor', x: -5, z: 7.9, yaw: P / 2, pitch: -0.05, shadow: true },
+  // the animals' tools at their fences (fillFarm owns them): the coop and the milk bucket, each a crowd of one model
+  // whose shadow is one mesh drawn only into the sun's map (src/farm/ToolStands.tsx); the shears are in "from the north"
+  { name: 'yard, the coop and the milk bucket at their fences', x: 4, z: 2, yaw: -P / 2, pitch: -0.05, shadow: true },
 ]
 
 const inRect = (r: Rect, x: number, z: number, margin = 0) => x >= r.x0 - margin && x <= r.x1 + margin && z >= r.z0 - margin && z <= r.z1 + margin

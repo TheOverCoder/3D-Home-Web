@@ -1,6 +1,6 @@
 // Draws the farm's item pictures from the models (src/models/itemArt.ts) and saves them as WebP files in
-// src/assets/items, the wardrobe's garments in src/assets/garments and the farm shop's decoration and fruit plants in
-// src/assets/decor, which src/farm/icons.ts serves. Run it with
+// src/assets/items, the wardrobe's garments in src/assets/garments, the farm shop's decoration and fruit plants in
+// src/assets/decor and the animals' tools' skins in src/assets/skins, which src/farm/icons.ts serves. Run it with
 // the dev server up (npm run dev):
 //
 //   node scripts/render-item-art.mjs [http://localhost:5173/] [--shot page.png]
@@ -19,6 +19,7 @@ const base = args[0] ?? 'http://localhost:5173/'
 const out = join(dirname(fileURLToPath(import.meta.url)), '../src/assets/items')
 const clothes = join(dirname(fileURLToPath(import.meta.url)), '../src/assets/garments')
 const decor = join(dirname(fileURLToPath(import.meta.url)), '../src/assets/decor')
+const skins = join(dirname(fileURLToPath(import.meta.url)), '../src/assets/skins')
 
 const browser = await chromium.launch({
   executablePath: process.env.PW_CHROMIUM_PATH || undefined,
@@ -29,11 +30,12 @@ try {
   page.on('pageerror', (e) => console.error('[page]', e.message))
   await page.goto(new URL('?items', base).href)
   await page.waitForFunction(() => window.__itemArt, null, { timeout: 120_000 })
-  const { items, garments, shop } = await page.evaluate(() => ({ items: window.__itemArt, garments: window.__garmentArt, shop: window.__shopArt }))
+  const { items, garments, shop, skin } = await page.evaluate(() => ({ items: window.__itemArt, garments: window.__garmentArt, shop: window.__shopArt, skin: window.__skinArt }))
   for (const [dir, pictures] of [
     [out, items],
     [clothes, garments],
     [decor, shop],
+    [skins, skin],
   ]) {
     await mkdir(dir, { recursive: true })
     let total = 0
@@ -47,6 +49,7 @@ try {
     }
     if (dir === clothes) console.log(`${Object.keys(pictures).length} garments, ${(total / 1024).toFixed(0)} KB`)
     if (dir === decor) console.log(`${Object.keys(pictures).length} kinds of the farm shop, ${(total / 1024).toFixed(0)} KB`)
+    if (dir === skins) console.log(`${Object.keys(pictures).length} skins of the animals' tools, ${(total / 1024).toFixed(0)} KB`)
   }
   if (shot) {
     await page.waitForTimeout(300)

@@ -3,7 +3,9 @@ import { PRODUCE, type ProduceId } from '../farm/data'
 import type { PictureId } from '../farm/icons'
 import { GARMENTS } from '../farm/outfit'
 import { SHOP } from '../farm/decor'
-import { ITEM_IDS, SHOP_ART_KINDS, renderGarmentArt, renderItemArt, renderShopArt } from './itemArt'
+import { SKINS } from '../farm/skins'
+import { loadSolids } from '../lib/sculpt'
+import { ITEM_IDS, SHOP_ART_KINDS, SKIN_ART, renderGarmentArt, renderItemArt, renderShopArt, renderSkinArt } from './itemArt'
 
 // The item pictures drawn from the models (open the site with ?items): each at the size the panels show it, on
 // the paper, on the dark chip, and small, as in a chip — the sizes a picture has to read at.
@@ -18,6 +20,7 @@ export function ItemArtPage() {
   const [items, setItems] = useState<[PictureId, string][]>([])
   const [clothes, setClothes] = useState<[string, string][]>([])
   const [shop, setShop] = useState<[string, string][]>([])
+  const [skins, setSkins] = useState<[string, string][]>([])
   useEffect(() => {
     const size = Number(new URLSearchParams(location.search).get('size')) || 256
     const out = {} as Record<PictureId, string>
@@ -28,13 +31,21 @@ export function ItemArtPage() {
     // the farm shop's decoration and fruit plants (the edit mode's shop)
     const sold: Record<string, string> = {}
     for (const k of SHOP_ART_KINDS) sold[k] = renderShopArt(k)
-    const w = window as unknown as { __itemArt: Record<string, string>; __garmentArt: Record<string, string>; __shopArt: Record<string, string> }
-    w.__garmentArt = worn
-    w.__shopArt = sold
-    w.__itemArt = out
-    setItems(Object.entries(out) as [PictureId, string][])
-    setClothes(Object.entries(worn))
-    setShop(Object.entries(sold))
+    // the animals' tools' skins (the coops are cut with the solid engine: once it has loaded); the pictures are handed
+    // to the script all together, last
+    void loadSolids().then(() => {
+      const skin: Record<string, string> = {}
+      for (const [k, s] of SKIN_ART) skin[`${k}-${s}`] = renderSkinArt(k, s)
+      const w = window as unknown as { __itemArt: Record<string, string>; __garmentArt: Record<string, string>; __shopArt: Record<string, string>; __skinArt: Record<string, string> }
+      w.__garmentArt = worn
+      w.__shopArt = sold
+      w.__skinArt = skin
+      w.__itemArt = out
+      setItems(Object.entries(out) as [PictureId, string][])
+      setClothes(Object.entries(worn))
+      setShop(Object.entries(sold))
+      setSkins(Object.entries(skin))
+    })
   }, [])
   return (
     <main style={page}>
@@ -59,6 +70,18 @@ export function ItemArtPage() {
             <figcaption>{SHOP[id as keyof typeof SHOP]?.name ?? id}</figcaption>
           </figure>
         ))}
+      </div>
+      <h1 style={{ margin: '20px 0 12px', font: '600 26px var(--font-display)' }}>The tools' skins</h1>
+      <div style={grid}>
+        {skins.map(([id, url]) => {
+          const [kind, style] = id.split('-') as [keyof typeof SKINS, 'a' | 'b' | 'c']
+          return (
+            <figure key={id} style={card}>
+              <img src={url} alt="" width={96} height={96} />
+              <figcaption>{SKINS[kind]?.[style]?.name ?? id}</figcaption>
+            </figure>
+          )
+        })}
       </div>
       <h1 style={{ margin: '20px 0 12px', font: '600 26px var(--font-display)' }}>Garments</h1>
       <div style={grid}>

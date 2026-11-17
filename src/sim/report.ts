@@ -50,6 +50,9 @@ export function report(run: SimRun, levels = 30): string {
       )
     }
     for (const id of ['machine-remote', 'animal-remote'] as LadderId[]) out.push(`  ${LADDERS[id].name.padEnd(12)} bought ${when(run.shop[id]?.[0])}`)
+    // the tools' skins (src/farm/skins.ts): when each was bought
+    const skins = run.bought.filter((b) => b.what.startsWith('buy skin '))
+    out.push(`  Skins        ${skins.length ? skins.map((b) => `${b.what.slice('buy skin '.length)} ${mmss(b.minute)}`).join(', ') : 'none bought'}`)
   }
   out.push('', 'Bought:')
   for (const b of run.bought) out.push(`  ${mmss(b.minute)}  ${b.what}`)

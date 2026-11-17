@@ -1,6 +1,7 @@
 import { art } from '../ui/art'
-import type { ProduceId } from './data'
+import { TOOLS, type ProduceId, type ToolKind } from './data'
 import type { ShopKind } from './decor'
+import type { SkinStyle } from './skins'
 
 // The pictures of the farm's goods: each drawn from its model (src/models/goods.ts, by src/models/itemArt.ts) and
 // saved as a WebP file in src/assets/items by scripts/render-item-art.mjs. The panels, the action button, the
@@ -10,6 +11,7 @@ import type { ShopKind } from './decor'
 const files = import.meta.glob('../assets/items/*.webp', { eager: true, query: '?url', import: 'default' }) as Record<string, string>
 const garments = import.meta.glob('../assets/garments/*.webp', { eager: true, query: '?url', import: 'default' }) as Record<string, string>
 const decor = import.meta.glob('../assets/decor/*.webp', { eager: true, query: '?url', import: 'default' }) as Record<string, string>
+const skins = import.meta.glob('../assets/skins/*.webp', { eager: true, query: '?url', import: 'default' }) as Record<string, string>
 
 /** What has a picture of its own, drawn from its model: every good, the silo and the barn. */
 export type PictureId = ProduceId | 'silo' | 'barn'
@@ -23,6 +25,10 @@ export function iconUrl(id: PictureId | 'coin'): string {
 /** The picture of a kind the farm's shop sells (src/farm/decor.ts), drawn from its model and saved the same way
  *  (src/models/itemArt.ts, renderShopArt); a kind not drawn yet shows the seedling. */
 export const shopArtUrl = (kind: ShopKind): string => decor[`../assets/decor/${kind}.webp`] ?? art('seedling')
+
+/** A tool's skin's picture (src/farm/skins.ts), drawn from its model and saved the same way (src/models/itemArt.ts,
+ *  renderSkinArt); one not drawn yet shows the tool's own picture. */
+export const skinArtUrl = (kind: ToolKind, style: SkinStyle): string => skins[`../assets/skins/${kind}-${style}.webp`] ?? art(TOOLS[kind].art)
 
 /** A garment's picture (src/farm/outfit.ts), drawn from the people engine's model in its colour and saved the same way
  *  (src/models/itemArt.ts, renderGarmentArt). */

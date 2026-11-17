@@ -16,6 +16,7 @@ import {
   PRODUCER_IDS,
   SHED,
   TOOLS,
+  TOOL_KINDS,
   UPGRADES,
   cropById,
   produceById,
@@ -29,6 +30,7 @@ import { MANAGER_SPOT } from '../data/market'
 import { goalsNow } from '../farm/goals'
 import { PARCEL_IDS, PARCELS, canBuyParcel, toWorld } from '../farm/layout'
 import { STORE_GOODS } from '../farm/storage'
+import { SKINS, SKIN_STYLES, skinPrice } from '../farm/skins'
 import {
   addJob,
   bedSpot,
@@ -38,6 +40,7 @@ import {
   buyLadder,
   buyLand,
   buyOffice,
+  buySkin,
   buySlot,
   canAddJob,
   canUpgradeStore,
@@ -76,6 +79,7 @@ import {
   managerPays,
   maxOf,
   sendOrder,
+  skinOwned,
   slotPrice,
   toolOwned,
   toolTake,
@@ -107,8 +111,8 @@ export interface Move {
 /** Coins kept back from buying, for the next seeds. */
 export const RESERVE = 10
 
-/** Whether the farm shop's tools, their upgrades and the two remotes are for sale (plans/animal-tools.md): on, as in
- *  play; off, to play the farm as it was before them and compare (`npm run sim` with SIM_TOOLS=off). */
+/** Whether the farm shop's tools, their upgrades, their skins and the two remotes are for sale (plans/animal-tools.md):
+ *  on, as in play; off, to play the farm as it was before them and compare (`npm run sim` with SIM_TOOLS=off). */
 let toolsForSale = true
 export function sellTools(on: boolean) {
   toolsForSale = on
@@ -203,7 +207,8 @@ interface Purchase {
 }
 
 /** Everything there is to buy, each with its price now: the beds to build, the farm shop's upgrades and animals (and,
- *  once their herds are full, the animals' tools and their upgrades, and the two remotes), the order office's upgrades,
+ *  once their herds are full, the animals' tools, their upgrades and their skins, and the two remotes), the order
+ *  office's upgrades,
  *  the machines' queues, land, the manager's better price. Only what is open at the farm's level (src/farm/unlocks.ts)
  *  and what a ladder waits for is there (ladderOpen): the player sees the rest locked, and does not try it. */
 function forSale(): Purchase[] {
@@ -224,6 +229,13 @@ function forSale(): Purchase[] {
   // the farm shop's ladders: the tools, their upgrades, the remotes
   if (toolsForSale)
     for (const id of LADDER_IDS) if (LADDERS[id].at === 'shop' && ladderOpen(id)) out.push({ what: LADDERS[id].name.toLowerCase(), at: SHOP, price: ladderNextPrice(id), buy: () => buyLadder(id) })
+  // a tool's skins (src/farm/skins.ts), in its skins shop at its place: the player who buys whatever is cheapest buys
+  // them too, so their prices are held to the pace as everything else's
+  if (toolsForSale)
+    for (const kind of TOOL_KINDS)
+      if (toolOwned(kind))
+        for (const style of SKIN_STYLES)
+          if (!skinOwned(kind, style)) out.push({ what: `skin ${SKINS[kind][style].name.toLowerCase()}`, at: toolAt(kind), price: skinPrice(kind, style), buy: () => buySkin(kind, style) })
   return out
 }
 

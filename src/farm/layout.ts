@@ -71,10 +71,12 @@ const rect = (minX: number, maxX: number, minZ: number, maxZ: number): Rect => (
 export const PLACES: Record<PlaceId, PlaceDef> = {
   // the hen run, 3.6 × 4.6 m, its nest box sticking out of the west fence (you collect the eggs from outside)
   hens: { id: 'hens', name: 'Hen run and coop', local: rect(-2.2, 1.85, -2.35, 2.35), door: rect(-2.9, -2.2, -1.6, -0.4), home: { x: 11.6, z: 6.7, rot: 0 } },
-  // the cows' pasture, 4.3 × 13 m, its gate in the west fence
-  cows: { id: 'cows', name: "Cows' pasture", local: rect(-2.2, 2.2, -6.55, 6.55), door: rect(-3.0, -2.2, 1.7, 3.3), home: { x: 11.35, z: -2.9, rot: 0 } },
-  // the sheep fold, 8.6 × 3.7 m, its gate in the south fence
-  sheep: { id: 'sheep', name: 'Sheep fold', local: rect(-4.35, 4.35, -1.9, 1.9), door: rect(-0.9, 0.9, 1.9, 2.7), home: { x: -2.1, z: -10.45, rot: 0 } },
+  // the cows' pasture, 4.3 × 13 m, its gate in the west fence; the footprint takes in the milk bucket outside that fence,
+  // south of the gate (TOOL_PLACES in src/models/tools.ts: its deepest skin stands 0.53 m out)
+  cows: { id: 'cows', name: "Cows' pasture", local: rect(-2.75, 2.2, -6.55, 6.55), door: rect(-3.0, -2.2, 1.7, 3.3), home: { x: 11.35, z: -2.9, rot: 0 } },
+  // the sheep fold, 8.6 × 3.7 m, its gate in the south fence; the footprint takes in the shears and their basket outside
+  // that fence, east of the gate (the deepest skin stands 0.62 m out)
+  sheep: { id: 'sheep', name: 'Sheep fold', local: rect(-4.35, 4.35, -1.9, 2.55), door: rect(-0.9, 0.9, 1.9, 2.7), home: { x: -2.1, z: -10.45, rot: 0 } },
   // the silo (what grows) and the barn (what the animals and the machines give), in the west yard, their doors
   // facing the house
   silo: { id: 'silo', name: 'Silo', local: rect(-1.3, 1.3, -1.3, 1.3), door: rect(1.3, 2.0, -0.6, 0.6), home: { x: -10.7, z: 0.4, rot: 0 } },

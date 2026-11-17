@@ -19,11 +19,16 @@ import {
 } from 'three'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import type { Garment } from '../farm/outfit'
+import { TOOLS, TOOL_KINDS, type ToolKind } from '../farm/data'
+import { SKIN_STYLES, type SkinStyle } from '../farm/skins'
 import type { PictureId } from '../farm/icons'
 import { DECOR_KINDS, FRUIT, FRUIT_KINDS, type FruitKind, type ShopKind } from '../farm/decor'
 import { decorModel, fruitParts, fruitPlantModel, fruitSpots, putFruit } from '../farm/decorModels'
 import { sculptMaterial, type SculptMaterialOptions } from '../lib/sculpt'
 import { barnModel, siloModel } from './buildings'
+import { cropParts } from './crops'
+import { putEgg } from './plants'
+import { nestSpots, toolModel } from './tools'
 import { GOODS } from './goods'
 import { CLOTH, HAT, PERSON, personGeometries } from './person'
 import { structureParts, type Structure } from './structures'
@@ -138,6 +143,32 @@ export function renderShopArt(kind: ShopKind, size = 192): string {
   }
   const url = shoot(item.group, SHOP_VIEWS[kind] ?? {}, size)
   fruit?.dispose()
+  item.dispose()
+  return url
+}
+
+/** Every tool's skin with a picture of its own (src/farm/skins.ts): each tool in each style. */
+export const SKIN_ART: [ToolKind, SkinStyle][] = TOOL_KINDS.flatMap((k) => SKIN_STYLES.map((s): [ToolKind, SkinStyle] => [k, s]))
+
+/** A tool's skin as a picture (its card in the tool's skins shop, src/farm/SkinShop.tsx), `size` pixels square: drawn
+ *  from its model as the goods are, from the front left and a little above, as it stands when there is something to
+ *  take (the coop an egg in each nest, the pail its milk, the basket its wool). The coops are cut with the solid engine:
+ *  draw them once it has loaded. `scripts/render-item-art.mjs` saves them in src/assets/skins (src/farm/icons.ts). */
+export function renderSkinArt(kind: ToolKind, style: SkinStyle, size = 192): string {
+  const look = TOOLS[kind].look
+  const item = structureParts(toolModel(look, style), `skin-${kind}-${style}`)
+  const eggs = look === 'nests' ? cropParts(0.5) : null
+  if (eggs) {
+    eggs.begin()
+    nestSpots(style).forEach(([x, y, z], k) => {
+      eggs.at(0, 0, 0)
+      putEgg(eggs, x, y, z, k)
+    })
+    eggs.end()
+    item.group.add(eggs.group)
+  }
+  const url = shoot(item.group, { az: -28, el: 16 }, size)
+  eggs?.dispose()
   item.dispose()
   return url
 }

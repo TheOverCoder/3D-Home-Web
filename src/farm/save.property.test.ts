@@ -25,10 +25,12 @@ import {
   SHOP,
   SLOT_LEVELS,
   STORE_IDS,
+  TOOL_KINDS,
   TRACTOR,
   WAIT_LEVELS,
   WATER_SHARE,
   cropById,
+  toolLadder,
   orderSlots,
   orderWait,
   type CropId,
@@ -184,7 +186,7 @@ const OLD_PARTS: Record<string, string> = {
  *  - the ladders → the market (how many places are open, the longest wait for a visit) and the contractor (how many
  *    pieces a day); the market (whether the shop is yours) → the ladders (the shop's own are 0 until it is); the
  *    animals' tools among the ladders → their herds' counts and clocks (a nest a hen with the coop; each up to the
- *    tool's most)
+ *    tool's most), and their skins (a tool not the farm's owns its own only, and wears it)
  */
 function alsoChanges(part: string): RegExp | null {
   if (part.startsWith('expansions')) return /^beds\.|^layout$/
@@ -204,7 +206,7 @@ function alsoChanges(part: string): RegExp | null {
   if (part === 'apartment' || part.startsWith('apartment.')) return /^place$/
   // the ladders decide how many places the shop has and how often shoppers come, and how many pieces the contractor
   // brings; the animals' tools among them, how a herd's counts and clocks are kept and how much each holds
-  if (part === 'ladders' || part.startsWith('ladders.')) return /^(market|contractor)(\.|$)|^producers\.(hens|cows|sheep)\.(stock|timer)$/
+  if (part === 'ladders' || part.startsWith('ladders.')) return /^(market|contractor|skins)(\.|$)|^producers\.(hens|cows|sheep)\.(stock|timer)$/
   // the shop's own ladders count only once the shop is yours (src/farm/market.ts, clampLevels)
   if (part === 'market' || part.startsWith('market.')) return /^ladders(\.|$)/
   // the level decides which garments the wardrobe has, so what can be worn (src/farm/outfit.ts), and the boxes it
@@ -372,6 +374,15 @@ function farmProblems(): string[] {
   for (const id of LADDER_IDS) {
     const need = LADDERS[id].needs?.ladder
     bad(`ladders.${id}`, isCount(l[id], LADDERS[id].levels) && (farm.market.owned || !SHOP_LADDERS.includes(id) || l[id] === 0) && (!need || l[need] >= LADDERS[need].levels || l[id] === 0))
+  }
+  // the tools' skins: each tool's owned once each, in order, its own (a) always; the one worn owned; a tool not the
+  // farm's owns its own only, and wears it
+  const sk = farm.skins
+  bad('skins: each tool', sameKeys(sk, [...TOOL_KINDS]))
+  for (const kind of TOOL_KINDS) {
+    const t = sk[kind]
+    const ok = !!t && sameKeys(t, ['owned', 'worn']) && Array.isArray(t.owned) && json(t.owned) === json(['a', 'b', 'c'].filter((s) => t.owned.includes(s as 'a'))) && t.owned.includes('a')
+    bad(`skins.${kind}`, ok && t.owned.includes(t.worn) && (l[toolLadder(kind, 'tool')] >= 1 || (json(t.owned) === '["a"]' && t.worn === 'a')))
   }
   // the shop: ten places, those not open empty; an open place a good that sells (kept when sold out) or none, its units
   // up to a place's, its price in range on its step; the till and the countdown; a shop not yours holds nothing
