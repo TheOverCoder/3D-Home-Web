@@ -16,6 +16,8 @@ import { useCalendarDay } from './useDaily'
 
 export function DailyPanel() {
   useFarm((s) => s.rev)
+  // (the day followed too: the card's clock running out brings the new day's gift onto it)
+  useCalendarDay()
   const close = useHome((s) => s.closePanel)
   return <DailyCard v={dailyNow()} onClaim={claimDaily} onClose={close} onReveal={() => farmSound('surprise')} />
 }

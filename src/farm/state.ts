@@ -2486,8 +2486,11 @@ export function quietDaily(on: boolean) {
   bump()
 }
 
-/** The daily gift's card as it stands today (./DailyCard.tsx). */
-export const dailyNow = (): DailyView => dailyView(farm.daily, calendarDay(), levelOf(farm.xp.points))
+/** The daily gift's card as it stands today (./DailyCard.tsx), with how long until the next one opens. */
+export function dailyNow(): DailyView {
+  const now = dailyClock()
+  return dailyView(farm.daily, dayNumber(now), levelOf(farm.xp.points), now)
+}
 
 /** Today's gift waits for the player: it can be claimed, on a farm that has begun (one that has planted: a new farm's
  *  first minutes are for learning to play) and is through its first steps, and it is not put out of the way. The menu

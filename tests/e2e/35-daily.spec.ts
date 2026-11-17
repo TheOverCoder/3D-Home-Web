@@ -123,7 +123,10 @@ test.describe('the daily gift', { tag: '@boot' }, () => {
       expect(first.after.coins - levelPay(first.before.paid, first.after.paid)).toBe(first.before.coins + dayCoins(1, first.before.level))
       expect(first.after.daily).toMatchObject({ last: first.before.today, streak: 1, week: [[{ coins: dayCoins(1, first.before.level) }]] })
       await expect(card(page).locator('.dg-prize-name')).toHaveText(`${dayCoins(1, first.before.level)} coins`)
+      // once it is home: the streak counted up, and the stage turns to tomorrow with its clock to the next gift
       await expect(card(page).locator('.dg-streak')).toHaveAttribute('aria-label', 'Streak: 1 day in a row')
+      await expect(card(page).getByRole('timer')).toHaveAttribute('aria-label', /^Opens in (\d+ hours?( \d+ minutes?)?|\d+ minutes?|less than a minute)$/)
+      await expect(card(page).locator('.dg-clock-face')).toHaveText(/^\d\d:\d\d:\d\d$/)
       await expect
         .poll(() => page.evaluate(() => [document.querySelector('.farm-chip-item.coins b')?.textContent, (window as any).__home.farm.state.coins.toLocaleString('en-US')]), { timeout: 20_000 })
         .toEqual([first.after.coins.toLocaleString('en-US'), first.after.coins.toLocaleString('en-US')])
@@ -154,8 +157,8 @@ test.describe('the daily gift', { tag: '@boot' }, () => {
       expect(second.after.inv[log] - second.before.inv[log]).toBe(dayMaterials(2, second.before.level))
       expect(second.after.coins).toBe(second.before.coins + levelPay(second.before.paid, second.after.paid))
       expect(second.after.daily.streak).toBe(2)
-      await expect(card(page).locator('.dg-streak')).toHaveAttribute('aria-label', 'Streak: 2 days in a row')
-      // closed with its ✕ while the gift is still on its stage: it flies home as the card goes, nothing lost
+      // closed with its ✕ while the gift is still on its stage (the road and the streak move on once it is home): it
+      // flies home as the card goes, nothing lost
       await card(page).getByRole('button', { name: 'Close (Esc)' }).tap()
       await expect.poll(() => panel(page), { timeout: 10_000 }).toBe(null)
 

@@ -25,9 +25,14 @@
   color: var(--ink);
   white-space: nowrap;
 }
-.daily-card .dg-streak .art { width: 30px; height: 30px; margin: -4px 0; filter: drop-shadow(0 2px 2px rgba(150, 50, 0, 0.3)); }
+.daily-card .dg-streak .art { width: 30px; height: 30px; margin: -4px 0; transform-origin: 50% 90%; filter: drop-shadow(0 2px 2px rgba(150, 50, 0, 0.3)); }
 .daily-card .dg-streak b { font: 900 20px/1 var(--font-text); font-variant-numeric: tabular-nums; }
 .daily-card .dg-streak small { font: 800 13px/1 var(--font-text); color: var(--ink-2); margin-inline-start: 2px; }
+/* the flame is alive: it flickers (its own scale, beside Motion's transform) */
+@media (prefers-reduced-motion: no-preference) {
+  .daily-card .dg-streak .art { animation: daily-flicker 1.9s ease-in-out infinite; }
+}
+@keyframes daily-flicker { 0%, 100% { scale: 1; } 25% { scale: 0.95 1.07; } 50% { scale: 1.05 0.96; } 75% { scale: 0.98 1.04; } }
 
 /* the stage: today's gift in the light (its rays turn slowly; they flare as it opens) */
 .daily-card .dg-stage {
@@ -35,7 +40,7 @@
   position: relative;
   display: grid;
   place-items: center;
-  min-height: 168px;
+  min-height: 172px;
   border-radius: 24px;
   overflow: hidden;
   isolation: isolate;
@@ -60,28 +65,74 @@
 }
 @media (prefers-reduced-motion: no-preference) {
   .daily-card .dg-rays { animation: daily-spin 36s linear infinite; }
+  .daily-card .shake .dg-rays { animation-duration: 9s; }
   .daily-card .open .dg-rays { animation-duration: 6s; }
 }
 @keyframes daily-spin { to { rotate: 360deg; } }
 .daily-card .dg-flash { position: absolute; z-index: 1; left: 50%; top: 44%; width: 160px; height: 160px; margin: -80px 0 0 -80px; border-radius: 50%; background: radial-gradient(closest-side, #fff, rgba(255, 255, 255, 0.7) 45%, transparent); pointer-events: none; }
 
-/* today's box: it drops in, wobbles now and then, its day on a ribbon under it */
-.daily-card .dg-today { position: relative; display: grid; justify-items: center; gap: 2px; padding-top: 4px; }
-.daily-card .dg-drop { display: grid; place-items: center; }
-.daily-card .dg-box { width: 100px; height: 100px; filter: drop-shadow(0 8px 6px rgba(120, 60, 10, 0.28)); }
-.daily-card .big .dg-box { width: 118px; height: 118px; }
-.daily-card .dg-sparkles { position: absolute; z-index: 1; top: 0; left: 50%; width: 46px; height: 46px; pointer-events: none; }
-.daily-card .dg-sparkles.left { margin-left: -86px; rotate: -18deg; }
-.daily-card .dg-sparkles.right { top: 30px; margin-left: 44px; width: 36px; height: 36px; rotate: 14deg; }
+/* today's box: two halves of one picture (the lid cut at its seam, 47% down), the light inside between them, its
+   shadow on the stage, its day on a ribbon under it */
+.daily-card .dg-today { position: relative; display: grid; justify-items: center; gap: 2px; padding-top: 8px; }
+.daily-card .dg-gift { --gift: 100px; position: relative; display: block; width: var(--gift); height: var(--gift); }
+.daily-card .dg-today.big .dg-gift { --gift: 116px; }
+.daily-card .dg-gift > *,
+.daily-card .dg-gift-hop > *,
+.daily-card .dg-gift-box { position: absolute; inset: 0; display: block; }
+.daily-card .dg-gift-box > img,
+.daily-card .dg-gift-lid > img:first-child { display: block; width: 100%; height: 100%; }
+.daily-card .dg-gift-hop { transform-origin: 50% 92%; filter: drop-shadow(0 6px 5px rgba(120, 60, 10, 0.26)); }
+.daily-card .dg-gift-body img { clip-path: inset(46.5% 0 0 0); }
+.daily-card .dg-gift-lid { transform-origin: 18% 46%; }
+.daily-card .dg-gift-lid > img:first-child { clip-path: inset(0 0 52% 0); }
+.daily-card .dg-gift-shadow { inset: auto 17% -3%; height: 13%; border-radius: 50%; background: radial-gradient(closest-side, rgba(120, 60, 10, 0.36), rgba(120, 60, 10, 0)); }
+/* the light inside: a glow behind the seam, seen through the gap as the lid lifts (and round the box's edges) */
+.daily-card .dg-gift-leak { inset: 33% 0 auto; height: 28%; border-radius: 50%; opacity: 0; background: radial-gradient(closest-side, #fff 30%, color-mix(in srgb, var(--sun) 45%, #fff) 60%, rgba(255, 220, 120, 0)); }
+/* open: the box's mouth, and a beam of light up out of it */
+.daily-card .dg-gift-mouth { inset: 42% 18% auto 17%; height: 10%; border-radius: 50%; opacity: 0; background: radial-gradient(closest-side, #fff8d8, color-mix(in srgb, var(--sun) 70%, #fff) 55%, var(--sun-lip)); box-shadow: inset 0 2px 3px rgba(120, 50, 0, 0.35); }
+.daily-card .dg-gift-beam { inset: auto 6% 50%; height: 150%; transform-origin: 50% 100%; opacity: 0; background: linear-gradient(to top, rgba(255, 255, 255, 0.95), rgba(255, 246, 200, 0.55) 45%, rgba(255, 246, 200, 0)); clip-path: polygon(30% 100%, 70% 100%, 100% 0, 0 0); }
+/* the big one's crown, on its bow (and on the seventh stop) */
+.daily-card .dg-crown { position: absolute; left: 50%; top: -15%; display: block; width: 44%; height: 44%; margin-left: -22%; rotate: -12deg; filter: drop-shadow(0 2px 2px rgba(120, 60, 10, 0.3)); }
+.daily-card .dg-sparkles { position: absolute; z-index: 1; top: 2px; left: 50%; width: 44px; height: 44px; pointer-events: none; }
+.daily-card .dg-sparkles.left { margin-left: -98px; rotate: -18deg; }
+.daily-card .dg-sparkles.right { top: 44px; margin-left: 58px; width: 34px; height: 34px; rotate: 14deg; }
 @media (prefers-reduced-motion: no-preference) {
   .daily-card .dg-sparkles { animation: daily-twinkle 1.8s ease-in-out infinite; }
   .daily-card .dg-sparkles.right { animation-delay: 0.9s; }
 }
-@keyframes daily-twinkle { 50% { scale: 0.78; opacity: 0.7; } }
+@keyframes daily-twinkle { 50% { scale: 0.74; opacity: 0.65; } }
+.daily-card .open .dg-sparkles { opacity: 0; transition: opacity 0.2s; }
+
+/* the tag on the lid: what is inside today. It hangs on a string from the bow and sways. */
+.daily-card .dg-tag {
+  position: absolute;
+  inset: 30% auto auto 86%;
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  height: 30px;
+  padding: 0 9px 0 15px;
+  border-radius: 7px 11px 11px 7px;
+  background: #fff;
+  box-shadow: 0 2px 0 var(--paper-3), 0 4px 8px rgba(120, 60, 10, 0.18);
+  color: var(--ink);
+  white-space: nowrap;
+  transform-origin: 4px 50%;
+  rotate: 14deg;
+}
+.daily-card .dg-tag::before { content: ''; position: absolute; left: 5px; top: 50%; width: 6px; height: 6px; margin-top: -3px; border-radius: 50%; background: var(--paper-3); box-shadow: inset 0 1px 1px rgba(110, 84, 64, 0.35); }
+.daily-card .dg-tag::after { content: ''; position: absolute; right: calc(100% - 8px); top: 50%; width: 22px; height: 2px; margin-top: -1px; border-radius: 1px; background: color-mix(in srgb, var(--berry) 75%, #fff); transform-origin: 100% 50%; rotate: 32deg; }
+.daily-card .dg-tag img { width: 22px; height: 22px; }
+.daily-card .dg-tag.big img + img { margin-left: -5px; }
+.daily-card .dg-tag b { margin-left: 3px; font: 900 15px/1 var(--font-text); font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: no-preference) {
+  .daily-card .dg-tag { animation: daily-sway 3.7s ease-in-out infinite; }
+}
+@keyframes daily-sway { 0%, 100% { rotate: 14deg; } 50% { rotate: 6deg; } }
 .daily-card .dg-ribbon {
   position: relative;
   z-index: 1;
-  margin-top: -8px;
+  margin-top: -6px;
   padding: 3px 20px 4px;
   color: #fff;
   background: linear-gradient(var(--berry), color-mix(in srgb, var(--berry) 80%, var(--berry-lip)));
@@ -91,7 +142,7 @@
 }
 
 /* what came out of it: big, with how many; one prize says its name */
-.daily-card .dg-prizes { display: flex; align-items: center; justify-content: center; gap: 14px 22px; flex-wrap: wrap; padding: 8px; }
+.daily-card .dg-prizes { position: relative; z-index: 2; display: flex; align-items: center; justify-content: center; gap: 14px 22px; flex-wrap: wrap; padding: 8px; }
 .daily-card .dg-prize { display: grid; justify-items: center; gap: 6px; }
 .daily-card .dg-coins { position: relative; display: grid; place-items: center; }
 .daily-card .dg-coins .art,
@@ -113,27 +164,65 @@
 .daily-card .dg-prize .item-pic .qty { min-width: 28px; height: 28px; font-size: 16px; inset-inline-end: -10px; bottom: -6px; }
 .daily-card .dg-prize-name { font: 600 19px/1.15 var(--font-display); color: var(--ink); text-align: center; }
 
-/* tomorrow, once today's is home: a smaller box, peeking, and its day */
-.daily-card .dg-tomorrow { display: flex; align-items: center; gap: 14px; padding: 10px 18px; border-radius: 22px; background: rgba(255, 255, 255, 0.72); box-shadow: 0 3px 0 color-mix(in srgb, var(--sun-lip) 35%, transparent); }
-.daily-card .dg-tomorrow-box { position: relative; display: grid; place-items: center; }
-.daily-card .dg-tomorrow-box > .art { width: 62px; height: 62px; filter: saturate(0.8); }
+/* tomorrow, once today's is home: its box, peeking, its day, and the clock to the moment it opens */
+.daily-card .dg-tomorrow { display: flex; align-items: center; gap: 14px; padding: 12px 18px 12px 14px; border-radius: 22px; background: rgba(255, 255, 255, 0.76); box-shadow: 0 3px 0 color-mix(in srgb, var(--sun-lip) 35%, transparent); }
+.daily-card .dg-tomorrow-box { position: relative; display: grid; place-items: center; transform-origin: 50% 90%; }
+.daily-card .dg-tomorrow-box > .art { width: 62px; height: 62px; filter: saturate(0.85); }
 .daily-card .dg-tomorrow-box .dg-peek { width: 28px; height: 28px; right: -8px; bottom: -6px; }
 .daily-card .dg-tomorrow-box .dg-peek img { width: 20px; height: 20px; }
-.daily-card .dg-tomorrow-words { display: grid; gap: 2px; }
-.daily-card .dg-tomorrow-words b { font: 600 22px/1.1 var(--font-display); color: var(--ink); }
-.daily-card .dg-tomorrow-words small { font: 800 15px/1.2 var(--font-text); color: var(--ink-2); }
-.daily-card .dg-tomorrow.big .dg-tomorrow-words small { color: var(--berry-lip); }
+/* it waits, and sways now and then; in its last minute it can hardly wait */
+@media (prefers-reduced-motion: no-preference) {
+  .daily-card .dg-tomorrow-box { animation: daily-wait 4.2s ease-in-out 1.2s infinite; }
+  .daily-card .dg-tomorrow.soon .dg-tomorrow-box { animation: daily-eager 0.9s ease-in-out infinite; }
+}
+@keyframes daily-wait { 0%, 72%, 100% { rotate: 0deg; } 78% { rotate: -7deg; } 86% { rotate: 6deg; } 93% { rotate: -2deg; } }
+@keyframes daily-eager { 0%, 100% { rotate: 0deg; translate: 0 0; } 25% { rotate: -8deg; translate: 0 -3px; } 75% { rotate: 8deg; translate: 0 -3px; } }
+.daily-card .dg-tomorrow-words { display: grid; gap: 6px; justify-items: start; }
+.daily-card .dg-tomorrow-title { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 8px; }
+.daily-card .dg-tomorrow-title b { font: 600 22px/1.1 var(--font-display); color: var(--ink); }
+.daily-card .dg-tomorrow-title small { font: 800 15px/1.2 var(--font-text); color: var(--ink-2); }
+.daily-card .dg-tomorrow.big .dg-tomorrow-title small { color: var(--berry-lip); }
+
+/* the countdown: a small digital clock, its digits rolling over, its colons blinking with the seconds */
+.daily-card .dg-clock { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+.daily-card .dg-clock > small { font: 800 15px/1 var(--font-text); color: var(--ink-2); }
+.daily-card .dg-clock-face {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 10px 0 7px;
+  border-radius: 9px;
+  background: linear-gradient(to bottom, #4a3626, var(--ink));
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.12), 0 2px 0 rgba(59, 42, 30, 0.35);
+  color: var(--sun);
+  font: 900 17px/1 var(--font-text);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 6px color-mix(in srgb, var(--sun) 55%, transparent);
+}
+.daily-card .dg-clock-face svg { width: 16px; height: 16px; margin-right: 5px; color: color-mix(in srgb, var(--sun) 70%, #fff); }
+.daily-card .dg-clock-face > i { font-style: normal; padding: 0 1px; }
+.daily-card .dg-digit { position: relative; display: inline-grid; width: 0.6em; height: 1.2em; overflow: hidden; place-items: center; }
+.daily-card .dg-digit > span { grid-area: 1 / 1; }
+@media (prefers-reduced-motion: no-preference) {
+  .daily-card .dg-clock-face > i { animation: daily-blink 1s steps(1, end) infinite; }
+}
+@keyframes daily-blink { 50% { opacity: 0.35; } }
+.daily-card .soon .dg-clock-face { color: #fff; background: linear-gradient(to bottom, var(--berry), var(--berry-lip)); text-shadow: none; }
 
 /* (for a screen reader: what came) */
 .daily-card .dg-say { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 /* the week's road: seven stops on a line (the stops' middles 27 px down their row) */
-.daily-card .dg-road { grid-area: road; position: relative; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); margin: 0; padding: 0; list-style: none; }
+.daily-card .dg-road { grid-area: road; position: relative; z-index: 3; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); margin: 0; padding: 0; list-style: none; }
 .daily-card .dg-line-track { position: absolute; z-index: 0; top: 23px; left: calc(100% / 14); right: calc(100% / 14); height: 8px; border-radius: 999px; background: var(--paper-3); box-shadow: inset 0 2px 2px rgba(110, 84, 64, 0.18); overflow: hidden; }
 .daily-card .dg-line-fill { position: absolute; inset: 0; transform-origin: 0 50%; border-radius: 999px; background: linear-gradient(to bottom, color-mix(in srgb, var(--leaf) 60%, #fff), var(--leaf) 60%); }
 .daily-card .dg-line-next { position: absolute; inset: 0 auto 0 0; border-radius: 999px; background: repeating-linear-gradient(-45deg, var(--sun) 0 5px, color-mix(in srgb, var(--sun) 35%, #fff) 5px 10px); }
-.daily-card .dg-stop { position: relative; z-index: 1; display: grid; grid-template-rows: 54px auto; justify-items: center; align-items: center; min-width: 0; }
-.daily-card .dg-disc { position: relative; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; background: var(--paper-2); box-shadow: 0 0 0 2px #fff, 0 2px 0 var(--paper-3); }
+.daily-card .dg-stop { position: relative; z-index: 1; display: grid; justify-items: stretch; min-width: 0; }
+.daily-card .dg-stop-btn { display: grid; grid-template-rows: 54px auto; justify-items: center; align-items: center; min-width: 0; min-height: 44px; margin: 0; padding: 0 0 2px; border: 0; border-radius: 14px; background: none; color: inherit; -webkit-tap-highlight-color: transparent; }
+.daily-card .dg-stop-btn:focus-visible { outline-offset: -2px; }
+.daily-card .dg-disc { position: relative; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; background: var(--paper-2); box-shadow: 0 0 0 2px #fff, 0 2px 0 var(--paper-3); transition: scale 0.2s var(--ease-pop); }
+.daily-card .dg-stop-btn:active .dg-disc,
+.daily-card .dg-stop-btn[aria-expanded='true'] .dg-disc { scale: 1.1; }
 .daily-card .dg-disc-in { grid-area: 1 / 1; display: grid; place-items: center; }
 .daily-card .dg-disc .art { width: 26px; height: 26px; }
 .daily-card .dg-disc .art.faded { opacity: 0.55; }
@@ -144,15 +233,19 @@
 .daily-card .today .dg-disc::before { content: ''; position: absolute; z-index: -1; inset: -10px; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--sun) 80%, #fff), color-mix(in srgb, var(--sun) 35%, transparent) 60%, transparent); }
 @media (prefers-reduced-motion: no-preference) {
   .daily-card .today .dg-disc::before { animation: daily-glow 1.6s ease-in-out infinite; }
+  .daily-card .today .dg-disc .dg-disc-in > .art { animation: daily-nudge 3.7s ease-in-out 1.6s infinite; }
   .daily-card .now .dg-disc::after { content: ''; position: absolute; inset: -3px; border-radius: 50%; box-shadow: 0 0 0 3px var(--leaf); animation: daily-stamp 0.7s ease-out both; pointer-events: none; }
+  .daily-card .big.next .dg-peek.big img { animation: daily-twinkle 1.8s ease-in-out infinite; }
 }
 @keyframes daily-glow { 50% { opacity: 0.55; scale: 0.92; } }
+@keyframes daily-nudge { 0%, 70%, 100% { rotate: 0deg; } 76% { rotate: -10deg; } 84% { rotate: 9deg; } 92% { rotate: -3deg; } }
 @keyframes daily-stamp { from { opacity: 1; scale: 0.8; } to { opacity: 0; scale: 1.7; } }
-/* the seventh: the big one, bigger, in its colours even before it comes */
+/* the seventh: the big one, bigger, crowned, in its colours even before it comes */
 .daily-card .big .dg-disc { width: 50px; height: 50px; }
 .daily-card .big .dg-disc .art { width: 38px; height: 38px; }
 .daily-card .big.next .dg-disc { background: color-mix(in srgb, var(--sun) 28%, #fff); box-shadow: 0 0 0 3px color-mix(in srgb, var(--sun) 75%, #fff), 0 3px 0 var(--sun-lip); }
 .daily-card .big.next .dg-disc .dg-disc-in > .art { filter: drop-shadow(0 2px 2px rgba(120, 60, 10, 0.25)); opacity: 1; }
+.daily-card .dg-stop-crown { position: absolute; top: -13px; left: 50%; display: block; width: 22px; height: 22px; margin-left: -11px; rotate: -12deg; filter: drop-shadow(0 1px 1px rgba(120, 60, 10, 0.3)); }
 .daily-card .dg-check { position: absolute; top: -6px; right: -7px; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--leaf); color: #fff; box-shadow: 0 0 0 2px #fff; }
 .daily-card .dg-check svg { width: 12px; height: 12px; }
 .daily-card .dg-peek { position: absolute; right: -7px; bottom: -6px; display: grid; place-items: center; width: 21px; height: 21px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1.5px var(--paper-3), 0 1px 2px rgba(60, 40, 20, 0.2); }
@@ -161,13 +254,43 @@
 .daily-card .dg-day { margin-top: -2px; font: 800 13px/1.25 var(--font-text); color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .daily-card .past .dg-day { color: var(--leaf-lip); }
 .daily-card .today .dg-day { padding: 0 7px; border-radius: 999px; background: var(--berry); color: #fff; font: 600 13px/1.4 var(--font-display); }
+/* a stop touched: its words in a bubble over it (kept inside the road at its two ends) */
+.daily-card .dg-bubble {
+  position: absolute;
+  z-index: 4;
+  bottom: calc(100% - 2px);
+  left: 50%;
+  width: max-content;
+  max-width: 210px;
+  padding: 7px 11px;
+  border-radius: 12px;
+  background: var(--ink);
+  color: #fff;
+  font: 700 15px/1.25 var(--font-text);
+  text-align: center;
+  translate: -50% 0;
+  box-shadow: 0 4px 10px rgba(40, 24, 10, 0.25);
+  pointer-events: none;
+}
+.daily-card .dg-bubble b { font-weight: 900; color: var(--sun); }
+.daily-card .dg-bubble::after { content: ''; position: absolute; top: 100%; left: 50%; margin-left: -7px; border: 7px solid transparent; border-top-color: var(--ink); border-bottom: 0; }
+.daily-card .dg-bubble.start { left: 4px; translate: 0 0; }
+.daily-card .dg-bubble.start::after { left: 20px; }
+.daily-card .dg-bubble.end { left: auto; right: 4px; translate: 0 0; }
+.daily-card .dg-bubble.end::after { left: auto; right: 13px; margin-left: 0; }
 
-/* the button and the one line under it */
+/* the button and the one line under it; the waiting Claim catches the light now and then */
 .daily-card .dg-act { grid-area: act; display: grid; gap: 8px; justify-items: stretch; align-content: center; }
 .daily-card .dg-claim,
 .daily-card .dg-done { min-height: 56px; font-size: 21px; }
+.daily-card .dg-claim { position: relative; overflow: hidden; }
 .daily-card .dg-claim .art { width: 32px; height: 32px; margin: -6px 0; }
 .daily-card .dg-claim.opening { filter: saturate(0.7) brightness(0.97); pointer-events: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .daily-card .dg-claim::after { content: ''; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.55) 48%, transparent 66%); translate: -110% 0; animation: daily-sheen 3.4s ease-in-out 1.4s infinite; pointer-events: none; }
+  .daily-card .dg-claim.opening::after { animation: none; opacity: 0; }
+}
+@keyframes daily-sheen { 0%, 58% { translate: -110% 0; } 88%, 100% { translate: 110% 0; } }
 .daily-card .dg-line { margin: 0; font: 700 15px/1.3 var(--font-text); color: var(--ink-2); text-align: center; }
 
 /* a phone on its side: the stage and the button side by side, the road under them */
@@ -176,13 +299,19 @@
   .daily-card .dg-head h2 { font-size: 22px; }
   .daily-card .dg-head-art { width: 40px; height: 40px; }
   .daily-card .dg-stage { min-height: 0; }
-  .daily-card .dg-box { width: 80px; height: 80px; }
-  .daily-card .big .dg-box { width: 92px; height: 92px; }
+  .daily-card .dg-gift { --gift: 82px; }
+  .daily-card .dg-today.big .dg-gift { --gift: 94px; }
+  .daily-card .dg-sparkles.left { margin-left: -84px; }
+  .daily-card .dg-sparkles.right { margin-left: 46px; top: 38px; }
+  .daily-card .dg-tag { height: 28px; padding: 0 8px 0 14px; }
+  .daily-card .dg-tag img { width: 20px; height: 20px; }
   .daily-card .dg-prizes.one .dg-coins .art,
   .daily-card .dg-prizes.one .item-pic .art { width: 66px; height: 66px; }
   .daily-card .dg-coins .art,
   .daily-card .dg-prize .item-pic .art { width: 48px; height: 48px; }
   .daily-card .dg-prizes { gap: 10px 18px; }
-  .daily-card .dg-tomorrow { padding: 8px 12px; gap: 10px; }
+  .daily-card .dg-tomorrow { flex-direction: column; gap: 6px; padding: 10px 12px; text-align: center; }
+  .daily-card .dg-tomorrow-words { justify-items: center; }
+  .daily-card .dg-tomorrow-title { justify-content: center; }
   .daily-card .dg-tomorrow-box > .art { width: 50px; height: 50px; }
 }

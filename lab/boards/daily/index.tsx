@@ -9,10 +9,12 @@ import type { Act, Board } from '../../board'
 // round of proposals first), so the board shows it as built: "today" only, live. Its states are the game's own records
 // (dailyView of a Daily), made by its pure code (claimed, rollDay); a gift claimed here rolls on dice of the lab's own.
 
-/** A state of the card: the farm's record, the day it is, its level, the goods it has made. */
+/** A state of the card: the farm's record, the day it is (and the moment of it: the clock to the next gift counts down
+ *  from there), its level, the goods it has made. */
 export interface DailyState {
   daily: Daily
   today: number
+  now: number
   level: number
   made: ProduceId[]
 }
@@ -23,8 +25,10 @@ const dice = (seed: number) => () => {
   return x - Math.floor(x)
 }
 const MADE: ProduceId[] = ['lettuce', 'egg', 'flour', 'tomato']
-/** A day of the calendar (mid-November 2026) and the days round it. */
-const DAY = dayNumber(new Date(2026, 10, 16, 12).getTime())
+/** A day of the calendar (mid-November 2026) and the days round it; the moment of it the board stands at (late in the
+ *  afternoon: 7 h 17 min to the next gift). */
+const NOW = new Date(2026, 10, 16, 16, 42, 30).getTime()
+const DAY = dayNumber(NOW)
 
 /** A record claimed `n` days in a row, the last of them `last`, from a streak of `from` before them. */
 function run(n: number, last: number, level: number, from: Daily = dailyFresh()): Daily {
@@ -96,27 +100,31 @@ export const dailyBoard: Board<DailyState> = {
     },
   ],
   states: [
-    { id: 'mid', name: 'אמצע השבוע: שלושה ימים ברצף, היום יום 4 (סחורה)', data: { daily: run(3, DAY - 1, 6), today: DAY, level: 6, made: MADE } },
-    { id: 'first', name: 'המתנה הראשונה אי פעם: יום 1', data: { daily: dailyFresh(), today: DAY, level: 2, made: [] } },
-    { id: 'kept', name: 'הוחמץ יום אחד: הרצף חיכה, היום יום 5', data: { daily: run(4, DAY - 2, 6), today: DAY, level: 6, made: MADE } },
-    { id: 'big', name: 'יום 7: המתנה הגדולה', data: { daily: run(13, DAY - 1, 12), today: DAY, level: 12, made: MADE } },
-    { id: 'broke', name: 'שבוע חדש: עברו שלושה ימים אחרי רצף של 9', data: { daily: run(9, DAY - 4, 8), today: DAY, level: 8, made: MADE } },
-    { id: 'taken', name: 'כבר נלקחה היום: מחר יום 6', data: { daily: run(5, DAY, 6), today: DAY, level: 6, made: MADE } },
+    { id: 'mid', name: 'אמצע השבוע: שלושה ימים ברצף, היום יום 4 (סחורה)', data: { daily: run(3, DAY - 1, 6), today: DAY, now: NOW, level: 6, made: MADE } },
+    { id: 'first', name: 'המתנה הראשונה אי פעם: יום 1', data: { daily: dailyFresh(), today: DAY, now: NOW, level: 2, made: [] } },
+    { id: 'kept', name: 'הוחמץ יום אחד: הרצף חיכה, היום יום 5', data: { daily: run(4, DAY - 2, 6), today: DAY, now: NOW, level: 6, made: MADE } },
+    { id: 'big', name: 'יום 7: המתנה הגדולה', data: { daily: run(13, DAY - 1, 12), today: DAY, now: NOW, level: 12, made: MADE } },
+    { id: 'broke', name: 'שבוע חדש: עברו שלושה ימים אחרי רצף של 9', data: { daily: run(9, DAY - 4, 8), today: DAY, now: NOW, level: 8, made: MADE } },
+    { id: 'taken', name: 'כבר נלקחה היום: מחר יום 6', data: { daily: run(5, DAY, 6), today: DAY, now: NOW, level: 6, made: MADE } },
   ],
   variants: [
     {
       id: 'today',
       name: 'במשחק',
       note:
-        'בכותרת לוח שנה, "Daily gift" ולהבה עם הרצף. הגיבור – המתנה של היום, גדולה על במה של אור, והיום בשבוע על סרט. מתחת – השבוע כדרך של שבע תחנות: מה שנלקח מסומן ב־✓ עם מה שנתן, ' +
-        'של היום זוהרת, הבאות מציצות (מטבע, קרש, סל), והשביעית גדולה ובצבעים כבר עכשיו. כפתור צהוב אחד – Claim, ושורה אחת: כמה ימים עד הגדולה, "הרצף שלך חיכה", או "שבוע חדש".',
+        'בכותרת לוח שנה, "Daily gift" ולהבה חיה עם הרצף. הגיבור – המתנה של היום על במה של אור: קופסה עם מכסה משלה, ועל המכסה תווית שמראה מה בפנים היום (כמה מטבעות, חומר בנייה, סחורה מהחווה; בגדולה – שלושתם), ' +
+        'והיום בשבוע על סרט. מתחת – השבוע כדרך של שבע תחנות: מה שנלקח מסומן ב־✓ עם מה שנתן, של היום זוהרת, הבאות מציצות, והשביעית גדולה עם כתר. נגיעה בתחנה – בועה שאומרת מה יש בה (או מה נתנה). ' +
+        'כפתור צהוב אחד – Claim, ושורה אחת. אחרי שלוקחים – מחר על הבמה: הקופסה שלו, מה יביא, ושעון דיגיטלי קטן שסופר לאחור עד שהמתנה הבאה נפתחת (בחצות של המכשיר).',
       motion:
-        'הגיליון עולה, הקופסה נופלת לבמה ומתנדנדת מדי פעם, התחנות נכנסות אחת אחרי השנייה. Claim: הקופסה רועדת והאור מתאסף (חצי שנייה), מתפוצצת – הבזק, קונפטי, צליל ורטט – והפרס עולה גדול עם שמו; ' +
-        'בדרך התחנה של היום מקבלת חותמת, הקו רץ אליה והלהבה סופרת את הרצף. אחרי רגע הפרס עף הביתה – מטבעות לצ׳יפ (שסופר אותם כשהם נוחתים), סחורה למחסן – והבמה מראה את מחר. Done, גרירה למטה או נגיעה בחוץ – סוגרים.',
+        'הגיליון עולה, הקופסה נופלת לבמה ומדי פעם קופצת (מתכווצת, נמתחת, נוחתת) – והמכסה מתרומם כשהיא נוחתת, כך שהאור מבפנים מציץ. הכפתור מנצנץ מדי פעם. ' +
+        'Claim: רטט קטן, הקופסה רועדת והמכסה קופץ, האור מתאסף; היא נפתחת – הבזק, קונפטי, צליל ורטט: המכסה עף עם התווית, קרן אור עולה מהקופסה, הפרס עולה מתוכה עם שמו והקופסה הריקה שוקעת. ' +
+        'אחרי רגע הפרס עף הביתה (מטבעות לצ׳יפ שסופר אותם כשהם נוחתים, סחורה למחסן) – ורק אז הדרך לוקחת אותו: התחנה של היום מקבלת חותמת עם מה שנתנה, הקו רץ אליה והלהבה סופרת את הרצף. ' +
+        'הבמה עוברת למחר והשעון רץ: הספרות מתגלגלות, הנקודתיים מהבהבים, ובדקה האחרונה הוא אדום והקופסה לא יכולה לחכות; נגמר הזמן כשהכרטיס פתוח – המתנה של היום החדש נופלת לבמה. ' +
+        'פחות תנועה: בלי קפיצות ובלי מעוף – הפרס, ואז מחר והשעון. Done, גרירה למטה או נגיעה בחוץ – סוגרים.',
       render: (s, act) => (
         <>
           <ChipCoin />
-          <DailyCard v={dailyView(s.daily, s.today, s.level)} onClaim={claim(s, act)} onClose={act.close} />
+          <DailyCard v={dailyView(s.daily, s.today, s.level, s.now)} onClaim={claim(s, act)} onClose={act.close} />
         </>
       ),
     },
