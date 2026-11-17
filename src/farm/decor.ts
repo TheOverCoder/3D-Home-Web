@@ -21,9 +21,15 @@ export type DecorKind =
   | 'planter'
   | 'birdbath'
   | 'well'
-  | 'scarecrow-squire'
-  | 'scarecrow-ploughman'
-  | 'scarecrow-bogle'
+  | 'scarecrow-farmer'
+  | 'scarecrow-haymaker'
+  | 'scarecrow-sunflower'
+  | 'scarecrow-pumpkin'
+  | 'scarecrow-witch'
+  | 'scarecrow-crows'
+  | 'scarecrow-ribbons'
+  | 'scarecrow-pinwheel'
+  | 'scarecrow-jingle'
 export type FruitKind = 'apple-tree' | 'orange-tree' | 'cherry-tree' | 'blueberry-bush' | 'raspberry-bush'
 export type ShopKind = DecorKind | FruitKind
 
@@ -38,7 +44,8 @@ export interface ShopDef {
   price: number
 }
 
-/** Decoration: light, fences and paths, seats, trees, bushes and flowers, and three scarecrows for the beds. */
+/** Decoration: light, fences and paths, seats, trees, bushes and flowers, and nine scarecrows for the beds in three
+ *  styles (src/models/scarecrows.ts): straw and patches, the harvest, ribbons and shine. */
 export const DECOR: Record<DecorKind, ShopDef> = {
   lamp: { id: 'lamp', tab: 'decor', name: 'Yard lamp', price: 200 },
   lantern: { id: 'lantern', tab: 'decor', name: 'Path lantern', price: 90 },
@@ -55,9 +62,15 @@ export const DECOR: Record<DecorKind, ShopDef> = {
   planter: { id: 'planter', tab: 'decor', name: 'Planter', price: 90 },
   birdbath: { id: 'birdbath', tab: 'decor', name: 'Bird bath', price: 180 },
   well: { id: 'well', tab: 'decor', name: 'Wishing well', price: 400 },
-  'scarecrow-squire': { id: 'scarecrow-squire', tab: 'decor', name: 'Squire scarecrow', price: 200 },
-  'scarecrow-ploughman': { id: 'scarecrow-ploughman', tab: 'decor', name: 'Ploughman scarecrow', price: 160 },
-  'scarecrow-bogle': { id: 'scarecrow-bogle', tab: 'decor', name: 'Bogle scarecrow', price: 180 },
+  'scarecrow-farmer': { id: 'scarecrow-farmer', tab: 'decor', name: 'Farmer scarecrow', price: 160 },
+  'scarecrow-haymaker': { id: 'scarecrow-haymaker', tab: 'decor', name: 'Haymaker scarecrow', price: 180 },
+  'scarecrow-sunflower': { id: 'scarecrow-sunflower', tab: 'decor', name: 'Sunflower scarecrow', price: 150 },
+  'scarecrow-pumpkin': { id: 'scarecrow-pumpkin', tab: 'decor', name: 'Pumpkin scarecrow', price: 180 },
+  'scarecrow-witch': { id: 'scarecrow-witch', tab: 'decor', name: 'Witch scarecrow', price: 200 },
+  'scarecrow-crows': { id: 'scarecrow-crows', tab: 'decor', name: 'Crows scarecrow', price: 190 },
+  'scarecrow-ribbons': { id: 'scarecrow-ribbons', tab: 'decor', name: 'Ribbon scarecrow', price: 200 },
+  'scarecrow-pinwheel': { id: 'scarecrow-pinwheel', tab: 'decor', name: 'Pinwheel scarecrow', price: 190 },
+  'scarecrow-jingle': { id: 'scarecrow-jingle', tab: 'decor', name: 'Jingle scarecrow', price: 210 },
 }
 
 /** Fruit trees and bushes: each bears its fruit (a producer of the farm, as the lemon tree is). */

@@ -323,10 +323,17 @@ const SOLID: Partial<Record<ShopKind, Solid>> = {
   planter: { box: [0.48, 0.33, 0.24] },
   birdbath: { post: [0.45, 0.3] },
   well: { post: [0.5, 0.75] },
-  // a scarecrow: its post and stuffed body, and its arms out at your shoulders
-  'scarecrow-squire': { box: [0.7, 0.95, 0.2] },
-  'scarecrow-ploughman': { box: [0.7, 0.95, 0.2] },
-  'scarecrow-bogle': { box: [0.7, 0.95, 0.2] },
+  // a scarecrow: its post and stuffed body, and its arms out at your shoulders (the little one's lower; the witch in
+  // her skirt wider)
+  'scarecrow-farmer': { box: [0.7, 0.95, 0.2] },
+  'scarecrow-haymaker': { box: [0.7, 0.95, 0.2] },
+  'scarecrow-sunflower': { box: [0.6, 0.8, 0.2] },
+  'scarecrow-pumpkin': { box: [0.7, 0.95, 0.2] },
+  'scarecrow-witch': { box: [0.7, 0.95, 0.3] },
+  'scarecrow-crows': { box: [0.7, 0.95, 0.22] },
+  'scarecrow-ribbons': { box: [0.7, 0.95, 0.2] },
+  'scarecrow-pinwheel': { box: [0.7, 0.95, 0.2] },
+  'scarecrow-jingle': { box: [0.7, 0.95, 0.26] },
   'apple-tree': { post: [1.2, 0.18] },
   'orange-tree': { post: [1.2, 0.18] },
   'cherry-tree': { post: [1.2, 0.18] },

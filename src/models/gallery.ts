@@ -27,7 +27,7 @@ import { setSculptGlow } from '../lib/sculpt'
 import { decorModel, PATH_HALF, SECTION_HALF } from './decor'
 import { FRUIT, FRUIT_KINDS, type DecorKind } from '../farm/decor'
 import { fruitParts, fruitPlantModel, fruitSpots, putFruit } from './fruit'
-import { bogleScarecrow, ploughmanScarecrow, squireScarecrow } from './scarecrows'
+import { SCARECROW_KINDS, scarecrowModel } from './scarecrows'
 import { birchTree, oakTree, pineTree, poplarTree, type TreePart } from './trees'
 import type { Structure } from './structures'
 import { nestSpots, TOOL_LOOKS, TOOL_STYLES, toolModel } from './tools'
@@ -563,16 +563,17 @@ export const GALLERY: GalleryEntry[] = [
   {
     id: 'scarecrows',
     label: 'Scarecrows',
-    name: "The farm's scarecrows (decoration, src/models/scarecrows.ts), of the English and Scottish fields: the squire with a turnip head, the ploughman with a mangel head, the bogle with a sack head, a tartan scarf and a clapper",
+    name: "The farm's nine scarecrows (decoration, src/models/scarecrows.ts) in three styles of three: straw and patches (the farmer, the haymaker, the sunflower), the harvest (the pumpkin, the witch, the crows), ribbons and shine (the ribbons, the pinwheel, the jingle)",
     make() {
       const object = new Group()
-      const all = [squireScarecrow, ploughmanScarecrow, bogleScarecrow].map((make, k) => {
-        const parts = structureParts(make(), `scarecrow-${k}`)
-        parts.group.position.x = (k - 1) * 1.7
+      // a style to a group, a little apart
+      const all = SCARECROW_KINDS.map((kind, k) => {
+        const parts = structureParts(scarecrowModel(kind), kind)
+        parts.group.position.x = (k - 4) * 1.55 + (Math.floor(k / 3) - 1) * 0.6
         object.add(parts.group)
         return parts
       })
-      return { object, width: 5.2, height: 2.3, triangles: () => all.reduce((n, p) => n + p.triangles(), 0), update() {} }
+      return { object, width: 15.6, height: 2.5, triangles: () => all.reduce((n, p) => n + p.triangles(), 0), update() {} }
     },
   },
   {

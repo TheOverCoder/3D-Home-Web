@@ -1,12 +1,11 @@
 import type { Board } from '../../board'
 import { ScarecrowView } from './ScarecrowView'
 
-// Scarecrows for the beds (3D, the 3D designer's): something new the farm lacked, in the place they would stand — at
-// the far end of the west beds by the fence, facing the garden door, the first thing seen down the path on the way out
-// of the garden door. The user chose B (the English and Scottish fields), now in the game: three kinds of the farm's
-// decoration (src/models/scarecrows.ts, src/farm/decor.ts). "Today" is the place as it was, without them; A and C (the
-// American farm, the Japanese rice field) left the board once B was chosen (in git, 323e07f). Its states: in the game
-// (at the player's eye on the path) and close (turning round the three under a finger).
+// Scarecrows for the farm (3D, the 3D designer's): something new the farm lacked. The user rejected the three of the
+// English and Scottish fields that went into the game from round 2 and asked for nine new ones, three styles of three,
+// built straight into the game with no lab round: nine kinds of the farm's decoration (src/models/scarecrows.ts,
+// src/farm/decor.ts). "Before" is the place without them; the round-2 sets are in git (6ed5f7d, and B in 0d86b7a). Its
+// states: in the game (at the player's eye, about eight metres off) and close (turning round the nine under a finger).
 
 export interface ScarecrowState {
   view: 'game' | 'close'
@@ -19,28 +18,39 @@ export const scarecrowBoard: Board<ScarecrowState> = {
   added: '2026-11-16T09:00',
   ask:
     'צריך עוד סוכן לעיצוב תלת־ממד: שיפורים שמביאים אלמנטים בתלת־ממד שמתאימים למשחק, או שיפורי תלת־ממד לאישור. תעשה את הסוכן ותן לו לבנות גם הצעות. · ' +
-    'סיבוב 2: "לייצר לכל וריאציה 3 סוגי דחלילים תואמים, סך הכל 9, לפי דחלילים שבאמת היו טרנד פעם במציאות. תבנה אותם."',
+    'סיבוב 2: "לייצר לכל וריאציה 3 סוגי דחלילים תואמים, סך הכל 9, לפי דחלילים שבאמת היו טרנד פעם במציאות. תבנה אותם." · ' +
+    'סיבוב 3: "התכוונתי לשדרג את כל ה־3 ל־3 דחלילים, סך הכל 9 ב־3 אופציות, ומה שיש עכשיו נפסל – 9 חדשים."',
   status: 'live',
-  chosen: 'b',
+  chosen: 'nine',
   round:
-    'במשחק: B, שלושת הדחלילים של אנגליה וסקוטלנד, הם עכשיו שלושה קישוטים חדשים בחנות הקישוטים (התיק בכרטיס של מצב העריכה): ' +
-    'האדון עם ראש הלפת (200 מטבעות), החורש עם ראש המנגולד (160) והבוגל עם ראש השק, הצעיף והרעשן (180) – כל אחד הבא יקר יותר, כמו כל קישוט. ' +
-    'מציבים אותם איפה שרוצים ומסובבים ברבעי סיבוב, הם מטילים צל אמיתי כמו שאר הקישוטים, ואי אפשר לעבור דרכם. ' +
-    'A ו־C ירדו מהלוח כדי שיישאר מה שבחרת (החווה האמריקאית ושדה האורז ביפן; הם שמורים בהיסטוריה של הקוד).',
+    'לפי ההערה שלך: שלושת הדחלילים הקודמים ירדו, ובמקומם תשעה חדשים בחנות הקישוטים – שלושה סגנונות, שלושה בכל אחד, כל אחד בתנוחה, בגדים, כובע וחפץ משלו. ' +
+    'קש וטלאים: החקלאי, אוסף החציר עם הקלשון, והקטן עם החמנייה. הקציר: ראש הדלעת (הפנים המגולפות זוהרות בלילה), המכשפה עם המטאטא, וחבר העורבים. ' +
+    'סרטים וברק: המנופף עם הסרטים, השבשבת, והמצלצל עם תבניות הפח. ' +
+    'מי שכבר קנה דחליל ישן מקבל את החדש הכי דומה לו, באותה רמה: החורש ← החקלאי, הבוגל ← אוסף החציר, האדון ← המכשפה.',
   still: 'none',
   research: [
     {
-      pattern: 'בבריטניה ממלאים שק בקש ושמים עליו לפת או דלעת עם פרצוף מגולף; וורזל גאמידג׳ החליף ראשים של לפת, מנגולד ולפת שוודית. מכאן ראשי השורש המגולפים של B.',
-      from: 'Worzel Gummidge ודחלילים בריטיים',
-      url: 'https://en.wikipedia.org/wiki/Worzel_Gummidge',
+      pattern: 'אוסף של דחלילי קישוט שכל אחד מהם מספר דבר אחד ברור: לכן כל דחליל כאן מחזיק משהו אחר – קלשון, חמנייה, עורב, מטאטא, סרטים, שבשבות, תבניות פח.',
+      from: 'Stardew Valley – the Rarecrows',
+      url: 'https://www.thegamer.com/stardew-valley-rarecrow-location-purchase-unlock-guide/',
     },
     {
-      pattern: 'הדחליל הבריטי לובש בגדים ישנים של אחרים: כובע צילינדר או מגבעת באולר, מעיל, וחלוק העבודה של החורש הכפרי.',
-      from: 'The smock frock – the English rural smock',
-      url: 'https://www.smockfrock.co.uk/tag/katty-king/',
+      pattern: 'ציפורים נבהלות ממה שזז ומבריק ברוח: תבניות פח תלויות על חוט, שבשבות וסרטים. מכאן הסגנון "סרטים וברק".',
+      from: 'Epic Gardening – keeping birds away from the garden',
+      url: 'https://www.epicgardening.com/keep-birds-away-from-garden/',
     },
     {
-      pattern: 'דמות צריכה להיקרא קודם בצללית ואחר כך בצבע: כל שלישייה כאן שונה בצללית (כובע רחב, צילינדר, קונוס; מכנסיים, שמלה, גלימה) ולא רק בצבעים.',
+      pattern: 'ראש דלעת הוא דחליל הקציר הקלאסי: ג׳ק ראש־הדלעת של באום (1904) והדחליל עם ראש הדלעת של הות׳ורן. מכאן ראשי הדלעת של "הקציר".',
+      from: 'Jack Pumpkinhead (ויקיפדיה)',
+      url: 'https://en.wikipedia.org/wiki/Jack_Pumpkinhead',
+    },
+    {
+      pattern: 'בחוות האמריקאיות של שנות ה־30 הדחליל עשוי מבגדי עבודה ישנים, עם קש שיוצא מהם: מכאן "קש וטלאים" – ראש שק תפור, סרבל וכובע קש.',
+      from: 'Popular Science – the history of scarecrows',
+      url: 'https://www.popsci.com/environment/scarecrow-history/',
+    },
+    {
+      pattern: 'דמות צריכה להיקרא קודם בצללית ואחר כך בצבע: כל אחד מהתשעה שונה בצללית (כובע, תנוחה, מה שהוא מחזיק) ולא רק בצבעים.',
       from: 'Valve – Illustrative Rendering in Team Fortress 2',
       url: 'https://steamcdn-a.akamaihd.net/apps/valve/2007/NPAR07_IllustrativeRenderingInTeamFortress2.pdf',
     },
@@ -53,17 +63,19 @@ export const scarecrowBoard: Board<ScarecrowState> = {
     {
       id: 'today',
       name: 'לפני',
-      note: 'הערוגות כמו שהיו לפני הדחלילים: בסוף השביל רק הגדר והשדה שמעבר לה.',
+      note: 'המקום בלי הדחלילים.',
       render: (s) => <ScarecrowView v="today" s={s} />,
     },
     {
-      id: 'b',
-      name: 'השדות של אנגליה (במשחק)',
+      id: 'nine',
+      name: 'תשעת הדחלילים (במשחק)',
       note:
-        'שלושה דחלילים בבגדים ישנים: האדון עם ראש לפת מגולף, כובע צילינדר מעוך, פראק שחור עם זנבות ואפוד אדום (1,352 משולשים); החורש עם ראש מנגולד, חלוק עבודה ארוך בצבע זית עם צווארון רחב, מטפחת אדומה וכובע לבד רחב (1,456); והבוגל הסקוטי עם ראש שק, מגבעת באולר, ז׳קט טוויד וצעיף ארוך שעף ברוח, יד מורמת עם רעשן להברחת ציפורים (1,755). ' +
-        'כאן הם מסובבים חצי סיבוב, עם הפנים לשביל, כמו ששחקן מציב אותם. המשקל של כל אחד במשחק הוא המשולשים שלו; מרחוק המשחק מצייר אותם בעותק קל יותר.',
-      adds: 'שלושה קישוטים חדשים בחנות הקישוטים של החווה, בכרטיס של מצב העריכה.',
-      render: (s) => <ScarecrowView v="b" s={s} />,
+        'קש וטלאים, ראשי שק תפורים: החקלאי בכובע קש, חולצה אדומה וסרבל ג׳ינס, ידיים פרושות; אוסף החציר בכובע צמר ירוק, חולצת חרדל, כתפיות אדומות וקלשון; והקטן, ידיים למעלה, בכובע מצחייה צהוב, סרבל קצר אדום, רגלי קש וחמנייה. ' +
+        'הקציר, ראשי דלעת ועורבים: ראש דלעת מגולף (הפנים זוהרות בלילה) עם וסט חום ועורב על היד; המכשפה עם דלעת לבנה, אף גזר, כובע סגול גבוה, שמלה, צעיף ומטאטא; וחבר העורבים עם דלעת מפוספסת, כובע מצחייה, מעיל ארוך, יד למעלה ועורב עליה ועוד אחד על הכובע. ' +
+        'סרטים וברק, ראשי בד עם פרצוף מצויר: המנופף הגבוה בכובע אדום ומעיל טורקיז עם מקל סרטים; השבשבת במעיל גשם צהוב, מגפיים ירוקים ושבשבת בכל יד; והמצלצל עם סיר על הראש, שמלה ורודה, סינר ותבניות פח מבריקות. ' +
+        'כל אחד 1,319–1,748 משולשים; מרחוק המשחק מצייר אותם בעותק קל יותר.',
+      adds: 'תשעה קישוטים בחנות הקישוטים של החווה, במקום שלושת הדחלילים הקודמים.',
+      render: (s) => <ScarecrowView v="nine" s={s} />,
     },
   ],
 }
