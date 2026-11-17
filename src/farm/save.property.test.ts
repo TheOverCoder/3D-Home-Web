@@ -37,6 +37,7 @@ import { GOAL_IDS, MOST_STEPS } from './goals'
 import { PARCELS, PARCEL_IDS, PLACE_IDS, bedHome, canPlace, canPlaceBed, canPlaceThing, isShopKind, mostOf } from './layout'
 import { FRUIT_KINDS, SHOP as FARM_SHOP, type ShopKind } from './decor'
 import { MAX_PLACES, SHOP_LADDERS, placesOpen, shopperEvery } from './market'
+import { mostAt, ownsEach } from './tools'
 import { offersPerDay } from './contractor'
 import { FIRST_STEP, levelOf, levelProgress } from './xp'
 import { BOX_COUNT, CAME_KEPT, PER_LEVEL, boxAt, boxesReached } from './gifts'
@@ -181,7 +182,9 @@ const OLD_PARTS: Record<string, string> = {
  *  - the time it was saved also → the orders on their way (they come in) and the tractor's trip (it goes on); the
  *    shop's visits (its shelves, its till, the countdown), the day's clock and the contractor's new day
  *  - the ladders → the market (how many places are open, the longest wait for a visit) and the contractor (how many
- *    pieces a day); the market (whether the shop is yours) → the ladders (the shop's own are 0 until it is)
+ *    pieces a day); the market (whether the shop is yours) → the ladders (the shop's own are 0 until it is); the
+ *    animals' tools among the ladders → their herds' counts and clocks (a nest a hen with the coop; each up to the
+ *    tool's most)
  */
 function alsoChanges(part: string): RegExp | null {
   if (part.startsWith('expansions')) return /^beds\.|^layout$/
@@ -199,8 +202,9 @@ function alsoChanges(part: string): RegExp | null {
   if (part === 'home.shell' || part.startsWith('home.shell.')) return /^home\.(pieces|stored|next)$/
   // you are in the house only while it is yours (src/farm/state.ts, load)
   if (part === 'apartment' || part.startsWith('apartment.')) return /^place$/
-  // the ladders decide how many places the shop has and how often shoppers come, and how many pieces the contractor brings
-  if (part === 'ladders' || part.startsWith('ladders.')) return /^(market|contractor)(\.|$)/
+  // the ladders decide how many places the shop has and how often shoppers come, and how many pieces the contractor
+  // brings; the animals' tools among them, how a herd's counts and clocks are kept and how much each holds
+  if (part === 'ladders' || part.startsWith('ladders.')) return /^(market|contractor)(\.|$)|^producers\.(hens|cows|sheep)\.(stock|timer)$/
   // the shop's own ladders count only once the shop is yours (src/farm/market.ts, clampLevels)
   if (part === 'market' || part.startsWith('market.')) return /^ladders(\.|$)/
   // the level decides which garments the wardrobe has, so what can be worn (src/farm/outfit.ts), and the boxes it
@@ -263,9 +267,10 @@ function farmProblems(): string[] {
     const def = PRODUCERS[id]
     const p = farm.producers[id]
     bad(`producers.${id}.animals`, def.herd ? isCount(p.animals) && p.animals >= def.herd.start && p.animals <= def.herd.max : p.animals === 0)
-    const n = def.herd && !def.herd.shared ? p.animals : 1
+    // (with its tool, each animal her own: the coop gives each hen a nest; and each place holds the tool's most)
+    const n = ownsEach(id, farm.ladders) ? p.animals : 1
     bad(`producers.${id}: a count and a clock for each`, p.stock.length === n && p.timer.length === n)
-    p.stock.forEach((s, i) => bad(`producers.${id}.stock.${i}`, isCount(s, def.max)))
+    p.stock.forEach((s, i) => bad(`producers.${id}.stock.${i}`, isCount(s, mostAt(id, farm.ladders))))
     p.timer.forEach((t, i) => bad(`producers.${id}.timer.${i}`, typeof t === 'number' && t >= 0 && t < def.every))
   }
   // a fruit kind's producer has a count and a clock for each of its plants standing on the farm

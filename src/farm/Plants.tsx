@@ -6,7 +6,7 @@ import { lemonSpots } from '../models/structures'
 import { BED, BEDS, NEST, PRODUCERS, type CropId } from './data'
 import { shownAt, shownPlacement, useEdit } from './edit'
 import { toWorld, type Placement } from './layout'
-import { bedProgress, farm, stockOf } from './state'
+import { bedProgress, eggsShown, farm, stockOf } from './state'
 
 // Every plant in every bed, the lemons on the tree and the eggs in the nest: sculpted parts (src/models/crops.ts)
 // put together by each crop's grower (src/models/plants.ts) for its stage of growth — one instanced draw per kind of
@@ -78,7 +78,8 @@ export function Plants() {
       parts.at(0, 0, 0)
       putLemon(parts, x, y, z, k)
     }
-    for (let k = 0; k < stockOf('hens'); k++) {
+    // (every nest's eggs together, up to the six the box holds: with the coop each hen has a nest of her own)
+    for (let k = 0; k < eggsShown(); k++) {
       const [ex, ez] = EGG_SPOTS[k]
       const [x, z] = toWorld(hens, NEST.x + ez, NEST.z + ex)
       parts.at(0, 0, 0)
