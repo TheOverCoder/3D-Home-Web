@@ -184,6 +184,7 @@ const MOTES = 48
 const m4 = new Matrix4()
 const q = new Quaternion()
 const spinQ = new Quaternion()
+const turned = new Quaternion()
 const p = new Vector3()
 const s = new Vector3()
 const z = new Vector3(0, 0, 1)
@@ -251,7 +252,7 @@ export class Sparks {
         // gone by shrinking (no fade needed in a crowd)
         const size = grow * (u > 0.7 ? 1 - (u - 0.7) / 0.3 : 1) * (0.75 + 0.5 * dice(b.seed, i, 4))
         spinQ.setFromAxisAngle(z, ang + a * k.spin * (dice(b.seed, i, 5) - 0.5) * 2)
-        m4.compose(p, q.clone().multiply(spinQ), s.set(size, size, size))
+        m4.compose(p, turned.copy(q).multiply(spinQ), s.set(size, size, size))
         this.crowd.setMatrixAt(n, m4)
         const tile = TILE[k.tile]
         this.tiles[n * 2] = tile % TILES

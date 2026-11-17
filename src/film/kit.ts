@@ -64,13 +64,24 @@ export function landings(look: ToolLook, style: ToolStyle, over: number) {
   })
 }
 
-/** He comes in with the crate in his arms (it is heavy: his walk is slow and rolls), and says his doubt on the way: a
- *  medium shot on him as he comes, the camera where his walk ends. */
-export function carryIn(o: { who: string; crate: string; from?: Spot; to?: Spot; pace?: number; len?: number; say?: Omit<Line, 'who'>; cam?: Partial<Cam>; also?: Act[] }): Shot {
+/** He comes in with the crate in his arms (it is heavy: his walk is slow and rolls), says his doubt on the way, and
+ *  turns to where it goes (`face`: the tool's place): a medium shot on him as he comes, the camera where his walk ends. */
+export function carryIn(o: {
+  who: string
+  crate: string
+  from?: Spot
+  to?: Spot
+  face?: string | number
+  pace?: number
+  len?: number
+  say?: Omit<Line, 'who'>
+  cam?: Partial<Cam>
+  also?: Act[]
+}): Shot {
   return {
     len: o.len ?? 2.6,
     cam: { on: o.who, size: 'medium', ...o.cam },
-    do: [{ at: 0, who: o.who, put: o.from ?? 'east' }, { at: 0, who: o.who, pose: 'box' }, { at: 0, who: o.who, to: o.to ?? 'carry', pace: o.pace ?? 1.25 }, ...(o.also ?? [])],
+    do: [{ at: 0, who: o.who, put: o.from ?? 'east' }, { at: 0, who: o.who, pose: 'box' }, { at: 0, who: o.who, to: o.to ?? 'carry', pace: o.pace ?? 1.25, face: o.face ?? 'tool' }, ...(o.also ?? [])],
     props: [{ at: 0, prop: o.crate, on: o.who }],
     say: o.say ? [{ ...o.say, who: o.who }] : undefined,
   }

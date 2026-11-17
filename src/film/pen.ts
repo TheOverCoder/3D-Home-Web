@@ -120,11 +120,11 @@ export function bodyOf(kind: ToolKind, n: number) {
 /** The herd's crowd as an animal's put sees it, but up off the ground by `lift`, `scale` times its size, and (a cow)
  *  with her right hind leg thrown back by `kick` radians and her tail up: the game's own models and poses, moved. */
 function moved(parts: Parts, lift: number, scale: number, kick: number): Parts {
-  return {
-    at: (x: number, y: number, z: number, heading = 0, s = 1) => parts.at(x, y + lift, z, heading, s * scale),
-    put: (k: string, x: number, y: number, z: number, rx = 0, ry = 0, rz = 0, s: number | Vector3 = 1, c?: never, c2?: never) =>
-      parts.put(k, x, y, z, rx + (kick && ((k.startsWith('hind') && x < 0) || k.startsWith('tail')) ? kick * (k.startsWith('tail') ? -0.8 : 1) : 0), ry, rz, s, c, c2),
-  } as unknown as Parts
+  // (the right hind leg is the hind part on her right, −x; the tail goes up as it kicks)
+  const thrown = (k: string, x: number) => (!kick ? 0 : k.startsWith('tail') ? -0.8 * kick : k.startsWith('hind') && x < 0 ? kick : 0)
+  const put: Parts['put'] = (k, x, y, z, rx = 0, ...rest) => parts.put(k, x, y, z, rx + thrown(k, x), ...rest)
+  const at: Parts['at'] = (x, y, z, heading, s = 1) => parts.at(x, y + lift, z, heading, s * scale)
+  return { at, put } as unknown as Parts
 }
 
 /** How far a cow's kick is thrown back, `s` seconds after it began: out fast, back slower. */

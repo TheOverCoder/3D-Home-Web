@@ -738,13 +738,17 @@ export class FilmStage {
       end.set(c.id, memberAt(tl, c.id, ws))
     }
     const props = new Map<string, PropNow>()
-    for (const id of Object.keys(tl.film.props)) props.set(id, propAt(tl, id, w))
+    const endProps = new Map<string, PropNow>()
+    for (const id of Object.keys(tl.film.props)) {
+      props.set(id, propAt(tl, id, w))
+      endProps.set(id, propAt(tl, id, ws))
+    }
     const cam = at.shot.cam
     const on = [cam.on].flat()
     const shoulder = typeof cam.from === 'string' && tl.film.cast[cam.from] ? cam.from : null
     const lineOf = at.scene.line
     const view = shotCamera(cam, {
-      from: on.map((n) => this.subject(n, end, props, false)),
+      from: on.map((n) => this.subject(n, end, endProps, false)),
       now: on.map((n) => this.subject(n, now, props, false)),
       shoulder: shoulder ? { from: this.subject(shoulder, end, props, false), now: this.subject(shoulder, now, props, false) } : undefined,
       line: lineOf ? [this.subject(lineOf[0], now, props, false), this.subject(lineOf[1], now, props, false)] : undefined,
@@ -888,16 +892,19 @@ export class FilmStage {
     if (this.leaves) putSlidingDoor(this.leaves, d, open)
     // the camera: placed for where everyone is at the shot's end (a walk ends in the picture), looking where they are now
     const ws = tl.world(at.end - 1e-3)
+    // (the props too, where they are at the shot's end: a crate set down mid-shot does not move the camera)
     const startNow = new Map<string, MemberNow>()
     for (const c of [...this.cast, ...this.animals]) startNow.set(c.id, memberAt(tl, c.id, ws))
+    const endProps = new Map<string, PropNow>()
+    for (const id of Object.keys(tl.film.props)) endProps.set(id, propAt(tl, id, ws))
     const cam = at.shot.cam
     const on = [cam.on].flat()
     const shoulder = typeof cam.from === 'string' && tl.film.cast[cam.from] ? cam.from : null
     const lineOf = scene.line
     const view = shotCamera(cam, {
-      from: on.map((n) => this.subject(n, startNow, props, false)),
+      from: on.map((n) => this.subject(n, startNow, endProps, false)),
       now: on.map((n) => this.subject(n, now, props, true)),
-      shoulder: shoulder ? { from: this.subject(shoulder, startNow, props, false), now: this.subject(shoulder, now, props, true) } : undefined,
+      shoulder: shoulder ? { from: this.subject(shoulder, startNow, endProps, false), now: this.subject(shoulder, now, props, true) } : undefined,
       line: lineOf ? [this.subject(lineOf[0], now, props, false), this.subject(lineOf[1], now, props, false)] : undefined,
       side: scene.side ?? 1,
       south: scene.place === 'pen',
