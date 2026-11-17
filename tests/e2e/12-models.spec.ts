@@ -35,6 +35,7 @@ test.describe('sculpted models', () => {
       'fruit',
       'scarecrows',
       'woods',
+      'tools',
     ])
     // the checks catch a piece a centimetre off its model, and a model two centimetres above the ground
     expect(await page.evaluate(() => (window as any).__gallery.selfTest())).toEqual(['loose', 'open', 'floating'])
