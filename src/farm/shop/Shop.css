@@ -8,7 +8,7 @@
 /* the animals: cards that slide sideways (the panel's own padding is the shelf's gutter) */
 .shop-shelf { display: grid; grid-auto-flow: column; grid-auto-columns: 86%; gap: 10px; margin: 0 -18px; padding: 4px 18px 10px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scroll-padding: 0 18px; scrollbar-width: none; }
 .shop-shelf::-webkit-scrollbar { display: none; }
-.shop-animal { scroll-snap-align: center; display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 24px; background: #fff; box-shadow: 0 4px 0 var(--paper-3), 0 0 0 1.5px var(--edge-soft); }
+.shop-animal { scroll-snap-align: center; perspective: 700px; display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 24px; background: #fff; box-shadow: 0 4px 0 var(--paper-3), 0 0 0 1.5px var(--edge-soft); }
 /* its tool for sale: the card glows in the sun's ring */
 .shop-animal.ready { box-shadow: 0 4px 0 var(--sun-lip), 0 0 0 3px var(--sun), 0 0 16px color-mix(in srgb, var(--sun) 45%, transparent); }
 .shop-animal-head { display: flex; align-items: center; gap: 8px; min-height: 48px; }
