@@ -1,8 +1,6 @@
 import type { Board } from '../../board'
 import type { StepsState } from './data'
 import { StepsA } from './StepsA'
-import { StepsB } from './StepsB'
-import { StepsC } from './StepsC'
 import { StepsToday } from './StepsToday'
 
 // A new farm's first ten minutes (plans/first-hour.md, Part C; its steps, record and pure engine are in:
@@ -59,11 +57,8 @@ export const firstStepsBoard: Board<StepsState> = {
   ],
   states: [
     { id: 'first', name: 'חווה חדשה: הצעד הראשון – לשתול', data: { step: 0, coins: 20, level: 1 } },
-    { id: 'walking', name: 'נגעו ברמז: הולכים לערוגה (הרמז מסומן, כמו סימן במצפן)', data: { step: 0, coins: 20, level: 1, play: 'walk' } },
     { id: 'passed', name: 'צעד נעשה: ✓, חמישה מטבעות עפים, והבא נכנס (3 מתוך 8)', data: { step: 2, coins: 29, level: 1, play: 'pass' } },
-    { id: 'skip', name: 'לדלג? (נלחץ ✕)', data: { step: 3, coins: 34, level: 1, play: 'skip' } },
     { id: 'finale', name: 'הצעד האחרון נעשה: "All set!"', data: { step: 7, coins: 118, level: 3, play: 'pass' } },
-    { id: 'full', name: 'העמודה מלאה: הודעה, עלייה ברמה, הרמז של הפתיחה – והצעד מתחתם', data: { step: 4, coins: 44, level: 2, play: 'full' } },
   ],
   variants: [
     {
@@ -75,7 +70,7 @@ export const firstStepsBoard: Board<StepsState> = {
     },
     {
       id: 'a',
-      name: 'A · שבב מתחת למצפן',
+      name: 'שבב מתחת למצפן',
       note:
         'גלולה כהה אחת, כמו הסימנים של המצפן: התמונה של הצעד, המילים, והפרס (מטבע ו־"+10"), ו־✕ קטן לידה. ' +
         'נגיעה – הולכים לשם (ההליכה של המצפן), והשבב מסומן בשמש עד שמגיעים; נגיעה נוספת עוצרת. ✕ – השבב שואל במקומו "Skip the tips?" עם Keep ו־Skip.',
@@ -85,32 +80,6 @@ export const firstStepsBoard: Board<StepsState> = {
         MOTION_STAND_IN,
       adds: ADDS,
       render: (s, act) => <StepsA s={s} onClose={act.close} />,
-    },
-    {
-      id: 'b',
-      name: 'B · כרטיס עם "Show me" ונקודות',
-      note:
-        'כרטיס נייר קטן מתחת למצפן: למעלה שמונה נקודות – מה שנעשה ירוק עם ✓, הצעד הזה בטבעת שמש – ו־"3 of 8"; מתחת התמונה, המילים, "+5 coins", וכפתור צהוב "Show me" שמוביל לשם (בזמן ההליכה – "Stop"). ' +
-        '✕ בפינה; השאלה מופיעה בתוך הכרטיס.',
-      motion:
-        'הכרטיס יורד למקומו. צעד שנעשה: הנקודה שלו מתמלאת בירוק בקפיצה, ✓ על התמונה, המטבעות עפים, והכרטיס "מתהפך" לצעד הבא – הישן יוצא שמאלה והחדש נכנס מימין. ' +
-        'בהליכה – שוליים בצבע שמש. בסוף: "All set!" וקונפטי.' +
-        MOTION_STAND_IN,
-      adds: ADDS,
-      render: (s, act) => <StepsB s={s} onClose={act.close} />,
-    },
-    {
-      id: 'c',
-      name: 'C · בועת דיבור מהחוואי',
-      note:
-        'חוואי (פנים עגולות) אומר כל צעד בבועה: התמונה, המילים והפרס; נגיעה בבועה מובילה לשם. ✕ קטן על פינת הבועה, והשאלה – בבועה. ' +
-        'דמות שמלווה את עשר הדקות הראשונות, כמו שכן שעוזר. התמונה היא דוגמה (Fluent Emoji 3D, כמו שאר האיורים), שמורה בתיקיית הלוח.',
-      motion:
-        'הפנים קופצות, הבועה גדלה מהזנב והמילים מוקלדות אות אחרי אות (כמו מישהו שמדבר). צעד שנעשה: חותמת ✓ ירוקה נוחתת על הבועה, המטבעות עפים, החוואי קופץ משמחה, והמשפט הבא נאמר. ' +
-        'בהליכה – שוליים בצבע שמש והולך קטן. בסוף החוואי מעל כרטיס "All set!", וקונפטי.' +
-        MOTION_STAND_IN,
-      adds: ADDS + ' ודמות חדשה – חוואי שמדבר בבועה (תמונה חדשה למשחק).',
-      render: (s, act) => <StepsC s={s} onClose={act.close} />,
     },
   ],
 }

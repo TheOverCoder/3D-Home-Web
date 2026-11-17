@@ -1,9 +1,7 @@
 import type { Board } from '../../board'
 import { AnimalToolsA } from './AnimalToolsA'
-import { AnimalToolsB } from './AnimalToolsB'
-import { AnimalToolsC } from './AnimalToolsC'
 import { AnimalToolsToday } from './AnimalToolsToday'
-import { HOLD_STEPS, toolAt, TOOL, type ToolState } from './sample'
+import { toolAt, type ToolState } from './sample'
 
 // The animal tools' panel (plans/animal-tools.md, §3: one panel for the three tools, src/farm/tool/ToolPanelView.tsx
 // fed a ToolView): E at the fence opens it once the tool is bought, and one tap takes one good (more with its "per
@@ -55,13 +53,6 @@ export const animalToolsBoard: Board<ToolState> = {
     { id: 'coop', name: 'הלול: 6 תרנגולות, 3 בכל קן, 1 בהקשה', data: toolAt('hens', { has: [3, 2, 3, 1, 0, 2] }) },
     { id: 'bucket', name: 'דלי החלב: 3 פרות', data: toolAt('cows', { has: [3, 1, 2] }) },
     { id: 'shears', name: 'המספריים: 4 כבשים', data: toolAt('sheep', { has: [3, 3, 2, 0] }) },
-    {
-      id: 'ten',
-      name: '10 בכל קן, 5 בהקשה (שני השדרוגים קנויים בחלקם)',
-      data: toolAt('hens', { has: [10, 10, 8, 10, 6, 10], hold: HOLD_STEPS, tap: 5 - TOOL.tap.from, stored: 90, barn: 4, coins: 3180 }),
-    },
-    { id: 'full', name: 'האסם מלא (פרות): אי אפשר לקחת', data: toolAt('cows', { has: [3, 3, 2], stored: 150, barn: 3 }) },
-    { id: 'empty', name: 'אין מה לקחת (כבשים): מחכים לבאים', data: toolAt('sheep', { has: [0, 0, 0, 0], next: [0.25, 0.7, 0.45, 0.9] }) },
   ],
   variants: [
     {
@@ -75,7 +66,7 @@ export const animalToolsBoard: Board<ToolState> = {
     },
     {
       id: 'a',
-      name: 'A · המקום עצמו',
+      name: 'המקום עצמו',
       note:
         'החלון מצייר את הכלי כמו שהוא עומד ליד הגדר, ובו לוחצים. בלול – תיבת קינים מעץ, קן לכל תרנגולת: הביצים בערימה עם המספר שלהן, והתרנגולת בפינה עם טבעת עד הביצה הבאה. ' +
         'בפרות – דלי עץ אחד שמתמלא מהחלב של כל העדר, והפרות כשבבים מתחתיו; בכבשים – סל צמר והמספריים מעליו, והכבשים כשבבים. ' +
@@ -85,26 +76,6 @@ export const animalToolsBoard: Board<ToolState> = {
         'החלב בדלי יורד, המספריים "גוזזים". אין מקום – רעידה, השבב אדום ו"The barn is full". הטבעות מתמלאות בזמן אמת.',
       adds: ADDS,
       render: (s, act) => <AnimalToolsA s={s} act={act} />,
-    },
-    {
-      id: 'b',
-      name: 'B · כרטיס לכל חיה, מטרה אחת גדולה',
-      note:
-        'אותו חלון בדיוק לשלושת הכלים (רק התמונה בראש אומרת איזה): כרטיס לכל חיה – התמונה והשם שלה, מטרה עגולה אחת עם המוצר והמספר, טבעת סביבה עד הבא, ויתד לכל מקום שהיא מחזיקה. ' +
-        'הקשה על המטרה לוקחת ממנה. אין מה לקחת: המטרה חיוורת עם הזמן שנשאר. כמו התאים של חלון המכונה – אותה שפה.',
-      motion: 'הכרטיסים נכנסים יחד אחרי החלון; הקשה: המטרה מתכווצת וחוזרת בקפיצה, המוצרים עפים לשבב האסם, היתדות מתרוקנות והמספר יורד. כרטיס מלא זוהר בצהוב.',
-      adds: ADDS,
-      render: (s, act) => <AnimalToolsB s={s} act={act} />,
-    },
-    {
-      id: 'c',
-      name: 'C · ערימה אחת, החיות כדיוקנאות',
-      note:
-        'הגיבור הוא מה שמחכה: כל מה שהעדר נתן בערימה אחת באמצע, על הבסיס של הכלי (הקן, הדלי, הסל), והמספר גדול מתחתיה – הקשה עליה לוקחת מהחיה המלאה ביותר. ' +
-        'מעליה החיות כדיוקנאות עגולים, לכל אחת המספר שלה וטבעת עד הבא; הקשה על דיוקן לוקחת ממנה.',
-      motion: 'הערימה נבנית מלמטה למעלה כשהחלון נפתח (כל פריט נופל למקומו). הקשה: הערימה שוקעת, הפריט העליון עף לשבב האסם, המספר הגדול יורד. דיוקן מלא זוהר.',
-      adds: ADDS,
-      render: (s, act) => <AnimalToolsC s={s} act={act} />,
     },
   ],
 }

@@ -52,20 +52,12 @@ export const BARN: [ProduceId, number][] = [
   ['plank', 3],
 ]
 
-const none = { hens: false, cows: false, sheep: false }
 const coop = { hens: true, cows: false, sheep: false }
 const off = { 'machine-remote': false, 'animal-remote': false }
 const machineOnly = { 'machine-remote': true, 'animal-remote': false }
-const both = { 'machine-remote': true, 'animal-remote': true }
 
 export const STATES: { id: string; name: string; data: RemoteState }[] = [
-  { id: 'none', name: 'בלי שלט: באסם, הקמח – "Made at the mill" ו־Show me', data: { scene: 'barn', remotes: off, tools: coop, map: 'farm', coins: 12400, open: 'flour' } },
   { id: 'one', name: 'שלט המכונות: הקמח – Open the mill (הביצים עוד Show me)', data: { scene: 'barn', remotes: machineOnly, tools: coop, map: 'farm', coins: 2400, open: 'flour' } },
-  { id: 'both', name: 'שני השלטים והלול: הביצים – Open the coop (החלב עוד Show me: אין דלי)', data: { scene: 'barn', remotes: both, tools: coop, map: 'farm', coins: 400, open: 'egg' } },
-  { id: 'line', name: 'התור בשער: קונה רוצה קמח – Open the mill', data: { scene: 'line', remotes: machineOnly, tools: none, map: 'farm', coins: 2400, open: 'flour' } },
-  { id: 'oven', name: 'התנור: לעוגת לימון חסר קמח – Open the mill', data: { scene: 'oven', remotes: both, tools: coop, map: 'farm', coins: 400, open: 'flour' } },
   { id: 'afar', name: 'המטחנה נפתחה מרחוק (מהאסם), ודרך חזרה', data: { scene: 'afar-mill', remotes: machineOnly, tools: coop, map: 'farm', coins: 2400, from: 'barn' } },
-  { id: 'afar-coop', name: 'הלול נפתח מרחוק (מהאסם), ודרך חזרה', data: { scene: 'afar-coop', remotes: both, tools: coop, map: 'farm', coins: 400, from: 'barn' } },
-  { id: 'house', name: 'בבית, שני השלטים: Open the mill עובד; לחלב רק המילים (אין "Show me" בבית)', data: { scene: 'barn', remotes: both, tools: coop, map: 'home', coins: 400, open: 'flour' } },
   { id: 'shop', name: 'בחנות: שני השלטים למכירה (10,000) והכרטיס שלהם', data: { scene: 'shop', remotes: off, tools: coop, map: 'farm', coins: 12400 } },
 ]

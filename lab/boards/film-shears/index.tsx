@@ -20,7 +20,6 @@ export interface FilmShearsState {
 }
 
 const tl = timeline(SHEARS)
-const at = (shot: number) => tl.shots[shot].start
 
 export const filmShearsBoard: Board<FilmShearsState> = {
   id: 'film-shears',
@@ -60,9 +59,6 @@ export const filmShearsBoard: Board<FilmShearsState> = {
   ],
   states: [
     { id: 'whole', name: 'מההתחלה', data: { from: 0 } },
-    { id: 'scatter', name: 'סניפ, והבריחה', data: { from: at(1) } },
-    { id: 'build', name: 'הארגז והסל', data: { from: at(4) } },
-    { id: 'button', name: 'הסוף: Next!', data: { from: at(5) } },
     { id: 'end', name: 'החלון בסוף', data: { from: tl.length } },
   ],
   variants: [

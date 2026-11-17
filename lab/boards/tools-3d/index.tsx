@@ -53,14 +53,8 @@ export const tools3dBoard: Board<ToolsState> = {
   ],
   states: [
     { id: 'nests-game', name: 'לול · במשחק', data: { look: 'nests', view: 'game' } },
-    { id: 'nests-close', name: 'לול · מקרוב', data: { look: 'nests', view: 'close' } },
-    { id: 'nests-herd', name: 'לול · עם התרנגולות', data: { look: 'nests', view: 'herd' } },
     { id: 'pail-game', name: 'דלי · במשחק', data: { look: 'pail', view: 'game' } },
-    { id: 'pail-close', name: 'דלי · מקרוב', data: { look: 'pail', view: 'close' } },
-    { id: 'pail-herd', name: 'דלי · עם הפרות', data: { look: 'pail', view: 'herd' } },
     { id: 'shears-game', name: 'מספריים · במשחק', data: { look: 'shears', view: 'game' } },
-    { id: 'shears-close', name: 'מספריים · מקרוב', data: { look: 'shears', view: 'close' } },
-    { id: 'shears-herd', name: 'מספריים · עם הכבשים', data: { look: 'shears', view: 'herd' } },
   ],
   variants: [
     {
@@ -81,32 +75,6 @@ export const tools3dBoard: Board<ToolsState> = {
       motion: MOTION,
       adds: ADDS,
       render: (s) => <ToolsView v="a" s={s} />,
-    },
-    {
-      id: 'b',
-      name: 'פח וכחול',
-      note:
-        'פח מגולוון עם פס כחול, וכל כלי קצת יותר גדול ובולט. ' +
-        `הלול: תיבת פח כחולה עם שישה חורים עגולים ומכסה משופע, שישה עיגולים כהים שרואים מרחוק (672 ${TRI}). ` +
-        `הדלי: דלי גדול תלוי על וו ברזל בעמוד כחול ליד השער, וכד חלב גדול לרגליו (658 ${TRI}). ` +
-        `המספריים: גיגית פח עם פס כחול מלאה צמר, ומספריים גדולות תקועות בצמר (678 ${TRI}). ` +
-        'הכי בולט מרחוק, והפח מבריק בשמש.',
-      motion: MOTION,
-      adds: ADDS,
-      render: (s) => <ToolsView v="b" s={s} />,
-    },
-    {
-      id: 'c',
-      name: 'נצרים ועץ',
-      note:
-        'נמוך ושקט, בצבעי העץ של הגדר, כאילו תמיד היה שם. ' +
-        `הלול: שישה קני נצרים עגולים עם קש, על שני מדפים של קרשים (696 ${TRI}). ` +
-        `הדלי: דלי עץ עם חישוקי ברזל תלוי בחבל על יתד, ושרפרף חליבה עם שלוש רגליים (460 ${TRI}). ` +
-        `המספריים: סל נצרים מלא צמר על האדמה, והמספריים תלויות על מסמר בעמוד (610 ${TRI}). ` +
-        'הכי טבעי, ופחות בולט מרחוק.',
-      motion: MOTION,
-      adds: ADDS,
-      render: (s) => <ToolsView v="c" s={s} />,
     },
   ],
 }
