@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { nearestPlace, placesOf } from './orderPlace'
+import { CONTRACTOR_PLACE, nearestPlace, placesOf } from './orderPlace'
 import type { BedState } from './state'
 
 // "Show me" on the order board: a good to the places it is made (./orderPlace.ts), and of them the one to walk to.
@@ -46,14 +46,31 @@ describe('where a good of an order is made', () => {
     expect(placesOf('orange', BEDS, IDS)).toEqual([])
   })
 
-  it("a machine's good: the machine; a building material, or a map without the farm: nowhere", () => {
+  it("a machine's good: the machine; a map without the farm: nowhere", () => {
     expect(placesOf('flour', BEDS, IDS)).toEqual(['farm-mill'])
     expect(placesOf('sugar', BEDS, IDS)).toEqual(['farm-mill'])
     expect(placesOf('cloth', BEDS, IDS)).toEqual(['farm-loom'])
     expect(placesOf('strawberry_cake', BEDS, IDS)).toEqual(['farm-oven'])
-    expect(placesOf('brick', BEDS, IDS)).toEqual([])
     // in the house nothing of the farm is registered
     for (const good of ['lettuce', 'egg', 'milk', 'flour'] as const) expect(placesOf(good, BEDS, ['door-kitchen', 'wardrobe-0'])).toEqual([])
+  })
+
+  it('a building material: the contractor, while he is in (and his window is on this map)', () => {
+    const withHim = [...IDS, CONTRACTOR_PLACE]
+    for (const good of ['brick', 'plank', 'log'] as const) {
+      expect(placesOf(good, BEDS, withHim, true), good).toEqual([CONTRACTOR_PLACE])
+      expect(placesOf(good, BEDS, withHim, false), good).toEqual([])
+      expect(placesOf(good, BEDS, withHim), good).toEqual([])
+      expect(placesOf(good, BEDS, IDS, true), good).toEqual([])
+    }
+    // the farm's own goods are where they always were, whether he is in or not
+    expect(placesOf('milk', BEDS, withHim, true)).toEqual(['farm-cow-0', 'farm-cow-1'])
+  })
+
+  it("an animal's good at its tool: the tool takes the producer's own id, so it is found the same way", () => {
+    expect(placesOf('milk', BEDS, ['farm-cow', 'farm-mill'])).toEqual(['farm-cow'])
+    expect(placesOf('wool', BEDS, ['farm-sheep'])).toEqual(['farm-sheep'])
+    expect(placesOf('egg', BEDS, ['farm-nest'])).toEqual(['farm-nest'])
   })
 
   it('of several, the nearest with it ready to take; with none ready, the nearest', () => {

@@ -12,7 +12,7 @@ import { Coins } from '../../ui/Shell'
 import type { OfficeUpgradeId, ProduceId } from '../data'
 import { iconUrl } from '../icons'
 import { cratesFor, isComplete, type Order } from '../orders'
-import { sourceOf } from './sources'
+import { sourceOf } from '../goods/sources'
 import { canPut, clock, goingIn, nameOf, type OfficeRow, type OrdersActions, type OrdersView } from './view'
 import './OrdersBoard.css'
 

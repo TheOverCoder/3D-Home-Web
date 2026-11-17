@@ -1,11 +1,12 @@
 import { art, type ArtId } from '../../ui/art'
-import { CROPS, MACHINES, PRODUCERS, type MachineId, type ProduceId, type ProducerId } from '../data'
+import { CROPS, MACHINES, PRODUCERS, isItem, type MachineId, type ProduceId, type ProducerId } from '../data'
 import { FRUIT } from '../decor'
 import { shopArtUrl } from '../icons'
 
-// Where a good of an order comes from, said in its bubble on the order board (./OrdersBoard.tsx): a bed, an animal,
-// a tree or a bush, a machine (and from what) — read from the game's own tables (CROPS, PRODUCERS, MACHINES, FRUIT),
-// so a new crop, producer or recipe is here by being a row there.
+// Where a good comes from, said in its bubble (the order board's today, src/farm/orderBoard/OrdersBoard.tsx; every
+// panel's good after the interface's round, plans/animal-tools.md): a bed, an animal, a tree or a bush, a machine (and
+// from what), a surprise — read from the game's own tables (CROPS, PRODUCERS, MACHINES, FRUIT, the materials), so a
+// new crop, producer or recipe is here by being a row there. What the button under the words does: ./go.ts.
 
 export interface Source {
   /** the place's picture (an image URL) */
@@ -44,5 +45,7 @@ export function sourceOf(good: ProduceId): Source {
     const own = MACHINE[id]
     return { pic: art(own?.pic ?? 'gear'), words: `${own?.verb ?? 'Made at'} the ${m.name.toLowerCase()}`, from: Object.keys(r.needs) as ProduceId[] }
   }
+  // a building material: found as a surprise, and sold by the contractor behind the market
+  if (isItem(good)) return { pic: art('wrapped-gift'), words: 'A surprise · the contractor sells them' }
   return { pic: art('wrapped-gift'), words: 'A surprise' }
 }

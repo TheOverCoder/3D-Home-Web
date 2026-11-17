@@ -1,22 +1,27 @@
-import { CROPS, MACHINES, PRODUCERS, type MachineId, type ProduceId, type ProducerId } from './data'
+import { CROPS, MACHINES, PRODUCERS, isItem, type MachineId, type ProduceId, type ProducerId } from './data'
 import type { BedState } from './state'
 
 // "Show me" on the order board (src/farm/orderBoard): where a good an order asks for is made, as the interactables the
 // walk-to takes you to (src/lib/route/walking.ts, walkTo) — the same places the compass marks. A crop grows in a bed,
-// an animal's good is on the animal (each cow, each sheep), a fruit on its tree or bush (each one standing), the lemons
-// on the lemon tree, the eggs in the nest, what a machine makes at the machine. Only what is there now counts (the ids
+// an animal's good is on the animal (each cow, each sheep; or at the animals' tool, which takes their own id), a fruit
+// on its tree or bush (each one standing), the lemons on the lemon tree, the eggs in the nest, what a machine makes at
+// the machine, a building material at the contractor's window while he is in. Only what is there now counts (the ids
 // registered on the map you are on), so a good of the farm has no place while you are in the house.
 
 const isCrop = (good: ProduceId) => CROPS.some((c) => c.id === good)
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+/** The contractor's window behind the market (src/farm/Market.tsx): he sells the building materials. */
+export const CONTRACTOR_PLACE = 'farm-contractor'
 
 /**
  * The interactables a good comes from, among `ids` (those registered now). A crop: the built beds growing it; with
  * none, the empty ones set to always grow it; with none, every empty built bed (where it can be planted). A
- * producer's good: its place, or each of its animals or plants. A machine's good: the machine. None: [].
+ * producer's good: its place, or each of its animals or plants. A machine's good: the machine. A building material:
+ * the contractor, while he is in (`contractorIn`). None: [].
  */
-export function placesOf(good: ProduceId, beds: readonly BedState[], ids: readonly string[]): string[] {
+export function placesOf(good: ProduceId, beds: readonly BedState[], ids: readonly string[], contractorIn = false): string[] {
   const has = new Set(ids)
+  if (isItem(good)) return contractorIn && has.has(CONTRACTOR_PLACE) ? [CONTRACTOR_PLACE] : []
   if (isCrop(good)) {
     const bedsWhere = (ok: (b: BedState) => boolean) => beds.flatMap((b, i) => (b.built && ok(b) && has.has(`farm-bed-${i}`) ? [`farm-bed-${i}`] : []))
     for (const group of [bedsWhere((b) => b.crop === good), bedsWhere((b) => !b.crop && b.fixed === good), bedsWhere((b) => !b.crop)]) if (group.length) return group
