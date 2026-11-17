@@ -270,12 +270,24 @@ something to press). `helpers.ts` `fillFarm` owns every tool at its top (run `05
 5. The shop: `ShopPanel` out of `FarmUI.tsx` first, then the animal section and the premium cards.
 6. The tool panel, `useTool`, the herds' offers switched; `38` (tools), `25-button`'s `plenty`.
 7. `GoodPic` in the panels, the premium look, both remotes' panels with their way back; `38` (goods, remotes).
-8. The tool models at their fences (3D designer), gallery, checks, weights; `fillFarm`; `05`/`16` farm groups.
+8. **Built**, with the user's skins (A, B and C all ✓: "make buying a skin, a skins shop of its own"): each owned tool
+   stands at its fence in the skin it wears (`src/farm/ToolStands.tsx`; the coop for the nest box, eggs in its nests,
+   milk and wool while some waits; its shadow one mesh from its sun copy), the cows' and sheep's footprints widened, coop
+   A's rail pulled in, `TOOLS` stand/aim moved; skins as rows and `farm.skins` (`src/farm/skins.ts`), the shop
+   (`src/farm/SkinShop.tsx`, panel `{ kind: 'skins', tool }`, a gear on the tool); `fillFarm` owns every tool at its top.
 9. The films (film director): the `'pen'` place once, then the three films, `buyWithFilm` on the card; `films.test.ts`.
 10. `tests/README.md`; this file replaced by its summary.
 
 5, 6, 8 and 9 run at once (9 with stand-in boxes until 8's models land); 7 after 5 (both touch `FarmUI.tsx`). Locally:
 `npm run check` and only `38` (and `05`/`16`'s farm groups after 8); the rest is CI's.
+
+## The skins (built with step 8)
+
+Each tool's three styles are skins (`SKINS` in `src/farm/skins.ts`): a comes with the tool, b costs 300 and c 450, the
+same for every tool. The one new save field is `farm.skins` (owned, worn; a farm from before, or a tool not yours: its
+own, worn). A purchase is a `build`'s XP, as every farm purchase. Set by the sim (the good player buys whatever is
+cheapest): at 300 and 450 the b skins come at 90–98 minutes and the c skins at 133–149 (seeds 1–3), levels 2–15 and
+the tools at the same second as without them (level 15 at 58–65); at 500 and 750 the b skins came at 133–149.
 
 ## Decided (2026-11-17)
 
