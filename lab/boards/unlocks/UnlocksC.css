@@ -1,0 +1,56 @@
+/* C · the cards dealt (./UnlocksC.tsx). The cards' rules are under .v-unlocks-c-… (the next level's are also put into
+   the level card, small). */
+.v-unlocks-c-deal { display: grid; justify-items: center; gap: 8px; pointer-events: none; }
+/* what the deal is, over the scene: a dark chip, as the top's are */
+.v-unlocks-c-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 14px 4px 6px;
+  border-radius: 999px;
+  background: var(--night);
+  border: 2px solid color-mix(in srgb, var(--sun) 55%, transparent);
+  color: #ffe08a;
+  font: 600 16px/1.2 var(--font-display);
+  box-shadow: 0 3px 12px rgba(20, 12, 6, 0.32);
+}
+.v-unlocks-c-title img { width: 26px; height: 26px; }
+.v-unlocks-c-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 6px;
+  max-width: calc(var(--cols) * 80px + (var(--cols) - 1) * 6px);
+}
+.v-unlocks-c-card { position: relative; width: 80px; height: 112px; transform-style: preserve-3d; }
+.v-unlocks-c-back,
+.v-unlocks-c-face {
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  box-shadow: 0 0 0 2px #fff, 0 6px 12px rgba(40, 24, 10, 0.3);
+}
+/* the back: the level's star on berry */
+.v-unlocks-c-back { display: grid; place-items: center; background: repeating-linear-gradient(45deg, var(--berry) 0 8px, color-mix(in srgb, var(--berry) 85%, var(--berry-lip)) 8px 16px); transform: rotateY(180deg); }
+.v-unlocks-c-back img { width: 40px; height: 40px; }
+/* the face: the picture, the name, where it is */
+.v-unlocks-c-face { display: grid; grid-template-rows: auto 1fr auto; justify-items: center; align-items: start; gap: 1px; padding: 6px 3px 6px; background: var(--paper); color: var(--ink); }
+.v-unlocks-c-face .art { width: 44px; height: 44px; }
+.v-unlocks-c-face b { font: 800 13px/1.1 var(--font-text); text-align: center; overflow-wrap: anywhere; }
+.v-unlocks-c-face small { padding: 1px 6px; border-radius: 999px; background: var(--paper-2); color: var(--ink-2); font: 800 13px/1.25 var(--font-text); white-space: nowrap; }
+/* in the level card, under "At level N": a little smaller, face up */
+.v-unlocks-c-row.small { margin-top: 2px; gap: 6px 5px; max-width: calc(var(--cols) * 78px + (var(--cols) - 1) * 5px); }
+.v-unlocks-c-row.small .v-unlocks-c-card { width: 78px; height: 100px; }
+.v-unlocks-c-row.small .v-unlocks-c-face .art { width: 36px; height: 36px; }
+.v-unlocks-c-row.small .v-unlocks-c-face { box-shadow: 0 0 0 2px #fff, 0 3px 6px rgba(40, 24, 10, 0.2); }
+/* sideways the card is short: small cards with the picture alone, in one line (their names are the row's label) */
+@media (orientation: landscape) and (max-height: 560px) {
+  .v-unlocks-c-row.small { grid-area: tag; justify-self: center; flex-wrap: nowrap; gap: 5px; max-width: none; margin: 2px 0; }
+  .v-unlocks-c-row.small .v-unlocks-c-card { width: 32px; height: 38px; }
+  .v-unlocks-c-row.small .v-unlocks-c-face { display: grid; place-items: center; padding: 0; border-radius: 8px; }
+  .v-unlocks-c-row.small .v-unlocks-c-face .art { width: 26px; height: 26px; }
+  .v-unlocks-c-row.small .v-unlocks-c-face b,
+  .v-unlocks-c-row.small .v-unlocks-c-face small { display: none; }
+}

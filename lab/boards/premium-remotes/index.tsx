@@ -1,6 +1,8 @@
 import type { Board } from '../../board'
 import { STATES, type RemoteState } from './data'
 import { PremiumRemotesA } from './PremiumRemotesA'
+import { PremiumRemotesB } from './PremiumRemotesB'
+import { PremiumRemotesC } from './PremiumRemotesC'
 import { PremiumRemotesToday } from './PremiumRemotesToday'
 
 // The two premium remotes (plans/animal-tools.md §2–§3): a good's picture in any panel opens its "where is it made"
@@ -63,7 +65,7 @@ export const premiumRemotesBoard: Board<RemoteState> = {
     },
     {
       id: 'a',
-      name: 'עלה זהב',
+      name: 'A · עלה זהב',
       note:
         'הפרימיום הוא הצהוב של המשחק שנהיה זהב: למעלה בהיר, שפה עמוקה, כתר בדיו ואור איטי שעובר עליו מדי פעם. בבועה – "Open the mill" כפתור זהב ברוחב הבועה, עם תמונת המכונה. ' +
         'בחנות – כרטיסי נייר עם מסגרת זהב. חלון שנפתח מרחוק לובש לשונית זהב על הפינה העליונה: "‹ Barn" (חזרה) ו־"Remote".',
@@ -71,6 +73,26 @@ export const premiumRemotesBoard: Board<RemoteState> = {
         'אור עובר על הכפתור כל כמה שניות (לא למי שמעדיף פחות תנועה). לחיצה על Open: הכפתור מבזיק וגדל לרגע, הבועה נסגרת והחלון עולה; הלשונית קופצת על הפינה אחריו. "‹ Barn": החלון יוצא בדרך שלו, והאסם חוזר.',
       adds: ADDS,
       render: (s, act) => <PremiumRemotesA s={s} act={act} />,
+    },
+    {
+      id: 'b',
+      name: 'B · קטיפה כהה',
+      note:
+        'הפרימיום כהה – החום של השבבים למעלה – עם שפה צהובה ואותיות זהב: שלט שמחזיקים ביד, בין כל הנייר. כרטיסי השלטים בחנות כהים עם כוכבים קטנים שמנצנצים. ' +
+        'חלון מרחוק: גלולה כהה על פס האחיזה של החלון – "‹ Barn" ו־"📡 Remote".',
+      motion: 'לחיצה על Open: שלושה גלים של שלט יוצאים מהכפתור, ואז החלון. הגלולה קופצת על הפס, והאנטנה מהבהבת פעמיים. הכוכבים בכרטיסים מנצנצים לאט (לא למי שמעדיף פחות תנועה).',
+      adds: ADDS,
+      render: (s, act) => <PremiumRemotesB s={s} act={act} />,
+    },
+    {
+      id: 'c',
+      name: 'C · חותם',
+      note:
+        'הנייר נשאר נייר והכפתור נשאר הכפתור הצהוב של המשחק; מה שעושה אותו פרימיום הוא חותם זהב עגול עם כתר בקצה שלו, ששפתו מסתובבת לאט. בחנות – סרט "Premium" באלכסון על פינת הכרטיס. ' +
+        'חלון מרחוק: סרט זהב מעליו שאומר איפה אתה – "‹ Barn › Mill", ו־Barn הוא הדרך חזרה.',
+      motion: 'לחיצה על Open: החותם "מוטבע" (גדל, מסתובב ונוחת), ואז החלון. הסרט נפרש משמאל לימין אחרי החלון. שפת החותם מסתובבת לאט (נעצרת למי שמעדיף פחות תנועה).',
+      adds: ADDS,
+      render: (s, act) => <PremiumRemotesC s={s} act={act} />,
     },
   ],
 }

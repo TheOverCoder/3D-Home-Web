@@ -2,6 +2,8 @@ import { opensAt } from '../../../src/farm/unlocks'
 import type { Board } from '../../board'
 import { reached, type UnlocksState } from './data'
 import { UnlocksA } from './UnlocksA'
+import { UnlocksB } from './UnlocksB'
+import { UnlocksC } from './UnlocksC'
 import { UnlocksToday } from './UnlocksToday'
 
 // What each level opens (plans/first-hour.md, Part B; its table and pure helpers are in: src/farm/unlocks.ts): a
@@ -53,7 +55,14 @@ export const unlocksBoard: Board<UnlocksState> = {
   ],
   states: [
     { id: 'two', name: 'רמה 2: המופע של הרמה, ואז שלושה דברים – חיטה, קמח ותרנגולת', data: reached(2, 64) },
+    { id: 'three', name: 'רמה 3: חמישה דברים – איך זה נשבר לשורות', data: reached(3, 120) },
+    { id: 'one', name: 'דבר אחד (דוגמה: השדה המערבי לבד – בטבלה היום אין רמה שפותחת רק אחד)', data: { ...reached(9, 640), opens: ['upgrade:west'] } },
+    { id: 'ten', name: 'רמה 10: קודם הבגד, ואחריו ארבעה דברים', data: reached(10, 900) },
     { id: 'seeds', name: 'שקיות הזרעים ברמה 1: שישה מתוך שמונה נעולים', data: at('seeds', 1, 20) },
+    { id: 'shop', name: 'החנות ברמה 4: שלושה פתוחים, שישה נעולים', data: at('shop', 4, 180) },
+    { id: 'decor', name: 'הקישוטים ברמה 4: חמישה פתוחים, 13 נעולים', data: at('decor', 4, 180) },
+    { id: 'world', name: 'בחצר ברמה 1: תגי מחיר (ערוגה פתוחה, שדה נעול – נגיעה פותחת את הכרטיס) והתנור ליד הכפתור', data: at('world', 1, 75) },
+    { id: 'edit', name: 'מלמעלה, במצב עריכה (רמה 5): השטחים מעבר לגדר', data: at('edit', 5, 252) },
     { id: 'card', name: 'כרטיס הרמה ברמה 2: "At level 3" ומה שייפתח בה', data: { scene: 'card', level: 2, opens: opensAt(3), coins: 64 } },
   ],
   variants: [
@@ -68,7 +77,7 @@ export const unlocksBoard: Board<UnlocksState> = {
     },
     {
       id: 'a',
-      name: 'כרטיס "Unlocked!" ושבב מנעול',
+      name: 'A · כרטיס "Unlocked!" ושבב מנעול',
       note:
         'כרטיס הבגד נהיה כרטיס כללי: אחרי המספר (ואחרי הבגד, אם יש) קופץ כרטיס "Unlocked!" עם "Level 2", ובו כל מה שנפתח – תמונה ושם מתחתיה; חמישה נשברים לשתי שורות. ' +
         'נעול: התמונה דהויה, ובמקום המחיר – שבב עם מנעול ו־"Level 2". אותו שבב בכל מקום: בכרטיסים, על הכפתור, בתג שעל השדה, ליד הכפתור העגול ובשלטים של השטחים. ' +
@@ -78,6 +87,28 @@ export const unlocksBoard: Board<UnlocksState> = {
         'נגיעה בדבר נעול: רעידה קצרה, והשבב קופץ – הסיבה כבר כתובה בו. נגיעה בתג של השדה הנעול: רעידה, ואז הכרטיס שלו עם המנעול במקום Build.',
       adds: ADDS,
       render: (s, act) => <UnlocksA s={s} onClose={act.close} />,
+    },
+    {
+      id: 'b',
+      name: 'B · סרט מתחת למספר ותג על התמונה',
+      note:
+        'בלי כרטיס שני: המופע של הרמה עצמו מביא את מה שנפתח – סרט אדום (כמו "At level N" בכרטיס הרמה) נפרש מתחת למספר, ועליו כל דבר בעיגול לבן עם השם. רגע אחד, ואז שניהם עולים ונעלמים. ' +
+        'נעול: התמונה דהויה, על הפינה שלה תג סגול (צבע הרמות) עם מנעול ומספר הרמה, והמחיר נשאר במקומו – אפור – כדי שיודעים גם כמה זה יעלה.',
+      motion: 'המספר מתפוצץ כמו היום, וחצי שנייה אחר כך הסרט נפרש מהאמצע לצדדים; העיגולים קופצים אחד אחרי השני. כל המופע כחמש שניות, ואז עולה ונעלם. נגיעה בדבר נעול: רעידה, והתג הסגול קופץ.',
+      adds: ADDS,
+      render: (s, act) => <UnlocksB s={s} onClose={act.close} />,
+    },
+    {
+      id: 'c',
+      name: 'C · קלפים שמחולקים, וסרט הרמה בפינה',
+      note:
+        'אחרי המספר, קלף קטן לכל דבר שנפתח, מחולק אחד אחרי השני: התמונה, השם, ואיפה מוצאים אותו (Seeds, Mill, Shop, Decor). אחרי רגע הקלפים נאספים לכוכב של הרמה למעלה – שם, בכרטיס הרמה, מחכה "מה הבא". ' +
+        'נעול: סרט אדום באלכסון על הפינה – "Level 6" – והמחיר נעלם; בתג שעל השדה ובשלטים הסרט הוא התג עצמו.',
+      motion:
+        'כל קלף עף מלמעלה, מסתובב מהגב (כוכב על אדום) לפנים ונוחת עם הטיה קטנה, כל 0.2 שנייה אחד. אחרי שתי שניות הם עפים בקשת לכוכב של הרמה בלוח, והכוכב קופץ כשהאחרון נוחת. ' +
+        'נגיעה בדבר נעול: רעידה, והסרט קופץ.',
+      adds: ADDS + ' ועל כל קלף – איפה מוצאים את מה שנפתח.',
+      render: (s, act) => <UnlocksC s={s} onClose={act.close} />,
     },
   ],
 }

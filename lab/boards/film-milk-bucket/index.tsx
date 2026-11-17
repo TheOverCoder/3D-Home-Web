@@ -20,6 +20,7 @@ export interface FilmMilkBucketState {
 }
 
 const tl = timeline(BUCKET)
+const at = (shot: number) => tl.shots[shot].start
 
 export const filmMilkBucketBoard: Board<FilmMilkBucketState> = {
   id: 'film-milk-bucket',
@@ -58,6 +59,9 @@ export const filmMilkBucketBoard: Board<FilmMilkBucketState> = {
   ],
   states: [
     { id: 'whole', name: 'מההתחלה', data: { from: 0 } },
+    { id: 'kick', name: 'הבעיטה', data: { from: at(1) } },
+    { id: 'build', name: 'הארגז והדלי', data: { from: at(5) } },
+    { id: 'button', name: 'הסוף: Kick it now', data: { from: at(7) } },
     { id: 'end', name: 'החלון בסוף', data: { from: tl.length } },
   ],
   variants: [

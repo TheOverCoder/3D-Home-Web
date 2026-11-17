@@ -20,6 +20,7 @@ export interface FilmCoopState {
 }
 
 const tl = timeline(COOP)
+const at = (shot: number) => tl.shots[shot].start
 
 export const filmCoopBoard: Board<FilmCoopState> = {
   id: 'film-coop',
@@ -65,6 +66,8 @@ export const filmCoopBoard: Board<FilmCoopState> = {
   ],
   states: [
     { id: 'whole', name: 'מההתחלה', data: { from: 0 } },
+    { id: 'build', name: 'הארגז והקנים', data: { from: at(3) } },
+    { id: 'button', name: 'הסוף: התרנגול', data: { from: at(6) } },
     { id: 'end', name: 'החלון בסוף', data: { from: tl.length } },
   ],
   variants: [
