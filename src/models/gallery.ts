@@ -30,6 +30,7 @@ import { fruitParts, fruitPlantModel, fruitSpots, putFruit } from './fruit'
 import { bogleScarecrow, ploughmanScarecrow, squireScarecrow } from './scarecrows'
 import { birchTree, oakTree, pineTree, poplarTree, type TreePart } from './trees'
 import type { Structure } from './structures'
+import { nestSpots, TOOL_LOOKS, TOOL_STYLES, toolModel } from './tools'
 
 // Every model the kit makes, posed and moving, for the gallery page (open the site with ?gallery). Add a new
 // model here as soon as it has a shape: it is the quickest way to see it from every side, in the game's light.
@@ -594,6 +595,33 @@ export const GALLERY: GalleryEntry[] = [
         return parts
       })
       return { object, width: 22, height: 9.6, triangles: () => all.reduce((n, p) => n + p.triangles(), 0), update() {} }
+    },
+  },
+  {
+    id: 'tools',
+    label: 'Tools',
+    name: "The animals' tools (src/models/tools.ts), three families for the design lab's choice, each the coop with its eggs, the milk bucket and the shears with their wool: A little red houses, B tin and blue enamel, C wicker and plain wood",
+    make() {
+      const object = new Group()
+      const eggs = cropParts(0.2)
+      eggs.begin()
+      const all = TOOL_STYLES.flatMap((style, s) =>
+        TOOL_LOOKS.map((look, l) => {
+          const parts = structureParts(toolModel(look, style), `tool-${style}-${look}`)
+          const x = (s * 3 + l - 4) * 1.15 + (s - 1) * 0.6
+          parts.group.position.x = x
+          object.add(parts.group)
+          if (look === 'nests')
+            nestSpots(style).forEach(([ex, ey, ez], k) => {
+              eggs.at(x, 0, 0)
+              putEgg(eggs, ex, ey, ez, k)
+            })
+          return parts
+        }),
+      )
+      eggs.end()
+      object.add(eggs.group)
+      return { object, width: 12.6, height: 1.5, triangles: () => all.reduce((n, p) => n + p.triangles(), 0) + eggs.triangles(), update() {} }
     },
   },
 ]

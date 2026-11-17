@@ -10,6 +10,7 @@ import { fruitPlantModel } from './fruit'
 import { GOODS, type GoodsId } from './goods'
 import type { Structure } from './structures'
 import { bigTreeModel, cornerTree, countryTree, gardenTree } from './trees'
+import { TOOL_LOOKS, TOOL_STYLES, TOOL_WEIGHT, toolModel } from './tools'
 
 // The budget engine's first guard: the triangles each good's model draws, and the most it may (its weight). A good
 // stands on the market's shelves up to thirty times in one view, so a model that grows past its weight fails here,
@@ -131,5 +132,17 @@ describe("the farm's decoration and big trees: their weights", () => {
     const garden = bigTreeModel(gardenTree(GARDEN_TREE[2]))
     const country = COUNTRY_TREES.map(([, , height], index) => bigTreeModel(countryTree(index, height)))
     expect([garden, ...country].reduce((n, t) => n + triangles(t), 0)).toBeLessThanOrEqual(BIG_TREES_WEIGHT.house)
+  })
+})
+
+// The animals' tools (src/models/tools.ts): each stands once at its animal's fence, and the films raise it piece by
+// piece; each family's three are proposals for the design lab, every one within the tool's weight.
+describe("the animals' tools: their weight", () => {
+  beforeAll(async () => {
+    await loadSolids()
+  })
+
+  it.each(TOOL_STYLES.flatMap((style) => TOOL_LOOKS.map((look) => [style, look] as const)))('%s · %s draws no more triangles than a tool may', (style, look) => {
+    expect(triangles(toolModel(look, style)), `${style} ${look}: grown past the tool's weight`).toBeLessThanOrEqual(TOOL_WEIGHT)
   })
 })

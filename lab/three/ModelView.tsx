@@ -34,8 +34,12 @@ export type View3D =
 
 export interface Built {
   root: Object3D
-  /** what moves, posed at t seconds (the view draws every frame only when something does) */
-  tick?: (t: number) => void
+  /** what moves, posed at t seconds (the view draws every frame only when something does); with `wake`, it returns
+   *  true while it wants the next frame */
+  tick?: (t: number) => void | boolean
+  /** it moves only now and then (a build played by a press): the view draws on demand, and hands it the way to ask for
+   *  a frame */
+  wake?: (draw: () => void) => void
 }
 
 export interface Count {
@@ -175,6 +179,7 @@ function Content({ build, still, onReady }: { build: () => Promise<Built> | Buil
     void Promise.resolve(build()).then((b) => {
       if (!alive) return
       b.tick?.(0)
+      b.wake?.(invalidate)
       setBuilt(b)
       onReady(b)
       invalidate()
@@ -186,7 +191,7 @@ function Content({ build, still, onReady }: { build: () => Promise<Built> | Buil
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   useFrame((s) => {
-    if (built?.tick && !still) built.tick(s.clock.elapsedTime)
+    if (built?.tick && !still && built.tick(s.clock.elapsedTime) === true && built.wake) invalidate()
   })
   return built ? <primitive object={built.root} /> : null
 }
@@ -247,7 +252,7 @@ export function ModelView({ build, view, count, checks, haze = true, focus }: { 
             build={build}
             still={reduced}
             onReady={(b) => {
-              setMoving(!!b.tick)
+              setMoving(!!b.tick && !b.wake)
               // ready once the first frames with it are drawn
               requestAnimationFrame(() =>
                 requestAnimationFrame(() => {

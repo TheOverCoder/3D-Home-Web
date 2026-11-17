@@ -25,6 +25,7 @@ import { decorModel } from './decor'
 import { fruitParts, fruitPlantModel, fruitSpots, putFruit } from './fruit'
 import { bigTreeKind, bigTreeModel, cornerTree, countryTree, gardenTree } from './trees'
 import { CORNER_TREES } from '../data/garden'
+import { nestSpots, TOOL_LOOKS, TOOL_STYLES, toolModel } from './tools'
 import { COUNTRY_TREES, GARDEN_TREE } from '../data/home'
 import { treeSpots } from '../farm/landGeometry'
 import { defaultLayout } from '../farm/layout'
@@ -385,6 +386,31 @@ export const MODEL_CHECKS: ModelCheck[] = [
         ...COUNTRY_TREES.map(([, , height], index) => ({ where: 'countryside', t: countryTree(index, height) })),
       ]
       return trees.flatMap(({ where, t }) => checkPieces(`${bigTreeKind(t)} ${where} ${t.index}`, ...structure(bigTreeModel(t))))
+    },
+  },
+  {
+    id: 'tools',
+    name: "The animals' tools, each family's three (the coop with an egg in every nest, the milk bucket, the shears and wool)",
+    run() {
+      const eggs = cropParts(0.2)
+      return TOOL_STYLES.flatMap((style) =>
+        TOOL_LOOKS.flatMap((look) =>
+          look === 'nests'
+            ? // every egg lies on its nest's straw
+              checkPieces(
+                `${style} coop with its eggs`,
+                [
+                  ...structurePieces(toolModel(look, style)),
+                  ...posedPieces(eggs, (pp) => {
+                    pp.at(0, 0, 0)
+                    nestSpots(style).forEach(([x, y, z], k) => putEgg(pp, x, y, z, k))
+                  }),
+                ],
+                { ground: 0, open: openParts(eggs) },
+              )
+            : checkPieces(`${style} ${look}`, ...structure(toolModel(look, style))),
+        ),
+      )
     },
   },
   {

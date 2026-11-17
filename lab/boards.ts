@@ -19,6 +19,7 @@ import { premiumRemotesBoard } from './boards/premium-remotes'
 import { filmCoopBoard } from './boards/film-coop'
 import { filmMilkBucketBoard } from './boards/film-milk-bucket'
 import { filmShearsBoard } from './boards/film-shears'
+import { tools3dBoard } from './boards/tools-3d'
 
 /** Every board of the lab, newest first. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -29,6 +30,7 @@ export const BOARDS: Board<any>[] = [
   filmShearsBoard,
   filmMilkBucketBoard,
   filmCoopBoard,
+  tools3dBoard,
   firstStepsBoard,
   unlocksBoard,
   dailyBoard,
