@@ -34,10 +34,9 @@ describe('the rows', () => {
       expect(LADDERS[toolLadder(kind, 'hold')].price).toEqual(TOOL.hold.price)
       expect(LADDERS[toolLadder(kind, 'tap')].price).toEqual(TOOL.tap.price)
     }
-    // the plan's sums, at the plan's numbers: each kind's tool and its two ladders to the top
-    if (TOOL.price === 400 && TOOL.hold.price[0] === 150 && TOOL.tap.price[0] === 100) {
-      expect(TOOL_KINDS.map((k) => PARTS.map((p) => total(toolLadder(k, p))))).toEqual(TOOL_KINDS.map(() => [400, 2625, 2700]))
-    }
+    // each kind's tool and its two ladders to the top cost the same (at the plan's steps: the tool, 2,625 and 2,700)
+    expect(TOOL_KINDS.map((k) => PARTS.map((p) => total(toolLadder(k, p))))).toEqual(TOOL_KINDS.map(() => [TOOL.price, total('hens-hold'), total('hens-tap')]))
+    if (TOOL.hold.price[0] === 150 && TOOL.hold.price[1] === 75 && TOOL.tap.price[0] === 100 && TOOL.tap.price[1] === 50) expect([total('cows-hold'), total('cows-tap')]).toEqual([2625, 2700])
     // what differs: its name, picture, words, look and place
     expect(new Set(TOOL_KINDS.map((k) => TOOLS[k].name)).size).toBe(3)
     expect(new Set(TOOL_KINDS.map((k) => TOOLS[k].look))).toEqual(new Set(['nests', 'pail', 'shears']))

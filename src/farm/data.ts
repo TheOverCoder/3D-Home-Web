@@ -635,9 +635,11 @@ export type ToolPart = 'tool' | 'hold' | 'tap'
 
 /** What every animal's tool shares: one change here changes them all. Step k of a ladder costs price[0] + price[1]·k.
  *  A tool changes how you take and how much waits, never what you get: the same goods, XP and surprises a good as
- *  collecting one by one, and nothing comes faster. */
+ *  collecting one by one, and nothing comes faster. Its price is set against the pace a new farm is held to (`npm run
+ *  sim`, PACE in src/sim/targets.ts: each tool bought within 20 minutes of its herd full; at 400 the good player bought
+ *  the coop an hour after its six hens, at 100 within 15–19 minutes; plans/animal-tools.md). */
 export const TOOL = {
-  price: 400,
+  price: 100,
   // the most each animal's place holds (a nest, a cow, a sheep)
   hold: { from: 3, to: 10, price: [150, 75] },
   // how many one tap takes

@@ -7,12 +7,15 @@ import {
   BEDS,
   CROPS,
   GATE_SPOT,
+  LADDERS,
+  LADDER_IDS,
   MACHINES,
   MACHINE_IDS,
   OFFICE_STAND,
   PRODUCERS,
   PRODUCER_IDS,
   SHED,
+  TOOLS,
   UPGRADES,
   cropById,
   produceById,
@@ -20,10 +23,11 @@ import {
   type CropId,
   type MachineId,
   type ProduceId,
+  type ProducerId,
 } from '../farm/data'
 import { MANAGER_SPOT } from '../data/market'
 import { goalsNow } from '../farm/goals'
-import { PARCEL_IDS, PARCELS, canBuyParcel } from '../farm/layout'
+import { PARCEL_IDS, PARCELS, canBuyParcel, toWorld } from '../farm/layout'
 import { STORE_GOODS } from '../farm/storage'
 import {
   addJob,
@@ -70,8 +74,11 @@ import {
   sellAllPreview,
   sellToManager,
   managerPays,
+  maxOf,
   sendOrder,
   slotPrice,
+  toolOwned,
+  toolTake,
   upgradePrice,
   upgradeStore,
   waiting,
@@ -93,10 +100,19 @@ export interface Move {
   at: Spot | null
   /** does it, with the game's own function */
   run: () => unknown
+  /** the taps it took on a panel, once it has run (an animal's tool: one a tap; ./play.ts gives each its time) */
+  taps?: () => number
 }
 
 /** Coins kept back from buying, for the next seeds. */
 export const RESERVE = 10
+
+/** Whether the farm shop's tools, their upgrades and the two remotes are for sale (plans/animal-tools.md): on, as in
+ *  play; off, to play the farm as it was before them and compare (`npm run sim` with SIM_TOOLS=off). */
+let toolsForSale = true
+export function sellTools(on: boolean) {
+  toolsForSale = on
+}
 
 // ───────────────────────────── where things are ─────────────────────────────
 
@@ -108,6 +124,12 @@ const MARKET: Spot = { x: MANAGER_SPOT.x, z: MANAGER_SPOT.z }
 const PATCHES = (['main', 'east', 'west'] as const).map((name) => ({ name, beds: BEDS.filter((b) => (b.expansion ?? 'main') === name).map((b) => b.index) }))
 const middleOf = (beds: number[]): Spot => ({ x: beds.reduce((s, i) => s + bedSpot(i).x, 0) / beds.length, z: beds.reduce((s, i) => s + bedSpot(i).z, 0) / beds.length })
 const producerAt = (id: (typeof PRODUCER_IDS)[number]): Spot => farm.layout.places[PRODUCERS[id].place!]
+/** Where an animal's tool is used: its place at the fence, where its pen stands now. */
+function toolAt(id: ProducerId): Spot {
+  const [x, , z] = TOOLS[toolOwned(id)!].stand
+  const [wx, wz] = toWorld(farm.layout.places[PRODUCERS[id].place!], x, z)
+  return { x: wx, z: wz }
+}
 const machineAt = (id: MachineId): Spot => machinePoint(id, MACHINES[id].stand)
 
 // ───────────────────────────── what is worth doing ─────────────────────────────
@@ -144,11 +166,11 @@ function cropToPlant(): CropId | null {
   return quick?.id ?? null
 }
 
-/** A producer is worth the trip once half of what it holds at most is waiting (every animal of a herd together). */
+/** A producer is worth the trip once half of what it holds at most is waiting (every animal of a herd together; with
+ *  its tool, as much as the tool lets wait). */
 function worthCollecting(id: (typeof PRODUCER_IDS)[number]) {
-  const def = PRODUCERS[id]
   const p = farm.producers[id]
-  const most = def.max * p.stock.length
+  const most = maxOf(id) * p.stock.length
   const has = p.stock.reduce((a, b) => a + b, 0)
   return p.stock.length > 0 && has > 0 && has >= Math.ceil(most / 2) && p.stock.some((_, i) => collectable(id, i) > 0)
 }
@@ -180,9 +202,10 @@ interface Purchase {
   buy: () => boolean
 }
 
-/** Everything there is to buy, each with its price now: the beds to build, the farm shop's upgrades and animals, the
- *  order office's upgrades, the machines' queues, land, the manager's better price. Only what is open at the farm's
- *  level (src/farm/unlocks.ts): the player sees the rest locked, and does not try it. */
+/** Everything there is to buy, each with its price now: the beds to build, the farm shop's upgrades and animals (and,
+ *  once their herds are full, the animals' tools and their upgrades, and the two remotes), the order office's upgrades,
+ *  the machines' queues, land, the manager's better price. Only what is open at the farm's level (src/farm/unlocks.ts)
+ *  and what a ladder waits for is there (ladderOpen): the player sees the rest locked, and does not try it. */
 function forSale(): Purchase[] {
   const out: Purchase[] = []
   BEDS.forEach((b, i) => {
@@ -198,6 +221,9 @@ function forSale(): Purchase[] {
   for (const id of PARCEL_IDS)
     if (canBuyParcel(farm.layout, id) && isUnlocked(`parcel:${id}`)) out.push({ what: PARCELS[id].name.toLowerCase(), at: null, price: PARCELS[id].price, buy: () => buyLand(id) })
   if (ladderOpen('rate')) out.push({ what: 'a better price from the manager', at: MARKET, price: ladderNextPrice('rate'), buy: () => buyLadder('rate') })
+  // the farm shop's ladders: the tools, their upgrades, the remotes
+  if (toolsForSale)
+    for (const id of LADDER_IDS) if (LADDERS[id].at === 'shop' && ladderOpen(id)) out.push({ what: LADDERS[id].name.toLowerCase(), at: SHOP, price: ladderNextPrice(id), buy: () => buyLadder(id) })
   return out
 }
 
@@ -274,7 +300,19 @@ export const PRIORITIES: { name: string; move: () => Move | null }[] = [
     move: () => {
       const id = PRODUCER_IDS.find(worthCollecting)
       if (!id) return null
-      return { what: `collect ${PRODUCERS[id].good}`, at: producerAt(id), run: () => farm.producers[id].stock.forEach((_, i) => collect(id, i)) }
+      const kind = toolOwned(id)
+      if (!kind) return { what: `collect ${PRODUCERS[id].good}`, at: producerAt(id), run: () => farm.producers[id].stock.forEach((_, i) => collect(id, i)) }
+      // with its tool: at the fence, its panel open, a tap at a time (each from the fullest) until all is in or the
+      // barn is full
+      let taps = 0
+      return {
+        what: `${PRODUCERS[id].good} with the ${TOOLS[kind].name.toLowerCase()}`,
+        at: toolAt(id),
+        run: () => {
+          while (toolTake(kind) > 0) taps++
+        },
+        taps: () => taps,
+      }
     },
   },
   {
@@ -359,7 +397,7 @@ export function onTheWay(): string {
     const p = farm.producers[id]
     if (!p.stock.length) continue
     const def = PRODUCERS[id]
-    const most = def.max * p.stock.length
+    const most = maxOf(id) * p.stock.length
     const need = Math.ceil(most / 2) - p.stock.reduce((a, b) => a + b, 0)
     const rate = (def.herd?.shared ? p.animals : p.stock.length) / def.every
     if (need > 0 && room(storeOf(def.good)) > 0) soon.push({ s: need / rate, what: `${def.good} to collect` })
