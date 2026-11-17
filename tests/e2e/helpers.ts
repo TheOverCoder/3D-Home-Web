@@ -292,7 +292,7 @@ export async function fillFarm(page: Page): Promise<FullFarm> {
     f.state.producers.hens.stock[0] = 2
     // the farm decorated (src/farm/decor.ts, the edit mode's shop), on the free land where the house stood and round
     // it, through the game's own rules (each where it fits, or the nearest free spot): a fenced garden with a path
-    // across it, lamps and lanterns, benches, trees and bushes, flowers, a bird bath, a well and the three scarecrows,
+    // across it, lamps and lanterns, benches, trees and bushes, flowers, a bird bath, a well and the nine scarecrows,
     // and every kind of fruit tree and bush, hung full
     const decor: [string, number, number, number][] = [
       ...[-5, -3, -1, 1, 3, 5].map((x): [string, number, number, number] => ['fence', x, -6, 0]),
@@ -337,9 +337,9 @@ export async function fillFarm(page: Page): Promise<FullFarm> {
       ['planter', 2.5, 1.5, 0],
       ['birdbath', 3, -1, 0],
       ['well', -3, 6, 0],
-      ['scarecrow-squire', -5.5, 0.5, 0],
-      ['scarecrow-ploughman', 0, 7.5, 0],
-      ['scarecrow-bogle', 5.5, -2.5, 0],
+      ['scarecrow-farmer', -5.5, 0.5, 0],
+      ['scarecrow-haymaker', 0, 7.5, 0],
+      ['scarecrow-sunflower', 5.5, -2.5, 0],
       ...[-5, -4, -3, -2, -1, 1].map((x): [string, number, number, number] => ['stones', x, 6, 0]),
       ['apple-tree', 7.5, -2, 0],
       ['apple-tree', -6, -8, 0],
@@ -353,6 +353,13 @@ export async function fillFarm(page: Page): Promise<FullFarm> {
       ['raspberry-bush', 7.5, 4.5, 0],
       ['raspberry-bush', -7.5, 6.5, 0],
       ['raspberry-bush', 4.5, 9, 0],
+      // the other six scarecrows last, where there is room still (each a spot nothing above had)
+      ['scarecrow-pumpkin', -2, 8.5, 0],
+      ['scarecrow-witch', 2, 8.5, 0],
+      ['scarecrow-crows', -5.5, -2.5, 0],
+      ['scarecrow-ribbons', 5.5, 0.5, 0],
+      ['scarecrow-pinwheel', -1.5, -7.5, 0],
+      ['scarecrow-jingle', 1.5, -7.5, 0],
     ]
     const placed: Record<string, number> = {}
     for (const [kind, x, z, rot] of decor) {

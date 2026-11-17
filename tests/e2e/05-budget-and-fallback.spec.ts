@@ -462,7 +462,7 @@ test.describe('performance budget', () => {
     expect(full.line).toBe(15)
     // the farm decorated: every kind of the edit mode's shop standing, about a hundred pieces in all
     console.log(`decoration: ${JSON.stringify(full.decor)}`)
-    expect(Object.keys(full.decor).length).toBe(23)
+    expect(Object.keys(full.decor).length).toBe(29)
     expect(Object.values(full.decor).reduce((a, b) => a + b, 0)).toBeGreaterThanOrEqual(90)
   })
 

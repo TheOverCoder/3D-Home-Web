@@ -13,12 +13,15 @@ import {
   canPlaceThing,
   defaultLayout,
   freeSpot,
+  isShopKind,
   joinRun,
+  RENAMED_KINDS,
   runEnds,
   sanitizeLayout,
   type DecorPiece,
   type FarmLayout,
 } from './layout'
+import { UNLOCKS } from './unlocks'
 
 // The farm's layout with the edit mode's newer things in it: the mill, the loom and the oven as places, each built bed
 // where it was moved to, and the decoration and fruit plants bought in the shop, standing or in the store.
@@ -187,6 +190,46 @@ describe('the layout as saved', () => {
     expect(l.stored.bush).toBe(1)
     expect(l.next).toBe(12)
     expect(Object.keys(l.stored).sort()).toEqual([...KINDS].sort())
+  })
+
+  it('a farm that owns the first three scarecrows keeps every one, standing or stored, as the kind it is now', () => {
+    // the squire, the ploughman and the bogle the shop sold before the nine (RENAMED_KINDS), standing on free land and
+    // waiting in the store, beside a farmer bought since
+    const saved = {
+      ...defaultLayout(),
+      decor: [
+        { id: 3, kind: 'scarecrow-squire', x: 2, z: 0, rot: 2 },
+        { id: 5, kind: 'scarecrow-ploughman', x: 2, z: 3, rot: 1 },
+        { id: 6, kind: 'scarecrow-bogle', x: 5, z: 0, rot: 0 },
+        { id: 8, kind: 'scarecrow-farmer', x: 5, z: 3, rot: 0 },
+      ],
+      stored: { 'scarecrow-bogle': 2, 'scarecrow-squire': 1, 'scarecrow-haymaker': 1, lamp: 1 },
+      next: 9,
+    }
+    const l = sanitizeLayout(saved, ALL_BUILT)
+    expect(l.decor).toEqual([
+      { id: 3, kind: 'scarecrow-witch', x: 2, z: 0, rot: 2 },
+      { id: 5, kind: 'scarecrow-farmer', x: 2, z: 3, rot: 1 },
+      { id: 6, kind: 'scarecrow-haymaker', x: 5, z: 0, rot: 0 },
+      { id: 8, kind: 'scarecrow-farmer', x: 5, z: 3, rot: 0 },
+    ])
+    expect(l.stored['scarecrow-haymaker']).toBe(3)
+    expect(l.stored['scarecrow-witch']).toBe(1)
+    expect(l.stored.lamp).toBe(1)
+    expect(l.next).toBe(9)
+    // the old names are no kinds of the shop's any more, nor kept in the store
+    for (const old of Object.keys(RENAMED_KINDS)) {
+      expect(isShopKind(old), old).toBe(false)
+      expect(Object.keys(l.stored)).not.toContain(old)
+      expect(isShopKind(RENAMED_KINDS[old]), RENAMED_KINDS[old]).toBe(true)
+    }
+    // each opens at the level the one it was opened at
+    expect(UNLOCKS['decor:scarecrow-farmer']).toBe(8)
+    expect(UNLOCKS['decor:scarecrow-haymaker']).toBe(9)
+    expect(UNLOCKS['decor:scarecrow-witch']).toBe(11)
+    // nothing lost: what was owned of the three is owned of the new kinds, piece for piece
+    const owned = (x: FarmLayout) => x.decor.length + Object.values(x.stored).reduce((a, b) => a + b, 0)
+    expect(owned(l)).toBe(saved.decor.length + 5)
   })
 
   it('garbage, numbers far off and counts that are not counts never throw: a layout that keeps the rules', () => {

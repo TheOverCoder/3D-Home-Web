@@ -165,10 +165,17 @@ export const DECOR_FEET: Record<ShopKind, DecorFoot> = {
   planter: { hx: 0.5, hz: 0.26 },
   birdbath: { hx: 0.42, hz: 0.38 },
   well: { hx: 0.8, hz: 0.65 },
-  // a scarecrow: its arms out to the sides, its hat's brim and coat-tails a little before and behind it
-  'scarecrow-squire': { hx: 0.7, hz: 0.3 },
-  'scarecrow-ploughman': { hx: 0.7, hz: 0.3 },
-  'scarecrow-bogle': { hx: 0.7, hz: 0.3 },
+  // a scarecrow: its arms out to the sides, its hat's brim a little before and behind it; the witch's broom reaches
+  // out in front of her, the ribbons stream out to one side
+  'scarecrow-farmer': { hx: 0.7, hz: 0.32 },
+  'scarecrow-haymaker': { hx: 0.7, hz: 0.3 },
+  'scarecrow-sunflower': { hx: 0.62, hz: 0.3 },
+  'scarecrow-pumpkin': { hx: 0.72, hz: 0.3 },
+  'scarecrow-witch': { hx: 0.68, hz: 0.5 },
+  'scarecrow-crows': { hx: 0.7, hz: 0.3 },
+  'scarecrow-ribbons': { hx: 0.85, hz: 0.3 },
+  'scarecrow-pinwheel': { hx: 0.76, hz: 0.3 },
+  'scarecrow-jingle': { hx: 0.7, hz: 0.3 },
   'apple-tree': { hx: 1.2, hz: 1.2 },
   'orange-tree': { hx: 1.1, hz: 1.1 },
   'cherry-tree': { hx: 1.2, hz: 1.2 },
@@ -178,6 +185,18 @@ export const DECOR_FEET: Record<ShopKind, DecorFoot> = {
 
 /** Whether a name is a kind the shop sells (never a name every object has: `constructor`, `__proto__`). */
 export const isShopKind = (v: unknown): v is ShopKind => typeof v === 'string' && Object.prototype.hasOwnProperty.call(SHOP, v)
+
+/** Kinds the shop once sold, and the kind each is now: the first three scarecrows (of the English and Scottish
+ *  fields) gave way to the nine, each to the nearest of them, opening at the same level — the ploughman in his wide
+ *  hat to the farmer, the sack-headed bogle with a thing held up to the haymaker, the squire in his tall hat to the
+ *  witch. A save that owns one keeps it, standing where it stood or in the store, as the kind it is now. */
+export const RENAMED_KINDS: Readonly<Record<string, ShopKind>> = {
+  'scarecrow-ploughman': 'scarecrow-farmer',
+  'scarecrow-bogle': 'scarecrow-haymaker',
+  'scarecrow-squire': 'scarecrow-witch',
+}
+/** A kind's name as saved, as the kind it is now (a name never renamed as it was). */
+export const kindNow = (v: unknown): unknown => (typeof v === 'string' && Object.prototype.hasOwnProperty.call(RENAMED_KINDS, v) ? RENAMED_KINDS[v] : v)
 /** A fruit tree or bush (a producer of the farm). */
 export const isPlant = (kind: ShopKind) => Object.prototype.hasOwnProperty.call(FRUIT, kind)
 /** The most of a kind the farm can own (placed and stored): a fruit kind's most plants; decoration, as many as any
@@ -669,12 +688,15 @@ export function sanitizeLayout(raw: unknown, built: readonly boolean[] = []): Fa
     out.places = defaultLayout().places
     out.beds = defaultLayout().beds
   }
-  // what waits in the store: a count of each kind
+  // what waits in the store: a count of each kind (one saved under a name it had once counted as the kind it is now)
   const store = isObject(r.stored) ? r.stored : {}
-  for (const kind of Object.keys(out.stored) as ShopKind[]) {
-    const n = Object.prototype.hasOwnProperty.call(store, kind) ? store[kind] : 0
-    out.stored[kind] = typeof n === 'number' && Number.isFinite(n) ? Math.min(mostOf(kind), Math.max(0, Math.round(n))) : 0
+  const counts = new Map<ShopKind, number>()
+  for (const name of Object.keys(store)) {
+    const kind = kindNow(name)
+    const n = store[name]
+    if (isShopKind(kind) && typeof n === 'number' && Number.isFinite(n)) counts.set(kind, (counts.get(kind) ?? 0) + Math.max(0, Math.round(n)))
   }
+  for (const kind of Object.keys(out.stored) as ShopKind[]) out.stored[kind] = Math.min(mostOf(kind), counts.get(kind) ?? 0)
   // the decoration, in the order it was put down: each where it was saved if it fits there (with its own id, once),
   // otherwise into the store
   const list: unknown[] = Array.isArray(r.decor) ? r.decor : []
@@ -684,8 +706,8 @@ export function sanitizeLayout(raw: unknown, built: readonly boolean[] = []): Fa
   const keep: DecorPiece[] = []
   const later: DecorPiece[] = []
   for (const v of list) {
-    if (!isObject(v) || !isShopKind(v.kind)) continue
-    const kind = v.kind
+    const kind = isObject(v) ? kindNow(v.kind) : null
+    if (!isObject(v) || !isShopKind(kind)) continue
     const p = savedPlacement(v)
     const id = typeof v.id === 'number' && Number.isSafeInteger(v.id) && v.id >= 1 && v.id <= MOST_ID && !ids.has(v.id) ? v.id : null
     const d: DecorPiece = { id: id ?? -(later.length + 1), kind, x: p?.x ?? 0, z: p?.z ?? 0, rot: p?.rot ?? 0 }
