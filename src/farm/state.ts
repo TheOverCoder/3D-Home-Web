@@ -741,11 +741,14 @@ const rollGifts = () => Array.from({ length: eventSpeed('gifts') }, () => random
 
 // ───────────────────────────── what each level opens: the locks ─────────────────────────────
 
-/** Everything open whatever the level. Until the locks show in the game (plans/first-hour.md, B5) that is everywhere:
- *  a lock nobody can see would only be a button that does nothing. From then: under Vitest and on a ?debug page unless
- *  it says &unlocks=on (the tests buy what they need), until a test turns the locks on; the game's own pages lock by
- *  the level. */
-const allOpenByDefault = () => true
+/** Everything open whatever the level: under Vitest and on a ?debug page unless it says &unlocks=on (the tests buy what
+ *  they need), until a test turns the locks on; the game's own pages lock by the level. */
+function allOpenByDefault() {
+  if (import.meta.env.MODE === 'test') return true
+  if (typeof location === 'undefined') return false
+  const q = new URLSearchParams(location.search)
+  return q.has('debug') && q.get('unlocks') !== 'on'
+}
 let allOpen = allOpenByDefault()
 /** For the tests and the simulation: everything open (true), or locked by the level as in play (false). */
 export function unlockAll(on: boolean) {

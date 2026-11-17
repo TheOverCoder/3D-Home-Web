@@ -239,7 +239,12 @@ export function LevelUp() {
     const s = told.current
     if (seen.events !== s.events) {
       s.events = seen.events
-      if (reached > s.level) s.pending = true
+      // (a farm gone back below the level shown — started again, or another one — in the same frame as XP from play:
+      // its level is taken, as below; the show counts from there)
+      if (reached < s.level) {
+        s.level = reached
+        s.pending = false
+      } else if (reached > s.level) s.pending = true
     } else if (!s.pending || reached < s.level) {
       // the farm changed with no gain from play (loaded, another farm, a fresh start): its level is taken, no show
       s.level = reached

@@ -164,6 +164,13 @@ The README has the overview; `tests/README.md` what each test guards.
 - The pace is guarded: `src/sim` plays a new farm with no screen (a good player's list of priorities, the game's own
   functions) and `PACE` (`src/sim/targets.ts`, held by `pace.test.ts`) bounds the minutes to each level and the waits
   of the first hour; a new feature's numbers (prices, times, XP) are tuned against `npm run sim`.
+- What each level opens is `UNLOCKS` (`src/farm/unlocks.ts`): a crop, an upgrade, a recipe, a kind of decoration, a
+  field, building a bed — a new buyable is a row there (its test fails until it has one). Every buy, planting and job
+  asks `isUnlocked` in `state.ts` (only buying is locked: what the farm has stays and works); the interface draws the
+  same answer: a locked thing faded with the level it opens at on the berry ribbon where its price was (`LockTag`,
+  `src/ui/LockTag.tsx`), and a level reached deals its "Unlocked!" cards (`src/farm/Unlocked.tsx`). A ?debug page has
+  everything open (`&unlocks=on`, or `__home.farm.unlocks.all(false)`, locks it; `ready()` opens it again); `36-unlocks`
+  tests it, and `25-button` presses a locked farm.
 - An upgrade bought a step at a time is a row in `LADDERS` (one buy, `buyLadder`; one card, `LadderCard`; its level in
   `farm.ladders`), with `say(k)` for what step k gives.
 - The daily gift (`src/farm/daily.ts`, `farm.daily`; its card `DailyCard.tsx`, its watcher `DailyPanel.tsx`): once a
