@@ -49,6 +49,22 @@ export function dayNumber(ms: number): number {
   return Math.round(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / DAY_MS)
 }
 
+/** The moment a calendar day (`dayNumber`) begins on the device: its local midnight (where summer time skips midnight,
+ *  the first moment of that date). */
+export function dayStart(day: number): number {
+  const d = new Date(day * DAY_MS)
+  return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()).getTime()
+}
+
+/** A wait as a digital clock shows it, counting down: hours, minutes and seconds, two digits each ("07:42:05"), and
+ *  the whole days before them past a day ("2d 03:00:00"). A part of a second counts as a whole one (it is not over). */
+export function countdown(seconds: number): string {
+  const s = Math.max(0, Math.ceil(seconds - 1e-9))
+  const days = Math.floor(s / 86_400)
+  const hms = [Math.floor((s % 86_400) / 3600), Math.floor((s % 3600) / 60), s % 60].map((n) => String(n).padStart(2, '0')).join(':')
+  return days ? `${days}d ${hms}` : hms
+}
+
 /** The day of the week (1–7) of the streak's n-th gift. */
 export const weekDay = (streak: number) => ((Math.max(1, Math.floor(streak)) - 1) % WEEK) + 1
 
@@ -152,10 +168,15 @@ export interface DailyView {
   week: DayView[]
   /** the week's day of tomorrow's gift (if tomorrow is played) */
   tomorrow: number
+  /** the seconds (with their fraction) until the next gift opens: the start of the calendar day after today (today's
+   *  waiting or taken) or, the clock moved back, after the last day claimed. Null: the view was made without the
+   *  moment. */
+  opensIn: number | null
 }
 
-/** The card's view of a record, today, at the farm's level. */
-export function dailyView(d: Daily, today: number, level: number): DailyView {
+/** The card's view of a record, today, at the farm's level; `now` (the device's clock at that moment, whose calendar
+ *  day is `today`) gives how long until the next gift opens. */
+export function dailyView(d: Daily, today: number, level: number, now?: number): DailyView {
   const s = dailyStatus(d, today)
   // the days taken this week, and today's place in it
   const day = s.ready ? s.day : weekDay(d.streak)
@@ -177,6 +198,7 @@ export function dailyView(d: Daily, today: number, level: number): DailyView {
     first: s.ready && s.first,
     week,
     tomorrow: weekDay(streak + 1),
+    opensIn: now === undefined ? null : Math.max(0, (dayStart(Math.max(today, d.last) + 1) - now) / 1000),
   }
 }
 

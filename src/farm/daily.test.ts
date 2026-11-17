@@ -1,6 +1,25 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { ITEMS, isItem, type ProduceId } from './data'
-import { GRACE, WEEK, WEEK_GIFTS, claimed, dailyFresh, dailyStatus, dailyView, dayCoins, dayGoods, dayMaterials, dayNumber, peekDay, rollDay, sanitizeDaily, weekDay, type Daily } from './daily'
+import {
+  GRACE,
+  WEEK,
+  WEEK_GIFTS,
+  claimed,
+  countdown,
+  dailyFresh,
+  dailyStatus,
+  dailyView,
+  dayCoins,
+  dayGoods,
+  dayMaterials,
+  dayNumber,
+  dayStart,
+  peekDay,
+  rollDay,
+  sanitizeDaily,
+  weekDay,
+  type Daily,
+} from './daily'
 import type { Prize } from './gifts'
 import { levelReward } from './xp'
 
@@ -206,6 +225,54 @@ describe('what the card shows', () => {
   it('the clock moved back: nothing waiting, the week as it was', () => {
     const v = dailyView(claimRun(DAY, 2), DAY - 3, 4)
     expect(v).toMatchObject({ ready: false, day: 2, streak: 2 })
+  })
+
+  it('how long until the next gift opens: to the next midnight (today’s waiting or taken), after the last day claimed when the clock went back; none without the moment', () => {
+    // 15:30:20 today, local time: 8 h 29 min 40 s to midnight
+    const at = (day: number, h: number, m = 0, s = 0) => {
+      const d = new Date(dayStart(day))
+      return new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m, s).getTime()
+    }
+    const now = at(DAY + 3, 15, 30, 20)
+    expect(dayNumber(now)).toBe(DAY + 3)
+    const left = 8 * 3600 + 29 * 60 + 40
+    expect(dailyView(claimRun(DAY, 3), DAY + 3, 4, now).opensIn).toBeCloseTo(left, 6)
+    expect(dailyView(claimRun(DAY, 4), DAY + 3, 4, now).opensIn).toBeCloseTo(left, 6)
+    expect(dailyView(dailyFresh(), DAY + 3, 4, now).opensIn).toBeCloseTo(left, 6)
+    // half a second before midnight: half a second
+    expect(dailyView(claimRun(DAY, 4), DAY + 3, 4, dayStart(DAY + 4) - 500).opensIn).toBeCloseTo(0.5, 6)
+    // the clock moved back two days before the last day claimed: until the day after it
+    const back = at(DAY + 1, 15, 30, 20)
+    expect(dailyView(claimRun(DAY, 4), DAY + 1, 4, back).opensIn).toBeCloseTo((dayStart(DAY + 4) - back) / 1000, 6)
+    expect(dailyView(claimRun(DAY, 4), DAY + 1, 4, back).opensIn).toBeGreaterThan(2 * 86_400)
+    expect(dailyView(claimRun(DAY, 4), DAY + 3, 4).opensIn).toBeNull()
+  })
+
+  it('a day begins at its own midnight, where the clocks move too (a day of 23 or 25 hours)', () => {
+    const tz = process.env.TZ
+    try {
+      for (const zone of ['UTC', 'America/New_York', 'Europe/Berlin', 'Australia/Sydney', 'Asia/Jerusalem', 'America/Santiago']) {
+        process.env.TZ = zone
+        const first = dayNumber(new Date(2026, 0, 1, 12).getTime())
+        for (let k = 0; k < 366; k++) {
+          const start = dayStart(first + k)
+          expect(dayNumber(start), `${zone}, day ${k}`).toBe(first + k)
+          expect(dayNumber(start - 1), `${zone}, day ${k}, a moment before`).toBe(first + k - 1)
+        }
+      }
+    } finally {
+      process.env.TZ = tz
+    }
+  })
+
+  it('the countdown as a digital clock: hours, minutes, seconds; days past a day; a part of a second is a whole one', () => {
+    expect(countdown(8 * 3600 + 29 * 60 + 40)).toBe('08:29:40')
+    expect(countdown(59.2)).toBe('00:01:00')
+    expect(countdown(0.4)).toBe('00:00:01')
+    expect(countdown(0)).toBe('00:00:00')
+    expect(countdown(-3)).toBe('00:00:00')
+    expect(countdown(86_399)).toBe('23:59:59')
+    expect(countdown(2 * 86_400 + 3 * 3600)).toBe('2d 03:00:00')
   })
 })
 

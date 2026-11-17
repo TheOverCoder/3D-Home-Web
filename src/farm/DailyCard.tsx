@@ -1,15 +1,16 @@
-import { AnimatePresence, m, useReducedMotion, type Variants } from 'motion/react'
+import { AnimatePresence, m, useReducedMotion, type Transition, type Variants } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import { flyCoins, flyItem, holdCoins } from '../fx/coins'
 import { coinsToFly } from '../fx/fx'
+import { haptic } from '../lib/device'
 import { art } from '../ui/art'
 import { burst } from '../ui/burst'
-import { Check, X } from '../ui/glyphs'
+import { Check, Clock, X } from '../ui/glyphs'
 import { ItemPic } from '../ui/ItemPic'
 import { CountUp, EASE, ITEM, POP, PRESS, SINK, SPRING } from '../ui/motion'
 import { SwipeSheet } from '../ui/SwipeSheet'
 import { storeOf } from './data'
-import { WEEK, type DailyView, type DayView, type Peek } from './daily'
+import { countdown, WEEK, type DailyView, type DayView, type Peek } from './daily'
 import { prizeWords, type Prize } from './gifts'
 import { iconUrl } from './icons'
 import './DailyCard.css'
@@ -17,23 +18,29 @@ import './DailyCard.css'
 // How the daily gift's card looks (the design layer; the design lab's board "daily" shows it with no game round it).
 // What it shows is ./daily.ts's view, made from the farm by ./DailyPanel.tsx.
 //
-// The hero is today's gift, big on a stage of light, the week's day on its ribbon; under it the week as a road of seven
-// stops — the days taken checked with what they gave, today's glowing, the days to come peeking (a coin with what it
-// will give, a plank, a basket), the seventh bigger, the big one. The streak is a flame in the title. One press: Claim.
+// The hero is today's gift on a stage of light: a box with a lid of its own (the picture cut in two at its seam) that
+// hops now and then, its lid lifting as it lands so the light inside peeks out, a tag on its lid with what is inside
+// today (the coins, a building material, goods from the farm; the big one's three), its day on a ribbon. Under it the
+// week as a road of seven stops — the days taken checked with what they gave, today's glowing, the days to come
+// peeking, the seventh bigger with a crown, the big one; a stop touched says what it holds. The streak is a flame in
+// the title. One press: Claim.
 //
-// Claiming is the card's one moment: the box shakes as the light gathers, bursts open (a burst of confetti, its sound
-// and a roll of the phone), and the gift comes up out of it, big, with its name; on the road today's stop is stamped,
-// the line runs on to it and the flame counts the streak up; a moment later the gift flies to where it lives (coins to
-// the coin chip, which counts them in as they land; goods to their building's chip), and the stage turns to tomorrow:
-// what it will bring, so the visit ends looking forward. Done closes it. What the gift gives is the farm's at the press
-// (onClaim): closing the card at any moment loses nothing (what is still on the stage flies as it goes).
+// Claiming tells the gift's story one step at a time. The box rattles, its lid jumping, the light gathering; it bursts
+// open (a flash, confetti, its sound and a roll of the phone): the lid flies off with its tag, a beam of light comes
+// up out of the box and the gift rises out of it, big, with its name, as the empty box sinks away. A moment later it
+// flies to where it lives (coins to the coin chip, which counts them in as they land; goods to their building's chip),
+// and only then does the road take it: today's stop is stamped with what it gave, the line runs on to it and the flame
+// counts the streak up. The stage turns to tomorrow: its box, what it will bring and a digital clock counting down to
+// the moment it opens (the device's midnight), so the visit ends looking forward. Done closes it. If the clock runs
+// out with the card open, the new day's box drops in. What the gift gives is the farm's at the press (onClaim):
+// closing the card at any moment loses nothing (what is still on the stage flies as it goes).
 
-/** The shake before it opens (ms): anticipation, short. */
-const SHAKE_MS = 560
+/** The rattle before it opens (ms): anticipation, short. */
+const SHAKE_MS = 680
 /** How long the gift stays on the stage, big, before it flies home (ms). */
-const SHOW_MS = 1150
+const SHOW_MS = 1300
 
-/** The moment of a claim: what it gave, where it is, and the card's view from before it (shown until it opens). */
+/** The moment of a claim: what it gave, where it is, and the card's view from before it (shown until it is home). */
 interface Moment {
   got: Prize[]
   phase: 'shake' | 'open' | 'flown'
@@ -53,7 +60,7 @@ export function DailyCard({
   /** the moment it bursts open (its sound and touch) */
   onReveal?: () => void
 }) {
-  const still = useReducedMotion()
+  const still = !!useReducedMotion()
   const [moment, setMoment] = useState<Moment | null>(null)
   const stage = useRef<HTMLDivElement>(null)
   const got = useRef<Prize[]>([])
@@ -61,8 +68,11 @@ export function DailyCard({
   const flown = useRef(false)
   const reveal = useRef(onReveal)
   reveal.current = onReveal
-  // until it bursts open the card still shows the day as it was (the road, the streak): then they move on
-  const shown = moment?.phase === 'shake' ? moment.before : v
+  const phase = moment?.phase
+  // until the gift is home the card still shows the day as it was (the road, the streak): then they move on, one thing
+  // after another (with less motion: at once)
+  const settled = !moment || phase === 'flown' || still
+  const shown = settled ? v : moment.before
 
   /** The gift home: coins to the coin chip (counted in as they land), goods to their building's chip. Once. */
   const fly = () => {
@@ -90,7 +100,9 @@ export function DailyCard({
     if (moment || !v.ready) return
     const list = onClaim()
     if (!list?.length) return
+    haptic('tick')
     got.current = list
+    flown.current = false
     const coins = list.reduce((n, p) => n + ('coins' in p ? p.coins : 0), 0)
     if (!still && coins) {
       holdCoins(coins)
@@ -100,8 +112,7 @@ export function DailyCard({
     if (still) reveal.current?.()
   }
 
-  // shake → open (the burst) → home
-  const phase = moment?.phase
+  // rattle → open (the burst) → home
   useEffect(() => {
     if (phase === 'shake') {
       const t = window.setTimeout(() => {
@@ -112,7 +123,8 @@ export function DailyCard({
       }, SHAKE_MS)
       return () => window.clearTimeout(t)
     }
-    if (phase === 'open' && !still) {
+    // (with less motion too: nothing flies, but the stage still turns to tomorrow and its clock)
+    if (phase === 'open') {
       const t = window.setTimeout(() => {
         fly()
         setMoment((x) => x && { ...x, phase: 'flown' })
@@ -123,13 +135,25 @@ export function DailyCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, still])
 
+  // the day changed with the card open (its clock ran out): the new day's gift, ready to claim
+  useEffect(() => {
+    if (!moment || !v.ready || moment.phase === 'shake') return
+    fly()
+    got.current = []
+    setMoment(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [v.ready, moment])
+
   const close = () => {
     fly()
     onClose()
   }
   const big = shown.ready && shown.day === WEEK
   const streak = shown.ready ? shown.was : shown.streak
-  const done = !!moment && moment.phase !== 'shake'
+  const done = !!moment && phase !== 'shake'
+  const box: Box = phase === 'shake' ? 'shake' : phase === 'open' ? 'open' : still ? 'rest' : 'idle'
+  const showBox = (!moment && shown.ready) || phase === 'shake' || (phase === 'open' && !still)
+  const showTomorrow = phase === 'flown' || (!moment && !shown.ready)
 
   return (
     <SwipeSheet name="daily-card" label="Daily gift" onClose={close}>
@@ -150,14 +174,10 @@ export function DailyCard({
           animate={phase === 'open' ? { opacity: 1, scale: 1.25 } : phase === 'shake' ? { opacity: 0.95, scale: 1.08 } : { opacity: shown.ready ? 0.7 : 0.35, scale: 1 }}
           transition={SPRING.soft}
         />
-        <AnimatePresence mode="popLayout" initial={false}>
-          {phase === 'open' ? (
-            <Prizes key="prizes" got={got.current} still={!!still} />
-          ) : phase === 'flown' || (!moment && !shown.ready) ? (
-            <Tomorrow key="tomorrow" v={v} />
-          ) : (
-            <TodayBox key="box" day={shown.day} big={big} shaking={phase === 'shake'} />
-          )}
+        <AnimatePresence>
+          {showBox && <GiftBox key={`box-${shown.day}`} day={shown.day} big={big} peek={shown.week[shown.day - 1]?.peek} state={box} />}
+          {phase === 'open' && <Prizes key="prizes" got={got.current} still={still} />}
+          {showTomorrow && <Tomorrow key="tomorrow" v={v} />}
         </AnimatePresence>
         {phase === 'open' && !still && (
           <m.i className="dg-flash" aria-hidden="true" initial={{ opacity: 0.9, scale: 0.3 }} animate={{ opacity: 0, scale: 1.7 }} transition={{ duration: 0.5, ease: EASE.out }} />
@@ -167,7 +187,7 @@ export function DailyCard({
         </span>
       </m.div>
 
-      <Road v={shown} today={moment ? moment.before.day : null} />
+      <Road v={shown} stamped={moment && settled ? moment.before.day : null} />
 
       <m.div className="dg-act" variants={ITEM}>
         <AnimatePresence mode="popLayout" initial={false}>
@@ -227,7 +247,15 @@ function lineOf(v: DailyView, done: boolean): string {
   return left === 1 ? '1 more day to the big gift.' : `${left} more days to the big gift.`
 }
 
-/** The streak: a flame and the days in a row. It counts up as the gift opens; a new streak pops in. */
+/** What a day holds, in words: its coins, or its kind. */
+function peekWords(p: Peek): string {
+  if (p.kind === 'coins') return `${p.coins.toLocaleString('en-US')} coins`
+  if (p.kind === 'material') return 'A building material'
+  if (p.kind === 'goods') return 'Goods from your farm'
+  return `${p.coins.toLocaleString('en-US')} coins, a material and goods`
+}
+
+/** The streak: a flame (it flickers) and the days in a row. It counts up as the gift comes home; a new streak pops in. */
 function Streak({ n }: { n: number }) {
   // the number it counts from: the one before the last change (kept across the card's other changes)
   const seen = useRef({ n, from: n })
@@ -254,43 +282,143 @@ function Streak({ n }: { n: number }) {
   )
 }
 
-/** Today's gift on its stage: it drops in and wobbles now and then; it shakes before it opens. The big one is bigger,
- *  with sparkles. */
-function TodayBox({ day, big, shaking }: { day: number; big: boolean; shaking: boolean }) {
+/** Where today's box is in its story: waiting (it hops now and then), still (less motion: it only stands), rattling,
+ *  bursting open. */
+type Box = 'idle' | 'rest' | 'shake' | 'open'
+
+/** The wait between two hops (s), and the hop's beats: crouch, up, land (the lid still rising: the light peeks), settle. */
+const HOP_EVERY = 2.2
+const HOP_T: Transition = { duration: 1.5, delay: 0.9, repeat: Infinity, repeatDelay: HOP_EVERY, ease: 'easeInOut', times: [0, 0.16, 0.42, 0.66, 0.82, 1] }
+const SHAKE_T: Transition = { duration: SHAKE_MS / 1000, ease: 'easeInOut' }
+const STILL: Transition = { duration: 0 }
+
+/** The box as a whole: it drops onto the stage, hops (squash and stretch), grows and rattles before it opens. */
+const HOP: Variants = {
+  enter: { y: 0, scaleX: 1, scaleY: 1, rotate: 0 },
+  rest: { y: 0, scaleX: 1, scaleY: 1, rotate: 0, transition: STILL },
+  idle: {
+    y: [0, 3, -16, 0, -2, 0],
+    scaleX: [1, 1.08, 0.95, 1.06, 1, 1],
+    scaleY: [1, 0.88, 1.07, 0.93, 1.01, 1],
+    rotate: 0,
+    transition: HOP_T,
+  },
+  shake: {
+    y: [0, -3, 0, -4, 0, -5, 0, -6, -3],
+    rotate: [0, -6, 6, -9, 9, -11, 11, -7, 0],
+    scaleX: 1.12,
+    scaleY: 1.12,
+    transition: { default: SHAKE_T, scaleX: SPRING.pop, scaleY: SPRING.pop },
+  },
+  open: { y: 0, rotate: 0, scaleX: 1.12, scaleY: 1.12, transition: { duration: 0.12 } },
+}
+/** Its first landing, before the hops begin. */
+const LAND: Transition = { type: 'spring', stiffness: 260, damping: 15, delay: 0.12 }
+const DROP: Variants = {
+  enter: { y: -46, scale: 0.6, opacity: 0 },
+  idle: { y: 0, scale: 1, opacity: 1, transition: { ...LAND, opacity: { duration: 0.18, delay: 0.12 } } },
+  rest: { y: 0, scale: 1, opacity: 1, transition: STILL },
+  shake: { y: 0, scale: 1, opacity: 1 },
+  open: { y: 0, scale: 1, opacity: 1 },
+}
+/** The lid: it lifts as the box lands (the light inside peeks out), jumps as it rattles, flies off as it opens. */
+const LID: Variants = {
+  rest: { x: 0, y: 0, rotate: 0, opacity: 1, transition: STILL },
+  idle: { x: 0, y: [0, 0, -3, -11, 1, 0], rotate: [0, 0, -2, -8, 1, 0], opacity: 1, transition: HOP_T },
+  shake: { x: 0, y: [0, -4, 0, -7, -1, -10, -3, -13, -9], rotate: [0, 3, -3, 5, -4, 6, -6, 4, -3], opacity: 1, transition: SHAKE_T },
+  open: { x: 38, y: -128, rotate: 40, opacity: 0, transition: { duration: 0.62, ease: EASE.out, opacity: { duration: 0.62, ease: 'easeIn' } } },
+}
+/** The light in the box, seen through the gap under the lid. */
+const LEAK: Variants = {
+  rest: { opacity: 0, transition: STILL },
+  idle: { opacity: [0, 0, 0.35, 1, 0.1, 0], transition: HOP_T },
+  shake: { opacity: [0.3, 0.8, 0.4, 0.9, 0.5, 1, 0.7, 1, 1], transition: SHAKE_T },
+  open: { opacity: 0, transition: { duration: 0.2 } },
+}
+/** The box itself: open, it shows its mouth, and sinks away once the gift is out. */
+const BODY: Variants = {
+  open: { y: 18, scale: 0.8, opacity: 0, transition: { delay: 0.34, duration: 0.34, ease: 'easeIn' } },
+}
+const MOUTH: Variants = { rest: { opacity: 0 }, idle: { opacity: 0 }, shake: { opacity: 0 }, open: { opacity: 1, transition: { duration: 0.06 } } }
+/** The beam of light out of the open box. */
+const BEAM: Variants = {
+  rest: { scaleY: 0, opacity: 0 },
+  idle: { scaleY: 0, opacity: 0 },
+  shake: { scaleY: 0, opacity: 0 },
+  open: { scaleY: [0.1, 1, 1.1], opacity: [0.9, 1, 0], transition: { duration: 0.95, ease: 'easeOut', times: [0, 0.3, 1] } },
+}
+/** Its shadow on the stage: smaller while it is in the air. */
+const SHADOW: Variants = {
+  enter: { opacity: 0, scale: 0.4 },
+  rest: { opacity: 1, scale: 1, transition: STILL },
+  idle: { opacity: [1, 1, 0.5, 1, 1, 1], scale: [1, 1.08, 0.68, 1.06, 1, 1], transition: { default: HOP_T, opacity: HOP_T } },
+  shake: { opacity: 1, scale: 1.14, transition: SPRING.pop },
+  open: { opacity: 0, scale: 0.6, transition: { delay: 0.3, duration: 0.3 } },
+}
+/** The ribbon with its day: it goes as the box opens. */
+const RIBBON: Variants = {
+  enter: { opacity: 0, y: 8 },
+  rest: { opacity: 1, y: 0, transition: STILL },
+  idle: { opacity: 1, y: 0, transition: { ...SPRING.pop, delay: 0.3 } },
+  shake: { opacity: 1, y: 0 },
+  open: { opacity: 0, y: 10, scale: 0.8, transition: { duration: 0.2 } },
+}
+const TODAY: Variants = { enter: {}, rest: {}, idle: {}, shake: {}, open: {}, gone: { opacity: 0, transition: { duration: 0.12 } } }
+
+/** Today's gift on its stage: a box of two halves (the picture cut at the lid's seam), the light inside, a tag on its
+ *  lid with what is in it, and its day on a ribbon. The big one is bigger, with a crown and sparkles. */
+function GiftBox({ day, big, peek, state }: { day: number; big: boolean; peek: Peek | undefined; state: Box }) {
+  const gift = art('wrapped-gift')
   return (
-    <m.div className="dg-today" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, scale: 1.35, transition: { duration: 0.14 } }}>
+    <m.div className={`dg-today${big ? ' big' : ''}`} variants={TODAY} initial="enter" animate={state} exit="gone">
       {big && (
         <>
           <img className="art dg-sparkles left" src={art('sparkles')} alt="" />
           <img className="art dg-sparkles right" src={art('sparkles')} alt="" />
         </>
       )}
-      <m.span
-        className="dg-drop"
-        initial={{ y: -40, scale: 0.5, opacity: 0 }}
-        animate={{ y: 0, scale: shaking ? 1.14 : 1, opacity: 1 }}
-        transition={{ y: { ...SPRING.soft, delay: 0.1 }, scale: shaking ? SPRING.pop : { ...SPRING.soft, delay: 0.1 }, opacity: { duration: 0.18, delay: 0.1 } }}
-      >
-        <m.img
-          className="art dg-box"
-          src={art('wrapped-gift')}
-          alt=""
-          animate={shaking ? { y: 0, rotate: [0, -9, 9, -12, 12, -9, 7, 0] } : { y: [0, -10, 0, -4, 0], rotate: [0, -7, 6, -3, 0] }}
-          transition={
-            shaking
-              ? { y: { duration: 0.1 }, rotate: { duration: SHAKE_MS / 1000, ease: 'easeInOut' } }
-              : { duration: 0.9, delay: 1, repeat: Infinity, repeatDelay: 1.8, ease: 'easeInOut', times: [0, 0.3, 0.55, 0.8, 1] }
-          }
-        />
+      <m.span className="dg-gift" variants={DROP}>
+        <m.i className="dg-gift-shadow" variants={SHADOW} />
+        <m.span className="dg-gift-hop" variants={HOP}>
+          {/* (behind the box: seen only through the gap under the lid, and round its edges) */}
+          <m.i className="dg-gift-leak" variants={LEAK} />
+          <span className="dg-gift-body">
+            <m.span className="dg-gift-box" variants={BODY}>
+              <img src={gift} alt="" draggable={false} />
+              <m.i className="dg-gift-mouth" variants={MOUTH} />
+            </m.span>
+          </span>
+          <m.i className="dg-gift-beam" variants={BEAM} />
+          <m.span className="dg-gift-lid" variants={LID}>
+            <img src={gift} alt="" draggable={false} />
+            {big && <img className="dg-crown" src={art('crown')} alt="" draggable={false} />}
+            {peek && <Tag peek={peek} />}
+          </m.span>
+        </m.span>
       </m.span>
-      <b className="dg-ribbon">{big ? 'Day 7 · Big gift' : `Day ${day}`}</b>
+      <m.b className="dg-ribbon" variants={RIBBON}>
+        {big ? 'Day 7 · Big gift' : `Day ${day}`}
+      </m.b>
     </m.div>
   )
 }
 
-const RISE: Variants = { hidden: { opacity: 0, scale: 0.2, y: 26 }, show: { opacity: 1, scale: 1, y: 0, transition: SPRING.pop } }
+/** The tag on today's lid: what is inside (the coins, a building material, goods from the farm; the big one's three). */
+function Tag({ peek }: { peek: Peek }) {
+  return (
+    <span className={`dg-tag ${peek.kind}`} role="img" aria-label={`Inside: ${peekWords(peek)}`}>
+      {(peek.kind === 'coins' || peek.kind === 'big') && <img src={art('coin')} alt="" />}
+      {(peek.kind === 'material' || peek.kind === 'big') && <img src={iconUrl('plank')} alt="" />}
+      {(peek.kind === 'goods' || peek.kind === 'big') && <img src={art('basket')} alt="" />}
+      {peek.kind === 'coins' && <b>{peek.coins.toLocaleString('en-US')}</b>}
+    </span>
+  )
+}
 
-/** What came out of the box, big: coins with how many, a good with its count; one prize says its name. */
+/** What came out of the box: it rises from the box's mouth, big, coins with how many, a good with its count; one prize
+ *  says its name. Then it shrinks into its flight home. */
+const RISE: Variants = { hidden: { opacity: 0, scale: 0.2, y: 30 }, show: { opacity: 1, scale: 1, y: 0, transition: SPRING.pop } }
+
 function Prizes({ got, still }: { got: Prize[]; still: boolean }) {
   const one = got.length === 1
   return (
@@ -298,15 +426,15 @@ function Prizes({ got, still }: { got: Prize[]; still: boolean }) {
       className={`dg-prizes${one ? ' one' : ''}`}
       initial="hidden"
       animate="show"
-      exit={{ opacity: 0, scale: 0.7, y: -18, transition: { duration: 0.22, ease: EASE.out } }}
-      variants={{ show: { transition: { staggerChildren: still ? 0 : 0.11 } } }}
+      exit={{ opacity: 0, scale: 0.5, y: -26, transition: { duration: 0.22, ease: EASE.out } }}
+      variants={{ show: { transition: { delayChildren: still ? 0 : 0.1, staggerChildren: still ? 0 : 0.12 } } }}
     >
       {got.map((p, i) => (
         <m.span key={i} className="dg-prize" variants={RISE}>
           {'coins' in p ? (
             <span className="dg-coins">
               <img className="art" src={art('coin')} alt="" />
-              <b>+{p.coins}</b>
+              <b>+{p.coins.toLocaleString('en-US')}</b>
             </span>
           ) : (
             <ItemPic id={p.item} count={p.n} />
@@ -318,21 +446,87 @@ function Prizes({ got, still }: { got: Prize[]; still: boolean }) {
   )
 }
 
-/** Tomorrow on the stage once today's is home: its day, and what it will be (a peek). */
+/** Seconds left of a countdown that was `secs` when it was given, ticking on by the device's clock (null: none). A
+ *  new value from the farm sets it again; the same one again (a clock held still) does not. */
+function useLeft(secs: number | null): number | null {
+  const [left, setLeft] = useState(secs)
+  const from = useRef({ secs: Number.NaN, at: 0 })
+  useEffect(() => {
+    if (secs === null) {
+      setLeft(null)
+      return
+    }
+    if (from.current.secs !== secs) from.current = { secs, at: Date.now() }
+    const read = () => setLeft(Math.max(0, from.current.secs - (Date.now() - from.current.at) / 1000))
+    read()
+    const id = window.setInterval(read, 250)
+    return () => window.clearInterval(id)
+  }, [secs])
+  return left
+}
+
+/** How long, in words (for a screen reader). */
+function waitWords(s: number): string {
+  const h = Math.floor(s / 3600)
+  const min = Math.floor((s % 3600) / 60)
+  const hours = `${h} hour${h === 1 ? '' : 's'}`
+  const mins = `${min} minute${min === 1 ? '' : 's'}`
+  return h ? (min ? `${hours} ${mins}` : hours) : min ? mins : 'less than a minute'
+}
+
+/** Tomorrow on the stage once today's is home (or taken): its box, what it will be (a peek), its day, and a digital
+ *  clock counting down to the moment it opens. In its last minute the box can hardly wait. */
 function Tomorrow({ v }: { v: DailyView }) {
   const day = v.week[v.tomorrow - 1]
   const big = v.tomorrow === WEEK
+  const left = useLeft(v.opensIn)
+  const soon = left !== null && left <= 60
   return (
-    <m.div className={`dg-tomorrow${big ? ' big' : ''}`} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ ...SPRING.pop, delay: 0.25 }}>
+    <m.div
+      className={`dg-tomorrow${big ? ' big' : ''}${soon ? ' soon' : ''}`}
+      initial={{ opacity: 0, y: 14, scale: 0.92 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.92, transition: { duration: 0.15 } }}
+      transition={{ ...SPRING.pop, delay: 0.25 }}
+    >
       <span className="dg-tomorrow-box">
         <img className="art" src={art('wrapped-gift')} alt="" />
         {day && <PeekBadge peek={day.peek} />}
       </span>
       <span className="dg-tomorrow-words">
-        <b>Tomorrow</b>
-        <small>{big ? 'Day 7 · the big gift' : `Day ${v.tomorrow}`}</small>
+        <span className="dg-tomorrow-title">
+          <b>Tomorrow</b>
+          <small>{big ? 'Day 7 · Big gift' : `Day ${v.tomorrow}`}</small>
+        </span>
+        {left !== null && <Countdown left={left} />}
       </span>
     </m.div>
+  )
+}
+
+/** The wait as a small digital clock: each digit rolls over as it changes, the colons blink with the seconds. */
+function Countdown({ left }: { left: number }) {
+  const text = countdown(left)
+  return (
+    <span className="dg-clock" role="timer" aria-label={`Opens in ${waitWords(Math.ceil(left))}`}>
+      <small aria-hidden="true">Opens in</small>
+      <span className="dg-clock-face" aria-hidden="true">
+        <Clock weight="fill" />
+        {text.split('').map((c, i) => (/\d/.test(c) ? <Digit key={`${text.length}-${i}`} c={c} /> : <i key={`${text.length}-${i}`}>{c}</i>))}
+      </span>
+    </span>
+  )
+}
+
+function Digit({ c }: { c: string }) {
+  return (
+    <span className="dg-digit">
+      <AnimatePresence initial={false} mode="popLayout">
+        <m.span key={c} initial={{ y: '-75%', opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: '75%', opacity: 0 }} transition={{ duration: 0.26, ease: EASE.out }}>
+          {c}
+        </m.span>
+      </AnimatePresence>
+    </span>
   )
 }
 
@@ -366,10 +560,18 @@ function PeekBadge({ peek }: { peek: Peek }) {
 
 const ROAD: Variants = { show: { transition: { delayChildren: 0.08, staggerChildren: 0.04 } } }
 const STOP: Variants = { hidden: { opacity: 0, y: 10, scale: 0.7 }, show: { opacity: 1, y: 0, scale: 1, transition: SPRING.pop } }
+/** How long a stop's words stay up after a touch (ms). */
+const SAY_MS = 2800
 
-/** The week as a road: seven stops on a line that fills up to the last day taken (and runs on to today's as it is
- *  claimed: `today`, the day the moment is about). */
-function Road({ v, today }: { v: DailyView; today: number | null }) {
+/** The week as a road: seven stops on a line that fills up to the last day taken (and runs on to today's once its gift
+ *  is home: `stamped`, the day the claim was about). A stop touched says what it holds or gave. */
+function Road({ v, stamped }: { v: DailyView; stamped: number | null }) {
+  const [picked, setPicked] = useState<number | null>(null)
+  useEffect(() => {
+    if (picked === null) return
+    const t = window.setTimeout(() => setPicked(null), SAY_MS)
+    return () => window.clearTimeout(t)
+  }, [picked])
   const past = v.week.filter((d) => d.state === 'past').length
   const now = v.week.find((d) => d.state === 'today')?.day ?? 0
   // the line from the first stop's middle to the last's: filled to the last day taken; striped on to today's
@@ -381,45 +583,70 @@ function Road({ v, today }: { v: DailyView; today: number | null }) {
         <m.i className="dg-line-fill" initial={false} animate={{ scaleX: at(past) }} transition={{ duration: 0.55, ease: EASE.out, delay: 0.12 }} />
       </span>
       {v.week.map((d) => (
-        <Stop key={d.day} d={d} now={d.day === today && d.state === 'past'} />
+        <Stop key={d.day} d={d} now={d.day === stamped && d.state === 'past'} picked={picked === d.day} onPick={() => setPicked((p) => (p === d.day ? null : d.day))} />
       ))}
     </m.ol>
   )
 }
 
-/** A stop of the road: a day taken (what it gave, with a ✓), today's (glowing), or one to come (its peek). */
-function Stop({ d, now }: { d: DayView; now: boolean }) {
+/** A stop's words: its day, and what it gave (taken) or holds (today's, to come). */
+function stopWords(d: DayView): [string, string] {
+  if (d.state === 'past') return [`Day ${d.day}`, d.got ? d.got.map(prizeWords).join(', ') : 'Taken']
+  return [d.state === 'today' ? 'Today' : `Day ${d.day}`, peekWords(d.peek)]
+}
+
+/** A stop of the road: a day taken (what it gave, with a ✓), today's (glowing), or one to come (its peek); touched, its
+ *  words in a bubble over it. */
+function Stop({ d, now, picked, onPick }: { d: DayView; now: boolean; picked: boolean; onPick: () => void }) {
   const big = d.day === WEEK
   const pic = d.got?.[0]
-  const words = d.state === 'past' ? `Day ${d.day}: ${d.got ? d.got.map(prizeWords).join(', ') : 'taken'}` : d.state === 'today' ? `Day ${d.day}: today` : `Day ${d.day}`
+  const [title, words] = stopWords(d)
+  const edge = d.day <= 1 ? ' start' : d.day >= WEEK ? ' end' : ''
   return (
-    <m.li className={`dg-stop ${d.state}${big ? ' big' : ''}${now ? ' now' : ''}`} variants={STOP} aria-label={words}>
-      <span className="dg-disc">
-        <AnimatePresence mode="popLayout" initial={false}>
-          {d.state === 'past' ? (
-            <m.span key="past" className="dg-disc-in" variants={POP} initial="hidden" animate="show" transition={{ delay: now ? 0.05 : 0 }}>
-              {big && d.got && d.got.length > 1 ? (
-                <img className="art" src={art('sparkles')} alt="" />
-              ) : pic ? (
-                <img className="art" src={'coins' in pic ? art('coin') : iconUrl(pic.item)} alt="" />
-              ) : (
-                <img className="art faded" src={art('wrapped-gift')} alt="" />
-              )}
-            </m.span>
-          ) : (
-            <m.span key="box" className="dg-disc-in" exit={{ opacity: 0, scale: 1.4, transition: { duration: 0.12 } }}>
-              <img className="art" src={art('wrapped-gift')} alt="" />
-              {d.state === 'next' && <PeekBadge peek={d.peek} />}
-            </m.span>
+    <m.li className={`dg-stop ${d.state}${big ? ' big' : ''}${now ? ' now' : ''}`} variants={STOP}>
+      <button type="button" className="dg-stop-btn" aria-label={`${title}: ${words}`} aria-expanded={picked} onClick={onPick}>
+        <span className="dg-disc">
+          <AnimatePresence mode="popLayout" initial={false}>
+            {d.state === 'past' ? (
+              <m.span key="past" className="dg-disc-in" variants={POP} initial="hidden" animate="show" transition={{ delay: now ? 0.05 : 0 }}>
+                {big && d.got && d.got.length > 1 ? (
+                  <img className="art" src={art('sparkles')} alt="" />
+                ) : pic ? (
+                  <img className="art" src={'coins' in pic ? art('coin') : iconUrl(pic.item)} alt="" />
+                ) : (
+                  <img className="art faded" src={art('wrapped-gift')} alt="" />
+                )}
+              </m.span>
+            ) : (
+              <m.span key="box" className="dg-disc-in" exit={{ opacity: 0, scale: 1.4, transition: { duration: 0.12 } }}>
+                <img className="art" src={art('wrapped-gift')} alt="" />
+                {big && <img className="dg-stop-crown" src={art('crown')} alt="" />}
+                <PeekBadge peek={d.peek} />
+              </m.span>
+            )}
+          </AnimatePresence>
+          {d.state === 'past' && (
+            <m.i className="dg-check" variants={POP} initial={now ? 'hidden' : false} animate="show" transition={{ ...SPRING.pop, delay: now ? 0.2 : 0 }}>
+              <Check weight="bold" />
+            </m.i>
           )}
-        </AnimatePresence>
-        {d.state === 'past' && (
-          <m.i className="dg-check" variants={POP} initial={now ? 'hidden' : false} animate="show" transition={{ ...SPRING.pop, delay: now ? 0.2 : 0 }}>
-            <Check weight="bold" />
-          </m.i>
+        </span>
+        <small className="dg-day">{d.state === 'today' ? 'Today' : d.day}</small>
+      </button>
+      <AnimatePresence>
+        {picked && (
+          <m.span
+            className={`dg-bubble${edge}`}
+            aria-hidden="true"
+            initial={{ opacity: 0, y: 6, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 4, scale: 0.95, transition: { duration: 0.12 } }}
+            transition={SPRING.pop}
+          >
+            <b>{title}</b> · {words}
+          </m.span>
         )}
-      </span>
-      <small className="dg-day">{d.state === 'today' ? 'Today' : d.day}</small>
+      </AnimatePresence>
     </m.li>
   )
 }
