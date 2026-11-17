@@ -100,13 +100,14 @@ function Bubble({ good, lines, walk, ways, close }: { good: ProduceId; lines?: R
         <span>
           {src.words}
           {src.from && (
-            <span className="ob-from">
-              {' '}
-              from{' '}
-              {src.from.map((f) => (
-                <ItemPic key={f} id={f} />
-              ))}
-            </span>
+            <>
+              {' from '}
+              <span className="ob-from">
+                {src.from.map((f) => (
+                  <ItemPic key={f} id={f} />
+                ))}
+              </span>
+            </>
           )}
         </span>
       </span>

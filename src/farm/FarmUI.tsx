@@ -32,8 +32,7 @@ import { BuyPiece, FurnitureShop } from '../home/FurnitureShop'
 import { iconUrl } from './icons'
 import { OrdersPanel } from './OrdersPanel'
 import { StorePanel, StoreUpgradePanel } from './StorePanel'
-import { ItemPic } from '../ui/ItemPic'
-import { GoodWaysContext } from '../ui/GoodPic'
+import { GoodPic, GoodWaysContext } from '../ui/GoodPic'
 import { GAME_WAYS } from './goods/ways'
 import { LockCorner, LockTag, opensWords, useNope } from '../ui/LockTag'
 import { ARM_MS, Coins, Purse, Shell } from '../ui/Sheet'
@@ -332,7 +331,7 @@ function QueuePanel() {
               <span className="farm-avatar small" style={{ background: v.look.shirt, color: light(v.look.shirt) ? '#1d232c' : '#fff' }} aria-hidden="true">
                 {i + 1}
               </span>
-              <ItemPic id={v.want} count={v.qty} className="farm-want" />
+              <GoodPic good={v.want} count={v.qty} className="farm-want" />
               <div className="farm-buyer-body">
                 <strong>{v.name}</strong>
                 <span>
@@ -410,7 +409,7 @@ export function FarmUI() {
       {panel?.kind === 'estate' && <EstatePanel />}
       {panel?.kind === 'house-buy' && <HouseBuyPanel />}
       {panel?.kind === 'ladder' && <LadderCard id={panel.id} />}
-      {panel?.kind === 'machine' && <MachinePanel id={panel.id} />}
+      {panel?.kind === 'machine' && <MachinePanel key={panel.id} id={panel.id} from={panel.from} />}
       {panel?.kind === 'tool' && <ToolPanel key={panel.tool} tool={panel.tool} from={panel.from} />}
       {panel?.kind === 'machine-slot' && <MachineSlotCard id={panel.id} />}
       {/* the level's card goes out the way it came in (src/ui/SwipeSheet.tsx); opened again while it is still going,

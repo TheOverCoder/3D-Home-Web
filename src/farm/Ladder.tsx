@@ -135,8 +135,15 @@ export function LadderCard({ id, onBack }: { id: LadderId; onBack?: () => void }
             </>
           ) : afford || !open ? (
             <>
-              {premium && <Crown weight="fill" className="crown" />}
-              Buy · <Coins n={price} />
+              Buy ·{' '}
+              {premium ? (
+                <span className="farm-coins">
+                  <img src={art('coin')} alt="" />
+                  {price.toLocaleString('en-US')}
+                </span>
+              ) : (
+                <Coins n={price} />
+              )}
             </>
           ) : (
             <>Needs {price - farm.coins} more</>

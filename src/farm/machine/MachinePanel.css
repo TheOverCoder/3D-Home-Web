@@ -254,3 +254,8 @@
 @keyframes mp-glow { 0%, 100% { opacity: 0.25; } 50% { opacity: 0.85; } }
 @keyframes mp-shine { to { transform: translateX(120%); } }
 @keyframes mp-next { 0%, 100% { box-shadow: 0 0 0 3px var(--paper), inset 0 0 0 2.5px var(--sun-lip); } 50% { box-shadow: 0 0 0 3px var(--paper), inset 0 0 0 2.5px var(--sun-lip), 0 0 12px 3px color-mix(in srgb, var(--sun) 70%, transparent); } }
+
+/* what a recipe lacks, in its note: each good's picture says where it is made (src/ui/GoodPic.tsx) */
+.mp-lack { display: inline-flex; align-items: center; gap: 2px; margin-block: -6px; }
+.mp-lack .good-pic { min-width: 40px; min-height: 40px; }
+.mp-lack .item-pic .art { width: 30px; height: 30px; }

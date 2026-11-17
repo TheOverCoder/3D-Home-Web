@@ -1,11 +1,12 @@
 import { AnimatePresence, m, useAnimate, useDragControls, useReducedMotion, type PanInfo } from 'motion/react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { produceById, storeOf } from '../data'
+import { produceById, storeOf, type ProduceId } from '../data'
 import { iconUrl } from '../icons'
 import type { MachineActions, MachineView, QueueSlot, RecipeView } from '../machineView'
 import { art, type ArtId } from '../../ui/art'
 import { burst } from '../../ui/burst'
+import { GoodPic } from '../../ui/GoodPic'
 import { CaretLeft, Check, Clock, HandGrabbing, LockSimple, X } from '../../ui/glyphs'
 import { ARRIVE, MotionRoot, PRESS, SHEET, SPRING, swipedAway } from '../../ui/motion'
 import { useSheetMode } from '../../ui/sheetMode'
@@ -107,6 +108,8 @@ interface Note {
   id: number
   text: ReactNode
   tone: 'bad' | 'good' | 'xp'
+  /** it holds goods' pictures to tap (what a recipe lacks): it stays longer, and while a good's bubble is open */
+  long?: boolean
 }
 
 function Panel({ v, act, coins, onClose, buying }: MachinePanelProps) {
@@ -147,10 +150,15 @@ function Panel({ v, act, coins, onClose, buying }: MachinePanelProps) {
   const [arriving, setArriving] = useState<string | null>(null)
   const [note, setNote] = useState<Note | null>(null)
   const noteId = useRef(0)
-  const say = (text: ReactNode, tone: Note['tone']) => setNote({ id: ++noteId.current, text, tone })
+  const say = (text: ReactNode, tone: Note['tone'], long = false) => setNote({ id: ++noteId.current, text, tone, long })
   useEffect(() => {
     if (!note) return
-    const t = window.setTimeout(() => setNote(null), 2400)
+    let t = 0
+    const end = () => {
+      if (note.long && document.querySelector('.good-pop')) t = window.setTimeout(end, 1000)
+      else setNote(null)
+    }
+    t = window.setTimeout(end, note.long ? 6000 : 2400)
     return () => window.clearTimeout(t)
   }, [note])
   const [shakes, setShakes] = useState<Record<string, number>>({})
@@ -279,7 +287,21 @@ function Panel({ v, act, coins, onClose, buying }: MachinePanelProps) {
         say(`Opens at level ${r.locked}`, 'bad')
       } else if (timesCan(r) === 0) {
         setShakes((s) => ({ ...s, [r.id]: (s[r.id] ?? 0) + 1 }))
-        say(`Not enough for a ${produceById(r.makes).name}`, 'bad')
+        // what it lacks, each a picture that says where it is made (a remote's: opens its machine)
+        const lack = (Object.entries(r.needs) as [ProduceId, number][]).filter(([k, n]) => (r.have[k] ?? 0) < n).map(([k]) => k)
+        say(
+          <>
+            Not enough
+            <span className="mp-lack">
+              {lack.map((k) => (
+                <GoodPic key={k} good={k} />
+              ))}
+            </span>
+            for a {produceById(r.makes).name}
+          </>,
+          'bad',
+          true,
+        )
       } else {
         setNudge((n) => n + 1)
         say(
@@ -360,7 +382,8 @@ function Panel({ v, act, coins, onClose, buying }: MachinePanelProps) {
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (drag.lifted) return
+        // (a good's bubble open: Esc closes it first)
+        if (drag.lifted || document.querySelector('.good-pop')) return
         e.stopPropagation()
         if (page === 'level') setPageNow('queue')
         else setLeaving(true)

@@ -2,7 +2,7 @@ import { farmSound, placeSound } from '../audio/sound'
 import { farmFx } from '../fx/fx'
 import { playGesture } from '../lib/gestures'
 import { useHome } from '../store'
-import { ItemPic } from '../ui/ItemPic'
+import { GoodPic } from '../ui/GoodPic'
 import { Shell, useArmed } from '../ui/Sheet'
 import { ArrowRight, Check } from '../ui/glyphs'
 import { STORES, count, produceById, type StoreId } from './data'
@@ -13,7 +13,7 @@ import { ContractorLink } from './ContractorPanel'
 import { canUpgradeStore, capacity, farm, nextStoreLevel, storeLevel, upgradeStore, useFarm, used } from './state'
 
 // The silo and the barn, tapped (their chip at the top, or the button at their door): what is inside, each good with
-// how many; how full it is and its level; and what its next level takes — its three building materials, each with how
+// how many (a tap on one says where it is made: src/ui/GoodPic.tsx); how full it is and its level; and what its next level takes — its three building materials, each with how
 // many you have of how many it takes, and the room it gives. Upgrading asks first, on a card of its own (Cancel, then
 // an Upgrade button that arms after a moment), like building a bed.
 
@@ -49,7 +49,7 @@ function Needs({ store }: { store: StoreId }) {
         const ok = have >= n.count
         return (
           <div key={n.item} className="farm-need" title={`${cap(produceById(n.item).plural)}: you have ${have}`}>
-            <ItemPic id={n.item} count={n.count} />
+            <GoodPic good={n.item} count={n.count} />
             <span className={`tag ${ok ? 'ok' : 'short'}`}>
               {ok && <Check weight="bold" />}
               {Math.min(have, n.count)}/{n.count}
@@ -85,7 +85,7 @@ export function StorePanel({ store }: { store: StoreId }) {
         <div className="farm-basket">
           {goods.map((id) => (
             <div key={id} className="farm-basket-item" title={count(id, farm.inv[id])}>
-              <ItemPic id={id} count={farm.inv[id]} />
+              <GoodPic good={id} count={farm.inv[id]} />
               <span>{cap(produceById(id).plural)}</span>
             </div>
           ))}
