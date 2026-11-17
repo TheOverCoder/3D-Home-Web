@@ -1,13 +1,15 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it } from 'vitest'
-import { FIRST_STEPS, STEPS_UNTIL_LEVEL, advance, currentStep, sanitizeSteps, skipped, stepsFresh, type StepId } from './firstSteps'
+import { art } from '../ui/art'
+import { MOOD_MOVES } from './FarmerFace'
+import { FARMER_MOODS, FIRST_STEPS, MOMENT_MOODS, STEPS_UNTIL_LEVEL, advance, currentStep, moodFor, sanitizeSteps, skipped, stepsFresh, type StepId } from './firstSteps'
 import { farm, resetFarm, type FarmData } from './state'
 import { lockedAt } from './unlocks'
 import { xpAt } from './xp'
 
 // The first ten minutes (src/farm/firstSteps.ts): each step read from the farm's own numbers, passed in order (one done
 // already as it comes is passed with it), over at the end, when skipped or on a farm grown past them; a record as
-// saved made safe, a farm from before them never seeing them.
+// saved made safe, a farm from before them never seeing them; the farmer says each line in a mood his face shows.
 
 beforeEach(() => {
   localStorage.clear()
@@ -86,5 +88,23 @@ describe('the first steps', () => {
       for (const id of s.needs ?? []) expect(lockedAt(id, 1), `${s.id} needs ${id}`).toBeNull()
       expect('coins' in s.reward ? s.reward.coins : s.reward.n, s.id).toBeGreaterThan(0)
     }
+  })
+
+  it('the farmer says each line, and each moment of the hint, in a mood he has a face and a move for; every face is said', () => {
+    const said = [...FIRST_STEPS.map((s) => s.mood), ...Object.values(MOMENT_MOODS)]
+    for (const mood of said) expect(FARMER_MOODS, mood).toContain(mood)
+    expect([...new Set(said)].sort()).toEqual([...FARMER_MOODS].sort())
+    for (const mood of FARMER_MOODS) {
+      expect(art(`farmer-${mood}` as const), `the face for ${mood} (node scripts/render-farmer-faces.mjs)`).toBeTruthy()
+      expect(MOOD_MOVES[mood], `how he moves when ${mood}`).toBeDefined()
+    }
+    // a moment wins over the line he is on
+    expect(moodFor(FIRST_STEPS[0], null)).toBe(FIRST_STEPS[0].mood)
+    expect(moodFor(FIRST_STEPS[0], 'ask')).toBe(MOMENT_MOODS.ask)
+    expect(moodFor(null, 'final')).toBe(MOMENT_MOODS.final)
+  })
+
+  it('each line is a few words: two lines of the bubble on a narrow phone', () => {
+    for (const s of FIRST_STEPS) expect(s.say.length, s.say).toBeLessThanOrEqual(26)
   })
 })

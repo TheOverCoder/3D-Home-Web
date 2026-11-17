@@ -248,8 +248,8 @@ export interface FullFarm {
 
 /**
  * The farm at its fullest (05-budget, 16-view): each room filled with the heaviest piece for sale until the next one
- * is refused, every animal the shop sells, fifteen buyers in line, a ripe crop in every bed, the farm decorated (a
- * hundred pieces, every fruit tree and bush hung full), and the supermarket yours
+ * is refused, every animal the shop sells and every animal's tool at its fence, fifteen buyers in line, a ripe crop in
+ * every bed, the farm decorated (a hundred pieces, every fruit tree and bush hung full), and the supermarket yours
  * with every place on its shelves open and full of the heaviest good (`fillShelves`). Once per page, until `emptyFarm`
  * (the shelves again on every call); waits for the furniture to merge again and the animals and buyers to take their
  * places.
@@ -281,6 +281,11 @@ export async function fillFarm(page: Page): Promise<FullFarm> {
     }
     const f = h.farm
     for (let i = 0; i < 10; i++) for (const id of ['hen', 'cow', 'sheep']) f.buy(id)
+    // every animal's tool, at the top of both its ladders, each at its fence (src/farm/ToolStands.tsx) in its own skin
+    // (a, the one with the most draws: src/farm/skins.ts); an egg or two in every nest of the coop, milk in the pail and
+    // wool in the basket
+    for (const kind of ['hens', 'cows', 'sheep']) for (const part of ['tool', 'hold', 'tap']) while (f.ladderOpen(`${kind}-${part}`) && f.buyLadder(`${kind}-${part}`));
+    for (const kind of ['hens', 'cows', 'sheep']) f.state.producers[kind].stock = f.state.producers[kind].stock.map((n: number) => Math.max(2, n))
     for (let i = 0; i < 12; i++) f.buy('queue')
     for (let i = f.inLine().length; i < f.placesInLine(); i++) f.spawnVisitor({ queued: true })
     f.state.beds.forEach((b: any) => (b.built = true))
@@ -289,7 +294,6 @@ export async function fillFarm(page: Page): Promise<FullFarm> {
       if (f.plant(i, crops[i % crops.length])) f.state.beds[i].growth = 1e6
     })
     f.state.producers.tree.stock[0] = 3
-    f.state.producers.hens.stock[0] = 2
     // the farm decorated (src/farm/decor.ts, the edit mode's shop), on the free land where the house stood and round
     // it, through the game's own rules (each where it fits, or the nearest free spot): a fenced garden with a path
     // across it, lamps and lanterns, benches, trees and bushes, flowers, a bird bath, a well and the nine scarecrows,

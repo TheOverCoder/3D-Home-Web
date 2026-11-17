@@ -1,0 +1,15 @@
+/* The farmer's round portrait (src/farm/FarmerFace.tsx): his face fills it, the new one over the old as his mood
+   changes; the circle is what moves with the mood. */
+.farmer { display: block; flex: none; }
+.farmer-face {
+  position: relative;
+  display: block;
+  width: 56px;
+  height: 56px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 30%, #fff, var(--paper-2) 70%);
+  box-shadow: 0 0 0 3px #fff, 0 4px 10px rgba(40, 24, 10, 0.35);
+}
+.farmer-face img { position: absolute; inset: 0; width: 100%; height: 100%; }
+.farmer.small .farmer-face { width: 46px; height: 46px; }

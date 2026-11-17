@@ -70,6 +70,7 @@ import {
   type ToolKind,
   type XpAction,
   TOOLS,
+  isToolKind,
   toolLadder,
 } from './data'
 import { sanitizeXp, savedOnToday, seedXp, levelOf, levelReward, xpAt, unpaidCoins, xpForSale, type Xp } from './xp'
@@ -155,6 +156,7 @@ import { lockedAt, machineOpensAt, opensAt, recipeUnlock, type UnlockId } from '
 import { advance, currentStep, sanitizeSteps, skipped, stepsFresh, type StepDef, type StepsRecord } from './firstSteps'
 import { fullest, mostAt, needsMet, ownsEach, perTapOf, spreadNest, toolOf, type Steps } from './tools'
 import type { ToolView } from './toolView'
+import { freshSkins, isSkinStyle, sanitizeSkins, skinBuyProblem, skinPrice, wearing, withSkin, type SkinStyle, type Skins } from './skins'
 import { PIECES, type PieceType } from '../home/catalogue'
 import { canMoveOpening, canPlacePiece, defaultHome, findFreeSpot, sanitizeHome, type HomeFit, type HomeLayout, type HomePiece } from '../home/layout'
 import { floorById, paintById, type OpeningAt } from '../home/shell'
@@ -262,6 +264,8 @@ export interface FarmData {
   outfit: Outfit
   /** every upgrade ladder's step (LADDERS in ./data): the market's and the contractor's */
   ladders: Record<LadderId, number>
+  /** the animals' tools' skins (src/farm/skins.ts): which each tool's farm owns, and the one it wears */
+  skins: Skins
   /** the supermarket (src/farm/market.ts): yours or not, its shelves, the till, the next visit */
   market: Market
   /** the contractor behind the market (src/farm/contractor.ts): the day his offers are for, and the offers */
@@ -345,6 +349,7 @@ function fresh(): FarmData {
     daily: dailyFresh(),
     outfit: { ...DEFAULT_OUTFIT },
     ladders: clampLevels({}),
+    skins: freshSkins(),
     market: freshMarket(),
     contractor: { day: -1, offers: [] },
     day: { t: 0 },
@@ -575,6 +580,8 @@ function load(text: string | null = readRaw(KEY)): { data: FarmData; savedAt: nu
     // as on a new farm; while the shop is not yours, its own ladders read back as 0: only the manager's rate, the
     // contractor's two and the farm shop's)
     data.ladders = clampLevels(raw.ladders, field(raw.market, 'owned') === true)
+    // the tools' skins: as saved, for the tools the farm has (a farm from before them owns each tool's own and wears it)
+    data.skins = sanitizeSkins(raw.skins, data.ladders)
     // the tree, the nest, the animals and the machines (a save from before the tables kept each in fields of its own)
     for (const id of PRODUCER_IDS) data.producers[id] = savedProducer(id, raw, data.ladders)
     for (const id of MACHINE_IDS) data.machines[id] = savedMachine(id, raw)
@@ -1169,6 +1176,36 @@ export function toolView(kind: ToolKind): ToolView {
       }
     }),
   }
+}
+
+/** The skin a tool wears (src/farm/skins.ts): its own, until another is bought or put on. */
+export const skinWorn = (kind: ToolKind) => farm.skins[kind].worn
+/** Whether a tool's farm owns one of its skins. */
+export const skinOwned = (kind: ToolKind, style: SkinStyle) => farm.skins[kind].owned.includes(style)
+
+/** Buys one of a tool's skins (its card asked first) and puts it on: only for a tool that is yours, a skin it does not
+ *  have yet, with the coins for it. A `build`'s XP, as every purchase on the farm; the crystals from low in the middle,
+ *  as a panel's. Whether it was bought. */
+export function buySkin(kind: ToolKind, style: SkinStyle): boolean {
+  if (!isToolKind(kind) || !isSkinStyle(style)) return false
+  if (skinBuyProblem(farm.skins, kind, style, toolOwned(kind) !== null, farm.coins)) return false
+  farm.coins -= skinPrice(kind, style)
+  farm.skins = withSkin(farm.skins, kind, style)
+  gainXp('build')
+  bump()
+  save()
+  return true
+}
+
+/** Puts on a skin a tool's farm owns (free, and undone for free: no XP). Whether what it wears changed. */
+export function wearSkin(kind: ToolKind, style: SkinStyle): boolean {
+  if (!isToolKind(kind) || !isSkinStyle(style) || toolOwned(kind) === null) return false
+  const next = wearing(farm.skins, kind, style)
+  if (next === farm.skins) return false
+  farm.skins = next
+  bump()
+  save()
+  return true
 }
 
 /** One more animal (from the shop): she has nothing to give yet. */

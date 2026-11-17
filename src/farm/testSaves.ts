@@ -11,6 +11,7 @@ import {
   buyDecor,
   buyOffice,
   buyPiece,
+  buySkin,
   buySlot,
   claimDaily,
   claimLevel,
@@ -52,6 +53,7 @@ import {
   tick,
   upgradeStore,
   water,
+  wearSkin,
 } from './state'
 import { unpaidCoins, xpAt } from './xp'
 
@@ -205,6 +207,11 @@ export function playedSave(): Record<string, unknown> {
     farm.coins = 9000
     for (const u of ['east', 'west', 'cow', 'cow', 'sheep', 'hen', 'hen', 'compost', 'queue', 'queue', 'pace'] as const) buy(u)
     claimLevel()
+    // the cows' tool (their herd is full), two of its skins bought and the first put on again (src/farm/skins.ts)
+    buyLadder('cows-tool')
+    buySkin('cows', 'b')
+    buySkin('cows', 'c')
+    wearSkin('cows', 'b')
     buildBed(4)
     buyLand('north')
     buyLand('east')

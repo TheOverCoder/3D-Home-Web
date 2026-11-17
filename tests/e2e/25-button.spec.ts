@@ -115,9 +115,9 @@ const sweep = (page: Page, farmName: string) =>
     { farmName, shows: SHOWS, looks: LOOKS, reward: LEVELS.reward },
   )
 
-/** A farm with plenty of everything: coins, every good, ripe beds, full herds with their tools, finished machines, a
- *  fruit tree or bush of every kind hung with fruit (the edit mode's shop), the shop yours and stocked with coins in its
- *  till, the contractor in with his pieces, a line at the gate. */
+/** A farm with plenty of everything: coins, every good, ripe beds, every animal the shop sells and their tools, full
+ *  animals, finished machines, a fruit tree or bush of every kind hung with fruit (the edit mode's shop), the shop yours
+ *  and stocked with coins in its till, the contractor in with his pieces, a line at the gate. */
 async function plenty(page: Page) {
   await page.evaluate(() => {
     const h = (window as any).__home
@@ -125,21 +125,16 @@ async function plenty(page: Page) {
     f.setHour(12)
     f.freezeDay(true)
     f.state.coins = 100_000
+    // every herd full and its tool the farm's (src/farm/ToolStands.tsx: each at its fence; its place takes the animals'
+    // own offers and opens the tool's panel, src/farm/useTool.ts, whose Skins opens its skins shop)
+    for (let i = 0; i < 10; i++) for (const id of ['hen', 'cow', 'sheep']) f.buy(id)
+    for (const kind of ['hens', 'cows', 'sheep']) f.buyLadder(`${kind}-tool`)
     f.state.storage.silo = 30
     f.state.storage.barn = 30
     for (const id of Object.keys(f.state.inv)) f.state.inv[id] = 25
     f.state.beds.forEach((b: any, i: number) => {
       if (b.built && !b.crop) f.plant(i, 'lettuce')
     })
-    // every herd full and its tool owned (its place by the fence takes the animals' own offers: each opens its panel)
-    for (const [kind, one] of [
-      ['hens', 'hen'],
-      ['cows', 'cow'],
-      ['sheep', 'sheep'],
-    ]) {
-      while (f.buy(one));
-      f.buyLadder(`${kind}-tool`)
-    }
     // one of each fruit plant, on the free land where the house stood (they fill on the hour below)
     for (const kind of ['apple-tree', 'orange-tree', 'cherry-tree', 'blueberry-bush', 'raspberry-bush']) {
       if (f.decorOwned(kind) > 0 || !f.buyDecor(kind)) continue

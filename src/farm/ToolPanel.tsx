@@ -67,7 +67,8 @@ export function ToolPanel({ tool, from }: { tool: ToolKind; from?: Panel }) {
       uiClick()
       setAsking(id)
     },
-    skins: () => openPanel({ kind: 'skins', tool }),
+    // its skins shop, whose ✕ comes back here (and from here where this panel came from)
+    skins: () => openPanel({ kind: 'skins', tool, from: { kind: 'tool', tool, from } }),
   }
   return (
     <>

@@ -179,7 +179,8 @@ The README has the overview; `tests/README.md` what each test guards.
   gives nothing twice. It opens by itself once a day on a farm that has begun, after whatever is over the game (the
   intro, a film, the drive, the welcome-back card, a panel), and waits in the corner menu until claimed. Specs not about
   it put it out of the way (`quietDaily`: `ready()` and `bootApp` in `helpers.ts`); `35-daily` tests it.
-- A new farm's first steps are rows of `FIRST_STEPS` (`src/farm/firstSteps.ts`: the words, the picture, when it is
+- A new farm's first steps are rows of `FIRST_STEPS` (`src/farm/firstSteps.ts`: the words, the farmer's mood (his face
+  and move, `FarmerFace.tsx`), the picture, when it is
   done by the farm's own numbers, where a tap walks you, the reward); `state.ts` passes and pays them a frame after the
   farm does them, and the farmer's hint under the compass says them (`src/farm/FirstSteps.tsx`, its own top slot,
   `steps`). They end after the last, skipped, or at level 5, and the daily gift waits for them. A ?debug page keeps
