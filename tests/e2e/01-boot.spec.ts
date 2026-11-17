@@ -8,6 +8,15 @@ test.describe('boot', () => {
     await page.goto('/?debug&quality=low')
     await expect(page.locator('.intro .primary')).toBeEnabled({ timeout: 180_000 })
     expect((await game.state()).phase).toBe('intro')
+    // the opening menu (src/ui/Intro.tsx): its corner says the music is on (it starts with the first tap), and a page
+    // steps back with the browser's (or the phone's) Back to the menu, never out of the game
+    await expect(page.locator('.intro-sound')).toHaveAttribute('aria-pressed', 'true')
+    await page.locator('.intro-tile', { hasText: 'How to play' }).click()
+    await expect(page.locator('.intro-page-help')).toBeVisible()
+    await page.goBack()
+    await expect(page.locator('.intro-page-help')).toHaveCount(0)
+    await expect(page.locator('.intro-tile', { hasText: 'Settings' })).toBeVisible()
+    expect((await game.state()).phase).toBe('intro')
     await page.locator('.intro .primary').click()
     await page.waitForFunction(
       () => {

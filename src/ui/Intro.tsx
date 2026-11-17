@@ -15,7 +15,7 @@ import { mb } from '../lib/loader'
 import { DEFAULT_SETTINGS, useSettings, type Settings } from '../settings'
 import { useHome } from '../store'
 import { art, type ArtId } from './art'
-import { ArrowRight, CaretLeft, Pause, Play, SkipBack, SkipForward } from './glyphs'
+import { ArrowRight, CaretLeft, Pause, Play, SkipBack, SkipForward, SpeakerSimpleHigh, SpeakerSimpleSlash } from './glyphs'
 import { ItemPic } from './ItemPic'
 import { GameName, Loading, useLoadView, type LoadView } from './Loading'
 import { EASE, MotionRoot, PRESS, SPRING } from './motion'
@@ -33,6 +33,13 @@ import './Intro.css'
 // sound, controls) and what this device keeps; Music — the tracks the game composes as it plays; How to play;
 // Credits. Continue sends the name up and the card down as the game comes in. Sideways: the name and your farm on the
 // left, the card on the right, the whole height. When the house cannot start, the card says why, with what can be tried.
+//
+// What research on opening screens asks of it (the report of 2026-11-17): the one way in is the biggest thing on the
+// card and stands apart from the rest (Apple, WWDC17 "Getting players into the game"); nothing makes a player wait
+// who has seen it before — a tap or a key skips the loading screen's moment; the music, which starts with the first
+// tap (browsers allow sound only after one), can be turned off in one press from the corner, where it says beforehand
+// whether it will play; a page steps back with the phone's own Back, the browser's or Esc, never out of the game; and
+// a returning player sees what waits on the farm on any ordinary phone, upright too.
 
 type Page = 'menu' | 'new' | 'load' | 'settings' | 'music' | 'help' | 'credits'
 
@@ -60,8 +67,20 @@ function Opening() {
   const [menu, setMenu] = useState(false)
   useEffect(() => {
     if (menu || !ready) return
-    const t = setTimeout(() => setMenu(true), matchMedia('(prefers-reduced-motion: reduce)').matches ? 300 : HANDOVER_MS)
-    return () => clearTimeout(t)
+    const now = () => setMenu(true)
+    const t = setTimeout(now, matchMedia('(prefers-reduced-motion: reduce)').matches ? 300 : HANDOVER_MS)
+    // a tap, a click, Enter, Space or Esc skips the moment: whoever has seen it before goes straight on to the menu (on
+    // the click, after the finger is up, so the menu coming in under it is never pressed by the same tap)
+    const key = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') now()
+    }
+    addEventListener('click', now)
+    addEventListener('keydown', key)
+    return () => {
+      clearTimeout(t)
+      removeEventListener('click', now)
+      removeEventListener('keydown', key)
+    }
   }, [ready, menu])
   const showMenu = menu || !!failure
   return (
@@ -112,6 +131,23 @@ function Menu({ v }: { v: LoadView }) {
   useEffect(() => {
     if (v.ready && !failure && !paged && !coarsePointer) enter.current?.focus({ preventScroll: true })
   }, [v.ready, failure, paged])
+  // a page is a step in the browser's history: the phone's Back (its button, or a swipe from the edge), the browser's
+  // and Esc return to the menu, as the page's own Back does, instead of leaving the game
+  useEffect(() => {
+    if (!paged) return
+    history.pushState({ intro: 'page' }, '')
+    const pop = () => setPage('menu')
+    const esc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') history.back()
+    }
+    addEventListener('popstate', pop)
+    addEventListener('keydown', esc)
+    return () => {
+      removeEventListener('popstate', pop)
+      removeEventListener('keydown', esc)
+    }
+  }, [paged])
+  const toMenu = () => (history.state?.intro === 'page' ? history.back() : setPage('menu'))
   const go = () => {
     if (going || !v.ready || failure) return
     setGoing(true)
@@ -147,6 +183,7 @@ function Menu({ v }: { v: LoadView }) {
       >
         <i />
       </m.span>
+      <MusicToggle />
       <div className="intro-side">
         <m.div
           className="intro-logo"
@@ -226,7 +263,7 @@ function Menu({ v }: { v: LoadView }) {
                 aria-label={TITLE[page]}
               >
                 <header className="intro-page-head">
-                  <m.button className="intro-back" onClick={() => setPage('menu')} aria-label="Back to the menu" {...PRESS}>
+                  <m.button className="intro-back" onClick={toMenu} aria-label="Back to the menu" {...PRESS}>
                     <CaretLeft weight="bold" />
                   </m.button>
                   <img className="art" src={art(TILES.find((t) => t.page === page)!.art)} alt="" />
@@ -294,6 +331,40 @@ function FarmCard({ level, coins, slot, farms, savedAt, onLoad }: { level: numbe
         </m.div>
       )}
     </div>
+  )
+}
+
+/** The music on or off in one press, in the corner. The music starts with the first tap anywhere (a browser allows sound
+ *  only after one), so the corner says beforehand whether it will; a first tap on it turns it off before a note plays
+ *  (the first tap's own start, ../audio/music.ts `wireMusic`, waits a moment and finds it off). */
+function MusicToggle() {
+  const on = useSettings((s) => s.music)
+  const playing = useMusic((s) => s.playing)
+  const stopped = useRef(false)
+  return (
+    <m.button
+      className={`btn soft round intro-sound${on ? ' on' : ''}`}
+      aria-label="Music"
+      aria-pressed={on}
+      title={on ? 'Music on' : 'Music off'}
+      onPointerDown={() => {
+        stopped.current = false
+        if (!on || playing) return
+        stopped.current = true
+        useSettings.getState().update({ music: false })
+      }}
+      onClick={() => {
+        if (stopped.current) stopped.current = false
+        else if (on) pauseMusic()
+        else playMusic()
+      }}
+      initial={{ opacity: 0, scale: 0.6 }}
+      animate={{ opacity: 1, scale: 1, transition: { ...SPRING.pop, delay: 0.45 } }}
+      exit={{ opacity: 0, transition: { duration: 0.15 } }}
+      {...PRESS}
+    >
+      {on ? <SpeakerSimpleHigh weight="fill" /> : <SpeakerSimpleSlash weight="fill" />}
+    </m.button>
   )
 }
 

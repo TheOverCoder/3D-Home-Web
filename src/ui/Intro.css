@@ -1,6 +1,7 @@
 /* The opening menu (./Intro.tsx, the design lab's board "intro", E): the name over a sun with the house, your farm,
    and one paper card — the big button and six tiles, or the page a tile opens, sliding in its place — over the farm
-   itself, warmed. Sideways the name and your farm on the left, the card on the right, full height. */
+   itself, warmed. Sideways the name and your farm on the left, the card on the right, full height. In the corner, the
+   music on or off. */
 
 /* over the farm: a warm wash and a few specks of light rising */
 .intro-wash { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse 90% 55% at 50% 30%, rgba(255, 214, 150, 0.38), transparent 70%), linear-gradient(to bottom, rgba(70, 46, 24, 0.28), rgba(70, 46, 24, 0.14) 40%, rgba(40, 24, 10, 0.66)); }
@@ -40,7 +41,7 @@
 .intro-menu .intro-house .art { width: clamp(84px, 24vw, 120px); height: auto; margin-bottom: -10px; animation: intro-bob 3.4s ease-in-out 1s infinite; }
 .intro-menu h1 { display: flex; margin: 0; white-space: pre; font: 700 clamp(52px, 15vw, 76px) / 1 var(--font-display); letter-spacing: 0.01em; }
 .intro-menu h1 span { display: inline-block; color: #fff; -webkit-text-stroke: 8px var(--ink); paint-order: stroke fill; text-shadow: 0 7px 0 rgba(40, 24, 10, 0.4); }
-.intro-menu .intro-logo .game-name p { margin: 8px 0 0; padding: 4px 14px; border-radius: 999px; background: rgba(40, 24, 10, 0.42); font: 600 17px/1.3 var(--font-display); color: #fff8ec; }
+.intro-menu .intro-logo .game-name p { margin: 8px 0 0; padding: 4px 14px; border-radius: 999px; background: rgba(40, 24, 10, 0.62); font: 600 17px/1.3 var(--font-display); color: #fff8ec; }
 .intro-menu .intro-farm-wrap { width: min(420px, 100%); }
 
 /* your farm: its name and level, its coins, how long, what waits */
@@ -48,8 +49,8 @@
 .intro-menu .intro-farm-name { justify-self: start; display: flex; align-items: center; gap: 8px; min-height: 52px; max-width: 100%; padding: 0 8px 0 0; border: 0; border-radius: 18px; background: none; color: var(--ink); text-align: left; }
 .intro-menu .intro-farm-name > span:last-child { min-width: 0; }
 .intro-menu .intro-farm-name strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 21px/1.05 var(--font-display); }
-.intro-menu .intro-farm-name small { display: block; white-space: nowrap; font: 700 13px/1.3 var(--font-text); color: var(--ink-2); }
-.intro-menu .intro-farm-name small.intro-away { color: var(--leaf); }
+.intro-menu .intro-farm-name small { display: block; white-space: nowrap; font: 700 15px/1.25 var(--font-text); color: var(--ink-2); }
+.intro-menu .intro-farm-name small.intro-away { color: var(--leaf-lip); }
 .intro-menu .intro-coins { padding: 4px 12px 4px 6px; font-size: 18px; }
 .intro-menu .intro-coins img { width: 26px; height: 26px; }
 .intro-menu .intro-ready { grid-column: 1 / -1; display: flex; align-items: center; gap: 14px; padding: 6px 12px 8px; border-radius: 16px; background: var(--paper-2); }
@@ -60,9 +61,9 @@
 
 /* the foot: the card, and under it the device, the graphics and the version */
 .intro-menu .intro-bottom { justify-self: center; display: grid; gap: 8px; width: min(420px, 100%); min-height: 0; }
-.intro-menu .intro-foot { margin: 0; text-align: center; font: 700 13px/1.2 var(--font-text); color: rgba(255, 248, 236, 0.9); text-shadow: 0 1px 2px rgba(40, 24, 10, 0.8); }
+.intro-menu .intro-foot { justify-self: center; max-width: 100%; margin: 0; padding: 3px 12px; border-radius: 12px; background: rgba(40, 24, 10, 0.55); text-align: center; font: 700 13px/1.3 var(--font-text); color: #fff8ec; }
 .intro-menu .intro-card { display: flex; flex-direction: column; min-height: 0; max-height: calc(100dvh - 210px); padding: 12px; overflow: hidden; box-shadow: 0 6px 0 var(--paper-3), 0 18px 40px rgba(40, 24, 10, 0.35); }
-.intro-menu .intro-menu { display: grid; gap: 12px; }
+.intro-menu .intro-page-menu { display: grid; gap: 12px; }
 
 /* the big button: tall, a shine passing over it now and then; while the game loads, the loading bar itself */
 .intro-menu .intro-go { position: relative; overflow: hidden; min-height: 64px; font-size: 24px; gap: 10px; isolation: isolate; }
@@ -75,13 +76,13 @@
 .intro-menu .intro-go.going svg { transform: translateX(6px); }
 .intro-menu .intro-go::after { content: ''; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.55) 50%, transparent 65%); transform: translateX(-120%); animation: intro-shine 4.2s ease-in-out 1.4s infinite; }
 
-/* the six tiles: a picture and a word each, as today's three, three to a row */
+/* the six tiles: a picture and a word each, three to a row, lower than the big button so it stays the one way in */
 .intro-menu .intro-tiles { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
 .intro-menu .intro-tiles > * { grid-column: span 2; }
 /* five tiles (the first time, New farm is the big button): the last two share the second row */
 .intro-menu .intro-tiles:has(> :nth-child(5):last-child) > :nth-child(n + 4) { grid-column: span 3; }
-.intro-menu .intro-tile { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 74px; padding: 8px 4px; border: 0; border-radius: 18px; background: var(--paper-2); color: var(--ink); box-shadow: 0 3px 0 var(--paper-3); font: 600 15px/1.1 var(--font-display); }
-.intro-menu .intro-tile .art { width: 34px; height: 34px; }
+.intro-menu .intro-tile { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 64px; padding: 6px 4px; border: 0; border-radius: 18px; background: var(--paper-2); color: var(--ink); box-shadow: 0 3px 0 var(--paper-3); font: 600 15px/1.1 var(--font-display); }
+.intro-menu .intro-tile .art { width: 30px; height: 30px; }
 .intro-menu .intro-tile.on { background: color-mix(in srgb, var(--sun) 28%, var(--paper)); box-shadow: 0 3px 0 color-mix(in srgb, var(--sun-lip) 50%, var(--paper-3)); }
 .intro-menu .intro-tile-n { position: absolute; top: 6px; right: 8px; display: grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; background: var(--sun); font: 800 13px/1 var(--font-text); }
 .intro-menu .intro-eq { position: absolute; top: 8px; right: 10px; display: none; align-items: flex-end; gap: 2px; height: 14px; }
@@ -199,11 +200,16 @@
   .intro-menu .intro-house .art { width: 76px; }
   .intro-menu h1 { font-size: 50px; }
   .intro-menu .intro-logo .game-name p { font-size: 15px; margin-top: 4px; }
-  .intro-menu .intro-ready { display: none; }
   .intro-menu .intro-card { max-height: calc(100dvh - 170px); }
-  .intro-menu .intro-tile { min-height: 64px; }
+  .intro-menu .intro-tile { min-height: 60px; }
   .intro-menu.paged .intro-logo { display: none; }
   .intro-menu.paged .intro-card { max-height: calc(100dvh - 60px); }
+  /* a page takes the height, up to the corner: the music button steps aside (the page has the music's own) */
+  .intro-menu.paged > .intro-sound { display: none; }
+}
+/* what waits on the farm goes only on the shortest screens (an ordinary phone in its browser keeps it) */
+@media (orientation: portrait) and (max-height: 600px) {
+  .intro-menu .intro-ready { display: none; }
 }
 
 /* a phone on its side: the name and your farm on the left, the card on the right, the whole height */
@@ -229,14 +235,14 @@
   .intro-menu.paged .intro-logo .game-name p { display: inline-block; }
   .intro-menu.paged .intro-farm-wrap { display: block; }
   .intro-menu .intro-go { min-height: 58px; }
-  .intro-menu .intro-tile { min-height: 64px; }
+  .intro-menu .intro-tile { min-height: 60px; }
   .intro-menu .intro-page { gap: 8px; }
   .intro-menu .intro-page-head h2 { font-size: 20px; }
   
 }
 
 /* the menu's notes: light graphics on, offline */
-.intro-menu .intro-note { margin: -4px 0 0; text-align: center; font: 700 13px/1.35 var(--font-text); color: #8a5a00; }
+.intro-menu .intro-note { margin: -4px 0 0; text-align: center; font: 700 15px/1.3 var(--font-text); color: #8a5a00; }
 /* the failure card in the menu: its presses */
 .intro-menu .failure { margin: 0; }
 .intro-menu .failure .btn { min-height: 44px; }
@@ -263,3 +269,7 @@
 @media (orientation: landscape) and (max-height: 560px) {
   .intro-menu .saves-card { flex-direction: row; flex-wrap: wrap; justify-content: center; }
 }
+
+/* the music on or off, in the corner (the top left: the card has the right sideways), clear of the notch */
+.intro-menu > .intro-sound { position: absolute; top: max(12px, env(safe-area-inset-top)); left: max(16px, env(safe-area-inset-left)); z-index: 2; }
+.intro-menu .intro-sound:not(.on) { --b-ink: var(--ink-2); }
