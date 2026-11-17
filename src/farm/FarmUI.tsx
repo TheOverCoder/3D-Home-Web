@@ -13,6 +13,7 @@ import { CarPanel } from './car/CarPanel'
 import { LadderCard } from './Ladder'
 import { dustOver, ShopPanel } from './shop/ShopPanel'
 import { MachinePanel, MachineSlotCard } from './MachinePanel'
+import { ToolPanel } from './ToolPanel'
 import { NewsPanel, NewsWatcher } from './news/NewsPanel'
 import './Xp.css'
 import { AnimatePresence } from 'motion/react'
@@ -410,6 +411,7 @@ export function FarmUI() {
       {panel?.kind === 'house-buy' && <HouseBuyPanel />}
       {panel?.kind === 'ladder' && <LadderCard id={panel.id} />}
       {panel?.kind === 'machine' && <MachinePanel id={panel.id} />}
+      {panel?.kind === 'tool' && <ToolPanel key={panel.tool} tool={panel.tool} from={panel.from} />}
       {panel?.kind === 'machine-slot' && <MachineSlotCard id={panel.id} />}
       {/* the level's card goes out the way it came in (src/ui/SwipeSheet.tsx); opened again while it is still going,
           it is a new card (a key of its own each time), never the one leaving brought back */}

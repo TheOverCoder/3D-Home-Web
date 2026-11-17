@@ -99,6 +99,9 @@ import {
   buyMarket,
   ladderOpen,
   buyLadder,
+  toolOwned,
+  toolTake,
+  toolView,
   fillPlace,
   restockPlaces,
   emptyPlace,
@@ -815,6 +818,8 @@ export function FarmClock() {
       buyMarket,
       ladderOpen,
       buyLadder,
+      // the animals' tools (plans/animal-tools.md): a tool's panel as it sees the farm, a tap of it, whose is owned
+      tools: { view: toolView, take: toolTake, owned: toolOwned },
       fillPlace,
       restockPlaces,
       emptyPlace,

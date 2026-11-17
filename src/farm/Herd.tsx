@@ -9,7 +9,8 @@ import type { Parts } from '../lib/sculpt'
 import { PRODUCERS, mostAnimals, type ProducerId } from './data'
 import { shownPlacement } from './edit'
 import { rectToWorld, samePlacement, type Placement } from './layout'
-import { farm, useFarm } from './state'
+import { farm, toolOwned, useFarm } from './state'
+import { useTool } from './useTool'
 import { producerOffer } from './useProducer'
 import { agentAt, carryAlong, follow, penAt, rest, wander, type Agent, type Mode, type Wander } from './wander'
 
@@ -64,13 +65,17 @@ export function Herd<A extends HerdAgent>({ kind, agents }: { kind: HerdKind<A>;
   const frame = useRef<Placement>(shownPlacement(place))
   debugSet(kind.debug, agents)
 
-  // one offer per animal on the action button, standing where she stands
+  // one offer per animal on the action button, standing where she stands — until the herd's tool is yours: then its
+  // offer at the fence takes theirs (./useTool.ts), never both
+  const tool = useFarm(() => toolOwned(kind.id) !== null)
+  useTool(kind.id)
   useEffect(() => {
     while (agents.length < count) agents.push(kind.spawn(agents.length, frame.current))
     agents.length = count
+    if (tool) return
     const offs = agents.map((a, i) => registerInteractable(producerOffer(kind.id, i, { stand: a.pos, aim: a.aim }, () => rest(a, kind.pause))))
     return () => offs.forEach((off) => off())
-  }, [count, agents, kind])
+  }, [count, agents, kind, tool])
 
   useFrame((state, rawDt) => {
     const dt = Math.min(rawDt, 0.1)

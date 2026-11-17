@@ -16,6 +16,10 @@ import { goFor } from './go'
 /** Each machine's picture (its panel's, the bubble's "Open the mill"). */
 export const MACHINE_PIC: Record<MachineId, ArtId> = { mill: 'sheaf-of-rice', loom: 'yarn', oven: 'shortcake' }
 
+/** The same panel (a machine's, a tool's) as the one open. */
+const samePanel = (a: Panel, b: Panel | null) =>
+  !!b && a.kind === b.kind && (a.kind === 'machine' ? b.kind === 'machine' && a.id === b.id : a.kind === 'tool' && b.kind === 'tool' && a.tool === b.tool)
+
 /** The walk there: the panel closes (a panel open would stop the walk at once) and you go, as from the compass; a walk
  *  there already (to that place, or to that good's mark) goes on. */
 function walkThere(id: string, good: ProduceId) {
@@ -28,14 +32,18 @@ function walkThere(id: string, good: ProduceId) {
 export const GAME_WAYS: GoodWays = {
   go: (good): GoodGo => {
     const s = useHome.getState()
-    const go = goFor(good, {
-      machineRemote: ladderMaxed('machine-remote'),
-      animalRemote: ladderMaxed('animal-remote'),
-      tools: TOOL_KINDS.filter((k) => toolOwned(k) !== null),
-      map: s.map,
-      placeFor,
-      from: s.panel ?? undefined,
-    })
+    const ask = (remotes: boolean) =>
+      goFor(good, {
+        machineRemote: remotes && ladderMaxed('machine-remote'),
+        animalRemote: remotes && ladderMaxed('animal-remote'),
+        tools: TOOL_KINDS.filter((k) => toolOwned(k) !== null),
+        map: s.map,
+        placeFor,
+        from: s.panel ?? undefined,
+      })
+    // (a remote never opens the panel the good was tapped in: the coop's own eggs walk you to the coop)
+    let go = ask(true)
+    if (go.kind === 'open' && samePanel(go.panel, s.panel)) go = ask(false)
     if (go.kind === 'walk') return { kind: 'walk', run: () => walkThere(go.to, good) }
     if (go.kind === 'none') return go
     const p = go.panel

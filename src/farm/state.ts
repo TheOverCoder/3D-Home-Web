@@ -1122,6 +1122,9 @@ export const eggsShown = () =>
     farm.producers.hens.stock.reduce((a, b) => a + b, 0),
   )
 
+/** Each herd's animal, as its tool's panel pictures her. */
+const ANIMAL_ART = { hens: 'chicken', cows: 'cow', sheep: 'ewe' } as const
+
 /** What an animal's tool panel shows (src/farm/toolView.ts): each of its places (a hen's nest, a cow, a sheep) with
  *  what waits there, its most and the way to the next one; how many a tap takes, the room in the barn, and its two
  *  upgrades as chips. */
@@ -1136,20 +1139,34 @@ export function toolView(kind: ToolKind): ToolView {
     name: t.name,
     good: def.good,
     look: t.look,
+    art: t.art,
+    animal: ANIMAL_ART[kind],
     spots: p.stock.map((has, i) => ({
       name: animalName(kind, i) || `${spot} ${i + 1}`,
       has,
       most,
       // (a clock counts to `every`, however fast it runs)
       next: has >= most ? 0 : Math.min(1, (p.timer[i] ?? 0) / def.every),
+      seconds: has >= most ? 0 : Math.max(1, Math.ceil(def.every - (p.timer[i] ?? 0))),
     })),
     perTap: perTap(kind),
     room: roomFor(def.good),
     store: storeOf(def.good),
+    stored: used(storeOf(def.good)),
+    capacity: capacity(storeOf(def.good)),
     ladders: (['hold', 'tap'] as const).map((part) => {
       const id = toolLadder(kind, part)
       const k = farm.ladders[id]
-      return { id, now: LADDERS[id].say(k), next: ladderMaxed(id) ? null : LADDERS[id].say(k + 1), price: ladderNextPrice(id) }
+      return {
+        id,
+        part,
+        name: part === 'hold' ? 'Holds more' : 'More a tap',
+        now: LADDERS[id].say(k),
+        next: ladderMaxed(id) ? null : LADDERS[id].say(k + 1),
+        price: ladderNextPrice(id),
+        k,
+        steps: LADDERS[id].levels,
+      }
     }),
   }
 }

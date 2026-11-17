@@ -63,6 +63,7 @@ export type Panel =
   | { kind: 'ladder'; id: LadderId; from?: Panel } // the card that asks before a ladder's step is bought (from: the panel to go back to)
   | { kind: 'machine'; id: 'mill' | 'loom' | 'oven'; from?: Panel } // a machine: its queue of jobs, what it makes, its level and its places (from: opened from another panel, its ✕ goes back there)
   | { kind: 'tool'; tool: ToolKind; from?: Panel } // an animal's tool: each of its places and what waits there, taken a tap at a time (from: as a machine's)
+  | { kind: 'skins'; tool: ToolKind } // an animal tool's skins: how it looks, chosen and bought (src/farm/skins.ts)
   | { kind: 'machine-slot'; id: 'mill' | 'loom' | 'oven' } // the card that asks before a machine's next place is bought
   | { kind: 'news' } // the farm news: the week's events on now and coming, and the lucky draw (src/farm/news)
 

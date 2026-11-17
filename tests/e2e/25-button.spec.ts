@@ -115,9 +115,9 @@ const sweep = (page: Page, farmName: string) =>
     { farmName, shows: SHOWS, looks: LOOKS, reward: LEVELS.reward },
   )
 
-/** A farm with plenty of everything: coins, every good, ripe beds, full animals, finished machines, a fruit tree or bush
- *  of every kind hung with fruit (the edit mode's shop), the shop yours and stocked with coins in its till, the
- *  contractor in with his pieces, a line at the gate. */
+/** A farm with plenty of everything: coins, every good, ripe beds, full herds with their tools, finished machines, a
+ *  fruit tree or bush of every kind hung with fruit (the edit mode's shop), the shop yours and stocked with coins in its
+ *  till, the contractor in with his pieces, a line at the gate. */
 async function plenty(page: Page) {
   await page.evaluate(() => {
     const h = (window as any).__home
@@ -131,6 +131,15 @@ async function plenty(page: Page) {
     f.state.beds.forEach((b: any, i: number) => {
       if (b.built && !b.crop) f.plant(i, 'lettuce')
     })
+    // every herd full and its tool owned (its place by the fence takes the animals' own offers: each opens its panel)
+    for (const [kind, one] of [
+      ['hens', 'hen'],
+      ['cows', 'cow'],
+      ['sheep', 'sheep'],
+    ]) {
+      while (f.buy(one));
+      f.buyLadder(`${kind}-tool`)
+    }
     // one of each fruit plant, on the free land where the house stood (they fill on the hour below)
     for (const kind of ['apple-tree', 'orange-tree', 'cherry-tree', 'blueberry-bush', 'raspberry-bush']) {
       if (f.decorOwned(kind) > 0 || !f.buyDecor(kind)) continue
