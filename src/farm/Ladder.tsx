@@ -3,7 +3,7 @@ import { playGesture } from '../lib/gestures'
 import { useHome } from '../store'
 import { Coins, Purse, Shell, useArmed } from '../ui/Sheet'
 import { art, type ArtId } from '../ui/art'
-import { ArrowRight, Check } from '../ui/glyphs'
+import { ArrowRight, Check, Crown } from '../ui/glyphs'
 import { LADDERS, TOOLS, type LadderId } from './data'
 import { ladderPrice } from './market'
 import { buyLadder, farm, ladderLevel, ladderMaxed, ladderOpen, useFarm } from './state'
@@ -12,8 +12,17 @@ import { buyLadder, farm, ladderLevel, ladderMaxed, ladderOpen, useFarm } from '
 // its price on the button) and one card that asks before a step is bought, for every ladder — as the office shows its
 // upgrades (src/farm/orderBoard/OrdersBoard.tsx, OfficeUpgrade and OfficeCard).
 
-/** Each ladder's picture: a tool's three its tool's, the premium remotes a crown. */
-const LADDER_ART: Partial<Record<LadderId, ArtId>> = { rate: 'coin', places: 'package', group: 'shopping-cart', pace: 'person-running', stock: 'building-construction', discount: 'coin' }
+/** Each ladder's picture: a tool's three its tool's, the premium remotes what they open (the crown is on their card). */
+const LADDER_ART: Partial<Record<LadderId, ArtId>> = {
+  rate: 'coin',
+  places: 'package',
+  group: 'shopping-cart',
+  pace: 'person-running',
+  stock: 'building-construction',
+  discount: 'coin',
+  'machine-remote': 'gear',
+  'animal-remote': 'nest-with-eggs',
+}
 const ladderArt = (id: LadderId): ArtId => {
   const def = LADDERS[id]
   return def.tool ? TOOLS[def.tool.kind].art : (LADDER_ART[id] ?? 'crown')
@@ -71,8 +80,10 @@ export function LadderRow({ id }: { id: LadderId }) {
 }
 
 /** The card that asks before a ladder's step is bought: its picture, now → after, Not now, and Buy with the price.
- *  Opened from a panel (its `from`), it goes back there; opened from the world (a price tag), it closes. */
-export function LadderCard({ id }: { id: LadderId }) {
+ *  Opened from a panel (its `from`), it goes back there; opened from the world (a price tag), it closes; over a panel
+ *  that keeps it (a tool's upgrades: `onBack`), it goes away and leaves the panel be. A premium ladder (a remote) is
+ *  in night velvet, a crown on its chip and its Buy. */
+export function LadderCard({ id, onBack }: { id: LadderId; onBack?: () => void }) {
   useFarm((s) => s.rev)
   const openPanel = useHome((s) => s.openPanel)
   const close = useHome((s) => s.closePanel)
@@ -83,7 +94,8 @@ export function LadderCard({ id }: { id: LadderId }) {
   const price = ladderPrice(id, ladderLevel(id))
   const open = ladderOpen(id) && !max
   const afford = open && farm.coins >= price
-  const back = () => (from ? openPanel(from) : close())
+  const back = () => (onBack ? onBack() : from ? openPanel(from) : close())
+  const premium = !!def.premium
   const confirm = () => {
     if (!armed || !buyLadder(id)) return
     farmSound('build')
@@ -94,20 +106,28 @@ export function LadderCard({ id }: { id: LadderId }) {
     <Shell
       title={def.name}
       art={art(ladderArt(id))}
+      className={`ladder-card${premium ? ' premium' : ''}`}
       sub={
         <>
           <Purse />
-          <Say id={id} />
+          {premium ? (
+            <span className="tag velvet">
+              <Crown weight="fill" className="crown" />
+              Premium
+            </span>
+          ) : (
+            <Say id={id} />
+          )}
         </>
       }
-      onClose={close}
+      onClose={onBack ?? close}
     >
       <p className="farm-line">{def.blurb}</p>
       <div className="farm-confirm">
         <button className="btn soft" onClick={back}>
           Not now
         </button>
-        <button className={`btn farm-buy${armed ? '' : ' arming'}`} disabled={!afford} aria-disabled={!armed} onClick={confirm}>
+        <button className={`btn farm-buy${premium ? ' velvet' : ''}${armed ? '' : ' arming'}`} disabled={!afford} aria-disabled={!armed} onClick={confirm}>
           {max ? (
             <>
               <Check weight="bold" />
@@ -115,6 +135,7 @@ export function LadderCard({ id }: { id: LadderId }) {
             </>
           ) : afford || !open ? (
             <>
+              {premium && <Crown weight="fill" className="crown" />}
               Buy · <Coins n={price} />
             </>
           ) : (

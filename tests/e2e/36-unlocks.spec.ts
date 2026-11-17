@@ -72,12 +72,14 @@ test.describe('what each level opens', () => {
     expect(await page.evaluate((bed) => (window as any).__home.farm.state.beds[bed].crop, bed)).toBe(null)
     expect(await page.evaluate((bed) => (window as any).__home.farm.plant(bed, 'wheat'), bed)).toBe(false)
 
-    // the farm shop: another cow locked till 6, no button to buy it
+    // the farm shop: another cow locked till 6 on the cows' card, no button to buy it (and their tool waits for the herd)
     await openPanel(page, { kind: 'shop' })
-    const cow = page.locator('.farm-shop-item', { hasText: 'Another cow' })
-    await expect(cow).toHaveClass(/locked/)
-    await expect(cow.locator('.lock-tag')).toHaveText('Level 6')
-    await expect(cow.locator('button')).toHaveCount(0)
+    const cows = page.locator('.shop-animal[data-kind="cows"]')
+    await expect(cows.locator('.shop-animal-head .lock-tag')).toHaveText('Level 6')
+    await expect(cows.getByRole('button', { name: /^Buy Another cow/ })).toHaveCount(0)
+    await expect(cows.locator('.shop-tool.locked')).toContainText('1/3 cows')
+    // a field of the farm's own rows: locked, its level across its corner where the price was
+    await expect(page.locator('.farm-shop-item.locked', { hasText: 'East beds' }).locator('.lock-tag')).toHaveText('Level 5')
     await page.evaluate(() => (window as any).__home.useHome.getState().closePanel())
 
     // the mill, every recipe locked: a status that says when it opens, its picture beside the ribbon

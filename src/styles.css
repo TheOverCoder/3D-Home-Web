@@ -1058,6 +1058,10 @@ button.farm-chip-item:focus-visible { outline: 3px solid var(--sun); outline-off
 .farm-confirm { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
 .farm-confirm .farm-buy { min-width: 150px; transition: opacity 0.2s, transform 0.1s, box-shadow 0.1s; }
 .farm-confirm .farm-buy.arming { opacity: 0.55; }
+/* a premium ladder's card (a remote): ringed in velvet and the sun, its chip and its Buy velvet */
+.ladder-card.premium .farm-panel { box-shadow: 0 0 0 3px var(--velvet), 0 0 0 5px var(--sun), var(--shadow-sheet); }
+.tag.velvet { gap: 4px; padding-inline: 7px 10px; }
+.tag.velvet .crown { width: 16px; height: 16px; }
 
 @media (max-width: 520px) {
   .farm-backdrop { place-items: end center; padding: 0; }

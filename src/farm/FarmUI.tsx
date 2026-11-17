@@ -11,35 +11,19 @@ import { ContractorPanel } from './ContractorPanel'
 import { EstatePanel, HouseBuyPanel } from './EstatePanel'
 import { CarPanel } from './car/CarPanel'
 import { LadderCard } from './Ladder'
+import { dustOver, ShopPanel } from './shop/ShopPanel'
 import { MachinePanel, MachineSlotCard } from './MachinePanel'
 import { NewsPanel, NewsWatcher } from './news/NewsPanel'
 import './Xp.css'
 import { AnimatePresence } from 'motion/react'
 import './MarketPanel.css'
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { farmSound, placeSound, uiClick } from '../audio/sound'
 import { coarsePointer } from '../lib/device'
-import { farmFx } from '../fx/fx'
 import { playGesture } from '../lib/gestures'
 import { playerState } from '../lib/playerState'
 import { useHome } from '../store'
-import {
-  BEDS,
-  BED_BOX,
-  CROPS,
-  EXPANSIONS,
-  PACE_LEVELS,
-  PRODUCERS,
-  QUEUE_LEVELS,
-  UPGRADES,
-  arrivalEvery,
-  queuePlaces,
-  type BedDef,
-  type CropDef,
-  type CropId,
-  type Upgrade,
-  type UpgradeId,
-} from './data'
+import { BEDS, CROPS, EXPANSIONS, type CropDef, type CropId } from './data'
 import { EditPanel } from './EditPanel'
 import { TopDash } from './TopDash'
 import { DecoratePanel } from '../home/DecoratePanel'
@@ -52,13 +36,11 @@ import { GoodWaysContext } from '../ui/GoodPic'
 import { GAME_WAYS } from './goods/ways'
 import { LockCorner, LockTag, opensWords, useNope } from '../ui/LockTag'
 import { ARM_MS, Coins, Purse, Shell } from '../ui/Sheet'
-import { art, type ArtId } from '../ui/art'
-import { ArrowRight, Check, Clock, Users, X } from '../ui/glyphs'
-import { openFirst, UPGRADE_ART } from './unlockArt'
+import { art } from '../ui/art'
+import { Check, Clock, Users, X } from '../ui/glyphs'
+import { openFirst } from './unlockArt'
 import {
   acceptOffer,
-  animals,
-  arrivalSeconds,
   bedSpot,
   bedsForSeeds,
   bedsNear,
@@ -72,13 +54,10 @@ import {
   fixBed,
   inLine,
   lockOf,
-  owned,
   placesInLine,
   plantBeds,
   sellAll,
   sellAllPreview,
-  upgradeLevel,
-  upgradePrice,
   useFarm,
   waiting,
   type Visitor,
@@ -218,9 +197,6 @@ function BedChoice({ c, on, onChoose }: { c: CropDef; on: boolean; onChoose: (cr
     </button>
   )
 }
-
-/** A puff of dust round each bed just built (one bed, or every bed of a field). */
-const dustOver = (beds: BedDef[]) => beds.forEach((b) => farmFx('dust', b.x, 0.04, b.z, { half: BED_BOX }))
 
 /** Spending coins on the farm itself (a bed, a field) always asks first: what it is, what it costs, what you have,
  *  and a Build button that only arms after a moment — never on the button you press to water or harvest. */
@@ -385,118 +361,6 @@ function QueuePanel() {
           <kbd>Enter</kbd> sell · <kbd>Shift</kbd>+<kbd>Enter</kbd> sell to all · <kbd>N</kbd> send away
         </p>
       )}
-    </Shell>
-  )
-}
-
-const bedsIn = (e: 'east' | 'west') => BEDS.filter((b) => b.expansion === e).length
-
-/** Where an upgrade stands: how many times it has been bought, how many it can be, and what it changes — now and
- *  after the next one ("5 → 6" places in the line), so a card says what it does in numbers, not words. */
-function upgradeStep(id: UpgradeId): { level: number; levels: number; icon: ReactNode; now: string; next: string | null } {
-  const glyph = (a: ArtId) => <img src={art(a)} alt="" />
-  // another animal: how many there are, of how many there can be
-  const herd = UPGRADES.find((u) => u.id === id)?.herd
-  const range = herd && PRODUCERS[herd].herd
-  if (herd && range) {
-    const n = animals(herd)
-    return { level: n - range.start, levels: range.max - range.start, icon: glyph(UPGRADE_ART[id]), now: String(n), next: n < range.max ? String(n + 1) : null }
-  }
-  switch (id) {
-    case 'queue': {
-      const l = upgradeLevel('queue')
-      return { level: l, levels: QUEUE_LEVELS, icon: <Users weight="bold" />, now: String(placesInLine()), next: l < QUEUE_LEVELS ? String(queuePlaces(l + 1)) : null }
-    }
-    case 'pace': {
-      const l = upgradeLevel('pace')
-      return { level: l, levels: PACE_LEVELS, icon: <Clock weight="bold" />, now: clockText(arrivalSeconds()), next: l < PACE_LEVELS ? clockText(arrivalEvery(l + 1)) : null }
-    }
-    case 'east':
-    case 'west':
-      return { level: owned(id) ? 1 : 0, levels: 1, icon: glyph('seedling'), now: `+${bedsIn(id)} beds`, next: null }
-    case 'sprinkler':
-      return { level: owned(id) ? 1 : 0, levels: 1, icon: glyph('droplet'), now: 'Waters every bed', next: null }
-    default:
-      return { level: owned('compost') ? 1 : 0, levels: 1, icon: glyph('basket'), now: '×1.5 every harvest', next: null }
-  }
-}
-
-/** An upgrade not open yet at the farm's level: its picture faded, its name and line, the level it opens at across its
- *  corner where the price was (a tap shakes it). */
-function LockedUpgrade({ u, lock }: { u: Upgrade; lock: number }) {
-  const [scope, nope] = useNope<HTMLDivElement>()
-  return (
-    <div ref={scope} className="farm-shop-item locked" onClick={nope}>
-      <LockCorner level={lock} right />
-      <img className="art" src={art(UPGRADE_ART[u.id])} alt="" />
-      <div className="farm-shop-text">
-        <strong>{u.name}</strong>
-        <small className="farm-shop-blurb">{u.blurb}</small>
-      </div>
-      <span className="prompt-sr">{`${u.name}: ${opensWords(lock)}`}</span>
-    </div>
-  )
-}
-
-/** The farm shop: a card per upgrade — its picture, its name, which level the next one is ("Level 2", or Max once
- *  there are no more) and what it changes ("👥 5 → 6"), and its price. */
-function ShopPanel() {
-  useFarm((s) => s.rev)
-  const close = useHome((s) => s.closePanel)
-  return (
-    <Shell title="Shop" art={art('shopping-bags')} sub={<Purse />} onClose={close}>
-      <div className="farm-shop">
-        {openFirst(UPGRADES, (u) => lockOf(`upgrade:${u.id}`)).map((u) => {
-          const lock = lockOf(`upgrade:${u.id}`)
-          if (lock !== null) return <LockedUpgrade key={u.id} u={u} lock={lock} />
-          const has = owned(u.id)
-          const price = upgradePrice(u.id)
-          const step = upgradeStep(u.id)
-          const repeat = step.levels > 1
-          return (
-            <div key={u.id} className={`farm-shop-item${has ? ' owned' : ''}`}>
-              <img className="art" src={art(UPGRADE_ART[u.id])} alt="" />
-              <div className="farm-shop-text">
-                <strong>{u.name}</strong>
-                <div className="farm-shop-tags">
-                  {repeat && <span className={`tag ${has ? 'ok' : 'level'}`}>{has ? 'Max' : `Level ${step.level + 1}`}</span>}
-                  {!repeat && has && (
-                    <span className="tag ok">
-                      <Check weight="bold" />
-                      Yours
-                    </span>
-                  )}
-                  <span className="tag effect">
-                    {step.icon}
-                    {step.now}
-                    {step.next && !has && (
-                      <>
-                        <ArrowRight weight="bold" className="effect-arrow" />
-                        <b>{step.next}</b>
-                      </>
-                    )}
-                  </span>
-                </div>
-                <small className="farm-shop-blurb">{u.blurb}</small>
-              </div>
-              <button
-                className={`btn small${has ? ' soft' : ''}`}
-                disabled={has || farm.coins < price}
-                onClick={() => {
-                  if (buy(u.id)) {
-                    uiClick()
-                    farmSound('build')
-                    if (u.id === 'east' || u.id === 'west') dustOver(BEDS.filter((b) => b.expansion === u.id))
-                  }
-                }}
-                aria-label={has ? `${u.name}: done` : `Buy ${u.name}${repeat ? `, level ${step.level + 1}` : ''}, for ${price} coins`}
-              >
-                {has ? <Check weight="bold" /> : <Coins n={price} />}
-              </button>
-            </div>
-          )
-        })}
-      </div>
     </Shell>
   )
 }
