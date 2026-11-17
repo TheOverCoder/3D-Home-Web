@@ -2,9 +2,10 @@
 
 Design references for everything that wraps the game (its screens, sheets, cards, talks, settings, the opening…), built
 and chosen **before** they go into the game. A board is one piece of the interface: the request in the user's words,
-the states it is seen in, and its variants side by side — "today" (what the game has now) and the new ones, A, B, C —
-each on the screens it is for, over a real still of the game, with its buttons, gestures and motion working. The user
-opens one link, chooses a letter or says what to change; only then does a design go into the game. The map
+the few states it is seen in, and "today" (what the game has now) beside **one** proposal — never A, B, C — on the
+screens it is for, over a real still of the game, with its buttons, gestures and motion working. The user opens one
+link and marks it ✓ or ✗ (with a note); only a ✓ goes into the game. A designer makes a board only when the user asks
+for a designer in so many words (CLAUDE.md, "Interface"). The map
 (`lab/map.ts`) is every screen of the interface as it is today, with what to improve next.
 
 It is the game's own interface with no game round it: the panels' presentational components (`src/farm/LevelCard.tsx`
@@ -72,7 +73,7 @@ Not linked from the sandbox: `#<board>` shows every variant of a board side by s
 sets what every frame shows: its state, the screens (a phone upright and sideways, a small phone, a tablet, a
 computer), slow motion (four times slower: CSS, Web Animations, Motion and timers alike) and the marks of touches. ↻
 plays a variant's opening again; ⛶ opens it full screen — on a phone, at the phone's own size under the user's own
-finger, with the variants and states to switch between.
+finger, with its states to switch between.
 
 ## A frame
 

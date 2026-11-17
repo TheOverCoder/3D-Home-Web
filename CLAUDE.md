@@ -262,18 +262,18 @@ The README has the overview; `tests/README.md` what each test guards.
 
 ## Interface (src/styles.css tokens, src/ui/art.ts, src/ui/glyphs.ts)
 
-- How everything that wraps the game looks, moves and flows is the interface designer's
-  (`.claude/agents/ui-designer.md`), and it is chosen before it is built into the game: a board in the design lab
-  (`lab/`, `lab/README.md`) shows "today" beside variants A, B, C, moving and working under a finger, on touch-screen
-  frames (phones upright and sideways, with their safe areas) over a still of the game, published as a link of its own
-  (`npm run lab:build`, then the Artifact tool with `capabilities: {db: {}}`: seconds, no CI). It opens on a sandbox,
-  the game's screen where what has designs is ringed where it opens from: the user opens it there and marks ✓ / ✗ and
-  notes (pinned to a point or not), kept in the lab's database; what they answered and sent ("ready to send") goes to
-  its designer (`lab/feedback`). Every board has its kind, its icon there: `ui` (the interface designer), `film` (the
-  film director), `3d` (the 3D designer, `.claude/agents/3d-designer.md`: the game's models proposed the same way). A
-  proposal may add a feature the game does not have (its `adds` line, ✦ in the sandbox, on sample data); its logic is
-  written only once the user chose it. Only the variant the user chose goes into the game, and a variant they marked ✓
-  and said may go in is built into the game in the very next round, not left waiting on its board. A
+- The designers (the interface designer, `.claude/agents/ui-designer.md`; the film director; the 3D designer,
+  `.claude/agents/3d-designer.md`) work only when the user asks for one in so many words, never on their own or by
+  default. Otherwise what the user asks for is built straight into the game in its own look (the tokens and classes
+  below), with no lab round. A designer's round is **one proposal a board**: "today" beside one design, never A, B, C,
+  with only the few states needed to judge it, moving and working under a finger on touch-screen frames (phones upright
+  and sideways, with their safe areas) over a still of the game, published in the design lab (`lab/`,
+  `lab/README.md`; `npm run lab:build`, then the Artifact tool with `capabilities: {db: {}}`: seconds, no CI). It
+  opens on a sandbox, the game's screen where what has a design is ringed where it opens from: the user marks it ✓ or
+  ✗ with a note (pinned to a point or not), kept in the lab's database (`lab/feedback`). A ✗ brings the next single
+  proposal only if the user asks for it; a ✓ is built into the game in the very next round. Every board has its kind,
+  its icon there: `ui`, `film`, `3d`. A proposal may add a feature the game does not have (its `adds` line, ✦ in the
+  sandbox, on sample data); its logic is written only once the user chose it. A
   panel's look is a component of its own fed with data (`LevelCard` from `levelView`; `LevelPanel` reads the farm), so
   the lab shows it as it is. Motion is Motion for React through `src/ui/motion.tsx` (`m.*`, the game's springs,
   reduced motion respected), a celebration `burst` (`src/ui/burst.ts`), form controls Radix primitives.
