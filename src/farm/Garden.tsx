@@ -148,6 +148,7 @@ import { Land } from './Land'
 import { dragTo, drop, editCamera, turn, useEdit } from './edit'
 import { PARCELS, PLACES, boundary, canPlace, canPlaceThing, footprint, turnOf, type PlaceId, type Placement, type Thing } from './layout'
 import { Places, WOOD, WOOD_DARK } from './Places'
+import { ToolStands } from './ToolStands'
 import { Sheep, flock } from './Sheep'
 import { Visitors } from './Visitors'
 import { Workshop } from './Workshop'
@@ -914,6 +915,7 @@ export function Garden() {
       <Colliders />
       <Land />
       <Places />
+      <ToolStands />
       {BEDS.map((b) => (
         <Bed key={b.index} index={b.index} />
       ))}

@@ -665,8 +665,10 @@ export interface ToolDef {
   reach: number
 }
 
-/** The coop at the nest box (where the hens' nest is collected today), the bucket on the pasture's gate post outside
- *  the gate, the shears and their basket on the fold's gate post: the 3D designer places each model, and these follow. */
+/** The coop where the nest box was, the bucket by the pasture's gate post outside the gate, the shears and their basket
+ *  by the fold's gate post: the 3D designer placed each model (TOOL_PLACES in src/models/tools.ts) and these follow it:
+ *  you stand a little more than half a metre in front of the deepest of its skins (src/farm/skins.ts), and look at its
+ *  middle (src/models/toolPlaces.test.ts holds them to it). */
 export const TOOLS: Record<ToolKind, ToolDef> = {
   hens: {
     name: 'Coop',
@@ -675,8 +677,8 @@ export const TOOLS: Record<ToolKind, ToolDef> = {
     word: 'Collect',
     spot: 'nest',
     look: 'nests',
-    stand: [NEST.x - 0.45, 0.9, NEST.z],
-    aim: [NEST.x, 0.66, NEST.z],
+    stand: [RUN.minX - 0.95, 0.9, NEST.z],
+    aim: [RUN.minX - 0.3, 0.62, NEST.z],
     reach: 2.2,
   },
   cows: {
@@ -686,8 +688,8 @@ export const TOOLS: Record<ToolKind, ToolDef> = {
     word: 'Milk',
     spot: 'cow',
     look: 'pail',
-    stand: [PASTURE.minX - 0.85, 1.0, PASTURE.gateZ + PASTURE.gateWidth / 2 + 0.15],
-    aim: [PASTURE.minX - 0.12, 0.95, PASTURE.gateZ + PASTURE.gateWidth / 2 + 0.15],
+    stand: [PASTURE.minX - 1.15, 1.0, PASTURE.gateZ - PASTURE.gateWidth / 2 - 0.62],
+    aim: [PASTURE.minX - 0.3, 0.75, PASTURE.gateZ - PASTURE.gateWidth / 2 - 0.62],
     reach: 2.2,
   },
   sheep: {
@@ -697,8 +699,8 @@ export const TOOLS: Record<ToolKind, ToolDef> = {
     word: 'Shear',
     spot: 'sheep',
     look: 'shears',
-    stand: [FOLD.gateX - FOLD.gateWidth / 2 - 0.15, 1.0, FOLD.maxZ + 0.85],
-    aim: [FOLD.gateX - FOLD.gateWidth / 2 - 0.15, 0.8, FOLD.maxZ + 0.12],
+    stand: [FOLD.gateX + FOLD.gateWidth / 2 + 0.71, 1.0, FOLD.maxZ + 1.2],
+    aim: [FOLD.gateX + FOLD.gateWidth / 2 + 0.71, 0.6, FOLD.maxZ + 0.3],
     reach: 2.2,
   },
 }

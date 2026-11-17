@@ -13,7 +13,7 @@ import { useHome } from '../store'
 import { COOP, FOLD, HAY_RACK, NEST, PASTURE, RUN, STORES, TROUGH, type StoreId } from './data'
 import { usePlacement, useShownPlacement } from './edit'
 import { alongBoundary, toWorld, turnOf, type PlaceId } from './layout'
-import { capacity, farm, room, useFarm, used, waitingFor } from './state'
+import { capacity, farm, room, toolOwned, useFarm, used, waitingFor } from './state'
 import { useProducer } from './useProducer'
 
 // The farm's movable places — the hen run with its coop, the cows' pasture, the sheep fold, the silo, the barn, the
@@ -76,7 +76,11 @@ const foldTrough = () => troughModel(1.1, 0.45, 0.34)
 
 // ───────────────────────────── the hen run ─────────────────────────────
 
+/** The hens' coop is the farm's (src/farm/ToolStands.tsx stands it where the nest box was). */
+const useCoop = () => useFarm(() => toolOwned('hens') !== null)
+
 function HenRun() {
+  const coop = useCoop()
   const fence = useMemo(() => {
     const out: ReactNode[] = []
     const sides: [number, number, number, number][] = [
@@ -101,17 +105,20 @@ function HenRun() {
   }, [])
   return (
     <Placed id="hens">
-      {/* the coop: a hen house on legs in the run (sculpted), its nest box poking out through the fence */}
+      {/* the coop: a hen house on legs in the run (sculpted), its nest box poking out through the fence — until the
+          hens' tool, the coop of a nest for each hen, stands there instead (src/farm/ToolStands.tsx) */}
       <Sculpted make={coopModel} name="coop" position={[COOP.x, 0, COOP.z]} />
-      <StaticBatch>
-        <group position={[NEST.x, 0, NEST.z]}>
-          <B size={[0.4, 0.03, 0.44]} position={[0, 0.615, 0]} color={WOOD} radius={0.004} />
-          <B size={[0.4, 0.2, 0.03]} position={[0, 0.7, -0.22]} color={WOOD} radius={0.004} />
-          <B size={[0.4, 0.2, 0.03]} position={[0, 0.7, 0.22]} color={WOOD} radius={0.004} />
-          <B size={[0.03, 0.12, 0.44]} position={[-0.2, 0.66, 0]} color={WOOD} radius={0.004} />
-          <B size={[0.36, 0.02, 0.4]} position={[0, 0.635, 0]} color="#d9c18a" roughness={1} radius={0} />
-          <B size={[0.06, 0.6, 0.06]} position={[-0.17, 0.3, 0]} color={WOOD_DARK} radius={0.006} />
-        </group>
+      <StaticBatch rev={coop ? 'coop' : 'nest box'}>
+        {!coop && (
+          <group position={[NEST.x, 0, NEST.z]}>
+            <B size={[0.4, 0.03, 0.44]} position={[0, 0.615, 0]} color={WOOD} radius={0.004} />
+            <B size={[0.4, 0.2, 0.03]} position={[0, 0.7, -0.22]} color={WOOD} radius={0.004} />
+            <B size={[0.4, 0.2, 0.03]} position={[0, 0.7, 0.22]} color={WOOD} radius={0.004} />
+            <B size={[0.03, 0.12, 0.44]} position={[-0.2, 0.66, 0]} color={WOOD} radius={0.004} />
+            <B size={[0.36, 0.02, 0.4]} position={[0, 0.635, 0]} color="#d9c18a" roughness={1} radius={0} />
+            <B size={[0.06, 0.6, 0.06]} position={[-0.17, 0.3, 0]} color={WOOD_DARK} radius={0.006} />
+          </group>
+        )}
         {fence}
       </StaticBatch>
     </Placed>
@@ -119,20 +126,22 @@ function HenRun() {
 }
 
 function HenRunBody() {
+  const coop = useCoop()
   const midX = (RUN.minX + RUN.maxX) / 2
   const midZ = (RUN.minZ + RUN.maxZ) / 2
   const hx = (RUN.maxX - RUN.minX) / 2
   const hz = (RUN.maxZ - RUN.minZ) / 2
   return (
     <Body
+      key={coop ? 'coop' : 'nest box'}
       id="hens"
       boxes={[
         { half: [hx, 0.55, 0.05], at: [midX, 0.55, RUN.minZ] },
         { half: [hx, 0.55, 0.05], at: [midX, 0.55, RUN.maxZ] },
         { half: [0.05, 0.55, hz], at: [RUN.minX, 0.55, midZ] },
         { half: [0.05, 0.55, hz], at: [RUN.maxX, 0.55, midZ] },
-        // the nest box outside the west fence
-        { half: [0.22, 0.4, 0.24], at: [NEST.x, 0.4, NEST.z] },
+        // the nest box outside the west fence (the coop that takes its place is solid of itself)
+        ...(coop ? [] : [{ half: [0.22, 0.4, 0.24], at: [NEST.x, 0.4, NEST.z] } as Box]),
       ]}
     />
   )

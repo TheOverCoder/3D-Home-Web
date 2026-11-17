@@ -3,12 +3,14 @@ import { useFrame } from '@react-three/fiber'
 import { cropParts } from '../models/crops'
 import { GROWERS, hash, putEgg, putLemon } from '../models/plants'
 import { lemonSpots } from '../models/structures'
+import { nestSpots, placedPoint } from '../models/tools'
 import { BED, BEDS, NEST, PRODUCERS, type CropId } from './data'
 import { shownAt, shownPlacement, useEdit } from './edit'
 import { toWorld, type Placement } from './layout'
-import { bedProgress, eggsShown, farm, stockOf } from './state'
+import { bedProgress, eggsShown, farm, skinWorn, stockOf, toolOwned } from './state'
 
-// Every plant in every bed, the lemons on the tree and the eggs in the nest: sculpted parts (src/models/crops.ts)
+// Every plant in every bed, the lemons on the tree and the eggs in the nest box (or, once the hens' coop stands, in each
+// hen's nest of it: src/farm/ToolStands.tsx): sculpted parts (src/models/crops.ts)
 // put together by each crop's grower (src/models/plants.ts) for its stage of growth — one instanced draw per kind of
 // part for the whole garden. They are rebuilt a few times a second as things grow; nothing here casts a shadow, so
 // the sun's shadow map never has to be redrawn because a lettuce got bigger.
@@ -38,6 +40,8 @@ function grid(cols: number, rows: number, dx: number, dz: number): [number, numb
 /** Where lemons hang on the tree (each stalk's end, up in the leaves; round the trunk), and the egg places in the nest box. */
 export const LEMON_SPOTS = lemonSpots(PRODUCERS.tree.max)
 const EGG_SPOTS: [number, number][] = grid(3, 2, 0.085, 0.085)
+/** The most eggs shown in one of the coop's nests (one, or two side by side: a nest's count is its tool panel's). */
+const EGGS_A_NEST = 2
 
 export function Plants() {
   const parts = useMemo(() => cropParts(), [])
@@ -78,12 +82,26 @@ export function Plants() {
       parts.at(0, 0, 0)
       putLemon(parts, x, y, z, k)
     }
-    // (every nest's eggs together, up to the six the box holds: with the coop each hen has a nest of her own)
-    for (let k = 0; k < eggsShown(); k++) {
-      const [ex, ez] = EGG_SPOTS[k]
-      const [x, z] = toWorld(hens, NEST.x + ez, NEST.z + ex)
-      parts.at(0, 0, 0)
-      putEgg(parts, x, NEST_FLOOR, z, k)
+    if (toolOwned('hens')) {
+      // the coop of the skin it wears (src/farm/skins.ts): each hen's eggs in her own nest, on its straw
+      const stock = farm.producers.hens.stock
+      nestSpots(skinWorn('hens')).forEach(([sx, sy, sz], i) => {
+        const n = Math.min(EGGS_A_NEST, stock[i] ?? 0)
+        for (let k = 0; k < n; k++) {
+          const [lx, y, lz] = placedPoint('nests', [sx + (k - (n - 1) / 2) * 0.065, sy, sz + k * 0.02])
+          const [x, z] = toWorld(hens, lx, lz)
+          parts.at(0, 0, 0)
+          putEgg(parts, x, y, z, i + k)
+        }
+      })
+    } else {
+      // (every nest's eggs together, up to the six the box holds)
+      for (let k = 0; k < eggsShown(); k++) {
+        const [ex, ez] = EGG_SPOTS[k]
+        const [x, z] = toWorld(hens, NEST.x + ez, NEST.z + ex)
+        parts.at(0, 0, 0)
+        putEgg(parts, x, NEST_FLOOR, z, k)
+      }
     }
     parts.end()
   })

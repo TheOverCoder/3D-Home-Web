@@ -35,15 +35,17 @@ export const TOOL_WEIGHT = 800
 /** The part with what waits to be collected (the milk in the pail, the wool in the basket). */
 export const GOODS_PART = 'goods'
 
-/** Where each tool stands in its place's frame (src/farm/data.ts: the run, the pasture, the fold), and the numbers its
- *  row follows: where you stand to use it and what you look at. `turn` faces its front out of the fence. */
-export const TOOL_PLACES: Record<ToolLook, { place: PlaceId; at: V3; turn: number; stand: V3; aim: V3 }> = {
-  // where the nest box is, its back against the run's west fence (the nest box goes: the coop is its nests)
-  nests: { place: 'hens', at: [RUN.minX - 0.05, 0, NEST.z], turn: -Math.PI / 2, stand: [RUN.minX - 0.65, 0.9, NEST.z], aim: [RUN.minX - 0.25, 0.7, NEST.z] },
-  // outside the pasture's west fence, between its last post and the gate's: its right side at the gate post
-  pail: { place: 'cows', at: [PASTURE.minX - 0.06, 0, PASTURE.gateZ - PASTURE.gateWidth / 2 - 0.6], turn: -Math.PI / 2, stand: [PASTURE.minX - 0.75, 1, 1.2], aim: [PASTURE.minX - 0.3, 0.75, 1.2] },
+/** Where each tool stands in its place's frame (src/farm/data.ts: the run, the pasture, the fold); `turn` faces its front
+ *  out of the fence. Where you stand to use it and what you look at are its row's (TOOLS in src/farm/data.ts), and its
+ *  place's footprint takes in the deepest of its styles (PLACES in src/farm/layout.ts). */
+export const TOOL_PLACES: Record<ToolLook, { place: PlaceId; at: V3; turn: number }> = {
+  // where the nest box is, its back against the run's west fence (the nest box goes: the coop is its nests), its front
+  // short of the run's way in (PLACES.hens.door)
+  nests: { place: 'hens', at: [RUN.minX - 0.05, 0, NEST.z], turn: -Math.PI / 2 },
+  // outside the pasture's west fence, between its last post and the gate's: its right side short of the gate's way in
+  pail: { place: 'cows', at: [PASTURE.minX - 0.06, 0, PASTURE.gateZ - PASTURE.gateWidth / 2 - 0.62], turn: -Math.PI / 2 },
   // outside the fold's south fence, east of the gate: its left side at the gate post
-  shears: { place: 'sheep', at: [FOLD.gateX + FOLD.gateWidth / 2 + 0.71, 0, FOLD.maxZ + 0.06], turn: 0, stand: [1.36, 0.7, FOLD.maxZ + 0.75], aim: [1.36, 0.6, FOLD.maxZ + 0.3] },
+  shears: { place: 'sheep', at: [FOLD.gateX + FOLD.gateWidth / 2 + 0.71, 0, FOLD.maxZ + 0.06], turn: 0 },
 }
 
 // ───────────────────────────── colours and materials ─────────────────────────────
@@ -336,13 +338,15 @@ function nestsA(): Raw[] {
     ),
   ).paint(() => BATTEN, 0)
   const legs = merge(...[-1, 1].flatMap((s) => [0.05, D - 0.05].map((z) => box([s * (W - 0.06) - 0.03, 0, z - 0.03], [s * (W - 0.06) + 0.03, y0 + 0.01, z + 0.03])))).paint(grainy(WOOD, 3), 0)
-  const arms = merge(...[-1, 1].map((s) => box([s * (W - 0.06) - 0.02, 0.35, D - 0.07], [s * (W - 0.06) + 0.02, 0.39, D + 0.13]))).paint(grainy(WOOD, 5), 0)
+  // the perch rail under the nests' lip, on two arms out of the legs: its front no further out than the roof's, short of
+  // the run's way in (PLACES.hens.door, 0.35 m out from the fence)
+  const arms = merge(...[-1, 1].map((s) => box([s * (W - 0.06) - 0.02, 0.33, D - 0.07], [s * (W - 0.06) + 0.02, 0.37, D + 0.012]))).paint(grainy(WOOD, 5), 0)
   const rail = tube(
     [
-      [-W - 0.02, 0.37, D + 0.1],
-      [W + 0.02, 0.37, D + 0.1],
+      [-W - 0.02, 0.35, D + 0.012],
+      [W + 0.02, 0.35, D + 0.012],
     ],
-    0.02,
+    0.018,
     { seg: 6, steps: 1, caps: [true, true] },
   ).paint(() => WOOD_LIGHT, 0)
   // a cushion of straw in each nest, over its lip and a little out of it
@@ -351,14 +355,14 @@ function nestsA(): Raw[] {
     ...[-1, 1].map((s) => box([s > 0 ? W - 0.045 : -W - 0.005, y0 - 0.005, D - 0.01], [s > 0 ? W + 0.005 : -W + 0.045, top + 0.005, D + 0.016])),
     ...rows.map((r) => box([-W + 0.04, r - 0.012, D - 0.006], [W - 0.04, r + 0.036, D + 0.014])),
     // a white board under the roof's front edge, as the hen house's eaves
-    box([-W - 0.04, top - 0.055, D + 0.02], [W + 0.04, top - 0.012, D + 0.045]),
+    box([-W - 0.04, top - 0.055, D + 0.005], [W + 0.04, top - 0.004, D + 0.028]),
   ).paint(() => TRIM, 0)
   return [
     { id: 'legs', shapes: { wood: merge(legs, arms, rail) } },
     { id: 'house', shapes: { paint: merge(body, sides.surface(0)) } },
     { id: 'straw', shapes: { straw } },
     { id: 'trim', shapes: { trim } },
-    { id: 'roof', shapes: { roof: pentRoof(0, back, D, top, W + 0.04, 0.04, 0.05) } },
+    { id: 'roof', shapes: { roof: pentRoof(0, back, D, top, W + 0.04, 0.04, 0.03) } },
   ]
 }
 
@@ -919,6 +923,46 @@ export function toolModel(look: ToolLook, style: ToolStyle): Structure {
       out[k] = have ? { ...have, shape: merge(have.shape, part.shape) } : part
     }
   return out
+}
+
+/** A box: its least and its most x, y and z. */
+export interface Bounds {
+  min: V3
+  max: V3
+}
+
+/** A model's box in its own frame, round every part of it. */
+export function modelBox(model: Structure): Bounds {
+  const min: V3 = [Infinity, Infinity, Infinity]
+  const max: V3 = [-Infinity, -Infinity, -Infinity]
+  for (const part of Object.values(model))
+    for (let i = 0; i < part.shape.p.length; i += 3)
+      for (let j = 0; j < 3; j++) {
+        min[j] = Math.min(min[j], part.shape.p[i + j])
+        max[j] = Math.max(max[j], part.shape.p[i + j])
+      }
+  return { min, max }
+}
+
+/** A box of a tool's own frame in its place's frame, where TOOL_PLACES stands it (its turn a quarter turn or none). */
+export function placedBox(look: ToolLook, box: Bounds): Bounds {
+  const { at, turn } = TOOL_PLACES[look]
+  const c = Math.round(Math.cos(turn))
+  const s = Math.round(Math.sin(turn))
+  // (three.js's turn about y: x' = x·cos + z·sin, z' = −x·sin + z·cos)
+  const xs = [box.min[0], box.max[0]].flatMap((x) => [box.min[2], box.max[2]].map((z) => [at[0] + x * c + z * s, at[2] - x * s + z * c]))
+  return {
+    min: [Math.min(...xs.map((p) => p[0])), box.min[1], Math.min(...xs.map((p) => p[1]))],
+    max: [Math.max(...xs.map((p) => p[0])), box.max[1], Math.max(...xs.map((p) => p[1]))],
+  }
+}
+
+/** A point of a tool's own frame (a nest's spot) in its place's frame. */
+export function placedPoint(look: ToolLook, [x, y, z]: V3): V3 {
+  const { at, turn } = TOOL_PLACES[look]
+  const c = Math.round(Math.cos(turn))
+  const s = Math.round(Math.sin(turn))
+  return [at[0] + x * c + z * s, y, at[2] - x * s + z * c]
 }
 
 /** Where each hen's eggs lie in the coop of a style (its model's frame: the straw they lie on, under the middle of the
