@@ -1,17 +1,17 @@
 {
-  "board": "loading",
-  "for": "ui-designer",
-  "read": "2026-11-16",
-  "sent": "2026-11-16T08:55",
-  "verdicts": {
-    "b": "yes"
-  },
-  "notes": [
-    {
-      "variant": "b",
-      "state": "back",
-      "kind": "sideways",
-      "text": "תכניס את b ותשפר רק איפה שבוודאות זה שיפור ללא ספקות"
-    }
-  ]
+ "at": 1794931885487,
+ "notes": [
+  {
+   "at": 1794931885487,
+   "id": "hr3fb5t6",
+   "kind": "sideways",
+   "state": "slow",
+   "text": "כבר בחרנו בזה הם כולם אותו דבר פה",
+   "variant": "b"
+  }
+ ],
+ "round": "2026-11-16T10:20",
+ "verdicts": {
+  "b": "yes"
+ }
 }

@@ -1,17 +1,8 @@
 {
-  "board": "top",
-  "for": "ui-designer",
-  "read": "2026-11-16",
-  "sent": "2026-11-15T14:56",
-  "verdicts": {
-    "d": "yes"
-  },
-  "notes": [
-    {
-      "variant": "c",
-      "state": "attention",
-      "kind": "sideways",
-      "text": "מעולה אפשר ליישם במשחק"
-    }
-  ]
+ "at": 1794931668264,
+ "notes": [],
+ "round": "2026-11-16T10:20",
+ "verdicts": {
+  "d": "yes"
+ }
 }
