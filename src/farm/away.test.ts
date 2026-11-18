@@ -5,7 +5,7 @@ import { AWAY_MOST, awayNews, awaySummary, cameBack, capacity, farm, inLine, mar
 import { savedNow, startFrom } from './testSaves'
 
 // Welcome back (src/farm/AwayPanel.tsx): the farm goes on for a time away — the page closed (from the save's time) or
-// hidden (a long gap between frames: cameBack) — as it would have, for at most three hours, and what happened is told:
+// hidden (a long gap between frames: cameBack) — as it would have, for at most a day, and what happened is told:
 // what came to be ready, who joined the line, what needs you.
 
 const NOW = Date.UTC(2026, 10, 11, 12)
@@ -61,12 +61,12 @@ describe('welcome back', () => {
     expect(held).toBeLessThanOrEqual(cows * PRODUCERS.cows.max)
   })
 
-  it('away longer than three hours, the farm goes on for three: the card says how long you were away and how long it went on', () => {
+  it('away longer than a day, the farm goes on for a day: the card says how long you were away and how long it went on', () => {
     farm.producers.hens.stock = farm.producers.hens.stock.map(() => 0)
     farm.producers.hens.timer = farm.producers.hens.timer.map(() => 0)
-    reopenAfter(5 * 60 * MIN)
+    reopenAfter(30 * 60 * MIN)
     const r = awaySummary()!
-    expect(r.seconds).toBeCloseTo(5 * 3600, 0)
+    expect(r.seconds).toBeCloseTo(30 * 3600, 0)
     expect(r.counted).toBe(AWAY_MOST)
   })
 

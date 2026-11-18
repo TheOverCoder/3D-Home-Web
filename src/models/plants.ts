@@ -174,6 +174,68 @@ export const GROWERS: Record<CropId, Grower> = {
     const r = 0.17 * f
     p.put('pumpkin', x, y + r * 0.64, z, 0, seed * 6, 0, r, c(mixHex(0x6f8f3a, 0xe2741e, smooth(0.75, 1, g))))
   },
+  sunflower(p, x, y, z, g, seed) {
+    const s = 0.15 + 0.85 * easeOut(g)
+    const h = 1.45 * s * (0.94 + hash(seed, 1) * 0.12)
+    p.put('stem', x, y, z, 0, 0, 0, size.set(0.016, h, 0.016), c(0x6f9a3a))
+    // broad leaves up the stem, turning round it
+    for (let k = 0; k < 4; k++) p.put('pumpkinLeaf', x, y + (0.2 + k * 0.17) * h, z, -0.35, k * 2.3 + seed * 5, 0, 0.2 * s, c(k % 2 ? LEAF : LEAF_DARK))
+    // the head at the top, in bud and then in flower, facing the morning sun (east) and nodding as it ripens
+    const f = smooth(0.4, 1, g)
+    if (f <= 0) return
+    const d = 0.3 * f
+    const ry = Math.PI / 2 + (hash(seed, 2) - 0.5) * 0.6
+    const rx = 0.15 + 0.3 * smooth(0.8, 1, g)
+    p.put('sunflowerHead', x + Math.sin(ry) * 0.06 * d, y + h, z + Math.cos(ry) * 0.06 * d, rx, ry, 0, d, c(mixHex(0x7fae3e, 0xf5c518, smooth(0.75, 1, g))))
+  },
+  potato(p, x, y, z, g, seed) {
+    const s = 0.2 + 0.8 * easeOut(g)
+    // a low bush of compound leaves, the potatoes showing at the soil as it ripens
+    for (let k = 0; k < 4; k++) p.put('tomatoLeaf', x, y, z, -0.85 + hash(seed, k) * 0.3, (k / 4) * Math.PI * 2 + seed * 5, 0, 0.15 * s, c(k % 2 ? LEAF : LEAF_DARK))
+    const f = smooth(0.6, 1, g)
+    if (f <= 0) return
+    for (let k = 0; k < 3; k++) {
+      const a = (k / 3) * Math.PI * 2 + seed * 4 + 0.4
+      const d = 0.065 * f * (0.85 + hash(k, seed) * 0.3)
+      p.put('potato', x + Math.sin(a) * 0.05, y + d * 0.05, z + Math.cos(a) * 0.05, 0, a, 0.2, d, c(0xc9a064))
+    }
+  },
+  melon(p, x, y, z, g, seed) {
+    const s = 0.2 + 0.8 * easeOut(g)
+    // a vine of round leaves along the soil, the melon in the middle of them
+    for (let k = 0; k < 5; k++) {
+      const a = (k / 5) * Math.PI * 2 + seed * 3
+      const r = (0.05 + hash(seed, k) * 0.05) * s
+      p.put('pumpkinLeaf', x + Math.sin(a) * r, y, z + Math.cos(a) * r, -0.05, a, 0, 0.26 * s, c(k % 2 ? LEAF : LEAF_DARK))
+    }
+    const f = smooth(0.35, 1, g)
+    if (f <= 0) return
+    const r = 0.21 * f
+    p.put('melon', x, y + r * 0.47, z, Math.PI / 2, seed * 6, 0, r, c(mixHex(0x6f9a3a, 0xe0be6a, smooth(0.75, 1, g))))
+  },
+  cotton(p, x, y, z, g, seed) {
+    const s = 0.15 + 0.85 * easeOut(g)
+    const h = 0.75 * s
+    p.put('stem', x, y, z, 0, 0, 0, size.set(0.012, h, 0.012), c(0x7a6a3a))
+    for (let k = 0; k < 4; k++) p.put('trefoil', x, y + (0.25 + k * 0.17) * h, z, -0.2, k * 2.4 + seed * 4, 0, 0.12 * s, c(k % 2 ? LEAF : LEAF_DARK))
+    const f = smooth(0.45, 1, g)
+    const open = smooth(0.8, 1, g)
+    // branches up and out, a boll at the end of each and one at the top: green and closed, then bursting white
+    for (let k = 0; k < 5; k++) {
+      const top = k === 4
+      const a = k * 1.6 + seed * 5
+      const lean = top ? 0 : 0.6 + hash(seed, k) * 0.25
+      const bh = top ? h : (0.35 + k * 0.12) * h
+      const len = top ? 0 : 0.18 * s
+      const by = y + (top ? 0 : bh * 0.55)
+      if (!top) p.put('stem', x, by, z, lean, a, 0, size.set(0.007, len, 0.007), c(0x7a6a3a))
+      if (f <= 0) continue
+      const tx = x + Math.sin(a) * Math.sin(lean) * len
+      const ty = top ? y + h : by + Math.cos(lean) * len
+      const tz = z + Math.cos(a) * Math.sin(lean) * len
+      p.put('boll', tx, ty, tz, 0, a, 0, (0.045 + 0.03 * open) * f, c(mixHex(0x8fae5a, 0xf7f5ec, open)))
+    }
+  },
 }
 
 /** A lemon hanging on the tree from a twig at (x, y, z), up in the leaves (see lemonSpots in structures.ts). */

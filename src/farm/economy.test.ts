@@ -30,10 +30,12 @@ describe('the laws of worth', () => {
   })
 
   it('a minute of play earns more as the levels go up, and levels off', () => {
-    for (let level = 1; level < 60; level++) expect(incomeAt(level + 1)).toBeGreaterThan(incomeAt(level))
+    for (let level = 1; level < 28; level++) expect(incomeAt(level + 1)).toBeGreaterThan(incomeAt(level))
+    for (let level = 28; level < 500; level += 7) expect(incomeAt(level + 7)).toBeGreaterThanOrEqual(incomeAt(level))
     expect(incomeAt(1)).toBeLessThan(10)
     expect(incomeAt(30)).toBeGreaterThan(80)
     expect(incomeAt(500)).toBeLessThan(200)
+    expect(incomeAt(0)).toBe(incomeAt(1))
   })
 
   it('counts a time away’s goods net: a harvest less its seeds, a job less what went in, an animal’s at full price', () => {

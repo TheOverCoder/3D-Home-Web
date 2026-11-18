@@ -191,22 +191,22 @@ export const GALLERY: GalleryEntry[] = [
   {
     id: 'crops',
     label: 'Crops',
-    name: 'Crops: every crop half grown, nearly ripe and ripe (front to back); eggs',
+    name: 'Crops: every crop half grown, nearly ripe and ripe (front to back), the long crops last; eggs',
     make() {
       const parts = cropParts(0.3)
-      const crops: CropId[] = ['lettuce', 'carrot', 'strawberry', 'tomato', 'corn', 'sugarcane', 'wheat', 'pumpkin']
+      const crops: CropId[] = ['lettuce', 'carrot', 'strawberry', 'tomato', 'corn', 'sugarcane', 'wheat', 'pumpkin', 'sunflower', 'potato', 'melon', 'cotton']
       return {
         object: parts.group,
-        width: 4.6,
+        width: 6.8,
         height: 1.2,
         triangles: () => parts.triangles(),
         update() {
           parts.begin()
           parts.at(0, 0, 0)
           crops.forEach((crop, i) => {
-            ;[1, 0.8, 0.45].forEach((g, j) => GROWERS[crop](parts, -2 + i * 0.55, 0, 0.6 - j * 0.6, g, 0.13 + i * 0.07 + j * 0.31))
+            ;[1, 0.8, 0.45].forEach((g, j) => GROWERS[crop](parts, -3 + i * 0.55, 0, 0.6 - j * 0.6, g, 0.13 + i * 0.07 + j * 0.31))
           })
-          for (let k = 0; k < 3; k++) putEgg(parts, 2.2 + k * 0.08, 0, 0.4, k)
+          for (let k = 0; k < 3; k++) putEgg(parts, 3.4 + k * 0.08, 0, 0.4, k)
           parts.end()
         },
       }

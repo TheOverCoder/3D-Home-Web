@@ -445,32 +445,119 @@ function egg(): Shape {
   ).paint(() => [1, 1, 1], 1)
 }
 
+// The long crops (update-v1/missions/01-loop-economy.md): the sunflower, the potato, the melon, the cotton. Light, as
+// the garden's other parts are: a bed of any of them draws no more than the garden's heaviest bed (crops.test.ts).
+
+/** A sunflower's head, 1 across, facing +z: a domed disc of seeds in its own browns (the back of it green) in a ring
+ *  of petals that take the plant's colour (green in bud, gold in flower). */
+function sunflowerHead(): Shape {
+  const disc = lathe(
+    [
+      [0, -0.11],
+      [0.12, -0.1],
+      [0.27, -0.05],
+      [0.32, 0.0],
+      [0.29, 0.04],
+      [0.16, 0.065],
+      [0, 0.075],
+    ],
+    { seg: 14, steps: 1 },
+  ).paint((x, y, z) => {
+    if (y < -0.01) return rgb(0x5f8a35)
+    // the seeds' spiral rings, darker in the middle
+    const r = Math.hypot(x, z)
+    const k = 0.7 + 0.3 * smoothstep(0.05, 0.3, r) + 0.08 * Math.sin(r * 60)
+    return [0.36 * k, 0.22 * k, 0.1 * k]
+  }, 0)
+  const petals: Shape[] = []
+  for (let k = 0; k < 16; k++) {
+    const a = (k / 16) * Math.PI * 2
+    petals.push(around(leaflet(0.26, 0.1, -0.02, 3), -0.08, a, [Math.sin(a) * 0.24, 0.015, Math.cos(a) * 0.24]).paint(() => [1, 1, 1], 1))
+  }
+  return merge(disc, ...petals).place([0, 0, 0], [Math.PI / 2, 0, 0])
+}
+
+/** A potato: a lumpy, flattened oval, about 1 across (it shows half out of the soil as the plant ripens). */
+function potato(): Shape {
+  return blob(0.5, 1, (x, y, z) => 0.06 * Math.sin(x * 9 + z * 4) + 0.04 * Math.cos(y * 11 - x * 3))
+    .place([0, 0, 0], [0, 0, 0], [1, 0.72, 0.84])
+    .paint((x, _y, z) => {
+      const k = 0.92 + 0.1 * Math.sin(x * 13) * Math.cos(z * 11)
+      return [k, k, k]
+    }, 1)
+}
+
+/** A melon: round, a little long, with pale stripes from end to end, and the stub of its stalk on top. */
+function melon(): Shape {
+  const body = lathe(
+    [
+      [0, -0.5],
+      [0.3, -0.45],
+      [0.47, -0.24],
+      [0.52, 0.0],
+      [0.47, 0.24],
+      [0.3, 0.45],
+      [0, 0.5],
+    ],
+    { seg: 14, steps: 1 },
+  ).paint((x, _y, z) => {
+    const k = 0.86 + 0.16 * Math.pow(Math.abs(Math.cos(Math.atan2(z, x) * 5)), 6)
+    return [k, k, k]
+  }, 1)
+  const stub = tube(
+    [
+      [0, 0.44, 0],
+      [0.01, 0.56, 0.01],
+    ],
+    [0.05, 0.035],
+    { seg: 5, steps: 1, caps: [false, true] },
+  ).fill(STEM_BROWN, 0)
+  return merge(body, stub)
+}
+
+/** A cotton boll, about 1 across: a lumpy ball (green while closed; the plant's colour turns it to the white of its
+ *  fluff as it opens) sitting in four brown sepals. */
+function boll(): Shape {
+  const ball = blob(0.42, 1, (x, y, z) => 0.08 * Math.abs(Math.sin(Math.atan2(z, x) * 2)) + 0.03 * Math.sin(y * 9)).paint(() => [1, 1, 1], 1)
+  const sepals: Shape[] = []
+  for (let k = 0; k < 4; k++) sepals.push(around(leaflet(0.5, 0.3, 0.06, 3), 0.9, (k / 4) * Math.PI * 2 + 0.4, [0, -0.3, 0]).fill(rgb(0x7a5a32), 0))
+  return merge(ball, ...sepals)
+}
+
 const LEAF: SculptMaterialOptions = { roughness: 0.62, doubleSided: true, leaf: true }
 const FRUIT: SculptMaterialOptions = { roughness: 0.36 }
 
-/** Every kind of garden part, its material and how many can be drawn at once. */
+/** Every kind of garden part, its material and how many can be drawn at once (the long crops' parts, and the leaves
+ *  and stems they share, for 25 beds of any one of them: crops.test.ts). */
 const KINDS = {
   lettuceLeaf: { make: lettuceLeaf, max: 900, material: LEAF },
   lettuceHeart: { make: lettuceHeart, max: 160, material: { roughness: 0.55 } },
   grassBlade: { make: grassBlade, max: 900, material: LEAF },
   frond: { make: frond, max: 400, material: LEAF },
-  trefoil: { make: trefoil, max: 500, material: LEAF },
-  tomatoLeaf: { make: tomatoLeaf, max: 400, material: LEAF },
-  pumpkinLeaf: { make: pumpkinLeaf, max: 160, material: { roughness: 0.7, doubleSided: true, leaf: true } },
+  trefoil: { make: trefoil, max: 600, material: LEAF },
+  tomatoLeaf: { make: tomatoLeaf, max: 800, material: LEAF },
+  pumpkinLeaf: { make: pumpkinLeaf, max: 300, material: { roughness: 0.7, doubleSided: true, leaf: true } },
   tomato: { make: tomato, max: 260, material: FRUIT },
   strawberry: { make: strawberry, max: 260, material: FRUIT },
   carrotTop: { make: carrotTop, max: 160, material: { roughness: 0.6 } },
   cob: { make: cob, max: 120, material: { roughness: 0.55 } },
   tassel: { make: tassel, max: 80, material: { roughness: 0.7 } },
   wheatEar: { make: wheatEar, max: 400, material: { roughness: 0.65 } },
-  stem: { make: stem, max: 400, material: { roughness: 0.7 } },
+  stem: { make: stem, max: 750, material: { roughness: 0.7 } },
   stalk: { make: stalk, max: 400, material: { roughness: 0.6 } },
   pumpkin: { make: pumpkin, max: 40, material: { roughness: 0.5 } },
   lemon: { make: lemon, max: 16, material: { roughness: 0.42 } },
   egg: { make: egg, max: 12, material: { roughness: 0.5 } },
+  sunflowerHead: { make: sunflowerHead, max: 80, material: { roughness: 0.7 } },
+  potato: { make: potato, max: 600, material: { roughness: 0.85 } },
+  melon: { make: melon, max: 60, material: { roughness: 0.55 } },
+  boll: { make: boll, max: 800, material: { roughness: 0.9 } },
 } satisfies Record<string, { make: () => Shape; max: number; material: SculptMaterialOptions }>
 
 export type CropPart = keyof typeof KINDS
+
+/** How many of a part the garden can draw at once. */
+export const cropPartMax = (k: CropPart) => KINDS[k].max
 
 let made: Record<CropPart, BufferGeometry> | null = null
 

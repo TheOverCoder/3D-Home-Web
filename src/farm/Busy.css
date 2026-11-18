@@ -1,0 +1,12 @@
+/* The busy card (./Busy.tsx): a paper pill like a toast, in its own top slot — the hourglass, "Busy till 21:40", and the
+   soonest and the longest thing on their way, each its picture and its time. It sits in the column, never over the
+   compass; it settles in gently and lies still (the stopping cue: nothing else calls while it shows). */
+.busy-card { display: flex; align-items: center; gap: 8px; max-width: calc(100vw - 32px); padding: 4px 14px 4px 6px; border: 3px solid #fff; border-radius: 999px; background: var(--paper); color: var(--ink); box-shadow: 0 3px 0 var(--edge-soft), 0 12px 30px rgba(40, 24, 10, 0.3); transform-origin: 50% 0; animation: busy-in 0.45s var(--ease-pop); }
+.busy-card-art { width: 40px; height: 40px; flex: none; }
+.busy-card-title { font: 600 17px/1.2 var(--font-display); white-space: nowrap; }
+.busy-card-when { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px 2px 3px; border-radius: 999px; background: var(--paper-2); font: 700 15px/1 var(--font-text); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.busy-card-when img { width: 26px; height: 26px; }
+.busy-card-when.last { padding: 2px 3px; }
+.busy-card-moon { display: inline-block; width: 22px; height: 22px; margin: 0 2px -4px 0; }
+@keyframes busy-in { from { opacity: 0; transform: translateY(-6px) scale(0.92); } }
+:where(:root[data-motion='less']) .busy-card { animation: none; }
