@@ -1,9 +1,8 @@
 import { m } from 'motion/react'
 import type { CSSProperties } from 'react'
 import { art } from '../../ui/art'
-import { X } from '../../ui/glyphs'
-import { ITEM, PRESS, SPRING, STAGGER } from '../../ui/motion'
-import { SwipeSheet } from '../../ui/SwipeSheet'
+import { ITEM, SPRING, STAGGER } from '../../ui/motion'
+import { PanelSheet } from '../../ui/PanelSheet'
 import type { ProduceId } from '../data'
 import { LuckyReels } from './LuckyReels'
 import type { NewsView, NowItem, SoonItem } from './view'
@@ -12,7 +11,8 @@ import './NewsCard.css'
 // How the farm news looks (the design lab's board "news" shows it with no game round it). What it shows is ./view.ts,
 // made from the farm by ../NewsPanel.tsx.
 //
-// A front page in the game's paper: the masthead (the rolled newspaper, "Farm News", today's date over a double rule),
+// A front page in the game's paper: the masthead (the sheet's head: the rolled newspaper, "Farm News", today's date;
+// a double rule under it),
 // then "Active now" — the hero: the event on today as a story, its picture, what it does, its effect and how long it
 // has left on a bar that empties as the day goes; on the lucky draw's day the story is the draw itself (./LuckyReels.tsx:
 // one tap, two reels, two goods at double price) — and "Coming soon": the next time of every other event, each on a
@@ -90,18 +90,9 @@ export function NewsCard({
   const others = v.now.filter((e) => e.id !== 'lucky')
   const next = v.soon[0]
   return (
-    <SwipeSheet name="news-card" label="Farm news" scrolls onClose={onClose}>
-      <m.header className="nw-mast" variants={ITEM}>
-        <img className="art nw-mast-art" src={art('rolled-up-newspaper')} alt="" />
-        <div className="nw-mast-words">
-          <h2>Farm News</h2>
-          <small>{v.date}</small>
-        </div>
-        <m.button className="close" onClick={onClose} aria-label="Close (Esc)" {...PRESS}>
-          <X weight="bold" />
-        </m.button>
-      </m.header>
-      <div className="nw-body" data-scroll>
+    // the sheet's head is the masthead: the rolled newspaper, "Farm News" and today's date (src/ui/PanelSheet.tsx)
+    <PanelSheet label="Farm news" title="Farm News" pic={art('rolled-up-newspaper')} sub={<small className="nw-date">{v.date}</small>} className="news-card" onClose={onClose}>
+      <div className="nw-body">
         <m.section className="nw-now" variants={ITEM} aria-label="Active now">
           <h3 className="nw-kicker">
             {v.now.length > 0 && <i className="nw-live" aria-hidden="true" />}
@@ -154,6 +145,6 @@ export function NewsCard({
           </m.section>
         )}
       </div>
-    </SwipeSheet>
+    </PanelSheet>
   )
 }

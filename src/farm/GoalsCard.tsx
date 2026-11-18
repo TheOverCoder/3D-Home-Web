@@ -5,10 +5,11 @@ import { flyCoins, flyItem } from '../fx/coins'
 import { coinsToFly } from '../fx/fx'
 import { art } from '../ui/art'
 import { burst } from '../ui/burst'
-import { Check, Medal as MedalGlyph, X } from '../ui/glyphs'
+import { Check, Medal as MedalGlyph } from '../ui/glyphs'
 import { ItemPic } from '../ui/ItemPic'
 import { EASE, ITEM, PRESS, SINK, SPRING } from '../ui/motion'
-import { SwipeSheet, useSideways } from '../ui/SwipeSheet'
+import { PanelSheet } from '../ui/PanelSheet'
+import { useSideways } from '../ui/sheetMode'
 import { storeOf } from './data'
 import type { GoalId } from './goals'
 import { onBoard, type GoalView, type GoalsView } from './goalsView'
@@ -98,20 +99,24 @@ export function GoalsCard({ v, onClaim, onClose }: { v: GoalsView; onClaim: (id:
   const isFresh = !held && fresh === `${hero.id}-${hero.step}` && !hero.done
 
   return (
-    <SwipeSheet name="goals-card" label="Goals" scrolls onClose={onClose}>
-      <m.header className="gc-head" variants={ITEM}>
-        <img className="art" src={art('trophy')} alt="" />
-        <h2>Goals</h2>
-        <span className="tag gc-won" aria-label={`${shown.won} ${shown.won === 1 ? 'medal' : 'medals'} won`}>
-          <MedalGlyph weight="fill" />
-          {shown.won}
-        </span>
-        {shown.ready > 0 && <span className="tag ok">{shown.ready} to claim</span>}
-        <m.button className="close" onClick={onClose} aria-label="Close (Esc)" {...PRESS}>
-          <X weight="bold" />
-        </m.button>
-      </m.header>
-      <div className="gc-body" data-scroll>
+    // the sheet's head: the trophy, "Goals", the medals won and how many wait (src/ui/PanelSheet.tsx)
+    <PanelSheet
+      label="Goals"
+      title="Goals"
+      pic={art('trophy')}
+      className="goals-card"
+      sub={
+        <>
+          <span className="tag gc-won" aria-label={`${shown.won} ${shown.won === 1 ? 'medal' : 'medals'} won`}>
+            <MedalGlyph weight="fill" />
+            {shown.won}
+          </span>
+          {shown.ready > 0 && <span className="tag ok">{shown.ready} to claim</span>}
+        </>
+      }
+      onClose={onClose}
+    >
+      <div className="gc-body">
         <m.div className="gc-stage-col" variants={ITEM}>
           {/* the shelf: a swipe moves it, a medal on either side touched comes to the middle */}
           <m.div
@@ -194,7 +199,7 @@ export function GoalsCard({ v, onClaim, onClose }: { v: GoalsView; onClaim: (id:
           </div>
         </m.div>
       </div>
-    </SwipeSheet>
+    </PanelSheet>
   )
 }
 

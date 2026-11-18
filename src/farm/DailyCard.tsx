@@ -6,11 +6,11 @@ import { coinsToFly } from '../fx/fx'
 import { haptic } from '../lib/device'
 import { art } from '../ui/art'
 import { burst } from '../ui/burst'
-import { Check, Clock, X } from '../ui/glyphs'
+import { Check, Clock } from '../ui/glyphs'
 import { ItemPic } from '../ui/ItemPic'
-import { CountUp, EASE, ITEM, POP, PRESS, SINK, SPRING } from '../ui/motion'
+import { CountUp, EASE, ITEM, POP, SINK, SPRING } from '../ui/motion'
 import { Road } from '../ui/Road'
-import { SwipeSheet } from '../ui/SwipeSheet'
+import { PanelSheet } from '../ui/PanelSheet'
 import { storeOf } from './data'
 import { countdown, WEEK, type DailyView, type DayView, type Peek } from './daily'
 import { prizeWords, type Prize } from './gifts'
@@ -159,82 +159,77 @@ export function DailyCard({
   const showTomorrow = phase === 'flown' || (!moment && !shown.ready)
 
   return (
-    <SwipeSheet name="daily-card" label="Daily gift" onClose={close}>
-      <m.header className="dg-head" variants={ITEM}>
-        <img className="art dg-head-art" src={art('tear-off-calendar')} alt="" />
-        <h2>Daily gift</h2>
-        <Streak n={streak} />
-        <m.button className="close" onClick={close} aria-label="Close (Esc)" {...PRESS}>
-          <X weight="bold" />
-        </m.button>
-      </m.header>
-
-      <m.div className={`dg-stage${big ? ' big' : ''}${phase ? ` ${phase}` : ''}`} variants={ITEM} ref={stage}>
-        <m.span
-          className="dg-rays"
-          aria-hidden="true"
-          initial={{ opacity: 0, scale: 0.4 }}
-          animate={phase === 'open' ? { opacity: 1, scale: 1.25 } : phase === 'shake' ? { opacity: 0.95, scale: 1.08 } : { opacity: shown.ready ? 0.7 : 0.35, scale: 1 }}
-          transition={SPRING.soft}
-        />
-        <AnimatePresence>
-          {showBox && <GiftBox key={`box-${shown.day}`} day={shown.day} big={big} peek={shown.week[shown.day - 1]?.peek} state={box} />}
-          {phase === 'open' && <Prizes key="prizes" got={got.current} still={still} />}
-          {showTomorrow && <Tomorrow key="tomorrow" v={v} />}
-        </AnimatePresence>
-        {phase === 'open' && !still && (
-          <m.i className="dg-flash" aria-hidden="true" initial={{ opacity: 0.9, scale: 0.3 }} animate={{ opacity: 0, scale: 1.7 }} transition={{ duration: 0.5, ease: EASE.out }} />
-        )}
-        <span className="dg-say" role="status">
-          {done ? `You got ${got.current.map(prizeWords).join(', ')}` : ''}
-        </span>
-      </m.div>
-
-      <WeekRoad v={shown} stamped={moment && settled ? moment.before.day : null} />
-
-      <m.div className="dg-act" variants={ITEM}>
-        <AnimatePresence mode="popLayout" initial={false}>
-          {!done && shown.ready ? (
-            <m.button
-              key="claim"
-              className={`btn primary dg-claim${phase === 'shake' ? ' opening' : ''}`}
-              aria-label={big ? 'Claim the big gift' : 'Claim today’s gift'}
-              aria-disabled={phase === 'shake' || undefined}
-              onClick={claim}
-              exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.14 } }}
-              {...SINK}
-            >
-              <img className="art" src={art('wrapped-gift')} alt="" />
-              Claim
-            </m.button>
-          ) : (
-            <m.button
-              key="done"
-              className="btn primary dg-done"
-              onClick={close}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ ...SPRING.pop, delay: still ? 0 : 0.18 }}
-              whileTap={SINK.whileTap}
-            >
-              Done
-            </m.button>
+    // the sheet's head: the calendar, "Daily gift" and the streak's flame (src/ui/PanelSheet.tsx); its ✕, the shade, a
+    // swipe or Esc send what is still on the stage home as it goes
+    <PanelSheet label="Daily gift" title="Daily gift" pic={art('tear-off-calendar')} sub={<Streak n={streak} />} className="daily-card" onLeave={fly} onClose={onClose}>
+      <div className="dg-body">
+        <m.div className={`dg-stage${big ? ' big' : ''}${phase ? ` ${phase}` : ''}`} variants={ITEM} ref={stage}>
+          <m.span
+            className="dg-rays"
+            aria-hidden="true"
+            initial={{ opacity: 0, scale: 0.4 }}
+            animate={phase === 'open' ? { opacity: 1, scale: 1.25 } : phase === 'shake' ? { opacity: 0.95, scale: 1.08 } : { opacity: shown.ready ? 0.7 : 0.35, scale: 1 }}
+            transition={SPRING.soft}
+          />
+          <AnimatePresence>
+            {showBox && <GiftBox key={`box-${shown.day}`} day={shown.day} big={big} peek={shown.week[shown.day - 1]?.peek} state={box} />}
+            {phase === 'open' && <Prizes key="prizes" got={got.current} still={still} />}
+            {showTomorrow && <Tomorrow key="tomorrow" v={v} />}
+          </AnimatePresence>
+          {phase === 'open' && !still && (
+            <m.i className="dg-flash" aria-hidden="true" initial={{ opacity: 0.9, scale: 0.3 }} animate={{ opacity: 0, scale: 1.7 }} transition={{ duration: 0.5, ease: EASE.out }} />
           )}
-        </AnimatePresence>
-        <AnimatePresence mode="wait" initial={false}>
-          <m.p
-            key={lineOf(shown, done)}
-            className="dg-line"
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, transition: { duration: 0.1 } }}
-            transition={{ duration: 0.22, ease: EASE.out }}
-          >
-            {lineOf(shown, done)}
-          </m.p>
-        </AnimatePresence>
-      </m.div>
-    </SwipeSheet>
+          <span className="dg-say" role="status">
+            {done ? `You got ${got.current.map(prizeWords).join(', ')}` : ''}
+          </span>
+        </m.div>
+
+        <WeekRoad v={shown} stamped={moment && settled ? moment.before.day : null} />
+
+        <m.div className="dg-act" variants={ITEM}>
+          <AnimatePresence mode="popLayout" initial={false}>
+            {!done && shown.ready ? (
+              <m.button
+                key="claim"
+                className={`btn primary dg-claim${phase === 'shake' ? ' opening' : ''}`}
+                aria-label={big ? 'Claim the big gift' : 'Claim today’s gift'}
+                aria-disabled={phase === 'shake' || undefined}
+                onClick={claim}
+                exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.14 } }}
+                {...SINK}
+              >
+                <img className="art" src={art('wrapped-gift')} alt="" />
+                Claim
+              </m.button>
+            ) : (
+              <m.button
+                key="done"
+                className="btn primary dg-done"
+                onClick={close}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ ...SPRING.pop, delay: still ? 0 : 0.18 }}
+                whileTap={SINK.whileTap}
+              >
+                Done
+              </m.button>
+            )}
+          </AnimatePresence>
+          <AnimatePresence mode="wait" initial={false}>
+            <m.p
+              key={lineOf(shown, done)}
+              className="dg-line"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, transition: { duration: 0.1 } }}
+              transition={{ duration: 0.22, ease: EASE.out }}
+            >
+              {lineOf(shown, done)}
+            </m.p>
+          </AnimatePresence>
+        </m.div>
+      </div>
+    </PanelSheet>
   )
 }
 

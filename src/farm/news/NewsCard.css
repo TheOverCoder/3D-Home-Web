@@ -1,13 +1,11 @@
 /* The farm news (NewsCard.tsx, LuckyReels.tsx; the design lab's board "news"): a front page in the game's paper — the
    masthead over a double rule, "Active now" (the day's event as a story, or the lucky draw's machine) and "Coming soon"
-   (each event on a calendar leaf). The sheet and its motion: SwipeSheet (`scrolls`: the body scrolls, the masthead
-   moves the sheet). Every rule under .news-card. Each event has its tone: --tone, and --tone-ink for words on it. */
-.news-card .farm-panel { display: flex; flex-direction: column; gap: 10px; padding-top: 18px; }
-/* Motion presses these (SINK, PRESS): no CSS transition fighting it over their transform */
-.news-card .btn,
-.news-card .farm-panel .close { transition: box-shadow 0.1s ease-out, filter 0.15s, outline-offset 0.18s var(--ease-sheet); }
-.news-card .btn:active:not(:disabled),
-.news-card .farm-panel .close:active { transform: none; }
+   (each event on a calendar leaf). The sheet, its head (the masthead: the newspaper, the name, today's date, ✕) and its
+   motion are PanelSheet's (src/ui/PanelSheet.tsx): this is what is on it. Every rule under .news-card. Each event has
+   its tone: --tone, and --tone-ink for words on it. */
+/* Motion presses these (SINK): no CSS transition fighting it over their transform */
+.news-card .btn { transition: box-shadow 0.1s ease-out, filter 0.15s, outline-offset 0.18s var(--ease-sheet); }
+.news-card .btn:active:not(:disabled) { transform: none; }
 
 .news-card .market { --tone: var(--sun); --tone-ink: var(--ink); }
 .news-card .harvest { --tone: var(--leaf); --tone-ink: #fff; }
@@ -15,14 +13,12 @@
 .news-card .rush { --tone: var(--xp); --tone-ink: #fff; }
 .news-card .lucky { --tone: var(--leaf); --tone-ink: #fff; }
 
-/* the masthead: the rolled newspaper, the name, today's date, a double rule under them */
-.news-card .nw-mast { display: flex; align-items: center; gap: 10px; margin: 0; padding-bottom: 8px; border-bottom: 5px double color-mix(in srgb, var(--ink) 45%, transparent); }
-.news-card .nw-mast-art { flex: none; width: 50px; height: 50px; margin: -6px 0 -4px; filter: drop-shadow(0 2px 2px rgba(60, 30, 10, 0.2)); }
-.news-card .nw-mast-words { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.news-card .nw-mast h2 { margin: 0; font: 600 27px/1.05 var(--font-display); letter-spacing: 0.01em; color: var(--ink); }
-.news-card .nw-mast small { font: 800 13px/1.2 var(--font-text); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* the masthead (the sheet's head): today's date in small capitals under the name, a double rule under them */
+.news-card .mp-head-art { filter: drop-shadow(0 2px 2px rgba(60, 30, 10, 0.2)); }
+.news-card .mp-sub { min-height: 0; }
+.news-card .nw-date { min-width: 0; font: 800 13px/1.2 var(--font-text); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.news-card .nw-body { display: flex; flex-direction: column; gap: 16px; flex: 1; min-height: 0; overflow: auto; margin: 0 -6px; padding: 4px 6px 6px; scrollbar-width: none; }
+.news-card .nw-body { display: flex; flex-direction: column; gap: 16px; padding-top: 12px; border-top: 5px double color-mix(in srgb, var(--ink) 45%, transparent); }
 
 /* a section's kicker: small capitals, a rule running on after it */
 .news-card .nw-kicker { display: flex; align-items: center; gap: 7px; margin: 0 0 9px; font: 800 13px/1 var(--font-text); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-2); }
@@ -174,11 +170,7 @@
 }
 /* a phone on its side: a shorter masthead; the machine and the draw side by side */
 @media (orientation: landscape) and (max-height: 560px) {
-  .news-card .farm-panel { padding-top: 12px; gap: 8px; }
-  .news-card .nw-mast { padding-bottom: 6px; }
-  .news-card .nw-mast-art { width: 40px; height: 40px; }
-  .news-card .nw-mast h2 { font-size: 22px; }
-  .news-card .nw-body { gap: 12px; }
+  .news-card .nw-body { gap: 12px; padding-top: 8px; }
   .news-card .nw-story { grid-template-columns: 62px minmax(0, 1fr); padding: 10px 12px 18px; }
   .news-card .nw-story-art { width: 62px; height: 62px; }
   .news-card .nw-story h4 { font-size: 20px; }
