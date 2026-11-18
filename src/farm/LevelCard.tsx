@@ -6,10 +6,10 @@ import { coinsToFly } from '../fx/fx'
 import { art } from '../ui/art'
 import { burst } from '../ui/burst'
 import { GarmentPic } from '../ui/GarmentPic'
-import { Check, LockSimple, X } from '../ui/glyphs'
+import { Check, LockSimple } from '../ui/glyphs'
 import { ItemPic } from '../ui/ItemPic'
-import { CountUp, EASE, ITEM, POP, PRESS, SINK, SPRING } from '../ui/motion'
-import { SwipeSheet } from '../ui/SwipeSheet'
+import { CountUp, EASE, ITEM, POP, SINK, SPRING } from '../ui/motion'
+import { PanelSheet } from '../ui/PanelSheet'
 import { storeOf, type ProduceId } from './data'
 import { prizeWords, type Opened, type Prize } from './gifts'
 import { iconUrl } from './icons'
@@ -90,93 +90,86 @@ export function LevelCard({
   }
 
   return (
-    <SwipeSheet name="level-card" label={`Level ${v.level}`} top={v.top} scrolls onClose={onClose}>
-      <m.header className="lf-head" variants={ITEM}>
-        <Star level={v.level} />
-        <h2>Level {v.level}</h2>
-        {v.arrived && <Reached level={v.level} came={v.arrived} />}
-        <m.button className="close" onClick={onClose} aria-label="Close (Esc)" {...PRESS}>
-          <X weight="bold" />
-        </m.button>
-      </m.header>
-      <div className="lf-body" data-scroll>
-        <m.section className={`lf-hero${share >= 0.75 && !v.top ? ' warm' : ''}`} variants={ITEM} aria-label="How far into the level">
-          <div className="lf-count">
-            <b className="lf-pct">{v.top ? '100%' : <Count from={still ? share * 100 : before * 100} to={share * 100} delay={0.3} duration={0.9} format={(n) => `${Math.round(n)}%`} />}</b>
-            <span className="lf-say">
-              {v.top ? (
-                'Every level reached'
-              ) : share < 0.5 ? (
-                <>
-                  <b>{v.into}</b> XP so far
-                </>
-              ) : (
-                <>
-                  <b>{left}</b> XP to level {next}
-                </>
-              )}
-            </span>
-            {v.gain > 0 && !v.top && (
-              <m.span className="lf-gain" initial={{ opacity: 0, y: 8, scale: 0.7 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ ...SPRING.pop, delay: 1 }}>
-                +{v.gain} new
-              </m.span>
+    // the sheet's head: the star with the level on it and "Level N" (src/ui/PanelSheet.tsx); a level just reached says
+    // so in a row of its own at the top of the sheet
+    <PanelSheet label={`Level ${v.level}`} title={`Level ${v.level}`} pic={<Star level={v.level} />} className="level-card" onClose={onClose}>
+      {v.arrived && <Reached level={v.level} came={v.arrived} />}
+      <m.section className={`lf-hero${share >= 0.75 && !v.top ? ' warm' : ''}`} variants={ITEM} aria-label="How far into the level">
+        <div className="lf-count">
+          <b className="lf-pct">{v.top ? '100%' : <Count from={still ? share * 100 : before * 100} to={share * 100} delay={0.3} duration={0.9} format={(n) => `${Math.round(n)}%`} />}</b>
+          <span className="lf-say">
+            {v.top ? (
+              'Every level reached'
+            ) : share < 0.5 ? (
+              <>
+                <b>{v.into}</b> XP so far
+              </>
+            ) : (
+              <>
+                <b>{left}</b> XP to level {next}
+              </>
             )}
-          </div>
-          <div className="lf-track">
-            <div className="lf-rail">
-              {v.boxes.map((b) => (
-                <GiftBox key={b.q} b={b} next={nextLocked?.q === b.q} onOpen={(el) => open([b.box], el)} />
-              ))}
-              <Bar v={v} before={before} />
-            </div>
-            <span className="lf-goal" aria-label={v.top ? 'The top level' : `Level ${next}`}>
-              {v.top ? <img className="art" src={art('trophy')} alt="" /> : <Star level={next} />}
-            </span>
-          </div>
-        </m.section>
-        <div className="lf-low">
-          {v.top ? <Top /> : <Next v={v} />}
-          <AnimatePresence mode="popLayout" initial={false}>
-            {v.waiting.length > 0 ? (
-              <m.button
-                key="open"
-                className="btn primary lf-open"
-                variants={ITEM}
-                initial="hidden"
-                animate="show"
-                exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.15 } }}
-                {...SINK}
-                onClick={(e) => open(v.waiting, e.currentTarget)}
-                aria-label={`Open ${v.waiting.length} gift${v.waiting.length === 1 ? '' : 's'}`}
-              >
-                <span className="lf-open-pic" aria-hidden="true">
-                  <img className="art" src={art('wrapped-gift')} alt="" />
-                  <b>{v.waiting.length}</b>
-                </span>
-                <span className="lf-open-words">
-                  Open {v.waiting.length === 1 ? 'your gift' : `${v.waiting.length} gifts`}
-                  {v.earlier > 0 && <small>{v.earlier === v.waiting.length ? 'from earlier levels' : `${v.earlier} from earlier levels`}</small>}
-                </span>
-              </m.button>
-            ) : nextLocked && !v.top ? (
-              <m.p key="next" className="lf-hint" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ ...SPRING.pop, delay: 0.2 }}>
-                <img className="art" src={art('wrapped-gift')} alt="" />
-                <span className="lf-hint-words">
-                  {nextLocked.q === 3 ? `Last gift: level ${next}` : `Next gift: ${(nextLocked.q + 1) * 25}%`}
-                  <small>{nextLocked.xp} XP to go</small>
-                </span>
-                {v.ready && (
-                  <span className="lf-ready" aria-label={`${v.ready.n} ready on the farm: ${v.ready.xp} XP`}>
-                    <ItemPic id={v.ready.id} count={v.ready.n} />+{v.ready.xp} XP
-                  </span>
-                )}
-              </m.p>
-            ) : null}
-          </AnimatePresence>
+          </span>
+          {v.gain > 0 && !v.top && (
+            <m.span className="lf-gain" initial={{ opacity: 0, y: 8, scale: 0.7 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ ...SPRING.pop, delay: 1 }}>
+              +{v.gain} new
+            </m.span>
+          )}
         </div>
+        <div className="lf-track">
+          <div className="lf-rail">
+            {v.boxes.map((b) => (
+              <GiftBox key={b.q} b={b} next={nextLocked?.q === b.q} onOpen={(el) => open([b.box], el)} />
+            ))}
+            <Bar v={v} before={before} />
+          </div>
+          <span className="lf-goal" aria-label={v.top ? 'The top level' : `Level ${next}`}>
+            {v.top ? <img className="art" src={art('trophy')} alt="" /> : <Star level={next} />}
+          </span>
+        </div>
+      </m.section>
+      <div className="lf-low">
+        {v.top ? <Top /> : <Next v={v} />}
+        <AnimatePresence mode="popLayout" initial={false}>
+          {v.waiting.length > 0 ? (
+            <m.button
+              key="open"
+              className="btn primary lf-open"
+              variants={ITEM}
+              initial="hidden"
+              animate="show"
+              exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.15 } }}
+              {...SINK}
+              onClick={(e) => open(v.waiting, e.currentTarget)}
+              aria-label={`Open ${v.waiting.length} gift${v.waiting.length === 1 ? '' : 's'}`}
+            >
+              <span className="lf-open-pic" aria-hidden="true">
+                <img className="art" src={art('wrapped-gift')} alt="" />
+                <b>{v.waiting.length}</b>
+              </span>
+              <span className="lf-open-words">
+                Open {v.waiting.length === 1 ? 'your gift' : `${v.waiting.length} gifts`}
+                {v.earlier > 0 && <small>{v.earlier === v.waiting.length ? 'from earlier levels' : `${v.earlier} from earlier levels`}</small>}
+              </span>
+            </m.button>
+          ) : nextLocked && !v.top ? (
+            <m.p key="next" className="lf-hint" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ ...SPRING.pop, delay: 0.2 }}>
+              <img className="art" src={art('wrapped-gift')} alt="" />
+              <span className="lf-hint-words">
+                {nextLocked.q === 3 ? `Last gift: level ${next}` : `Next gift: ${(nextLocked.q + 1) * 25}%`}
+                <small>{nextLocked.xp} XP to go</small>
+              </span>
+              {v.ready && (
+                <span className="lf-ready" aria-label={`${v.ready.n} ready on the farm: ${v.ready.xp} XP`}>
+                  <ItemPic id={v.ready.id} count={v.ready.n} />+{v.ready.xp} XP
+                </span>
+              )}
+            </m.p>
+          ) : null}
+        </AnimatePresence>
       </div>
       <AnimatePresence>{opening && <Opening key="opening" got={opening.got} from={opening.from} onReveal={onReveal} onDone={() => setOpening(null)} />}</AnimatePresence>
-    </SwipeSheet>
+    </PanelSheet>
   )
 }
 

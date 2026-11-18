@@ -1,17 +1,13 @@
-/* The daily gift's card (DailyCard.tsx): the title with the streak's flame, today's gift on a stage of light, the week as
-   a road of seven stops, one button and one line. The sheet and its motion: SwipeSheet. Upright one column; sideways the
-   stage and the button side by side, the road under them. Every rule under .daily-card. */
-.daily-card .farm-panel { display: grid; grid-template-areas: 'head' 'stage' 'road' 'act'; gap: 12px; padding-top: 18px; }
-/* Motion presses these (SINK, PRESS): no CSS transition fighting it over their transform */
-.daily-card .btn,
-.daily-card .farm-panel .close { transition: box-shadow 0.1s ease-out, filter 0.15s, outline-offset 0.18s var(--ease-sheet); }
-.daily-card .btn:active:not(:disabled),
-.daily-card .farm-panel .close:active { transform: none; }
+/* The daily gift's card (DailyCard.tsx): today's gift on a stage of light, the week as a road of seven stops, one button
+   and one line. The sheet, its head (the calendar, "Daily gift", the streak's flame, ✕) and its motion are PanelSheet's
+   (src/ui/PanelSheet.tsx): this is what is on it. Upright one column; sideways the stage and the button side by side,
+   the road under them. Every rule under .daily-card. */
+.daily-card .dg-body { display: grid; grid-template-areas: 'stage' 'road' 'act'; gap: 12px; }
+/* Motion presses these (SINK): no CSS transition fighting it over their transform */
+.daily-card .btn { transition: box-shadow 0.1s ease-out, filter 0.15s, outline-offset 0.18s var(--ease-sheet); }
+.daily-card .btn:active:not(:disabled) { transform: none; }
 
-/* the title: the calendar, "Daily gift", the streak, the close */
-.daily-card .dg-head { grid-area: head; display: flex; align-items: center; gap: 10px; margin: 0; min-width: 0; }
-.daily-card .dg-head h2 { flex: 1; min-width: 0; margin: 0; font: 600 25px/1.1 var(--font-display); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.daily-card .dg-head-art { flex: none; width: 48px; height: 48px; margin: -8px 0; }
+/* the streak, a chip in the sheet's head */
 .daily-card .dg-streak {
   flex: none;
   display: inline-flex;
@@ -293,9 +289,7 @@
 
 /* a phone on its side: the stage and the button side by side, the road under them */
 @media (orientation: landscape) and (max-height: 560px) {
-  .daily-card .farm-panel { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: 'head head' 'stage act' 'road road'; gap: 8px 14px; padding-top: calc(10px + env(safe-area-inset-top)); }
-  .daily-card .dg-head h2 { font-size: 22px; }
-  .daily-card .dg-head-art { width: 40px; height: 40px; }
+  .daily-card .dg-body { flex: 1 1 auto; min-height: 0; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; grid-template-areas: 'stage act' 'road road'; gap: 8px 14px; }
   .daily-card .dg-stage { min-height: 0; }
   .daily-card .dg-gift { --gift: 82px; }
   .daily-card .dg-today.big .dg-gift { --gift: 94px; }
