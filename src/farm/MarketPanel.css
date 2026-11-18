@@ -1,6 +1,9 @@
 /* ───────── the supermarket's panels, the contractor's, the upgrade ladders (src/farm/MarketPanel.tsx, ContractorPanel.tsx,
    Ladder.tsx): the farm panels' sheets, rows and chips (styles.css), and only what they lack ───────── */
 
+/* the manager's and your shop's panels (PanelSheet's): their list in its own flow, as a card's is (src/ui/Shell.tsx) */
+.market-panel .market-body { display: block; }
+
 /* a ladder's now → next: two chips that wrap onto two lines on a narrow screen */
 .ladder-say { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; min-width: 0; }
 .ladder-say .effect-arrow { width: 14px; height: 14px; opacity: 0.55; flex: none; }
