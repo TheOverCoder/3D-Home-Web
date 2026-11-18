@@ -8,13 +8,14 @@ import { readingOf, voiceOfLook, type Voice } from '../film/voice'
 import { playerState } from '../lib/playerState'
 import { useSettings } from '../settings'
 import { useHome } from '../store'
-import { TALK, type TalkMoment } from './lines'
+import { TALK, voiceMood, type TalkMoment } from './lines'
 import { freshMemory, mayTalk, nextLine, type TalkWorld } from './rules'
 
 // The game's characters talking (./lines.ts) in the device's own speech voices — the Web Speech API's
 // speechSynthesis, as the films' lines are read (src/film/speak.ts): on every phone and computer, nothing downloaded
-// or recorded. Each character keeps one voice of their own (the agent and the driver the best two for a man, each
-// buyer one by their number) at their own pitch and pace, as loud as the game's sounds. When a line may be said is
+// or recorded. Each character keeps one voice of their own (the game's people, src/data/people.ts, the best ones for a
+// man or a woman, one each; each buyer one by their number) at their own pitch and pace, as loud as the game's sounds,
+// read in the mood of the line's face (./lines.ts, voiceMood). When a line may be said is
 // ./rules.ts; this gives it the game as it is (where you stand, the map, a film or the drive, the sound settings).
 // Silent where there is no English voice; a phone speaks only once a touch has made it (the first touch primes it).
 
@@ -60,6 +61,9 @@ function listen() {
   s.addEventListener?.('voiceschanged', loadVoices)
 }
 
+/** The keys of the fixed characters heard so far: each takes the best voice no other of them has. */
+const fixedKeys = new Set<string>()
+
 /** A number for a key (the same every time). */
 function hash(key: string) {
   let h = 2166136261
@@ -77,7 +81,8 @@ function voiceOf(t: Talker): SpeechSynthesisVoice | null {
   const pool = theirs.length ? theirs : ranked
   let v: SpeechSynthesisVoice | null
   if (t.fixed) {
-    const taken = new Set([...chosen.entries()].filter(([k]) => k === AGENT.key || k === DRIVER.key).map(([, x]) => x))
+    fixedKeys.add(t.key)
+    const taken = new Set([...chosen.entries()].filter(([k]) => fixedKeys.has(k)).map(([, x]) => x))
     v = pool.find((x) => !taken.has(x)) ?? pool[0] ?? null
   } else v = pool.length ? pool[hash(t.key) % pool.length] : null
   chosen.set(t.key, v)
@@ -105,8 +110,8 @@ function worldAt(at: { x: number; z: number }): TalkWorld {
 }
 
 /** A moment of a character's (./lines.ts), at `at` on the farm: one of its lines said out loud if it may be now
- *  (./rules.ts); whether it was. */
-export function talk(moment: TalkMoment, who: Talker, at: { x: number; z: number }, roll = Math.random()): boolean {
+ *  (./rules.ts), of those `hearts` open (a neighbour's friendship); whether it was. */
+export function talk(moment: TalkMoment, who: Talker, at: { x: number; z: number }, hearts = 0, roll = Math.random()): boolean {
   listen()
   const w = worldAt(at)
   if (!mayTalk(moment, w, memory, roll)) return false
@@ -114,8 +119,9 @@ export function talk(moment: TalkMoment, who: Talker, at: { x: number; z: number
   const v = voiceOf(who)
   if (!s || !v || !w.sound) return false
   const row = TALK[moment]
-  const text = nextLine(moment, memory, w.now, Math.random())
-  const read = readingOf(who.voice, row.mood, 1, who.female)
+  const line = nextLine(moment, memory, w.now, Math.random(), hearts)
+  const text = line.say
+  const read = readingOf(who.voice, voiceMood(line.mood), 1, who.female)
   const u = new SpeechSynthesisUtterance(text)
   u.voice = v
   u.lang = v.lang

@@ -1,23 +1,37 @@
 import { useEffect, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
+import { isNeighbour, talkerOf, type NeighbourId } from '../data/people'
 import { TRACTOR } from '../farm/data'
-import { farm, gateX } from '../farm/state'
+import { heartsOf } from '../farm/people/friends'
+import { farm, gateX, type Visitor } from '../farm/state'
 import { tractorPose, type TractorPhase } from '../farm/tractorRoute'
 import { debugSet } from '../lib/debug'
-import { LONG_WAIT, type TalkMoment } from './lines'
+import type { TalkMoment } from './lines'
 import { buyerTalker, DRIVER, heard, talk, talkNow, wireTalk } from './speech'
 
 // The farm's people talking (./lines.ts, ./speech.ts), watched a few times a second: a buyer greets at their place in
-// the line, thanks you when served, says a word when turned away and sighs after a long wait; the man on the tractor
-// says a few words as he loads, drives off and comes back, and a short sentence now and then. Each only maybe, near
-// you, and never sooner than its wait (./rules.ts). Mounted with the farm's map (src/farm/Garden.tsx); the estate
-// agent answers when you talk to him (src/farm/Estate.tsx).
+// the line, thanks you when served and takes a no kindly; a neighbour in the line greets and thanks you in their own
+// voice and words, more of them as their hearts grow; the man on the tractor says a few words as he loads, drives off
+// and comes back, and a short sentence now and then. Each only maybe, near you, and never sooner than its wait
+// (./rules.ts). Mounted with the farm's map (src/farm/Garden.tsx); the estate agent answers when you talk to him
+// (src/farm/Estate.tsx).
+
+/** The neighbour a buyer in line is (none: a stranger). */
+const neighbourOf = (v: Visitor): NeighbourId | null => ('who' in v && isNeighbour(v.who) ? v.who : null)
+
+/** A buyer's moment as they come to their place or go: a neighbour's own words, else a stranger's. */
+function say(v: Visitor, moment: 'arrive' | 'thanks' | 'no') {
+  const who = neighbourOf(v)
+  if (!who) return talk(`buyer-${moment}`, buyerTalker(v), v)
+  // (a neighbour turned away says nothing: no is yours to say)
+  if (moment !== 'no') talk(`${who}-${moment}`, talkerOf(who)!, v, heartsOf(farm.friends[who]?.points ?? 0))
+}
 
 /** How often the farm is looked at for moments (s). */
 const EVERY = 0.4
 
 export function FarmTalk() {
-  const buyers = useRef(new Map<number, { phase: string; since: number; sighed: boolean }>())
+  const buyers = useRef(new Map<number, string>())
   const tractor = useRef<TractorPhase>('home')
   const since = useRef(0)
   useEffect(() => {
@@ -28,24 +42,14 @@ export function FarmTalk() {
     since.current += dt
     if (since.current < EVERY) return
     since.current = 0
-    // the buyers: a moment each as their phase changes, a sigh once after a long wait
+    // the buyers: a moment each as their phase changes
     const seen = buyers.current
     for (const v of farm.visitors) {
       const was = seen.get(v.id)
-      if (!was) {
-        seen.set(v.id, { phase: v.phase, since: farm.clock, sighed: false })
-        continue
-      }
-      if (v.phase !== was.phase) {
-        was.phase = v.phase
-        if (v.phase === 'queued') {
-          was.since = farm.clock
-          talk('buyer-arrive', buyerTalker(v), v)
-        } else if (v.phase === 'leaving' && v.mood !== 'neutral') talk(v.mood === 'happy' ? 'buyer-thanks' : 'buyer-no', buyerTalker(v), v)
-      } else if (v.phase === 'queued' && !was.sighed && farm.clock - was.since >= LONG_WAIT) {
-        was.sighed = true
-        talk('buyer-wait', buyerTalker(v), v)
-      }
+      seen.set(v.id, v.phase)
+      if (!was || v.phase === was) continue
+      if (v.phase === 'queued') say(v, 'arrive')
+      else if (v.phase === 'leaving' && v.mood !== 'neutral') say(v, v.mood === 'happy' ? 'thanks' : 'no')
     }
     for (const id of seen.keys()) if (!farm.visitors.some((v) => v.id === id)) seen.delete(id)
     // the driver: a word as each part of his trip begins (now and then a sentence instead, as he starts loading)
