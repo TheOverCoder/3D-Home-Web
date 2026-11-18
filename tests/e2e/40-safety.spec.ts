@@ -99,6 +99,8 @@ test.describe('safety', () => {
     await game.ready('farm')
     const menu = page.locator('.top-menu-btn')
     await expect(menu).toBeVisible()
+    // (the test before may leave its own toast up a moment: only what this one says is watched)
+    await expect(page.locator('.toast')).toHaveCount(0, { timeout: 15_000 })
     await watchToasts(page)
     await page.evaluate(() => (window as any).__home.guard.fail('corner'))
     await expect(menu).toHaveCount(0)
