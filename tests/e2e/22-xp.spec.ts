@@ -519,15 +519,18 @@ test.describe('levels', () => {
 /** Two boxes overlap (by more than a pixel each way). */
 const overlap = (a: Box, b: Box) => a.x + 1 < b.x + b.width && b.x + 1 < a.x + a.width && a.y + 1 < b.y + b.height && b.y + 1 < a.y + a.height
 
-/** In the page: the boxes of what is shown at the top of the screen and of the touch controls. With `crowded`, a toast
- *  and the first hint are shown first (each time: a toast lasts two seconds), and measured once both stand. */
+/** In the page: the boxes of what is shown at the top of the screen and of the touch controls. With `crowded`, a toast,
+ *  the first hint and the busy card are shown first (each time: a toast lasts two seconds), and measured once all stand. */
 const boxes = (page: Page, crowded = false) =>
   page.evaluate(async (crowded) => {
     if (crowded) {
       const h = (window as any).__home
       h.useHome.getState().showToast('+ 4 lettuces', 'lettuce')
       h.useHome.setState({ hintShown: false })
-      for (let i = 0; i < 100 && !(document.querySelector('.toast') && document.querySelector('.first-hint.touch')); i++) await new Promise((r) => setTimeout(r, 20))
+      // the busy card (src/farm/Busy.tsx) in its own slot, at the column's end
+      h.busy?.show?.()
+      for (let i = 0; i < 100 && !(document.querySelector('.toast') && document.querySelector('.first-hint.touch') && document.querySelector('.busy-card')); i++)
+        await new Promise((r) => setTimeout(r, 20))
     }
     const shown = (sel: string) =>
       Array.from(document.querySelectorAll(sel))
@@ -543,7 +546,7 @@ const boxes = (page: Page, crowded = false) =>
       bar: shown('.xp-bar'),
       compass: shown('.compass'),
       // the rest of the top column (src/ui/TopStack.tsx)
-      column: [...shown('.toast'), ...shown('.first-hint.touch'), ...shown('.level-up-show')],
+      column: [...shown('.toast'), ...shown('.first-hint.touch'), ...shown('.level-up-show'), ...shown('.busy-card')],
       // its slots under the compass's, each with its place in the order (the compass's stands in the dashboard's hole)
       slots: Array.from(document.querySelectorAll<HTMLElement>('.top-stack > .top-slot:not(.top-slot-compass)'))
         .filter((e) => e.getClientRects().length > 0 && e.getBoundingClientRect().height > 0)
@@ -562,6 +565,7 @@ async function layoutProblems(page: Page, show: Box | null, crowded = false) {
   if (crowded) {
     if (!b.column.some((x) => /toast/.test(x.what))) out.push('no toast')
     if (!b.column.some((x) => /first-hint/.test(x.what))) out.push('no first hint')
+    if (!b.column.some((x) => /busy-card/.test(x.what))) out.push('no busy card')
     const top = [...b.chips, ...b.bar, ...b.compass, ...b.corner]
     for (const c of b.column) {
       if (!(c.x >= -1 && c.y >= -1 && c.x + c.width <= b.width + 1 && c.y + c.height <= b.height + 1)) out.push(`${c.what} off the screen`)
@@ -569,7 +573,7 @@ async function layoutProblems(page: Page, show: Box | null, crowded = false) {
       for (const t of b.touch) if (overlap(c, t)) out.push(`${c.what} over ${t.what}`)
     }
     for (let i = 0; i < b.column.length; i++) for (let j = i + 1; j < b.column.length; j++) if (overlap(b.column[i], b.column[j])) out.push(`${b.column[i].what} over ${b.column[j].what}`)
-    // one under another in the column's order: the step, the toast, the level-up, the hint
+    // one under another in the column's order: the step, the toast, the level-up, the hint, the busy card
     const slots = [...b.slots].sort((x, y) => x.order - y.order)
     for (let i = 1; i < slots.length; i++) if (slots[i].top + 1 < slots[i - 1].bottom) out.push(`${slots[i].what} above ${slots[i - 1].what}`)
   }

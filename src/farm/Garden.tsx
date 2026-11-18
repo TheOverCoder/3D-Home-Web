@@ -11,7 +11,7 @@ import { farmFx } from '../fx/fx'
 import { useInteractable } from '../lib/interaction'
 import { playerState } from '../lib/playerState'
 import { boxProject } from '../lib/boxProject'
-import { clock } from '../lib/time'
+import { clock, readyAt, span } from '../lib/time'
 import { material, surface } from '../lib/proceduralTextures'
 import { B } from '../scene/Furnishings'
 import { StaticBatch } from '../scene/House'
@@ -159,6 +159,10 @@ import { Workshop } from './Workshop'
 import { OrderYard } from './OrderYard'
 import { Decor, glowLevel } from './decorScene'
 import { FarmTalk } from '../talk/FarmTalk'
+
+/** When a bed will be ready, in words: a countdown under an hour ("ready in 4:05"), the device's clock past it ("ready
+ *  21:40", "ready tomorrow 07:10": a long crop, set for the night). */
+const readyWords = (seconds: number) => (seconds >= 3600 ? `ready ${readyAt(seconds)}` : `ready in ${clock(seconds)}`)
 
 function signTexture(lines: string[], w = 512, h = 256, bg = '#f3ead8', fg = '#3b2a1c'): CanvasTexture {
   const canvas = document.createElement('canvas')
@@ -430,7 +434,7 @@ function Bed({ index }: { index: number }) {
         if (n > 1) return `${stage === 'ripe' ? 'Harvest' : 'Water'} ${n} beds`
         return stage === 'ripe' ? `Harvest ${count(crop.id, yieldOf(crop.id))}` : `Water the ${crop.plural}`
       }
-      return `${crop.plural[0].toUpperCase()}${crop.plural.slice(1)} · ready in ${clock((crop.growSeconds - b.growth) / eventSpeed('crops'))}`
+      return `${crop.plural[0].toUpperCase()}${crop.plural.slice(1)} · ${readyWords((crop.growSeconds - b.growth) / eventSpeed('crops'))}`
     },
     // the prompt's pictures and numbers: what the press does to every bed in reach, or (growing) how long
     icon: () => {
@@ -474,7 +478,8 @@ function Bed({ index }: { index: number }) {
       } else {
         const b = farm.beds[index]
         const crop = cropById(b.crop!)
-        showToast(`${Math.round(bedProgress(index) * 100)}% grown · ${clock((crop.growSeconds - b.growth) / eventSpeed('crops'))} to go`)
+        const left = (crop.growSeconds - b.growth) / eventSpeed('crops')
+        showToast(`${Math.round(bedProgress(index) * 100)}% grown · ${left >= 3600 ? `${span(left)} to go, ${readyWords(left)}` : `${clock(left)} to go`}`)
       }
     },
     // looked at: a plot to build or a field to buy carries its price tag (it opens a card that asks, with the price

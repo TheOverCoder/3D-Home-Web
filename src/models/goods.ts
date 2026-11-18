@@ -1118,6 +1118,144 @@ function raspberryGood(): Structure<'fruit' | 'leaf'> {
   return posed({ fruit: { shape: merge(core, ...drupes, tip), material: { roughness: 0.32 } }, leaf: { shape: merge(...sepals, leaf), material: leafy } }, [0.15, 0, -1.05])
 }
 
+// The long crops (update-v1/missions/01-loop-economy.md): a sunflower's head, two potatoes, a melon, a cotton boll.
+
+/** A sunflower's head, tilted up to the light: a dome of seeds in their spiral (dark in the middle, browner out to the
+ *  rim) in two rows of golden petals, on a short green stalk with a leaf. */
+function sunflower(): Structure<'head' | 'stalk'> {
+  const R = 0.06
+  const disc = lathe(
+    [
+      [0, -0.012],
+      [0.4 * R, -0.011],
+      [0.85 * R, -0.006],
+      [R, 0.0],
+      [0.92 * R, 0.008],
+      [0.6 * R, 0.014],
+      [0, 0.017],
+    ],
+    { seg: 32, steps: 2 },
+  )
+    .paint((x, _y, z) => mix(rgb(0x3a2412), rgb(0x7a4a1c), smoothstep(0.1 * R, R, Math.hypot(x, z))), 0)
+    .pattern((x, y, z) => {
+      // the seeds in Fermat's spiral: the golden angle between each and the next
+      const r = Math.hypot(x, z) / R
+      const n = (r * r * 300) % 1
+      const a = (Math.atan2(z, x) + Math.PI) / (Math.PI * 2)
+      return y > 0.004 ? 0.5 + 0.5 * Math.cos((a * 21 + n * 13) * Math.PI * 2) * Math.cos(r * 34) : 0
+    }, rgb(0x24150a))
+  const petals: Shape[] = []
+  for (let row = 0; row < 2; row++)
+    for (let k = 0; k < 14; k++) {
+      const a = ((k + row * 0.5) / 14) * Math.PI * 2
+      const at: V3 = [Math.sin(a) * 0.9 * R, -0.002 - row * 0.002, Math.cos(a) * 0.9 * R]
+      petals.push(
+        around(leaflet(0.07 - row * 0.008, 0.036, -0.004 - row * 0.004, 5), -0.12 + row * 0.18, a, at).paint(
+          (x, _y, z) => mix(rgb(0xe8a10f), rgb(0xffd23a), smoothstep(R, 1.9 * R, Math.hypot(x, z))),
+          0,
+        ),
+      )
+    }
+  const back = lathe(
+    [
+      [0, -0.024],
+      [0.35 * R, -0.022],
+      [0.75 * R, -0.014],
+      [0.92 * R, -0.006],
+    ],
+    { seg: 20, steps: 2, caps: [false, true] },
+  ).fill(rgb(0x5b8a34), 0)
+  const stalk = tube(
+    [
+      [0, -0.02, 0],
+      [0.004, -0.055, -0.01],
+      [0.01, -0.09, -0.018],
+    ],
+    [0.0075, 0.007, 0.0065],
+    { seg: 8, steps: 3, caps: [false, true] },
+  ).fill(rgb(0x5f8f38), 0)
+  const leaf = blade({ length: 0.08, width: 0.06, outline: (u) => Math.sin(Math.PI * Math.pow(u, 0.6)) * (1 - 0.2 * u), fold: 0.3, bend: -0.5, segL: 7, segW: 2 })
+    .paint((x, _y, z) => mix(LEAF, LEAF_LIGHT, 0.4 * smoothstep(0.004, 0, Math.abs(x)) + 0.3 * (z / 0.08)), 0)
+    .place([0.004, -0.06, -0.012], [0.2, 2.2, 0])
+  return posed({ head: { shape: merge(disc, ...petals, back), material: { roughness: 0.75 } }, stalk: { shape: merge(stalk, leaf), material: leafy } }, [0.9, 0.25, 0])
+}
+
+/** Two potatoes, one lying and one leaning on it: lumpy, earth-brown, with their eyes. */
+function potato(): Structure<'potatoes'> {
+  const one = (seed: number, s: V3) =>
+    blob(0.04, 3, (x, y, z) => 0.07 * (fbm3(x * 30 + seed, y * 30, z * 30, 3) - 0.5))
+      .place([0, 0, 0], [0, 0, 0], s)
+      .paint((x, y, z) => mix(rgb(0x9a6a3a), rgb(0xd3a76a), smoothstep(0.3, 0.75, fbm3(x * 70 + seed, y * 70, z * 70, 3))), 0)
+      .pattern((x, y, z) => smoothstep(0.78, 0.86, noise3(x * 55 + seed, y * 55, z * 55, 3)), rgb(0x6b4422))
+  const a = one(1, [1.35, 0.8, 1]).place([0, 0.032, 0], [0, 0.4, 0])
+  const b = one(7, [1.1, 0.78, 0.9]).place([0.045, 0.05, 0.03], [0.5, -0.7, 0.3])
+  return grounded({ potatoes: { shape: merge(a, b), material: { roughness: 0.9 } } })
+}
+
+/** A melon: round, its ribs faint, a pale net over its green-gold skin, the stub of its stalk on top with a curl. */
+function melon(): Structure<'melon' | 'stalk'> {
+  const R = 0.1
+  const body = lathe(
+    [
+      [0, -0.95 * R],
+      [0.45 * R, -0.88 * R],
+      [0.8 * R, -0.62 * R],
+      [R, -0.2 * R],
+      [R, 0.2 * R],
+      [0.8 * R, 0.62 * R],
+      [0.45 * R, 0.88 * R],
+      [0, 0.95 * R],
+    ],
+    { seg: 36, steps: 2, shape: (a) => 1 - 0.03 * Math.pow(Math.abs(Math.sin(a * 5)), 0.5) },
+  )
+    .paint((x, y, z) => mix(rgb(0x6f9a3c), rgb(0xa9c45a), 0.5 + 0.4 * smoothstep(-R, R, y) + 0.1 * noise3(x * 60, y * 60, z * 60, 2)), 0)
+    .pattern((x, _y, z) => smoothstep(0.93, 0.985, Math.abs(Math.cos(Math.atan2(z, x) * 5))), rgb(0xe6e8b0))
+  const stalk = tube(
+    [
+      [0, 0.9 * R, 0],
+      [0.004, 1.08 * R, 0.002],
+      [0.012, 1.18 * R, 0.006],
+    ],
+    [0.007, 0.0055, 0.005],
+    { seg: 7, steps: 2, caps: [false, true] },
+  ).fill(rgb(0x6f8a3a), 0)
+  const curl: V3[] = []
+  for (let j = 0; j <= 18; j++) {
+    const t = j / 18
+    curl.push([0.012 + 0.04 * t + 0.008 * Math.cos(t * Math.PI * 4), 1.17 * R + 0.008 * Math.sin(t * Math.PI * 4), 0.006 + 0.008 * Math.sin(t * Math.PI * 4)])
+  }
+  const tendril = tube(curl, 0.0018, { seg: 5, steps: 1, caps: [false, false], round: [0, 0.0015] }).fill(rgb(0x7aa64a), 0)
+  return grounded({ melon: { shape: body, material: { roughness: 0.55 } }, stalk: { shape: merge(stalk, tendril), material: { roughness: 0.7 } } })
+}
+
+/** A cotton boll, open: four soft white locks bursting from a star of dry brown sepals, on a short stalk. */
+function cottonBoll(): Structure<'fluff' | 'husk'> {
+  const locks: Shape[] = []
+  for (let k = 0; k < 4; k++) {
+    const a = (k / 4) * Math.PI * 2 + 0.3
+    locks.push(
+      blob(0.026, 3, (x, y, z) => 0.14 * (fbm3(x * 40 + k, y * 40, z * 40, 3) - 0.5))
+        .place([Math.cos(a) * 0.02, 0.05, Math.sin(a) * 0.02], [0, 0, 0], [1, 0.9, 1])
+        .paint((x, y, z) => mix(rgb(0xe9e4d6), rgb(0xffffff), smoothstep(0.3, 0.7, fbm3(x * 60, y * 60, z * 60, 7))), 0),
+    )
+  }
+  locks.push(blob(0.022, 2).place([0, 0.072, 0]).fill(rgb(0xfbf9f3), 0))
+  const husk: Shape[] = []
+  for (let k = 0; k < 5; k++) husk.push(around(leaflet(0.042, 0.028, -0.012, 5).fill(rgb(0x7a5530), 0), -0.35, (k / 5) * Math.PI * 2, [0, 0.03, 0]))
+  husk.push(
+    tube(
+      [
+        [0, 0.03, 0],
+        [0.002, 0.012, 0.002],
+        [0.006, 0.0, 0.004],
+      ],
+      [0.006, 0.005, 0.0045],
+      { seg: 6, steps: 2, caps: [false, true] },
+    ).fill(rgb(0x6b4a2a), 0),
+  )
+  return grounded({ fluff: { shape: merge(...locks), material: { roughness: 1 } }, husk: { shape: merge(...husk), material: { roughness: 0.85 } } })
+}
+
 /** Every good with a model: the farm's produce, and the fruit of the fruit trees and bushes. */
 export type GoodsId = ProduceId | FruitId
 
@@ -1153,4 +1291,8 @@ export const GOODS: Record<GoodsId, () => Structure> = {
   cherry: cherryGood,
   blueberry: blueberryGood,
   raspberry: raspberryGood,
+  sunflower,
+  potato,
+  melon,
+  cotton: cottonBoll,
 }

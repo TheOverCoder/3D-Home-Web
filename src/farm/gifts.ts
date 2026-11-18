@@ -1,7 +1,7 @@
 // The level's gifts (the level's card, src/farm/LevelCard.tsx): a box at every quarter of each level's bar — at 25 %,
-// 50 %, 75 % and 100 % of the XP from level L to level L + 1 — from level BOXES_FROM on, and one box half way along the
-// bar of each level before it (the first levels come every minute or two: a box at each quarter was always almost
-// there, update-v1/JOURNEY.md fix 10; half way, it comes between two levels' own gifts, never with one). Each is a small prize the player opens with a tap, rolled on
+// 50 %, 75 % and 100 % of the XP from level L to level L + 1 — from level BOXES_FROM on, and one box on the full bar of
+// each level before it, coming with the next level (the first levels come every minute or two: a box at each quarter was
+// always almost there, update-v1/JOURNEY.md fix 10). Each is a small prize the player opens with a tap, rolled on
 // the farm's dice as it opens: coins sized to the level, a building material, or a few of a good the farm makes. A box
 // reached waits until it is opened, from any level (none is ever lost, none is given twice). Apart from them, a level
 // reached by play brings by itself a small gift of its own, a few of a building material (`rollArrival`); its coins
@@ -20,8 +20,9 @@ export { prizeWords } from './prize'
 export const PER_LEVEL = 4
 /** [JOURNEY.md fix 10] From this level on, a box at each quarter; before it, one a level, at ONE_AT. */
 export const BOXES_FROM = 5
-/** The quarter of a level before BOXES_FROM that has its one box: half way along its bar (0 is 25 %, 3 is 100 %). */
-export const ONE_AT = 1
+/** The quarter of a level before BOXES_FROM that has its one box: its full bar, with the next level (0 is 25 %, 3 is
+ *  100 %; held by the sim's pace: the half bar's leaves the early farm too poor for PACE.income and JOURNEY.full). */
+export const ONE_AT = 3
 /** Every box there is: the last is level LEVELS.max − 1's at 100 %, reached with the top level (whose bar is full). */
 export const BOX_COUNT = (LEVELS.max - 1) * PER_LEVEL
 /** The odds of what a box holds: coins, else a building material, else a few of a good the farm makes (a material

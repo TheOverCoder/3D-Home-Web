@@ -10,8 +10,9 @@ import { gainItems, room, store, surpriseWords } from './stores'
 // The beds: what each is doing, planting, watering, harvesting (a press does every like bed in reach), building one,
 // setting what it always grows, and their growing as the farm runs.
 
-/** The water a crop's seeds go in with, and a watering gives: this share of its growing time. */
-export const fullWater = (crop: CropId) => cropById(crop).growSeconds * WATER_SHARE
+/** The water a crop's seeds go in with, and a watering gives: its share of its growing time (WATER_SHARE, or the
+ *  crop's own `water`: a long crop's lasts it all, so it needs no watering after its seeds' soak). */
+export const fullWater = (crop: CropId) => cropById(crop).growSeconds * (cropById(crop).water ?? WATER_SHARE)
 
 export type BedStage = 'unbought' | 'locked' | 'empty' | 'thirsty' | 'growing' | 'ripe'
 

@@ -4,6 +4,7 @@ import { ALBUM, ALBUM_TILES, PAGE_IDS, TILE_IDS, albumView, freshAlbum, isPage, 
 import { CROPS, ITEMS, PRODUCE } from './data'
 import { DECOR_KINDS, FRUIT_KINDS } from './decor'
 import { GARMENTS, albumGarment } from './outfit'
+import { ALMOST } from './road'
 import { SEASON_DAYS } from './season'
 import { farm, resetFarm } from './state'
 
@@ -94,11 +95,12 @@ describe('what the album shows', () => {
         .some((t) => t.state === 'new'),
     ).toBe(false)
     expect(materials.garment).toBe(albumGarment('materials'))
-    // almost done in its last stretch (src/farm/road.ts, ALMOST): twelve of the fourteen grown
+    // almost done in its last stretch (src/farm/road.ts, ALMOST): the grown page, one tile short of it and at it
     const grown = ALBUM.find((p) => p.id === 'grown')!.tiles
-    for (const t of grown.slice(0, 11)) farm.got[t.id.split(':')[1] as keyof typeof farm.got] = 1
+    const from = Math.ceil(ALMOST * grown.length - 1e-9)
+    for (const t of grown.slice(0, from - 1)) farm.got[t.id.split(':')[1] as keyof typeof farm.got] = 1
     expect(albumView(farm, []).pages.find((p) => p.id === 'grown')!.near?.almost).toBe(false)
-    farm.got[grown[11].id.split(':')[1] as keyof typeof farm.got] = 1
+    farm.got[grown[from - 1].id.split(':')[1] as keyof typeof farm.got] = 1
     expect(albumView(farm, []).pages.find((p) => p.id === 'grown')!.near?.almost).toBe(true)
   })
 

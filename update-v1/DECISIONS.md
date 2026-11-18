@@ -96,3 +96,8 @@ The orchestrator runs the plan to the end without asking:
   sun draws without them). The farm's sun map is byte for byte the same with them; 16 and 27 stay equal.
 - **Phase 2 agents start as their waits merge** (RUN.md §1's rule within a phase), not all at phase 1's end: 10b and
   08c (waits 10a/11a and 08b/11a, all in) start beside phase 1's last three, with CI green on the tip.
+- **01a's seven files outside its row accepted:** each was forced by a type or a test on the new crops (`Plants.tsx`'s
+  layout rows, `season.ts`'s season per crop, the goods' weights, two computer view tests, the 24 h away test) or asked
+  for (`setCalendarStep` in `core.ts`, 09a's request).
+- **The long game runs fast after 01a:** the daily player reaches level 43–45 by day 14 (JOURNEY expected about 29).
+  01b tunes the waves' numbers toward JOURNEY's day-14 level, with fruit trees in the sim's `forSale`; P3-play holds it.

@@ -70,17 +70,17 @@ describe('the boxes on a level’s bar', () => {
     expect([b(5, 2), b(6, 2), b(6, 3)].some((k) => isOpen(g, k))).toBe(false)
   })
 
-  it(`one box a level before level ${BOXES_FROM}, half way along its bar; four from it on`, () => {
+  it(`one box a level before level ${BOXES_FROM}, on its full bar; four from it on`, () => {
     expect(quartersOf(1)).toEqual([ONE_AT])
-    expect(ONE_AT).toBe(1)
-    expect(quartersOf(BOXES_FROM - 1)).toEqual([1])
+    expect(ONE_AT).toBe(3)
+    expect(quartersOf(BOXES_FROM - 1)).toEqual([3])
     expect(quartersOf(BOXES_FROM)).toEqual([0, 1, 2, 3])
-    expect(Array.from({ length: boxAt(BOXES_FROM, 0) }, (_, k) => k).filter(isBox)).toEqual([1, 5, 9, 13])
+    expect(Array.from({ length: boxAt(BOXES_FROM, 0) }, (_, k) => k).filter(isBox)).toEqual([3, 7, 11, 15])
     expect([-1, 0.5, NaN].some(isBox)).toBe(false)
     // a place with no box counts as opened, and never waits
     const g: Gifts = { open: 0, also: [], gave: [], came: [], seen: 3 }
-    expect([0, 2, 3, 4].every((k) => isOpen(g, k))).toBe(true)
-    expect(waitingBoxes(g, xpAt(3))).toEqual([1, 5])
+    expect([0, 1, 2, 4].every((k) => isOpen(g, k))).toBe(true)
+    expect(waitingBoxes(g, xpAt(3))).toEqual([3, 7])
   })
 
   it('settled: the boxes opened in turn move the count on (past the places with no box on the way), those out of turn stay in order, each once', () => {
@@ -90,10 +90,10 @@ describe('the boxes on a level’s bar', () => {
     expect(settle(b(5, 0), [b(5, 0), b(5, 1), b(5, 2)])).toEqual({ open: b(5, 3), also: [] })
     expect(settle(b(6, 0), [b(7, 1), b(6, 3)])).toEqual({ open: b(6, 0), also: [b(6, 3), b(7, 1)] })
     // the first levels: from nothing opened to the first box, and on past the places with no box to the next opened
-    expect(settle(0, [1])).toEqual({ open: 2, also: [] })
-    expect(settle(0, [5])).toEqual({ open: 1, also: [5] })
-    expect(settle(2, [5])).toEqual({ open: 6, also: [] })
-    expect(settle(2, [])).toEqual({ open: 2, also: [] })
+    expect(settle(0, [3])).toEqual({ open: 4, also: [] })
+    expect(settle(0, [7])).toEqual({ open: 3, also: [7] })
+    expect(settle(4, [7])).toEqual({ open: 8, also: [] })
+    expect(settle(4, [])).toEqual({ open: 4, also: [] })
   })
 })
 

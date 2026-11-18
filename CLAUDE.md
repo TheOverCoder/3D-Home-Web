@@ -238,7 +238,7 @@ The README has the overview; `tests/README.md` what each test guards.
 - 500 levels (`LEVELS.max`), each taking longer than the one before. Each brings coins and a small gift (a building
   material), both coming in by themselves as it is reached (`arrive()`, paid exactly once: `xp.paid`); every fifth
   one a garment. Each level from `BOXES_FROM` (5) has four gift boxes, one at every 25% of its bar, and each before it
-  one, half way (`src/farm/gifts.ts`, `farm.gifts`; JOURNEY.md fix 10): opened with a tap in the level's card (the level chip opens it), rolled on the farm's dice, never
+  one, on its full bar (`src/farm/gifts.ts`, `farm.gifts`; JOURNEY.md fix 10): opened with a tap in the level's card (the level chip opens it), rolled on the farm's dice, never
   given twice, never XP; one not opened waits (the chip glows with how many), and "Open N gifts" opens them all.
 - The player's clothes are the people engine's (its shirt, trousers, straw hat, cap, beanie) in a table of garments,
   each with the level it comes with (`GARMENTS`: two of each at level 1, then one every `GARMENT_EVERY` levels); what
@@ -259,7 +259,9 @@ The README has the overview; `tests/README.md` what each test guards.
 - What is collected goes in only while there is room (`store` in `state.ts`), and nothing is lost: what does not fit
   stays where it was (on the animal, in the bed, in the machine) and its offer turns into a status (`full` on the icon);
   goods coming back from an order and surprises always go in, past full. A new source of goods follows the same rule.
-- Time away (the page closed or hidden: `cameBack` in `state.ts`) runs the farm on in steps for up to three hours and
+  A full building never stands in the way: *Make room* (`makeRoom`, `src/farm/state/stores.ts`; on the welcome back's
+  full row) sells at fair price, in one press, the surplus no buyer or order wants, just enough for what waits.
+- Time away (the page closed or hidden: `cameBack` in `state.ts`) runs the farm on in steps for up to a day (`AWAY_MOST`) and
   tells what happened (`AwayPanel.tsx`, from what was ready before and after): a new producer or machine is in it by
   being a row. A goal is a row in `GOALS` (`src/farm/goals.ts`) whose `count` says what it counts as data
   (`src/farm/measure.ts`: goods got, a stat, what a machine made…); a new good the farm makes is counted in `got` where

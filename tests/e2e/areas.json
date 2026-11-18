@@ -69,9 +69,10 @@
     { "name": "what people say", "specs": ["23-market", "24-day", "30-house-for-sale"], "paths": ["src/talk/**"] },
     {
       "name": "the top of the screen",
-      "specs": ["14-hud", "22-xp", "37-first-steps", "39-panels"],
+      "specs": ["14-hud", "22-xp", "37-first-steps", "39-panels", "42-busy"],
       "paths": ["src/ui/{TopStack,HudMode,Compass,PhotoButton,Reveal}.{tsx,css}", "src/farm/{TopDash,XpChip,DayChip}.{tsx,css}", "src/farm/Xp.css"]
     },
+    { "name": "the busy card", "specs": ["42-busy", "22-xp"], "paths": ["src/farm/Busy.{tsx,css}", "src/farm/appointments.ts"] },
     { "name": "the action button", "specs": ["02-interactions", "10-smart-farm", "25-button"], "paths": ["src/ui/{Hud,ActionGlyph,ThingTag}.{tsx,css}", "src/lib/interaction.ts"] },
     { "name": "touch", "specs": ["07-phone"], "paths": ["src/ui/TouchControls.tsx", "src/lib/{stick,gestures}.ts"] },
     {
