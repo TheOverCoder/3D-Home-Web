@@ -94,3 +94,5 @@ The orchestrator runs the plan to the end without asking:
 - **11a's payer accepted:** `src/lib/batch.ts` (`sunAsOne`), its test and one line of `src/scene/House.tsx`'s
   `StaticBatch`, outside 11a's row and owned by no agent, pay for the bigger farm sun box (the phone sizes reached 250
   sun draws without them). The farm's sun map is byte for byte the same with them; 16 and 27 stay equal.
+- **Phase 2 agents start as their waits merge** (RUN.md §1's rule within a phase), not all at phase 1's end: 10b and
+  08c (waits 10a/11a and 08b/11a, all in) start beside phase 1's last three, with CI green on the tip.
