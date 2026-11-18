@@ -98,6 +98,9 @@ describe('the first steps', () => {
       expect(art(`farmer-${mood}` as const), `the face for ${mood} (node scripts/render-farmer-faces.mjs)`).toBeTruthy()
       expect(MOOD_MOVES[mood], `how he moves when ${mood}`).toBeDefined()
     }
+    // "Skip the tips?" is asked kindly: a nod, never a plea to stay (no face pleads)
+    expect(MOMENT_MOODS.ask).toBe('encouraging')
+    expect(FARMER_MOODS as readonly string[]).not.toContain('pleading')
     // a moment wins over the line he is on
     expect(moodFor(FIRST_STEPS[0], null)).toBe(FIRST_STEPS[0].mood)
     expect(moodFor(FIRST_STEPS[0], 'ask')).toBe(MOMENT_MOODS.ask)

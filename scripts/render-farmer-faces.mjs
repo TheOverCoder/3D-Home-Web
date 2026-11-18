@@ -26,7 +26,6 @@ const FACES = {
   surprised: 'Face with open mouth',
   laughing: 'Grinning squinting face',
   winking: 'Winking face',
-  pleading: 'Pleading face',
   sighing: 'Face exhaling',
 }
 
