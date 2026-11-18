@@ -1,53 +1,24 @@
-/* The order board (./OrdersBoard.tsx): a sheet holding a board of dark wood, the orders planks nailed to it. Its woods
-   are mixed from the game's own tokens (the edge's brown, the sun, the paper), never new colours. Moved by Motion (in,
-   out, a swipe of its head), so the game's CSS animations of the panel are off here. Upright a sheet at the bottom
-   (the planks one under another), sideways on the right (the planks in a row that slides), on a tablet or a computer
-   in the middle (two planks side by side). */
+/* The order board (./OrdersBoard.tsx): a board of dark wood on the one sheet (src/ui/PanelSheet.tsx: its frame, its
+   head and its motion), the orders planks nailed to it. Its woods are mixed from the game's own tokens (the edge's
+   brown, the sun, the paper), never new colours. Upright the sheet at the bottom (the planks one under another),
+   sideways on the right (the planks in a row that slides), on a tablet or a computer in the middle (two planks side by
+   side). */
 .ob-root {
   --board: color-mix(in oklab, var(--edge) 78%, var(--ink));
   --board-lip: color-mix(in oklab, var(--edge) 45%, var(--ink));
   --plank: color-mix(in oklab, var(--edge-soft) 72%, var(--sun));
   --plank-lip: color-mix(in oklab, var(--edge) 85%, var(--ink));
   --carve: color-mix(in oklab, var(--ink) 88%, var(--edge));
-  position: fixed;
-  inset: 0;
-  z-index: 42;
-  display: grid;
-  overflow: hidden;
 }
-.ob-shade { position: absolute; inset: 0; background: rgba(40, 24, 10, 0.4); }
-.ob-sheet.farm-panel { position: relative; z-index: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; animation: none; outline: none; }
-.ob-sheet img { -webkit-user-drag: none; -webkit-touch-callout: none; user-select: none; }
-.ob-bottom { place-items: end center; }
-.ob-bottom .ob-sheet { width: 100%; max-height: 92dvh; padding: 16px 14px calc(14px + env(safe-area-inset-bottom)); border-radius: var(--r-sheet) var(--r-sheet) 0 0; border-bottom: 0; }
-.ob-right { place-items: stretch end; }
-.ob-right .ob-sheet {
-  width: min(600px, 70vw);
-  height: 100dvh;
-  max-height: none;
-  padding: calc(10px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) 22px;
-  border-radius: var(--r-sheet) 0 0 var(--r-sheet);
-  border-right: 0;
-}
-.ob-middle { place-items: center; padding: 16px; }
-.ob-middle .ob-sheet { width: min(660px, 100%); max-height: min(820px, calc(100dvh - 32px)); padding: 16px; border-radius: var(--r-sheet); }
+/* the sheet's body does not scroll: the board scrolls by itself (as the office's page does), filling it */
+.ob-root .ps-body { overflow: hidden; }
 /* Motion moves the buttons (a press sinks them): no CSS transition fighting it over their transform */
-.ob-sheet .farm-confirm .btn,
-.ob-sheet .close { transition: box-shadow 0.1s ease-out, filter 0.15s; }
-.ob-sheet .close:active { transform: none; }
+.ob-root .farm-confirm .btn { transition: box-shadow 0.1s ease-out, filter 0.15s; }
 
-/* the head: the picture, the title, the two tabs and the close; swiped, it takes the sheet away */
-.ob-sheet .ob-head { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; margin: 0; touch-action: none; }
-.ob-grab { position: absolute; top: -10px; left: 50%; width: 40px; height: 5px; margin-left: -20px; border-radius: 3px; background: var(--paper-3); pointer-events: none; }
-.ob-middle .ob-grab { display: none; }
-.ob-head-art { width: 36px; height: 36px; flex: none; }
-.ob-sheet .ob-head h2 { margin: 0; font: 600 25px/1.1 var(--font-display); color: var(--ink); }
-.ob-head .close { order: 1; margin-inline-start: auto; }
-/* upright the tabs take a row of their own under the title */
-.ob-head .ob-tablist { order: 2; flex: 1 0 100%; margin-top: 4px; }
+/* the head's tabs: under the title upright, across what the title leaves */
+.ob-root .mp-sub { display: block; }
 
 /* the tabs: Orders with how many places are taken and a green count of those ready to send; Office */
-.ob-tabs { display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 0; }
 .ob-tablist { display: grid; grid-template-columns: 1fr 1fr; padding: 3px; border-radius: 999px; background: var(--paper-2); }
 .ob-tab {
   position: relative;
@@ -278,8 +249,8 @@
 .ob-purse { display: flex; align-items: center; gap: 8px; margin: 0; padding: 4px 4px 2px; font: 700 15px/1.2 var(--font-text); color: var(--ink-2); }
 .ob-purse .art { width: 24px; height: 24px; }
 .ob-purse b { color: var(--ink); font-size: 17px; font-variant-numeric: tabular-nums; }
-.ob-sheet .ob-up { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 20px; background: var(--paper-2); }
-.ob-sheet .ob-up .art { width: 44px; height: 44px; }
+.ob-root .ob-up { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 20px; background: var(--paper-2); }
+.ob-root .ob-up .art { width: 44px; height: 44px; }
 .ob-up-text { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; min-width: 0; }
 .ob-up-text > b { font: 600 17px/1.2 var(--font-display); }
 .ob-up-line { display: flex; flex-wrap: wrap; gap: 4px; }
@@ -287,12 +258,12 @@
 .ob-up .tag.effect { perspective: 200px; }
 .ob-up .tag.effect > span { display: inline-block; }
 .ob-up .tag svg { width: 14px; height: 14px; }
-.ob-sheet .ob-up .ob-up-buy { min-height: 44px; min-width: 80px; }
+.ob-root .ob-up .ob-up-buy { min-height: 44px; min-width: 80px; }
 .ob-up-done { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--leaf); color: #fff; }
 .ob-up-done svg { width: 20px; height: 20px; }
 
 /* the card that asks before an upgrade is bought: over the sheet, in its middle */
-.ob-ask-scrim { position: absolute; inset: 0; z-index: 6; display: grid; place-items: center; padding: 16px; border-radius: inherit; background: rgba(40, 24, 10, 0.32); }
+.ob-ask-scrim { position: absolute; inset: 0; z-index: 6; display: grid; place-items: center; padding: 16px; background: rgba(40, 24, 10, 0.32); }
 .ob-ask { display: flex; flex-direction: column; align-items: center; gap: 8px; width: min(320px, 100%); padding: 16px; border-radius: 24px; text-align: center; }
 .ob-ask-art { width: 56px; height: 56px; }
 .ob-ask h3 { margin: 0; font: 600 21px/1.1 var(--font-display); }
@@ -303,7 +274,7 @@
 .ob-ask .farm-confirm > * { flex: 1; }
 .ob-ask .farm-confirm .farm-buy { min-width: 0; }
 
-/* the goods on their way into an order */
+/* the goods on their way into an order (beside the sheet, over it) */
 .ob-flights { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
 .ob-flights img { position: absolute; left: 0; top: 0; width: 36px; height: 36px; filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.25)); }
 
@@ -326,13 +297,9 @@
 
 /* a phone on its side: the tabs beside the title, the planks in a row that slides (three fit); a long order's goods
    scroll inside its plank, its press always in view */
-.ob-right .ob-tabs { gap: 8px; }
-.ob-right .ob-head { flex-wrap: nowrap; gap: 6px; }
-.ob-right .ob-grab { top: 50%; left: -14px; width: 5px; height: 40px; margin: -20px 0 0; }
-.ob-right .ob-head-art { width: 30px; height: 30px; }
-.ob-right.ob-root .ob-head h2 { font-size: 22px; }
-.ob-right .ob-head .ob-tablist { order: 0; flex: 1 1 200px; max-width: 230px; margin: 0 0 0 auto; }
-.ob-right .ob-head .close { margin-inline-start: 0; }
+/* sideways the tabs stand beside the title, so the planks keep the height */
+.ob-right .mp-head-text { display: flex; align-items: center; gap: 8px; }
+.ob-right .mp-sub { flex: 1 1 200px; max-width: 230px; min-height: 0; margin: 0 0 0 auto; }
 .ob-right .ob-tab { font-size: 16px; gap: 4px; }
 .ob-right .ob-tab-n { display: none; }
 .ob-right .ob-board { overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; }
