@@ -12,6 +12,7 @@ import { needsMet } from '../tools'
 import { bump, farm, isSellable, putBack, random, save, steadyLook, toast, type At, type Person, type Place, type Walking } from './core'
 import { gainXp } from './levels'
 import { ladderMaxed, ladderNextPrice } from './ladders'
+import { rewarded } from './rewards'
 import { toolBought } from './producers'
 import { AT_CONTRACTOR, contractorDay, contractorHere, forgetContractorWalk } from './contractor'
 import { setLastPhase } from './day'
@@ -50,6 +51,7 @@ export function sellToManager(item: ProduceId): number {
   const qty = farm.inv[item] ?? 0
   const coins = sellManager(item)
   if (!coins) return 0
+  rewarded('sale', [{ coins }], AT_MANAGER)
   coinsFx(AT_MANAGER.x, AT_MANAGER.z, coins)
   toast(`+ ${coins} coins · ${count(item, qty)}`, item)
   farmSound('coins')
@@ -69,6 +71,7 @@ export function sellAllToManager(): number {
     coins += c
   }
   if (!coins) return 0
+  rewarded('sale', [{ coins }], AT_MANAGER)
   coinsFx(AT_MANAGER.x, AT_MANAGER.z, coins)
   toast(`+ ${coins} coins · ${goods} ${goods === 1 ? 'good' : 'goods'} to the manager`, 'coin')
   farmSound('coins')
@@ -215,6 +218,7 @@ export function takeTill(): number {
   farm.stats.earned += coins
   farm.market.till = { coins: 0, goods: 0 }
   gainXp('sale', coins, AT_TILL)
+  rewarded('till', [{ coins }], AT_TILL)
   coinsFx(AT_TILL.x, AT_TILL.z, coins)
   toast(`+ ${coins} coins from the till`, 'coin')
   farmSound('till')

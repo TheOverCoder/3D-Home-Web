@@ -18,7 +18,6 @@ export const MOOD_MOVES = {
   proud: HOP,
   excited: HOP,
   curious: TILT,
-  pleading: TILT,
   winking: TILT,
   encouraging: NOD,
   surprised: SQUASH,

@@ -48,7 +48,7 @@ import { FIRST_STEPS } from './firstSteps'
 import { QUEUE, machineLevel } from './machineView'
 import { garmentById, garmentsAt } from './outfit'
 import { sanitizeLook } from '../models/look'
-import { arrivalSeconds, claimDaily, farm, gateX, giftsWaiting, inLine, placesInLine, tick } from './state'
+import { arrivalSeconds, calendarDay, claimDaily, farm, gateX, giftsWaiting, inLine, placesInLine, tick } from './state'
 import { tripSeconds } from './tractorRoute'
 import { OLD_SAVE, OLD_SAVE_2, playedSave, savedNow, seeded, startFrom } from './testSaves'
 
@@ -225,6 +225,8 @@ function free(base: Base, path: Key[], names: string[]): (name: string) => boole
   if (base.old && /^(stats|got)(\.|$)/.test(at)) coupled.push(/^goals(\.|$)/)
   // and its XP starts from what it did (src/farm/xp.ts, seedXp), and so what the wardrobe has
   if (base.old && /^stats(\.|$)/.test(at)) coupled.push(/^(xp|outfit|gifts)(\.|$)/)
+  // and its days played start from its daily gift's streak and the day it last claimed one
+  if (base.old && /^daily(\.|$)/.test(at)) coupled.push(/^played$/)
   return (n) => touched.includes(n) || coupled.some((r) => r.test(n))
 }
 
@@ -367,6 +369,9 @@ function farmProblems(): string[] {
   const day = (v: unknown) => Number.isInteger(v) && (v as number) >= -1
   bad('daily', sameKeys(dl, ['last', 'streak', 'offered', 'week']) && day(dl.last) && day(dl.offered) && isCount(dl.streak) && (dl.last >= 0 || dl.streak === 0))
   bad('daily.week', dl.week.length <= (dl.streak ? ((dl.streak - 1) % 7) + 1 : 0) && dl.week.every((d) => Array.isArray(d) && d.length <= 3 && d.every(isPrize)))
+  // days played: a count, and the day last played (or none), never past today
+  const pl = farm.played
+  bad('played', sameKeys(pl, ['days', 'last']) && isCount(pl.days) && Number.isInteger(pl.last) && pl.last >= -1 && pl.last <= calendarDay())
   // the ladders: a step count each, to its top; the shop's own none until the shop is yours; a tool's upgrades none
   // without the tool
   const l = farm.ladders

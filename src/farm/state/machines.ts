@@ -7,6 +7,7 @@ import { toWorld } from '../layout'
 import { recipeUnlock } from '../unlocks'
 import { bump, eventSpeed, farm, isUnlocked, lockField, lockOf, machineLock, putBack, save, toast } from './core'
 import { gainXp } from './levels'
+import { rewarded } from './rewards'
 import { room, store } from './stores'
 
 // The machines (MACHINES: the mill, the loom, the oven) and their queues of jobs.
@@ -156,6 +157,11 @@ export function collectMachine(id: MachineId) {
   for (const g of goods) farm.got[g.item] += g.count
   const at = machineAt(id)
   gainXp('make', taken.length, at, boostOf(m).xp)
+  rewarded(
+    'made',
+    goods.map((g) => ({ item: g.item, n: g.count })),
+    at,
+  )
   machineSound(id, 'harvest')
   farmFx('harvest', at.x, at.y, at.z, { good: goods[0].item })
   const full = m.done ? recipeOf(id, m.jobs[0]) : undefined

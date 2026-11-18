@@ -5,6 +5,7 @@ import { playerState } from '../lib/playerState'
 import { useHome } from '../store'
 import { art, type ArtId } from '../ui/art'
 import { ItemPic } from '../ui/ItemPic'
+import { registerCard } from '../ui/cardQueue'
 import { Coins, Shell } from '../ui/Sheet'
 import { Clock, NavigationArrow } from '../ui/glyphs'
 import { STORES, count, produceById } from './data'
@@ -37,19 +38,18 @@ export function awayText(seconds: number) {
   return `${Math.round(h / 24)} days`
 }
 
-/** Opens the card once the game is being played and nothing else is open. */
+/** The welcome back on the card queue (src/ui/cardQueue.ts): due while a time away has something to tell, it is the
+ *  first card of the visit its return began, a beat after the game is free. */
 export function AwayWatcher() {
-  const rev = useFarm((s) => s.rev)
-  const phase = useHome((s) => s.phase)
-  const panel = useHome((s) => s.panel)
-  const editing = useHome((s) => s.editing)
-  const decorating = useHome((s) => s.decorating)
-  const screen = useHome((s) => s.screen)
-  const settingsOpen = useHome((s) => s.settingsOpen)
-  useEffect(() => {
-    if (phase !== 'playing' || panel || editing || decorating || screen || settingsOpen || !awaySummary()) return
-    useHome.getState().openPanel({ kind: 'away' })
-  }, [rev, phase, panel, editing, decorating, screen, settingsOpen])
+  useEffect(
+    () =>
+      registerCard('away', {
+        due: () => awaySummary() !== null,
+        open: () => useHome.getState().openPanel({ kind: 'away' }),
+        showing: () => useHome.getState().panel?.kind === 'away',
+      }),
+    [],
+  )
   return null
 }
 

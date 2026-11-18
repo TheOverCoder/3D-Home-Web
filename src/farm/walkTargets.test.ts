@@ -5,7 +5,7 @@ import { playerState } from '../lib/playerState'
 import { BEDS } from './data'
 import { FIRST_STEPS } from './firstSteps'
 import { bedSpot, farm, resetFarm } from './state'
-import { stepTarget } from './walkTargets'
+import { walkTarget } from './walkTargets'
 
 // Where a step's tap walks you (src/farm/walkTargets.ts): its interactable while it is there; where its good comes from
 // (the nest for the eggs); the nearest bed at the first of its stages the farm has, falling back along them; nothing
@@ -37,30 +37,30 @@ describe("a step's tap walks to", () => {
     for (const i of built.slice(0, 2)) {
       playerState.position.x = bedSpot(i).x
       playerState.position.z = bedSpot(i).z
-      expect(stepTarget(step('plant'))).toBe(`farm-bed-${i}`)
+      expect(walkTarget(step('plant'))).toBe(`farm-bed-${i}`)
     }
   })
 
   it('a thirsty bed to water, else one growing; nothing when no bed is either', () => {
     putBeds()
-    expect(stepTarget(step('water'))).toBe(null)
+    expect(walkTarget(step('water'))).toBe(null)
     const [a, b] = farm.beds.flatMap((bed, i) => (bed.built ? [i] : []))
     Object.assign(farm.beds[a], { crop: 'lettuce', growth: 1, water: 20 })
-    expect(stepTarget(step('water'))).toBe(`farm-bed-${a}`)
+    expect(walkTarget(step('water'))).toBe(`farm-bed-${a}`)
     Object.assign(farm.beds[b], { crop: 'lettuce', growth: 1, water: 0 })
-    expect(stepTarget(step('water'))).toBe(`farm-bed-${b}`)
+    expect(walkTarget(step('water'))).toBe(`farm-bed-${b}`)
   })
 
   it('a bed not on the map is never a target (another map, or not drawn yet)', () => {
-    expect(stepTarget(step('plant'))).toBe(null)
+    expect(walkTarget(step('plant'))).toBe(null)
   })
 
   it('a place by its id while it is on the map; where a good comes from', () => {
-    expect(stepTarget(step('sell'))).toBe(null)
+    expect(walkTarget(step('sell'))).toBe(null)
     put('farm-queue', 1, 1)
-    expect(stepTarget(step('sell'))).toBe('farm-queue')
-    expect(stepTarget(step('eggs'))).toBe(null)
+    expect(walkTarget(step('sell'))).toBe('farm-queue')
+    expect(walkTarget(step('eggs'))).toBe(null)
     put('farm-nest', 4, 4)
-    expect(stepTarget(step('eggs'))).toBe('farm-nest')
+    expect(walkTarget(step('eggs'))).toBe('farm-nest')
   })
 })
