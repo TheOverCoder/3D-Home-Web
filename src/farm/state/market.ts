@@ -4,12 +4,13 @@ import { count, LADDERS, MANAGER, SELLABLE, SHED, SHOP, VISITOR, WALK_Z, type La
 import { priceOf } from '../prices'
 import { managerPay, managerPct, placesOpen, rollShopper, SHOP_LADDERS, shopperEvery, shoppersAtOnce, snapPct } from '../market'
 import { dailyOffers, offersPerDay } from '../contractor'
-import { MANAGER_LOOK, rollLook } from '../../models/look'
+import { rollLook } from '../../models/look'
+import { personLook } from '../../data/people'
 import { BROWSE_SPOTS, LOT, MANAGER_SPOT, SCREEN, TILL } from '../../data/market'
 import { hallStands, laneEnd, managerLeaves, payPlace, scriptSeconds, secondsLeft, shopperIn, shopperOut, shopperPay, stepScript, walker, type Pose } from '../script'
 import { randomItem } from '../storage'
 import { needsMet } from '../tools'
-import { bump, farm, isSellable, putBack, random, save, steadyLook, toast, type At, type Person, type Place, type Walking } from './core'
+import { bump, farm, isSellable, putBack, random, save, toast, type At, type Person, type Place, type Walking } from './core'
 import { gainXp } from './levels'
 import { ladderMaxed, ladderNextPrice } from './ladders'
 import { rewarded } from './rewards'
@@ -302,7 +303,7 @@ let shoppers: Shopper[] = []
 /** The manager walking out of the shop you bought (gone once at the lane's end, and on a reload). */
 let leaving: Person | null = null
 
-const MANAGER_DRESS = steadyLook(1723, MANAGER_LOOK)
+const MANAGER_DRESS = personLook('manager')!
 
 const managerStanding = (): Person => ({ id: MANAGER_ID, ...walker(MANAGER_SPOT.x, MANAGER_SPOT.z, MANAGER_SPOT.heading, []), look: MANAGER_DRESS })
 const standingManager = managerStanding()

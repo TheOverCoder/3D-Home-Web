@@ -28,6 +28,9 @@ export const MOOD_MOVES = {
 /** His face in a mood (src/assets/art/farmer-<mood>.webp, made by scripts/render-farmer-faces.mjs). */
 export const faceOf = (mood: FarmerMood) => art(`farmer-${mood}` as const)
 
+/** Anyone's round portrait, the farmer's or a person of the table's, moved by these same moods (src/ui/Portrait.tsx). */
+export { Portrait } from '../ui/Portrait'
+
 /** The portrait: `mood` his face; `beat` names what he is saying, so a new line in the same mood moves him again. */
 export function FarmerFace({ mood, beat = mood, small }: { mood: FarmerMood; beat?: string; small?: boolean }) {
   const still = useLessMotion()
