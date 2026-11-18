@@ -6,6 +6,7 @@ import { insideWalkIn } from '../data/buildings'
 import type { RoomId } from '../data/layout'
 import { playerState } from '../lib/playerState'
 import { engineNow, live, rnd, tone, type Engine } from './engine'
+import { SCREEN_DUCK, hold } from './mix'
 
 let wantedRoom: RoomId | null = null
 let ambient: { filter: BiquadFilterNode; gain: GainNode; hum: GainNode; fan: GainNode; fanFilter: BiquadFilterNode } | null = null
@@ -175,9 +176,8 @@ export function setRoomTone(room: RoomId | null) {
   ambient.fan.gain.setTargetAtTime(tone.fan, now, 1.0)
 }
 
-/** Room tone fades out while a screen or the settings have your attention. */
-export function duckAmbient(ducked: boolean) {
-  const engine = engineNow()
-  if (!engine) return
-  engine.amb.gain.setTargetAtTime(ducked ? 0.45 : 1, engine.ac.currentTime, 0.4)
+/** The room tone steps back while something has your attention: a screen or the settings (`who` 'screen'), a film
+ *  ('film'). Each holds its own step back (./mix.ts, hold), so one ending never brings the tone back under another. */
+export function duckAmbient(ducked: boolean, who = 'screen') {
+  hold(`amb:${who}`, 'amb', ducked ? SCREEN_DUCK : null)
 }

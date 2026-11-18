@@ -1,9 +1,12 @@
 // The sound engine: one audio context made on the first gesture (browsers refuse to start audio before one), its
-// buses, two noise buffers, and the building blocks every sound is made of (a noise burst, a tone, a voice). A sound is
-// written into an `Engine`: the live one (`live()`: null until a gesture has unlocked audio, while sound is off and
-// while the context is not running), an OfflineAudioContext's to measure it, or the recording fake's in the tests
-// (./fakeAudio.ts): the same code each time (`makeEngine`). Nothing is downloaded: everything is synthesised.
+// mixer (./mix.ts: effects, ambience and music, each with its own volume, under the main one), two noise buffers, and
+// the building blocks every sound is made of (a noise burst, a tone, a voice). A sound is written into an `Engine`: the
+// live one (`live()`: null until a gesture has unlocked audio, while sound is off and while the context is not
+// running), an OfflineAudioContext's to measure it, or the recording fake's in the tests (./fakeAudio.ts): the same code
+// each time (`makeEngine`). Nothing is downloaded: everything is synthesised.
 // No three.js in here: the entry chunk imports this file.
+import type { Settings } from '../settings'
+import { busesNow, createMixer, setLevels, unit, setLiveMixer, type Levels, type Mixer } from './mix'
 
 /** Where a sound is written: a context, the buses its one-shots and its room tone go into, the noise it is made of,
  *  and this sound's own pitch and loudness (./palette.ts, vary: 1 is as written). */
@@ -23,13 +26,12 @@ export interface Engine {
 
 interface LiveEngine extends Engine {
   ac: AudioContext
-  /** the user's volume, into the limiter */
-  master: GainNode
+  mixer: Mixer
 }
 
 let engine: LiveEngine | null = null
-let enabled = true
-let volume = 0.7
+/** The player's sound settings as the mixer takes them (SoundDirector passes them on as they change). */
+let levels: Levels = { on: true, main: 0.7, sfx: 1, amb: 1, music: 0.5 }
 
 export const rnd = (a: number, b: number) => a + Math.random() * (b - a)
 
@@ -67,22 +69,11 @@ function create(): LiveEngine | null {
   const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
   if (!Ctor) return null
   const ac = new Ctor({ latencyHint: 'interactive' })
-  const limiter = ac.createDynamicsCompressor()
-  limiter.threshold.value = -10
-  limiter.knee.value = 8
-  limiter.ratio.value = 6
-  limiter.attack.value = 0.003
-  limiter.release.value = 0.2
-  limiter.connect(ac.destination)
-  const master = ac.createGain()
-  master.gain.value = 0
-  master.connect(limiter)
-  const sfx = ac.createGain()
-  sfx.connect(master)
-  const amb = ac.createGain()
-  amb.gain.value = 0
-  amb.connect(master)
-  return { ...makeEngine(ac, sfx, amb), ac, master }
+  const mixer = createMixer(ac)
+  // the room tone fades in as it starts (./ambience.ts)
+  mixer.input.amb.gain.value = 0
+  setLiveMixer(mixer)
+  return { ...makeEngine(ac, mixer.input.sfx, mixer.input.amb), ac, mixer }
 }
 
 /** The live engine, made (and resumed) from a user gesture: null where the browser has no audio. Safe to call often. */
@@ -96,7 +87,7 @@ export function openEngine(): LiveEngine | null {
     if (!engine) return null
     applyPrefs()
   }
-  if (engine.ac.state === 'suspended' && enabled) void engine.ac.resume().catch(() => {})
+  if (engine.ac.state === 'suspended' && levels.on) void engine.ac.resume().catch(() => {})
   return engine
 }
 
@@ -104,20 +95,19 @@ export function openEngine(): LiveEngine | null {
 export const engineNow = (): Engine | null => engine
 
 /** The live engine while it can be heard: made, sound on, the context running. */
-export const live = (): Engine | null => (engine && enabled && engine.ac.state === 'running' ? engine : null)
+export const live = (): Engine | null => (engine && levels.on && engine.ac.state === 'running' ? engine : null)
 
 function applyPrefs() {
   if (!engine) return
-  const { ac, master } = engine
-  // perceptual curve: the slider feels even from 0 to 100 %
-  master.gain.cancelScheduledValues(ac.currentTime)
-  master.gain.setTargetAtTime(enabled ? volume * volume * 0.9 : 0, ac.currentTime, 0.06)
-  if (enabled && ac.state === 'suspended') void ac.resume().catch(() => {})
+  setLevels(engine.mixer, levels)
+  if (levels.on && engine.ac.state === 'suspended') void engine.ac.resume().catch(() => {})
 }
 
-export function setSoundPrefs(on: boolean, vol: number) {
-  enabled = on
-  volume = Math.max(0, Math.min(1, vol))
+/** The sound settings the mixer follows: the switch, the main volume, and the effects', ambience's and music's. */
+export type SoundPrefs = Pick<Settings, 'sound' | 'volume' | 'effectsVolume' | 'ambienceVolume' | 'musicVolume'>
+
+export function setSoundPrefs(s: SoundPrefs) {
+  levels = { on: s.sound, main: s.volume, sfx: s.effectsVolume, amb: s.ambienceVolume, music: s.musicVolume }
   applyPrefs()
 }
 
@@ -125,18 +115,18 @@ export function setSoundPrefs(on: boolean, vol: number) {
 export function suspendForHidden(hidden: boolean) {
   if (!engine) return
   if (hidden) void engine.ac.suspend().catch(() => {})
-  else if (enabled) void engine.ac.resume().catch(() => {})
+  else if (levels.on) void engine.ac.resume().catch(() => {})
 }
 
-/** The audio context and the user-volume bus, for the music, the films and the drive (null until the first gesture
- *  unlocked audio). */
-export function audioGraph(): { ac: AudioContext; master: GainNode } | null {
-  return engine ? { ac: engine.ac, master: engine.master } : null
+/** The audio context, the main volume (for the films and the drive: on the main volume alone) and the music's bus
+ *  (null until the first gesture unlocked audio). */
+export function audioGraph(): { ac: AudioContext; master: GainNode; music: GainNode } | null {
+  return engine ? { ac: engine.ac, master: engine.mixer.master, music: engine.mixer.input.music } : null
 }
 
-/** The engine's state, its switch and its volume (null before the first gesture). */
+/** The engine's state, its switch, the main volume and each bus (null before the first gesture). */
 export function engineStatus() {
-  return engine ? { state: engine.ac.state, enabled, volume } : null
+  return engine ? { state: engine.ac.state, enabled: levels.on, volume: unit(levels.main), buses: busesNow(engine.mixer) } : null
 }
 
 // ─────────────────────── building blocks ───────────────────────
