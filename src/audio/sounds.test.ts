@@ -204,6 +204,15 @@ describe('each action its own sound (mission 06 c5)', () => {
     for (const id of PRODUCER_IDS) if (id === 'tree' || PRODUCERS[id].plant) expect(PRODUCERS[id].sound, id).toBe('pick')
   })
 
+  it('plays a sound its row’s phone-mix trim louder or softer (dB), its synth as written', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5)
+    const ctx = new FakeContext()
+    play(makeEngine(ctx.audio), 'water', { at: 1 })
+    // the drops' tones, written at 0.025
+    expect(SOUNDS.water.mix).toBeLessThan(0)
+    expect(Math.max(...notesOf(ctx).map((n) => n.gain))).toBeCloseTo(0.025 * 10 ** (SOUNDS.water.mix! / 20), 9)
+  })
+
   it('puts a thing down with a thud by its size: deeper and louder the bigger', () => {
     const thud = (size: number) => {
       vi.spyOn(Math, 'random').mockReturnValue(0.5)

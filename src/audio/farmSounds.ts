@@ -85,9 +85,9 @@ const SYNTHS: Record<FarmSound, Synth> = {
     for (let i = 0; i < 4; i++) tone(e, t + 0.2 + i * 0.13 + Math.random() * 0.05, { type: 'sine', f0: rnd(900, 1500), f1: rnd(1800, 2600), gain: 0.025 * v, attack: 0.004, decay: 0.05, pan })
   },
   harvest(e, t, v, pan) {
-    // leaves rustle, a stem snaps
-    burst(e, t, { type: 'bandpass', freq: 3200, q: 0.9, gain: 0.12 * v, attack: 0.02, decay: 0.22, pan })
-    burst(e, t + 0.12, { type: 'highpass', freq: 2500, q: 0.8, gain: 0.18 * v, attack: 0.002, decay: 0.03, pan })
+    // leaves rustle, a stem snaps (both where a phone's speaker carries them)
+    burst(e, t, { type: 'bandpass', freq: 2600, q: 1.1, gain: 0.12 * v, attack: 0.02, decay: 0.22, pan })
+    burst(e, t + 0.12, { type: 'bandpass', freq: 2400, q: 1.2, gain: 0.2 * v, attack: 0.002, decay: 0.03, pan })
     tone(e, t + 0.12, { type: 'triangle', f0: 520, f1: 300, gain: 0.05 * v, attack: 0.003, decay: 0.08, pan })
   },
   coins(e, t) {
@@ -117,16 +117,22 @@ const SYNTHS: Record<FarmSound, Synth> = {
     tone(e, t + 0.28, { type: 'sine', f0: note(0, 6), gain: 0.04 * v, attack: 0.003, decay: 1.2, pan, key: true })
   },
   build(e, t, v, pan) {
-    // hammer knocks into timber
+    // hammer knocks into timber: the blow's body, and the wood's knock a phone's speaker carries (0.5–2 kHz)
     for (let i = 0; i < 3; i++) {
-      burst(e, t + i * 0.18, { type: 'lowpass', freq: 700, q: 0.8, gain: 0.4 * v, attack: 0.002, decay: 0.07, pan })
-      tone(e, t + i * 0.18, { type: 'sine', f0: 180, f1: 120, gain: 0.15 * v, attack: 0.002, decay: 0.08, pan })
+      burst(e, t + i * 0.18, { type: 'lowpass', freq: 700, q: 0.8, gain: 0.3 * v, attack: 0.002, decay: 0.07, pan })
+      tone(e, t + i * 0.18, { type: 'sine', f0: 180, f1: 120, gain: 0.05 * v, attack: 0.002, decay: 0.08, pan })
+      burst(e, t + i * 0.18, { type: 'bandpass', freq: 1100, q: 1.4, gain: 0.5 * v, attack: 0.002, decay: 0.05, pan })
     }
   },
   decline(e, t) {
-    // a soft falling "oh well": G4 down to E4
-    tone(e, t, { type: 'triangle', f0: note(3, 4), gain: 0.03, attack: 0.01, decay: 0.2, key: true })
-    tone(e, t + 0.15, { type: 'triangle', f0: note(2, 4), gain: 0.03, attack: 0.01, decay: 0.3, key: true })
+    // a soft falling "oh well": G4 down to E4, each with its octave over it (what a phone's speaker plays of it)
+    for (const [at, step, decay] of [
+      [0, 3, 0.2],
+      [0.15, 2, 0.3],
+    ]) {
+      tone(e, t + at, { type: 'triangle', f0: note(step, 4), gain: 0.03, attack: 0.01, decay, key: true })
+      tone(e, t + at, { type: 'sine', f0: note(step, 5), gain: 0.026, attack: 0.01, decay: decay * 0.8, key: true })
+    }
   },
   moo(e, t, v, pan) {
     // a low "mmm-ooo" that opens up and falls away
@@ -160,17 +166,20 @@ const SYNTHS: Record<FarmSound, Synth> = {
         [rnd(160, 180), 0.4],
       ],
       rnd(0.3, 0.45),
-      0.03 * v,
+      0.018 * v,
       [600, 1400],
       pan,
       'triangle',
     )
-    burst(e, t, { type: 'lowpass', freq: 500, q: 0.6, gain: 0.08 * v, attack: 0.05, decay: 0.3, pan })
+    burst(e, t, { type: 'lowpass', freq: 500, q: 0.6, gain: 0.05 * v, attack: 0.05, decay: 0.3, pan })
+    // the wood's own ring as it turns (where a phone carries it)
+    burst(e, t + 0.04, { type: 'bandpass', freq: 1050, q: 3, gain: 0.4 * v, attack: 0.06, decay: 0.3, pan })
   },
   oven(e, t, v, pan) {
-    // the fire takes: a whoosh and a low roar
+    // the fire takes: a whoosh and a low roar, and the wood crackling in it (a phone's speaker carries those)
     burst(e, t, { type: 'bandpass', freq: 300, sweepTo: 1300, q: 0.7, gain: 0.22 * v, attack: 0.15, decay: 0.7, pan })
     burst(e, t + 0.1, { type: 'lowpass', freq: 220, q: 0.6, gain: 0.25 * v, attack: 0.2, decay: 0.9, pan })
+    for (const at of [0.14, 0.26, 0.38, 0.52]) burst(e, t + at, { type: 'bandpass', freq: 1800, q: 2, gain: 0.26 * v, attack: 0.001, decay: 0.025, pan })
   },
   surprise(e, t) {
     // a surprise found: a quick rising sparkle of four notes, G6 C7 D7 G7
@@ -181,6 +190,8 @@ const SYNTHS: Record<FarmSound, Synth> = {
     // the tractor's engine: one low putt (played over and over while it drives)
     tone(e, t, { type: 'sawtooth', f0: rnd(62, 70), f1: 48, gain: 0.05 * v, attack: 0.006, decay: 0.09, pan })
     burst(e, t, { type: 'lowpass', freq: 240, q: 0.8, gain: 0.12 * v, attack: 0.004, decay: 0.08, pan })
+    // the engine's rattle, what a phone's speaker plays of it
+    burst(e, t, { type: 'bandpass', freq: 900, q: 1.4, gain: 0.06 * v, attack: 0.004, decay: 0.05, pan })
   },
   xp(e, t, _v, _pan, o) {
     // a crystal joins the bar: a glassy tink, a step up the key for each that lands close behind the one before, with
@@ -291,7 +302,7 @@ const SYNTHS: Record<FarmSound, Synth> = {
   shear(e, t, v, pan) {
     // shears snipping through the fleece
     for (let i = 0; i < 4; i++) {
-      burst(e, t + i * 0.14, { type: 'highpass', freq: 3800, q: 0.9, gain: 0.12 * v, attack: 0.002, decay: 0.04, pan })
+      burst(e, t + i * 0.14, { type: 'bandpass', freq: 3300, q: 1.8, gain: 0.16 * v, attack: 0.002, decay: 0.04, pan })
       tone(e, t + i * 0.14 + 0.01, { type: 'triangle', f0: 2400, f1: 1700, gain: 0.02 * v, attack: 0.002, decay: 0.05, pan })
     }
     burst(e, t + 0.05, { type: 'bandpass', freq: 900, q: 0.7, gain: 0.08 * v, attack: 0.08, decay: 0.5, pan })
@@ -300,7 +311,8 @@ const SYNTHS: Record<FarmSound, Synth> = {
     // the shuttle clacks across and the beater knocks
     for (let i = 0; i < 3; i++) {
       burst(e, t + i * 0.32, { type: 'bandpass', freq: 1800, q: 1.4, gain: 0.12 * v, attack: 0.003, decay: 0.05, pan })
-      burst(e, t + i * 0.32 + 0.16, { type: 'lowpass', freq: 420, q: 0.8, gain: 0.3 * v, attack: 0.002, decay: 0.08, pan })
+      burst(e, t + i * 0.32 + 0.16, { type: 'lowpass', freq: 420, q: 0.8, gain: 0.24 * v, attack: 0.002, decay: 0.08, pan })
+      burst(e, t + i * 0.32 + 0.16, { type: 'bandpass', freq: 900, q: 1.5, gain: 0.2 * v, attack: 0.002, decay: 0.06, pan })
     }
   },
   pick(e, t, v, pan) {
@@ -313,24 +325,24 @@ const SYNTHS: Record<FarmSound, Synth> = {
   },
   sack(e, t, v, pan) {
     // a sack from the mill set down: a soft heavy thump, its cloth, and a puff of flour
-    burst(e, t, { type: 'lowpass', freq: 600, q: 0.7, gain: 0.3 * v, attack: 0.01, decay: 0.13, pan })
-    burst(e, t, { type: 'bandpass', freq: 950, q: 1.2, gain: 0.14 * v, attack: 0.006, decay: 0.09, pan })
-    tone(e, t, { type: 'sine', f0: 150, f1: 90, gain: 0.08 * v, attack: 0.006, decay: 0.1, pan })
-    burst(e, t + 0.05, { type: 'bandpass', freq: 1300, sweepTo: 2200, q: 0.7, gain: 0.08 * v, attack: 0.03, decay: 0.25, pan })
+    burst(e, t, { type: 'lowpass', freq: 600, q: 0.7, gain: 0.24 * v, attack: 0.01, decay: 0.13, pan })
+    burst(e, t, { type: 'bandpass', freq: 950, q: 1.2, gain: 0.34 * v, attack: 0.006, decay: 0.09, pan })
+    tone(e, t, { type: 'sine', f0: 150, f1: 90, gain: 0.05 * v, attack: 0.006, decay: 0.1, pan })
+    burst(e, t + 0.05, { type: 'bandpass', freq: 1300, sweepTo: 2200, q: 0.7, gain: 0.1 * v, attack: 0.03, decay: 0.25, pan })
   },
   bolt(e, t, v, pan) {
     // a bolt of cloth off the loom: two swishes as it is rolled off, then a soft thud as it is laid down
-    burst(e, t, { type: 'bandpass', freq: 1200, sweepTo: 2400, q: 0.8, gain: 0.07 * v, attack: 0.04, decay: 0.12, pan })
-    burst(e, t + 0.12, { type: 'bandpass', freq: 2000, sweepTo: 1000, q: 0.8, gain: 0.06 * v, attack: 0.03, decay: 0.14, pan })
-    burst(e, t + 0.28, { type: 'lowpass', freq: 520, q: 0.7, gain: 0.22 * v, attack: 0.006, decay: 0.1, pan })
-    burst(e, t + 0.28, { type: 'bandpass', freq: 800, q: 1.3, gain: 0.1 * v, attack: 0.004, decay: 0.07, pan })
+    burst(e, t, { type: 'bandpass', freq: 1200, sweepTo: 2400, q: 0.8, gain: 0.18 * v, attack: 0.04, decay: 0.12, pan })
+    burst(e, t + 0.12, { type: 'bandpass', freq: 2000, sweepTo: 1000, q: 0.8, gain: 0.15 * v, attack: 0.03, decay: 0.14, pan })
+    burst(e, t + 0.28, { type: 'lowpass', freq: 520, q: 0.7, gain: 0.4 * v, attack: 0.006, decay: 0.1, pan })
+    burst(e, t + 0.28, { type: 'bandpass', freq: 800, q: 1.3, gain: 0.25 * v, attack: 0.004, decay: 0.07, pan })
   },
   tray(e, t, v, pan) {
     // the oven's tray slides out over its runners and is set down on the stone with a little ring of tin (E7)
-    burst(e, t, { type: 'bandpass', freq: 2400, sweepTo: 1600, q: 2, gain: 0.07 * v, attack: 0.03, decay: 0.2, pan })
-    burst(e, t + 0.26, { type: 'bandpass', freq: 1500, q: 3, gain: 0.14 * v, attack: 0.002, decay: 0.05, pan })
-    burst(e, t + 0.26, { type: 'lowpass', freq: 450, q: 0.8, gain: 0.14 * v, attack: 0.003, decay: 0.06, pan })
-    tone(e, t + 0.26, { type: 'sine', f0: note(2, 7), gain: 0.018 * v, attack: 0.002, decay: 0.32, pan, key: true })
+    burst(e, t, { type: 'bandpass', freq: 2400, sweepTo: 1600, q: 2, gain: 0.14 * v, attack: 0.03, decay: 0.2, pan })
+    burst(e, t + 0.26, { type: 'bandpass', freq: 1500, q: 3, gain: 0.38 * v, attack: 0.002, decay: 0.05, pan })
+    burst(e, t + 0.26, { type: 'lowpass', freq: 450, q: 0.8, gain: 0.2 * v, attack: 0.003, decay: 0.06, pan })
+    tone(e, t + 0.26, { type: 'sine', f0: note(2, 7), gain: 0.03 * v, attack: 0.002, decay: 0.32, pan, key: true })
   },
   crate(e, t, v, pan) {
     // goods into an order's crate: a hollow knock on its boards, a softer one, and the straw
@@ -338,16 +350,16 @@ const SYNTHS: Record<FarmSound, Synth> = {
       [0, 1],
       [0.11, 0.6],
     ]) {
-      burst(e, t + at, { type: 'bandpass', freq: 620, q: 4, gain: 0.32 * g * v, attack: 0.002, decay: 0.07, pan })
-      tone(e, t + at, { type: 'sine', f0: 230, f1: 180, gain: 0.07 * g * v, attack: 0.002, decay: 0.09, pan })
+      burst(e, t + at, { type: 'bandpass', freq: 700, q: 2.2, gain: 0.78 * g * v, attack: 0.002, decay: 0.07, pan })
+      tone(e, t + at, { type: 'sine', f0: 300, f1: 240, gain: 0.04 * g * v, attack: 0.002, decay: 0.09, pan })
     }
     burst(e, t + 0.05, { type: 'bandpass', freq: 2600, q: 0.8, gain: 0.05 * v, attack: 0.03, decay: 0.2, pan })
   },
   shelf(e, t, v, pan) {
     // goods put up on a shelf: two light taps on the board, then a short slide back into place
-    burst(e, t, { type: 'bandpass', freq: 1800, q: 3, gain: 0.15 * v, attack: 0.001, decay: 0.03, pan })
-    burst(e, t + 0.08, { type: 'bandpass', freq: 1600, q: 3, gain: 0.12 * v, attack: 0.001, decay: 0.03, pan })
-    burst(e, t + 0.14, { type: 'bandpass', freq: 1400, sweepTo: 2600, q: 1.4, gain: 0.07 * v, attack: 0.03, decay: 0.13, pan })
+    burst(e, t, { type: 'bandpass', freq: 1800, q: 3, gain: 0.5 * v, attack: 0.001, decay: 0.03, pan })
+    burst(e, t + 0.08, { type: 'bandpass', freq: 1600, q: 3, gain: 0.4 * v, attack: 0.001, decay: 0.03, pan })
+    burst(e, t + 0.14, { type: 'bandpass', freq: 1400, sweepTo: 2600, q: 1.4, gain: 0.25 * v, attack: 0.03, decay: 0.13, pan })
   },
   pay(e, t) {
     // coins paid out: two clinks falling (E7, C7), the coins' own going the other way
@@ -357,20 +369,20 @@ const SYNTHS: Record<FarmSound, Synth> = {
   },
   nope(e, t) {
     // cannot: decline's soft falling notes, shorter and higher (E5 down to C5)
-    tone(e, t, { type: 'triangle', f0: note(2, 5), gain: 0.035, attack: 0.008, decay: 0.1, key: true })
-    tone(e, t + 0.09, { type: 'triangle', f0: note(0, 5), gain: 0.035, attack: 0.008, decay: 0.16, key: true })
+    tone(e, t, { type: 'triangle', f0: note(2, 5), gain: 0.042, attack: 0.008, decay: 0.1, key: true })
+    tone(e, t + 0.09, { type: 'triangle', f0: note(0, 5), gain: 0.042, attack: 0.008, decay: 0.16, key: true })
   },
   lift(e, t) {
     // lifted: a breath of air rising and a little lift in a soft tone
-    burst(e, t, { type: 'bandpass', freq: 380, sweepTo: 1500, q: 1.1, gain: 0.07, attack: 0.04, decay: 0.1 })
-    tone(e, t + 0.05, { type: 'sine', f0: 560, f1: 760, gain: 0.03, attack: 0.006, decay: 0.09 })
+    burst(e, t, { type: 'bandpass', freq: 380, sweepTo: 1500, q: 1.1, gain: 0.2, attack: 0.04, decay: 0.1 })
+    tone(e, t + 0.05, { type: 'sine', f0: 560, f1: 760, gain: 0.08, attack: 0.006, decay: 0.09 })
   },
   thud(e, t, _v, _pan, o) {
     // put down: a thud, deeper, longer and louder the bigger the thing, with a knock a phone's speaker carries
     const h = heft(o.size)
-    burst(e, t, { type: 'lowpass', freq: 560 - 300 * h, q: 0.8, gain: 0.2 + 0.25 * h, attack: 0.004, decay: 0.08 + 0.1 * h })
-    tone(e, t, { type: 'sine', f0: 150 - 60 * h, f1: 85 - 35 * h, gain: 0.07 + 0.12 * h, attack: 0.004, decay: 0.1 + 0.08 * h })
-    burst(e, t + 0.004, { type: 'bandpass', freq: 1300 - 450 * h, q: 1.2, gain: 0.08 + 0.06 * h, attack: 0.002, decay: 0.05 })
+    burst(e, t, { type: 'lowpass', freq: 560 - 300 * h, q: 0.8, gain: 0.08 + 0.06 * h, attack: 0.004, decay: 0.08 + 0.1 * h })
+    tone(e, t, { type: 'sine', f0: 150 - 60 * h, f1: 85 - 35 * h, gain: 0.015 + 0.03 * h, attack: 0.004, decay: 0.1 + 0.08 * h })
+    burst(e, t + 0.004, { type: 'bandpass', freq: 1300 - 450 * h, q: 1.2, gain: 0.28 + 0.24 * h, attack: 0.002, decay: 0.06 + 0.03 * h })
   },
 }
 
@@ -406,7 +418,7 @@ export interface PlayOpts extends SoundMore {
  *  tests' fake. */
 export function play(e: Engine, kind: FarmSound, o: PlayOpts = {}) {
   const t = o.at ?? e.ac.currentTime + 0.004
-  const on = { ...e, pitch: o.pitch ?? 1, level: o.level ?? 1 }
+  const on = { ...e, pitch: o.pitch ?? 1, level: (o.level ?? 1) * 10 ** ((SOUNDS[kind].mix ?? 0) / 20) }
   const v = Math.max(0.25, o.near ?? 1)
   SYNTHS[kind](on, t, v, o.pan ?? 0, o)
   if (o.step !== undefined && SOUNDS[kind].climb === 'work') pip(on, t, v, o.pan ?? 0, o.step)

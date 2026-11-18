@@ -87,8 +87,10 @@ test.describe('settings', () => {
     }
     // what moves, read at once: <html data-motion>, the compass strip's opening, the stored choice, walking sway, and
     // whether the particles' engine is up (it goes under less motion)
-    const look = () =>
-      page.evaluate(() => {
+    const look = async () => {
+      // (the compass stands at the top on the farm: wait for it, as it mounts with the map)
+      await expect(page.locator('.compass-strip')).toHaveCount(1, { timeout: 30_000 })
+      return page.evaluate(() => {
         const strip = document.querySelector('.compass-strip')
         return {
           marked: document.documentElement.dataset.motion === 'less',
@@ -97,6 +99,7 @@ test.describe('settings', () => {
           sway: (window as any).__home.settings.getState().headBob as boolean,
         }
       })
+    }
     const fxUp = (up: boolean) => page.waitForFunction((up) => (window as any).__home.fx?.stats.loaded === up, up, { timeout: 60_000 })
     await fxUp(true)
     expect(await look()).toEqual({ marked: false, compass: 'compass-open', motion: 'device', sway: true })
@@ -177,5 +180,24 @@ test.describe('settings', () => {
     await expect(page.locator('#set-tips')).toHaveCount(0)
     await page.getByRole('button', { name: 'Close (Esc)' }).click()
     await drawer(false)
+  })
+
+  // The phone mix (src/audio/measure.ts): every sound the player causes rendered offline at full size, as the game
+  // plays it. `SOUND_MEASURE=1` prints the table without the checks (as BUDGET_MEASURE does for the drawing budget).
+  test('the phone mix: every sound the player causes carries on a phone’s speaker, peaks under −1 dBFS and sits at its family’s loudness', async ({ game }) => {
+    await game.ready()
+    const rows: { kind: string; family: string; peak: number; loud: number; band: number; seconds: number; faults: string[] }[] = await game.page.evaluate(() => (window as any).__home.audio.measure())
+    const head = ['sound', 'family', 'peak dBFS', 'LUFS', 'in 0.5–4 kHz', 's', 'faults']
+    const lines = rows.map((r) => [r.kind, r.family, r.peak.toFixed(1), r.loud.toFixed(1), `${Math.round(r.band * 100)} %`, r.seconds.toFixed(2), r.faults.join('; ')])
+    const widths = head.map((h, i) => Math.max(h.length, ...lines.map((l) => l[i].length)))
+    const fmt = (l: string[]) => `| ${l.map((c, i) => c.padEnd(widths[i])).join(' | ')} |`
+    if (process.env.SOUND_MEASURE) {
+      console.log([fmt(head), fmt(widths.map((w) => '-'.repeat(w))), ...lines.map(fmt)].join('\n'))
+      return
+    }
+    // (which sounds the player causes is src/audio/measure.test.ts's: here they are all there and each is held)
+    expect(rows.length).toBeGreaterThan(25)
+    expect(new Set(rows.map((r) => r.kind)).size).toBe(rows.length)
+    expect(rows.filter((r) => r.faults.length).map((r) => `${r.kind}: ${r.faults.join('; ')}`)).toEqual([])
   })
 })
