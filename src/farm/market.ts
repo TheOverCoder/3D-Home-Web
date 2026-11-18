@@ -2,6 +2,7 @@
 // what a place on your shelves sells for, how likely a shopper is to take each unit, and the saved market read back.
 // Pure: nothing here changes the farm.
 
+import { MOST, isObject, num } from '../lib/saved'
 import { LADDERS, LADDER_IDS, MANAGER, SELLABLE, SHOP, type LadderId, type ProduceId } from './data'
 import { priceOf } from './prices'
 
@@ -35,11 +36,11 @@ export const SHOP_LADDERS: readonly LadderId[] = ['places', 'group', 'pace']
  *  yours), the shop's own ladders are 0 too; and a ladder that needs another at its top (a tool's upgrades, the tool)
  *  is 0 while that one is not. */
 export function clampLevels(raw: unknown, owned?: boolean): Record<LadderId, number> {
-  const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+  const r = isObject(raw) ? raw : {}
   const out = {} as Record<LadderId, number>
   for (const id of LADDER_IDS) {
     const v = r[id]
-    out[id] = typeof v === 'number' && Number.isFinite(v) && !(owned === false && SHOP_LADDERS.includes(id)) ? Math.max(0, Math.min(LADDERS[id].levels, Math.floor(v))) : 0
+    out[id] = owned === false && SHOP_LADDERS.includes(id) ? 0 : Math.max(0, Math.min(LADDERS[id].levels, Math.floor(num(v, 0))))
   }
   for (const id of LADDER_IDS) {
     const need = LADDERS[id].needs?.ladder
@@ -97,8 +98,9 @@ export const freshMarket = (): Market => ({ owned: false, shelves: Array.from({ 
  *  yours has empty shelves and an empty till; only goods that sell go on a shelf; an open place keeps its good and
  *  price when sold out. */
 export function sanitizeMarket(raw: unknown, ladders: Record<LadderId, number>): Market {
-  const r = (raw && typeof raw === 'object' ? raw : {}) as Partial<Market>
-  const int = (v: unknown, d = 0) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? Math.min(Math.floor(v), Number.MAX_SAFE_INTEGER) : d)
+  const r = (isObject(raw) ? raw : {}) as Partial<Market>
+  // a count from 0, its whole part (not a number, or below 0: `d`)
+  const int = (v: unknown, d = 0) => (num(v, -1) >= 0 ? Math.min(Math.floor(v as number), MOST) : d)
   const owned = r.owned === true
   const levels = clampLevels(ladders)
   const open = owned ? placesOpen(levels.places) : 0

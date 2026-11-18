@@ -1,5 +1,5 @@
 {
-  "about": "Each spec file's seconds in the core run on CI (--grep-invert @full), the boot counted in the file that paid it, from the per-file times the shards print (tests/e2e/fileTimes.ts): copy them from a push's run, never the night's. scripts/ci-shards.mjs deals the files out by them; a file not here counts newFile seconds. From CI run 44255701920 (134, 2026-11-18), read from the log's timestamps; 05, 35 and 10-15 were shared out of their shard's total by their time here.",
+  "about": "Each spec file's seconds in the core run on CI (--grep-invert @full), the boot counted in the file that paid it, from the per-file times the shards print (tests/e2e/fileTimes.ts): copy them from a push's run, never the night's. scripts/ci-shards.mjs deals the files out by them; a file not here counts newFile seconds. From CI run 44255701920 (134, 2026-11-18), read from the log's timestamps; 05, 35 and 10-15 were shared out of their shard's total by their time here. 16-view's 1,086 s shared out among its four parts by their tests' own times, each part a few seconds more for its own filling of the farm and its \"afterwards\".",
   "newFile": 150,
   "seconds": {
     "01-boot.spec.ts": 59,
@@ -17,7 +17,10 @@
     "13-layout.spec.ts": 18,
     "14-hud.spec.ts": 20,
     "15-decorate.spec.ts": 13,
-    "16-view.spec.ts": 1086,
+    "16-view-buildings.spec.ts": 245,
+    "16-view-farm.spec.ts": 135,
+    "16-view-openings.spec.ts": 365,
+    "16-view-rooms.spec.ts": 360,
     "17-stores-orders.spec.ts": 73,
     "18-measure.spec.ts": 404,
     "19-walk-to.spec.ts": 74,

@@ -1,4 +1,5 @@
 import { DOOR, DOORWAYS, HOUSE, ROOMS, WINDOWS, type FloorKind, type RoomId, type Vec3, type WindowDef } from '../data/layout'
+import { isObject, isRecord } from '../lib/saved'
 
 // The house's shell as the save has it (pure numbers, like src/home/layout.ts): where each doorway, window and the
 // garden door is along its wall, which are closed (wall where they were), each room's paint and its floor. Nothing is
@@ -299,10 +300,10 @@ export function slideOnRun(id: string, run: WallRun, x: number, z: number) {
  *  where it was built; an unknown paint is as built, an unknown floor the room's own. Never throws. */
 export function sanitizeShell(raw: unknown): HomeShell {
   const base = defaultShell()
-  if (!raw || typeof raw !== 'object') return base
+  if (!isObject(raw)) return base
   const r = raw as Partial<Record<keyof HomeShell, unknown>>
   const out = defaultShell()
-  const rec = (v: unknown) => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {})
+  const rec = (v: unknown) => (isRecord(v) ? v : {})
   const paint = rec(r.paint)
   const floors = rec(r.floors)
   for (const room of ROOM_IDS) {

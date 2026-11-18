@@ -29,12 +29,12 @@ jobs:
       github.event.workflow_run.head_branch == github.event.repository.default_branch)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # the very commit the tests passed on (the branch may have moved on since)
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           lfs: true # harmless unless large GLB/HDR files are tracked with Git LFS
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -42,7 +42,7 @@ jobs:
       - run: npm run build # typecheck + vite build
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: dist
 
@@ -54,7 +54,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
         with:
           # GitHub Pages sometimes sits in "updating_pages" for longer than the 10-minute default
           timeout: 1800000

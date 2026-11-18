@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { test, expect, type Game } from './helpers'
+import { orderWait } from '../../src/farm/data'
+import { clock } from '../../src/lib/time'
+import { test, expect, press, type Game } from './helpers'
 
 // The silo and the barn (what is in them, how full, made bigger with building materials), the surprises (a building
 // material from a buyer, an animal, a harvest), and the order office with its tractor. Time is fast-forwarded with
@@ -159,7 +161,7 @@ test.describe('the silo, the barn, surprises and orders', () => {
     // one of what the first order's first good asks for: it goes in, and leaves the silo or the barn
     const good = first.lines[0].good
     await give(game, good, 1)
-    await page.locator('.farm-order').nth(0).getByRole('button', { name: 'Put in' }).click()
+    await press(page.locator('.farm-order').nth(0).getByRole('button', { name: 'Put in' }))
     await until(game, () => (window as any).__home.farm.orderAt(0).lines[0].have === 1)
     expect((await state(game)).inv[good]).toBe(0)
     // the rest of it: then Send, paid at once, and a new order in its place
@@ -168,12 +170,13 @@ test.describe('the silo, the barn, surprises and orders', () => {
       for (const l of o.lines) f.state.inv[l.good] = l.want
       f.useFarm.setState((s: any) => ({ rev: s.rev + 1 }))
     }, first)
-    await page.locator('.farm-order').nth(0).getByRole('button', { name: 'Put in' }).click()
-    await page
-      .locator('.farm-order')
-      .nth(0)
-      .getByRole('button', { name: /^Send this order/ })
-      .click()
+    await press(page.locator('.farm-order').nth(0).getByRole('button', { name: 'Put in' }))
+    await press(
+      page
+        .locator('.farm-order')
+        .nth(0)
+        .getByRole('button', { name: /^Send this order/ }),
+    )
     await until(game, () => (window as any).__home.farm.state.coins > 100)
     const sent = await state(game)
     expect(sent.coins).toBe(100 + first.coins)
@@ -182,12 +185,24 @@ test.describe('the silo, the barn, surprises and orders', () => {
     // the second order half filled, then declined: its goods come back, and the next comes in ten minutes
     const second = await page.evaluate(() => (window as any).__home.farm.orderAt(1))
     await give(game, second.lines[0].good, 1)
-    await page.locator('.farm-order').nth(1).getByRole('button', { name: 'Put in' }).click()
+    await press(page.locator('.farm-order').nth(1).getByRole('button', { name: 'Put in' }))
     await until(game, () => (window as any).__home.farm.orderAt(1).lines[0].have === 1)
-    await page.locator('.farm-order').nth(1).getByRole('button', { name: 'Decline this order' }).click()
+    await press(page.locator('.farm-order').nth(1).getByRole('button', { name: 'Decline this order' }))
     await until(game, () => (window as any).__home.farm.orderAt(1) === null)
     expect((await state(game)).inv[second.lines[0].good]).toBe(1)
-    await expect(page.locator('.farm-order.waiting')).toContainText('New order in 10:00')
+    // its place counts down from the office's wait, written as the game's clock writes it: what the board shows and the
+    // farm's own wait read in one call (the farm ticks every frame), until the board has drawn the second it is on
+    const board = () =>
+      page.evaluate(() => ({
+        shown: document.querySelector('.farm-order.waiting .ob-wait-words')?.textContent ?? '',
+        wait: (window as any).__home.farm.state.orders[1].wait as number,
+      }))
+    await expect
+      .poll(async () => {
+        const b = await board()
+        return b.shown === `New order in ${clock(b.wait)}` && b.wait > orderWait(0) - 60
+      })
+      .toBe(true)
     await page.evaluate(() => (window as any).__home.useHome.getState().closePanel())
   })
 
@@ -205,8 +220,8 @@ test.describe('the silo, the barn, surprises and orders', () => {
     const from = await page.evaluate(() => ({ ...(window as any).__home.playerState.position }))
     await page.evaluate(() => (window as any).__home.useHome.getState().openPanel({ kind: 'orders' }))
     // its eggs touched: their bubble, and Show me in it
-    await page.locator('.farm-order').nth(0).locator('[data-good="egg"]').click()
-    await page.getByRole('button', { name: 'Show me' }).click()
+    await press(page.locator('.farm-order').nth(0).locator('[data-good="egg"]'))
+    await press(page.getByRole('button', { name: 'Show me' }))
     await until(game, () => (window as any).__home.useHome.getState().panel === null)
     // walking by yourself to the nest (the eggs' mark), as from the compass: the body moves off towards it
     await until(game, () => (window as any).__home.walk.state().id === 'farm-nest' && (window as any).__home.useHome.getState().guide?.id === 'farm-nest')

@@ -8,6 +8,7 @@
 // draw a part for the whole crowd); only a new shape (a hair style, a hat, the tie) is another part, drawn while
 // someone wearing it is in view (src/models/person.ts).
 
+import { isObject } from '../lib/saved'
 import type { HatKind, PersonLook } from './person'
 
 export const TRAITS = {
@@ -66,8 +67,8 @@ const inRange = (v: unknown, [a, b]: readonly [number, number], d: number) => (t
 /** A saved look read back, or null when it is not one (its four colours are what every save has). Older saves' looks
  *  load as they were; traits they lack get the defaults (the built size, brown eyes, no band colour of its own). */
 export function sanitizeLook(raw: unknown): PersonLook | null {
-  if (!raw || typeof raw !== 'object') return null
-  const l = raw as Record<string, unknown>
+  if (!isObject(raw)) return null
+  const l = raw
   if (!isColour(l.shirt) || !isColour(l.trousers) || !isColour(l.skin) || !isColour(l.hair)) return null
   const sex = l.sex === 'f' || l.sex === 'm' ? l.sex : undefined
   const hat = l.hat === 'straw' || l.hat === 'cap' || l.hat === 'beanie' ? l.hat : l.hat === true

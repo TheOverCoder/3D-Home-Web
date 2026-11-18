@@ -1,7 +1,7 @@
 // Reading a save safely (update-v1/CONTRACTS.md §1.2): every sanitizer reads what a save holds with these, so that a
-// hand-edited or broken save can never break the game, and each name means one thing everywhere. Today the same few
-// readers are written again in ten sanitizers, and `whole` alone means four different things there; these replace
-// them all (08's second commit moves them over, with no change in what any save loads to). Pure, no imports.
+// hand-edited or broken save can never break the game, and each name means one thing everywhere. The same few
+// readers were written again in ten sanitizers, and `whole` alone meant four different things there; these replaced
+// them all, with no change in what any save loads to. Pure, no imports.
 
 /** The biggest count that still counts: past it, one more is the same number. */
 export const MOST = Number.MAX_SAFE_INTEGER

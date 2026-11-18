@@ -4,6 +4,7 @@
 // so a step the farm has done already is passed the moment it comes. A future step is a row of FIRST_STEPS. Pure:
 // the farm keeps the record and pays (src/farm/state.ts), the hint draws it.
 
+import { isObject, num } from '../lib/saved'
 import type { ArtId } from '../ui/art'
 import type { ProduceId } from './data'
 import type { Prize } from './gifts'
@@ -125,9 +126,9 @@ export const stepsFresh = (): StepsRecord => ({ step: 0, over: false })
 
 /** The record as saved, made safe. A farm from before the steps (nothing saved) has done them: it never sees them. */
 export function sanitizeSteps(raw: unknown): StepsRecord {
-  if (!raw || typeof raw !== 'object') return { step: FIRST_STEPS.length, over: true }
+  if (!isObject(raw)) return { step: FIRST_STEPS.length, over: true }
   const r = raw as Partial<Record<keyof StepsRecord, unknown>>
-  const step = typeof r.step === 'number' && Number.isFinite(r.step) ? Math.min(FIRST_STEPS.length, Math.max(0, Math.floor(r.step))) : 0
+  const step = Math.min(FIRST_STEPS.length, Math.max(0, Math.floor(num(r.step, 0))))
   return { step, over: r.over === true || step >= FIRST_STEPS.length }
 }
 

@@ -7,6 +7,7 @@
 // hours and numbers unchanged), and the season's decoration. The weather's odds by season are in ./weather.ts.
 // Pure, and not yet wired to the farm: the farm keeps the record (`SeasonRecord`) once the mission's first change lands.
 
+import { isObject } from '../lib/saved'
 import { CROPS, type CropId } from './data'
 import { EVENTS, type EventId } from './events'
 
@@ -115,7 +116,6 @@ export interface SeasonRecord {
 /** A year that begins today (`played`: the days played so far, today counted). */
 export const freshSeason = (played = 1): SeasonRecord => ({ from: Math.max(1, whole(played)), told: -1 })
 
-const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object'
 const count = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? Math.floor(v) : null)
 
 /** The record as saved, made safe against the days played so far (`played`): a beginning from day 1 to today (one
@@ -123,7 +123,7 @@ const count = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? Mat
  *  season it is now. Missing or unreadable (a farm from before the seasons): its first spring begins today. */
 export function sanitizeSeason(raw: unknown, played: number): SeasonRecord {
   const today = Math.max(1, whole(played))
-  if (!isObj(raw)) return freshSeason(today)
+  if (!isObject(raw)) return freshSeason(today)
   const f = count(raw.from)
   const from = f === null || f < 1 || f > today ? today : f
   const now = seasonAt(today, from).ordinal

@@ -1,8 +1,7 @@
 // How the game writes a time (update-v1/CONTRACTS.md §1.1): every countdown, every length of time and every "ready at"
 // goes through one of these three, so that no two places round differently and none ever shows "1:60". A countdown
 // under an hour is a clock (`clock`); a wait of an hour or more, and a length, are words (`span`); where a time of day
-// helps, the device's own clock (`readyAt`), never the farm's hours. Pure, no imports; not yet used by the game (08's
-// first commit moves today's formatters onto it).
+// helps, the device's own clock (`readyAt`), never the farm's hours. Pure, no imports.
 
 /** Whole seconds left, rounded up: a part of a second still counts (it is not over); nothing, or not a number: 0. */
 const left = (seconds: number) => (Number.isFinite(seconds) && seconds > 0 ? Math.ceil(seconds - 1e-9) : 0)
