@@ -21,7 +21,7 @@ import {
   stepsFresh,
   type StepId,
 } from './firstSteps'
-import { bedStage, farm, newVisitor, orderAt, resetFarm, tick, type FarmData } from './state'
+import { bedStage, farm, newVisitor, orderAt, resetFarm, type FarmData } from './state'
 import { lockedAt } from './unlocks'
 import { xpAt } from './xp'
 
@@ -215,7 +215,8 @@ describe('the steps’ turns: the line follows the farm, so each step can always
   })
 
   it('order: the starter order, fetch what it lacks (down to the fleece for the cloth), put it in, send it', () => {
-    tick(0.1)
+    // (the other places still on their way: no order the dice made can be nearer)
+    farm.orders = farm.orders.map((slot, k) => (k ? { wait: 600 } : slot))
     expect(orderToFollow(farm)).toBe(0)
     expect(says('order')).toEqual({ say: 'Now fetch eggs', target: { good: 'egg' } })
     farm.inv.egg = 3
