@@ -114,6 +114,18 @@ describe('a layer that throws', () => {
   })
 })
 
+describe('a layer that fails now and then', () => {
+  it('counts its tries from nothing each time it draws whole again', () => {
+    for (let k = 0; k <= LAYER_TRIES + 1; k++) {
+      act(() => guardHooks.fail('hud'))
+      expect($('hud')).toBeNull()
+      act(() => useHome.getState().setView(k % 2 ? 'first' : 'third'))
+      expect($('hud')).not.toBeNull()
+    }
+    expect(reported()).toHaveLength(LAYER_TRIES + 2)
+  })
+})
+
 describe('a fault armed for a test', () => {
   it('throws in its guard once, as that panel opens; then the panel works', () => {
     broken = false

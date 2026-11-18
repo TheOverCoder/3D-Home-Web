@@ -12,8 +12,9 @@ import { expect, test, type Game } from './helpers'
 // faults make on purpose are taken out of its list, the rest must be none.
 
 const panel = (page: Page) => page.evaluate(() => (window as any).__home.useHome.getState().panel?.kind ?? null)
-/** The cards opened by themselves in this visit (`__home.cards`, ?debug). */
-const opened = (page: Page) => page.evaluate(() => (window as any).__home.cards.visit().opened as string[])
+/** This visit of the card queue (`__home.cards`, ?debug): the cards opened by themselves in it, and those it let pass. */
+const visit = (page: Page) => page.evaluate(() => (window as any).__home.cards.visit() as { opened: string[]; passed: string[]; stepsEnded: boolean })
+const opened = async (page: Page) => (await visit(page)).opened
 
 /** The hens' nests and the barn emptied, then the farm away half an hour: what they lay is a welcome back to tell (a
  *  return of AWAY_TELLS or more with news: a new visit). `daily`: the day's gift let out of the way in the same call,
@@ -135,8 +136,7 @@ test.describe('safety', () => {
     // back after half an hour, the day's gift due too: the welcome back first, alone
     await away(page, { daily: true })
     await expect.poll(() => panel(page), { timeout: 30_000 }).toBe('away')
-    await page.waitForTimeout(2500)
-    expect(await panel(page), 'the gift never over the welcome back').toBe('away')
+    expect(await opened(page)).toEqual(['away'])
     const welcome = page.locator('.farm-panel[aria-label="Welcome back"]')
     await welcome.getByRole('button', { name: 'Close', exact: true }).click()
     // the day's gift after it, by itself; two cards this visit
@@ -149,9 +149,8 @@ test.describe('safety', () => {
     await reach(page, 2)
     await expect(page.locator('.level-up-show')).toBeVisible({ timeout: 30_000 })
     await expect(page.locator('.level-up-show')).toHaveCount(0, { timeout: 30_000 })
-    await page.waitForTimeout(5000)
+    await expect.poll(() => visit(page), { timeout: 30_000 }).toMatchObject({ opened: ['away', 'daily'], passed: ['unlocked'] })
     await expect(page.locator('.unlocked')).toHaveCount(0)
-    expect(await opened(page)).toEqual(['away', 'daily'])
     expect(await page.evaluate(() => (window as any).__home.cards.free())).toBe(true)
 
     // the next visit: the welcome back again (the day's gift opened by itself today already), then level 3's reveal
@@ -179,9 +178,9 @@ test.describe('safety', () => {
     await away(page)
     await expect.poll(() => toasts(page), { timeout: 30_000 }).toContain("That didn't open properly")
     await expect.poll(() => panel(page)).toBe(null)
-    await page.waitForTimeout(3000)
-    expect(await panel(page), 'not opened again this visit').toBe(null)
-    expect(await opened(page)).toEqual(['away'])
+    // still due (its report waits), looked at again and let pass: not opened again this visit
+    await expect.poll(() => visit(page), { timeout: 30_000 }).toMatchObject({ opened: ['away'], passed: ['away'] })
+    expect(await panel(page)).toBe(null)
     // the welcome back holds nothing back now: the game is free
     expect(await page.evaluate(() => (window as any).__home.cards.free())).toBe(true)
     await drawing(page)

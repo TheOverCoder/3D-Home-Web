@@ -135,6 +135,7 @@ describe('the cards the game registers', () => {
     expect(mayOpen('unlocked')).toBe(false)
     expect(cardTurn(true)).toBeNull()
     expect(reveal).toMatchObject({ opened: 0, passed: 1 })
+    expect(visitNow()).toMatchObject({ opened: ['away', 'daily'], passed: ['unlocked'] })
     newVisit()
     const next = take(card('unlocked'))
     expect(mayOpen('unlocked')).toBe(true)
@@ -151,7 +152,7 @@ describe('the cards the game registers', () => {
     expect(cardTurn(true)).toBe('away')
     expect(away.opened).toBe(1)
     newVisit()
-    expect(visitNow()).toEqual({ opened: [], stepsEnded: false })
+    expect(visitNow()).toEqual({ opened: [], passed: [], stepsEnded: false })
   })
 
   it('takes back only its own registration, and tells its followers of each change', () => {

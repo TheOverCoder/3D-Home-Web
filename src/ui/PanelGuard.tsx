@@ -7,13 +7,13 @@ import { useHome } from '../store'
 // into the diagnostics (Settings → Copy diagnostics: src/lib/diagnostics.ts keeps the console's errors). The guard draws
 // nothing then, and once what it holds changes (the next panel), it draws again from fresh. Round a layer of the screen
 // (the HUD, the corner menu, the dashboard) the layer is left out, with no word, and drawn again once what is over the
-// game changes (a panel opened or closed, the settings, a mode, the map, the view): a few times a page at most, so a
-// layer that fails every time stays out. A guard goes outside a panel's sheet, never inside it.
+// game changes (a panel opened or closed, the settings, a mode, the map, the view): a few times in a row at most, so a
+// layer that fails each time it is drawn again stays out. A guard goes outside a panel's sheet, never inside it.
 
 /** The toast when a panel could not open. */
 export const DIDNT_OPEN = "That didn't open properly"
 
-/** How many times a layer that failed is drawn again in one page, at most. */
+/** How many times in a row a layer that failed is drawn again, at most (until it draws whole once more). */
 export const LAYER_TRIES = 3
 
 /** What is over the game, as one value: a layer that failed is drawn again when it changes. */
@@ -53,7 +53,7 @@ interface GuardState {
   failed: boolean
   /** what it held, and what was over the game, when it failed (set once the error is caught) */
   as: { name: string; scene: string } | null
-  /** how many times it failed (a layer is drawn again only LAYER_TRIES times) */
+  /** how many times in a row it failed, since it last drew whole (a layer is drawn again only LAYER_TRIES times) */
   tries: number
 }
 
@@ -74,10 +74,18 @@ class Guard extends Component<GuardProps, GuardState> {
     return again ? { failed: false, as: null } : null
   }
 
+  /** Drawn whole again after failing: the next failure's tries count from one. */
+  private whole = false
+  componentDidUpdate(_: GuardProps, was: GuardState) {
+    if (was.failed && !this.state.failed) this.whole = true
+  }
+
   componentDidCatch(error: unknown, info: ErrorInfo) {
     const { name, scene, layer, close } = this.props
     armed.delete(name)
-    this.setState((s) => ({ as: { name, scene }, tries: s.tries + 1 }))
+    const fresh = this.whole
+    this.whole = false
+    this.setState((s) => ({ as: { name, scene }, tries: fresh ? 1 : s.tries + 1 }))
     console.error(`[3d-home] "${name || 'nothing open'}" failed and was ${layer ? 'left out' : 'closed'}: ${said(error)}`, info.componentStack ?? '')
     if (layer) return
     // (closed from here: what the player was in goes, the rest of the game stays)

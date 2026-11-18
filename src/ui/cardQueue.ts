@@ -92,15 +92,16 @@ export function registerCard(id: CardId, def: CardDef): () => void {
   }
 }
 
-/** This visit: the cards opened by themselves in it, and whether a new farm's first steps ended in it. */
-let visit: { opened: readonly CardId[]; stepsEnded: boolean } = { opened: [], stepsEnded: false }
+/** This visit: the cards opened by themselves in it, the ones it let pass (each once), and whether a new farm's first
+ *  steps ended in it. */
+let visit: { opened: readonly CardId[]; passed: readonly CardId[]; stepsEnded: boolean } = { opened: [], passed: [], stepsEnded: false }
 
 /** This visit as it stands. */
 export const visitNow = () => visit
 
 /** A visit begins (the page loaded, back after AWAY_TELLS or more, a new day, another farm): its budget is whole. */
 export function newVisit() {
-  visit = { opened: [], stepsEnded: false }
+  visit = { opened: [], passed: [], stepsEnded: false }
   cardsChanged()
 }
 
@@ -123,7 +124,11 @@ export const mayOpen = (id: CardId) => !spent(id, { opened: visit.opened, stepsE
  *  open is let pass, then the next in order opens, counted in the visit. The card opened, or null. */
 export function cardTurn(free: boolean): CardId | null {
   const due = CARD_ORDER.filter((id) => cards.get(id)?.due() ?? false)
-  for (const id of due) if (!mayOpen(id)) cards.get(id)?.pass?.()
+  for (const id of due) {
+    if (mayOpen(id)) continue
+    cards.get(id)?.pass?.()
+    if (!visit.passed.includes(id)) visit = { ...visit, passed: [...visit.passed, id] }
+  }
   const id = nextCard({ due, opened: visit.opened, free, showing: cardShowing(), stepsEndedThisVisit: visit.stepsEnded })
   if (!id) return null
   visit = { ...visit, opened: [...visit.opened, id] }
