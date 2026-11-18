@@ -1,8 +1,8 @@
 import { m } from 'motion/react'
-import type { CSSProperties } from 'react'
 import { art } from '../../ui/art'
 import { ITEM, SPRING, STAGGER } from '../../ui/motion'
 import { PanelSheet } from '../../ui/PanelSheet'
+import { Odds } from '../DailyCard'
 import type { ProduceId } from '../data'
 import { LuckyReels } from './LuckyReels'
 import type { NewsView, NowItem, SoonItem } from './view'
@@ -13,17 +13,18 @@ import './NewsCard.css'
 //
 // A front page in the game's paper: the masthead (the sheet's head: the rolled newspaper, "Farm News", today's date;
 // a double rule under it),
-// then "Active now" — the hero: the event on today as a story, its picture, what it does, its effect and how long it
-// has left on a bar that empties as the day goes; on the lucky draw's day the story is the draw itself (./LuckyReels.tsx:
-// one tap, two reels, two goods at double price) — and "Coming soon": the next time of every other event, each on a
+// then "Active now" — the hero: the event on today as a story, its picture, what it does, its effect, until when and
+// when it comes back (an invitation, never a clock running out); on the lucky draw's day the story is the draw itself
+// (./LuckyReels.tsx: one tap, two reels, two goods at double price; its "?" says what it can draw and how likely) — and
+// "Coming soon": the next time of every other event, each on a
 // calendar leaf with its weekday and date, its name, when (Tomorrow · All day) and its effect on a chip. A quiet day
 // says so and names the next. The sheet comes in from the bottom (sideways, the right) on its spring, its blocks one by
 // one; the story's picture lands last, the one moment of a day without a draw; a swipe down (sideways: right) closes.
 
-/** An event on now, as the front page's story: what it is, what it does, until when, and its time running out. */
+/** An event on now, as the front page's story: what it is, what it does, until when, and when it comes back. */
 function Story({ e }: { e: NowItem }) {
   return (
-    <article className={`nw-story ${e.id}`} aria-label={`${e.name}: ${e.say} ${e.until}, ${e.left}`}>
+    <article className={`nw-story ${e.id}`} aria-label={`${e.name}: ${e.say} ${e.until}. ${e.back}.`}>
       <m.img
         className="art nw-story-art"
         src={art(e.art)}
@@ -41,11 +42,10 @@ function Story({ e }: { e: NowItem }) {
         <div className="nw-story-tags">
           <span className="tag nw-effect">{e.chip}</span>
           <span className="nw-left">
-            {e.until} · <b>{e.left}</b>
+            {e.until} · <b>{e.back}</b>
           </span>
         </div>
       </div>
-      <i className="nw-time" style={{ '--share': e.share } as CSSProperties} aria-hidden="true" />
     </article>
   )
 }
@@ -107,8 +107,9 @@ export function NewsCard({
                   {lucky.fresh && <span className="nw-new">New</span>}
                 </h4>
                 <span className="nw-left">
-                  <b>{lucky.left}</b>
+                  <b>{lucky.until}</b>
                 </span>
+                {v.lucky.odds.length > 0 && <Odds rows={v.lucky.odds} label="What the draw can pick" className="nw-odds" />}
               </div>
               <LuckyReels pool={v.lucky.pool} goods={v.lucky.goods} until={v.lucky.until} onDraw={onDraw} onLand={onLand} onReveal={onReveal} />
             </article>

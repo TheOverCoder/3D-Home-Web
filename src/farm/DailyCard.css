@@ -330,3 +330,5 @@
 .odds-title { color: var(--sun); font: 600 15px/1.25 var(--font-display); }
 .odds-row { display: flex; justify-content: space-between; gap: 14px; }
 .odds-row b { flex: none; font-weight: 900; font-variant-numeric: tabular-nums; }
+/* at the end of its row (the level's bar's), level with its middle */
+.odds.end { margin: -10px -6px -10px auto; align-self: center; }

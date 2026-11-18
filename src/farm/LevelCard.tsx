@@ -11,7 +11,9 @@ import { ItemPic } from '../ui/ItemPic'
 import { CountUp, EASE, ITEM, POP, SINK, SPRING } from '../ui/motion'
 import { PanelSheet } from '../ui/PanelSheet'
 import { storeOf, type ProduceId } from './data'
-import { prizeWords, type Opened, type Prize } from './gifts'
+import { boxOdds } from './daily'
+import { Odds } from './DailyCard'
+import { isBox, prizeWords, type Opened, type Prize } from './gifts'
 import { iconUrl } from './icons'
 import type { BoxView, LevelView } from './levelView'
 import { UnlockRow } from './Unlocked'
@@ -62,6 +64,9 @@ function together(list: Prize[]): Prize[] {
   for (const p of list) if (!('coins' in p)) goods.set(p.item, (goods.get(p.item) ?? 0) + p.n)
   return [...(coins ? [{ coins }] : []), ...[...goods].map(([item, n]) => ({ item, n }))]
 }
+
+/** What a gift box can hold and how likely (src/farm/gifts.ts, GIFT_ODDS): the "?" in the bar's row. */
+const BOX_ODDS = boxOdds()
 
 export function LevelCard({
   v,
@@ -115,12 +120,16 @@ export function LevelCard({
               +{v.gain} new
             </m.span>
           )}
+          {!v.top && <Odds rows={BOX_ODDS} label="What a gift box can hold" className="lf-odds end" />}
         </div>
         <div className="lf-track">
           <div className="lf-rail">
-            {v.boxes.map((b) => (
-              <GiftBox key={b.q} b={b} next={nextLocked?.q === b.q} onOpen={(el) => open([b.box], el)} />
-            ))}
+            {/* (the first levels have one box, half way: src/farm/gifts.ts, quartersOf) */}
+            {v.boxes
+              .filter((b) => isBox(b.box))
+              .map((b) => (
+                <GiftBox key={b.q} b={b} next={nextLocked?.q === b.q} onOpen={(el) => open([b.box], el)} />
+              ))}
             <Bar v={v} before={before} />
           </div>
           <span className="lf-goal" aria-label={v.top ? 'The top level' : `Level ${next}`}>

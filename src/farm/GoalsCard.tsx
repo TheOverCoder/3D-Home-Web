@@ -12,7 +12,7 @@ import { PanelSheet } from '../ui/PanelSheet'
 import { useSideways } from '../ui/sheetMode'
 import { storeOf } from './data'
 import type { GoalId } from './goals'
-import { onBoard, type GoalView, type GoalsView } from './goalsView'
+import { howFar, onBoard, type GoalView, type GoalsView } from './goalsView'
 import { iconUrl } from './icons'
 import './GoalsCard.css'
 
@@ -203,15 +203,6 @@ export function GoalsCard({ v, onClaim, onClose }: { v: GoalsView; onClaim: (id:
   )
 }
 
-/** The words for how far, by the small-area rule: under half what is done, past it what is left. */
-function howFar(g: GoalView) {
-  if (g.done) return 'Reached!'
-  const left = g.target - g.have
-  if (g.part >= 0.75) return `Only ${left} more!`
-  if (g.part >= 0.5) return `${left} to go`
-  return `${g.have} of ${g.target}`
-}
-
 /** What to do about the goal in the middle: its step, its words, how far, and the bar leading to what it gives (reached:
  *  Claim in the bar's place). `fresh`: the step was just reached by a claim, and part of the next is already there. The
  *  one going out as another comes in is hidden from the screen reader. */
@@ -221,7 +212,7 @@ function Info({ goal, fresh, onClaim }: { goal: GoalView; fresh: boolean; onClai
   const have = Math.min(goal.have, goal.target)
   return (
     <m.section
-      className={`gc-info${goal.done ? ' done' : goal.part >= 0.75 ? ' warm' : ''}${here ? '' : ' leaving'}`}
+      className={`gc-info${goal.done ? ' done' : goal.almost ? ' warm' : ''}${here ? '' : ' leaving'}`}
       aria-label={`${goal.words}: ${have} of ${goal.target}`}
       aria-hidden={here ? undefined : true}
       initial={{ opacity: 0, y: 8 }}
@@ -278,18 +269,18 @@ function Medal({ goal, big = false, ring = true, delay = 0.2 }: { goal: GoalView
         </span>
         <span className="gc-shine" aria-hidden="true" />
       </span>
-      {ring && <Ring key={goal.step} part={goal.part} done={goal.done} stroke={big ? RING.big : RING.small} delay={delay} />}
+      {ring && <Ring key={goal.step} part={goal.part} done={goal.done} almost={goal.almost} stroke={big ? RING.big : RING.small} delay={delay} />}
     </span>
   )
 }
 
 /** The ring round a medal (a share of its size: the medal's CSS sets the size): it fills as far as the goal has come,
- *  its last quarter warms, and reached it is the leaf's. */
-function Ring({ part, done, stroke, delay }: { part: number; done: boolean; stroke: number; delay: number }) {
+ *  it warms in its last stretch (almost there), and reached it is the leaf's. */
+function Ring({ part, done, almost, stroke, delay }: { part: number; done: boolean; almost: boolean; stroke: number; delay: number }) {
   const r = 50 - stroke / 2
   const c = 2 * Math.PI * r
   return (
-    <svg className={`gc-ring${done ? ' done' : part >= 0.75 ? ' warm' : ''}`} viewBox="0 0 100 100" aria-hidden="true">
+    <svg className={`gc-ring${done ? ' done' : almost ? ' warm' : ''}`} viewBox="0 0 100 100" aria-hidden="true">
       <circle className="gc-ring-track" cx={50} cy={50} r={r} strokeWidth={stroke} />
       <m.circle
         className="gc-ring-fill"

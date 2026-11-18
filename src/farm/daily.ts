@@ -261,9 +261,9 @@ export function dayOdds(day: number, level: number, made: readonly ProduceId[]):
 }
 
 /** What a level's gift box holds and how likely (src/farm/gifts.ts, GIFT_ODDS): coins, a building material, or goods the
- *  farm makes (a material while it makes none). */
-export function boxOdds(made: readonly ProduceId[]): Chance[] {
-  const goods = goodsOf(made).length > 0
+ *  farm makes (a material while it makes none: with `made` given and empty, the materials' share holds both). */
+export function boxOdds(made?: readonly ProduceId[]): Chance[] {
+  const goods = !made || goodsOf(made).length > 0
   const rest = 1 - GIFT_ODDS.coins - GIFT_ODDS.material
   return [{ what: 'Coins', share: GIFT_ODDS.coins }, { what: 'A building material', share: GIFT_ODDS.material + (goods ? 0 : rest) }, ...(goods ? [{ what: 'Goods from your farm', share: rest }] : [])]
 }

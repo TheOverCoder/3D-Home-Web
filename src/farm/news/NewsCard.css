@@ -39,7 +39,7 @@
   grid-template-columns: 78px minmax(0, 1fr);
   align-items: center;
   gap: 12px;
-  padding: 14px 14px 20px;
+  padding: 14px;
   border-radius: 22px;
   background: radial-gradient(130% 150% at 0% 0%, #fff, var(--paper-2) 65%);
   box-shadow: 0 4px 0 var(--paper-3);
@@ -51,13 +51,6 @@
 .news-card .nw-story-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
 .news-card .nw-left { font: 700 14px/1.2 var(--font-text); color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .news-card .nw-left b { color: var(--ink); font-weight: 900; }
-/* its time running out: a bar along its foot, the share still to come, filling in as the page opens */
-.news-card .nw-time { position: absolute; left: 14px; right: 14px; bottom: 8px; height: 5px; border-radius: 3px; background: var(--paper-3); overflow: hidden; }
-.news-card .nw-time::before { content: ''; position: absolute; inset: 0; border-radius: inherit; background: var(--tone); transform-origin: 0 50%; transform: scaleX(var(--share)); }
-:where(:root:not([data-motion='less'])) {
-  .news-card .nw-time::before { animation: nw-time 0.9s 0.35s var(--ease-sheet) both; }
-}
-@keyframes nw-time { from { transform: scaleX(0); } }
 /* what it does, on a chip of its tone */
 .news-card .tag.nw-effect { padding: 5px 10px; background: color-mix(in srgb, var(--tone) 20%, #fff); color: var(--ink); font: 800 13px/1.15 var(--font-text); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--tone) 55%, transparent); }
 /* not shown before: a berry pill that pops in */
