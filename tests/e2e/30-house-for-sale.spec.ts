@@ -276,15 +276,15 @@ test.describe('the house for sale', () => {
     await page.locator('.edit-card .edit-buy').click()
     await page.waitForFunction(() => (window as any).__home.farm.state.layout.land.includes('east'), null, { timeout: 30_000, polling: 200 })
     expect((await state(page)).coins).toBe(850)
-    // back in the office: the east meadow is the farm's, no tag on it; the north-east one beside it still for sale
+    // back in the office: the north-east meadow beside it still for sale; the east one the farm's, no tag on it (each
+    // waited for: a frame after buying land is slow, the hedge and the woods made again round it)
     await page.evaluate(() => (window as any).__home.useHome.getState().setEditing(false))
     await page.waitForFunction(() => (window as any).__home.farm.edit.camera.blend < 0.01, null, { timeout: 30_000, polling: 200 })
-    await lookAt('east')
-    await page.waitForTimeout(1500)
-    expect((await state(page)).tag).toBeNull()
     await lookAt('northEast')
     await tagIs('farm-estate-map-northEast')
     expect((await state(page)).tag).toMatchObject({ kind: 'price', price: 200 })
+    await lookAt('east')
+    await tagIs(null)
     expect(game.errors, game.errors.join('\n')).toEqual([])
   })
 
