@@ -88,3 +88,6 @@ The orchestrator runs the plan to the end without asking:
   build. The farm's state leaves the shell in 08c's step 2, which brings the limit to 160 KB (decision 18).
 - **32-machine-queue failed twice on one CI run and passed on the next with the same code.** It is a flake to make
   robust (07b, which moves the machine panel), not a reason to revert.
+- **01a starts before phase 1's last three agents (07b, 06b, 11b) finish.** Its waits (04a's drain and
+  `ORDERS.first`, 05a) are merged and CI is green; it is the root most of phase 2 waits on (its PACE, its orders, its
+  crops), and it touches none of 07b's, 06b's or 11b's files.
