@@ -23,7 +23,7 @@ import { PhotoButton } from './PhotoButton'
 import { LevelStar } from './SavesPanel'
 import { ScreenModal } from './ScreenModal'
 import { SettingsPanel } from './SettingsPanel'
-import { gameFree } from './useGameFree'
+import { gameFree, useGameFree } from './useGameFree'
 import './SavesPanel.css'
 
 // What loads behind the start screen: the game's interface, everything drawn over the scene while you play (the sounds'
@@ -67,16 +67,27 @@ function SettingsSlot() {
   )
 }
 
-/** What the player is told about the save, once a visit each, as the game is played: the farm could not be read (it is
- *  kept as it was, and the saves list has it), or the storage is full (the saves list frees up space). */
+/** How long the game is free before the save's words are said (ms): the world first, then the word, as the cards that
+ *  open by themselves wait (./useGameFree.ts). */
+const SAY_AFTER_MS = 900
+
+/** What the player is told about the save, once a visit each, as the game is played with nothing over it: the farm
+ *  could not be read (it is kept as it was, and the saves list has it), or the storage is full (the saves list frees up
+ *  space). */
 function SaveWords() {
-  const playing = useHome((s) => s.phase === 'playing')
-  const rev = useFarm((s) => s.rev)
+  const free = useGameFree()
+  const trouble = useFarm(() => {
+    const s = saveState()
+    return s.held ? 'held' : s.full ? 'full' : ''
+  })
   useEffect(() => {
-    if (!playing) return
-    const words = saveWords()
-    if (words) useHome.getState().showToast(words, 'floppy-disk')
-  }, [playing, rev])
+    if (!free || !trouble) return
+    const t = window.setTimeout(() => {
+      const words = saveWords()
+      if (words) useHome.getState().showToast(words, 'floppy-disk')
+    }, SAY_AFTER_MS)
+    return () => window.clearTimeout(t)
+  }, [free, trouble])
   return null
 }
 
@@ -235,7 +246,7 @@ export function SavesList({ onPlay }: { onPlay: () => void }) {
             {f.broken ? (
               <div className="saves-empty">
                 <b>This farm could not be read</b>
-                <span className="tag">{here ? 'Kept as it was: this visit is not saved' : 'Kept as it was'}</span>
+                <span className="tag">{f.copy?.savedAt ? `A copy from ${when(f.copy.savedAt)}` : 'Kept as it was'}</span>
               </div>
             ) : f.exists ? (
               <>
@@ -284,7 +295,7 @@ export function SavesList({ onPlay }: { onPlay: () => void }) {
         <div className="saves-acts">
           {f.broken ? (
             <m.button className="btn primary saves-go" whileTap={{ scale: 0.96, y: 3 }} transition={SPRING.pop} onClick={f.copy ? loadCopy : saveFile}>
-              {f.copy ? `Load the copy${f.copy.savedAt ? ` from ${when(f.copy.savedAt)}` : ''}` : 'Save as file'}
+              {f.copy ? 'Load the copy' : 'Save as file'}
               {f.copy ? <ArrowRight weight="bold" /> : <DownloadSimple weight="bold" />}
             </m.button>
           ) : (

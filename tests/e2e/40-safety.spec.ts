@@ -275,16 +275,16 @@ test.describe('saves', () => {
       const page = await context.newPage()
       const errors: string[] = []
       watchErrors(page, errors)
-      // farm 1 cut short as it was written; the copy kept as its last visit began, two hours ago
+      // farm 1 cut short as it was written; the copy kept as its last visit began, a minute before (no time away to tell)
       const broken = '{"coins":4321,"started":true,"beds":[{"built":true'
-      const copyAt = Date.now() - 2 * 3_600_000
+      const copyAt = Date.now() - 60_000
       await page.addInitScript(
         ({ broken, copy }) => {
           if (localStorage.getItem('3d-home:farm:v1')) return
           localStorage.setItem('3d-home:farm:v1', broken)
           localStorage.setItem('3d-home:farm:v1:prev', copy)
         },
-        { broken, copy: JSON.stringify({ coins: 4321, started: true, time: copyAt }) },
+        { broken, copy: JSON.stringify({ coins: 4321, started: true, place: 'farm', apartment: { owned: false }, time: copyAt }) },
       )
       await page.goto('/?debug&quality=low')
       // the saves list: the farm could not be read, kept as it was, and its copy to load
@@ -293,14 +293,16 @@ test.describe('saves', () => {
       await load.click()
       const card = page.locator('.saves-card')
       await expect(card).toContainText('This farm could not be read')
-      await expect(card).toContainText('Kept as it was: this visit is not saved')
+      await expect(card).toContainText(/A copy from \S/)
       await expect(page.locator('.saves-tab.current .saves-seed')).toHaveAttribute('src', /warning/)
-      await expect(page.getByRole('button', { name: /^Load the copy from / })).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Load the copy' })).toBeVisible()
       // played meanwhile: a new farm, said once, and the farm is never written over
       await watchToasts(page)
       await page.locator('.intro-back').click()
       await page.locator('.intro-go').click()
       await page.waitForFunction(() => (window as any).__home?.useHome.getState().phase === 'playing' && !!(window as any).__home.farm, null, { timeout: 120_000 })
+      // (the day's gift out of the way: the words wait for nothing over the game)
+      await page.evaluate(() => (window as any).__home.farm.daily?.quiet?.(true))
       await expect.poll(() => toasts(page), { timeout: 30_000 }).toContain('Farm 1 could not be read: it is kept as it was')
       expect(await saveState(page)).toMatchObject({ held: true })
       expect(
@@ -309,8 +311,14 @@ test.describe('saves', () => {
           return [localStorage.getItem('3d-home:farm:v1'), localStorage.getItem('3d-home:farm:v1:broken')]
         }),
       ).toEqual([broken, broken])
-      // its copy (the saves list's press) loads it again, and it is saved on
-      expect(await page.evaluate(() => (window as any).__home.saves.restoreCopy(1))).toEqual({ ok: true })
+      // its copy (the saves list's press) loads it again, and it is saved on (the copy made just now: no time away to
+      // tell, whose welcome back would wait over the game)
+      const restored = await page.evaluate(() => {
+        const copy = JSON.parse(localStorage.getItem('3d-home:farm:v1:prev')!)
+        localStorage.setItem('3d-home:farm:v1:prev', JSON.stringify({ ...copy, time: Date.now() }))
+        return (window as any).__home.saves.restoreCopy(1)
+      })
+      expect(restored).toEqual({ ok: true })
       expect(await page.evaluate(() => (window as any).__home.farm.state.coins)).toBe(4321)
       expect(await saveState(page)).toMatchObject({ held: false })
       expect(await page.evaluate(() => [JSON.parse(localStorage.getItem('3d-home:farm:v1')!).coins, localStorage.getItem('3d-home:farm:v1:broken')])).toEqual([4321, null])

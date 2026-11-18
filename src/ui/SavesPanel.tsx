@@ -10,8 +10,8 @@ import { art } from './art'
 // on the left, the presses on the right. Its moments: a tab — the highlight slides to it and the card turns over to
 // that farm; Play — the house hops and the screen goes on into that farm; a full hold — the card turns to an empty place.
 // A farm whose save could not be read says so, kept as it was (src/farm/state/save.ts: never written over until you
-// choose): its big press loads the copy kept as its last visit began, or saves it as a file (the text as it was stored)
-// when there is no copy; it can also be started afresh, or loaded from a file. A storage that is full says so, with a
+// choose): its big press loads the copy kept as its last visit began (its chip says when), or saves it as a file (the
+// text as it was stored) when there is no copy; it can also be started afresh, or loaded from a file. A storage that is full says so, with a
 // press that frees up space. The opening screen's "Load farm" page (./Intro.tsx).
 //
 // Only the door to it is part of the page shell (with the level's star the opening menu's farm card shows): the list
