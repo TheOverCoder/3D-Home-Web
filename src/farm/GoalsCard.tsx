@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from 'react'
 import { flyCoins, flyItem } from '../fx/coins'
 import { coinsToFly } from '../fx/fx'
 import { art } from '../ui/art'
-import { burst } from '../ui/burst'
+import { paying } from '../fx/paid'
+import { celebrate } from '../fx/reward'
 import { Check, Medal as MedalGlyph } from '../ui/glyphs'
 import { ItemPic } from '../ui/ItemPic'
 import { EASE, ITEM, PRESS, SINK, SPRING } from '../ui/motion'
@@ -81,6 +82,12 @@ export function GoalsCard({ v, onClaim, onClose }: { v: GoalsView; onClaim: (id:
     if (held) return
     const goal = hero
     setAtId(goal.id)
+    // the claim is the farm's at the tap; its show as big as what it gave (the tier it was counted at)
+    const { tier } = paying(
+      'goal',
+      () => onClaim(goal.id),
+      () => [{ coins: goal.reward.coins }, { item: goal.reward.item, n: goal.reward.count }],
+    )
     if (!still) {
       const b = button.getBoundingClientRect()
       flyCoins(b.left + b.width / 2, b.top + b.height / 2, coinsToFly(goal.reward.coins))
@@ -88,12 +95,12 @@ export function GoalsCard({ v, onClaim, onClose }: { v: GoalsView; onClaim: (id:
       const g = button.closest('.gc-info')?.querySelector('.gc-gives .item-pic')?.getBoundingClientRect()
       if (g) flyItem(g.left + g.width / 2, g.top + g.height / 2, iconUrl(goal.reward.item), 1, storeOf(goal.reward.item))
       const c = coin.current?.getBoundingClientRect()
-      burst(c ? { x: c.left + c.width / 2, y: c.top + c.height / 2 } : button, { count: 70, spread: 90, power: 28 })
+      // (its sound and touch the farm played as it paid: claimGoal's own line)
+      celebrate('goal', tier ?? 'small', c ? { x: c.left + c.width / 2, y: c.top + c.height / 2 } : button, { sound: false })
       if (coin.current) void spin(coin.current, { rotateY: [0, 720] }, { duration: 1.1, ease: [0.3, 0.9, 0.25, 1] })
       setHeld(v)
       turning.current = setTimeout(() => setHeld(null), TURN)
     }
-    onClaim(goal.id)
     setFresh(`${goal.id}-${goal.step + 1}`)
   }
   const isFresh = !held && fresh === `${hero.id}-${hero.step}` && !hero.done
