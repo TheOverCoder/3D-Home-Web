@@ -538,6 +538,10 @@ const boxes = (page: Page, crowded = false) =>
       compass: shown('.compass'),
       // the rest of the top column (src/ui/TopStack.tsx)
       column: [...shown('.toast'), ...shown('.first-hint.touch'), ...shown('.level-up-show')],
+      // its slots under the compass's, each with its place in the order (the compass's stands in the dashboard's hole)
+      slots: Array.from(document.querySelectorAll<HTMLElement>('.top-stack > .top-slot:not(.top-slot-compass)'))
+        .filter((e) => e.getClientRects().length > 0 && e.getBoundingClientRect().height > 0)
+        .map((e) => ({ what: e.className, order: Number(e.style.order), top: e.getBoundingClientRect().top, bottom: e.getBoundingClientRect().bottom })),
       corner: shown('.top-menu-btn'),
       touch: [...shown('.stick-zone'), ...shown('.stick-tool'), ...shown('#ecctrl-virtual-button'), ...shown('.act-btn')],
     }
@@ -559,6 +563,9 @@ async function layoutProblems(page: Page, show: Box | null, crowded = false) {
       for (const t of b.touch) if (overlap(c, t)) out.push(`${c.what} over ${t.what}`)
     }
     for (let i = 0; i < b.column.length; i++) for (let j = i + 1; j < b.column.length; j++) if (overlap(b.column[i], b.column[j])) out.push(`${b.column[i].what} over ${b.column[j].what}`)
+    // one under another in the column's order: the step, the toast, the level-up, the hint
+    const slots = [...b.slots].sort((x, y) => x.order - y.order)
+    for (let i = 1; i < slots.length; i++) if (slots[i].top + 1 < slots[i - 1].bottom) out.push(`${slots[i].what} above ${slots[i - 1].what}`)
   }
   const on = (x: Box) => x.x >= -1 && x.y >= -1 && x.x + x.width <= b.width + 1 && x.y + x.height <= b.height + 1
   if (b.chips.filter((c) => /\blevel\b/.test(c.what)).length !== 1) out.push('no level chip')

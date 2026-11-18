@@ -18,6 +18,7 @@ import {
   quietDaily,
   quietSteps,
   resetFarm,
+  resumeSteps,
   sendOrder,
   setDailyClock,
   setRandom,
@@ -25,6 +26,7 @@ import {
   spawnVisitor,
   stepNow,
   stepsBusy,
+  stepsResumable,
   takePassed,
   tick,
   water,
@@ -165,6 +167,29 @@ describe('the end of the steps, and the daily gift', () => {
     PLAY.eggs()
     expect(frame().coins).toBe(0)
     expect(farm.firstSteps).toEqual({ step: 1, over: true })
+  })
+
+  it('skipped, they can come back (Show the tips again): on the step they left, what was done meanwhile paid once', () => {
+    expect(stepsResumable()).toBe(false)
+    PLAY.plant()
+    frame()
+    skipSteps()
+    expect(stepsResumable()).toBe(true)
+    PLAY.eggs()
+    expect(frame().coins).toBe(0)
+    expect(resumeSteps()).toBe(true)
+    expect(farm.firstSteps).toEqual({ step: 1, over: false })
+    // the eggs collected meanwhile pass now, paid once; the plant step's coins were paid before and are not again
+    expect(frame().coins).toBe(reward('eggs'))
+    expect(takePassed().map((p) => p.id)).toEqual(['plant', 'eggs'])
+    expect(frame().coins).toBe(0)
+    expect(stepNow()?.id).toBe('water')
+    expect(resumeSteps()).toBe(false)
+    // all done, or grown past them: they do not come back
+    skipSteps()
+    gainXp('goal', Math.ceil((xpAt(STEPS_UNTIL_LEVEL) - farm.xp.points) / XP_FOR.goal))
+    expect(stepsResumable()).toBe(false)
+    expect(resumeSteps()).toBe(false)
   })
 
   it('the daily gift comes once they are all done', () => {
