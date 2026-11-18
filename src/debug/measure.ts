@@ -8,7 +8,7 @@
 // slice: draws and triangles as 05-budget counts them. Copy puts the result on the clipboard as JSON (and in the
 // console). Soak runs ten minutes as it is, work per minute (does the phone slow down as it warms up?).
 
-import { WebGLRenderTarget, type Camera, type Scene, type WebGLRenderer } from 'three'
+import { WebGLRenderTarget, type Camera, type DirectionalLight, type Scene, type WebGLRenderer } from 'three'
 import { PRODUCER_IDS } from '../farm/data'
 import { buy, buyPiece, currentSlot, driveTo, farm, inLine, placeStored, placesInLine, plant, spawnVisitor, type Place } from '../farm/state'
 import { PIECES, type PieceType } from '../home/catalogue'
@@ -20,7 +20,7 @@ import { mapNow, roomHere } from '../lib/world'
 import { changeMap } from '../scene/maps'
 import { profile } from '../lib/profile'
 import { view } from '../lib/visibility/pass'
-import { useHome } from '../store'
+import { useHome, type Quality } from '../store'
 
 /** What a measurement switches on and off. */
 export const SWITCHES = { pass: 'the drawing pass', portals: 'rooms and portals', crowds: 'crowds in view', sun: "the sun's culling", keep: "the sun's map kept" } as const
@@ -119,6 +119,16 @@ export function createMeter(gl: WebGLRenderer, scene: Scene, camera: Camera): Me
   void readBattery()
 
   // ── the info line ──
+  /** The sun's shadow map as it is drawn now, its texels a side: the light's own (the farm's wider box has more than the
+   *  tier's: src/scene/Lighting.tsx), the tier's while there is none. */
+  const sunMap = (quality: Quality) => {
+    let size = 0
+    scene.traverse((o) => {
+      const l = o as DirectionalLight
+      if (l.isDirectionalLight && l.castShadow) size = Math.max(size, l.shadow.mapSize.x)
+    })
+    return size || profile.shadowMap[quality]
+  }
   const ctx = gl.getContext()
   const ext = ctx.getExtension('WEBGL_debug_renderer_info')
   const gpu = String(ctx.getParameter(ext ? ext.UNMASKED_RENDERER_WEBGL : ctx.RENDERER))
@@ -135,7 +145,7 @@ export function createMeter(gl: WebGLRenderer, scene: Scene, camera: Camera): Me
       gpu,
       multi_draw: multiDraw ? 'yes' : 'no',
       canvas: `${ctx.drawingBufferWidth}×${ctx.drawingBufferHeight} @ ${gl.getPixelRatio().toFixed(2)}`,
-      tier: `${s.quality}${s.qualityAuto ? ' (auto)' : ''} · shadow ${profile.shadowMap[s.quality]}`,
+      tier: `${s.quality}${s.qualityAuto ? ' (auto)' : ''} · shadow ${sunMap(s.quality)}`,
       view: s.decorating ? 'decorate' : s.editing ? 'edit' : s.view,
       place: `${mapNow() === 'home' ? 'the house' : 'the farm'}: ${room ?? 'outdoors'} (${p.x.toFixed(1)}, ${p.z.toFixed(1)})`,
       content: `farm ${currentSlot()} · ${farm.home.pieces.length} pieces · animals ${animals || 0} · line ${inLine().length}`,

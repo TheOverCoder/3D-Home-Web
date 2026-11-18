@@ -53,8 +53,9 @@ const LIMITS = { camera: { triangles: 250_000, draws: 700 }, shadow: { triangles
 const PAID = 0.05
 
 /** Paid by: what each debt waits for. */
-// (lighter copies for the sun already draw each piece's shadow from a copy within half a texel: src/lib/sculpt/sun.ts)
-const FURNITURE = 'fewer furniture draws: the pieces of one kind in a room drawn together'
+// (each piece of furniture loaded from a file already casts as one mesh, from its copy within half a texel:
+// src/lib/sculpt/sun.ts, castAsOne)
+const BATCHES = "the house's merged looks drawn into the sun's map as one mesh a quarter and side where its ceilings are gone (src/lib/batch.ts, `sunAsOne`, as on the farm)"
 
 interface Debt {
   view: string
@@ -67,7 +68,8 @@ interface Debt {
   pays: string[]
 }
 
-const SHADOWS = 'the ceilings go, so the sun reaches every room: every piece of furniture is drawn into its map (from its copy for the sun)'
+const SHADOWS =
+  "the ceilings go, so the sun reaches every room: the house's merged looks (114 draws, one a look and a quarter), each piece loaded from a file (one each) and the rest are drawn into its map"
 
 /** The views over the budget today (with the drawing pass, the hedge and the woods in pieces), and the most each may draw
  *  until it is paid: the most it measured, and 5 % more. Paid once it measures 5 % under the budget. */
@@ -80,9 +82,13 @@ const SHADOWS = 'the ceilings go, so the sun reaches every room: every piece of 
 // every crowd's far parts, the hanging fruit and the crops among them, drawn from copies under half a pixel, judged worth
 // a draw across the crowd). The furniture is drawn into the sun's map from copies within half a texel (sun.ts): third
 // person and decorating 266k-269k → 178k-180k triangles, the same draws.
+// paid with each piece loaded from a file cast as one mesh from its copy for the sun (sun.ts, castAsOne: where each of
+// its meshes cast from its own) and drawn by the camera from its far copies (farFromCopies): the sun's triangles in third
+// person and decorating 177.5k-180.2k → 139.6k-142.3k (under the budget), its draws 306-313 → 248-255; the camera's
+// triangles decorating 158.7k-230.1k → 119.0k-123.5k, the garden back at the house 115.4k-125.6k → 60.0k-75.9k.
 const DEBTS: Debt[] = SIZES.flatMap((s): Debt[] => [
-  { view: 'third person, the living room', size: s.name, pass: 'shadow', triangles: 189_000, draws: 328, why: SHADOWS, pays: [FURNITURE] },
-  { view: 'decorating the living room', size: s.name, pass: 'shadow', triangles: 186_000, draws: 322, why: SHADOWS, pays: [FURNITURE] },
+  { view: 'third person, the living room', size: s.name, pass: 'shadow', draws: 268, why: SHADOWS, pays: [BATCHES] },
+  { view: 'decorating the living room', size: s.name, pass: 'shadow', draws: 263, why: SHADOWS, pays: [BATCHES] },
 ])
 
 /** `BUDGET_MEASURE=1`: the table without the checks, to measure the debts again (after a change that pays one). */

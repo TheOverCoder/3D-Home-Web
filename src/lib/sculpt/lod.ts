@@ -1,4 +1,4 @@
-import { BufferAttribute, BufferGeometry, type InstancedBufferAttribute } from 'three'
+import { BufferAttribute, BufferGeometry, type InstancedBufferAttribute, type InterleavedBufferAttribute } from 'three'
 import { MeshoptSimplifier } from 'meshoptimizer/simplifier'
 import { SUN_SHADOW } from '../../data/layout'
 import { FINEST_SHADOW_MAP } from '../profile'
@@ -239,10 +239,13 @@ const MEASURED = [1, 1.5, 2, 3, 4]
  *  normals, and all that makes its colour — the kit's two colours, the mask between them (`pattern`: the kernels on a
  *  cob, the seeds on a berry), the instance colour's mask (`tint`), the surface's amount — each light or colour. */
 function shading(g: BufferGeometry, n: number): { attributes: Float32Array | null; stride: number } {
-  // (per vertex only: an instance's own attribute, a mesh's second instance colour, is not the part's)
+  // (per vertex only: an instance's own attribute, a mesh's second instance colour, is not the part's; a model loaded
+  // from a file keeps its normals interleaved with padding, read as three reads them)
+  const perVertex = (a: BufferAttribute | InterleavedBufferAttribute) =>
+    'isInterleavedBufferAttribute' in a ? !('isInstancedInterleavedBuffer' in a.data) : !(a as InstancedBufferAttribute).isInstancedBufferAttribute
   const parts = Object.entries(g.attributes)
-    .filter(([name, a]) => name !== 'position' && !('isInterleavedBufferAttribute' in a) && !(a as InstancedBufferAttribute).isInstancedBufferAttribute && a.count === n)
-    .map(([, a]) => a as BufferAttribute)
+    .filter(([name, a]) => name !== 'position' && perVertex(a) && a.count === n)
+    .map(([, a]) => a)
   if (!parts.length) return { attributes: null, stride: 0 }
   const stride = parts.reduce((t, a) => t + Math.min(4, a.itemSize), 0)
   const attributes = new Float32Array(n * stride)
@@ -258,6 +261,28 @@ function shading(g: BufferGeometry, n: number): { attributes: Float32Array | nul
 /** Whether a copy that moved surfaces by `error` (scaled by `scale`) is under half a pixel at `distance`, for a view
  *  of `pixels` pixels a unit at distance one (the drawing buffer's height over 2·tan(fov/2)). */
 export const farEnough = (error: number, scale: number, distance: number, pixels: number) => distance > 0 && (error * scale * pixels) / distance < HALF_PIXEL
+
+/** An eye a render is drawn for: where it is, and how many pixels a unit is at distance one. */
+export interface FarEye {
+  x: number
+  y: number
+  z: number
+  pixels: number
+}
+
+/** The eye of the render being drawn now, for the lighter copies of a model loaded from a file (src/lib/sculpt/sun.ts,
+ *  `farFromCopies`): the crowds' eye (src/lib/visibility/pass.ts), set as the game's camera begins a render with the
+ *  copies on, and none in any other render. */
+export const farEye: { view: FarEye | null } = { view: null }
+
+/** The coarsest of a loaded model's copies (finest first) under half a pixel for `eye`, for a mesh whose bounding sphere
+ *  (`center`, `radius`: in the world) and largest scale are given: its surface is nowhere nearer the eye than the sphere
+ *  is. -1: none (the mesh whole). */
+export function farCopy(copies: readonly { error: number }[], scale: number, x: number, y: number, z: number, radius: number, eye: FarEye): number {
+  const d = Math.hypot(x - eye.x, y - eye.y, z - eye.z) - radius
+  for (let c = copies.length - 1; c >= 0; c--) if (farEnough(copies[c].error, scale, d, eye.pixels)) return c
+  return -1
+}
 
 /**
  * Which copy the instances of a part are drawn with this render, judged across the crowd. `wanted[l]`: how many in

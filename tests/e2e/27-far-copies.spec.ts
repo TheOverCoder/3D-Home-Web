@@ -13,6 +13,11 @@ import { test, expect, fillFarm, onMap } from './helpers'
 // change the picture at most in a thousandth of its pixels by more than a tenth of their brightness (the corn's kernels
 // shimmer a little differently inside a pixel), in a hundredth at all.
 //
+// The furniture loaded from files (src/scene/Furnishings.tsx) is drawn from its own far copies by the same rule
+// (src/lib/sculpt/sun.ts, `farFromCopies`), switched with the crowds': the house with every room full of the heaviest
+// piece, from the living room, from the garden back at the house (the rooms through its windows), and in third person
+// and decorating — the same bounds, and fewer triangles.
+//
 // Shadow copies: a caster is drawn into the sun's map from a copy that moved no surface by more than half a texel of it
 // (src/lib/sculpt/sun.ts). The same frame is drawn with them and without (`__home.view.sunLod`), the sun's map drawn
 // again each time: in the decorated garden (the decoration and the fruit plants cast), over the yard, on the lane before
@@ -28,6 +33,11 @@ const FAR: View[] = [
   ['yard, where the house stood', 0, 12.5, 0, 0.02],
   ['the decorated garden, from its path', 0, 2.6, 0, -0.1],
   ['lane, the market, its shoppers', 10, 13.4, Math.PI, 0.02],
+]
+/** The house's views for the furniture's far copies: in the living room, and from the garden back at the house. */
+const HOUSE_FAR: View[] = [
+  ['the living room', -3.5, 1.3, Math.PI, -0.04],
+  ['the garden, back at the house', 0, 12.5, 0, 0.02],
 ]
 /** The farm's views for the sun: in the decorated garden, over the yard, and over the lot beyond the lane, where the
  *  farm's sun box reaches past the house's (src/data/sunBox.ts): the estate office, the market and its cabin, the car. */
@@ -164,6 +174,49 @@ test.describe('lighter copies', () => {
     }
     // the copies are used: the market's corn alone is most of its triangles
     expect(saved).toBeGreaterThan(50_000)
+    expect(game.errors, game.errors.join('\n')).toEqual([])
+  })
+
+  test("the furniture's lighter copies change nothing a player can see, and draw fewer triangles", async ({ game }) => {
+    test.setTimeout(900_000)
+    const { page } = game
+    const log: string[] = []
+    let saved = 0
+    const check = (at: string, r: Shot) => {
+      log.push(`${at}: ${r.differ} of ${r.pixels} pixels differ, ${r.much} by more than 24 of 255; ${r.without.camera} triangles → ${r.with.camera}`)
+      console.log(log[log.length - 1])
+      expect(r.with.camera, `${at}: no more triangles with the copies`).toBeLessThanOrEqual(r.without.camera)
+      bounded(at, r)
+      saved += r.without.camera - r.with.camera
+    }
+    try {
+      await game.ready('home')
+      await onMap(page, 'home')
+      await fillFarm(page)
+      for (const size of SIZES) {
+        await resize(page, size)
+        for (const [name, x, z, yaw, pitch] of HOUSE_FAR) check(`${size.width}×${size.height} ${name}`, await page.evaluate(shot, [[x, z, yaw, pitch], 'lod'] as [number[], 'lod']))
+        for (const mode of ['third', 'decorate'] as const) {
+          await game.teleport(-3.5, 1.4, 2.5, Math.PI, 0)
+          await page.waitForTimeout(600)
+          await gameCamera(page, mode)
+          try {
+            check(`${size.width}×${size.height} ${mode === 'third' ? 'third person' : 'decorating'}, the living room`, await page.evaluate(shot, [null, 'lod'] as [null, 'lod']))
+          } finally {
+            await page.evaluate(() => {
+              const s = (window as any).__home.useHome.getState()
+              s.setView('first')
+              s.setDecorating(false)
+            })
+            await page.waitForFunction(() => (window as any).__home.view.stats.portals === true, null, { timeout: 120_000, polling: 250 })
+          }
+        }
+      }
+    } finally {
+      await page.setViewportSize({ width: 640, height: 360 })
+    }
+    // the copies are used: the rooms full of easy chairs, each of ten thousand triangles
+    expect(saved).toBeGreaterThan(20_000)
     expect(game.errors, game.errors.join('\n')).toEqual([])
   })
 
