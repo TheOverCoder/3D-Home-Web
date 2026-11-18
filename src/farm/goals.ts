@@ -11,6 +11,7 @@ import { countOf, GOODS, type Count } from './measure'
 import { nearest, stops, type Nearest, type Road } from './road'
 import { nextLevel } from './storage'
 import type { FarmData } from './state'
+import type { Target } from './walkTargets'
 
 export type GoalId = 'harvest' | 'lemons' | 'eggs' | 'milk' | 'wool' | 'mill' | 'cloth' | 'cakes' | 'sell' | 'earn' | 'orders' | 'surprises' | 'fruit'
 
@@ -28,21 +29,32 @@ export interface GoalDef {
   steps: number[]
   /** coins for each one counted (rounded; at least 1) */
   coinsPer: number
+  /** where a tap walks you to count more (src/farm/walkTargets.ts; the welcome back's Go there): none where there is no
+   *  one place for it (coins, surprises) */
+  go?: Target
 }
 
 /** The goals as rows: what each counts, its words and picture, its ladder and its coins. */
 const ROWS: Omit<GoalDef, 'measure'>[] = [
-  { id: 'harvest', pic: { art: 'seedling' }, say: (n) => `Harvest ${n} crops`, count: { got: 'crops' }, steps: [10, 30, 75, 150, 300], coinsPer: 0.5 },
-  { id: 'eggs', pic: { item: 'egg' }, say: (n) => `Collect ${n} eggs`, count: { got: [PRODUCERS.hens.good] }, steps: [10, 30, 75, 150], coinsPer: 0.5 },
-  { id: 'milk', pic: { item: 'milk' }, say: (n) => `Milk ${n} bottles`, count: { got: [PRODUCERS.cows.good] }, steps: [5, 15, 40, 100], coinsPer: 1 },
-  { id: 'wool', pic: { item: 'wool' }, say: (n) => `Shear ${n} fleeces`, count: { got: [PRODUCERS.sheep.good] }, steps: [5, 15, 40, 100], coinsPer: 1 },
-  { id: 'lemons', pic: { item: 'lemon' }, say: (n) => `Pick ${n} lemons`, count: { got: [PRODUCERS.tree.good] }, steps: [10, 30, 75, 150], coinsPer: 0.5 },
-  { id: 'mill', pic: { item: 'flour' }, say: (n) => `Mill ${n} sacks`, count: { made: 'mill' }, steps: [5, 15, 40, 100], coinsPer: 1 },
-  { id: 'cloth', pic: { item: 'cloth' }, say: (n) => `Weave ${n} cloths`, count: { made: 'loom' }, steps: [3, 10, 25, 60], coinsPer: 2 },
-  { id: 'cakes', pic: { art: 'shortcake' }, say: (n) => `Bake ${n} cakes`, count: { made: 'oven' }, steps: [2, 6, 15, 40], coinsPer: 4 },
-  { id: 'sell', pic: { art: 'shopping-bags' }, say: (n) => `Sell ${n} goods`, count: { stat: 'sold' }, steps: [20, 60, 150, 400], coinsPer: 0.25 },
+  {
+    id: 'harvest',
+    pic: { art: 'seedling' },
+    say: (n) => `Harvest ${n} crops`,
+    count: { got: 'crops' },
+    steps: [10, 30, 75, 150, 300],
+    coinsPer: 0.5,
+    go: { bed: ['ripe', 'thirsty', 'growing', 'empty'] },
+  },
+  { id: 'eggs', pic: { item: 'egg' }, say: (n) => `Collect ${n} eggs`, count: { got: [PRODUCERS.hens.good] }, steps: [10, 30, 75, 150], coinsPer: 0.5, go: { good: PRODUCERS.hens.good } },
+  { id: 'milk', pic: { item: 'milk' }, say: (n) => `Milk ${n} bottles`, count: { got: [PRODUCERS.cows.good] }, steps: [5, 15, 40, 100], coinsPer: 1, go: { good: PRODUCERS.cows.good } },
+  { id: 'wool', pic: { item: 'wool' }, say: (n) => `Shear ${n} fleeces`, count: { got: [PRODUCERS.sheep.good] }, steps: [5, 15, 40, 100], coinsPer: 1, go: { good: PRODUCERS.sheep.good } },
+  { id: 'lemons', pic: { item: 'lemon' }, say: (n) => `Pick ${n} lemons`, count: { got: [PRODUCERS.tree.good] }, steps: [10, 30, 75, 150], coinsPer: 0.5, go: { good: PRODUCERS.tree.good } },
+  { id: 'mill', pic: { item: 'flour' }, say: (n) => `Mill ${n} sacks`, count: { made: 'mill' }, steps: [5, 15, 40, 100], coinsPer: 1, go: { good: 'flour' } },
+  { id: 'cloth', pic: { item: 'cloth' }, say: (n) => `Weave ${n} cloths`, count: { made: 'loom' }, steps: [3, 10, 25, 60], coinsPer: 2, go: { good: 'cloth' } },
+  { id: 'cakes', pic: { art: 'shortcake' }, say: (n) => `Bake ${n} cakes`, count: { made: 'oven' }, steps: [2, 6, 15, 40], coinsPer: 4, go: { id: 'farm-oven' } },
+  { id: 'sell', pic: { art: 'shopping-bags' }, say: (n) => `Sell ${n} goods`, count: { stat: 'sold' }, steps: [20, 60, 150, 400], coinsPer: 0.25, go: { id: 'farm-queue' } },
   { id: 'earn', pic: { art: 'coin' }, say: (n) => `Earn ${n} coins`, count: { stat: 'earned' }, steps: [100, 300, 1000, 3000], coinsPer: 0.05 },
-  { id: 'orders', pic: { art: 'tractor' }, say: (n) => `Send ${n} ${n === 1 ? 'order' : 'orders'}`, count: { stat: 'sent' }, steps: [1, 3, 8, 20], coinsPer: 8 },
+  { id: 'orders', pic: { art: 'tractor' }, say: (n) => `Send ${n} ${n === 1 ? 'order' : 'orders'}`, count: { stat: 'sent' }, steps: [1, 3, 8, 20], coinsPer: 8, go: { id: 'farm-office' } },
   { id: 'surprises', pic: { art: 'wrapped-gift' }, say: (n) => `Find ${n} surprises`, count: { got: 'materials' }, steps: [3, 10, 25, 60], coinsPer: 2 },
   // the fruit of the trees and bushes bought from the edit mode's shop (the lemons have their own)
   { id: 'fruit', pic: { item: 'apple' }, say: (n) => `Pick ${n} fruit`, count: { got: 'fruit' }, steps: [10, 30, 75, 150, 300], coinsPer: 0.5 },

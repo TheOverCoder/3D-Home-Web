@@ -1,8 +1,10 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it } from 'vitest'
-import { MACHINES, PRODUCE, PRODUCERS, STORES, type ProduceId, type ProducerId } from './data'
+import { registerInteractable } from '../lib/interaction'
+import { BEDS, MACHINES, MACHINE_IDS, PRODUCE, PRODUCERS, PRODUCER_IDS, STORES, type ProduceId, type ProducerId } from './data'
 import { GOALS, GOAL_IDS, MOST_STEPS, boardGoals, goalById, goalNear, goalReward, goalTarget, goalsNow, goalsReady, nearestGoal, startStep, type GoalId } from './goals'
-import { capacity, claimGoal, collect, farm, resetFarm, room, type FarmData } from './state'
+import { bedSpot, capacity, claimGoal, collect, farm, resetFarm, room, type FarmData } from './state'
+import { walkTarget } from './walkTargets'
 import { OLD_SAVE, OLD_SAVE_2, playedSave, savedNow, seeded, startFrom } from './testSaves'
 
 // The goals board (src/farm/goals.ts, GoalsPanel.tsx): ladders of counts that never end, each count reached claimed
@@ -171,5 +173,25 @@ describe('the nearest goal', () => {
     claimGoal('eggs')
     const next = goalsNow(farm).find((g) => g.def.id === 'eggs')!
     expect(goalNear(next)).toMatchObject({ stop: 2, at: 30, left: 20, share: 0, almost: false })
+  })
+})
+
+describe('the way to each goal', () => {
+  it('every goal with a place resolves to one on a new farm, its places on the map (the welcome back’s Go there)', () => {
+    const off: (() => void)[] = []
+    const put = (id: string, x = 0, z = 0) => off.push(registerInteractable({ id, label: id, position: { x, y: 0, z }, radius: 1, run: () => {} }))
+    try {
+      BEDS.forEach((_, i) => put(`farm-bed-${i}`, bedSpot(i).x, bedSpot(i).z))
+      for (const p of PRODUCER_IDS) put(PRODUCERS[p].action)
+      for (const m of MACHINE_IDS) put(`farm-${m}`)
+      put('farm-queue')
+      put('farm-office')
+      const ways = GOALS.filter((g) => g.go).map((g) => [g.id, walkTarget(g.go!)] as const)
+      expect(ways.filter(([, at]) => at === null).map(([id]) => id)).toEqual([])
+      // only the goals with no one place have none: coins, surprises, the bought trees' fruit
+      expect(GOALS.filter((g) => !g.go).map((g) => g.id)).toEqual(['earn', 'surprises', 'fruit'])
+    } finally {
+      off.forEach((f) => f())
+    }
   })
 })
