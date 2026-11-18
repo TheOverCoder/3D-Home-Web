@@ -10,6 +10,7 @@ import { agentComes, agentLeaves, contractorComes, contractorLeaves, scriptSecon
 import { bump, farm, putBack, random, save, steadyLook, toast, type At, type Person, type Walking } from './core'
 import { gainXp } from './levels'
 import { rewarded } from './rewards'
+import { sold } from './ledger'
 
 // The contractor behind the market (his hours, his pieces, his walk) and the estate agent in his office (his hours,
 // his walk, the house he sells).
@@ -71,6 +72,7 @@ export function sellToContractor(item: ItemId): number {
   farm.stats.earned += coins
   gainXp('sale', coins, AT_CONTRACTOR)
   rewarded('sale', [{ coins }], AT_CONTRACTOR)
+  sold('contractor', item, n, coins)
   coinsFx(AT_CONTRACTOR.x, AT_CONTRACTOR.z, coins)
   toast(`+ ${coins} coins · ${count(item, n)}`, item)
   farmSound('coins')

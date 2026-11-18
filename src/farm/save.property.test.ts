@@ -34,6 +34,7 @@ import {
   orderSlots,
   orderWait,
   type CropId,
+  type ProduceId,
 } from './data'
 import { GOAL_IDS, MOST_STEPS } from './goals'
 import { PARCELS, PARCEL_IDS, PLACE_IDS, bedHome, canPlace, canPlaceBed, canPlaceThing, isShopKind, mostOf } from './layout'
@@ -46,6 +47,7 @@ import { BOX_COUNT, CAME_KEPT, PER_LEVEL, boxAt, boxesReached } from './gifts'
 import { EVENT_IDS, LUCKY_GOODS, SEEN_KEPT } from './events'
 import { FIRST_STEPS } from './firstSteps'
 import { seasonAt } from './season'
+import { LEDGER_DAYS, soldAt, type Channel } from './ledger'
 import { QUEUE, machineLevel } from './machineView'
 import { garmentById, garmentsAt } from './outfit'
 import { sanitizeLook } from '../models/look'
@@ -184,6 +186,7 @@ const OLD_PARTS: Record<string, string> = {
  *  - the office's upgrades → the order board: as many places, and no wait longer than the office's
  *  - the time it was saved also → the orders on their way (they come in) and the tractor's trip (it goes on); the
  *    shop's visits (its shelves, its till, the countdown), the day's clock and the contractor's new day
+ *  - the time it was saved also → the sales book: what the shop sold while away
  *  - the ladders → the market (how many places are open, the longest wait for a visit) and the contractor (how many
  *    pieces a day); the market (whether the shop is yours) → the ladders (the shop's own are 0 until it is); the
  *    animals' tools among the ladders → their herds' counts and clocks (a nest a hen with the coop; each up to the
@@ -201,7 +204,7 @@ function alsoChanges(part: string): RegExp | null {
   if (herd) return new RegExp(`^producers\\.${herd[1]}\\.(stock|timer)$`)
   if (part === 'queueLevel' || part === 'nextVisitorIn') return /^queue$/
   if (part === 'paceLevel') return /^nextVisitorIn$/
-  if (part === 'time') return /^(beds|producers|machines)\.|^nextVisitorIn$|^queue$|^orders$|^dispatch$|^(market|contractor|day)$/
+  if (part === 'time') return /^(beds|producers|machines)\.|^nextVisitorIn$|^queue$|^orders$|^dispatch$|^(market|contractor|day|ledger)$/
   if (part === 'home.pieces') return /^home\.(stored|next)$/
   if (part === 'home.shell' || part.startsWith('home.shell.')) return /^home\.(pieces|stored|next)$/
   // the farm's year is read against its days played (src/farm/season.ts, sanitizeSeason)
@@ -447,6 +450,22 @@ function farmProblems(): string[] {
   bad('events.seen', e.seen.length <= SEEN_KEPT && unique(e.seen) && e.seen.every((k) => typeof k === 'string' && EVENT_IDS.includes(k.split('@')[0] as never) && date(k.split('@')[1])))
   // the first steps: the step it is on, from the first to past the last, and whether they are over
   bad('firstSteps', sameKeys(farm.firstSteps, ['step', 'over']) && isCount(farm.firstSteps.step, FIRST_STEPS.length) && typeof farm.firstSteps.over === 'boolean')
+  // the sales book: its days the oldest first, each once, within the two weeks up to today, none empty; each tally two
+  // counts, not both 0, of a good at a place it can be sold (a building material only to the contractor)
+  const days = farm.ledger.days.map((d) => d.day)
+  const today = calendarDay()
+  bad(
+    'ledger',
+    sameKeys(farm.ledger, ['days']) && json([...days].sort((a, b) => a - b)) === json(days) && unique(days) && days.every((d) => Number.isInteger(d) && d <= today && d > today - LEDGER_DAYS),
+  )
+  for (const d of farm.ledger.days) {
+    bad(`ledger.${d.day}`, sameKeys(d, ['day', 'sold']) && Object.keys(d.sold).length > 0)
+    for (const [good, places] of Object.entries(d.sold)) {
+      bad(`ledger.${d.day}.${good}`, produceIds.includes(good) && Object.keys(places ?? {}).length > 0)
+      for (const [ch, t] of Object.entries(places ?? {}))
+        bad(`ledger.${d.day}.${good}.${ch}`, soldAt(good as ProduceId, ch as Channel) && Array.isArray(t) && t.length === 2 && isCount(t[0]) && isCount(t[1]) && t[0] + t[1] > 0)
+    }
+  }
   return out
 }
 

@@ -35,6 +35,7 @@ import { freshPlayed, sanitizePlayed } from '../calendar'
 import { machineLevel, QUEUE } from '../machineView'
 import { freshMachine, jobSeconds, recipeOf, type MachineState } from '../machines'
 import { freshEvents, sanitizeEvents } from '../events'
+import { freshLedger, sanitizeLedger } from '../ledger'
 import { DEFAULT_OUTFIT, sanitizeOutfit } from '../outfit'
 import { clampLevels, freshMarket, sanitizeMarket } from '../market'
 import { offersPerDay, sanitizeContractor } from '../contractor'
@@ -136,6 +137,7 @@ function fresh(): FarmData {
     events: freshEvents(),
     firstSteps: stepsFresh(),
     played: freshPlayed(),
+    ledger: freshLedger(),
     season: seasonFresh(),
   }
 }
@@ -396,6 +398,8 @@ export function load(text: string | null = readRaw(KEY)): { data: FarmData; save
     data.events = sanitizeEvents(raw.events)
     // days played: as saved; a farm from before them starts from its daily gift's streak and the day it last claimed one
     data.played = sanitizePlayed(raw.played, calendarDay(), { days: amount(field(raw.daily, 'streak'), 0), last: int(field(raw.daily, 'last'), -1, -1, MOST) })
+    // the sales book: the days of the last two weeks as saved (a farm from before it: an empty book)
+    data.ledger = sanitizeLedger(raw.ledger, calendarDay())
     // the farm's year: as saved (a farm from before it begins its first spring today)
     data.season = savedSeason(raw.season, data.played)
     const queue = list(raw.queue)
