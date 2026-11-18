@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { canVibrate, coarsePointer } from '../lib/device'
+import { appleTouch, canVibrate, coarsePointer } from '../lib/device'
 import { X } from './glyphs'
 import { collectDiagnostics } from '../lib/diagnostics'
 import { DEFAULT_SETTINGS, useSettings, type Settings } from '../settings'
@@ -180,7 +180,7 @@ export function SettingsPanel() {
               <Row label="Sound" hint="Footsteps, switches, doors and the room">
                 <Toggle id="set-sound" label="Sound" checked={settings.sound} onChange={(sound) => update({ sound })} />
               </Row>
-              <Row label="Volume">
+              <Row label="Volume" hint={appleTouch ? 'On iPhone, the ring switch silences the game' : undefined}>
                 <Slider
                   id="set-volume"
                   label="Volume"
@@ -190,6 +190,12 @@ export function SettingsPanel() {
                   step={5}
                   onChange={(v) => update({ volume: v / 100, sound: v > 0 ? true : settings.sound })}
                 />
+              </Row>
+              <Row label="Effects" hint="Work, coins, the animals, footsteps">
+                <Slider id="set-effects" label="Effects volume" value={Math.round(settings.effectsVolume * 100)} min={0} max={100} step={5} onChange={(v) => update({ effectsVolume: v / 100 })} />
+              </Row>
+              <Row label="Ambience" hint="Wind, birds and the rooms">
+                <Slider id="set-ambience" label="Ambience volume" value={Math.round(settings.ambienceVolume * 100)} min={0} max={100} step={5} onChange={(v) => update({ ambienceVolume: v / 100 })} />
               </Row>
               <Row label="Music" hint="Composed as it plays · four moods">
                 <Toggle id="set-music" label="Music" checked={settings.music} onChange={(music) => update({ music })} />

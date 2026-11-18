@@ -1,12 +1,12 @@
 // The table of the farm's sounds (update-v1/CONTRACTS.md §1.12): one row for each, saying what family it is, the touch
 // that goes with it, how much its pitch may vary from one time to the next, the streak it climbs in, and what tells the
-// same news without sound (nothing is told by sound alone). A new sound is a name, a row and a synth. And a reward's
-// touch: its family picks the pattern, its tier only how strong (one pattern, one meaning). 06 moves sound.ts onto it:
-// until then sound.ts keeps today's FEEL, which these rows' `feel` must equal (sounds.test.ts). Not yet used by the game.
+// same news without sound (nothing is told by sound alone). A new sound is a name, a row and a synth (./farmSounds.ts,
+// which plays each by its row: `farmSound` gives its touch and varies it by `vary`). And a reward's touch: its family
+// picks the pattern, its tier only how strong (one pattern, one meaning).
 
 import type { Haptic } from '../lib/device'
 import { rewardKind, tierRank, type RewardKind, type Tier } from '../lib/tier'
-import type { FarmSound } from './sound'
+import type { FarmSound } from './farmSounds'
 
 /** work done; coins in; a reward; a "no"; the farm's own (animals, machines); a cue that tells news; the interface. */
 export type SoundFamily = 'work' | 'coins' | 'reward' | 'no' | 'world' | 'cue' | 'ui'
@@ -19,8 +19,8 @@ export type Feel = Haptic | 'sale+'
 
 export interface SoundRow {
   family: SoundFamily
-  /** the touch with it (null: none) */
-  feel: Feel | null
+  /** the touch with it (null: none): one of the phone's patterns (a reward's stronger double is rewardFeel's alone) */
+  feel: Haptic | null
   /** semitones of random pitch each time (0: always the same, as a cue must be) */
   vary: number
   /** the streak it climbs in, a step each quick press */
@@ -30,7 +30,7 @@ export interface SoundRow {
 
 const work = (twin: Twin = 'motion'): SoundRow => ({ family: 'work', feel: 'tick', vary: 1, climb: 'work', twin })
 const world = (twin: Twin): SoundRow => ({ family: 'world', feel: null, vary: 0, twin })
-const cue = (twin: Twin, feel: Feel | null = null): SoundRow => ({ family: 'cue', feel, vary: 0, twin })
+const cue = (twin: Twin, feel: Haptic | null = null): SoundRow => ({ family: 'cue', feel, vary: 0, twin })
 
 export const SOUNDS: Readonly<Record<FarmSound, SoundRow>> = {
   plant: work(),

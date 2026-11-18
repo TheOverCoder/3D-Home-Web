@@ -1,12 +1,13 @@
 import { create } from 'zustand'
 import { useSettings } from '../settings'
+import { hz } from './palette'
 import { audioGraph, unlockAudio } from './sound'
 
 // Background music, composed as it plays: each track is a chord progression, a scale and a handful of voices (a
 // warm pad, plucked arpeggios, a soft bass, bells, a shaker), scheduled a moment ahead on the audio clock with a
-// little chance in every bar, so it never loops exactly. Nothing is downloaded. It plays through the same volume
-// as the house's sound, starts on the first tap or click (browsers wait for one), and follows the Music settings.
-// No three.js here: the intro's player uses it.
+// little chance in every bar, so it never loops exactly. Nothing is downloaded. It plays into the mixer's music bus
+// (./mix.ts: its own volume under the main one, set by the Music volume), starts on the first tap or click (browsers
+// wait for one), and follows the Music settings. No three.js here: the intro's player uses it.
 
 interface TrackDef {
   name: string
@@ -104,8 +105,6 @@ interface MusicState {
 
 export const useMusic = create<MusicState>(() => ({ playing: false, track: useSettings.getState().musicTrack % TRACKS.length }))
 
-const hz = (midi: number) => 440 * 2 ** ((midi - 69) / 12)
-
 let bus: GainNode | null = null
 let timer: number | undefined
 let nextTime = 0
@@ -113,7 +112,10 @@ let step = 0
 let seed = 1
 const rand = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296
 
-function musicBus(ac: AudioContext, master: GainNode) {
+/** The music's own level in the mix while it plays (its volume slider is the mixer's music bus). */
+const LEVEL = 0.55
+
+function musicBus(ac: AudioContext, out: AudioNode) {
   if (bus && bus.context === ac) return bus
   bus = ac.createGain()
   bus.gain.value = 0
@@ -128,20 +130,19 @@ function musicBus(ac: AudioContext, master: GainNode) {
   const wet = ac.createGain()
   wet.gain.value = 0.22
   bus.connect(tone)
-  tone.connect(master)
+  tone.connect(out)
   tone.connect(delay)
   delay.connect(feedback).connect(delay)
-  delay.connect(wet).connect(master)
+  delay.connect(wet).connect(out)
   return bus
 }
 
 function applyVolume() {
   const g = audioGraph()
   if (!g || !bus) return
-  const { music, musicVolume } = useSettings.getState()
-  const on = music && useMusic.getState().playing
+  const on = useSettings.getState().music && useMusic.getState().playing
   bus.gain.cancelScheduledValues(g.ac.currentTime)
-  bus.gain.setTargetAtTime(on ? musicVolume * musicVolume * 0.55 : 0, g.ac.currentTime, on ? 0.6 : 0.25)
+  bus.gain.setTargetAtTime(on ? LEVEL : 0, g.ac.currentTime, on ? 0.6 : 0.25)
 }
 
 function env(ac: AudioContext, t: number, attack: number, hold: number, release: number, level: number) {
@@ -231,8 +232,8 @@ function playStep(ac: AudioContext, out: AudioNode, def: TrackDef, s: number, t:
 function tick() {
   const g = audioGraph()
   if (!g) return
-  const { ac, master } = g
-  const out = musicBus(ac, master)
+  const { ac, music } = g
+  const out = musicBus(ac, music)
   const def = TRACKS[useMusic.getState().track]
   const eighth = 30 / def.bpm
   if (nextTime < ac.currentTime) nextTime = ac.currentTime + 0.05
@@ -250,7 +251,7 @@ export function playMusic() {
   if (!g) return
   if (!useSettings.getState().music) useSettings.getState().update({ music: true })
   useMusic.setState({ playing: true })
-  musicBus(g.ac, g.master)
+  musicBus(g.ac, g.music)
   applyVolume()
   if (timer === undefined) {
     step = 0
@@ -277,7 +278,8 @@ export function nextTrack(dir: 1 | -1 = 1) {
   seed = 1 + track * 977
 }
 
-/** Follows the settings: music on starts it (once audio is unlocked), off stops it; the volume slider applies live. */
+/** Follows the settings: music on starts it (once audio is unlocked), off stops it (its volume is the mixer's, set by
+ *  SoundDirector with the others). */
 export function wireMusic() {
   const sync = () => {
     const { music } = useSettings.getState()
@@ -286,7 +288,7 @@ export function wireMusic() {
     applyVolume()
   }
   const unsub = useSettings.subscribe((s, p) => {
-    if (s.music !== p.music || s.musicVolume !== p.musicVolume) sync()
+    if (s.music !== p.music) sync()
   })
   // the first tap or click unlocks audio: start the music then, if it is on
   const first = () => {
