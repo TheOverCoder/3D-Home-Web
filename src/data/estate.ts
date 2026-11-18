@@ -88,8 +88,8 @@ export const HOUSE_MODEL = { x: (HOUSE_TABLE.x0 + HOUSE_TABLE.x1) / 2, y: HOUSE_
 /** The farm's map on the west wall's inside (its face's middle, half its size, facing east into the room), north up: the
  *  ground it shows (in the farm's metres: the garden and every meadow round it, the lane and the lot beyond), each
  *  meadow for sale carrying its price tag where it is on the map. */
-export const ESTATE_MAP = { x: R.x0 + 0.025, y: 1.45, z: 18.25, half: [0.7, 0.6] as [number, number], heading: Math.PI / 2 } as const
-export const MAP_AREA: Rect = { x0: -28, x1: 28, z0: -27, z1: 21 }
+export const ESTATE_MAP = { x: R.x0 + 0.025, y: 1.45, z: 18.25, half: [0.7, 0.625] as [number, number], heading: Math.PI / 2 } as const
+export const MAP_AREA: Rect = { x0: -28, x1: 28, z0: -27, z1: 23 }
 
 /** A point of the farm (x, z, in its metres) where the map shows it, on the wall: the map's right is the farm's east
  *  (the room's north: −z), its up the farm's north. */

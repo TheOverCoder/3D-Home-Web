@@ -63,8 +63,8 @@ const REGIONS = {
   parking: { x: 848, y: 256, w: 176, h: 176 },
   board: { x: 0, y: 640, w: 512, h: 384 },
   plate: { x: 560, y: 660, w: 340, h: 340 },
-  map: { x: 0, y: 1040, w: (MAP_AREA.x1 - MAP_AREA.x0) * 10, h: (MAP_AREA.z1 - MAP_AREA.z0) * 10 },
-  display: { x: 576, y: 1040, w: 448, h: 256 },
+  map: { x: 0, y: 1032, w: (MAP_AREA.x1 - MAP_AREA.x0) * 10, h: (MAP_AREA.z1 - MAP_AREA.z0) * 10 },
+  display: { x: 576, y: 1032, w: 448, h: 256 },
 } as const
 type Region = keyof typeof REGIONS
 
@@ -233,14 +233,14 @@ function drawMap(g: CanvasRenderingContext2D, r: { x: number; y: number; w: numb
     g.fillStyle = mine ? '#2f4a1f' : RED
     g.fillText(mine ? 'Yours' : 'FOR SALE', cx, cz + 11)
   }
-  // north
+  // north, in the bottom right corner (the countryside south-east of the lot)
   g.fillStyle = NAVY
   g.font = `800 22px ${TEXT}`
-  g.fillText('N', r.x + r.w - 26, r.y + 24)
+  g.fillText('N', r.x + r.w - 30, r.y + r.h - 72)
   g.beginPath()
-  g.moveTo(r.x + r.w - 26, r.y + 38)
-  g.lineTo(r.x + r.w - 34, r.y + 58)
-  g.lineTo(r.x + r.w - 18, r.y + 58)
+  g.moveTo(r.x + r.w - 30, r.y + r.h - 56)
+  g.lineTo(r.x + r.w - 39, r.y + r.h - 32)
+  g.lineTo(r.x + r.w - 21, r.y + r.h - 32)
   g.closePath()
   g.fill()
   g.restore()

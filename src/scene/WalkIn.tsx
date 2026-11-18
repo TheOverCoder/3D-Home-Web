@@ -16,6 +16,7 @@ import { useFrame } from '@react-three/fiber'
 import { CuboidCollider, RigidBody } from '@react-three/rapier'
 import { BufferAttribute, BufferGeometry, type Group, type Object3D } from 'three'
 import { bounds, walkInRoomAt, type AutoDoor, type Box, type Rect, type WalkIn as WalkInDef } from '../data/buildings'
+import { debugSet } from '../lib/debug'
 import { groundDistance } from '../lib/interaction'
 import { castAsOne, type CastAsOne } from '../lib/sculpt/sun'
 import { playerState } from '../lib/playerState'
@@ -157,9 +158,22 @@ function show(def: WalkInDef) {
   }
 }
 
-/** The lot's sun mesh now (null while no walk-in is in the scene), for the tests. */
-let lotSun: CastAsOne | null = null
-export const lotSunMesh = () => lotSun
+/** The lot's shells now: their group, and the one mesh they cast through (null while each casts on its own: the tests'
+ *  switch). Null while no walk-in is in the scene. */
+let lot: { root: Group; one: CastAsOne | null } | null = null
+
+/** ?debug, for the tests (`__home.lotShells`, tests/e2e/16-view-buildings): the one sun mesh now, and the shells cast
+ *  through it or each on its own again — the sun's map the same either way. */
+const lotDebug = {
+  one: () => lot?.one ?? null,
+  asOne(on: boolean) {
+    if (!lot) return
+    if (!on && lot.one) {
+      lot.one.release()
+      lot.one = null
+    } else if (on && !lot.one) lot.one = castAsOne(lot.root)
+  },
+}
 
 /**
  * Every walk-in's shell under one group, each its own crowd as before (the camera draws one a building, and the drawing
@@ -193,11 +207,12 @@ function LotShells({ defs }: { defs: readonly WalkInDef[] }) {
   )
   // (before a frame is drawn: the shells are in the group by now, put where they stand)
   useLayoutEffect(() => {
-    const one = castAsOne(root.current!)
-    lotSun = one
+    const now = { root: root.current!, one: castAsOne(root.current!) as CastAsOne | null }
+    lot = now
+    debugSet('lotShells', lotDebug)
     return () => {
-      one.release()
-      if (lotSun === one) lotSun = null
+      now.one?.release()
+      if (lot === now) lot = null
     }
   }, [shells])
   return (
