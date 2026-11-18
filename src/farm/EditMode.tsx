@@ -2,10 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import { BufferAttribute, BufferGeometry, FogExp2, MathUtils, Matrix4, Quaternion, Vector3, type PerspectiveCamera } from 'three'
-import { uiClick } from '../audio/sound'
+import { farmSound } from '../audio/sound'
 import { useHome } from '../store'
 import { dragTo, drop, editCamera, editView, keyOf, shownAt, shownPlacement, thingOf, useEdit, type Pick } from './edit'
-import { BLOCKERS, PARCELS, PARCEL_IDS, PLACE_IDS, bedRect, canBuyParcel, decorRect, doorway, footprint, landBounds, type ParcelId, type PlaceId, type Rect, type Thing } from './layout'
+import { BLOCKERS, PARCELS, PARCEL_IDS, PLACE_IDS, bedRect, canBuyParcel, decorRect, doorway, footprint, landBounds, thingRect, type ParcelId, type PlaceId, type Rect, type Thing } from './layout'
 import { farm, lockOf, useFarm } from './state'
 import { LockTag } from '../ui/LockTag'
 
@@ -257,6 +257,7 @@ function EditInput({ view }: { view: React.RefObject<View> }) {
       const pr = press
       if (!pr) return
       if (!pr.moved && Math.hypot(e.clientX - pr.start[0], e.clientY - pr.start[1]) < 7) return
+      if (!pr.moved && pr.kind === 'thing' && pr.thing) farmSound('lift')
       pr.moved = true
       if (pr.kind === 'thing' && pr.thing) {
         const g = ground(e.clientX, e.clientY)
@@ -285,7 +286,8 @@ function EditInput({ view }: { view: React.RefObject<View> }) {
       if (pr.kind === 'thing' && pr.thing) {
         if (pr.moved) {
           const fit = drop()
-          uiClick()
+          const r = thingRect(farm.layout, pr.thing, shownAt(pr.thing) ?? { x: 0, z: 0, rot: 0 })
+          farmSound(fit && !fit.ok ? 'nope' : 'thud', 0, 1, undefined, { size: r ? Math.max(r.maxX - r.minX, r.maxZ - r.minZ) : undefined })
           if (fit && !fit.ok) useHome.getState().showToast(`${fit.reason} — it went back`)
         } else edit.pick(pickOf(pr.thing))
       } else if (!pr.moved) edit.pick(pr.kind === 'parcel' && pr.parcel ? { kind: 'parcel', id: pr.parcel } : null)

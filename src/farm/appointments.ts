@@ -93,12 +93,18 @@ export function farmBusy(f: FarmData, open: (id: MachineId) => boolean = openByL
   return MACHINE_IDS.every((id) => !open(id) || isWorking(f.machines[id]))
 }
 
-/** What the busy card says: "Busy till 21:40" (the longest thing on its way, on the device's clock), with the soonest
- *  and the longest ready (a good's picture each). Null with nothing on its way. */
+/** How readyAt (src/lib/time.ts) begins a time of tomorrow. */
+const TOMORROW = 'tomorrow '
+
+/** What the busy card says: "Busy till 21:40" (the longest thing on its way, on the device's clock: `title`), with the
+ *  soonest and the longest ready (a good's picture each). `until` is the time alone and `night` whether it is
+ *  tomorrow's (a phone's top has no room for the word: the card shows the moon). Null with nothing on its way. */
 export function busyWords(f: FarmData, now: number = Date.now(), speed: Speeds = STILL, locale?: string) {
   const all = appointments(f, speed).filter((a) => a.from !== 'order')
   if (!all.length) return null
   const soonest = all[0]
   const longest = all[all.length - 1]
-  return { title: `Busy till ${readyAt(longest.ready, now, locale)}`, soonest, longest, until: readyAt(longest.ready, now, locale) }
+  const at = readyAt(longest.ready, now, locale)
+  const night = at.startsWith(TOMORROW)
+  return { title: `Busy till ${at}`, soonest, longest, until: night ? at.slice(TOMORROW.length) : at, night }
 }

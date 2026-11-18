@@ -45,6 +45,8 @@ export const UNLOCKS = {
   'upgrade:sprinkler': 4,
   'decor:flowers': 4,
   'decor:bush': 4,
+  // the first long crop: an hour (update-v1/missions/01-loop-economy.md)
+  'crop:sunflower': 4,
   // the oven's first cakes, more beds
   'recipe:oven:carrot_cake': 5,
   'recipe:oven:lemon_cake': 5,
@@ -62,6 +64,8 @@ export const UNLOCKS = {
   'decor:lantern': 7,
   'decor:bench': 7,
   'decor:blueberry-bush': 7,
+  // the first night's crop: eight hours (decision 1, JOURNEY.md fix 1: a daily player's first bedtime is at level 8)
+  'crop:cotton': 7,
   'crop:corn': 8,
   'parcel:east': 8,
   'parcel:west': 8,
@@ -72,6 +76,7 @@ export const UNLOCKS = {
   'decor:scarecrow-haymaker': 9,
   'decor:scarecrow-pumpkin': 9,
   'decor:raspberry-bush': 9,
+  'crop:melon': 9,
   'crop:pumpkin': 10,
   'recipe:oven:pumpkin_pie': 10,
   'decor:tree': 10,
@@ -86,6 +91,7 @@ export const UNLOCKS = {
   'parcel:northWest': 12,
   'decor:scarecrow-crows': 12,
   'decor:scarecrow-pinwheel': 12,
+  'crop:potato': 12,
   'decor:cherry-tree': 13,
   'decor:well': 13,
   'decor:scarecrow-jingle': 13,

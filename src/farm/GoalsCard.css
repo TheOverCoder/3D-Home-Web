@@ -1,23 +1,17 @@
 /* The goals board (GoalsCard.tsx, the design lab's F): the medal case. Every medal is gold (the sun and its lip), the
    goods on their faces in their own full colours. Upright: the shelf of medals, the steps, what to do and the case of
-   small medals; sideways: the shelf on the left, the rest on the right. The sheet and its motion: SwipeSheet (`scrolls`:
-   the body scrolls on a small phone, the title moves the sheet). Every rule under .goals-card. */
-.goals-card .farm-panel { display: flex; flex-direction: column; gap: 10px; padding-top: 20px; overflow: hidden; }
-/* Motion presses these (SINK, PRESS): no CSS transition fighting it over their transform */
-.goals-card .btn,
-.goals-card .farm-panel .close { transition: box-shadow 0.1s ease-out, filter 0.15s, outline-offset 0.18s var(--ease-sheet); }
-.goals-card .btn:active:not(:disabled),
-.goals-card .farm-panel .close:active { transform: none; }
+   small medals; sideways: the shelf on the left, the rest on the right. The sheet, its head (the trophy, "Goals", the
+   medals won and how many wait, ✕) and its motion are PanelSheet's (src/ui/PanelSheet.tsx): this is what is on it.
+   Every rule under .goals-card. */
+/* Motion presses these (SINK): no CSS transition fighting it over their transform */
+.goals-card .btn { transition: box-shadow 0.1s ease-out, filter 0.15s, outline-offset 0.18s var(--ease-sheet); }
+.goals-card .btn:active:not(:disabled) { transform: none; }
 
-/* the title: the trophy, "Goals", the medals won, how many wait, the close */
-.goals-card .gc-head { display: flex; align-items: center; gap: 8px; margin: 0; }
-.goals-card .gc-head > .art { width: 40px; height: 40px; }
-.goals-card .gc-head h2 { margin: 0; font: 600 25px/1.1 var(--font-display); color: var(--ink); }
-.goals-card .gc-head .tag { font-size: 15px; padding: 3px 10px; }
+/* the head's chips: the medals won, how many wait */
+.goals-card .mp-sub .tag { font-size: 15px; padding: 3px 10px; }
 .goals-card .gc-won { gap: 4px; }
 .goals-card .gc-won svg { width: 18px; height: 18px; color: var(--sun-lip); }
-.goals-card .gc-head .close { margin-inline-start: auto; }
-.goals-card .gc-body { display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 0; overflow: auto; margin: 0 -8px; padding: 0 8px 8px; scrollbar-width: none; }
+.goals-card .gc-body { display: flex; flex-direction: column; gap: 10px; }
 
 /* a gold medal: the ribbon behind, the coin (a milled rim, a sunk face with the goal's picture), the ring round it */
 .goals-card .gc-medal {
@@ -220,7 +214,6 @@
 
 /* a small phone: a smaller shelf, a little less room round the words */
 @media (max-height: 700px) and (orientation: portrait) {
-  .goals-card .farm-panel { gap: 8px; padding-top: 16px; }
   .goals-card .gc-stage { height: 156px; }
   .goals-card .gc-medal.big { --size: 128px; }
   .goals-card .gc-info h3 { font-size: 19px; }
@@ -228,9 +221,6 @@
 
 /* a phone on its side: the shelf and its steps on the left, what to do and the case on the right */
 @media (orientation: landscape) and (max-height: 560px) {
-  .goals-card .farm-panel { gap: 6px; padding-top: calc(12px + env(safe-area-inset-top)); }
-  .goals-card .gc-head > .art { width: 32px; height: 32px; }
-  .goals-card .gc-head h2 { font-size: 22px; }
   .goals-card .gc-body { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr); align-items: start; gap: 10px; }
   .goals-card .gc-stage { height: 212px; }
   .goals-card .gc-medal.big { --size: 132px; }

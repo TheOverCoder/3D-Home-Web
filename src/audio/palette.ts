@@ -18,12 +18,40 @@ export function note(step: number, octave: number): number {
   return hz(12 * (o + 1) + KEY[((step % n) + n) % n])
 }
 
+/** A note of the key by its name and octave, as the tables write it ('G6': a machine's ding, src/farm/data.ts). */
+export type KeyNote = `${'C' | 'D' | 'E' | 'G' | 'A'}${4 | 5 | 6 | 7}`
+const NAMES = 'CDEGA'
+
+/** A key note's step and octave, as `note` takes them ('A6': step 4 in octave 6). */
+export function keyStep(n: KeyNote): { step: number; octave: number } {
+  return { step: NAMES.indexOf(n[0]), octave: Number(n.slice(1)) }
+}
+
 /** How far `f` (Hz) lies from the nearest note of the key, in cents (a hundredth of a semitone). */
 export function offKey(f: number): number {
   const pc = (((69 + 12 * Math.log2(f / 440)) % 12) + 12) % 12
   let best = Infinity
   for (const k of KEY) for (const o of [-12, 0, 12]) best = Math.min(best, Math.abs(pc - k - o))
   return best * 100
+}
+
+/** How many steps a streak climbs, one each quick press, before it holds its top. */
+export const CLIMB_STEPS = 8
+/** How close behind the last a press must come to climb its streak (ms): work (taps in a panel, jobs added, goods put
+ *  in, shelves filled, work in the world) within 2.5 s; the crystals landing on the level's bar within their 450 ms. */
+export const WORK_GAP = 2500
+export const XP_GAP = 450
+
+/** Each streak as it stands: its step, and when it last climbed (ms). */
+const runs = new Map<string, { step: number; at: number }>()
+
+/** A press in streak `name` (at `now`, ms): its step, 0 … CLIMB_STEPS − 1, one higher than the last when it comes within
+ *  `gapMs` of it, held at the top; after a pause from the bottom again. Each streak climbs on its own. */
+export function climb(name: string, gapMs: number, now: number = performance.now()): number {
+  const run = runs.get(name)
+  const step = run && now - run.at < gapMs ? Math.min(run.step + 1, CLIMB_STEPS - 1) : 0
+  runs.set(name, { step, at: now })
+  return step
 }
 
 /** How much a varying sound's loudness may change each time, either way (a share: 10 %). */
