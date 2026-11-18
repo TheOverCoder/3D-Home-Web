@@ -35,6 +35,7 @@ import { freshPlayed, sanitizePlayed } from '../calendar'
 import { machineLevel, QUEUE } from '../machineView'
 import { freshMachine, jobSeconds, recipeOf, type MachineState } from '../machines'
 import { freshEvents, sanitizeEvents } from '../events'
+import { freshLedger, sanitizeLedger } from '../ledger'
 import { DEFAULT_OUTFIT, sanitizeOutfit } from '../outfit'
 import { clampLevels, freshMarket, sanitizeMarket } from '../market'
 import { offersPerDay, sanitizeContractor } from '../contractor'
@@ -47,6 +48,8 @@ import { sanitizeSteps, stepsFresh } from '../firstSteps'
 import { mostAt, ownsEach, type Steps } from '../tools'
 import { freshSkins, sanitizeSkins } from '../skins'
 import { defaultHome, sanitizeHome } from '../../home/layout'
+import { NEIGHBOUR_IDS } from '../../data/people'
+import { sanitizeFriends } from '../people/friends'
 import { asLook, bump, calendarDay, farm, isSellable, saveNow, type FarmData, type Look, type ProducerState } from './core'
 import { fullWater } from './beds'
 import { stocksFor } from './producers'
@@ -285,6 +288,8 @@ function fresh(): FarmData {
     events: freshEvents(),
     firstSteps: stepsFresh(),
     played: freshPlayed(),
+    friends: {},
+    ledger: freshLedger(),
     season: seasonFresh(),
   }
 }
@@ -556,6 +561,11 @@ function read(text: string | null): Loaded {
     data.events = sanitizeEvents(raw.events)
     // days played: as saved; a farm from before them starts from its daily gift's streak and the day it last claimed one
     data.played = sanitizePlayed(raw.played, calendarDay(), { days: amount(field(raw.daily, 'streak'), 0), last: int(field(raw.daily, 'last'), -1, -1, MOST) })
+    // the neighbours' friendships, as saved, for each met (a farm from before them has met no one; who is met comes
+    // with the story, src/farm/people)
+    data.friends = sanitizeFriends(raw.friends, NEIGHBOUR_IDS)
+    // the sales book: the days of the last two weeks as saved (a farm from before it: an empty book)
+    data.ledger = sanitizeLedger(raw.ledger, calendarDay())
     // the farm's year: as saved (a farm from before it begins its first spring today)
     data.season = savedSeason(raw.season, data.played)
     const queue = list(raw.queue)

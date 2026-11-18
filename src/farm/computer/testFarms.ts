@@ -1,6 +1,7 @@
 import { MACHINE_IDS, PRODUCE, PRODUCER_IDS, type ProduceId } from '../data'
 import { dayNumber } from '../daily'
 import { freshEvents } from '../events'
+import { freshLedger } from '../ledger'
 import { clampLevels, freshMarket } from '../market'
 import { freshMachine } from '../machines'
 import type { Order, OrderLine } from '../orders'
@@ -10,7 +11,7 @@ import type { MarketFarm, MarketNow } from './marketView'
 // Farms for the computer's tests (./*.test.ts), built by hand from the game's own fresh parts: no page, no storage, no
 // state module. Not part of the game.
 
-/** A new farm's parts: nothing in store, the machines new, two hens, a cow and two sheep, level 1. */
+/** A new farm's parts: nothing in store, the machines new, two hens, a cow and two sheep, level 1, nothing sold. */
 export function farmOf(over: Partial<MarketFarm> = {}): MarketFarm {
   return {
     inv: Object.fromEntries(PRODUCE.map((p) => [p.id, 0])) as Record<ProduceId, number>,
@@ -28,6 +29,7 @@ export function farmOf(over: Partial<MarketFarm> = {}): MarketFarm {
     paceLevel: 0,
     planted: [],
     made: [],
+    ledger: freshLedger(),
     ...over,
   }
 }

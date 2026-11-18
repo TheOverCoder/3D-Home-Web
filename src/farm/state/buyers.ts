@@ -2,7 +2,7 @@ import { farmSound, placeSound } from '../../audio/sound'
 import { coinsFx } from '../../fx/fx'
 import { dampAngle } from '../../lib/damp'
 import { GATE_SPOT, LANE_ENDS, NAMES, produceById, queueSpot, SELLABLE, VISITOR, WALK_Z, type ItemId, type ProduceId } from '../data'
-import { priceOf } from '../prices'
+import { offerFactor, priceOf } from '../prices'
 import { rollLook } from '../../models/look'
 import { bringsSurprise } from '../storage'
 import { FRUIT, FRUIT_KINDS } from '../decor'
@@ -10,7 +10,9 @@ import { asLook, bump, eventSpeed, farm, isSellable, random, save, toast, type L
 import { gainXp } from './levels'
 import { foundPrizes, rewarded } from './rewards'
 import { gainItems, rollGifts, surpriseWords } from './stores'
+import { sold } from './ledger'
 import { arrivalSeconds, placesInLine } from './shop'
+import { befriend } from './neighbours'
 
 // The buyers at the garden gate: who comes and what they ask for, the line, selling and declining, and their walking.
 
@@ -36,11 +38,10 @@ function chooseRequest(): { want: ProduceId; qty: number } {
   return { want, qty: Math.max(1, qty) }
 }
 
-/** Mostly fair, now and then generous, sometimes cheeky: worth a look before saying yes. */
+/** Mostly fair, now and then generous, sometimes cheeky: worth a look before saying yes (BUYER_OFFERS in ../data, on
+ *  Math.random). */
 function priceFor(want: ProduceId, qty: number) {
-  const r = Math.random()
-  const factor = r < 0.15 ? 0.6 : r < 0.38 ? 0.85 : r < 0.66 ? 1 : r < 0.86 ? 1.25 : 1.6
-  return Math.max(1, Math.round(priceOf(want) * qty * factor))
+  return Math.max(1, Math.round(priceOf(want) * qty * offerFactor(Math.random())))
 }
 
 /** What `qty` of a good are worth (src/farm/prices.ts: more for what a machine of a higher level makes). */
@@ -126,6 +127,8 @@ function sell(v: Visitor): ItemId[] {
   v.gift = false
   gainItems(items, { x: v.x, y: 1.9, z: v.z })
   gainXp('sale', v.offer, { x: v.x, y: 1.9, z: v.z })
+  sold('gate', v.want, v.qty, v.offer)
+  befriend(v)
   leave(v, 'happy')
   return items
 }
