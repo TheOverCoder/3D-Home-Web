@@ -3,7 +3,7 @@ import { floorOf } from '../home/shell'
 import { DRIVE, PLOT } from '../data/home'
 import { spaceAt, walkInRoomAt, type WalkIn, type WalkInRoom } from '../data/buildings'
 import { reachRects, type Rect } from '../farm/layout'
-import { farm, type Place } from '../farm/state'
+import { farm, type Place } from '../farm/state/core'
 import { useHome } from '../store'
 
 // The map in the scene and what only one of the two has (src/scene/Maps.tsx shows one at a time, src/data/maps.ts): the
