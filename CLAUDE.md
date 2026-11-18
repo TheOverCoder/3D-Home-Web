@@ -190,7 +190,9 @@ The README has the overview; `tests/README.md` what each test guards.
   `src/ui/Road.tsx`.
 - A new farm's first steps are rows of `FIRST_STEPS` (`src/farm/firstSteps.ts`: the words, the farmer's mood (his face
   and move, `FarmerFace.tsx`), the picture, when it is
-  done by the farm's own numbers, where a tap walks you, the reward); `state.ts` passes and pays them a frame after the
+  done by the farm's own numbers, where a tap walks you (a `Target`, `walkTargets.ts`), the reward, and its turns: what
+  he says instead while the farm is elsewhere, so no step is a dead end on any day (`lineFor`; `steps.walk.test.ts`
+  follows only the hint on every weekday's events); `state.ts` passes and pays them a frame after the
   farm does them, and the farmer's hint under the compass says them (`src/farm/FirstSteps.tsx`, its own top slot,
   `steps`). They end after the last, skipped, or at level 5, and the daily gift waits for them. A ?debug page keeps
   them quiet (`&steps=on`, or `__home.farm.steps.quiet(false)`, runs them); specs not about them keep them quiet

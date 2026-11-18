@@ -18,6 +18,7 @@ import {
   quietDaily,
   quietSteps,
   resetFarm,
+  resumeSteps,
   sendOrder,
   setDailyClock,
   setRandom,
@@ -25,6 +26,7 @@ import {
   spawnVisitor,
   stepNow,
   stepsBusy,
+  stepsResumable,
   takePassed,
   tick,
   water,
@@ -32,7 +34,8 @@ import {
 } from './state'
 import { OLD_SAVE, justSaved, savedNow, startFrom } from './testSaves'
 import { xpAt } from './xp'
-import { XP_FOR } from './data'
+import { ORDERS, SELLABLE, XP_FOR, type ProduceId } from './data'
+import { orderPay } from './orders'
 
 // A new farm's first steps on the farm (src/farm/firstSteps.ts; the record, the pay and the daily gift's wait in
 // src/farm/state.ts): each step passed as the farm does it, a frame later, in order, its reward paid once and never
@@ -166,6 +169,29 @@ describe('the end of the steps, and the daily gift', () => {
     expect(farm.firstSteps).toEqual({ step: 1, over: true })
   })
 
+  it('skipped, they can come back (Show the tips again): on the step they left, what was done meanwhile paid once', () => {
+    expect(stepsResumable()).toBe(false)
+    PLAY.plant()
+    frame()
+    skipSteps()
+    expect(stepsResumable()).toBe(true)
+    PLAY.eggs()
+    expect(frame().coins).toBe(0)
+    expect(resumeSteps()).toBe(true)
+    expect(farm.firstSteps).toEqual({ step: 1, over: false })
+    // the eggs collected meanwhile pass now, paid once; the plant step's coins were paid before and are not again
+    expect(frame().coins).toBe(reward('eggs'))
+    expect(takePassed().map((p) => p.id)).toEqual(['plant', 'eggs'])
+    expect(frame().coins).toBe(0)
+    expect(stepNow()?.id).toBe('water')
+    expect(resumeSteps()).toBe(false)
+    // all done, or grown past them: they do not come back
+    skipSteps()
+    gainXp('goal', Math.ceil((xpAt(STEPS_UNTIL_LEVEL) - farm.xp.points) / XP_FOR.goal))
+    expect(stepsResumable()).toBe(false)
+    expect(resumeSteps()).toBe(false)
+  })
+
   it('the daily gift comes once they are all done', () => {
     tick(0.1)
     for (const s of FIRST_STEPS) {
@@ -218,5 +244,57 @@ describe('kept in the save', () => {
     startFrom(justSaved(OLD_SAVE))
     expect(farm.firstSteps.over).toBe(true)
     expect(farm.stats.watered).toBe(0)
+  })
+})
+
+describe('the starter order (ORDERS.first)', () => {
+  const ask = () => farm.orders.map((slot) => ('order' in slot ? slot.order.lines.map((l) => `${l.good} ${l.have}/${l.want}`).join(', ') : 'wait'))
+  const STARTER = 'egg 0/3, cloth 0/1'
+  /** A place on the board holding an order of one good, so many of it put in so far. */
+  const order = (good: ProduceId, want: number, have = 0) => ({ order: { id: 0, lines: [{ good, want, have }], coins: 9, surprise: false } })
+
+  it('a new farm’s board has it in its first place: what the steps taught, paid as any order, and the rest come in', () => {
+    expect(ask()[0]).toBe(STARTER)
+    const o = orderAt(0)!
+    expect(o.coins).toBe(orderPay(o.lines))
+    expect(o.coins).toBe(26)
+    expect(o.surprise).toBe(false)
+    tick(0.1)
+    expect(ask()[0]).toBe(STARTER)
+    expect(farm.orders.every((slot) => 'order' in slot)).toBe(true)
+    // what it asks for a new farm makes (the eggs' and the weave's steps), and none of it is a building material
+    for (const l of ORDERS.first) expect(SELLABLE).toContain(l.good)
+  })
+
+  it('a farm saved on its steps before it gets it once, in the first place with nothing put in: nothing in is lost', () => {
+    farm.firstSteps = { step: 3, over: false }
+    farm.orders = [order('lettuce', 4, 2), order('wool', 2), order('carrot', 3)]
+    startFrom(justSaved(savedNow()))
+    expect(ask()).toEqual(['lettuce 2/4', STARTER, 'carrot 0/3'])
+    // once: saved and loaded again, the same board
+    startFrom(justSaved(savedNow()))
+    expect(ask()).toEqual(['lettuce 2/4', STARTER, 'carrot 0/3'])
+    // a board saved before its first frame (every place waiting): in the first place
+    farm.orders = [{ wait: 0 }, { wait: 0 }, { wait: 0 }]
+    startFrom(justSaved(savedNow()))
+    expect(ask()[0]).toBe(STARTER)
+    // every order with something in: the board as it was
+    farm.orders = [order('lettuce', 4, 2), order('wool', 2, 1), order('carrot', 3, 3)]
+    startFrom(justSaved(savedNow()))
+    expect(ask()).toEqual(['lettuce 2/4', 'wool 1/2', 'carrot 3/3'])
+  })
+
+  it('a farm that has sent an order, or is past its steps, keeps its board; so does one from before the steps', () => {
+    farm.orders = [order('lettuce', 4), order('wool', 2), order('carrot', 3)]
+    farm.firstSteps = { step: 7, over: false }
+    farm.stats.sent = 1
+    startFrom(justSaved(savedNow()))
+    expect(ask()).toEqual(['lettuce 0/4', 'wool 0/2', 'carrot 0/3'])
+    farm.stats.sent = 0
+    farm.firstSteps = { step: 2, over: true }
+    startFrom(justSaved(savedNow()))
+    expect(ask()).toEqual(['lettuce 0/4', 'wool 0/2', 'carrot 0/3'])
+    startFrom(justSaved(OLD_SAVE))
+    expect(ask()).not.toContain(STARTER)
   })
 })
