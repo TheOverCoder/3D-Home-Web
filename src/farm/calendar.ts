@@ -3,8 +3,8 @@
 // or summer time does. The long clock is what the long game runs on: the daily week, the seasons and the season road.
 // Pure.
 //
-// This is the calendar's home. Until 02's first commits move their callers here, dayNumber and dayStart stay in
-// src/farm/daily.ts and dateKey in src/farm/events.ts, as they are; calendar.test.ts holds them to the same answers.
+// The calendar's one home: src/farm/daily.ts hands on dayNumber and dayStart, src/farm/events.ts dateKey. Days played
+// are kept in the farm's save (`farm.played`) and counted by src/farm/state/daily.ts, markPlayed.
 
 import { field, int, isRecord, MOST } from '../lib/saved'
 

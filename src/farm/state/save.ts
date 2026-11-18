@@ -362,9 +362,9 @@ export function load(text: string | null = readRaw(KEY)): { data: FarmData; save
       aboard,
       trip: aboard ? seconds(field(raw.dispatch, 'trip'), tripSeconds(aboard, gateX(data.layout))) : -1,
     }
-    // the goals: each on the step it was saved on; a farm from before them starts each where it is (what it did before
-    // is not paid for again)
-    for (const def of GOALS) data.goals[def.id] = isObject(raw.goals) ? int(field(raw.goals, def.id), 0, 0, MOST_STEPS) : startStep(def, data)
+    // the goals: each on the step it was saved on; a farm from before them, or from before a goal (the fruit), starts
+    // each where its count is (what it did before is not paid for again)
+    for (const def of GOALS) data.goals[def.id] = isObject(raw.goals) && Object.hasOwn(raw.goals, def.id) ? int(field(raw.goals, def.id), 0, 0, MOST_STEPS) : startStep(def, data)
     // levels: as saved; a farm from before them starts with XP for what it did (its levels are not paid again). XP
     // saved under an older curve (LEVELS.step 15, before saves marked theirs) is moved onto today's: the same level and
     // the same share of the way to the next, so what was paid, the boxes opened and the clothes worn all stay

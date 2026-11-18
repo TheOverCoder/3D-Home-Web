@@ -1,15 +1,18 @@
 // The goals board (src/farm/GoalsPanel.tsx): a row for each thing the farm does — harvest, collect from each animal
-// and the tree, make at each machine, sell, earn, send orders, find surprises — each a ladder of counts to reach. A
+// and the trees, make at each machine, sell, earn, send orders, find surprises — each a ladder of counts to reach. A
 // count reached is claimed for its reward: coins, and the building material the next level of the silo or the barn is
 // shortest of (so a reward is always a step on). Past its last listed count, each next count is twice the one before:
-// the ladders never end. Pure: everything here reads the farm's numbers, nothing changes them (state.ts claims).
+// the ladders never end. Each row says what it counts as data (src/farm/measure.ts), so a new ladder is a row. Pure:
+// everything here reads the farm's numbers, nothing changes them (state.ts claims).
 
 import type { ArtId } from '../ui/art'
-import { MACHINES, PRODUCERS, PRODUCE, STORE_IDS, type ProduceId, type ProducerId } from './data'
+import { PRODUCERS, STORE_IDS, type ProduceId } from './data'
+import { countOf, GOODS, type Count } from './measure'
+import { nearest, stops, type Nearest, type Road } from './road'
 import { nextLevel } from './storage'
 import type { FarmData } from './state'
 
-export type GoalId = 'harvest' | 'lemons' | 'eggs' | 'milk' | 'wool' | 'mill' | 'cloth' | 'cakes' | 'sell' | 'earn' | 'orders' | 'surprises'
+export type GoalId = 'harvest' | 'lemons' | 'eggs' | 'milk' | 'wool' | 'mill' | 'cloth' | 'cakes' | 'sell' | 'earn' | 'orders' | 'surprises' | 'fruit'
 
 export interface GoalDef {
   id: GoalId
@@ -17,7 +20,9 @@ export interface GoalDef {
   pic: { item: ProduceId } | { art: ArtId }
   /** the words for a count: "Harvest 30 crops" */
   say: (n: number) => string
-  /** how far the farm has got */
+  /** what it counts (src/farm/measure.ts) */
+  count: Count
+  /** how far the farm has got: its count, read on a farm (the first steps read it too) */
   measure: (f: FarmData) => number
   /** the counts to reach, one after another (then each twice the one before) */
   steps: number[]
@@ -25,28 +30,24 @@ export interface GoalDef {
   coinsPer: number
 }
 
-const CROP_IDS = PRODUCE.filter((p) => !p.material && !Object.values(PRODUCERS).some((d) => d.good === p.id) && !Object.values(MACHINES).some((m) => m.recipes.some((r) => r.makes === p.id))).map(
-  (p) => p.id,
-)
-const MATERIALS = PRODUCE.filter((p) => p.material).map((p) => p.id)
-const madeBy = (machine: keyof typeof MACHINES) => [...new Set(MACHINES[machine].recipes.map((r) => r.makes))]
-const sum = (f: FarmData, ids: readonly ProduceId[]) => ids.reduce((n, id) => n + (f.got[id] ?? 0), 0)
-const fromAnimal = (id: ProducerId) => (f: FarmData) => f.got[PRODUCERS[id].good] ?? 0
-
-export const GOALS: GoalDef[] = [
-  { id: 'harvest', pic: { art: 'seedling' }, say: (n) => `Harvest ${n} crops`, measure: (f) => sum(f, CROP_IDS), steps: [10, 30, 75, 150, 300], coinsPer: 0.5 },
-  { id: 'eggs', pic: { item: 'egg' }, say: (n) => `Collect ${n} eggs`, measure: fromAnimal('hens'), steps: [10, 30, 75, 150], coinsPer: 0.5 },
-  { id: 'milk', pic: { item: 'milk' }, say: (n) => `Milk ${n} bottles`, measure: fromAnimal('cows'), steps: [5, 15, 40, 100], coinsPer: 1 },
-  { id: 'wool', pic: { item: 'wool' }, say: (n) => `Shear ${n} fleeces`, measure: fromAnimal('sheep'), steps: [5, 15, 40, 100], coinsPer: 1 },
-  { id: 'lemons', pic: { item: 'lemon' }, say: (n) => `Pick ${n} lemons`, measure: fromAnimal('tree'), steps: [10, 30, 75, 150], coinsPer: 0.5 },
-  { id: 'mill', pic: { item: 'flour' }, say: (n) => `Mill ${n} sacks`, measure: (f) => sum(f, madeBy('mill')), steps: [5, 15, 40, 100], coinsPer: 1 },
-  { id: 'cloth', pic: { item: 'cloth' }, say: (n) => `Weave ${n} cloths`, measure: (f) => sum(f, madeBy('loom')), steps: [3, 10, 25, 60], coinsPer: 2 },
-  { id: 'cakes', pic: { art: 'shortcake' }, say: (n) => `Bake ${n} cakes`, measure: (f) => sum(f, madeBy('oven')), steps: [2, 6, 15, 40], coinsPer: 4 },
-  { id: 'sell', pic: { art: 'shopping-bags' }, say: (n) => `Sell ${n} goods`, measure: (f) => f.stats.sold, steps: [20, 60, 150, 400], coinsPer: 0.25 },
-  { id: 'earn', pic: { art: 'coin' }, say: (n) => `Earn ${n} coins`, measure: (f) => f.stats.earned, steps: [100, 300, 1000, 3000], coinsPer: 0.05 },
-  { id: 'orders', pic: { art: 'tractor' }, say: (n) => `Send ${n} ${n === 1 ? 'order' : 'orders'}`, measure: (f) => f.stats.sent, steps: [1, 3, 8, 20], coinsPer: 8 },
-  { id: 'surprises', pic: { art: 'wrapped-gift' }, say: (n) => `Find ${n} surprises`, measure: (f) => sum(f, MATERIALS), steps: [3, 10, 25, 60], coinsPer: 2 },
+/** The goals as rows: what each counts, its words and picture, its ladder and its coins. */
+const ROWS: Omit<GoalDef, 'measure'>[] = [
+  { id: 'harvest', pic: { art: 'seedling' }, say: (n) => `Harvest ${n} crops`, count: { got: 'crops' }, steps: [10, 30, 75, 150, 300], coinsPer: 0.5 },
+  { id: 'eggs', pic: { item: 'egg' }, say: (n) => `Collect ${n} eggs`, count: { got: [PRODUCERS.hens.good] }, steps: [10, 30, 75, 150], coinsPer: 0.5 },
+  { id: 'milk', pic: { item: 'milk' }, say: (n) => `Milk ${n} bottles`, count: { got: [PRODUCERS.cows.good] }, steps: [5, 15, 40, 100], coinsPer: 1 },
+  { id: 'wool', pic: { item: 'wool' }, say: (n) => `Shear ${n} fleeces`, count: { got: [PRODUCERS.sheep.good] }, steps: [5, 15, 40, 100], coinsPer: 1 },
+  { id: 'lemons', pic: { item: 'lemon' }, say: (n) => `Pick ${n} lemons`, count: { got: [PRODUCERS.tree.good] }, steps: [10, 30, 75, 150], coinsPer: 0.5 },
+  { id: 'mill', pic: { item: 'flour' }, say: (n) => `Mill ${n} sacks`, count: { made: 'mill' }, steps: [5, 15, 40, 100], coinsPer: 1 },
+  { id: 'cloth', pic: { item: 'cloth' }, say: (n) => `Weave ${n} cloths`, count: { made: 'loom' }, steps: [3, 10, 25, 60], coinsPer: 2 },
+  { id: 'cakes', pic: { art: 'shortcake' }, say: (n) => `Bake ${n} cakes`, count: { made: 'oven' }, steps: [2, 6, 15, 40], coinsPer: 4 },
+  { id: 'sell', pic: { art: 'shopping-bags' }, say: (n) => `Sell ${n} goods`, count: { stat: 'sold' }, steps: [20, 60, 150, 400], coinsPer: 0.25 },
+  { id: 'earn', pic: { art: 'coin' }, say: (n) => `Earn ${n} coins`, count: { stat: 'earned' }, steps: [100, 300, 1000, 3000], coinsPer: 0.05 },
+  { id: 'orders', pic: { art: 'tractor' }, say: (n) => `Send ${n} ${n === 1 ? 'order' : 'orders'}`, count: { stat: 'sent' }, steps: [1, 3, 8, 20], coinsPer: 8 },
+  { id: 'surprises', pic: { art: 'wrapped-gift' }, say: (n) => `Find ${n} surprises`, count: { got: 'materials' }, steps: [3, 10, 25, 60], coinsPer: 2 },
+  // the fruit of the trees and bushes bought from the edit mode's shop (the lemons have their own)
+  { id: 'fruit', pic: { item: 'apple' }, say: (n) => `Pick ${n} fruit`, count: { got: 'fruit' }, steps: [10, 30, 75, 150, 300], coinsPer: 0.5 },
 ]
+export const GOALS: GoalDef[] = ROWS.map((row) => ({ ...row, measure: (f: FarmData) => countOf(f, row.count) }))
 export const GOAL_IDS = GOALS.map((g) => g.id)
 export const goalById = (id: GoalId) => GOALS.find((g) => g.id === id)!
 
@@ -73,7 +74,7 @@ export function startStep(def: GoalDef, f: FarmData) {
  *  is shortest of (the one first in line when none is short), more of it the higher the step. */
 export function goalReward(def: GoalDef, step: number, f: FarmData): { coins: number; item: ProduceId; count: number } {
   const coins = Math.max(1, Math.round(goalTarget(def, step) * def.coinsPer))
-  let item: ProduceId = MATERIALS[0]
+  let item: ProduceId = GOODS.materials[0]
   let short = -Infinity
   for (const store of STORE_IDS)
     for (const need of nextLevel(store, f.storage[store]).needs) {
@@ -117,3 +118,21 @@ export function boardGoals(f: FarmData, most = 6): GoalNow[] {
 
 /** How many goals are reached and wait to be claimed. */
 export const goalsReady = (f: FarmData) => goalsNow(f).filter((g) => g.done).length
+
+/** A goal's counts as a road (src/farm/road.ts), from its first up to the one it is on: how near that one is. */
+export const goalRoad = (def: GoalDef, step: number): Road => stops(step + 1, (k) => goalTarget(def, k - 1))
+
+/** How near a goal is to its count: the share of the way from the count before, what is left, almost there. Null once
+ *  it is reached. */
+export const goalNear = (g: GoalNow): Nearest | null => nearest(goalRoad(g.def, g.step), g.have)
+
+/** The goal nearest to its next count and not reached yet: the most of the way there from its count before (the
+ *  first row breaks a tie). Null when none is on its way (each reached, waiting to be claimed). */
+export function nearestGoal(f: FarmData): GoalNow | null {
+  let best: { g: GoalNow; share: number } | null = null
+  for (const g of goalsNow(f)) {
+    const near = goalNear(g)
+    if (near && (!best || near.share > best.share)) best = { g, share: near.share }
+  }
+  return best?.g ?? null
+}

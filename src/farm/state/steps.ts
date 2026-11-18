@@ -2,7 +2,7 @@ import { FIRST_STEPS, STEPS_UNTIL_LEVEL, advance, currentStep, skipped, type Ste
 import { levelOf } from '../xp'
 import { onHere } from '../../lib/quiet'
 import { bump, farm, save } from './core'
-import { give, rewarded } from './rewards'
+import { give } from './rewards'
 
 // A new farm's first steps (src/farm/firstSteps.ts): passed and paid a frame after the farm does them.
 
@@ -53,8 +53,7 @@ export function stepsOn() {
   if (stepsQuiet || farm.firstSteps.over) return
   const { rec, passed } = advance(farm.firstSteps, farm)
   if (rec === farm.firstSteps) return
-  for (const step of passed) give(step.reward)
-  for (const step of passed) rewarded('step', [step.reward])
+  for (const step of passed) give([step.reward], 'step')
   farm.firstSteps = rec
   passedNow.push(...passed)
   bump()

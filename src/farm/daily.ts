@@ -12,9 +12,13 @@
 
 import { intIn, isObject, list } from '../lib/saved'
 import { SELLABLE, type ProduceId } from './data'
+import { dayStart } from './calendar'
 import { savedPrize, type Prize } from './gifts'
 import { randomItem } from './storage'
 import { levelReward } from './xp'
+
+// (the calendar's days, from their home: src/farm/calendar.ts)
+export { dayNumber, dayStart } from './calendar'
 
 /** Days in a week of gifts. */
 export const WEEK = 7
@@ -24,7 +28,6 @@ export const GRACE = 1
 export const WEEK_GIFTS = ['coins', 'material', 'coins', 'goods', 'coins', 'material', 'big'] as const
 export type DayKind = (typeof WEEK_GIFTS)[number]
 
-const DAY_MS = 86_400_000
 /** The furthest calendar day a save may name (the year 10000): past it, a number is not a day. */
 const LAST_DAY = 2_932_897
 
@@ -42,20 +45,6 @@ export interface Daily {
 
 /** A farm that has never claimed one. */
 export const dailyFresh = (): Daily => ({ last: -1, streak: 0, offered: -1, week: [] })
-
-/** The device's calendar day at a moment: the days from 1 January 1970 to its own date there (the local date, whatever
- *  the time zone or summer time). */
-export function dayNumber(ms: number): number {
-  const d = new Date(ms)
-  return Math.round(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / DAY_MS)
-}
-
-/** The moment a calendar day (`dayNumber`) begins on the device: its local midnight (where summer time skips midnight,
- *  the first moment of that date). */
-export function dayStart(day: number): number {
-  const d = new Date(day * DAY_MS)
-  return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()).getTime()
-}
 
 /** A wait as a digital clock shows it, counting down: hours, minutes and seconds, two digits each ("07:42:05"), and
  *  the whole days before them past a day ("2d 03:00:00"). A part of a second counts as a whole one (it is not over). */
