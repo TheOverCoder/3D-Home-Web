@@ -41,6 +41,13 @@
   --font-text: 'Nunito Variable', 'Nunito', 'Fredoka Variable', ui-rounded, system-ui, sans-serif;
   --r-sheet: 28px;
   --r-card: 20px;
+  /* the sheets (src/ui/PanelSheet.tsx; the wardrobe; the lab's frames): how tall one may stand upright, how wide one is
+     sideways, its head's picture, and its title upright and sideways */
+  --sheet-max-up: 92dvh;
+  --sheet-w-side: min(610px, max(76vw, 520px));
+  --head-art: 56px;
+  --title: 25px;
+  --title-side: 21px;
   --shadow-sheet: 0 4px 0 var(--edge-soft), 0 24px 60px rgba(40, 24, 10, 0.38);
   --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease-sheet: cubic-bezier(0.05, 0.7, 0.1, 1);
@@ -1106,17 +1113,17 @@ button.farm-chip-item:focus-visible { outline: 3px solid var(--sun); outline-off
 .mp-sheet.farm-panel { padding: 0; overflow: hidden; animation: none; }
 .mp-sheet .mp-head { margin: 0; }
 .mp-bottom { place-items: end center; }
-.mp-bottom .mp-sheet { width: 100%; max-height: 92dvh; border-radius: var(--r-sheet) var(--r-sheet) 0 0; border-bottom: 0; }
+.mp-bottom .mp-sheet { width: 100%; max-height: var(--sheet-max-up); border-radius: var(--r-sheet) var(--r-sheet) 0 0; border-bottom: 0; }
 .mp-right { place-items: stretch end; }
-.mp-right .mp-sheet { width: min(610px, max(76vw, 520px)); height: 100dvh; max-height: none; border-radius: var(--r-sheet) 0 0 var(--r-sheet); border-right: 0; }
+.mp-right .mp-sheet { width: var(--sheet-w-side); height: 100dvh; max-height: none; border-radius: var(--r-sheet) 0 0 var(--r-sheet); border-right: 0; }
 .mp-middle { place-items: center; padding: 16px; }
 .mp-middle .mp-sheet { width: min(620px, 100%); max-height: calc(100dvh - 32px); border-radius: var(--r-sheet); }
 .mp-head { position: relative; display: flex; align-items: center; gap: 12px; padding: 16px 16px 10px; touch-action: none; flex: none; }
 .mp-grab { position: absolute; top: 6px; left: 50%; width: 40px; height: 5px; margin-left: -20px; border-radius: 3px; background: var(--paper-3); pointer-events: none; }
 .mp-middle .mp-grab { display: none; }
-.mp-head-art { width: 56px; height: 56px; margin: -6px 0 -4px; }
+.mp-head-art { width: var(--head-art); height: var(--head-art); margin: -6px 0 -4px; }
 .mp-head-text { flex: 1; min-width: 0; }
-.mp-sheet .mp-head h2 { margin: 0; font: 600 25px/1.1 var(--font-display); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mp-sheet .mp-head h2 { margin: 0; font: 600 var(--title)/1.1 var(--font-display); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mp-sub { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 5px; min-height: 30px; }
 .mp-round { flex: none; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%; background: var(--paper-2); color: var(--ink); box-shadow: 0 3px 0 var(--paper-3); }
 .mp-round svg { width: 22px; height: 22px; }
@@ -1135,12 +1142,30 @@ button.farm-chip-item:focus-visible { outline: 3px solid var(--sun); outline-off
 .mp-note.xp { background: color-mix(in srgb, var(--xp) 14%, var(--paper)); color: var(--xp-lip); }
 .mp-right .mp-head { padding: calc(8px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) 8px 22px; gap: 10px; }
 .mp-right .mp-grab { top: 50%; left: 8px; width: 5px; height: 40px; margin: -20px 0 0; }
-.mp-right .mp-head-art { width: 42px; height: 42px; margin: -4px 0; }
-.mp-right .mp-sheet .mp-head h2 { font-size: 21px; }
+.mp-right .mp-head-art { width: calc(var(--head-art) * 0.75); height: calc(var(--head-art) * 0.75); margin: -4px 0; }
+.mp-right .mp-sheet .mp-head h2 { font-size: var(--title-side); }
 .mp-right .mp-sub { margin-top: 3px; }
 /* PanelSheet's body: its blocks one under another, scrolling inside the sheet (sideways: clear of the notch) */
 .ps-body { display: flex; flex-direction: column; gap: 10px; flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 16px calc(14px + env(safe-area-inset-bottom)); }
 .mp-right .ps-body { gap: 8px; padding: 0 calc(12px + env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) 22px; }
+/* its shade lifts as a finger pulls the sheet away (the layer inside it); on its way out it takes no touch */
+.ps-shade { background: none; }
+.ps-shade > span { position: absolute; inset: 0; background: rgba(40, 24, 10, 0.4); }
+.ps-leaving { pointer-events: none; }
+/* a picture drawn at its top (the level's star with its number), in the picture's place */
+.ps-head-pic { display: grid; place-items: center; flex: none; }
+/* its foot: Cancel first, the action last with its price, under the body (which scrolls); clear of the home bar */
+.ps-foot { display: flex; gap: 10px; justify-content: flex-end; flex: none; padding: 10px 16px calc(14px + env(safe-area-inset-bottom)); }
+.ps-foot .btn { min-width: 0; }
+.ps-foot .ps-action { min-width: 150px; }
+.ps-has-foot .ps-body { padding-bottom: 4px; }
+.mp-bottom .ps-foot > *, .mp-right .ps-foot > * { flex: 1; }
+.mp-right .ps-foot { padding: 8px calc(12px + env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) 22px; }
+/* a card asks one thing: as tall as what it asks, narrower on a computer; sideways at the bottom on the right, where
+   the thumb is */
+.ps-card.mp-middle .mp-sheet { width: min(460px, 100%); }
+.ps-card.mp-right { place-items: end end; }
+.ps-card.mp-right .mp-sheet { height: auto; max-height: 100dvh; border-radius: var(--r-sheet) 0 0 0; border-bottom: 0; }
 /* goods flying on the page (src/ui/fly.ts) */
 .goods-fly { position: fixed; z-index: 81; pointer-events: none; object-fit: contain; filter: drop-shadow(0 4px 3px rgba(60, 35, 10, 0.3)); will-change: transform, opacity; }
 @media (pointer: coarse) {
