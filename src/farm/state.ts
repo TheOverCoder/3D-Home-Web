@@ -34,6 +34,7 @@ export * from './state/daily'
 export * from './state/tick'
 export * from './state/away'
 export * from './state/save'
+export * from './state/season'
 export * from './state/neighbours'
 
 /**
