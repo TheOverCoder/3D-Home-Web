@@ -1,13 +1,14 @@
 import { useEffect, useMemo } from 'react'
 import { CuboidCollider, CylinderCollider, RigidBody } from '@react-three/rapier'
-import { BufferGeometry, Color, Float32BufferAttribute, MeshStandardMaterial, PlaneGeometry, SphereGeometry } from 'three'
+import { BufferGeometry, Color, Float32BufferAttribute, MeshStandardMaterial, PlaneGeometry, SphereGeometry, Vector2 } from 'three'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import { HOUSE_SHRUBS } from '../data/garden'
 import { COUNTRY_LANE, COUNTRY_TREES, DRIVE, FIELDS, GARDEN_TREE, HILLS, PLOT } from '../data/home'
 import { HOUSE } from '../data/layout'
 import { surface } from '../lib/proceduralTextures'
 import { sculptMaterial } from '../lib/sculpt'
-import { CROWN_MATERIAL, countryTree, gardenTree, placeBigTree, trunksByBark } from '../models/trees'
+import { seasonal } from '../lib/sculpt/material'
+import { PLACED_CROWN_MATERIAL, countryTree, gardenTree, placeBigTree, trunksByBark } from '../models/trees'
 import { B } from './Furnishings'
 import { fenceRun, shrubs } from './flora'
 
@@ -16,6 +17,9 @@ import { fenceRun, shrubs } from './flora'
 // it all, a tree in the corner (a round oak, as in the farm's garden: src/models/trees.ts), and the country lane beyond
 // the gate. All of it static: <House /> merges it into a handful of draws (the tree, painted in its vertices, stays
 // two meshes of its own). Round it a quiet countryside (`Countryside`), drawn far off and light.
+// The season (src/lib/sculpt/material.ts) colours the lawn and lies on it as snow, turns the shrubs' leaves and the trees'
+// crowns and caps them, and lies on the fence's rails, the fields and the hills; the paving, the driveway and the lane are
+// swept.
 
 const FENCE = '#7a6048'
 const WOOD_DARK = '#5b4636'
@@ -68,11 +72,28 @@ export function Exterior() {
   const bushes = useMemo(() => shrubs(0, HOUSE_SHRUBS.length), [])
   const fence = useMemo(fenceGeometry, [])
   const corner = useMemo(() => placeBigTree(gardenTree(GARDEN_TREE[2]), GARDEN_TREE[0], GARDEN_TREE[1]), [])
+  const mats = useMemo(
+    () => ({
+      lawn: seasonal(new MeshStandardMaterial({ map: grass.map, normalMap: grass.normalMap, roughnessMap: grass.roughnessMap, roughness: 1 }), { grass: true }),
+      bushes: seasonal(
+        new MeshStandardMaterial({ color: '#6e8a52', map: leaves.map, normalMap: leaves.normalMap, roughnessMap: leaves.roughnessMap, roughness: 1, normalScale: new Vector2(1.4, 1.4) }),
+        { foliage: true },
+      ),
+      fence: seasonal(new MeshStandardMaterial({ color: FENCE, map: bark.map, normalMap: bark.normalMap, roughness: 0.85 })),
+    }),
+    [grass, leaves, bark],
+  )
   useEffect(
     () => () => {
       for (const g of [bushes, fence, corner.wood, corner.crown]) g.dispose()
     },
     [bushes, fence, corner],
+  )
+  useEffect(
+    () => () => {
+      for (const m of Object.values(mats)) m.dispose()
+    },
+    [mats],
   )
   const w = HOUSE.maxX - HOUSE.minX + 3.2
   const d = HOUSE.maxZ - HOUSE.minZ + 3.2
@@ -83,9 +104,8 @@ export function Exterior() {
           large a plane the depth the renderer works out can come out a hair nearer than the floor's at a low angle,
           and the grass shows through: the drawing pass (src/lib/visibility) draws them always, so nothing changes. */}
       <group userData={{ cell: 'always' }}>
-        <mesh rotation-x={-Math.PI / 2} position={[0, -0.03, 0]} receiveShadow>
+        <mesh rotation-x={-Math.PI / 2} position={[0, -0.03, 0]} receiveShadow material={mats.lawn}>
           <planeGeometry args={[800, 800]} />
-          <meshStandardMaterial map={grass.map} normalMap={grass.normalMap} roughnessMap={grass.roughnessMap} roughness={1} />
         </mesh>
         <mesh rotation-x={-Math.PI / 2} position={[0, -0.015, 0]} receiveShadow>
           <planeGeometry args={[w, d]} />
@@ -102,17 +122,13 @@ export function Exterior() {
         <planeGeometry args={[COUNTRY_LANE.width, lane]} />
         <meshStandardMaterial color="#b3a184" map={gravel.map} normalMap={gravel.normalMap} roughness={1} polygonOffset polygonOffsetFactor={-1} polygonOffsetUnits={-1} />
       </mesh>
-      <mesh geometry={bushes} castShadow receiveShadow>
-        <meshStandardMaterial color="#6e8a52" map={leaves.map} normalMap={leaves.normalMap} roughnessMap={leaves.roughnessMap} roughness={1} normalScale={[1.4, 1.4]} />
-      </mesh>
-      <mesh geometry={fence} castShadow receiveShadow>
-        <meshStandardMaterial color={FENCE} map={bark.map} normalMap={bark.normalMap} roughness={0.85} />
-      </mesh>
+      <mesh geometry={bushes} castShadow receiveShadow material={mats.bushes} />
+      <mesh geometry={fence} castShadow receiveShadow material={mats.fence} />
       <Gate />
       {/* the corner tree, like the farm's: no shadow (the sun is low in the south-east and must keep reaching the
           windows) */}
       <mesh name="garden-tree-wood" geometry={corner.wood} material={sculptMaterial(corner.bark)} />
-      <mesh name="garden-tree-crown" geometry={corner.crown} material={sculptMaterial(CROWN_MATERIAL)} />
+      <mesh name="garden-tree-crown" geometry={corner.crown} material={sculptMaterial(PLACED_CROWN_MATERIAL)} />
     </group>
   )
 }
@@ -177,11 +193,12 @@ export function Countryside() {
   const mats = useMemo(
     () => ({
       // the trees' are the kit's, shared (their colours are in their vertices)
-      crown: sculptMaterial(CROWN_MATERIAL),
+      crown: sculptMaterial(PLACED_CROWN_MATERIAL),
       wood: built.wood.map((w) => sculptMaterial(w.material)),
-      land: new MeshStandardMaterial({ vertexColors: true, roughness: 1 }),
+      // snow on the hills and the fields in winter
+      land: seasonal(new MeshStandardMaterial({ vertexColors: true, roughness: 1 })),
       // the fields lie on the lawn: drawn over it
-      fields: new MeshStandardMaterial({ vertexColors: true, roughness: 1, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
+      fields: seasonal(new MeshStandardMaterial({ vertexColors: true, roughness: 1, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 })),
     }),
     [built],
   )

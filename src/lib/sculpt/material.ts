@@ -1,4 +1,4 @@
-import { DoubleSide, FrontSide, MeshStandardMaterial, ShaderChunk, Vector3, Vector4 } from 'three'
+import { Color, DoubleSide, FrontSide, MeshStandardMaterial, ShaderChunk, Vector3, Vector4, type WebGLProgramParametersWithUniforms } from 'three'
 import { sculptSurfaceTexture, type SculptSurfaceKind } from '../proceduralTextures'
 import type { V3 } from './core'
 
@@ -41,6 +41,253 @@ export function setSculptGlow(level: number) {
 
 /** How brightly the glowing parts glow now (see `setSculptGlow`). */
 export const sculptGlow = () => glowLevel.value
+
+// ───────────────────────────── the season ─────────────────────────────
+//
+// The farm's year on what is there (update-v1/missions/10-seasons-weather.md, F4): no geometry, no draw and no compile
+// more, only uniforms every seasonal material shares. Snow lies on what faces the sky (unevenly, in the kit's way: by a
+// noise on where it is in the world), never under a roof (`setSculptShelters`: the house's and the walk-ins' rooms);
+// the leaves (`foliage`: the trees' crowns, the hedge, the bushes) turn to the season's colour, tree by tree by a hash of
+// where each stands, some further than others; the lawn takes the season's colour. Which materials it reaches: the
+// kit's with a `surface` (what is built: roofs, walls' tops, boards, stone, bark) or marked `foliage`, and the plain ones
+// `seasonal` is given (the lawns, the hedge, the bushes, the fences, the countryside's fields). What lives and moves —
+// animals, people, crops — and what is swept (the beds' soil, the paths, the lanes) has none. Spring is nothing at all:
+// every amount 0 and the lawn's colour white, each behind a branch on a uniform, so every pixel is today's. The sun's
+// map is depth only: kept as it was.
+
+/** The most rooms with a roof the shader takes (src/lib/world.ts, `shelters`: the farm's walk-in rooms, the house). */
+export const MOST_SHELTERS = 8
+
+/** A room with a roof over it: no snow on what is in it (the floor, a table, a shelf), up to `top` (the roof's). */
+export interface SculptShelter {
+  x0: number
+  x1: number
+  z0: number
+  z1: number
+  top: number
+}
+
+/** What the season's chunk reads, shared by every seasonal material. */
+const seasonUniforms = {
+  /** snow on what faces the sky (0 none: spring, summer, autumn) */
+  seasonCover: { value: 0 },
+  /** the colour the leaves turn to (linear) and how far (0: as they are) */
+  seasonFoliage: { value: new Vector4(1, 1, 1, 0) },
+  /** the colour the trees that turn furthest go to (autumn's reds) */
+  seasonFar: { value: new Vector3(1, 1, 1) },
+  /** the lawn's colour, multiplying its own (white: as it is) */
+  seasonGrass: { value: new Vector3(1, 1, 1) },
+  /** the rooms with a roof: x0, z0, x1, z1 each, and their roofs' heights */
+  seasonShelter: { value: Array.from({ length: MOST_SHELTERS }, () => new Vector4()) },
+  seasonShelterTop: { value: Array.from({ length: MOST_SHELTERS }, () => 0) },
+  seasonShelters: { value: 0 },
+}
+
+/** The rooms with a roof as uniforms, the same objects every seasonal material reads: for another shader that ends at
+ *  them (the rain and snow: src/fx/quarks.ts, `weatherFx`), set with `setSculptShelters`. */
+export const shelterUniforms = {
+  seasonShelter: seasonUniforms.seasonShelter,
+  seasonShelterTop: seasonUniforms.seasonShelterTop,
+  seasonShelters: seasonUniforms.seasonShelters,
+}
+
+/** The season as the materials take it: snow on what faces the sky (0–1), the leaves' colour, the colour the furthest
+ *  turned go to and how far they turn (0–1), and the lawn's colour (CSS colours; white leaves it as it is). */
+export interface SculptSeason {
+  cover: number
+  foliage: { color: string; far: string; amount: number }
+  grass: string
+}
+
+const linear = new Map<string, Color>()
+/** A CSS colour in the shader's (linear) colours, parsed once. */
+function lin(css: string): Color {
+  let c = linear.get(css)
+  if (!c) linear.set(css, (c = new Color(css)))
+  return c
+}
+
+/** The season on every seasonal material at once, with no recompiling (each frame: src/scene/Lighting.tsx, DayLight). */
+export function setSculptSeason(s: SculptSeason) {
+  const u = seasonUniforms
+  u.seasonCover.value = Math.min(1, Math.max(0, s.cover || 0))
+  const f = lin(s.foliage.color)
+  u.seasonFoliage.value.set(f.r, f.g, f.b, Math.min(1, Math.max(0, s.foliage.amount || 0)))
+  const far = lin(s.foliage.far)
+  u.seasonFar.value.set(far.r, far.g, far.b)
+  const g = lin(s.grass)
+  u.seasonGrass.value.set(g.r, g.g, g.b)
+}
+
+/** The rooms with a roof on the map in the scene (src/lib/world.ts, `shelters`): no snow lies in them. At most
+ *  MOST_SHELTERS; the rest are left out. */
+export function setSculptShelters(list: readonly SculptShelter[]) {
+  const u = seasonUniforms
+  const n = Math.min(MOST_SHELTERS, list.length)
+  for (let i = 0; i < MOST_SHELTERS; i++) {
+    const s = list[i]
+    if (i < n) {
+      u.seasonShelter.value[i].set(s.x0, s.z0, s.x1, s.z1)
+      u.seasonShelterTop.value[i] = s.top
+    } else {
+      u.seasonShelter.value[i].set(0, 0, 0, 0)
+      u.seasonShelterTop.value[i] = 0
+    }
+  }
+  u.seasonShelters.value = n
+}
+
+/** The season's uniforms as they stand now (for the tests). */
+export const sculptSeason = () => ({
+  cover: seasonUniforms.seasonCover.value,
+  foliage: seasonUniforms.seasonFoliage.value.toArray(),
+  far: seasonUniforms.seasonFar.value.toArray(),
+  grass: seasonUniforms.seasonGrass.value.toArray(),
+  shelters: seasonUniforms.seasonShelters.value,
+})
+
+// a hash and a value noise in the world's metres (the leaves' turn tree by tree, the snow's patches)
+const SEASON_NOISE = `
+float seasonHash( vec2 p ) {
+	p = fract( p * vec2( 0.1031, 0.1030 ) );
+	p += dot( p, p.yx + 33.33 );
+	return fract( ( p.x + p.y ) * p.x );
+}
+float seasonNoise( vec2 x ) {
+	vec2 i = floor( x );
+	vec2 f = fract( x );
+	f = f * f * ( 3.0 - 2.0 * f );
+	return mix( mix( seasonHash( i ), seasonHash( i + vec2( 1.0, 0.0 ) ), f.x ), mix( seasonHash( i + vec2( 0.0, 1.0 ) ), seasonHash( i + vec2( 1.0, 1.0 ) ), f.x ), f.y );
+}
+`
+
+const SEASON_HEAD = `
+#ifdef SCULPT_SEASON
+uniform float seasonCover;
+uniform vec4 seasonFoliage;
+uniform vec3 seasonFar;
+uniform vec3 seasonGrass;
+uniform vec4 seasonShelter[ ${MOST_SHELTERS} ];
+uniform float seasonShelterTop[ ${MOST_SHELTERS} ];
+uniform int seasonShelters;
+#ifdef SEASON_LEAF
+varying vec2 vLeaf;
+#endif
+${SEASON_NOISE}
+#endif
+`
+
+// each tree's own turn: a hash of where it stands (its model's or its instance's place; a crown made where it stands
+// carries its tree's place, and whether it keeps its green, in `leafAt`), and how much of the season it keeps out
+const SEASON_VERTEX_HEAD = `
+#ifdef SEASON_LEAF
+varying vec2 vLeaf;
+#ifdef SEASON_LEAF_AT
+attribute vec3 leafAt;
+#endif
+${SEASON_NOISE}
+#endif
+`
+const SEASON_VERTEX = `
+#ifdef SEASON_LEAF
+	{
+		vec4 leafPlace = vec4( 0.0, 0.0, 0.0, 1.0 );
+		float leafStay = 0.0;
+		#ifdef SEASON_LEAF_AT
+		leafPlace.xz = leafAt.xy;
+		leafStay = leafAt.z;
+		#endif
+		#ifdef USE_INSTANCING
+		leafPlace = instanceMatrix * leafPlace;
+		#endif
+		leafPlace = modelMatrix * leafPlace;
+		vLeaf = vec2( seasonHash( floor( leafPlace.xz * 4.0 ) ), leafStay );
+	}
+#endif
+`
+
+// in the world: where the pixel is and which way it faces (the view matrix is a turn and a move: its transpose turns
+// back). Leaves first (their colour, then the snow over it), then the lawn's colour, then the snow
+const SEASON_FRAGMENT = `
+#ifdef SCULPT_SEASON
+	{
+		vec3 seasonAt = cameraPosition + ( vec4( - vViewPosition, 0.0 ) * viewMatrix ).xyz;
+		#ifdef SEASON_FOLIAGE
+		if ( seasonFoliage.a > 0.0 ) {
+			#ifdef SEASON_LEAF
+			vec2 leaf = vLeaf;
+			#else
+			vec2 leaf = vec2( seasonNoise( seasonAt.xz * 0.35 ), 0.0 );
+			#endif
+			// the season's colour at the leaves' own light and shade (as bright as they were: a mid green becomes it)
+			float lum = dot( diffuseColor.rgb, vec3( 0.2126, 0.7152, 0.0722 ) );
+			vec3 turned = mix( seasonFoliage.rgb, seasonFar, smoothstep( 0.45, 1.0, leaf.x ) ) * ( lum / 0.18 );
+			diffuseColor.rgb = mix( diffuseColor.rgb, turned, min( 1.0, seasonFoliage.a * mix( 0.6, 1.35, leaf.x ) ) * ( 1.0 - leaf.y ) );
+		}
+		#endif
+		#ifdef SEASON_GRASS
+		diffuseColor.rgb *= seasonGrass;
+		#endif
+		#ifndef SEASON_BARE
+		if ( seasonCover > 0.0 ) {
+			float up = ( vec4( normal, 0.0 ) * viewMatrix ).y;
+			float patches = seasonNoise( seasonAt.xz * 0.9 ) * 0.65 + seasonNoise( seasonAt.xz * 3.7 + 7.0 ) * 0.35;
+			#ifdef SEASON_FOLIAGE
+			// a cap on the top of a crown or a hedge, the sides as they are
+			float lie = smoothstep( 0.5, 0.8, up + ( patches - 0.5 ) * 0.4 );
+			#else
+			float lie = smoothstep( 0.25, 0.55, up + ( patches - 0.5 ) * 0.4 );
+			#endif
+			// none under a roof (the roof's own top, a few centimetres up, keeps its snow)
+			for ( int i = 0; i < ${MOST_SHELTERS}; i ++ ) {
+				if ( i >= seasonShelters ) break;
+				vec4 r = seasonShelter[ i ];
+				if ( seasonAt.y < seasonShelterTop[ i ] - 0.05 && seasonAt.x > r.x && seasonAt.x < r.z && seasonAt.z > r.y && seasonAt.z < r.w ) lie = 0.0;
+			}
+			float snow = lie * min( 1.0, seasonCover * mix( 0.9, 1.25, patches ) );
+			diffuseColor.rgb = mix( diffuseColor.rgb, vec3( 0.82, 0.86, 0.92 ), snow );
+			roughnessFactor = mix( roughnessFactor, 0.85, snow );
+		}
+		#endif
+	}
+#endif
+`
+
+/** The season's chunk into a shader (a sculpt material's, or a plain one's: `seasonal`): its uniforms, and its colours
+ *  after the normal is known. */
+function addSeason(shader: WebGLProgramParametersWithUniforms) {
+  Object.assign(shader.uniforms, seasonUniforms)
+  shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\n' + SEASON_VERTEX_HEAD).replace('#include <begin_vertex>', '#include <begin_vertex>\n' + SEASON_VERTEX)
+  shader.fragmentShader = shader.fragmentShader
+    .replace('#include <common>', '#include <common>\n' + SEASON_HEAD)
+    .replace('#include <lights_physical_fragment>', SEASON_FRAGMENT + '#include <lights_physical_fragment>')
+}
+
+/** What the season does to a plain material (`seasonal`): snow on what faces the sky (unless `cover` is false), the
+ *  leaves' colour (`foliage`: the hedge, the bushes) and the lawn's (`grass`). */
+export interface SeasonalOptions {
+  cover?: boolean
+  foliage?: boolean
+  grass?: boolean
+}
+
+/** A plain material (the lawns, the hedge, the bushes, the fences, the fields) given the season's chunk, as the kit's
+ *  are: its own colours as they are in spring. Returns the material. A copy of it has the chunk too (a static batch
+ *  draws its merged meshes with copies of their materials: src/lib/batch.ts). */
+export function seasonal<M extends MeshStandardMaterial>(m: M, o: SeasonalOptions = {}): M {
+  const defines: Record<string, string> = { ...m.defines, SCULPT_SEASON: '' }
+  if (o.foliage) defines.SEASON_FOLIAGE = ''
+  if (o.grass) defines.SEASON_GRASS = ''
+  if (o.cover === false) defines.SEASON_BARE = ''
+  m.defines = defines
+  m.onBeforeCompile = addSeason
+  m.customProgramCacheKey = () => 'seasonal-v1'
+  // (three's own copy keeps neither the defines nor the chunk)
+  const copy = Object.getPrototypeOf(m).clone as () => M
+  m.clone = () => seasonal(copy.call(m), o)
+  m.needsUpdate = true
+  return m
+}
 
 // three's colour chunk, with the instance colour weighted by the tint mask, and the pattern layer passed on
 const COLOR_VERTEX =
@@ -232,13 +479,18 @@ export interface SculptMaterialOptions {
   /** a part that gives light (a lamp's glass): it glows its own colour (the vertex colours, as an instance's tints them)
    *  this many times over, at the level `setSculptGlow` sets for all of them (0 by day: only the colour shows) */
   glow?: number
+  /** leaves (a tree's crown): the season turns them, tree by tree by a hash of where each stands — its model's place
+   *  (`true`: a crown put where it stands, a crowd's by its instance), or the place each vertex carries in its
+   *  `leafAt` attribute (`'placed'`: crowns made where they stand, in the world's coordinates: src/models/trees.ts,
+   *  placeBigTree) — and snow caps them. (A `surface` takes the snow too: what is built.) */
+  foliage?: boolean | 'placed'
 }
 
 /** The material for these options, one shared by every part that asks for the same (made once). */
 export function sculptMaterial(o: SculptMaterialOptions = {}): MeshStandardMaterial {
   const d = o.detail
   const sf = o.surface
-  const key = `${o.roughness ?? 0.8}|${o.doubleSided ? 2 : 1}|${o.metalness ?? 0}|${d ? `${d.scale},${d.bump},${d.shade}` : ''}|${o.leaf ? 1 : 0}|${sf ? `${sf.kind},${sf.size},${sf.joint ? sf.joint.join(',') : ''},${sf.tone ?? ''},${sf.bump ?? ''},${sf.turn ? 1 : 0}` : ''}${o.tint2 ? '|tint2' : ''}${o.glow ? `|glow${o.glow}` : ''}`
+  const key = `${o.roughness ?? 0.8}|${o.doubleSided ? 2 : 1}|${o.metalness ?? 0}|${d ? `${d.scale},${d.bump},${d.shade}` : ''}|${o.leaf ? 1 : 0}|${sf ? `${sf.kind},${sf.size},${sf.joint ? sf.joint.join(',') : ''},${sf.tone ?? ''},${sf.bump ?? ''},${sf.turn ? 1 : 0}` : ''}${o.tint2 ? '|tint2' : ''}${o.glow ? `|glow${o.glow}` : ''}${o.foliage ? `|foliage${o.foliage}` : ''}`
   let m = cache.get(key)
   if (m) return m
   m = ownSculptMaterial(o)
@@ -260,6 +512,11 @@ export function ownSculptMaterial(o: SculptMaterialOptions = {}): MeshStandardMa
   // (a define of its own: the shader's cache key is the same for every sculpt material but for its defines)
   if (o.tint2) defines.SCULPT_TINT2 = ''
   if (o.glow) defines.SCULPT_GLOW = ''
+  // the season (above): on what is built and on leaves
+  const season = !!(sf || o.foliage)
+  if (season) defines.SCULPT_SEASON = ''
+  if (o.foliage) defines.SEASON_FOLIAGE = defines.SEASON_LEAF = ''
+  if (o.foliage === 'placed') defines.SEASON_LEAF_AT = ''
   if (Object.keys(defines).length) m.defines = defines
   const detail = d ? new Vector3(d.scale, d.bump, d.shade) : null
   const surface = sf
@@ -299,7 +556,8 @@ export function ownSculptMaterial(o: SculptMaterialOptions = {}): MeshStandardMa
       .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n' + (o.glow ? GLOW_FRAGMENT : ''))
       // a leaf's underside is lit like its upper side (three turned its normal round for the back face)
       .replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\n#ifdef SCULPT_LEAF\nnormal *= faceDirection;\n#endif')
+    if (season) addSeason(shader)
   }
-  m.customProgramCacheKey = () => 'sculpt-v4'
+  m.customProgramCacheKey = () => 'sculpt-v5'
   return m
 }
