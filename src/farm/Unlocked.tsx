@@ -88,18 +88,22 @@ export function Unlocked(props: { level: number; opens: UnlockId[]; onDone: () =
   useEffect(() => {
     done.current = props.onDone
   })
-  // (shown once: then it shows until it is done, and is due no more)
-  const shown = useRef(false)
+  // (it waits for its turn; then it is shown until it is done, or let go: either way due no more)
+  const turn = useRef<'waits' | 'shown' | 'let go'>('waits')
   useEffect(
     () =>
       registerCard('unlocked', {
-        due: () => !shown.current,
+        due: () => turn.current === 'waits',
         open: () => {
-          shown.current = true
+          turn.current = 'shown'
           setOpen(true)
         },
-        showing: () => shown.current,
-        pass: () => done.current(),
+        showing: () => turn.current === 'shown',
+        pass: () => {
+          if (turn.current !== 'waits') return
+          turn.current = 'let go'
+          done.current()
+        },
       }),
     [],
   )
