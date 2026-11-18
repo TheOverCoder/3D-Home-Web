@@ -80,12 +80,13 @@ function wayTo(from: Map<string, string | null>, end: string) {
 
 /**
  * The most the page shell may weigh, gzipped (bytes): the entry, every chunk it imports statically and their styles —
- * what index.html loads before the intro shows (update-v1 decision 18: 160 KB). Measured 169.1 KB with the game's
+ * what index.html loads before the intro shows (update-v1 decision 18: 160 KB). Measured 155.3 KB with the game's
  * interface (src/ui/GameLayer.tsx), the farm's state and the menu's pages that read it or are built with Radix
- * (src/ui/SavesPanel.tsx, IntroPages.tsx) out of it; the loading screen still brings every good's picture with the
- * farm's table, and the confetti (the next step, to 160 KB). Measured at the default level of gzip, as served.
+ * (src/ui/SavesPanel.tsx, IntroPages.tsx), the goods' pictures and the confetti out of it: React 69, the libraries the
+ * intro needs (Motion above all) 37, the intro, the loading screen and what they read 31, the styles 18. Measured at the
+ * default level of gzip, as served.
  */
-export const SHELL_BYTES = 170_000
+export const SHELL_BYTES = 160_000
 
 /** The shell's files with their gzipped sizes, biggest first (each file gzipped alone, as it is served). */
 function shellSizes(files: { name: string; code: string | Uint8Array }[]) {
