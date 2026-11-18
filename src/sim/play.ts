@@ -10,7 +10,8 @@
 // Run it under happy-dom (the farm keeps its save).
 
 import { LADDERS, LADDER_IDS, LEVELS, TOOL_KINDS, mostAnimals, toolLadder, type LadderId, type ToolKind } from '../farm/data'
-import { animals, farm, quietSteps, resetFarm, setDailyClock, setEventClock, setRandom, tick, unlockAll } from '../farm/state'
+import { TIERS, type Tier } from '../lib/tier'
+import { animals, farm, quietSteps, resetFarm, resetRewardCounts, rewardCounts, setDailyClock, setEventClock, setRandom, tick, unlockAll } from '../farm/state'
 import { levelOf } from '../farm/xp'
 import { nextMove, onTheWay, sellTools, type Spot } from './policy'
 
@@ -41,8 +42,10 @@ export interface SimRun {
   minutes: number
   /** the minute of play each level was reached (index: the level; level 1 at 0; none: not reached) */
   levelAt: (number | undefined)[]
-  /** every `every` minutes: the coins, the level and the XP */
-  samples: { minute: number; coins: number; level: number; xp: number }[]
+  /** the coins earned (sales and orders: `stats.earned`) by the time each level was reached (index: the level) */
+  earnedAt: (number | undefined)[]
+  /** every `every` minutes: the coins, the level, the XP, and the rewards paid so far at each tier (every kind) */
+  samples: { minute: number; coins: number; level: number; xp: number; rewards: Record<Tier, number> }[]
   gaps: Gap[]
   /** the longest stretch with nothing useful to do (seconds), and the minute it began */
   longest: { seconds: number; minute: number }
@@ -94,11 +97,13 @@ export function simulate(opts: { minutes: number; seed?: number; until?: number;
   sellTools(opts.tools ?? true)
   try {
     resetFarm()
+    resetRewardCounts()
     const run: SimRun = {
       seed,
       open: opts.open ?? false,
       minutes: 0,
       levelAt: [undefined, 0],
+      earnedAt: [undefined, 0],
       samples: [],
       gaps: [],
       longest: { seconds: 0, minute: 0 },
@@ -112,8 +117,12 @@ export function simulate(opts: { minutes: number; seed?: number; until?: number;
     // the player starts on the path among the first beds
     let at: Spot = { x: -1.2, z: 8 }
     let idle: { from: number; waiting: string } | null = null
+    const tiers = () => {
+      const counts = rewardCounts()
+      return Object.fromEntries(TIERS.map((tier) => [tier, Object.values(counts).reduce((n, c) => n + c[tier], 0)])) as Record<Tier, number>
+    }
     const sample = () => {
-      while (t >= run.samples.length * every * 60) run.samples.push({ minute: run.samples.length * every, coins: farm.coins, level: levelOf(farm.xp.points), xp: farm.xp.points })
+      while (t >= run.samples.length * every * 60) run.samples.push({ minute: run.samples.length * every, coins: farm.coins, level: levelOf(farm.xp.points), xp: farm.xp.points, rewards: tiers() })
     }
     const advance = (seconds: number) => {
       for (let left = seconds; left > 1e-9; left -= STEP) {
@@ -133,7 +142,10 @@ export function simulate(opts: { minutes: number; seed?: number; until?: number;
     sample()
     const reached = () => {
       const level = levelOf(farm.xp.points)
-      for (let l = 2; l <= Math.min(level, LEVELS.max); l++) run.levelAt[l] ??= t / 60
+      for (let l = 2; l <= Math.min(level, LEVELS.max); l++) {
+        run.levelAt[l] ??= t / 60
+        run.earnedAt[l] ??= farm.stats.earned
+      }
       // a herd full, a step of the farm shop's ladders bought
       for (const kind of TOOL_KINDS) if (animals(kind) >= mostAnimals(kind)) run.herdFull[kind] ??= t / 60
       for (const id of SHOP_ROWS) {
@@ -176,6 +188,18 @@ export function simulate(opts: { minutes: number; seed?: number; until?: number;
     quietSteps(true)
     sellTools(true)
   }
+}
+
+/** Coins a minute of play over a span of levels (from the first to the second reached), these runs' together. */
+export function incomeOver(runs: readonly SimRun[], [from, to]: readonly number[]): number {
+  let coins = 0
+  let minutes = 0
+  for (const r of runs) {
+    if (r.levelAt[to] === undefined || r.levelAt[from] === undefined) continue
+    coins += r.earnedAt[to]! - r.earnedAt[from]!
+    minutes += r.levelAt[to]! - r.levelAt[from]!
+  }
+  return minutes > 0 ? coins / minutes : 0
 }
 
 /** The minute a tool was bought (none: not in the run), and the minutes since its herd was full. */

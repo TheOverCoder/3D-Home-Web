@@ -6,11 +6,13 @@
 import {
   BEDS,
   CROPS,
+  ESTATE,
   GATE_SPOT,
   LADDERS,
   LADDER_IDS,
   MACHINES,
   MACHINE_IDS,
+  MANAGER,
   OFFICE_STAND,
   PRODUCERS,
   PRODUCER_IDS,
@@ -27,21 +29,27 @@ import {
   type ProducerId,
 } from '../farm/data'
 import { MANAGER_SPOT } from '../data/market'
+import { AGENT_STAND } from '../data/estate'
+import { jobAdds } from '../farm/economy'
 import { goalsNow } from '../farm/goals'
 import { PARCEL_IDS, PARCELS, canBuyParcel, toWorld } from '../farm/layout'
 import { STORE_GOODS } from '../farm/storage'
 import { SKINS, SKIN_STYLES, skinPrice } from '../farm/skins'
 import {
   addJob,
+  agentHere,
   bedSpot,
   bedStage,
   buildBed,
   buy,
   buyLadder,
+  buyApartment,
   buyLand,
+  buyMarket,
   buyOffice,
   buySkin,
   buySlot,
+  calendarTime,
   canAddJob,
   canUpgradeStore,
   claimDaily,
@@ -51,8 +59,10 @@ import {
   collectable,
   dailyWaiting,
   declineOffer,
+  eventSpeed,
   farm,
   fillOrder,
+  fullWater,
   giftsWaiting,
   harvestBeds,
   harvestFits,
@@ -65,6 +75,7 @@ import {
   machinePoint,
   machineSecondsLeft,
   machineStage,
+  marketForSale,
   officeMaxed,
   officePrice,
   openGifts,
@@ -226,6 +237,10 @@ function forSale(): Purchase[] {
   for (const id of PARCEL_IDS)
     if (canBuyParcel(farm.layout, id) && isUnlocked(`parcel:${id}`)) out.push({ what: PARCELS[id].name.toLowerCase(), at: null, price: PARCELS[id].price, buy: () => buyLand(id) })
   if (ladderOpen('rate')) out.push({ what: 'a better price from the manager', at: MARKET, price: ladderNextPrice('rate'), buy: () => buyLadder('rate') })
+  // the big things saved for (src/farm/economy.ts, SAVINGS): the shop, once the manager's rate is at its top; the house,
+  // from the estate agent in his hours
+  if (marketForSale()) out.push({ what: 'the market', at: MARKET, price: MANAGER.shopPrice, buy: () => buyMarket() })
+  if (!farm.apartment.owned && agentHere()) out.push({ what: 'the house', at: AGENT_STAND, price: ESTATE.price, buy: () => buyApartment() })
   // the farm shop's ladders: the tools, their upgrades, the remotes
   if (toolsForSale)
     for (const id of LADDER_IDS) if (LADDERS[id].at === 'shop' && ladderOpen(id)) out.push({ what: LADDERS[id].name.toLowerCase(), at: SHOP, price: ladderNextPrice(id), buy: () => buyLadder(id) })
@@ -292,7 +307,7 @@ export const PRIORITIES: { name: string; move: () => Move | null }[] = [
     move: () => {
       for (const p of PATCHES) {
         const empty = stageIn(p.beds, 'empty')
-        const crop = empty.length ? cropToPlant() : null
+        const crop = empty.length ? plantNow() : null
         if (crop) return { what: `plant ${crop} in ${empty.length} beds`, at: middleOf(p.beds), run: () => plantBeds(empty, crop) }
       }
       return null
@@ -386,9 +401,88 @@ export const PRIORITIES: { name: string; move: () => Move | null }[] = [
   },
 ]
 
-/** The move to make now: the first priority that has one (null: nothing useful to do). */
+// ───────────────────────────── before leaving ─────────────────────────────
+
+/** When the visit ends (ms, on the calendar's clock: src/farm/state.ts, calendarTime) and the seconds until the next
+ *  one: told by the session runner's observer as each visit begins (./journey.ts). Null: the player plays on and never
+ *  leaves (./play.ts). */
+let leave: { at: number; gap: number } | null = null
+export function planLeave(plan: { at: number; gap: number } | null) {
+  leave = plan
+}
+/** The last seconds of a visit, when what is left to do before leaving comes first. */
+export const LEAVE_BEFORE = 90
+const leaving = () => leave !== null && calendarTime() >= leave.at - LEAVE_BEFORE * 1000
+
+/** How long a crop takes to ripen now (the week's events), and whether it ripens with no watering after its seeds'
+ *  soak (sprinklers, or a crop whose soak lasts its whole growing). */
+const ripensIn = (crop: CropId) => cropById(crop).growSeconds / eventSpeed('crops')
+const ripensAlone = (crop: CropId) => farm.sprinkler || fullWater(crop) >= cropById(crop).growSeconds
+
+/** The seconds until the visit ends, and then until the next one begins (Infinity: the player never leaves). */
+const untilLeaving = () => (leave ? Math.max(0, (leave.at - calendarTime()) / 1000) : Infinity)
+const untilBack = () => (leave ? untilLeaving() + leave.gap : Infinity)
+
+/** The longest open crop the player can pay for that ripens by itself before the player is back (null: none). */
+function longCrop(): CropId | null {
+  const fits = CROPS.filter((c) => isUnlocked(`crop:${c.id}`) && farm.coins >= c.seedCost && ripensIn(c.id) <= untilBack() && ripensAlone(c.id))
+  return fits.sort((a, b) => b.growSeconds - a.growSeconds)[0]?.id ?? null
+}
+
+/** The seeds that go in now: as `cropToPlant` chooses, unless they would not ripen before the visit ends; then the
+ *  longest crop that ripens before the player is back (a player who leaves soon plants for the time away). */
+function plantNow(): CropId | null {
+  const crop = cropToPlant()
+  if (!crop || ripensIn(crop) <= untilLeaving()) return crop
+  return longCrop() ?? crop
+}
+
+/** The next job to queue at a machine before leaving: the dearest per press (what it adds) that is done before the
+ *  player is back, with its ingredients in store. */
+function jobForGap(id: MachineId) {
+  const left = machineSecondsLeft(id)
+  return [...MACHINES[id].recipes].sort((a, b) => jobAdds(b) - jobAdds(a)).find((r) => canAddJob(id, r) && left + r.seconds / eventSpeed('machines') <= untilBack())
+}
+
+/**
+ * What a player does in a visit's last moments, before what they always do (update-v1/missions/01-loop-economy.md,
+ * Foundation 5): harvest what is ripe, then plant the longest open crop that ripens within the time away in every empty
+ * bed, then queue each machine with the jobs that fit the time away, the dearest per press first. The farm then works
+ * while they are gone, and a night pays.
+ */
+export const LEAVING: { name: string; move: () => Move | null }[] = [
+  { name: 'harvest', move: () => PRIORITIES.find((p) => p.name === 'harvest')!.move() },
+  {
+    name: 'plant long',
+    move: () => {
+      for (const p of PATCHES) {
+        const empty = stageIn(p.beds, 'empty')
+        const crop = empty.length ? longCrop() : null
+        if (crop) return { what: `plant ${crop} in ${empty.length} beds before leaving`, at: middleOf(p.beds), run: () => plantBeds(empty, crop) }
+      }
+      return null
+    },
+  },
+  {
+    name: 'queue long',
+    move: () => {
+      const id = MACHINE_IDS.find((m) => jobForGap(m))
+      if (!id) return null
+      return {
+        what: `queue the ${id} before leaving`,
+        at: machineAt(id),
+        run: () => {
+          for (let r = jobForGap(id); r && addJob(id, r.id); r = jobForGap(id));
+        },
+      }
+    },
+  },
+]
+
+/** The move to make now: the first priority that has one (null: nothing useful to do); in a visit's last moments,
+ *  what is left to do before leaving first. */
 export function nextMove(): (Move & { rule: string }) | null {
-  for (const p of PRIORITIES) {
+  for (const p of leaving() ? [...LEAVING, ...PRIORITIES] : PRIORITIES) {
     const m = p.move()
     if (m) return { ...m, rule: p.name }
   }

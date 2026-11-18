@@ -5,14 +5,17 @@
 // chapters, the seasons) joins as a row here, in that mission's commit, and a card that opens by itself as a row of
 // AUTO_CARDS. It only reads the farm; nothing in the game imports it.
 
+import { worthWithin } from '../farm/appointments'
 import { CROPS, MACHINE_IDS, type StoreId } from '../farm/data'
+import { returnWorth } from '../farm/economy'
 import { garmentAt } from '../farm/outfit'
 import { AWAY_TELLS, awayNews, bedStage, dailyDue, farm, machineSecondsLeft, machineStage, stepNow, type AwayReport } from '../farm/state'
 import { opensAt, unlockName } from '../farm/unlocks'
 import { nextCard, type CardId } from '../ui/cardQueue'
 import { levelOf } from '../farm/xp'
-import { playVisits, type PaceId, type ProfileId, type Visit } from './sessions'
-import { JOURNEY } from './targets'
+import { planLeave } from './policy'
+import { playVisits, visitStart, visitsOf, type PaceId, type ProfileId, type Visit } from './sessions'
+import { JOURNEY, PACE } from './targets'
 
 /** What a visit brings: something not seen before (a level that opens something, a garment, a first step), a prize
  *  (a gift, a goal, a level's coins), or a card that only tells (the welcome back). */
@@ -125,8 +128,9 @@ export interface VisitNews extends Visit {
   /** seconds it lasted */
   seconds: number
   level: [from: number, to: number]
-  /** what came while away (null on the first visit) */
-  back: { away: number; counted: number; goods: number; buyers: number; full: StoreId[] } | null
+  /** what came while away (null on the first visit): `worth`, what its goods are worth net (src/farm/economy.ts,
+   *  returnWorth) */
+  back: { away: number; counted: number; goods: number; worth: number; buyers: number; full: StoreId[] } | null
   /** the cards that opened by themselves before its first move */
   auto: string[]
   beats: Beat[]
@@ -134,7 +138,13 @@ export interface VisitNews extends Visit {
   pull: Pull | null
   /** seconds until the next visit (null: the last) */
   gap: number | null
+  /** as it ended: what the farm had on its way, in coins (net), ready within the time until the next visit (a night
+   *  after the last) and within a short break (PACE.night.break) */
+  left: { within: number; brk: number }
 }
+
+/** The time away after a profile's last visit: a night. */
+const NIGHT = 10 * 3600
 
 /** Plays a profile's first `days` days (./sessions.ts) and tells, visit by visit, what each brought and left on its way. */
 export function journey(opts: { profile: ProfileId; days: number; pace?: PaceId; seed?: number }): VisitNews[] {
@@ -142,6 +152,9 @@ export function journey(opts: { profile: ProfileId; days: number; pace?: PaceId;
   let looks: unknown[] = []
   let now: VisitNews | null = null
   let minute = 0
+  // the schedule, so the player knows when each visit ends and how long until the next (./policy.ts, LEAVING)
+  const visits = visitsOf(opts.profile, opts.days)
+  const gapAfter = (k: number) => (k + 1 < visits.length ? (visitStart(visits[k + 1]) - visitStart(visits[k])) / 1000 - visits[k].minutes * 60 : NIGHT)
   const diff = (at: number) => {
     const next = SOURCES.map((s) => s.look())
     SOURCES.forEach((s, i) => {
@@ -149,37 +162,51 @@ export function journey(opts: { profile: ProfileId; days: number; pace?: PaceId;
     })
     looks = next
   }
-  playVisits(opts, {
-    begin(visit, back) {
-      if (out.length) out[out.length - 1].gap = back?.seconds ?? null
-      const auto = autoCards(back)
-      now = {
-        ...visit,
-        minute,
-        seconds: 0,
-        level: [levelOf(farm.xp.points), 0],
-        back: back && { away: back.seconds, counted: back.counted, goods: back.goods.reduce((s, g) => s + g.count, 0), buyers: back.buyers, full: [...back.full] },
-        auto,
-        beats: auto.includes('welcome back') ? [{ source: 'welcome back', kind: 'card', what: 'welcome back', at: 0 }] : [],
-        pull: null,
-        gap: null,
-      }
-      looks = SOURCES.map((s) => s.look())
-    },
-    moved: (_visit, _move, at) => diff(at),
-    end(_visit, played) {
-      diff(played)
-      const v = now!
-      v.seconds = played
-      v.level[1] = levelOf(farm.xp.points)
-      for (const s of SOURCES) {
-        const p = s.pull?.(s.look())
-        if (p && (!v.pull || p.seconds > v.pull.seconds)) v.pull = { source: s.id, ...p }
-      }
-      minute += played / 60
-      out.push(v)
-    },
-  })
+  try {
+    playVisits(opts, {
+      begin(visit, back) {
+        if (out.length) out[out.length - 1].gap = back?.seconds ?? null
+        planLeave({ at: visitStart(visit) + visit.minutes * 60_000, gap: gapAfter(out.length) })
+        const auto = autoCards(back)
+        now = {
+          ...visit,
+          minute,
+          seconds: 0,
+          level: [levelOf(farm.xp.points), 0],
+          back: back && {
+            away: back.seconds,
+            counted: back.counted,
+            goods: back.goods.reduce((s, g) => s + g.count, 0),
+            worth: returnWorth(back.goods),
+            buyers: back.buyers,
+            full: [...back.full],
+          },
+          auto,
+          beats: auto.includes('welcome back') ? [{ source: 'welcome back', kind: 'card', what: 'welcome back', at: 0 }] : [],
+          pull: null,
+          gap: null,
+          left: { within: 0, brk: 0 },
+        }
+        looks = SOURCES.map((s) => s.look())
+      },
+      moved: (_visit, _move, at) => diff(at),
+      end(_visit, played) {
+        diff(played)
+        const v = now!
+        v.seconds = played
+        v.level[1] = levelOf(farm.xp.points)
+        for (const s of SOURCES) {
+          const p = s.pull?.(s.look())
+          if (p && (!v.pull || p.seconds > v.pull.seconds)) v.pull = { source: s.id, ...p }
+        }
+        v.left = { within: worthWithin(farm, gapAfter(out.length)), brk: worthWithin(farm, PACE.night.break.seconds) }
+        minute += played / 60
+        out.push(v)
+      },
+    })
+  } finally {
+    planLeave(null)
+  }
   return out
 }
 
@@ -240,7 +267,7 @@ export function holes(news: VisitNews[], bounds = JOURNEY): Record<Bound, string
     return has >= need ? [] : [`${name(v)}: ${v.pull ? `${v.pull.what} in ${clock(has)}` : 'nothing on its way'}, for ${clock(v.gap)} away`]
   })
   const full = (() => {
-    const returns = news.filter((v) => v.back)
+    const returns = news.filter((v) => v.back && v.day >= bounds.full.from)
     if (!returns.length) return null
     const n = returns.filter((v) => v.back!.full.length > 0).length
     return n / returns.length > bounds.full.share ? [`${n} of ${returns.length} returns (${Math.round((100 * n) / returns.length)} %) found a store full`] : []
