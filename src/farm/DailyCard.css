@@ -226,7 +226,7 @@
 .daily-card .today .dg-disc .art { width: 34px; height: 34px; }
 /* a day played whose gift waited: it comes with today's, so it glows with it, softer */
 .daily-card .owed .dg-disc { background: #fff; box-shadow: 0 0 0 3px color-mix(in srgb, var(--sun) 70%, #fff), 0 2px 0 var(--sun-lip); }
-.daily-card .owed .dg-day { color: var(--sun-lip); }
+.daily-card .owed .dg-day { color: var(--ink); }
 .daily-card .today .dg-disc::before { content: ''; position: absolute; z-index: -1; inset: -10px; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--sun) 80%, #fff), color-mix(in srgb, var(--sun) 35%, transparent) 60%, transparent); }
 :where(:root:not([data-motion='less'])) {
   .daily-card .today .dg-disc::before { animation: daily-glow 1.6s ease-in-out infinite; }
@@ -319,10 +319,10 @@
 /* the "?" on the stage: in its top corner */
 .daily-card .dg-odds { position: absolute; z-index: 3; top: 4px; right: 4px; }
 
-/* The odds of a gift (Odds in DailyCard.tsx; the level's boxes and the lucky draw use it too): a "?" with a 44 px
-   target, and the sheet of what it can hold and how likely, under it. */
+/* The odds of a gift (Odds in DailyCard.tsx; the level's boxes and the lucky draw use it too): a "?" with a 48 px
+   target (a touch screen's), and the sheet of what it can hold and how likely, under it. */
 .odds { position: relative; display: inline-grid; place-items: center; }
-.odds-btn { display: grid; place-items: center; width: 44px; height: 44px; margin: 0; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--ink); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.odds-btn { display: grid; place-items: center; width: 48px; height: 48px; margin: 0; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--ink); cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .odds-btn > span { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: #fff; font: 600 18px/1 var(--font-display); box-shadow: 0 2px 0 var(--paper-3), 0 0 0 1.5px var(--edge-soft); }
 .odds-btn[aria-expanded='true'] > span { background: var(--ink); color: #fff; box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25); }
 .odds-btn:focus-visible { outline: 3px solid var(--sun); outline-offset: -2px; }
@@ -331,4 +331,4 @@
 .odds-row { display: flex; justify-content: space-between; gap: 14px; }
 .odds-row b { flex: none; font-weight: 900; font-variant-numeric: tabular-nums; }
 /* at the end of its row (the level's bar's), level with its middle */
-.odds.end { margin: -10px -6px -10px auto; align-self: center; }
+.odds.end { margin: -12px -8px -12px auto; align-self: center; }

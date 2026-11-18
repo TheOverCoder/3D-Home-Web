@@ -156,7 +156,7 @@ function Page({ p }: { p: PageView }) {
               <img className="art" src={picUrl(t.pic)} alt="" draggable={false} />
               <small>{t.name}</small>
               {t.state === 'new' && (
-                <m.i className="al-new" initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ ...SPRING.pop, delay: 0.4 }}>
+                <m.i className="al-badge" initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ ...SPRING.pop, delay: 0.4 }}>
                   New
                 </m.i>
               )}

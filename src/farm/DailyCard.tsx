@@ -266,7 +266,7 @@ function DaysPlayed({ n }: { n: number }) {
   return (
     <AnimatePresence initial={false}>
       {n > 0 && (
-        <m.span key="days" className="dg-streak" aria-label={`Day ${n} on the farm`} title="Days on the farm" variants={POP} initial="hidden" animate="show" exit="out">
+        <m.span key="days" className="dg-streak dg-day-count" aria-label={`Day ${n} on the farm`} title="Days on the farm" variants={POP} initial="hidden" animate="show" exit="out">
           <m.img
             key={n}
             className="art"
@@ -690,7 +690,7 @@ function Stop({ d, now, picked, onPick }: { d: DayView; now: boolean; picked: bo
             </m.i>
           )}
         </span>
-        <small className="dg-day">{d.state === 'today' ? 'Today' : d.state === 'owed' ? 'Waited' : d.day}</small>
+        <small className="dg-day">{d.state === 'today' ? 'Today' : d.day}</small>
       </button>
       <AnimatePresence>
         {picked && (

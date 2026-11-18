@@ -73,6 +73,7 @@ test.describe('the farm album', () => {
     await expect(card.locator('.al-row.done')).toHaveCount(1)
     await card.getByRole('button', { name: /^Building materials: 6 of 6, done$/ }).click()
     await expect(card.locator('.al-tile.new')).toHaveCount(ITEMS.length)
+    await expect(card.locator('.al-badge')).toHaveCount(ITEMS.length)
     await expect(card.locator('.al-garment.shade')).toHaveCount(0)
     await expect(card.locator('.al-line')).toHaveText('Done: the timber cap is in your wardrobe.')
     await closeAlbum(game)
