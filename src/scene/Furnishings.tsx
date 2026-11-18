@@ -1,4 +1,4 @@
-import { Suspense, useMemo, type ReactNode } from 'react'
+import { Suspense, useEffect, useMemo, type ReactNode } from 'react'
 import { useGLTF } from '@react-three/drei'
 import { CuboidCollider, RigidBody } from '@react-three/rapier'
 import { Box3, BoxGeometry, DoubleSide, Mesh, PlaneGeometry, Vector3, type BufferGeometry, type Light, type Object3D, type Texture } from 'three'
@@ -7,7 +7,7 @@ import { boxProject } from '../lib/boxProject'
 import { material, surface, type MaterialKind } from '../lib/proceduralTextures'
 import { assets } from '../assets/registry'
 import { fitModelTextures } from '../lib/textureBudget'
-import { castFromCopies } from '../lib/sculpt/sun'
+import { castAsOne, farFromCopies } from '../lib/sculpt/sun'
 import { farm, useFarm } from '../farm/state'
 import { PIECES, type PieceType } from '../home/catalogue'
 import { hangOf, hostMove, type HomePiece } from '../home/layout'
@@ -72,6 +72,10 @@ export function B({ size, position, rotation, color, roughness = 0.8, metalness 
   )
 }
 
+/** A model loaded from a file, fitted into `size` and standing on its middle: drawn from its lighter copies where the
+ *  game's camera is far enough (`farFromCopies`), and cast into the sun's map by one mesh of its own, from a copy within
+ *  half a texel (`castAsOne`: one draw a piece, where each of its meshes was one) — the same picture, lighter
+ *  (src/lib/sculpt/sun.ts). */
 function GlbProp({ url, size, shadow = true }: { url: string; size: V3; shadow?: boolean }) {
   const { scene } = useGLTF(url, false)
   const [sx, sy, sz] = size // by value: callers pass fresh array literals
@@ -93,10 +97,17 @@ function GlbProp({ url, size, shadow = true }: { url: string; size: V3; shadow?:
     })
     lights.forEach((l) => l.removeFromParent())
     fitModelTextures(clone) // phones: the model's textures within the device's budget
-    // into the sun's map from lighter copies: the same shadow to the texel, fewer triangles (src/lib/sculpt/sun.ts)
-    if (shadow) castFromCopies(clone)
+    // far off, drawn from lighter copies under half a pixel (src/lib/sculpt/sun.ts)
+    farFromCopies(clone)
     return clone
   }, [scene, sx, sy, sz, shadow])
+  // into the sun's map as one mesh from a lighter copy: the same shadow to the texel, one draw (made with the piece, let
+  // go with it, so a piece dragged or moved leaves nothing behind)
+  useEffect(() => {
+    if (!shadow) return
+    const one = castAsOne(object)
+    return () => one.release()
+  }, [object, shadow])
   return <primitive object={object} />
 }
 

@@ -12,15 +12,17 @@ import {
   MeshStandardMaterial,
   PerspectiveCamera,
   PlaneGeometry,
+  Raycaster,
   SphereGeometry,
+  TorusKnotGeometry,
   Vector3,
   type BufferGeometry,
   type Side,
 } from 'three'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { Parts } from './parts'
-import { copiesMade, lodReady } from './lod'
-import { castAsOne, shadowOnly, shadowSideOf, sunCopies } from './sun'
+import { copiesMade, farEnough, farEye, lodReady, lodsOf } from './lod'
+import { castAsOne, farFromCopies, shadowOnly, shadowSideOf, sunCopies } from './sun'
 
 // One sun mesh for many (castAsOne): every caster under a root drawn into the sun's map by one mesh of its own — the same
 // triangles three would draw, each from the side it would, so not a texel changes — and each of them casting no more,
@@ -242,5 +244,90 @@ describe('castAsOne', () => {
     expect(caster.castShadow).toBe(false)
     one.release()
     expect(caster.castShadow).toBe(true)
+  })
+})
+
+// Far copies of a loaded model (farFromCopies): the game's camera draws a mesh from its coarsest copy under half a pixel
+// for the render's eye (lod.ts: `farEye`, the crowds' eye), the mesh whole up close; any other render, the sun's map and
+// a ray get it whole.
+describe('farFromCopies', () => {
+  /** A model as a file gives one: a fine knot, in a group fitted to its size. */
+  function model() {
+    const root = new Group()
+    root.scale.setScalar(0.5)
+    const knot = new Mesh(new TorusKnotGeometry(1, 0.3, 256, 32), new MeshStandardMaterial())
+    root.add(knot)
+    root.updateMatrixWorld(true)
+    return { root, knot }
+  }
+  /** The camera's frustum round the knot (it is in view from anywhere along +z). */
+  function cameraFrustum(z: number) {
+    const cam = new PerspectiveCamera(60, 1, 0.1, 1000)
+    cam.position.set(0, 0, z)
+    cam.updateMatrixWorld(true)
+    return new Frustum().setFromProjectionMatrix(new Matrix4().multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse))
+  }
+  const eye = (z: number) => ({ x: 0, y: 0, z, pixels: 1000 / (2 * Math.tan(Math.PI / 6)) })
+
+  it('draws the coarsest copy under half a pixel for the eye, and the mesh whole up close and in every other render', async () => {
+    await lodReady()
+    const { root, knot } = model()
+    const whole = knot.geometry
+    farFromCopies(root)
+    await copiesMade()
+    const at = (z: number | null, frustum = cameraFrustum(z ?? 10)) => {
+      farEye.view = z === null ? null : eye(z)
+      try {
+        expect(knot.intersectsFrustum(frustum)).toBe(true)
+      } finally {
+        farEye.view = null
+      }
+      return knot.geometry.index!.count / 3
+    }
+    const all = whole.index!.count / 3
+    // up close: whole
+    expect(at(2)).toBe(all)
+    // farther off: lighter, and lighter still
+    const mid = at(15)
+    const far = at(150)
+    expect(mid).toBeLessThan(all)
+    expect(far).toBeLessThan(mid)
+    // each copy is drawn only where its difference is under half a pixel for that eye
+    for (const z of [15, 150]) {
+      at(z)
+      const used = lodsOf(whole).find((c) => c.geometry === knot.geometry)!
+      const r = whole.boundingSphere!.radius * 0.5
+      expect(farEnough(used.error, 0.5, z - r, eye(z).pixels)).toBe(true)
+    }
+    // no eye (another camera, or the copies off): whole; the sun's map: whole
+    expect(at(null)).toBe(all)
+    expect(at(150, lightFrustum())).toBe(all)
+    // a mesh that casts itself is drawn whole (the sun's map is chosen by the sun alone)
+    knot.castShadow = true
+    expect(at(150)).toBe(all)
+    knot.castShadow = false
+    // drawn from a far copy, it is taken into one sun mesh whole
+    at(150)
+    expect(knot.geometry).not.toBe(whole)
+    knot.castShadow = true
+    const one = castAsOne(root)
+    expect(one.geometry.index!.count).toBe(whole.index!.count)
+    one.release()
+    expect(knot.castShadow).toBe(true)
+    knot.castShadow = false
+    // a ray meets the mesh whole, whatever it was last drawn from
+    at(150)
+    const drawnWith = knot.geometry
+    const seen: BufferGeometry[] = []
+    const spy = vi.spyOn(Mesh.prototype, 'raycast').mockImplementation(function (this: Mesh) {
+      seen.push(this.geometry)
+    })
+    try {
+      knot.raycast(new Raycaster(new Vector3(0, 0, 10), new Vector3(0, 0, -1)), [])
+    } finally {
+      spy.mockRestore()
+    }
+    expect(seen).toEqual([whole])
+    expect(knot.geometry).toBe(drawnWith)
   })
 })
