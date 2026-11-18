@@ -1,0 +1,194 @@
+{
+  "about": "Which e2e specs a changed file reaches (scripts/affected-specs.mjs; held complete by src/ci.test.ts). A spec is named by its file's stem; a stem also names the files it was split into ('16-view' is 16-view-house.spec.ts too). A path takes the specs of every area it matches, in order: a 'final' area stops there, a 'fallback' one counts only when nothing else matched. 'all' means the change reaches every spec: the smoke specs here, the whole core on CI. 'self' runs the spec that changed. Heavy specs are run by their group only (-g); nightly ones have no test outside @full.",
+  "smoke": ["01-boot", "14-hud", "17-stores-orders", "22-xp", "25-button", "37-first-steps"],
+  "heavy": {
+    "05-budget-and-fallback": "-g \"the walk at\"",
+    "16-view": "-g \"<the test of what changed>\""
+  },
+  "nightly": ["26-counting"],
+  "areas": [
+    { "name": "documents", "final": true, "specs": [], "paths": ["**/*.md", "docs/**", "plans/**", "tips/**", ".claude/**", "update-v1/**"] },
+    {
+      "name": "unit tests and what only they use",
+      "final": true,
+      "specs": [],
+      "paths": ["src/**/*.test.ts", "src/farm/testSaves.ts", "src/farm/computer/testFarms.ts", "src/lib/endsWithin.ts", "src/deps.allowed.json", "vitest.config.ts", "vitest.sim.config.ts"]
+    },
+    { "name": "the pace simulation (npm run sim; pace.test and journey.test are in check)", "final": true, "specs": [], "paths": ["src/sim/**"] },
+    { "name": "the design lab (npm run lab:build)", "final": true, "specs": [], "paths": ["lab/**", "vite.lab.config.ts", "scripts/lab-*.mjs"] },
+    {
+      "name": "tooling",
+      "final": true,
+      "specs": [],
+      "paths": [
+        "scripts/{fetch-assets,fetch-polyhaven,hdr-to-gainmap,optimize-models,render-farmer-faces,render-furniture-art,render-item-art}.mjs",
+        "scripts/assets.manifest.json",
+        "scripts/{affected-specs,ci-shards,v1-scope}.{mjs,d.mts}",
+        "scripts/v1-merge.sh",
+        "tests/e2e/{areas,times}.json",
+        "tests/e2e/fileTimes.ts",
+        "src/tools/**",
+        ".npmrc",
+        ".oxlintrc.json",
+        ".prettierrc.json",
+        ".gitignore",
+        "tsconfig.json",
+        "src/vite-env.d.ts"
+      ]
+    },
+    {
+      "name": "pictures",
+      "final": true,
+      "specs": [],
+      "paths": ["src/assets/{art,items,garments,furniture,decor,skins,textures,hdri}/**", "src/data/credits.ts", "src/farm/{icons,unlockArt}.ts"]
+    },
+    {
+      "name": "everything",
+      "all": true,
+      "specs": [],
+      "paths": [".github/**", "playwright.config.ts", "tests/e2e/helpers.ts", "package.json", "package-lock.json", "vite.config.ts", "src/main.tsx", "src/App.tsx", "src/store.ts", "src/lib/debug.ts"]
+    },
+    { "name": "a spec itself", "self": true, "specs": [], "paths": ["tests/e2e/*.spec.ts"] },
+    { "name": "the drawing-free context", "specs": ["05-budget-and-fallback", "26-counting"], "paths": ["tests/e2e/nullgl.js"] },
+    {
+      "name": "booting and loading",
+      "specs": ["01-boot", "06-quality-and-resilience", "11-startup"],
+      "paths": [
+        "index.html",
+        "public/**",
+        "src/assets/registry.ts",
+        "src/lib/{loader,sw,startup,diagnostics,hdrGuard,textureBudget,clips}.ts",
+        "src/lib/ErrorBoundary.tsx",
+        "src/ui/{Intro,Loading,GraphicsNotice,SavesPanel}.{tsx,css}",
+        "src/scene/{Experience,Warmup}.tsx"
+      ]
+    },
+    { "name": "the device's tier and the measuring tool", "specs": ["06-quality-and-resilience", "18-measure", "05-budget-and-fallback"], "paths": ["src/lib/{profile,device}.ts", "src/debug/**"] },
+    { "name": "settings, sound and music", "specs": ["03-settings", "01-boot"], "paths": ["src/settings.ts", "src/ui/{SettingsPanel,MusicPlayer}.tsx", "src/audio/**"] },
+    { "name": "what people say", "specs": ["23-market", "24-day", "30-house-for-sale"], "paths": ["src/talk/**"] },
+    {
+      "name": "the top of the screen",
+      "specs": ["14-hud", "22-xp", "37-first-steps"],
+      "paths": ["src/ui/{TopStack,HudMode,Compass,PhotoButton,Reveal}.{tsx,css}", "src/farm/{TopDash,XpChip,DayChip}.{tsx,css}", "src/farm/Xp.css"]
+    },
+    { "name": "the action button", "specs": ["02-interactions", "10-smart-farm", "25-button"], "paths": ["src/ui/{Hud,ActionGlyph,ThingTag}.{tsx,css}", "src/lib/interaction.ts"] },
+    { "name": "touch", "specs": ["07-phone"], "paths": ["src/ui/TouchControls.tsx", "src/lib/{stick,gestures}.ts"] },
+    {
+      "name": "the panels' base",
+      "specs": ["17-stores-orders", "21-goals", "22-xp", "25-button", "32-machine-queue", "38-animal-tools"],
+      "paths": [
+        "src/ui/{PanelSheet,Shell,Sheet,SwipeSheet,ScreenModal,ConfirmCard,ItemPic,GoodPic,GarmentPic,motion,motionFeatures,burst,fly,art,glyphs,still,calls,sheetMode,useGameFree}.{ts,tsx,css}",
+        "src/ui/screens/**",
+        "src/styles.css",
+        "src/farm/FarmUI.tsx"
+      ]
+    },
+    { "name": "cards that open by themselves", "specs": ["20-away", "22-xp", "35-daily", "36-unlocks", "37-first-steps"], "paths": ["src/ui/cardQueue.ts"] },
+    {
+      "name": "the body and the camera",
+      "specs": ["01-boot", "02-interactions", "04-physics"],
+      "paths": ["src/scene/{Player,Hand,Pickups}.tsx", "src/lib/{collision,rig,look,focus,playerState,damp}.ts"]
+    },
+    { "name": "your body seen, the aim marker", "specs": ["02-interactions", "28-wardrobe", "16-view"], "paths": ["src/scene/{Avatar,AimMarker}.tsx"] },
+    { "name": "walking to a mark", "specs": ["19-walk-to", "37-first-steps"], "paths": ["src/lib/route/**", "src/farm/walkTargets.ts", "src/scene/GuideMarker.tsx"] },
+    {
+      "name": "what is drawn",
+      "specs": ["05-budget-and-fallback", "16-view", "27-far-copies"],
+      "paths": [
+        "src/lib/visibility/**",
+        "src/lib/sculpt/**",
+        "src/lib/{batch,boxProject,lightLevels,proceduralTextures,realTextures}.ts",
+        "src/scene/{ViewPass,Lighting,LightDirector,LightShafts,Effects,RenderPause,Walls,Ceilings,Floors,House,Exterior,WalkIn}.tsx",
+        "src/scene/{flora,weatherLook}.ts",
+        "src/data/{sunBox,sunCheck,home}.ts",
+        "src/farm/{Land,Ground}.tsx",
+        "src/farm/landGeometry.ts",
+        "src/fx/{FarmFx.tsx,quarks.ts}"
+      ]
+    },
+    {
+      "name": "models",
+      "specs": ["12-models", "27-far-copies", "05-budget-and-fallback", "16-view"],
+      "paths": ["src/models/**", "src/assets/models/**", "src/farm/decorModels.ts"]
+    },
+    {
+      "name": "the house's furniture",
+      "specs": ["15-decorate", "05-budget-and-fallback"],
+      "paths": ["src/home/{layout,catalogue,decorate,DecorateMode,DecoratePanel,FurnitureShop,FurnitureArtPage,FloorOutlines,pictures}.{ts,tsx}", "src/scene/{Furnishings,WallThings,Dressing}.tsx"]
+    },
+    {
+      "name": "the house's shell and doors",
+      "specs": ["31-house-edit", "15-decorate", "02-interactions", "08-garden", "16-view"],
+      "paths": ["src/home/shell.ts", "src/data/layout.ts", "src/scene/{Door,GardenDoor}.tsx"]
+    },
+    { "name": "the wardrobe", "specs": ["28-wardrobe", "22-xp"], "paths": ["src/home/{Wardrobe,WardrobePanel}.{tsx,css}", "src/home/dress.ts", "src/farm/outfit.ts"] },
+    { "name": "screens and lamps", "specs": ["02-interactions"], "paths": ["src/scene/{Lamps,Screens}.tsx", "src/scene/screens/**", "src/home/actions.ts", "src/data/screens.ts"] },
+    { "name": "beds and plants", "specs": ["08-garden", "10-smart-farm", "25-button", "05-budget-and-fallback", "16-view"], "paths": ["src/data/garden.ts", "src/farm/{Garden,Plants}.tsx"] },
+    { "name": "the two maps", "specs": ["29-maps", "30-house-for-sale", "01-boot"], "paths": ["src/scene/{Maps.tsx,maps.ts,travel.ts}", "src/lib/world.ts", "src/data/maps.ts"] },
+    { "name": "films", "specs": ["29-maps", "30-house-for-sale", "23-market", "38-animal-tools"], "paths": ["src/film/**", "src/ui/{Film,FilmLayer,Curtain}.{tsx,css}"] },
+    { "name": "the car and the estate office", "specs": ["30-house-for-sale"], "paths": ["src/farm/car/**", "src/farm/{Estate,EstatePanel}.tsx", "src/data/estate.ts"] },
+    {
+      "name": "the supermarket and the lane",
+      "specs": ["23-market", "05-budget-and-fallback", "16-view"],
+      "paths": ["src/farm/{Market,MarketPanel}.{tsx,css}", "src/farm/{market,marketGoods,marketPeople,park,script}.ts", "src/data/{market,lotPlan,buildings}.ts"]
+    },
+    { "name": "the garden's gate", "specs": ["08-garden", "23-market"], "paths": ["src/farm/GardenGate.tsx"] },
+    { "name": "the contractor and the day", "specs": ["24-day"], "paths": ["src/farm/{contractor,day}.ts", "src/farm/ContractorPanel.tsx"] },
+    { "name": "events and news", "specs": ["34-events", "14-hud"], "paths": ["src/farm/events.ts", "src/farm/news/**"] },
+    { "name": "prices", "specs": ["34-events", "17-stores-orders", "23-market", "25-button"], "paths": ["src/farm/{prices,worth}.ts"] },
+    { "name": "the daily gift", "specs": ["35-daily"], "paths": ["src/farm/{daily,useDaily,calendar}.ts", "src/farm/{DailyCard,DailyPanel}.{tsx,css}"] },
+    { "name": "unlocks", "specs": ["36-unlocks"], "paths": ["src/farm/unlocks.ts", "src/farm/Unlocked.{tsx,css}", "src/ui/LockTag.tsx"] },
+    { "name": "goals", "specs": ["21-goals"], "paths": ["src/farm/{goals,goalsView}.ts", "src/farm/{GoalsCard,GoalsPanel}.{tsx,css}"] },
+    {
+      "name": "levels and their gifts",
+      "specs": ["22-xp"],
+      "paths": ["src/farm/{xp,gifts,levelView,prize,road}.ts", "src/farm/{LevelCard,LevelPanel}.{tsx,css}", "src/fx/{xp,coins,fx}.ts", "src/lib/tier.ts"]
+    },
+    { "name": "time away", "specs": ["20-away"], "paths": ["src/farm/AwayPanel.tsx"] },
+    { "name": "a new farm's first steps", "specs": ["37-first-steps", "14-hud"], "paths": ["src/farm/firstSteps.ts", "src/farm/{FirstSteps,FarmerFace}.{tsx,css}"] },
+    {
+      "name": "the silo, the barn and orders",
+      "specs": ["17-stores-orders"],
+      "paths": ["src/farm/{storage,orders,orderPlace,tractorRoute}.ts", "src/farm/{StorePanel,OrdersPanel,OrderYard}.tsx", "src/farm/orderBoard/**"]
+    },
+    { "name": "where a good is made", "specs": ["38-animal-tools", "17-stores-orders"], "paths": ["src/farm/goods/**"] },
+    {
+      "name": "machines",
+      "specs": ["32-machine-queue", "09-farm-kitchen"],
+      "paths": ["src/farm/{machines,machineView,useMachine}.ts", "src/farm/{MachinePanel,Workshop}.tsx", "src/farm/machine/**"]
+    },
+    {
+      "name": "animals",
+      "specs": ["09-farm-kitchen", "25-button", "05-budget-and-fallback", "16-view"],
+      "paths": ["src/farm/{Cows,Sheep,Chickens,Herd}.tsx", "src/farm/{wander,useProducer}.ts"]
+    },
+    { "name": "buyers at the gate", "specs": ["08-garden", "10-smart-farm", "25-button"], "paths": ["src/farm/Visitors.tsx", "src/data/people.ts"] },
+    {
+      "name": "the animals' tools and skins",
+      "specs": ["38-animal-tools"],
+      "paths": ["src/farm/{tools,toolView,useTool,skins,skinsView}.ts", "src/farm/{ToolPanel,ToolStands,SkinShop}.{tsx,css}", "src/farm/tool/**"]
+    },
+    { "name": "the farm shop and the ladders", "specs": ["38-animal-tools", "36-unlocks", "25-button"], "paths": ["src/farm/shop/**", "src/farm/Ladder.tsx"] },
+    {
+      "name": "the farm's decoration and the edit mode",
+      "specs": ["33-farm-decor", "13-layout", "16-view"],
+      "paths": ["src/farm/{decor,edit,layout}.ts", "src/farm/{decorScene,DecorShop,EditMode,EditPanel,Places}.tsx"]
+    },
+    {
+      "name": "the farm's rules (after state.ts is split, each module of src/farm/state/ gets the row of its area)",
+      "specs": ["10-smart-farm", "17-stores-orders", "22-xp", "25-button", "37-first-steps"],
+      "paths": ["src/farm/{state,data}.ts", "src/farm/state/**"]
+    },
+    { "name": "shared engines in every countdown and save", "specs": ["17-stores-orders", "32-machine-queue", "35-daily"], "paths": ["src/lib/{time,saved,quiet}.ts"] },
+    {
+      "name": "engines not yet wired (check only, until their mission wires them)",
+      "specs": [],
+      "paths": ["src/farm/computer/**", "src/farm/{season,weather,ledger}.ts"]
+    },
+    { "name": "the farm, otherwise", "fallback": true, "specs": ["10-smart-farm", "17-stores-orders", "22-xp", "25-button"], "paths": ["src/farm/**"] },
+    { "name": "the interface, otherwise", "fallback": true, "specs": ["14-hud", "22-xp", "25-button"], "paths": ["src/ui/**"] },
+    { "name": "the house, otherwise", "fallback": true, "specs": ["15-decorate", "31-house-edit"], "paths": ["src/home/**"] },
+    { "name": "the scene, otherwise", "fallback": true, "specs": ["01-boot", "29-maps", "16-view"], "paths": ["src/scene/**", "src/fx/**", "src/data/**"] },
+    { "name": "the game, otherwise", "fallback": true, "specs": ["01-boot", "25-button"], "paths": ["src/**"] }
+  ]
+}
