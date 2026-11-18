@@ -648,3 +648,20 @@ export async function press(target: Locator, tries = 2) {
 }
 
 export { expect }
+
+/**
+ * Closes the panel on top as a player does, with its ✕, and waits until it has gone: every panel is a sheet of
+ * src/ui/PanelSheet.tsx, which goes out the way it came (about 0.2 s) before it closes (a card over a panel: the card
+ * goes, the panel stays). On its way out it takes no touch, so the next press goes to what is under it.
+ */
+export async function closePanel(page: Page) {
+  const sheets = page.locator('.farm-panel[role="dialog"]')
+  const n = await sheets.count()
+  expect(n, 'a panel open to close').toBeGreaterThan(0)
+  await sheets
+    .nth(n - 1)
+    .getByRole('button', { name: 'Close (Esc)' })
+    .click()
+  await expect(sheets).toHaveCount(n - 1, { timeout: 15_000 })
+  await expect(page.locator('.ps-leaving')).toHaveCount(0, { timeout: 15_000 })
+}
