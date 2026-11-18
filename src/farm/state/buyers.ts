@@ -8,6 +8,7 @@ import { bringsSurprise } from '../storage'
 import { FRUIT, FRUIT_KINDS } from '../decor'
 import { asLook, bump, eventSpeed, farm, isSellable, random, save, toast, type Look, type Visitor } from './core'
 import { gainXp } from './levels'
+import { foundPrizes, rewarded } from './rewards'
 import { gainItems, rollGifts, surpriseWords } from './stores'
 import { sold } from './ledger'
 import { arrivalSeconds, placesInLine } from './shop'
@@ -134,6 +135,7 @@ export function acceptOffer(id: number) {
   const v = visitorById(id)
   if (!v || v.phase !== 'queued' || !canSell(v)) return false
   const items = sell(v)
+  rewarded('sale', [{ coins: v.offer }, ...foundPrizes(items)], { x: v.x, y: 1.9, z: v.z })
   toast(`+ ${v.offer} coins · ${v.name}${surpriseWords(items)}`, items[0] ?? 'coin')
   farmSound('coins')
   save()
@@ -177,6 +179,7 @@ export function sellAll() {
     coins += v.offer
   }
   if (!buyers) return 0
+  rewarded('sale', [{ coins }, ...foundPrizes(items)], { x: GATE_SPOT.x, y: 1.9, z: GATE_SPOT.z })
   toast(`+ ${coins} coins · ${buyers} ${buyers === 1 ? 'buyer' : 'buyers'}${surpriseWords(items)}`, items[0] ?? 'coin')
   farmSound('coins')
   save()
