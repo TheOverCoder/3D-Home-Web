@@ -1,10 +1,9 @@
 // A prize (update-v1/CONTRACTS.md §1.9): what a claim or a gift gives — coins, a few of a good, a piece of decoration
 // for the farm's store, or a garment for the wardrobe — and the one size every prize's coins are cut to. Every prize goes
-// into the farm through one door, `give()` (02, in src/farm/state/rewards.ts, once the state is split), which also
-// counts it as a reward. Pure.
+// into the farm through one door, `give()` (src/farm/state/rewards.ts), which also counts it as a reward. Pure.
 //
-// This is the type's home. Until 02's first commit moves its callers here, src/farm/gifts.ts keeps today's copy (coins
-// and goods only); prize.test.ts holds the two to the same answers.
+// The type's one home. src/farm/gifts.ts reads its own records (the boxes', the daily gift's) through it, keeping only
+// the two kinds a gift holds: coins and goods.
 
 import { intIn, isObject } from '../lib/saved'
 import { SELLABLE, count, isItem, type ProduceId } from './data'
