@@ -1,4 +1,4 @@
-import { AnimatePresence, m, useDragControls, useIsPresent, type PanInfo, type Variants } from 'motion/react'
+import { AnimatePresence, m, useIsPresent, type Variants } from 'motion/react'
 import { useLessMotion } from '../../ui/still'
 import { Tabs } from 'radix-ui'
 import { useEffect, useRef, useState, type Ref } from 'react'
@@ -8,7 +8,8 @@ import { art } from '../../ui/art'
 import { burst } from '../../ui/burst'
 import { ArrowRight, Check, X } from '../../ui/glyphs'
 import { GoodPic } from '../../ui/GoodPic'
-import { ARRIVE, EASE, MotionRoot, PRESS, SHEET, SPRING, swipedAway } from '../../ui/motion'
+import { EASE, MotionRoot, PRESS, SPRING } from '../../ui/motion'
+import { PanelSheet } from '../../ui/PanelSheet'
 import { useSheetMode } from '../../ui/sheetMode'
 import { Coins } from '../../ui/Shell'
 import type { OfficeUpgradeId, ProduceId } from '../data'
@@ -33,9 +34,10 @@ import './OrdersBoard.css'
 //
 // Its moments: Put in — the goods fly from the press into their lines on an arc, one after another, the pegs fill
 // and the numbers count down; all in, the tag swings onto the nail and Send springs up. Send — the coins fly to the
-// coin chip with one burst, the plank swings off its nails and the next order drops in. × — the plank falls. The
-// sheet comes in on the sheet's spring (from the bottom upright, the right sideways), its planks dropping onto their
-// nails one by one; a swipe of its head down (sideways: right), a touch outside, ✕ or Esc sends it out the same way.
+// coin chip with one burst, the plank swings off its nails and the next order drops in. × — the plank falls. It
+// stands on the one sheet (src/ui/PanelSheet.tsx: the clipboard, "Orders" and its two tabs are the sheet's head): in on
+// the sheet's spring (from the bottom upright, the right sideways), its planks dropping onto their nails one by one; a
+// swipe of its head down (sideways: right), a touch outside, ✕ or Esc sends it out the same way.
 //
 // Every screen: upright the planks one under another (two side by side on a tablet or a computer) and the board
 // scrolls by itself, only the head swipes the sheet; sideways the planks stand in a row that slides (three fit), a
@@ -84,17 +86,16 @@ function Board({ v, act, asking, onAsk, onClose }: OrdersBoardProps) {
   const mode = useSheetMode()
   const still = useLessMotion()
   const [tab, setTabNow] = useState(asking ? 'office' : 'orders')
-  // the sheet keeps the tallest height it had from one tab to the other (it never jumps under the finger)
+  const board = useRef<HTMLDivElement>(null)
+  const office = useRef<HTMLDivElement>(null)
+  // the sheet keeps the tallest height it had from one tab to the other (it never jumps under the finger): the tab
+  // shown keeps the tallest the tabs have been
   const [tall, setTall] = useState<number | null>(null)
   const setTab = (to: string) => {
-    if (sheet.current) setTall((h) => Math.max(h ?? 0, sheet.current!.offsetHeight))
+    const shown = (tab === 'orders' ? board : office).current
+    if (shown) setTall((h) => Math.max(h ?? 0, shown.offsetHeight))
     setTabNow(to)
   }
-  const [leaving, setLeaving] = useState(false)
-  const close = () => setLeaving(true)
-  const sheet = useRef<HTMLDivElement>(null)
-  const board = useRef<HTMLDivElement>(null)
-  const controls = useDragControls()
   const [flights, setFlights] = useState<Flight[]>([])
   const [held, setHeld] = useState<Record<number, Held>>({})
   /** the good whose bubble is open (`order id:good`) */
@@ -105,7 +106,6 @@ function Board({ v, act, asking, onAsk, onClose }: OrdersBoardProps) {
   const [opening, setOpening] = useState(true)
 
   useEffect(() => {
-    sheet.current?.focus({ preventScroll: true })
     const t = window.setTimeout(() => setOpening(false), 900)
     const all = timers.current
     return () => {
@@ -116,16 +116,18 @@ function Board({ v, act, asking, onAsk, onClose }: OrdersBoardProps) {
   // the card asking for an upgrade lives on the office's tab
   useEffect(() => {
     if (asking) setTab('office')
+    // (only as a card is asked for: setTab is drawn anew each time)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [asking])
 
-  // Esc: a bubble first, then the card, then the way out (before the game's own Esc, which would close it at once)
+  // Esc: a bubble first, then the card (the sheet leaves both to it: each is over it), then the sheet's own way out
   useEffect(() => {
+    if (!pop && !asking) return
     const key = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
       e.stopPropagation()
       if (pop) setPop(null)
-      else if (asking) onAsk(null)
-      else setLeaving(true)
+      else onAsk(null)
     }
     window.addEventListener('keydown', key, true)
     return () => window.removeEventListener('keydown', key, true)
@@ -181,107 +183,95 @@ function Board({ v, act, asking, onAsk, onClose }: OrdersBoardProps) {
     burst(at, { count: 40, spread: 70, power: 24 })
   }
 
-  const letGo = (_: unknown, i: PanInfo) => swipedAway(mode, i) && setLeaving(true)
-
+  const keep = tall && mode !== 'right' ? { minHeight: tall } : undefined
   return (
-    <div className={`ob-root ob-${mode}`}>
-      <m.div className="ob-shade" aria-hidden="true" initial={{ opacity: 0 }} animate={{ opacity: leaving ? 0 : 1 }} transition={{ duration: leaving ? 0.18 : 0.24 }} onClick={close} />
-      <m.div
-        ref={sheet}
-        className="ob-sheet farm-panel"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Orders"
-        tabIndex={-1}
-        custom={mode}
-        style={tall && mode !== 'right' ? { minHeight: tall } : undefined}
-        variants={SHEET}
-        initial="hidden"
-        animate={leaving ? 'out' : 'show'}
-        onAnimationComplete={(d) => d === 'out' && onClose()}
-        drag={mode === 'middle' ? false : mode === 'right' ? 'x' : 'y'}
-        dragListener={false}
-        dragControls={controls}
-        dragConstraints={{ top: 0, bottom: 0, left: 0, right: 0 }}
-        dragElastic={mode === 'right' ? { right: 0.9, left: 0 } : { bottom: 0.9, top: 0 }}
-        dragMomentum={false}
-        onDragEnd={letGo}
-      >
-        <Tabs.Root value={tab} onValueChange={setTab} className="ob-tabs">
-          <div
-            className="ob-head"
-            onPointerDown={(e) => {
-              if (mode !== 'middle' && !(e.target as Element).closest('button')) controls.start(e)
-            }}
-          >
-            <i className="ob-grab" aria-hidden="true" />
-            <m.img className="art ob-head-art" src={art('clipboard')} alt="" {...ARRIVE} />
-            <h2>Orders</h2>
-            <Tabs.List className="ob-tablist" aria-label="Orders and the office">
-              <Tabs.Trigger value="orders" className="ob-tab">
-                Orders
-                <span className="ob-tab-n" aria-label={`${open} of ${places} places`}>
-                  {open}/{places}
-                </span>
-                {ready > 0 && (
-                  <m.b key={ready} className="ob-tab-ready" initial={{ scale: 0 }} animate={{ scale: 1 }} transition={SPRING.pop} aria-label={`${ready} ready to send`}>
-                    {ready}
-                  </m.b>
-                )}
-                {tab === 'orders' && <m.span className="ob-tab-on" layoutId="ob-tab-on" transition={SPRING.pop} />}
-              </Tabs.Trigger>
-              <Tabs.Trigger value="office" className="ob-tab">
-                Office
-                {tab === 'office' && <m.span className="ob-tab-on" layoutId="ob-tab-on" transition={SPRING.pop} />}
-              </Tabs.Trigger>
-            </Tabs.List>
-            <m.button className="close" onClick={close} aria-label="Close (Esc)" {...PRESS}>
-              <X weight="bold" />
-            </m.button>
-          </div>
-          {/* the board scrolls: its planks' layout moves are measured within it (layoutScroll), or a scroll would read
-              as a plank moving, and the planks slide over one another as the board draws again */}
-          <Tabs.Content value="orders" forceMount hidden={tab !== 'orders'} asChild>
-            <m.div className="ob-board" ref={board} layoutScroll>
-              <div className="ob-planks">
-                <AnimatePresence mode="popLayout">
-                  {v.slots.map((slot, k) =>
-                    'order' in slot ? (
-                      <Plank
-                        key={slot.order.id}
-                        o={held[slot.order.id]?.order ?? slot.order}
-                        soon={held[slot.order.id]?.coming ?? new Map(goingIn(v.inv, slot.order))}
-                        can={held[slot.order.id]?.can ?? canPut(v.inv, slot.order)}
-                        flying={!!held[slot.order.id]}
-                        inv={v.inv}
-                        k={k}
-                        delay={opening ? 0.14 + k * 0.07 : 0}
-                        pop={pop}
-                        setPop={setPop}
-                        onPut={put}
-                        onSend={send}
-                        onDecline={(k) => act.decline(k)}
-                      />
-                    ) : (
-                      <Waiting key={`wait-${k}`} left={slot.wait} full={v.wait} delay={opening ? 0.14 + k * 0.07 : 0} />
-                    ),
-                  )}
-                </AnimatePresence>
-              </div>
-            </m.div>
-          </Tabs.Content>
-          <Tabs.Content value="office" className="ob-office farm-office" forceMount hidden={tab !== 'office'}>
-            <p className="ob-purse">
-              <img className="art" src={art('coin')} alt="" />
-              <span>
-                You have <b>{v.coins.toLocaleString('en-US')}</b>
+    // the tabs are the sheet's: Orders and the office in its head, each one's page its body
+    <Tabs.Root value={tab} onValueChange={setTab}>
+      <PanelSheet
+        label="Orders"
+        title="Orders"
+        pic={art('clipboard')}
+        className={`ob-root ob-${mode}`}
+        onClose={onClose}
+        sub={
+          <Tabs.List className="ob-tablist" aria-label="Orders and the office">
+            <Tabs.Trigger value="orders" className="ob-tab">
+              Orders
+              <span className="ob-tab-n" aria-label={`${open} of ${places} places`}>
+                {open}/{places}
               </span>
-            </p>
-            {v.office.map((r) => (
-              <OfficeUpgrade key={r.id} r={r} coins={v.coins} onAsk={() => onAsk(r.id)} />
+              {ready > 0 && (
+                <m.b key={ready} className="ob-tab-ready" initial={{ scale: 0 }} animate={{ scale: 1 }} transition={SPRING.pop} aria-label={`${ready} ready to send`}>
+                  {ready}
+                </m.b>
+              )}
+              {tab === 'orders' && <m.span className="ob-tab-on" layoutId="ob-tab-on" transition={SPRING.pop} />}
+            </Tabs.Trigger>
+            <Tabs.Trigger value="office" className="ob-tab">
+              Office
+              {tab === 'office' && <m.span className="ob-tab-on" layoutId="ob-tab-on" transition={SPRING.pop} />}
+            </Tabs.Trigger>
+          </Tabs.List>
+        }
+        near={
+          // the goods on their way into an order
+          <div className="ob-flights" aria-hidden="true">
+            {flights.map((f) => (
+              <m.img
+                key={f.id}
+                className="art"
+                src={f.pic}
+                alt=""
+                initial={{ x: f.x - 18, y: f.y - 18, scale: 0.5, opacity: 0 }}
+                animate={{ x: [f.x - 18, (f.x + f.tx) / 2 - 18, f.tx - 18], y: [f.y - 18, Math.min(f.y, f.ty) - 70, f.ty - 18], scale: [0.6, 1.15, 0.8], opacity: [0, 1, 1] }}
+                transition={{ duration: 0.36, delay: f.delay, ease: 'easeInOut', times: [0, 0.5, 1] }}
+              />
             ))}
-          </Tabs.Content>
-        </Tabs.Root>
+          </div>
+        }
+      >
+        {/* the board scrolls: its planks' layout moves are measured within it (layoutScroll), or a scroll would read
+            as a plank moving, and the planks slide over one another as the board draws again */}
+        <Tabs.Content value="orders" forceMount hidden={tab !== 'orders'} asChild>
+          <m.div className="ob-board" ref={board} style={keep} layoutScroll>
+            <div className="ob-planks">
+              <AnimatePresence mode="popLayout">
+                {v.slots.map((slot, k) =>
+                  'order' in slot ? (
+                    <Plank
+                      key={slot.order.id}
+                      o={held[slot.order.id]?.order ?? slot.order}
+                      soon={held[slot.order.id]?.coming ?? new Map(goingIn(v.inv, slot.order))}
+                      can={held[slot.order.id]?.can ?? canPut(v.inv, slot.order)}
+                      flying={!!held[slot.order.id]}
+                      inv={v.inv}
+                      k={k}
+                      delay={opening ? 0.14 + k * 0.07 : 0}
+                      pop={pop}
+                      setPop={setPop}
+                      onPut={put}
+                      onSend={send}
+                      onDecline={(k) => act.decline(k)}
+                    />
+                  ) : (
+                    <Waiting key={`wait-${k}`} left={slot.wait} full={v.wait} delay={opening ? 0.14 + k * 0.07 : 0} />
+                  ),
+                )}
+              </AnimatePresence>
+            </div>
+          </m.div>
+        </Tabs.Content>
+        <Tabs.Content value="office" className="ob-office farm-office" ref={office} style={keep} forceMount hidden={tab !== 'office'}>
+          <p className="ob-purse">
+            <img className="art" src={art('coin')} alt="" />
+            <span>
+              You have <b>{v.coins.toLocaleString('en-US')}</b>
+            </span>
+          </p>
+          {v.office.map((r) => (
+            <OfficeUpgrade key={r.id} r={r} coins={v.coins} onAsk={() => onAsk(r.id)} />
+          ))}
+        </Tabs.Content>
         <AnimatePresence>
           {asking && (
             <OfficeCard
@@ -302,22 +292,8 @@ function Board({ v, act, asking, onAsk, onClose }: OrdersBoardProps) {
             />
           )}
         </AnimatePresence>
-      </m.div>
-      {/* the goods on their way into an order */}
-      <div className="ob-flights" aria-hidden="true">
-        {flights.map((f) => (
-          <m.img
-            key={f.id}
-            className="art"
-            src={f.pic}
-            alt=""
-            initial={{ x: f.x - 18, y: f.y - 18, scale: 0.5, opacity: 0 }}
-            animate={{ x: [f.x - 18, (f.x + f.tx) / 2 - 18, f.tx - 18], y: [f.y - 18, Math.min(f.y, f.ty) - 70, f.ty - 18], scale: [0.6, 1.15, 0.8], opacity: [0, 1, 1] }}
-            transition={{ duration: 0.36, delay: f.delay, ease: 'easeInOut', times: [0, 0.5, 1] }}
-          />
-        ))}
-      </div>
-    </div>
+      </PanelSheet>
+    </Tabs.Root>
   )
 }
 
@@ -594,7 +570,8 @@ function OfficeCard({ r, coins, onCancel, onBuy }: { r: OfficeRow; coins: number
   }, [])
   const afford = !r.max && coins >= r.price
   return (
-    <m.div className="ob-ask-scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }} onClick={onCancel}>
+    // over the sheet (data-over-sheet): Esc closes it first
+    <m.div className="ob-ask-scrim" data-over-sheet="" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }} onClick={onCancel}>
       <m.div
         className="ob-ask paper"
         role="dialog"

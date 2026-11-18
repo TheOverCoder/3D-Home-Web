@@ -29,8 +29,8 @@ const fresh = (game: Game) =>
     h.farm.useFarm.setState((s: any) => ({ rev: s.rev + 1 }))
   })
 
-/** The news open now (one closed a moment before may still be on its way out, marked .leaving: it takes no touch). */
-const CARD = '.news-card:not(.leaving)'
+/** The news open now (one closed a moment before may still be on its way out, marked .ps-leaving: it takes no touch). */
+const CARD = '.news-card:not(.ps-leaving)'
 
 /** Opens the farm news as a player does: the corner menu, then its "Farm news". */
 async function openNews(game: Game) {
@@ -69,7 +69,7 @@ test.describe('the week’s events', () => {
     await expect(game.page.locator('.top-menu-btn .top-badge')).toHaveText('1')
     await openNews(game)
     const card = game.page.locator(CARD)
-    await expect(card.locator('.nw-mast small')).toHaveText(/Wednesday 18 November/i)
+    await expect(card.locator('.nw-date')).toHaveText(/Wednesday 18 November/i)
     const story = card.locator('.nw-now .nw-story')
     await expect(story).toHaveCount(1)
     await expect(story).toContainText('Harvest festival')
