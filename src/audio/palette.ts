@@ -35,6 +35,25 @@ export function offKey(f: number): number {
   return best * 100
 }
 
+/** How many steps a streak climbs, one each quick press, before it holds its top. */
+export const CLIMB_STEPS = 8
+/** How close behind the last a press must come to climb its streak (ms): work (taps in a panel, jobs added, goods put
+ *  in, shelves filled, work in the world) within 2.5 s; the crystals landing on the level's bar within their 450 ms. */
+export const WORK_GAP = 2500
+export const XP_GAP = 450
+
+/** Each streak as it stands: its step, and when it last climbed (ms). */
+const runs = new Map<string, { step: number; at: number }>()
+
+/** A press in streak `name` (at `now`, ms): its step, 0 … CLIMB_STEPS − 1, one higher than the last when it comes within
+ *  `gapMs` of it, held at the top; after a pause from the bottom again. Each streak climbs on its own. */
+export function climb(name: string, gapMs: number, now: number = performance.now()): number {
+  const run = runs.get(name)
+  const step = run && now - run.at < gapMs ? Math.min(run.step + 1, CLIMB_STEPS - 1) : 0
+  runs.set(name, { step, at: now })
+  return step
+}
+
 /** How much a varying sound's loudness may change each time, either way (a share: 10 %). */
 export const VARY_LEVEL = 0.1
 

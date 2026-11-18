@@ -4,7 +4,7 @@
 // its row, with the touch of what the player did.
 import { haptic, type Haptic } from '../lib/device'
 import { burst, live, rnd, tone, voice, type Engine } from './engine'
-import { keyStep, note, vary, type KeyNote } from './palette'
+import { WORK_GAP, XP_GAP, climb, keyStep, note, vary, type KeyNote } from './palette'
 import { SOUNDS } from './sounds'
 
 export type FarmSound =
@@ -45,12 +45,19 @@ export type FarmSound =
   | 'lift' // decoration or furniture lifted under the finger
   | 'thud' // put down where it fits: a thud by its size
 
-/** Crystals landing one close behind another climb the key from A6 (its 4th note), a step each, for this many steps,
+/** Crystals landing one close behind another climb the key from A6 (its 4th note), a step each (./palette.ts, climb),
  *  then hold the top. */
 const XP_FROM = 4
-const XP_STEPS = 8
-let xpRun = 0
-let xpLast = -Infinity
+/** A press of work climbs a soft pip from C6 (the key's first note in octave 6), a step each quick press. */
+const PIP_FROM = 0
+/** One press over many beds sounds once a bed, this many at most, this far apart (s), climbing as it goes; each after
+ *  the first a little softer, so a batch sounds fuller rather than louder. */
+const BATCH_MOST = 6
+const BATCH_GAP = 0.06
+const BATCH_LEVEL = 0.6
+
+/** The pip of a press `step` steps up its streak (Hz). */
+export const pipNote = (step: number) => note(PIP_FROM + step, 6)
 
 /** The keys' clinks, steps of the key in octave 7 (A7 to E8: a bright jingle, the same each time). */
 const KEY_CLINKS = [5, 7, 4, 6, 5, 7]
@@ -175,13 +182,10 @@ const SYNTHS: Record<FarmSound, Synth> = {
     tone(e, t, { type: 'sawtooth', f0: rnd(62, 70), f1: 48, gain: 0.05 * v, attack: 0.006, decay: 0.09, pan })
     burst(e, t, { type: 'lowpass', freq: 240, q: 0.8, gain: 0.12 * v, attack: 0.004, decay: 0.08, pan })
   },
-  xp(e, t) {
+  xp(e, t, _v, _pan, o) {
     // a crystal joins the bar: a glassy tink, a step up the key for each that lands close behind the one before, with
     // the key's note three steps over it (near a fifth) and its octave for the glass
-    const now = performance.now()
-    xpRun = now - xpLast < 450 ? Math.min(xpRun + 1, XP_STEPS - 1) : 0
-    xpLast = now
-    const step = XP_FROM + xpRun
+    const step = XP_FROM + (o.step ?? climb('xp', XP_GAP))
     tone(e, t, { type: 'sine', f0: note(step, 6), gain: 0.035, attack: 0.002, decay: 0.16, key: true })
     tone(e, t, { type: 'triangle', f0: note(step + 3, 6), gain: 0.01, attack: 0.002, decay: 0.1, key: true })
     tone(e, t, { type: 'sine', f0: note(step, 7), gain: 0.012, attack: 0.002, decay: 0.07, key: true })
@@ -370,11 +374,20 @@ const SYNTHS: Record<FarmSound, Synth> = {
   },
 }
 
-/** What a sound may be asked for beyond where it is: a ding's note (a machine's own: `MACHINES[].sounds.done`) and a
- *  thud's size across (m: what was put down). */
+/** What a sound may be asked for beyond where it is: a ding's note (a machine's own: `MACHINES[].sounds.done`), a
+ *  thud's size across (m: what was put down), and how many beds one press did (a snap each, BATCH_MOST at most). */
 export interface SoundMore {
   note?: KeyNote
   size?: number
+  times?: number
+}
+
+/** A press's pip: a soft bell of the key `step` steps up its streak (and its octave for the glass), climbing while the
+ *  work's noise varies. */
+function pip(e: Engine, t: number, v: number, pan: number, step: number) {
+  const f = pipNote(step)
+  tone(e, t + 0.02, { type: 'sine', f0: f, gain: 0.014 * v, attack: 0.003, decay: 0.12, pan, key: true })
+  tone(e, t + 0.02, { type: 'sine', f0: f * 2, gain: 0.004 * v, attack: 0.002, decay: 0.06, pan, key: true })
 }
 
 /** How a sound is played: where it is (`pan` −1 left … 1 right), how near (`near` 0..1, heard at a quarter at least),
@@ -385,20 +398,35 @@ export interface PlayOpts extends SoundMore {
   pitch?: number
   level?: number
   at?: number
+  /** its place in its streak (./palette.ts, climb): a press of work's pip, a crystal's note */
+  step?: number
 }
 
 /** One of the farm's sounds written into `e`, exactly as asked: the live engine, an offline one to measure it, or the
  *  tests' fake. */
 export function play(e: Engine, kind: FarmSound, o: PlayOpts = {}) {
   const t = o.at ?? e.ac.currentTime + 0.004
-  SYNTHS[kind]({ ...e, pitch: o.pitch ?? 1, level: o.level ?? 1 }, t, Math.max(0.25, o.near ?? 1), o.pan ?? 0, o)
+  const on = { ...e, pitch: o.pitch ?? 1, level: o.level ?? 1 }
+  const v = Math.max(0.25, o.near ?? 1)
+  SYNTHS[kind](on, t, v, o.pan ?? 0, o)
+  if (o.step !== undefined && SOUNDS[kind].climb === 'work') pip(on, t, v, o.pan ?? 0, o.step)
 }
 
 /** Garden work and the people and animals in it, where it can be heard, a little different each time its row allows;
  *  what the player did is felt too (`feel`: its touch, its row's by default; null for none), whether the sound plays
- *  or not. `more`: a ding's note, a thud's size. */
+ *  or not. `more`: a ding's note, a thud's size, how many beds one press did. A press of work (a row that climbs, with
+ *  the work's touch: the farm's own sounds never climb) climbs its streak, each bed of a batch a step. */
 export function farmSound(kind: FarmSound, pan = 0, near = 1, feel: Haptic | null = SOUNDS[kind].feel, more: SoundMore = {}) {
   haptic(feel)
+  const row = SOUNDS[kind]
+  const press = row.climb === 'work' && feel === 'tick'
+  const { times = 1, ...as } = more
+  const n = Math.max(1, Math.min(BATCH_MOST, Math.floor(times) || 1))
   const e = live()
-  if (e) play(e, kind, { pan, near, ...vary(SOUNDS[kind]), ...more })
+  for (let i = 0; i < n; i++) {
+    const step = press ? climb('work', WORK_GAP) : undefined
+    if (!e) continue
+    const { pitch, level } = vary(row)
+    play(e, kind, { pan, near, pitch, level: level * (i ? BATCH_LEVEL : 1), ...as, step, at: e.ac.currentTime + 0.004 + i * BATCH_GAP })
+  }
 }

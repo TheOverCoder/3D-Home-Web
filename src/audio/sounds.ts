@@ -30,6 +30,9 @@ export interface SoundRow {
 
 const work = (twin: Twin = 'motion'): SoundRow => ({ family: 'work', feel: 'tick', vary: 1, climb: 'work', twin })
 const world = (twin: Twin): SoundRow => ({ family: 'world', feel: null, vary: 0, twin })
+/** One of the farm's own sounds that a press can make too (the hens' nest collected, a job put into a machine): it
+ *  climbs the work's streak only when it comes with the work's touch. */
+const pressed = (twin: Twin): SoundRow => ({ ...world(twin), climb: 'work' })
 const ui = (feel: Feel): SoundRow => ({ family: 'ui', feel, vary: 1, twin: 'motion' })
 const cue = (twin: Twin, feel: Haptic | null = null): SoundRow => ({ family: 'cue', feel, vary: 0, twin })
 
@@ -43,13 +46,13 @@ export const SOUNDS: Readonly<Record<FarmSound, SoundRow>> = {
   coins: { family: 'coins', feel: 'sale', vary: 1, twin: 'chip' },
   till: { family: 'coins', feel: 'sale', vary: 1, twin: 'chip' },
   decline: { family: 'no', feel: 'tick', vary: 0, twin: 'motion' },
-  cluck: world('compass'),
+  cluck: pressed('compass'),
   moo: world('motion'),
   baa: world('motion'),
   crow: world('none'),
-  creak: world('motion'),
-  oven: world('motion'),
-  loom: world('motion'),
+  creak: pressed('motion'),
+  oven: pressed('motion'),
+  loom: pressed('motion'),
   chug: world('motion'),
   bell: cue('count'),
   ding: cue('compass'),
