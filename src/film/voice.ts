@@ -7,7 +7,7 @@ import type { Mood, Timeline } from './format'
 // sound for each syllable, a hiss for an s, a click for a t, a pause at a comma, a rise at a question mark — a buzz
 // shaped into vowels by three formant filters (./score.ts, `speak`).
 //
-// A voice is a few numbers (`Voice`). The game's fixed characters have theirs (`VOICES`), anyone else gets one from their
+// A voice is a few numbers (`Voice`). The game's people have theirs (src/data/people.ts), anyone else gets one from their
 // look (a woman's is higher, a tall man's deeper), and a film may tune any of them in its cast (`Member.voice`). Nothing
 // is recorded, so a film never needs recording again when a line changes: the text is the script and the voice.
 //
@@ -29,14 +29,6 @@ export interface Voice {
   rasp?: number
   /** how far it swings up and down: flat (0) to sing-song (1) */
   swing?: number
-}
-
-/** The game's fixed characters: the same voice in every film. */
-export const VOICES: Record<'manager' | 'contractor', Voice> = {
-  /** a salesman: quick, a little high and nasal, up and down */
-  manager: { pitch: 128, speed: 4.8, size: 0.97, bright: 0.85, rasp: 0.04, swing: 0.9 },
-  /** a big man of few words: slow, deep, a rough edge */
-  contractor: { pitch: 84, speed: 3.9, size: 1.16, bright: 0.38, rasp: 0.32, swing: 0.3 },
 }
 
 /** A voice for someone with none of their own, from their look: a woman's higher and smaller, a tall one's deeper. */

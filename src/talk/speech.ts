@@ -1,4 +1,5 @@
 import { audioStatus } from '../audio/sound'
+import { talkerOf } from '../data/people'
 import { useStory } from '../film/films'
 import { primeSpeech } from '../film/prime'
 import { voiceFit } from '../film/speak'
@@ -26,10 +27,9 @@ export interface Talker {
   fixed?: boolean
 }
 
-/** The estate agent: a salesman, lively, a little bright. */
-export const AGENT: Talker = { key: 'agent', female: false, voice: { pitch: 122, speed: 4.7, size: 1, bright: 0.7, swing: 0.8 }, fixed: true }
-/** The man on the tractor: calm, low, unhurried. */
-export const DRIVER: Talker = { key: 'driver', female: false, voice: { pitch: 96, speed: 4.1, size: 1.08, bright: 0.45, swing: 0.4 }, fixed: true }
+/** The estate agent and the man on the tractor, as the people table voices them (src/data/people.ts). */
+export const AGENT: Talker = talkerOf('agent')!
+export const DRIVER: Talker = talkerOf('driver')!
 /** A buyer: their voice from their look (a woman's higher, a tall one's deeper: src/film/voice.ts, voiceOfLook). */
 export const buyerTalker = (v: { id: number; look: { sex?: 'f' | 'm'; height?: number } }): Talker => ({ key: `buyer-${v.id}`, female: v.look.sex === 'f', voice: voiceOfLook(v.look) })
 

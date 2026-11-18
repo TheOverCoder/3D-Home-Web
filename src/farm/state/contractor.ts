@@ -3,11 +3,11 @@ import { coinsFx, itemFx } from '../../fx/fx'
 import { CONTRACTOR, count, DAY, ESTATE, HOURS, isItem, LANE_ENDS, VISITOR, WALK_Z, type ItemId } from '../data'
 import { dailyOffers, offersPerDay, piecePrice, type Contractor } from '../contractor'
 import { dayOf, hourOf, isOpen, phaseOf, sinceTurned, untilOpen, untilPhase } from '../day'
-import { CONTRACTOR_LOOK, ESTATE_LOOK } from '../../models/look'
+import { personLook } from '../../data/people'
 import { AGENT_SEAT } from '../../data/estate'
 import { CONTRACTOR_SPOT } from '../../data/market'
 import { agentComes, agentLeaves, contractorComes, contractorLeaves, scriptSeconds, stepScript, walker } from '../script'
-import { bump, farm, putBack, random, save, steadyLook, toast, type At, type Person, type Walking } from './core'
+import { bump, farm, putBack, random, save, toast, type At, type Person, type Walking } from './core'
 import { gainXp } from './levels'
 
 // The contractor behind the market (his hours, his pieces, his walk) and the estate agent in his office (his hours,
@@ -15,7 +15,7 @@ import { gainXp } from './levels'
 
 const CONTRACTOR_ID = -2
 
-const CONTRACTOR_DRESS = steadyLook(9157, CONTRACTOR_LOOK)
+const CONTRACTOR_DRESS = personLook('contractor')!
 
 const standingContractor: Person = { id: CONTRACTOR_ID, ...walker(CONTRACTOR_SPOT.x, CONTRACTOR_SPOT.z, CONTRACTOR_SPOT.heading, []), look: CONTRACTOR_DRESS }
 
@@ -136,7 +136,7 @@ export function contractorNow(): Walking | null {
 }
 
 const AGENT_ID = -3
-const AGENT_DRESS = steadyLook(4271, ESTATE_LOOK)
+const AGENT_DRESS = personLook('agent')!
 const sittingAgent: Person = { id: AGENT_ID, ...walker(AGENT_SEAT.x, AGENT_SEAT.z, AGENT_SEAT.heading, []), pose: 'sit', look: AGENT_DRESS }
 /** How long his walk in takes in the morning (from the lane's west end to his chair), and out at four. */
 const AGENT_COMES = scriptSeconds(LANE_ENDS[0], WALK_Z, agentComes(), VISITOR.speed)
