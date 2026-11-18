@@ -13,14 +13,14 @@ export type SoundFamily = 'work' | 'coins' | 'reward' | 'no' | 'world' | 'cue' |
 /** What tells the same news for a player with the sound off: a toast, the compass's mark, a chip, a count, a move on
  *  screen; none only for ambience. */
 export type Twin = 'toast' | 'compass' | 'chip' | 'count' | 'motion' | 'none'
-/** A touch: today's, and 06's stronger "coins in" for a big reward ('sale+', 10·60·14·70·22 ms), which joins
- *  src/lib/device.ts's Haptic with 06's commit. */
-export type Feel = Haptic | 'sale+'
+/** A touch: one of the phone's patterns (src/lib/device.ts), the stronger "coins in" for a big reward ('sale+',
+ *  10·60·14·70·22 ms) among them. */
+export type Feel = Haptic
 
 export interface SoundRow {
   family: SoundFamily
   /** the touch with it (null: none): one of the phone's patterns (a reward's stronger double is rewardFeel's alone) */
-  feel: Haptic | null
+  feel: Feel | null
   /** semitones of random pitch each time (0: always the same, as a cue must be) */
   vary: number
   /** the streak it climbs in, a step each quick press */
