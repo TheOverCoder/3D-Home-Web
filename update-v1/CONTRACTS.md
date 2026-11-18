@@ -655,21 +655,28 @@ export function moodOf(good: ProduceId, day: number): number                    
 ### 1.15 Season and weather (owner 10, phase 1; already written, unwired)
 
 ```ts
-// src/farm/season.ts (as written): SeasonId, SEASONS, SEASON_DAYS = 7, seasonAt(played, from) → { id, day, ordinal, left, next },
-// inSeason, seasonOf, seasonExtra, SeasonRecord { from, told }, freshSeason, sanitizeSeason(raw, played)
-// src/farm/weather.ts (as written): Weather, CLEAR, weatherAt(t, season), wets(w)
+// src/farm/season.ts (as written): SeasonId, SEASONS, SEASON_DAYS = 7, SEASONS_AFTER_STEPS = true, seasonAt(played, from) →
+// { id, day, ordinal, left, next }, inSeason, seasonOf, seasonExtra, SeasonRecord { from, told }, freshSeason, sanitizeSeason(raw, played)
+// src/farm/weather.ts (as written): Weather, CLEAR, weatherAt(t, season), standing(kind), wets(w)
 // src/scene/weatherLook.ts (as written): Look, IDENTITY, lookOf(season, weather), moodWith(mood, look)
 // src/farm/state/season.ts (10)
 export function seasonNow(): SeasonId          // the season's look and effects: spring while the steps run or the seasons are quiet
-export function seasonDay(): { id: SeasonId; day: number; ordinal: number }   // the clock itself: never quiet (the daily week reads it)
+export const seasonDay: () => { id: SeasonId; day: number; ordinal: number; left: number; next: SeasonId }   // the clock itself: never quiet (the daily week reads it)
 export function weatherNow(): Weather          // CLEAR while the steps run or the weather is quiet
-export function setSeason(id: SeasonId | null): void
-export function setWeather(w: Weather | null): void
+export function setSeason(to: SeasonId | 'clock' | null): void   // a test's own season, by the clock as in play, or quiet (spring)
+export function setWeather(to: Weather | 'clock' | null): void   // a test's own weather, by the farm's clock as in play, or quiet (clear)
+export function quietSeasons(on: boolean): void                  // both quiet (true), or both by their clocks; ?debug: __home.season.quiet
+export function seasonOn(): void               // each frame, from tick: while the first steps run, the first spring waits
+export const savedSeason: (raw: unknown, played: Played) => SeasonRecord   // load(): sanitizeSeason against days played, today counted
 // src/farm/state/beds.ts
 export function yieldOf(crop: CropId, bed?: BedState): number   // compost, then the season (a bed sown in season keeps it)
 ```
 - **Rules:**
   - **The season's clock** (`seasonDay`) is days played, and is never quiet: the daily week runs on it in tests too.
+  - **The seasons start once the first steps end** (`SEASONS_AFTER_STEPS`): while the steps run, `from` follows the days
+    played (`seasonOn`), so the first spring's day 1 is the day played they end.
+  - **A farm loads before it counts today** (`markPlayed` runs on its first frame), so its year is read against the days
+    played with today counted (`savedSeason`): a farm from before the seasons begins its first spring on today's day played.
   - **What is quiet** in tests and on `?debug` is the season's effects: the look, the in-season yield, the weather, and
     the news's season line.
   - **Keep the events' names** **[review, fix 12]**. A season shows its own picture beside an event's name.
@@ -925,7 +932,7 @@ Every new or changed field of the farm's save (`FarmData`, `3d-home:farm:v1…`)
 | `orders[k].order.from`, `.chapter` | 03 | optional `PersonId`, `ChapterId` | `from` kept only for a neighbour met; `chapter` never on the board (requests hold chapters) | `orders.k: an order`: `sameKeys` accepts the optional `from`; `bad('orders.k.from', o.from === undefined \|\| met(o.from))` |
 | `queue[k].who` (the saved line) | 03 | optional `NeighbourId` | a neighbour met, once in the line; else a stranger | `bad('buyer who', v.who === undefined \|\| (met(v.who) && unique whos))` |
 | `ledger` | 09 | `Ledger` (`src/farm/ledger.ts`) | `sanitizeLedger(raw.ledger, calendarDay())`; missing: empty | `bad('ledger', days ascending, unique, within LEDGER_DAYS of TODAY, none empty, every tally two counts, soldAt(good, channel))`; coupling: `time` → `ledger` (the shop's sales while away) |
-| `season` | 10 | `SeasonRecord { from: number; told: number }` | `sanitizeSeason(raw.season, data.played.days)`; missing: its first spring begins today | `bad('season', sameKeys(s, ['from','told']) && Number.isInteger(s.from) && s.from >= 1 && s.from <= Math.max(1, farm.played.days) && Number.isInteger(s.told) && s.told >= -1 && s.told <= seasonAt(farm.played.days, s.from).ordinal)`; coupling: `played`, and `daily` on a save without `played` → `season` |
+| `season` | 10 | `SeasonRecord { from: number; told: number }` | `savedSeason(raw.season, data.played)`: `sanitizeSeason` against the days played with today counted; missing: its first spring begins today | with `playedToday = played.days + (played.last < TODAY ? 1 : 0)`: `bad('season', sameKeys(s, ['from','told']) && Number.isInteger(s.from) && s.from >= 1 && s.from <= Math.max(1, playedToday) && Number.isInteger(s.told) && s.told >= -1 && s.told <= seasonAt(playedToday, s.from).ordinal)`; coupling: `played`, and `daily` on a save without `played` → `season` |
 | `beds[i].seasonal` | 10 | `boolean` (sown in season) | `!!b.seasonal && crop !== null` | `beds.i: its fields` gains `'seasonal'`; `bad('beds.i.seasonal', typeof b.seasonal === 'boolean' && (!b.seasonal \|\| b.crop !== null))` |
 | `car` | 11 | `{ owned: PaintId[]; worn: PaintId }` | missing: `{ owned: ['red'], worn: 'red' }`; `owned` in `CAR_PAINTS` order, red always; `worn` owned | `bad('car', sameKeys(c, ['owned','worn']) && json(c.owned) === json(CAR_PAINT_IDS.filter(p => c.owned.includes(p))) && c.owned.includes('red') && c.owned.includes(c.worn))` |
 | `expansions.north`, `.meadow`, `.far` | 01 | `boolean` | `!!raw.expansions?.[k]` | `sameKeys(farm.expansions, EXPANSION_IDS)` in place of the literal `['east','west']` |
