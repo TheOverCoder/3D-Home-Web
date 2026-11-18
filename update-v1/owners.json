@@ -3,6 +3,7 @@
   "base": "claude/tender-albattani-7rxfvz",
   "never": ["lab/audit.json", "lab/check.json", "package.json", "package-lock.json", ".npmrc"],
   "anyone": [
+    { "path": "tests/e2e/{areas,times}.json", "how": "your new spec's and new source folders' rows only (src/ci.test.ts asks for them); a time is a guess until CI measures it" },
     { "path": "tests/README.md", "how": "only your specs' and unit tests' rows; in the debts list only the row you add or pay" },
     { "path": "CLAUDE.md", "how": "only your section's sentences; the shared paragraphs are the orchestrator's" },
     { "path": "{src/ui/art.ts,src/data/credits.ts,CREDITS.md}", "how": "append a picture's row and its credit" },
