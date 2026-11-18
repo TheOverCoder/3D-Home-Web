@@ -216,6 +216,13 @@
 .ob-send { font-size: 19px; gap: 8px; }
 .ob-put { font-size: 17px; }
 .ob-put:disabled { opacity: 0.7; }
+/* nothing in store to put in: the way to the first good short, its picture first */
+.ob-show-me { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.ob-show-me .item-pic .art { width: 28px; height: 28px; }
+.ob-show-me > .btn { flex: 1; min-height: 48px; }
+/* a good the store is short of wears the walker on its corner: a tap on it shows the way (src/ui/GoodPic.tsx) */
+.good-pic .good-way { position: absolute; top: -6px; left: -6px; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--paper); color: var(--ink); box-shadow: 0 0 0 2px #fff, 0 1px 3px rgba(0, 0, 0, 0.3); pointer-events: none; }
+.good-pic .good-way svg { width: 12px; height: 12px; }
 
 /* a place waiting for its next order: a ring that runs down */
 .ob-wait {

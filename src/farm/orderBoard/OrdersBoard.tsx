@@ -1,13 +1,14 @@
 import { AnimatePresence, m, useIsPresent, type Variants } from 'motion/react'
 import { useLessMotion } from '../../ui/still'
 import { Tabs } from 'radix-ui'
-import { useEffect, useRef, useState, type Ref } from 'react'
+import { useContext, useEffect, useRef, useState, type Ref } from 'react'
 import { flyCoins } from '../../fx/coins'
 import { coinsToFly } from '../../fx/fx'
 import { art } from '../../ui/art'
 import { burst } from '../../ui/burst'
-import { ArrowRight, Check, X } from '../../ui/glyphs'
-import { GoodPic } from '../../ui/GoodPic'
+import { ArrowRight, Check, NavigationArrow, X } from '../../ui/glyphs'
+import { GoodPic, GoodWaysContext, OpenButton } from '../../ui/GoodPic'
+import { ItemPic } from '../../ui/ItemPic'
 import { EASE, MotionRoot, PRESS, SPRING } from '../../ui/motion'
 import { PanelSheet } from '../../ui/PanelSheet'
 import { useSheetMode } from '../../ui/sheetMode'
@@ -29,7 +30,8 @@ import './OrdersBoard.css'
 // (yellow when it would fill the order: "Put in 4 · ready"), then Send (green), the plank glowing and a READY tag
 // swinging onto its nail. A touch on a good says its name, how many are in, what the store holds and where it comes
 // from; with too few in store, its way there (src/ui/GoodPic.tsx: "Show me" walks you there on the farm, a remote opens
-// the machine or the tool from afar). A place whose order was declined counts down on a ring. The office's two upgrades are a tab of their own, each
+// the machine or the tool from afar), and each such good wears the walker. With nothing in store to put in, the foot's
+// press is that way itself: Show me, with the first good short (or the remote's Open). A place whose order was declined counts down on a ring. The office's two upgrades are a tab of their own, each
 // bought through a card that asks first.
 //
 // Its moments: Put in — the goods fly from the press into their lines on an arc, one after another, the pegs fill
@@ -343,6 +345,10 @@ function Plank({
   const done = isComplete(o)
   const fills = can > 0 && o.lines.every((l) => l.have + (soon.get(l.good) ?? 0) >= l.want)
   const crates = cratesFor(o)
+  // nothing to put in: the first good the store is short of, and its way there (a walk, or a remote's Open)
+  const ways = useContext(GoodWaysContext)
+  const short = !done && !can ? o.lines.find((l) => l.want - l.have > (inv[l.good] ?? 0))?.good : undefined
+  const way = short ? ways.go(short) : null
   return (
     <m.article
       ref={ref}
@@ -418,6 +424,16 @@ function Plank({
             >
               Send <Coins n={o.coins} />
             </m.button>
+          ) : short && way?.kind === 'walk' ? (
+            // nothing in store to put in: Show me walks you to where the first good short is made
+            <m.button key="show" className="btn soft ob-put ob-show-me" {...PRESS} onClick={way.run} exit={{ opacity: 0, scale: 0.9 }} aria-label={`Show me where ${nameOf(short, 2)} are made`}>
+              <ItemPic id={short} />
+              <NavigationArrow weight="fill" /> Show me
+            </m.button>
+          ) : short && way?.kind === 'open' ? (
+            <m.span key="open" className="ob-put ob-show-me" style={{ display: 'flex' }} exit={{ opacity: 0, scale: 0.9 }}>
+              <OpenButton words={way.words} pic={way.pic} run={way.run} />
+            </m.span>
           ) : (
             <m.button
               key="put"
@@ -472,6 +488,7 @@ function Line({
         open={pop === id}
         onOpenChange={(o) => setPop(o ? id : null)}
         walk={left > store}
+        way={left > store}
         lines={
           <>
             <span className={`ob-pop-state${left === 0 ? ' in' : ''}`}>{left === 0 ? `All ${want} in` : `${have} of ${want} in · ${left} more`}</span>
