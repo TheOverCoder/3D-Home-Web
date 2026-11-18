@@ -1,4 +1,5 @@
-import { advance, currentStep, skipped, type StepDef } from '../firstSteps'
+import { FIRST_STEPS, STEPS_UNTIL_LEVEL, advance, currentStep, skipped, type StepDef } from '../firstSteps'
+import { levelOf } from '../xp'
 import { onHere } from '../../lib/quiet'
 import { bump, farm, save } from './core'
 import { give, rewarded } from './rewards'
@@ -32,6 +33,18 @@ export function skipSteps() {
   farm.firstSteps = skipped(farm.firstSteps)
   bump()
   save()
+}
+/** The tips can come back (Settings, *Show the tips again*): skipped with steps left, on a farm still below the level
+ *  they end at. */
+export const stepsResumable = () => farm.firstSteps.over && farm.firstSteps.step < FIRST_STEPS.length && levelOf(farm.xp.points) < STEPS_UNTIL_LEVEL
+/** The tips back on the step they were skipped at: each step the farm has done meanwhile passes a frame later and is
+ *  paid then, once (a skipped step was never paid); nothing passed before is paid again. */
+export function resumeSteps() {
+  if (!stepsResumable()) return false
+  farm.firstSteps = { step: farm.firstSteps.step, over: false }
+  bump()
+  save()
+  return true
 }
 /** Passes the steps the farm has done, paying each one's reward (coins, or goods into their building past full; no XP:
  *  a reward is not something done). Each frame, from `tick`: whatever function changed the farm's numbers, they are
