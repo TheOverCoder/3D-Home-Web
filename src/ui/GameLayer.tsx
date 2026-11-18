@@ -1,9 +1,9 @@
 import { AnimatePresence, m, useAnimate, useReducedMotion } from 'motion/react'
 import { ToggleGroup } from 'radix-ui'
-import { lazy, Suspense, useRef, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react'
 import { SoundDirector } from '../audio/SoundDirector'
 import { FarmUI } from '../farm/FarmUI'
-import { SLOTS, currentSlot, deleteSlot, exportSlot, importSlot, slotSummary, switchSlot, useFarm, type Slot } from '../farm/state'
+import { SLOTS, currentSlot, deleteSlot, exportSlot, freeUpSpace, importSlot, restoreCopy, saveState, saveWords, slotSummary, switchSlot, useFarm, type Slot } from '../farm/state'
 import { debugSet } from '../lib/debug'
 import { coarsePointer } from '../lib/device'
 import { persistStorage } from '../lib/sw'
@@ -40,10 +40,12 @@ import './SavesPanel.css'
 const TouchControls = lazy(() => import('./TouchControls').then((m) => ({ default: m.TouchControls })))
 
 // (?debug) a part of the interface that throws, on purpose (./PanelGuard.tsx); the cards that open by themselves
-// (./cardQueue.ts): this visit, the card showing, whether the game is free. Here with the interface they are about,
-// which is in before the game can be entered
+// (./cardQueue.ts): this visit, the card showing, whether the game is free; how the save stands (src/farm/state/save.ts:
+// the farm could not be read, the storage is full, another tab has it) and what the saves list does about it. Here with
+// the interface they are about, which is in before the game can be entered
 debugSet('guard', guardHooks)
 debugSet('cards', { visit: visitNow, showing: cardShowing, free: () => gameFree() })
+debugSet('saves', { state: saveState, restoreCopy, freeUpSpace })
 
 /** The screen open (the television, a computer): if it throws, it closes. */
 function ScreenSlot() {
@@ -63,6 +65,19 @@ function SettingsSlot() {
       <SettingsPanel />
     </PanelGuard>
   )
+}
+
+/** What the player is told about the save, once a visit each, as the game is played: the farm could not be read (it is
+ *  kept as it was, and the saves list has it), or the storage is full (the saves list frees up space). */
+function SaveWords() {
+  const playing = useHome((s) => s.phase === 'playing')
+  const rev = useFarm((s) => s.rev)
+  useEffect(() => {
+    if (!playing) return
+    const words = saveWords()
+    if (words) useHome.getState().showToast(words, 'floppy-disk')
+  }, [playing, rev])
+  return null
 }
 
 /** The game's interface under the intro: the HUD, the farm's panels, the controls, a screen, the curtain, a film and
@@ -86,6 +101,7 @@ export function GameLayer() {
       <Curtain />
       <FilmLayer />
       <SettingsSlot />
+      <SaveWords />
     </>
   )
 }
@@ -116,6 +132,12 @@ function ago(t: number | null) {
   return s < 90 ? 'just now' : `${span(s)} ago`
 }
 
+/** When a copy was saved: its time today, else its date. */
+function when(t: number) {
+  const d = new Date(t)
+  return d.toDateString() === new Date().toDateString() ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : d.toLocaleDateString([], { day: 'numeric', month: 'short' })
+}
+
 function download(name: string, text: string) {
   const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }))
   const a = document.createElement('a')
@@ -139,6 +161,7 @@ export function SavesList({ onPlay }: { onPlay: () => void }) {
   const farms = SLOTS.map((n) => slotSummary(n))
   const f = farms.find((x) => x.slot === pick) ?? farms[0]
   const here = f.slot === current
+  const { full } = saveState()
 
   const play = () => {
     if (going) return
@@ -153,6 +176,16 @@ export function SavesList({ onPlay }: { onPlay: () => void }) {
     const result = importSlot(f.slot, await got.text())
     setNote(result.ok ? { ok: true, text: `Farm ${f.slot} loaded from “${got.name}”.` } : { ok: false, text: result.error })
     if (result.ok) void persistStorage(true)
+  }
+  const saveFile = () => {
+    const out = exportSlot(f.slot)
+    download(out.name, out.text)
+    setNote({ ok: true, text: `Saved Farm ${f.slot} as ${out.name}.` })
+    void persistStorage(true)
+  }
+  const loadCopy = () => {
+    const result = restoreCopy(f.slot)
+    setNote(result.ok ? { ok: true, text: `Farm ${f.slot} is back as it was then.` } : { ok: false, text: result.error })
   }
 
   return (
@@ -177,7 +210,7 @@ export function SavesList({ onPlay }: { onPlay: () => void }) {
           >
             {x.slot === pick && <m.span className="saves-tab-on" layoutId="saves-tab-on" transition={SPRING.pop} />}
             <span className="saves-tab-in">
-              {x.exists ? <LevelStar level={x.level} /> : <img className="art saves-seed" src={art('seedling')} alt="" />}
+              {x.broken ? <img className="art saves-seed" src={art('warning')} alt="" /> : x.exists ? <LevelStar level={x.level} /> : <img className="art saves-seed" src={art('seedling')} alt="" />}
               <b>Farm {x.slot}</b>
               {x.slot === current && <i className="saves-dot" />}
             </span>
@@ -187,8 +220,8 @@ export function SavesList({ onPlay }: { onPlay: () => void }) {
       <div className="saves-body">
         <AnimatePresence mode="popLayout" initial={false}>
           <m.section
-            key={`${f.slot}-${f.exists}`}
-            className={`saves-card${f.exists ? '' : ' empty'}`}
+            key={`${f.slot}-${f.exists}-${!!f.broken}`}
+            className={`saves-card${f.exists && !f.broken ? '' : ' empty'}`}
             initial={{ opacity: 0, rotateY: -40 }}
             animate={{ opacity: 1, rotateY: 0 }}
             exit={{ opacity: 0, rotateY: 40 }}
@@ -197,9 +230,14 @@ export function SavesList({ onPlay }: { onPlay: () => void }) {
             aria-label={`Farm ${f.slot}`}
           >
             <m.span className="saves-pic-wrap" animate={going ? { y: [0, -18, 0], scale: [1, 1.08, 1] } : undefined} transition={{ duration: 0.32, ease: EASE.out }}>
-              <img className="art saves-pic" src={art(f.exists ? 'house-with-garden' : 'seedling')} alt="" />
+              <img className="art saves-pic" src={art(f.broken ? 'warning' : f.exists ? 'house-with-garden' : 'seedling')} alt="" />
             </m.span>
-            {f.exists ? (
+            {f.broken ? (
+              <div className="saves-empty">
+                <b>This farm could not be read</b>
+                <span className="tag">{here ? 'Kept as it was: this visit is not saved' : 'Kept as it was'}</span>
+              </div>
+            ) : f.exists ? (
               <>
                 <p className="saves-when">
                   {here && <span className="tag ok saves-now">Playing now</span>}
@@ -244,22 +282,19 @@ export function SavesList({ onPlay }: { onPlay: () => void }) {
           </m.section>
         </AnimatePresence>
         <div className="saves-acts">
-          <m.button className="btn primary saves-go" whileTap={{ scale: 0.96, y: 3 }} transition={SPRING.pop} onClick={play}>
-            {f.exists ? (here ? 'Keep playing' : `Play Farm ${f.slot}`) : 'Start this farm'}
-            <ArrowRight weight="bold" />
-          </m.button>
+          {f.broken ? (
+            <m.button className="btn primary saves-go" whileTap={{ scale: 0.96, y: 3 }} transition={SPRING.pop} onClick={f.copy ? loadCopy : saveFile}>
+              {f.copy ? `Load the copy${f.copy.savedAt ? ` from ${when(f.copy.savedAt)}` : ''}` : 'Save as file'}
+              {f.copy ? <ArrowRight weight="bold" /> : <DownloadSimple weight="bold" />}
+            </m.button>
+          ) : (
+            <m.button className="btn primary saves-go" whileTap={{ scale: 0.96, y: 3 }} transition={SPRING.pop} onClick={play}>
+              {f.exists ? (here ? 'Keep playing' : `Play Farm ${f.slot}`) : 'Start this farm'}
+              <ArrowRight weight="bold" />
+            </m.button>
+          )}
           <div className="saves-quiet">
-            <m.button
-              className="btn soft small"
-              disabled={!f.exists && !here}
-              {...PRESS}
-              onClick={() => {
-                const out = exportSlot(f.slot)
-                download(out.name, out.text)
-                setNote({ ok: true, text: `Saved Farm ${f.slot} as ${out.name}.` })
-                void persistStorage(true)
-              }}
-            >
+            <m.button className="btn soft small" disabled={!f.exists && !here} {...PRESS} onClick={saveFile}>
               <DownloadSimple weight="bold" /> Save file
             </m.button>
             <m.button className="btn soft small" {...PRESS} onClick={() => file.current?.click()}>
@@ -276,6 +311,20 @@ export function SavesList({ onPlay }: { onPlay: () => void }) {
             >
               Hold to start afresh
             </HoldToClear>
+          )}
+          {full && !note && (
+            <>
+              <p className="saves-note" role="status">
+                The storage is full: the farm is not being saved.
+              </p>
+              <m.button
+                className="btn soft small"
+                {...PRESS}
+                onClick={() => setNote(freeUpSpace() ? { ok: true, text: 'Space made: the farm is saved again.' } : { ok: false, text: 'Still full: a farm started afresh frees more.' })}
+              >
+                Free up space
+              </m.button>
+            </>
           )}
           {note && (
             <p className={`saves-note${note.ok ? ' ok' : ''}`} role="status">

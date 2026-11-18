@@ -182,7 +182,7 @@ test.describe('the page shell', () => {
     expect(listed.filter((u) => /(^|\/)GameLayer-[\w-]{8}\.js$/.test(u))).toHaveLength(1)
     // in before the game was entered: its parts are drawn (the corner menu) and its hooks are there
     await expect(page.locator('.top-menu-btn')).toBeVisible()
-    expect(await page.evaluate(() => ['cards', 'guard'].map((k) => typeof (window as any).__home[k]))).toEqual(['object', 'object'])
+    expect(await page.evaluate(() => ['cards', 'guard', 'saves'].map((k) => typeof (window as any).__home[k]))).toEqual(['object', 'object', 'object'])
     expect(game.errors, game.errors.join('\n')).toEqual([])
   })
 })

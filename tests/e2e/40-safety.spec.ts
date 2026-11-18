@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { Page } from '@playwright/test'
 import { expect, test, type Game } from './helpers'
+import { BASE, watchErrors } from './helpers'
 
 // A part of the interface that throws never takes the game down (src/ui/PanelGuard.tsx, update-v1 mission 08 c6): a
 // panel closes, a toast says "That didn't open properly", the farm draws on, the error is in Copy diagnostics, and the
@@ -193,6 +194,153 @@ test.describe('safety', () => {
   })
 
   test("afterwards: today's farm, everything open", async ({ game }) => {
+    await game.ready('farm')
+    await game.page.evaluate(() => (window as any).__home.farm.reset())
+    await game.ready()
+  })
+})
+
+// No farm is ever wiped by its own save, nor by a second tab (src/farm/state/save.ts, update-v1 mission 08 c7, c8): a
+// farm that could not be read is kept as it was, never written over until the player chooses; the saves list says so
+// with its copy to load, and the game says it once as it is played; a storage that is full is said once; and a second
+// tab on the same farm takes it: the tab left behind stops saving, and looked at again it shows the newest farm.
+test.describe('saves', () => {
+  /** The key of a farm's place in the browser's storage. */
+  const keyOf = (n: number) => (n === 1 ? '3d-home:farm:v1' : `3d-home:farm:v1:slot${n}`)
+  /** How the save stands in a page (`__home.saves`, ?debug): held (not read), full, behind (another tab has it). */
+  const saveState = (p: Page) => p.evaluate(() => (window as any).__home.saves?.state() ?? null)
+
+  test('one farm, one tab: a second tab takes the farm; the one left behind stops saving, and looked at again it shows the newest farm', async ({ game }) => {
+    test.setTimeout(300_000)
+    const { page } = game
+    await game.ready('farm')
+    const key = keyOf(await page.evaluate(() => (window as any).__home.slots.currentSlot()))
+    const saved = () => page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).coins as number, key)
+    // this page becomes the tab left behind: no longer the one in front
+    await page.evaluate(() => Object.defineProperty(document, 'hasFocus', { value: () => false, configurable: true }))
+    const second = await page.context().newPage()
+    try {
+      // (the second tab needs no scene, only the farm: its graphics are off)
+      await second.addInitScript(() => Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', { value: () => null }))
+      await second.goto('/?debug&quality=low')
+      await expect.poll(() => saveState(second), { timeout: 120_000 }).toMatchObject({ behind: false })
+      // it took the farm as it opened: this one stops saving
+      await expect.poll(() => saveState(page), { timeout: 30_000 }).toMatchObject({ behind: true })
+      // the second tab saves a newer farm (4242 coins, through a file of its own farm)
+      expect(
+        await second.evaluate((key) => {
+          const s = (window as any).__home.slots
+          const n = s.currentSlot()
+          const file = JSON.parse(s.exportSlot(n).text)
+          file.save.coins = 4242
+          return [key === (n === 1 ? '3d-home:farm:v1' : `3d-home:farm:v1:slot${n}`), s.importSlot(n, JSON.stringify(file)).ok]
+        }, key),
+      ).toEqual([true, true])
+      await expect.poll(saved, { timeout: 30_000 }).toBe(4242)
+      // this one, saving, does not write over it
+      await page.evaluate(() => {
+        const f = (window as any).__home.farm
+        f.state.coins = 7
+        f.saveFarm()
+      })
+      expect(await saved()).toBe(4242)
+      // looked at again (in front, the other one behind it): the newest farm, and it saves on
+      await second.evaluate(() => Object.defineProperty(document, 'hasFocus', { value: () => false, configurable: true }))
+      await page.evaluate(() => {
+        delete (document as any).hasFocus
+        window.dispatchEvent(new Event('focus'))
+      })
+      await expect.poll(() => page.evaluate(() => (window as any).__home.farm.state.coins), { timeout: 30_000 }).toBe(4242)
+      expect(await saveState(page)).toMatchObject({ behind: false })
+      await page.evaluate(() => {
+        const f = (window as any).__home.farm
+        f.state.coins = 4243
+        f.saveFarm()
+      })
+      expect(await saved()).toBe(4243)
+      await expect.poll(() => saveState(second), { timeout: 30_000 }).toMatchObject({ behind: true })
+    } finally {
+      await second.close()
+      await page.evaluate(() => delete (document as any).hasFocus)
+    }
+    expect(game.errors, game.errors.join('\n')).toEqual([])
+  })
+
+  test(
+    'a farm that could not be read: kept as it was, the saves list says so with its copy, the game says it once; its copy loads it again; a full storage is said once',
+    { tag: '@boot' },
+    async ({ browser }) => {
+      test.setTimeout(600_000)
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 }, baseURL: BASE })
+      const page = await context.newPage()
+      const errors: string[] = []
+      watchErrors(page, errors)
+      // farm 1 cut short as it was written; the copy kept as its last visit began, two hours ago
+      const broken = '{"coins":4321,"started":true,"beds":[{"built":true'
+      const copyAt = Date.now() - 2 * 3_600_000
+      await page.addInitScript(
+        ({ broken, copy }) => {
+          if (localStorage.getItem('3d-home:farm:v1')) return
+          localStorage.setItem('3d-home:farm:v1', broken)
+          localStorage.setItem('3d-home:farm:v1:prev', copy)
+        },
+        { broken, copy: JSON.stringify({ coins: 4321, started: true, time: copyAt }) },
+      )
+      await page.goto('/?debug&quality=low')
+      // the saves list: the farm could not be read, kept as it was, and its copy to load
+      const load = page.locator('.intro-tile', { hasText: 'Load farm' })
+      await expect(load).toBeVisible({ timeout: 300_000 })
+      await load.click()
+      const card = page.locator('.saves-card')
+      await expect(card).toContainText('This farm could not be read')
+      await expect(card).toContainText('Kept as it was: this visit is not saved')
+      await expect(page.locator('.saves-tab.current .saves-seed')).toHaveAttribute('src', /warning/)
+      await expect(page.getByRole('button', { name: /^Load the copy from / })).toBeVisible()
+      // played meanwhile: a new farm, said once, and the farm is never written over
+      await watchToasts(page)
+      await page.locator('.intro-back').click()
+      await page.locator('.intro-go').click()
+      await page.waitForFunction(() => (window as any).__home?.useHome.getState().phase === 'playing' && !!(window as any).__home.farm, null, { timeout: 120_000 })
+      await expect.poll(() => toasts(page), { timeout: 30_000 }).toContain('Farm 1 could not be read: it is kept as it was')
+      expect(await saveState(page)).toMatchObject({ held: true })
+      expect(
+        await page.evaluate(() => {
+          ;(window as any).__home.farm.saveFarm()
+          return [localStorage.getItem('3d-home:farm:v1'), localStorage.getItem('3d-home:farm:v1:broken')]
+        }),
+      ).toEqual([broken, broken])
+      // its copy (the saves list's press) loads it again, and it is saved on
+      expect(await page.evaluate(() => (window as any).__home.saves.restoreCopy(1))).toEqual({ ok: true })
+      expect(await page.evaluate(() => (window as any).__home.farm.state.coins)).toBe(4321)
+      expect(await saveState(page)).toMatchObject({ held: false })
+      expect(await page.evaluate(() => [JSON.parse(localStorage.getItem('3d-home:farm:v1')!).coins, localStorage.getItem('3d-home:farm:v1:broken')])).toEqual([4321, null])
+      // the storage full: said once, the farm plays on; space freed, it is saved again
+      await page.evaluate(() => {
+        const w = window as any
+        // eslint-disable-next-line @typescript-eslint/unbound-method -- put back as it was, on the prototype
+        w.__setItem = Storage.prototype.setItem
+        Storage.prototype.setItem = () => {
+          throw new DOMException('The quota has been exceeded.', 'QuotaExceededError')
+        }
+        w.__home.farm.saveFarm()
+        w.__home.farm.saveFarm()
+      })
+      await expect.poll(() => toasts(page), { timeout: 30_000 }).toContain('The storage is full: the farm is not being saved')
+      expect(await saveState(page)).toMatchObject({ full: true })
+      expect(
+        await page.evaluate(() => {
+          const w = window as any
+          Storage.prototype.setItem = w.__setItem
+          return w.__home.saves.freeUpSpace()
+        }),
+      ).toBe(true)
+      expect(await saveState(page)).toMatchObject({ full: false, held: false })
+      expect(errors, errors.join('\n')).toEqual([])
+      await context.close()
+    },
+  )
+
+  test("afterwards: today's farm", async ({ game }) => {
     await game.ready('farm')
     await game.page.evaluate(() => (window as any).__home.farm.reset())
     await game.ready()
