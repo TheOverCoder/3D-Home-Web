@@ -33,13 +33,29 @@ export const MILL_CROPS: readonly ProduceId[] = MACHINES.mill.recipes.flatMap((r
 export const LAW_MACHINES = MACHINE_IDS.filter((id) => id !== 'mill')
 
 /**
- * Coins a minute of play earns at a level (sales and orders): a curve fitted to the pace simulation's good player
- * (`npm run sim`, seeds 1–3: about 15 a minute over levels 1–7, 40 over 7–10, 70 over 10–15, 90 past 15). It measures
- * time in play — what a night is worth, what is nearest — and sizes no prize. `top`: what it levels off at; `mid`: the
- * level it reaches half of that at; `width`: how many levels it takes to rise.
+ * Coins a minute of play earns at a level (sales and orders), as the pace simulation's good player earns them (`npm
+ * run sim`, seeds 1–3; src/sim/pace.test.ts holds the fit): a level and its coins a minute, straight between them, flat
+ * past the last. It measures time in play — what a night is worth, what is nearest — and sizes no prize.
  */
-export const INCOME = { top: 95, mid: 9, width: 2.5 } as const
-export const incomeAt = (level: number) => INCOME.top / (1 + Math.exp(-(level - INCOME.mid) / INCOME.width))
+export const INCOME: readonly (readonly [level: number, coins: number])[] = [
+  [1, 2],
+  [3.5, 10],
+  [6, 18],
+  [8.5, 61],
+  [11.5, 87],
+  [14, 96],
+  [17.5, 123],
+  [22.5, 140],
+  [27.5, 147],
+]
+export function incomeAt(level: number): number {
+  const k = INCOME.findIndex(([l]) => l > level)
+  if (k === 0) return INCOME[0][1]
+  if (k < 0) return INCOME[INCOME.length - 1][1]
+  const [l0, c0] = INCOME[k - 1]
+  const [l1, c1] = INCOME[k]
+  return c0 + ((c1 - c0) * (level - l0)) / (l1 - l0)
+}
 
 /** Which kind of source a good comes from, for what it nets: a crop (less its seeds), a machine (less what goes in),
  *  or a producer (the animals, the trees: at full price, they need nothing). */

@@ -6,7 +6,7 @@ import { GATE, GARDEN, LANE } from '../data/layout'
 import { FRUIT, FRUIT_KINDS, type FruitId, type FruitKind } from './decor'
 import type { PlaceId } from './layout'
 
-export type CropId = 'lettuce' | 'carrot' | 'strawberry' | 'tomato' | 'corn' | 'pumpkin' | 'wheat' | 'sugarcane'
+export type CropId = 'lettuce' | 'carrot' | 'strawberry' | 'tomato' | 'corn' | 'pumpkin' | 'wheat' | 'sugarcane' | 'sunflower' | 'potato' | 'melon' | 'cotton'
 export type CakeId = 'lemon_cake' | 'strawberry_cake' | 'carrot_cake' | 'pumpkin_pie'
 /** The building materials: what the silo and the barn are made bigger with (STORES, below). Never asked for, and sold
  *  only to the contractor behind the market (CONTRACTOR); they come as surprises (ITEM_ODDS) and are kept in the barn. */
@@ -34,6 +34,13 @@ export const CROPS: CropDef[] = [
   { id: 'pumpkin', name: 'pumpkin', plural: 'pumpkins', seedCost: 8, growSeconds: 200, yield: 2, price: 16 },
   { id: 'wheat', name: 'sheaf of wheat', plural: 'sheaves of wheat', seedCost: 2, growSeconds: 80, yield: 5, price: 2 },
   { id: 'sugarcane', name: 'sugar cane', plural: 'sugar canes', seedCost: 4, growSeconds: 140, yield: 6, price: 2 },
+  // the long crops (update-v1/missions/01-loop-economy.md): for while you are away, more a press and less a minute (their
+  // law: src/farm/economy.ts, cropWorth); paid in price, not count, so a night's harvest fits the silo (JOURNEY.md fix
+  // 5); one soak of their seeds lasts their whole growing
+  { id: 'sunflower', name: 'sunflower', plural: 'sunflowers', seedCost: 10, growSeconds: 3600, yield: 2, price: 34, water: 1 },
+  { id: 'potato', name: 'potato', plural: 'potatoes', seedCost: 5, growSeconds: 1200, yield: 3, price: 14, water: 1 },
+  { id: 'melon', name: 'melon', plural: 'melons', seedCost: 15, growSeconds: 4 * 3600, yield: 2, price: 58, water: 1 },
+  { id: 'cotton', name: 'cotton boll', plural: 'cotton bolls', seedCost: 16, growSeconds: 8 * 3600, yield: 2, price: 75, water: 1 },
 ]
 export const cropById = (id: CropId) => CROPS.find((c) => c.id === id)!
 

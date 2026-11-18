@@ -3,12 +3,12 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { BEDS, CROPS, MACHINES, MACHINE_IDS, WATER_SHARE, cropById } from './data'
 import { dayNumber } from './daily'
 import { QUEUE } from './machineView'
-import { AWAY_MOST, bedStage, cameBack, farm, fullWater, ledgerNow, marketFill, plant, resetFarm, setDailyClock, setRandom } from './state'
+import { AWAY_MOST, bedStage, cameBack, farm, fullWater, ledgerNow, marketFill, plant, resetFarm, setDailyClock, setRandom, yieldOf } from './state'
 import { playedSave, startFrom } from './testSaves'
 
 // A time away of up to a day (src/farm/state/away.ts, AWAY_MOST: decision 2): nothing the farm can set before leaving
-// outlasts it, a day of it is quick to play on, a long crop needs no watering after its seeds' soak, and each step of it
-// is on its own calendar day (a sale in the shop while away goes into the ledger on the day it was made).
+// outlasts it, a day of it is quick to play on, a long crop needs no watering after its seeds' soak (cotton left for
+// the night is ripe in the morning), and each step of it is on its own calendar day (a sale in the shop while away goes into the ledger on the day it was made).
 
 const HOUR = 3600
 
@@ -41,21 +41,18 @@ describe('a time away of up to a day', () => {
     expect(performance.now() - start).toBeLessThan(1500)
   })
 
-  it('a crop whose soak lasts its whole growing ripens with no watering and no sprinklers', () => {
-    const crop = cropById('pumpkin')
-    const before = crop.water
+  it('cotton planted before bed, the page closed nine hours, no sprinklers: it is ripe, and the card counts it', () => {
     farm.sprinkler = false
-    const i = farm.beds.findIndex((b, k) => b.built && !BEDS[k].expansion)
     farm.coins = 100
-    try {
-      expect(fullWater('pumpkin')).toBeCloseTo(crop.growSeconds * WATER_SHARE, 6)
-      crop.water = 1
-      plant(i, 'pumpkin')
-      cameBack(crop.growSeconds + 1)
-      expect(bedStage(i)).toBe('ripe')
-    } finally {
-      crop.water = before
-    }
+    const i = farm.beds.findIndex((b, k) => b.built && !BEDS[k].expansion)
+    // its seeds' soak lasts its whole growing: no watering
+    expect(fullWater('cotton')).toBeGreaterThanOrEqual(cropById('cotton').growSeconds)
+    expect(fullWater('lettuce')).toBeCloseTo(cropById('lettuce').growSeconds * WATER_SHARE, 6)
+    expect(plant(i, 'cotton')).toBe(true)
+    const r = cameBack(9 * HOUR)!
+    expect(bedStage(i)).toBe('ripe')
+    expect(r.goods).toContainEqual({ item: 'cotton', count: yieldOf('cotton') })
+    expect(r.thirsty).toBe(0)
   })
 
   it('a sale in the shop while away goes into the ledger on the day it was made', () => {

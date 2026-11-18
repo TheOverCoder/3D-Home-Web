@@ -75,6 +75,8 @@ import {
   machinePoint,
   machineSecondsLeft,
   machineStage,
+  makeRoom,
+  makeRoomPreview,
   marketForSale,
   officeMaxed,
   officePrice,
@@ -392,6 +394,8 @@ export const PRIORITIES: { name: string; move: () => Move | null }[] = [
     name: 'make room',
     move: () => {
       for (const store of ['silo', 'barn'] as const) {
+        // what waits and does not fit: the game's own Make room (the surplus nobody wants, at its fair price)
+        if (makeRoomPreview(store).goods.length) return { what: `make room in the ${store}`, at: null, run: () => makeRoom(store) }
         if (room(store) > 0) continue
         const good = STORE_GOODS[store].filter((g) => managerPays(g) > 0).sort((a, b) => farm.inv[b] - farm.inv[a])[0]
         if (good) return { what: `sell ${good} to the manager`, at: MARKET, run: () => sellToManager(good) }
@@ -410,8 +414,11 @@ let leave: { at: number; gap: number } | null = null
 export function planLeave(plan: { at: number; gap: number } | null) {
   leave = plan
 }
+/** Before leaving, room is made in a building for at least this many goods waiting (fewer: they wait, and the animals
+ *  would fill it again as the player goes round). */
+const MAKE_ROOM_LEAST = 5
 /** The last seconds of a visit, when what is left to do before leaving comes first. */
-export const LEAVE_BEFORE = 90
+export const LEAVE_BEFORE = 180
 const leaving = () => leave !== null && calendarTime() >= leave.at - LEAVE_BEFORE * 1000
 
 /** How long a crop takes to ripen now (the week's events), and whether it ripens with no watering after its seeds'
@@ -446,12 +453,22 @@ function jobForGap(id: MachineId) {
 
 /**
  * What a player does in a visit's last moments, before what they always do (update-v1/missions/01-loop-economy.md,
- * Foundation 5): harvest what is ripe, then plant the longest open crop that ripens within the time away in every empty
- * bed, then queue each machine with the jobs that fit the time away, the dearest per press first. The farm then works
+ * Foundation 5): harvest what is ripe (making room for it in the silo if it does not fit), then plant the longest open
+ * crop that ripens within the time away in every empty bed, then queue each machine with the jobs that fit the time away, the dearest per press first. The farm then works
  * while they are gone, and a night pays.
  */
 export const LEAVING: { name: string; move: () => Move | null }[] = [
   { name: 'harvest', move: () => PRIORITIES.find((p) => p.name === 'harvest')!.move() },
+  {
+    // a harvest that does not fit the silo: room made for it, so the bed can be sown for the time away; and a building
+    // that cannot take what waits (a few goods at least: the animals fill on as the player goes round)
+    name: 'make room',
+    move: () => {
+      const silo = farm.beds.some((_, i) => bedStage(i) === 'ripe' && !harvestFits(i)) && makeRoomPreview('silo').goods.length > 0
+      const store = silo ? 'silo' : (['silo', 'barn'] as const).find((st) => makeRoomPreview(st).goods.reduce((n, g) => n + g.count, 0) >= MAKE_ROOM_LEAST)
+      return store ? { what: `make room in the ${store} before leaving`, at: null, run: () => makeRoom(store) } : null
+    },
+  },
   {
     name: 'plant long',
     move: () => {

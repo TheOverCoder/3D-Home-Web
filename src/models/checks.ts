@@ -125,7 +125,7 @@ const personPoses: [string, PersonPose, boolean][] = [
   ],
 ]
 
-const CROPS: CropId[] = ['lettuce', 'carrot', 'strawberry', 'tomato', 'corn', 'sugarcane', 'wheat', 'pumpkin']
+const CROPS: CropId[] = ['lettuce', 'carrot', 'strawberry', 'tomato', 'corn', 'sugarcane', 'wheat', 'pumpkin', 'sunflower', 'potato', 'melon', 'cotton']
 const STAGES = [0.2, 0.45, 0.7, 0.9, 1]
 
 export const MODEL_CHECKS: ModelCheck[] = [
