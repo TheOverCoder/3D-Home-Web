@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ALMOST, nearest, reached, stops } from './road'
+import { ALMOST, along, nearest, reached, stops } from './road'
 
 // The road of stops (update-v1/CONTRACTS.md §1.10).
 
@@ -25,10 +25,18 @@ describe('a road', () => {
     expect(nearest(road, 300)).toBeNull()
   })
 
+  it('how far along it a count has come, in stops: at a stop reached, part of the way on to the next, the last at its end', () => {
+    const road = stops(3, (k) => k * 100)
+    expect([0, 50, 100, 150, 200, 275, 300, 900].map((have) => along(road, have))).toEqual([0, 0, 0, 0.5, 1, 1.75, 2, 2])
+    expect(along([], 5)).toBe(0)
+  })
+
   it('the daily week is a road of seven, one stop a day', () => {
     const week = stops(7, (k) => k)
     expect(week).toEqual([1, 2, 3, 4, 5, 6, 7])
     expect(reached(week, 3)).toBe(3)
     expect(nearest(week, 6)).toMatchObject({ stop: 7, left: 1 })
+    // its line filled to the last day taken
+    expect([0, 1, 3, 7].map((days) => along(week, days))).toEqual([0, 0, 2, 6])
   })
 })
