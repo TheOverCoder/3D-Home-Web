@@ -330,7 +330,7 @@ function Bay({ k }: { k: number }) {
       if (!ks.length || !restockPlaces(ks)) return
       const { pan, near } = placeSound(bay.x, bay.z)
       playGesture('interact')
-      farmSound('plant', pan, near)
+      farmSound('shelf', pan, near)
     },
     // an open place: a gear for what it sells and its price; the first closed one: the price of another place
     tag: () => {

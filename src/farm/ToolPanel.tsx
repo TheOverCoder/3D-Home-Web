@@ -60,7 +60,7 @@ export function ToolPanel({ tool, from }: { tool: ToolKind; from?: Panel }) {
       if (n) {
         const { pan, near } = remote ? { pan: 0, near: 1 } : standsAt(tool)
         farmSound(PRODUCERS[tool].sound, pan, near, 'tick')
-      } else uiClick(false)
+      } else farmSound('nope')
       return n
     },
     upgrade: (id) => {

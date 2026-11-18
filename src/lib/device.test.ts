@@ -34,7 +34,12 @@ describe('haptics', () => {
     for (const p of Object.values(d.HAPTICS)) expect([p].flat().reduce((a, b) => a + b, 0)).toBeLessThanOrEqual(200)
     // a sale is a double, a level the strongest
     expect([d.HAPTICS.sale].flat().filter((_, i) => i % 2 === 0)).toHaveLength(2)
-    expect(Math.max(...[d.HAPTICS.level].flat())).toBeGreaterThan(Math.max(...Object.entries(d.HAPTICS).flatMap(([k, p]) => (k === 'level' ? [] : [p].flat()))))
+    // a big sum of coins: the same double, stronger (a size changes how strong, never which pattern)
+    expect([d.HAPTICS['sale+']].flat().slice(0, 3)).toEqual(d.HAPTICS.sale)
+    expect([d.HAPTICS['sale+']].flat().reduce((a, b) => a + b, 0)).toBeGreaterThan([d.HAPTICS.sale].flat().reduce((a, b) => a + b, 0))
+    // (its longest pulse: the pauses between pulses are no strength)
+    const pulses = (p: number | number[]) => [p].flat().filter((_, i) => i % 2 === 0)
+    expect(Math.max(...pulses(d.HAPTICS.level))).toBeGreaterThan(Math.max(...Object.entries(d.HAPTICS).flatMap(([k, p]) => (k === 'level' ? [] : pulses(p)))))
     d.vibrate.mockClear()
     d.haptic(null)
     d.haptic(undefined)
@@ -68,6 +73,12 @@ describe('haptics', () => {
     expect(felt('till')).toEqual(d.HAPTICS.sale)
     expect(felt('build')).toEqual(d.HAPTICS.buy)
     expect(felt('surprise')).toEqual(d.HAPTICS.gift)
+    // each action's own sound keeps the map's meaning: work a tick, coins out firmer, lifted and put down, a "no" none
+    for (const s of ['pick', 'sack', 'bolt', 'tray', 'crate', 'shelf'] as const) expect(felt(s), s).toEqual(d.HAPTICS.tick)
+    expect(felt('pay')).toEqual(d.HAPTICS.buy)
+    expect(felt('lift')).toEqual(d.HAPTICS.lift)
+    expect(felt('thud')).toEqual(d.HAPTICS.drop)
+    expect(felt('nope')).toBeNull()
     expect(felt('level')).toEqual(d.HAPTICS.level)
     for (const s of ['cluck', 'moo', 'baa', 'crow', 'bell', 'ding', 'chug', 'xp', 'creak', 'loom', 'garment', 'chime'] as const) expect(felt(s), s).toBeNull()
     // a sound both the farm and the player make is felt where the call says so (the hens collected), or not at all
