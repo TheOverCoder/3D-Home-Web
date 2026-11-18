@@ -7,6 +7,7 @@ import { useHome } from '../store'
 import { MusicPlayer } from './MusicPlayer'
 import { profile, setLightMode } from '../lib/profile'
 import { restartGraphics } from '../lib/startup'
+import { useLessMotion } from './still'
 
 function Segmented<T extends string>({ value, options, onChange, label }: { value: T; options: { value: T; label: string }[]; onChange: (v: T) => void; label: string }) {
   return (
@@ -67,6 +68,9 @@ const TOUCH: { action: string; how: string }[] = [
   { action: 'Jump', how: 'Jump button' },
 ]
 
+/** What Less motion says under its name: that it follows the device while it does, what it stills once chosen. */
+const MOTION_HINT: Record<Settings['motion'], string | undefined> = { device: 'Follows your device', less: 'No flights, confetti or walking sway', full: undefined }
+
 /** The settings (opened from the top corner's menu, src/ui/HudMode.tsx, or Esc): every control, shortcut and visual
  *  option in one place. */
 export function SettingsPanel() {
@@ -80,6 +84,7 @@ export function SettingsPanel() {
   const setQuality = useHome((s) => s.setQuality)
   const settings = useSettings()
   const update = (patch: Partial<Settings>) => settings.update(patch)
+  const still = useLessMotion()
   const closeRef = useRef<HTMLButtonElement>(null)
   const [copied, setCopied] = useState<'idle' | 'ok' | 'failed'>('idle')
   const copyReport = async () => {
@@ -173,6 +178,9 @@ export function SettingsPanel() {
                   <Toggle id="set-follow" label="Look where you walk" checked={settings.followMove} onChange={(followMove) => update({ followMove })} />
                 </Row>
               )}
+              <Row label="Less motion" hint={MOTION_HINT[settings.motion]}>
+                <Toggle id="set-motion" label="Less motion" checked={still} onChange={(less) => update({ motion: less ? 'less' : 'full' })} />
+              </Row>
             </section>
 
             <section>

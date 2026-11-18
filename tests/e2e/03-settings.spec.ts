@@ -75,4 +75,71 @@ test.describe('settings', () => {
     a = await audio()
     expect([a.buses.sfx.volume, a.buses.amb.volume, a.buses.amb.duck]).toEqual([1, 1, 0])
   })
+
+  test('less motion: chosen in Settings, nothing flies or animates and walking sway is off; it persists, and off brings motion back', async ({ game }) => {
+    // on the farm: its compass opens with a move, and its particles play
+    await game.ready('farm')
+    const { page } = game
+    const drawer = async (open: boolean) => {
+      if (open) await page.keyboard.press('Escape')
+      else await page.getByRole('button', { name: 'Close (Esc)' }).click()
+      await page.waitForFunction((open) => (window as any).__home.useHome.getState().settingsOpen === open, open, { timeout: 30_000 })
+    }
+    // what moves, read at once: <html data-motion>, the compass strip's opening, the stored choice, walking sway, and
+    // whether the particles' engine is up (it goes under less motion)
+    const look = () =>
+      page.evaluate(() => {
+        const strip = document.querySelector('.compass-strip')
+        return {
+          marked: document.documentElement.dataset.motion === 'less',
+          compass: strip ? getComputedStyle(strip).animationName : null,
+          motion: JSON.parse(localStorage.getItem('3d-home:settings:v1') ?? '{}').motion ?? 'device',
+          sway: (window as any).__home.settings.getState().headBob as boolean,
+        }
+      })
+    const fxUp = (up: boolean) => page.waitForFunction((up) => (window as any).__home.fx?.stats.loaded === up, up, { timeout: 60_000 })
+    await fxUp(true)
+    expect(await look()).toEqual({ marked: false, compass: 'compass-open', motion: 'device', sway: true })
+
+    await drawer(true)
+    const row = page.locator('#set-motion')
+    await expect(row).toHaveAttribute('aria-checked', 'false')
+    await expect(page.getByText('Follows your device')).toBeVisible()
+    await row.click()
+    await expect(row).toHaveAttribute('aria-checked', 'true')
+    await drawer(false)
+    expect(await look()).toEqual({ marked: true, compass: 'none', motion: 'less', sway: false })
+    // the particles' engine goes, and an effect asked for starts nothing
+    await fxUp(false)
+    const started = await page.evaluate(() => {
+      const fx = (window as any).__home.fx
+      fx.play('water', 0, 0.4, 0)
+      return fx.stats.started as number
+    })
+    await page.waitForTimeout(500)
+    expect(await page.evaluate(() => (window as any).__home.fx.stats.started)).toBe(started)
+
+    // a reload keeps it, still from the first frame
+    await bootApp(page)
+    expect(await look()).toMatchObject({ marked: true, compass: 'none', motion: 'less' })
+    await drawer(true)
+    await expect(page.locator('#set-motion')).toHaveAttribute('aria-checked', 'true')
+
+    // off: full motion, walking sway back, the particles again
+    await page.locator('#set-motion').click()
+    await expect(page.locator('#set-motion')).toHaveAttribute('aria-checked', 'false')
+    await drawer(false)
+    expect(await look()).toEqual({ marked: false, compass: 'compass-open', motion: 'full', sway: true })
+    await fxUp(true)
+    const before = await page.evaluate(() => {
+      const fx = (window as any).__home.fx
+      fx.play('water', 0, 0.4, 0)
+      return fx.stats.started as number
+    })
+    await page.waitForFunction((n) => (window as any).__home.fx.stats.started > n, before, { timeout: 30_000, polling: 100 })
+
+    // left to the device again, as later tests expect
+    await page.evaluate(() => (window as any).__home.settings.getState().update({ motion: 'device', headBob: true }))
+    expect(await look()).toEqual({ marked: false, compass: 'compass-open', motion: 'device', sway: true })
+  })
 })
