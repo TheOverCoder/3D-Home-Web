@@ -414,6 +414,21 @@ describe('a save broken or edited by hand', () => {
     expect(without(savedNow(), 'ledger')).toEqual(without(loaded, 'ledger'))
   })
 
+  it("the neighbours' friendships: kept as saved; a farm from before them has met no one; broken, made safe and the rest as it was", () => {
+    expect(farm.friends).toEqual({})
+    startFrom(without(played, 'friends'))
+    expect(farm.friends).toEqual({})
+    expect(without(savedNow(), 'friends')).toEqual(without(loaded, 'friends'))
+    const friends = { baker: { points: 9, told: 1 }, child: { points: 3, told: 0 } }
+    startFrom({ ...played, friends })
+    expect(farm.friends).toEqual(friends)
+    expect(savedNow().friends).toEqual(friends)
+    // points below nothing, more hearts told than reached, someone not a neighbour, a friendship that is a word
+    startFrom({ ...played, friends: { baker: { points: -2, told: 4 }, manager: { points: 5, told: 0 }, teacher: 'yes', knitter: { points: Infinity, told: 9 } } })
+    expect(farm.friends).toEqual({ baker: { points: 0, told: 0 }, knitter: { points: 0, told: 0 } })
+    expect(without(savedNow(), 'friends')).toEqual(without(loaded, 'friends'))
+  })
+
   it('a buyer in line saved before the people engine (a hat yes or no, three hair styles) loads as they were', () => {
     const queue = played.queue as Save[]
     const look = { shirt: '#5c8a4a', trousers: '#5a4636', skin: '#f1c7a5', hair: '#b9b2a8', hairStyle: 2, hat: true, height: 1.02 }

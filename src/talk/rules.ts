@@ -1,10 +1,11 @@
-import { TALK, TALK_GAP, type TalkMoment } from './lines'
+import { TALK, TALK_GAP, type Line, type TalkMoment } from './lines'
 
 // When a character may say a line (./lines.ts), as a rule that reads only what it is given: never where speech is not
 // available, never muted (the game's sound off or at nothing, or not started yet: a page speaks only after a touch),
 // never over a film or the drive (or with the page hidden), only on your map and near you, never sooner than the
 // moment's own wait or the gap after any line (an answer to you excepted from the gap, and from a line being said), and
-// then only on the moment's chance.
+// then only on the moment's chance. Which line: one their hearts have opened (a neighbour's grow with friendship), never
+// the one said last time for that moment.
 
 /** What the game is like when a moment comes. */
 export interface TalkWorld {
@@ -47,12 +48,15 @@ export function mayTalk(moment: TalkMoment, w: TalkWorld, memory: TalkMemory, ro
   return roll < row.chance
 }
 
-/** The line to say for `moment` (never the one said last time for it, where it has more), and kept as said now. */
-export function nextLine(moment: TalkMoment, memory: TalkMemory, now: number, roll: number): string {
-  const lines = TALK[moment].lines
+/** The line to say for `moment`: one of those open at `hearts` (a neighbour's friendship; a line with none is open
+ *  from the first meeting), never the one said last time for it where more are open; kept as said now. */
+export function nextLine(moment: TalkMoment, memory: TalkMemory, now: number, roll: number, hearts = 0): Line {
+  const lines: readonly Line[] = TALK[moment].lines
+  const open = lines.flatMap((l, k) => ((l.hearts ?? 0) <= hearts ? [k] : []))
   const before = memory.moments[moment]?.line ?? -1
-  let k = Math.min(lines.length - 1, Math.floor(roll * lines.length))
-  if (k === before && lines.length > 1) k = (k + 1) % lines.length
+  let i = Math.min(open.length - 1, Math.floor(roll * open.length))
+  if (open[i] === before && open.length > 1) i = (i + 1) % open.length
+  const k = open[i]
   memory.moments[moment] = { at: now, line: k }
   memory.last = now
   return lines[k]

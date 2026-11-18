@@ -202,10 +202,15 @@ The README has the overview; `tests/README.md` what each test guards.
   (`spaceAt`), the walk-to, the footsteps and the woods' clearing all follow from the row; every floor and every inner
   face that looks at the sun must be inside the sun's shadow box (`buildings.test.ts` fails otherwise), and `16-view`
   makes its poses from the row.
-- A new character is a roll of the people engine (`rollLook`, `src/models/look.ts`; one who always looks the same:
-  overrides) and a movement script (`src/farm/script.ts`). A look is saved as its traits, never as the roll.
-  Characters speak with the device's own voices (`src/talk`: their lines as data, `rules.ts` for when — never
-  muted, near, rare, never over a film or the drive). A big moment may open a film (`src/film/films.ts`: the shop's
+- A new character is a row of `PEOPLE` (`src/data/people.ts`: a name, a look — a roll of the people engine,
+  `rollLook` in `src/models/look.ts`, over overrides on dice of their own —, a voice, a portrait drawn from their own
+  model by `node scripts/render-item-art.mjs --people`) and a movement script (`src/farm/script.ts`); whatever draws
+  or voices them reads the row. A look is saved as its traits, never as the roll. Anyone's face in the interface is a
+  `Portrait` (`src/ui/Portrait.tsx`; the farmer's are his moods' faces). Characters speak with the device's own
+  voices (`src/talk`: their lines as data, each a `Line` — who, the words, the face, the hearts it opens at —,
+  `rules.ts` for when — never muted, near, rare, never over a film or the drive — and never a word of guilt or hurry,
+  `kind.ts`). A neighbour's friendship only grows (`src/farm/people/friends.ts`, `farm.friends`): `befriend` is one
+  line in each sale and send path, and gives no XP. A big moment may open a film (`src/film/films.ts`: the shop's
   purchase plays its film once, a tap skips it to its end card; the lab's film boards play the same code).
 - What keeps hours is a row in `HOURS` (day phases, or hours from and to: the estate office's 8–16); the day's phases and their light are `DAY`. The light changes only the colour
   and strength of the lights there are. Tests stand at noon with the clock stopped (`helpers.ts`, `ready()`).
