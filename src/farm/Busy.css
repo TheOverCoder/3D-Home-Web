@@ -6,5 +6,7 @@
 .busy-card-title { font: 600 17px/1.2 var(--font-display); white-space: nowrap; }
 .busy-card-when { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px 2px 3px; border-radius: 999px; background: var(--paper-2); font: 700 15px/1 var(--font-text); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .busy-card-when img { width: 26px; height: 26px; }
+.busy-card-when.last { padding: 2px 3px; }
+.busy-card-moon { display: inline-block; width: 22px; height: 22px; margin: 0 2px -4px 0; }
 @keyframes busy-in { from { opacity: 0; transform: translateY(-6px) scale(0.92); } }
 :where(:root[data-motion='less']) .busy-card { animation: none; }

@@ -148,7 +148,7 @@ export function HudMode() {
                     <span className="top-dial-btn">
                       <span className="top-dial-word">Next ready {whenReady(next.ready)}</span>
                       <span className="top-dial-icon">
-                        <img className="art" src={iconUrl(next.what.item)} alt="" />
+                        <img className="art" src={iconUrl(next.what.item)} alt="" width={30} height={30} />
                       </span>
                     </span>
                   </m.li>

@@ -90,7 +90,7 @@ export function BusyCard() {
   }, [busy, free, none, words])
 
   useEffect(() => {
-    if (force) setWords(busyCardWords() ?? { title: 'Busy till 21:40', soonest: SAMPLE.soonest, longest: SAMPLE.longest, until: '21:40' })
+    if (force) setWords(busyCardWords() ?? { title: 'Busy till tomorrow 07:40', soonest: SAMPLE.soonest, longest: SAMPLE.longest, until: '07:40', night: true })
   }, [force])
 
   useEffect(() => {
@@ -107,15 +107,18 @@ export function BusyCard() {
     <TopSlot name="busy">
       <div className="busy-card" role="status" aria-label={`${words.title}: ${name(words.soonest)} first, ${whenReady(words.soonest.ready)}`}>
         <img className="art busy-card-art" src={art('hourglass-done')} alt="" draggable={false} />
-        <span className="busy-card-title">{words.title}</span>
+        <span className="busy-card-title">
+          Busy till {words.night && <img className="busy-card-moon" src={art('crescent-moon')} alt="tomorrow" draggable={false} />}
+          {words.until}
+        </span>
+        {/* the soonest with its time; the longest with its picture (its time is the title's) */}
         <span className="busy-card-when">
           <img src={pic(words.soonest)} alt="" draggable={false} />
           {whenReady(words.soonest.ready)}
         </span>
         {words.longest !== words.soonest && (
-          <span className="busy-card-when">
-            <img src={pic(words.longest)} alt="" draggable={false} />
-            {whenReady(words.longest.ready)}
+          <span className="busy-card-when last">
+            <img src={pic(words.longest)} alt={name(words.longest)} draggable={false} />
           </span>
         )}
       </div>

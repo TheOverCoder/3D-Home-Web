@@ -86,6 +86,14 @@ describe('the farm busy', () => {
     expect(w.soonest.what).toEqual({ item: 'lettuce' })
     expect(w.longest.ready).toBeGreaterThanOrEqual(cropById('pumpkin').growSeconds - 1e-6)
     expect(w.title).toMatch(/^Busy till \d\d:\d\d$/)
+    expect(w.night).toBe(false)
+    expect(w.title).toBe(`Busy till ${w.until}`)
+    // a night's crop: tomorrow's time, the word left to the card's moon
+    plant(owned()[2], 'cotton')
+    const n = busyWords(farm, now, undefined, 'en-GB')!
+    expect(n.night).toBe(true)
+    expect(n.until).toBe('05:00')
+    expect(n.title).toBe('Busy till tomorrow 05:00')
     resetFarm()
     for (const p of Object.values(farm.producers)) p.stock = p.stock.map(() => 99)
     expect(busyWords(farm, now)).toBeNull()

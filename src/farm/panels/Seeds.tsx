@@ -24,8 +24,17 @@ export const LONG_CROP = 3600
 /** How long a crop grows now (the week's events: the harvest festival's crops grow twice as fast), in real seconds. */
 const growing = (c: CropDef) => c.growSeconds / eventSpeed('crops')
 
-/** What a packet's time says: how long (45 s, 20 min), or for a long crop when it will be ready (21:40, tomorrow 07:10). */
-export const packetTime = (c: CropDef, now = Date.now()) => (c.growSeconds >= LONG_CROP ? readyAt(growing(c), now) : span(growing(c)))
+/** What a packet's time says: how long (45 s, 20 min), or for a long crop when it will be ready, on the device's clock
+ *  (21:40; the moon for tomorrow's, 07:10: a night's crop — a chip's room on a phone has no space for the word). */
+export function packetTime(c: CropDef, now = Date.now()): { text: string; night: boolean } {
+  if (c.growSeconds < LONG_CROP) return { text: span(growing(c)), night: false }
+  const at = readyAt(growing(c), now)
+  if (at.startsWith(TOMORROW)) return { text: at.slice(TOMORROW.length), night: true }
+  // (past tomorrow its weekday: none of the crops grows that long, but a festival's speed never makes it so)
+  return /^\d/.test(at) ? { text: at, night: false } : { text: span(growing(c)), night: false }
+}
+/** How readyAt (src/lib/time.ts) begins a time of tomorrow. */
+const TOMORROW = 'tomorrow '
 
 /** A seed packet: its picture, its name, how long it grows and what its seeds cost (a key on a computer) — or, not open
  *  yet at the farm's level, faded with the level it opens at across its corner (a tap shakes it). */
@@ -38,10 +47,15 @@ function SeedCard({ c, k, perBed, onChoose }: { c: CropDef; k: number | null; pe
       {farm.inv[c.id]}
     </span>
   )
+  const when = packetTime(c)
   const time = (
-    <span className="tag" title={c.growSeconds >= LONG_CROP ? `Grows ${span(growing(c))}` : undefined}>
-      <Clock weight="bold" />
-      {packetTime(c)}
+    <span
+      className="tag"
+      title={c.growSeconds >= LONG_CROP ? `Grows ${span(growing(c))}, ready ${when.night ? 'tomorrow ' : ''}${when.text}` : undefined}
+      aria-label={c.growSeconds >= LONG_CROP ? `ready ${when.night ? 'tomorrow ' : ''}${when.text}` : undefined}
+    >
+      {when.night ? <img src={art('crescent-moon')} alt="" /> : <Clock weight="bold" />}
+      {when.text}
     </span>
   )
   if (lock !== null)
