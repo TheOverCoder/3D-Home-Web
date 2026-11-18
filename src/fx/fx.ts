@@ -1,4 +1,5 @@
 import { profile } from '../lib/profile'
+import { lessMotion } from '../ui/still'
 
 // Small effects on the farm, asked for beside the sounds: a splash of water on each bed you water, a pop of sparkles
 // on what you harvest (in its colour), a puff of dust where a bed or a field is built and where a piece of furniture
@@ -35,8 +36,8 @@ export interface FxRequest {
  *  surprises shown. */
 export const fxStats = { loaded: false, started: 0, alive: 0, coins: 0, items: 0, xp: 0 }
 
-/** The player asked their system for less motion: no particles, no flying coins. */
-export const reducedMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+/** Less motion (the game's setting, or the device's: src/ui/still.ts): no particles, no flying coins. */
+export const reducedMotion = lessMotion
 
 /** Whether effects are drawn at all on this device, for this player. */
 export const effectsOn = () => profile.particles > 0 && !reducedMotion()

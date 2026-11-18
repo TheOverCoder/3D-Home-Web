@@ -1,4 +1,5 @@
-import { animate, m, useMotionValue, useReducedMotion } from 'motion/react'
+import { animate, m, useMotionValue } from 'motion/react'
+import { useLessMotion } from '../../ui/still'
 import { useEffect } from 'react'
 import { MACHINE_LEVELS, type LevelBoost, type LevelView } from '../machineView'
 import { art } from '../../ui/art'
@@ -34,7 +35,7 @@ const ROWS: { key: keyof LevelBoost; label: string; pic: string; xp?: boolean; s
 ]
 
 export function LevelPage({ level, queued, name }: { level: LevelView; queued: number; name: string }) {
-  const still = useReducedMotion()
+  const still = useLessMotion()
   const top = level.next === null
   const start = MACHINE_LEVELS[level.n - 1]?.minutes ?? 0
   const span = top ? 1 : level.next! - start

@@ -18,6 +18,7 @@ import { openEdit, stopDecorating, useDecorate } from '../home/decorate'
 import { coarsePointer } from '../lib/device'
 import { focus } from '../lib/focus'
 import { playGesture } from '../lib/gestures'
+import { lessMotion } from '../ui/still'
 import { findActions, findFar, findStatus, findTag, interactable, triggerInteraction, type ActionIcon, type ViewRay } from '../lib/interaction'
 import { addLook, look, look as lookState, stepTurn, stopTurn } from '../lib/look'
 import { resume } from '../lib/startup'
@@ -56,7 +57,6 @@ const ACC_60 = 0.18
 const DEC_60 = 0.26
 const GRIP = 0.5
 const perFrame = (base: number, fps: number) => Math.min(1, (1 - Math.pow(1 - base * GRIP, 60 / fps)) / GRIP)
-const reducedMotion = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
 
 /** Walking rhythm shared by the footsteps and the head bob: one step per π of phase; the foot strikes at the bottom of the bob. */
 const gait = { phase: 0, step: 0 }
@@ -621,7 +621,7 @@ function CameraRig({ ecctrl, feet }: { ecctrl: RefObject<EcctrlHandle | null>; f
     const fb = focusBlend.current
     const def = state.screen ? screenById(state.screen) : undefined
     if (def) fb.def = def
-    spring(fb, def ? 1 : 0, reducedMotion ? 14 : 4.2, dt)
+    spring(fb, def ? 1 : 0, lessMotion() ? 14 : 4.2, dt)
     const k = MathUtils.smoothstep(MathUtils.clamp(fb.x, 0, 1), 0, 1)
     if (fb.def && k > 1e-3) {
       const sd = fb.def

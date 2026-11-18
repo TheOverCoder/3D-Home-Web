@@ -142,7 +142,7 @@
   .unlocked .unlock-face .art { width: 72px; height: 72px; }
   .unlocked .unlock-face b { font-size: 16px; }
 }
-@media (prefers-reduced-motion: reduce) {
+:where(:root[data-motion='less']) {
   .unlocked-rays,
   .unlocked .unlock-bob,
   .unlocked .unlock-face::after { animation: none; }

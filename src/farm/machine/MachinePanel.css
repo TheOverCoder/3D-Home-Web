@@ -242,7 +242,7 @@
 .mp-middle .mp-places { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 
 /* ── loops, for whoever does not prefer less motion ── */
-@media (prefers-reduced-motion: no-preference) {
+:where(:root:not([data-motion='less'])) {
   .mp-place.working .mp-bob .art { animation: mp-bob 1.6s ease-in-out infinite; }
   .mp-place.done::after { animation: mp-glow 1.8s ease-in-out infinite; }
   .mp-places.inviting .mp-place.empty::after { animation: mp-glow 1.1s ease-in-out infinite; }

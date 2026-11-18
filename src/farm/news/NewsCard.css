@@ -31,7 +31,7 @@
 /* on now: a live dot that breathes */
 .news-card .nw-live { position: relative; flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--leaf); }
 .news-card .nw-live::after { content: ''; position: absolute; inset: 0; border-radius: 50%; background: var(--leaf); opacity: 0; }
-@media (prefers-reduced-motion: no-preference) {
+:where(:root:not([data-motion='less'])) {
   .news-card .nw-live::after { animation: nw-live 1.8s ease-out infinite; }
 }
 @keyframes nw-live { from { opacity: 0.6; transform: scale(1); } to { opacity: 0; transform: scale(2.6); } }
@@ -58,7 +58,7 @@
 /* its time running out: a bar along its foot, the share still to come, filling in as the page opens */
 .news-card .nw-time { position: absolute; left: 14px; right: 14px; bottom: 8px; height: 5px; border-radius: 3px; background: var(--paper-3); overflow: hidden; }
 .news-card .nw-time::before { content: ''; position: absolute; inset: 0; border-radius: inherit; background: var(--tone); transform-origin: 0 50%; transform: scaleX(var(--share)); }
-@media (prefers-reduced-motion: no-preference) {
+:where(:root:not([data-motion='less'])) {
   .news-card .nw-time::before { animation: nw-time 0.9s 0.35s var(--ease-sheet) both; }
 }
 @keyframes nw-time { from { transform: scaleX(0); } }
@@ -66,7 +66,7 @@
 .news-card .tag.nw-effect { padding: 5px 10px; background: color-mix(in srgb, var(--tone) 20%, #fff); color: var(--ink); font: 800 13px/1.15 var(--font-text); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--tone) 55%, transparent); }
 /* not shown before: a berry pill that pops in */
 .news-card .nw-new { padding: 3px 8px; border-radius: 999px; background: var(--berry); color: #fff; font: 800 13px/1 var(--font-text); box-shadow: 0 2px 0 var(--berry-lip); }
-@media (prefers-reduced-motion: no-preference) {
+:where(:root:not([data-motion='less'])) {
   .news-card .nw-new { animation: pop 0.45s 0.5s var(--ease-pop) both; }
 }
 
@@ -98,7 +98,7 @@
 .news-card .nw-bulbs { display: flex; gap: 11px; }
 .news-card .nw-bulbs i { width: 9px; height: 9px; border-radius: 50%; background: color-mix(in srgb, var(--sun) 45%, var(--berry-lip)); box-shadow: inset 0 -1px 1px rgba(0, 0, 0, 0.25); }
 .news-card .done .nw-bulbs i { background: var(--sun); box-shadow: 0 0 8px 1px color-mix(in srgb, var(--sun) 80%, transparent), inset 0 1px 1px #fff; }
-@media (prefers-reduced-motion: no-preference) {
+:where(:root:not([data-motion='less'])) {
   .news-card .idle .nw-bulbs i { animation: nw-twinkle 2.4s ease-in-out infinite; animation-delay: calc(var(--i) * 0.27s); }
   .news-card .spin .nw-bulbs i { animation: nw-chase 0.5s steps(1) infinite; animation-delay: calc(var(--i) * -0.055s); }
 }
@@ -128,7 +128,7 @@
 .news-card .nw-cell .art { width: 54px; height: 54px; filter: drop-shadow(0 2px 1px rgba(60, 30, 10, 0.25)); }
 .news-card .nw-cell.ask b { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 14px; background: var(--paper-2); color: var(--leaf); font: 700 34px/1 var(--font-display); box-shadow: inset 0 -3px 0 var(--paper-3); }
 /* a good landing: it squashes into its place and springs back */
-@media (prefers-reduced-motion: no-preference) {
+:where(:root:not([data-motion='less'])) {
   .news-card .spin .nw-cell.won .art,
   .news-card .done .nw-cell.won .art { animation: nw-land 0.45s var(--ease-pop); }
 }

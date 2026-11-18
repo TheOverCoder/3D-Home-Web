@@ -1,4 +1,5 @@
-import { AnimatePresence, m, useAnimate, useReducedMotion } from 'motion/react'
+import { AnimatePresence, m, useAnimate } from 'motion/react'
+import { useLessMotion } from './still'
 import { ToggleGroup } from 'radix-ui'
 import { useRef, useState, type ReactNode } from 'react'
 import { SLOTS, currentSlot, deleteSlot, exportSlot, importSlot, slotSummary, switchSlot, useFarm, type Slot } from '../farm/state'
@@ -215,7 +216,7 @@ export function SavesPanel({ onPlay }: { onPlay: () => void }) {
  */
 export function HoldToClear({ onDone, label, children }: { onDone: () => void; label: string; children: ReactNode }) {
   const [scope, animate] = useAnimate<HTMLButtonElement>()
-  const still = useReducedMotion()
+  const still = useLessMotion()
   const [held, setHeld] = useState(false)
   const run = useRef<ReturnType<typeof animate> | null>(null)
   const start = () => {

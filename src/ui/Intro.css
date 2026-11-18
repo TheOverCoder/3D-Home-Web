@@ -15,7 +15,7 @@
   88% { opacity: 0.8; }
   100% { transform: translate(-6px, -100vh); opacity: 0; }
 }
-@media (prefers-reduced-motion: reduce) { .intro-motes { display: none; } }
+:where(:root[data-motion='less']) { .intro-motes { display: none; } }
 
 /* the game's name, white in a thick ink line (also the loading screen's: ./Loading.css) */
 .game-name { display: flex; flex-direction: column; align-items: center; text-align: center; }
@@ -184,11 +184,11 @@
 @keyframes intro-spin { to { rotate: 360deg; } }
 @keyframes intro-turn { to { transform: rotate(1turn); } }
 @keyframes intro-run { to { background-position: 23px 0, 0 0; } }
-@media (prefers-reduced-motion: no-preference) {
+:where(:root:not([data-motion='less'])) {
   .intro-menu .intro-sun i { animation: intro-turn 40s linear infinite; }
   .intro-menu .intro-go-fill { animation: intro-run 0.9s linear infinite; }
 }
-@media (prefers-reduced-motion: reduce) {
+:where(:root[data-motion='less']) {
   .intro-menu .intro-house .art,
   .intro-menu .intro-go::after,
   .intro-menu .intro-eq i,

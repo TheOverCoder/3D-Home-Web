@@ -37,7 +37,7 @@
 .film-bars.out i:first-child { transform: translateY(-100%); }
 .film-bars.out i:last-child { transform: translateY(100%); }
 @keyframes film-bar-in { from { transform: translateY(var(--from)); } }
-@media (prefers-reduced-motion: reduce) { .film-bars i { transition: none; animation: none; } }
+:where(:root[data-motion='less']) { .film-bars i { transition: none; animation: none; } }
 
 /* Skip and the sound: small paper pills in the picture's top corners */
 .film-sound, .film-skip { position: absolute; top: calc(var(--bar-top) + 10px); z-index: 3; gap: 6px; opacity: 0.92; box-shadow: 0 2px 0 var(--paper-3), 0 6px 16px rgba(0, 0, 0, 0.35); }
@@ -64,7 +64,7 @@
 /* the words come up as they are said (the speaker's voice reads the line); the line keeps its size from the start */
 .film-text > span { transition: opacity 0.1s ease-out; }
 .film-text > .film-unsaid { opacity: 0; }
-@media (prefers-reduced-motion: reduce) { .film-text > span { transition: none; } }
+:where(:root[data-motion='less']) { .film-text > span { transition: none; } }
 .film-bubble.mood-smug .film-text { font-style: italic; }
 .film-bubble.mood-shock .film-text { font-size: 22px; letter-spacing: 0.02em; }
 .film-bubble.mood-sad { background: var(--paper-2); }
@@ -87,7 +87,8 @@
 .film-sparkles { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
 .film-sparkles img { position: absolute; width: 52px; height: 52px; margin: -26px 0 0 -26px; animation: film-sparkle 1.2s var(--ease-pop) both; }
 @keyframes film-sparkle { 0% { transform: scale(0) rotate(-30deg); opacity: 0; } 40% { transform: scale(1.15) rotate(0); opacity: 1; } 100% { transform: scale(0.2) rotate(25deg); opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .film-sparkles img { animation: film-fade 1.2s ease both; } @keyframes film-fade { 50% { opacity: 1; } from, to { opacity: 0; } } }
+:where(:root[data-motion='less']) { .film-sparkles img { animation: film-fade 1.2s ease both; } }
+@keyframes film-fade { 50% { opacity: 1; } from, to { opacity: 0; } }
 
 /* ───────── the end card: what the player got, as progress ───────── */
 .film-end { position: absolute; inset: 0; z-index: 4; display: grid; place-items: center; overflow: auto;
@@ -147,7 +148,7 @@
 
 .film-card-buttons { display: flex; gap: 10px; width: 100%; margin-top: 2px; }
 .film-card-buttons .btn { flex: 1; gap: 6px; padding: 0 12px; white-space: nowrap; }
-@media (prefers-reduced-motion: reduce) { .film-card-rays { animation: none; } }
+:where(:root[data-motion='less']) { .film-card-rays { animation: none; } }
 
 /* sideways on a phone: the picture and the title on the left, the progress and the buttons on the right */
 @media (orientation: landscape) and (max-height: 500px) {

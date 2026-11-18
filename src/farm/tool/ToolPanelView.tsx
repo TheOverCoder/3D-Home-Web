@@ -1,10 +1,11 @@
-import { AnimatePresence, animate, m, useAnimate, useReducedMotion } from 'motion/react'
+import { AnimatePresence, m, useAnimate } from 'motion/react'
+import { useLessMotion } from '../../ui/still'
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { art } from '../../ui/art'
 import { flyGoods } from '../../ui/fly'
 import { ArrowRight, Check, Clock, PaintBrush } from '../../ui/glyphs'
 import { GoodPic } from '../../ui/GoodPic'
-import { DID, FLIP, ITEM, MotionRoot, NOPE, PRESS, REVEAL, SQUISH } from '../../ui/motion'
+import { FLIP, ITEM, MotionRoot, PRESS, REVEAL, SQUISH, did, nope } from '../../ui/motion'
 import { PanelSheet } from '../../ui/PanelSheet'
 import { Coins } from '../../ui/Shell'
 import { produceById } from '../data'
@@ -60,7 +61,6 @@ const cap = (t: string) => t[0].toUpperCase() + t.slice(1)
 type Tap = (spot: number | undefined, from: Element | null) => void
 
 function Panel({ v, act, coins, onClose, near, closing }: ToolPanelProps) {
-  const still = useReducedMotion()
   const good = produceById(v.good)
   const chip = useRef<HTMLSpanElement>(null)
   // goods taken and still flying into the barn's chip: it counts up as each lands
@@ -82,9 +82,9 @@ function Panel({ v, act, coins, onClose, near, closing }: ToolPanelProps) {
     const before = spot === undefined ? all : (v.spots[spot]?.has ?? 0)
     const n = act.tap(spot)
     if (!n) {
-      if (from && !still) void animate(from, NOPE.keyframes, NOPE.options)
+      nope(from)
       if (before > 0) {
-        if (chip.current && !still) void animate(chip.current, NOPE.keyframes, NOPE.options)
+        nope(chip.current)
         say(
           'bad',
           <>
@@ -109,7 +109,7 @@ function Panel({ v, act, coins, onClose, near, closing }: ToolPanelProps) {
       duration: 460,
       landed: (_, k) => {
         setFlying((f) => Math.max(0, f - k))
-        if (chip.current && !still) void animate(chip.current, DID.keyframes, DID.options)
+        did(chip.current)
       },
     })
     say(
@@ -296,7 +296,7 @@ function Vessel({ v, all, tap }: { v: ToolView; all: number; tap: Tap }) {
   const most = v.spots.reduce((a, sp) => a + sp.most, 0)
   const good = produceById(v.good)
   const [snip, cut] = useAnimate<HTMLSpanElement>()
-  const still = useReducedMotion()
+  const still = useLessMotion()
   return (
     <m.button
       data-target
@@ -378,7 +378,7 @@ function Upgrade({ l, coins, onOpen }: { l: ToolView['ladders'][number]; coins: 
   useEffect(() => {
     if (l.k > was.current && scope.current) {
       void play(scope.current, FLIP.keyframes, FLIP.options)
-      void play(scope.current, DID.keyframes, DID.options)
+      did(scope.current)
     }
     was.current = l.k
   }, [l.k, play, scope])

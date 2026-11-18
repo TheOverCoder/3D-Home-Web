@@ -166,7 +166,7 @@
 @keyframes level-card-shine { 0% { translate: -110% 0; } 30%, 100% { translate: 110% 0; } }
 @keyframes level-card-ask { 50% { box-shadow: 0 4px 0 var(--sun-lip), 0 8px 16px rgba(40, 24, 10, 0.2), 0 0 0 7px color-mix(in oklab, var(--sun) 30%, transparent); } }
 @keyframes level-card-wiggle { 0%, 70%, 100% { rotate: 0deg; } 76% { rotate: -10deg; } 82% { rotate: 9deg; } 88% { rotate: -6deg; } 94% { rotate: 3deg; } }
-@media (prefers-reduced-motion: reduce) {
+:where(:root[data-motion='less']) {
   .level-card .lf-stripes,
   .level-card .lf-box-glow,
   .level-card .lf-next-light,

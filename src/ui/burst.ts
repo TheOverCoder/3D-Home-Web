@@ -1,4 +1,5 @@
 import confetti from 'canvas-confetti'
+import { lessMotion } from './still'
 
 // A burst of confetti in the game's colours (canvas-confetti): for a moment worth celebrating — a level reached, a goal
 // done — once per screen, never for every press. From a point on the screen or from the middle of an element. Nothing
@@ -7,7 +8,7 @@ import confetti from 'canvas-confetti'
 const TOKENS = ['--sun', '--xp', '--leaf', '--berry', '--paper']
 
 export function burst(at: Element | { x: number; y: number }, o: { count?: number; spread?: number; power?: number; up?: boolean } = {}) {
-  if (typeof window === 'undefined' || matchMedia('(prefers-reduced-motion: reduce)').matches) return
+  if (typeof window === 'undefined' || lessMotion()) return
   const p = at instanceof Element ? middle(at) : at
   const css = getComputedStyle(document.documentElement)
   const colors = TOKENS.map((t) => css.getPropertyValue(t).trim()).filter(Boolean)

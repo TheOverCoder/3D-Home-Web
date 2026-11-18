@@ -307,7 +307,7 @@
 .ob-flights { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
 .ob-flights img { position: absolute; left: 0; top: 0; width: 36px; height: 36px; filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.25)); }
 
-@media (prefers-reduced-motion: reduce) {
+:where(:root[data-motion='less']) {
   .ob-pegs i.soon { animation: none; }
 }
 

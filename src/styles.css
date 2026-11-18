@@ -196,7 +196,7 @@ button:focus-visible { outline: 3px solid var(--sun); outline-offset: 2px; }
 .stars::before, .stars::after { content: ''; position: absolute; z-index: -1; width: 9px; height: 9px; background: var(--sun); clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); opacity: 0.6; pointer-events: none; }
 .stars::before { left: 46%; top: 12px; }
 .stars::after { left: 64%; bottom: 12px; width: 7px; height: 7px; }
-@media (prefers-reduced-motion: no-preference) {
+:where(:root:not([data-motion='less'])) {
   .stars::before, .stars::after { animation: twinkle 2.8s ease-in-out infinite; }
   .stars::after { animation-delay: 1.3s; }
 }
@@ -410,7 +410,7 @@ a:focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; border-rad
 @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 
-@media (prefers-reduced-motion: reduce) {
+:where(:root[data-motion='less']) {
   * { animation: none !important; transition: none !important; }
 }
 
@@ -594,7 +594,7 @@ a:focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; border-rad
 .drive-film-skip { position: absolute; top: calc(var(--bar-top) + 10px); right: calc(env(safe-area-inset-right, 0px) + 12px); gap: 6px; opacity: 0.92; box-shadow: 0 2px 0 var(--paper-3), 0 6px 16px rgba(0, 0, 0, 0.35); transition: opacity 0.3s; }
 .drive-film:not(.lifted) .drive-film-skip { opacity: 0; }
 .drive-film.still .drive-film-bars i { transition: none; }
-@media (prefers-reduced-motion: reduce) { .drive-film-bars i { transition: none; } }
+:where(:root[data-motion='less']) { .drive-film-bars i { transition: none; } }
 /* (everything in the page — the interface, what it puts at the top, any sheet, the curtain — but the game's canvas and
    the film's layer, at once both ways) */
 :root[data-film] body > * { visibility: hidden; }
@@ -881,14 +881,14 @@ button.farm-chip-item:focus-visible { outline: 3px solid var(--sun); outline-off
 .farm-chip-item.store img { width: 32px; height: 32px; margin-inline-start: -2px; }
 .farm-chip-item.store.full { border-color: rgba(255, 128, 104, 0.75); color: #ffc4b8; }
 /* a count that goes up hops, its rim lit in sun yellow for a moment */
-@media (prefers-reduced-motion: no-preference) {
+:where(:root:not([data-motion='less'])) {
   .farm-chip-item.hop-a { animation: hop-a 0.5s var(--ease-pop); }
   .farm-chip-item.hop-b { animation: hop-b 0.5s var(--ease-pop); }
 }
 @keyframes hop-a { 35% { transform: scale(1.16); border-color: var(--sun); } }
 @keyframes hop-b { 35% { transform: scale(1.16); border-color: var(--sun); } }
 /* a count that goes down (coins spent, goods sent off) dips for a moment, its rim warm: where they went from */
-@media (prefers-reduced-motion: no-preference) {
+:where(:root:not([data-motion='less'])) {
   .farm-chip-item.dip-a { animation: dip-a 0.4s var(--ease-pop); }
   .farm-chip-item.dip-b { animation: dip-b 0.4s var(--ease-pop); }
 }
@@ -1276,7 +1276,7 @@ button.farm-chip-item:focus-visible { outline: 3px solid var(--sun); outline-off
 .remote-back svg { width: 18px; height: 18px; }
 .remote-word { display: inline-flex; align-items: center; gap: 5px; min-height: 36px; padding: 0 12px 0 9px; border-radius: 999px; font: 700 14px/1 var(--font-text); letter-spacing: 0.02em; }
 .remote-word svg { width: 17px; height: 17px; color: var(--sun); }
-@media (prefers-reduced-motion: no-preference) {
+:where(:root:not([data-motion='less'])) {
   .remote-cast { animation: remote-cast 1.6s ease-out 0.4s 2; }
 }
 @keyframes remote-cast { 0% { opacity: 1; } 40% { opacity: 0.35; } 100% { opacity: 1; } }

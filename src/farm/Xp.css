@@ -21,7 +21,7 @@
 .farm-chip-item.level .xp-gift { width: 28px; height: 28px; margin-inline-start: 0; }
 /* its glow breathes (an opacity on a layer of its own: nothing is painted again while it waits) */
 .farm-chip-item.level.ready::before { content: ''; position: absolute; inset: -2px; border-radius: inherit; box-shadow: 0 0 22px 5px color-mix(in srgb, var(--sun) 70%, transparent); opacity: 0; pointer-events: none; }
-@media (prefers-reduced-motion: no-preference) {
+:where(:root:not([data-motion='less'])) {
   .farm-chip-item.level.ready::before { animation: xp-ready 1.6s ease-in-out infinite; }
 }
 @keyframes xp-ready { 50% { opacity: 1; } }
@@ -98,7 +98,7 @@
 @keyframes level-up-in { from { opacity: 0; transform: scale(0.4); } }
 @keyframes level-up-out { to { opacity: 0; transform: translateY(-12px); } }
 /* asked for less motion: the number only, still, for the same time */
-@media (prefers-reduced-motion: reduce) {
+:where(:root[data-motion='less']) {
   .level-up-flash,
   .level-up-ring { display: none; }
 }
@@ -140,7 +140,7 @@
 @keyframes garment-in { from { opacity: 0; transform: scale(0.6); } }
 @keyframes garment-bounce { from { opacity: 0; transform: scale(0.2) rotate(-25deg); } }
 @keyframes garment-rays { from { opacity: 0; transform: rotate(0deg) scale(0.6); } 15% { opacity: 1; } to { opacity: 0.5; transform: rotate(120deg) scale(1); } }
-@media (prefers-reduced-motion: reduce) {
+:where(:root[data-motion='less']) {
   .garment-show-rays { display: none; }
   .garment-show,
   .garment-show .garment-pic { animation: none; }

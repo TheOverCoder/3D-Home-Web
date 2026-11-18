@@ -1,4 +1,5 @@
-import { AnimatePresence, m, useAnimate, useDragControls, useReducedMotion, type PanInfo } from 'motion/react'
+import { AnimatePresence, m, useAnimate, useDragControls, type PanInfo } from 'motion/react'
+import { useLessMotion } from '../../ui/still'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { produceById, storeOf, type ProduceId } from '../data'
@@ -114,7 +115,7 @@ interface Note {
 
 function Panel({ v, act, coins, onClose, buying }: MachinePanelProps) {
   const mode = useSheetMode()
-  const still = useReducedMotion()
+  const still = useLessMotion()
   const [page, setPageNow] = useState<'queue' | 'level'>('queue')
   // the sheet keeps its height from one page to the other (the level's page is shorter: the sheet must not jump)
   const [tall, setTall] = useState<number | null>(null)

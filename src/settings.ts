@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { lessMotion } from './ui/still'
 
 // Player preferences, remembered between visits. Everything is optional: storage may be blocked
 // (private windows, embedded frames), in which case the defaults simply apply for the session.
@@ -22,7 +23,7 @@ export interface Settings {
 }
 
 // People who ask their system for less motion get a still camera by default (they can still turn sway on)
-const reducedMotion = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+const reducedMotion = lessMotion()
 
 export const DEFAULT_SETTINGS: Settings = {
   fov: 72,

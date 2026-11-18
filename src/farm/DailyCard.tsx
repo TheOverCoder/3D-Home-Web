@@ -1,4 +1,5 @@
-import { AnimatePresence, m, useReducedMotion, type Transition, type Variants } from 'motion/react'
+import { AnimatePresence, m, type Transition, type Variants } from 'motion/react'
+import { useLessMotion } from '../ui/still'
 import { useEffect, useRef, useState } from 'react'
 import { flyCoins, flyItem, holdCoins } from '../fx/coins'
 import { coinsToFly } from '../fx/fx'
@@ -60,7 +61,7 @@ export function DailyCard({
   /** the moment it bursts open (its sound and touch) */
   onReveal?: () => void
 }) {
-  const still = !!useReducedMotion()
+  const still = useLessMotion()
   const [moment, setMoment] = useState<Moment | null>(null)
   const stage = useRef<HTMLDivElement>(null)
   const got = useRef<Prize[]>([])
