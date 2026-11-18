@@ -316,8 +316,9 @@
 .daily-card .dg-back .art { width: 30px; height: 30px; margin: -6px 0; }
 .daily-card .dg-back img:not(.art) { width: 20px; height: 20px; }
 .daily-card .dg-back b { font: 900 15px/1 var(--font-text); font-variant-numeric: tabular-nums; }
-/* the "?" on the stage: in its top corner */
-.daily-card .dg-odds { position: absolute; z-index: 3; top: 4px; right: 4px; }
+/* the "?" over the stage's top corner (the body's: its sheet is not cut off by the stage) */
+.daily-card .dg-body { position: relative; }
+.daily-card .dg-odds { position: absolute; z-index: 5; top: 2px; right: 2px; }
 
 /* The odds of a gift (Odds in DailyCard.tsx; the level's boxes and the lucky draw use it too): a "?" with a 48 px
    target (a touch screen's), and the sheet of what it can hold and how likely, under it. */

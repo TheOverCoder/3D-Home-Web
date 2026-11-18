@@ -164,6 +164,8 @@ export function DailyCard({
     // swipe or Esc send what is still on the stage home as it goes
     <PanelSheet label="Daily gift" title="Daily gift" pic={art('tear-off-calendar')} sub={<DaysPlayed n={shown.days} />} className="daily-card" onLeave={fly} onClose={onClose}>
       <div className="dg-body">
+        {/* (over the stage's corner, outside it: its sheet is not cut off by the stage) */}
+        {!moment && shown.ready && <Odds rows={shown.odds} label="What today’s gift can hold" className="dg-odds" />}
         <m.div className={`dg-stage${big ? ' big' : ''}${phase ? ` ${phase}` : ''}`} variants={ITEM} ref={stage}>
           <m.span
             className="dg-rays"
@@ -180,7 +182,6 @@ export function DailyCard({
           {phase === 'open' && !still && (
             <m.i className="dg-flash" aria-hidden="true" initial={{ opacity: 0.9, scale: 0.3 }} animate={{ opacity: 0, scale: 1.7 }} transition={{ duration: 0.5, ease: EASE.out }} />
           )}
-          {!moment && shown.ready && <Odds rows={shown.odds} label="What today’s gift can hold" className="dg-odds" />}
           {!moment && shown.ready && shown.back !== null && <BackGift coins={shown.back} />}
           <span className="dg-say" role="status">
             {done ? `You got ${got.current.map(prizeWords).join(', ')}` : ''}
