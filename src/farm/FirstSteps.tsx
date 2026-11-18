@@ -42,17 +42,19 @@ export const picOf = (s: StepDef) => ('item' in s.pic ? iconUrl(s.pic.item) : ar
 /** Every step's coins together (the last card's sum). */
 const ALL_COINS = FIRST_STEPS.reduce((n, s) => n + ('coins' in s.reward ? s.reward.coins : 0), 0)
 
-/** The words typed in a letter at a time (all at once for whoever prefers less motion); the rest of the line is kept,
- *  unseen, so the bubble is its full size from the start and nothing moves as the letters come. */
-function Typed({ text }: { text: string }) {
+/** The words typed in a letter at a time (all at once for whoever prefers less motion, and the whole line at once
+ *  when it is done: the tick stamps a line that can be read); the rest of the line is kept, unseen, so the bubble is
+ *  its full size from the start and nothing moves as the letters come. A new line types in again. */
+function Typed({ text, whole }: { text: string; whole?: boolean }) {
   const still = useReducedMotion()
   const [n, setN] = useState(still ? text.length : 0)
   useEffect(() => {
+    setN(still ? text.length : 0)
     if (still) return
     const t = window.setInterval(() => setN((k) => (k >= text.length ? k : k + 1)), 26)
     return () => window.clearInterval(t)
   }, [text, still])
-  const shown = still ? text.length : n
+  const shown = still || whole ? text.length : n
   return (
     <span className="step-words">
       <span>{text.slice(0, shown)}</span>
@@ -254,7 +256,7 @@ export function StepHint() {
                         aria-pressed={going}
                       >
                         <img className="art step-pic" src={picOf(def)} alt="" draggable={false} />
-                        <Typed text={def.say} />
+                        <Typed text={def.say} whole={done} />
                         <m.span
                           ref={(el) => {
                             if (el) reward.current = el
