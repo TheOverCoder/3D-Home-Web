@@ -6,7 +6,7 @@ import { TRACKS, nextTrack, pauseMusic, playMusic, useMusic } from '../audio/mus
 import { CREDITS } from '../data/credits'
 import { PRODUCERS, START_COINS } from '../farm/data'
 import { SLOTS, awaySummary, currentSlot, slotSummary, switchSlot, useFarm } from '../farm/state'
-import { canVibrate, coarsePointer } from '../lib/device'
+import { appleTouch, canVibrate, coarsePointer } from '../lib/device'
 import { collectDiagnostics } from '../lib/diagnostics'
 import { deviceLabel, lightModeAutomatic, profile, setLightMode } from '../lib/profile'
 import { restartGraphics } from '../lib/startup'
@@ -621,7 +621,7 @@ function SettingsPage() {
           <Row label="Sound" hint="Footsteps, doors, the farm">
             <Toggle on={s.sound} set={(sound) => update({ sound })} label="Sound" />
           </Row>
-          <Row label="Volume">
+          <Row label="Volume" hint={appleTouch ? 'On iPhone, the ring switch silences the game' : undefined}>
             <Range
               value={Math.round(s.volume * 100)}
               min={0}
@@ -630,6 +630,28 @@ function SettingsPage() {
               set={(x) => update({ volume: x / 100, sound: x > 0 ? true : s.sound })}
               label="Volume"
               show={`${Math.round(s.volume * 100)}`}
+            />
+          </Row>
+          <Row label="Effects" hint="Work, coins, the animals, footsteps">
+            <Range
+              value={Math.round(s.effectsVolume * 100)}
+              min={0}
+              max={100}
+              step={5}
+              set={(x) => update({ effectsVolume: x / 100 })}
+              label="Effects volume"
+              show={`${Math.round(s.effectsVolume * 100)}`}
+            />
+          </Row>
+          <Row label="Ambience" hint="Wind, birds and the rooms">
+            <Range
+              value={Math.round(s.ambienceVolume * 100)}
+              min={0}
+              max={100}
+              step={5}
+              set={(x) => update({ ambienceVolume: x / 100 })}
+              label="Ambience volume"
+              show={`${Math.round(s.ambienceVolume * 100)}`}
             />
           </Row>
           <Row label="Music" hint="Composed as it plays">

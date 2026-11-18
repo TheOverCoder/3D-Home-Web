@@ -35,13 +35,11 @@ export function SoundDirector() {
   useEffect(() => {
     debugSet('audio', audioStatus)
     const unlock = () => unlockAudio()
-    const apply = () => {
-      const s = useSettings.getState()
-      setSoundPrefs(s.sound, s.volume)
-    }
+    // the switch and the four volumes (the main one, effects, ambience, music) into the mixer
+    const apply = () => setSoundPrefs(useSettings.getState())
     apply()
     const unsubSettings = useSettings.subscribe((s, p) => {
-      if (s.sound !== p.sound || s.volume !== p.volume) apply()
+      if (s.sound !== p.sound || s.volume !== p.volume || s.effectsVolume !== p.effectsVolume || s.ambienceVolume !== p.ambienceVolume || s.musicVolume !== p.musicVolume) apply()
     })
     window.addEventListener('pointerdown', unlock, true)
     window.addEventListener('keydown', unlock, true)
