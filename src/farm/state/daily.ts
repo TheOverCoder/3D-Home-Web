@@ -1,12 +1,46 @@
 import { useHome } from '../../store'
 import { levelOf } from '../xp'
 import type { Prize } from '../gifts'
-import { claimed, dailyStatus, dailyView, dayNumber, rollDay, type DailyView } from '../daily'
+import { markPlayed as playedOn, type Played } from '../calendar'
+import { claimed, dailyStatus, dailyView, dayNumber, dayStart, rollDay, type DailyView } from '../daily'
 import { bump, calendarDay, calendarTime, farm, random, save } from './core'
 import { give } from './rewards'
 import { stepsBusy } from './steps'
 
-// The daily gift (src/farm/daily.ts): whether it waits, when it opens by itself, and claiming it.
+// The daily gift (src/farm/daily.ts): whether it waits, when it opens by itself, and claiming it. And days played
+// (src/farm/calendar.ts): the farm's long clock, counted here once a calendar day.
+
+declare module './core' {
+  interface FarmData {
+    /** days played (src/farm/calendar.ts): the days the farm has been opened, each counted once, and the last of them
+     *  (a calendar day; not the daily gift's `last`, the day last claimed). It never falls. (Declared here, beside
+     *  markPlayed, its one writer.) */
+    played: Played
+  }
+}
+
+/** The calendar day markPlayed last looked at, for the farm's record it saw then: from its start to the next day's (ms
+ *  of the daily gift's clock). Within it, a frame has nothing to count, and no date is worked out. */
+let looked: { played: Played | null; from: number; to: number } = { played: null, from: 0, to: 0 }
+
+/**
+ * Today played: counted once a calendar day of the device, the first time the farm runs that day (`tick` asks each
+ * frame, so a farm left open over midnight counts the new day too). Days played never fall, and wait through any
+ * absence: a clock moved back counts nothing. The whole days since the day played before (0 on the same day, and the
+ * very first time): how long the player was away, for the welcome back.
+ */
+export function markPlayed(): number {
+  const now = calendarTime()
+  if (looked.played === farm.played && now >= looked.from && now < looked.to) return 0
+  const today = dayNumber(now)
+  const { played, away } = playedOn(farm.played, today)
+  looked = { played, from: dayStart(today), to: dayStart(today + 1) }
+  if (played === farm.played) return 0
+  farm.played = played
+  bump()
+  save()
+  return away
+}
 
 /** Put out of the way (the tests that do not test it: src/farm/daily.ts never opens by itself, nor shows on the menu).
  *  The card open is closed. Not kept: a page loaded again has it as always. */
