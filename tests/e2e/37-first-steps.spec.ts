@@ -5,7 +5,8 @@ import { expect, test } from './helpers'
 
 // A new farm's first steps (src/farm/firstSteps.ts; the hint, src/farm/FirstSteps.tsx), as a player's farm has them (a
 // ?debug page keeps them quiet: they run here, `steps.quiet(false)`, and `ready()` quiets them again): the farmer's
-// bubble under the compass says the step, a tap on it walks you there, each step done moves it on and pays its reward,
+// bubble under the compass says the step (its line following the farm: a bed still wet, then dry), a tap on it walks
+// you there, each step done moves it on and pays its reward,
 // and after the last ("All set!") the slot is free and the daily gift comes; skipped (✕, then Skip) it is gone for good;
 // it stands aside under a panel and in the house, and in its place in the top column, above a toast and the level-up.
 
@@ -101,11 +102,23 @@ test.describe("a new farm's first steps", () => {
     expect((await record(page)).coins).toBe(before.coins - seeds + (FIRST_STEPS[0].reward as { coins: number }).coins)
     expect(await page.evaluate(() => (window as any).__home.farm.daily.waiting())).toBe(false)
 
-    // each next step: the bubble says it, the farm does it, the step moves on and pays its reward
+    // each next step: the bubble says it (its own line, or the turn the farm is at), the farm does it, the step moves
+    // on and pays its reward
     for (let k = 1; k < FIRST_STEPS.length; k++) {
       const s = FIRST_STEPS[k]
-      await expect(bubble(page)).toHaveAttribute('aria-label', `${s.say} — walk there`, { timeout: 15_000 })
+      await expect(bubble(page)).toHaveAttribute('data-step', s.id, { timeout: 15_000 })
+      await expect(bubble(page)).toHaveAttribute('aria-label', / — walk there$/)
       await expect(bubble(page)).toContainText(`+${(s.reward as { coins: number }).coins}`)
+      // the line follows the farm: the lettuce still wet from its soak, then dry
+      if (s.id === 'water') {
+        await expect(bubble(page)).toHaveAttribute('aria-label', "Water it once it's dry — walk there")
+        await page.evaluate(() => {
+          const f = (window as any).__home.farm.state
+          for (const b of f.beds) if (b.crop) b.water = 0
+        })
+        await expect(bubble(page)).toHaveAttribute('aria-label', `${s.say} — walk there`, { timeout: 15_000 })
+        await expect(bubble(page)).toHaveAttribute('data-turn', '-1')
+      }
       const was = await record(page)
       await doStep(page, s.id)
       if (s.id === 'harvest') expect(await toastOnTheTick(page)).toEqual([])

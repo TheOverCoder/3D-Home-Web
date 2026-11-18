@@ -15,18 +15,19 @@ import { TopSlot } from '../ui/TopStack'
 import { useGameFree } from '../ui/useGameFree'
 import { storeOf } from './data'
 import { FarmerFace } from './FarmerFace'
-import { FIRST_STEPS, MOMENT_MOODS, moodFor, type Moment, type StepDef } from './firstSteps'
+import { FIRST_STEPS, MOMENT_MOODS, lineFor, moodFor, type Line, type Moment, type Pic, type StepDef } from './firstSteps'
 import { iconUrl } from './icons'
 import { farm, passedWaiting, skipSteps, stepNow, takePassed, useFarm } from './state'
-import { stepTarget } from './walkTargets'
+import { walkTarget } from './walkTargets'
 import './FirstSteps.css'
 
 // A new farm's first steps (./firstSteps.ts; the design lab's board "first-steps", C, the user's choice): the farm's
 // neighbour, a round portrait under the compass, says the step in a word bubble — its picture, its words typed in, its
 // reward — and a tap on the bubble walks you there (the compass's own walk: walkTo, ./walkTargets.ts; again, it stops;
-// nowhere to go, it shakes). His face is the mood of what he says (./FarmerFace.tsx: each line's own, and the
-// moments': a nod as you walk, a sigh with nowhere to go, a kind nod at the skip question), changing as the line types
-// in. Done (the farm passes it a frame later, src/farm/state.ts), a tick is stamped on the bubble, the reward flies to
+// nowhere to go, it shakes). What he says follows the farm (lineFor: the step's turns, "Water it once it's dry",
+// "Now fetch eggs"); a new line types in again, and the tick stamps the last line he said, whole. His face is the mood
+// of what he says (./FarmerFace.tsx: each line's own, and the moments': a nod as you walk, a sigh with nowhere to go,
+// a kind nod at the skip question), changing as the line types in. Done (the farm passes it a frame later, src/farm/state.ts), a tick is stamped on the bubble, the reward flies to
 // its chip, the farmer beams and hops, and the next line comes; one done under a panel plays when the panel closes.
 // After the last, "All set!" with every step's picture ticked and all the coins they gave, stars in his eyes, and
 // confetti once. The ✕ on the bubble's corner asks "Skip the tips?" there in the bubble: Keep, or Skip (over for good).
@@ -37,8 +38,8 @@ const DONE_MS = 1150
 const FINAL_MS = 4200
 const NOWHERE_MS = 1400
 
-/** A step's picture: one of the farm's goods (its model), or a piece of interface art. */
-export const picOf = (s: StepDef) => ('item' in s.pic ? iconUrl(s.pic.item) : art(s.pic.art))
+/** A line's picture: one of the farm's goods (its model), or a piece of interface art. */
+export const picOf = (s: { pic: Pic }) => ('item' in s.pic ? iconUrl(s.pic.item) : art(s.pic.art))
 /** Every step's coins together (the last card's sum). */
 const ALL_COINS = FIRST_STEPS.reduce((n, s) => n + ('coins' in s.reward ? s.reward.coins : 0), 0)
 
@@ -112,6 +113,8 @@ export function StepHint() {
   const bubble = useRef<HTMLButtonElement | null>(null)
   const timers = useRef<number[]>([])
   const later = (f: () => void, ms: number) => timers.current.push(window.setTimeout(f, ms))
+  // the last line said for the step on the bubble: what the tick stamps once it is done
+  const said = useRef<{ step: StepDef; line: Line } | null>(null)
   useEffect(
     () => () => {
       timers.current.forEach((t) => window.clearTimeout(t))
@@ -164,13 +167,20 @@ export function StepHint() {
   const waiting = passedWaiting()
   const def = shown ?? waiting[waiting.length - 1] ?? now
   const done = phase === 'done'
+  // what he says: the line the farm is at now (the step's own, or one of its turns); done, the last he said for it (kept
+  // as each frame is drawn)
+  const kept = said.current?.step === def ? said.current.line : null
+  const line: Line | null = !def ? null : done || def !== now ? (kept ?? { say: def.say, mood: def.mood, pic: def.pic, target: def.target, turn: -1 }) : lineFor(def, farm)
+  useEffect(() => {
+    if (def && line && !done && def === now) said.current = { step: def, line }
+  })
   const going = goingTo !== null && walking === goingTo && phase === 'show'
   // what the farmer feels besides the line he says (./firstSteps.ts, MOMENT_MOODS)
   const moment: Moment | null = done ? 'passed' : phase === 'ask' ? 'ask' : nowhere ? 'nowhere' : going ? 'walk' : null
 
   const walk = () => {
-    if (!def || phase !== 'show') return
-    const id = stepTarget(def.target)
+    if (!def || !line || phase !== 'show') return
+    const id = walkTarget(line.target)
     if (!id) {
       if (bubble.current && !still) void animate(bubble.current, NOPE.keyframes, NOPE.options)
       window.clearTimeout(sigh.current)
@@ -210,7 +220,7 @@ export function StepHint() {
           ) : (
             def && (
               <m.div key="talk" className="step-talk" layout="position" exit={{ opacity: 0, y: -10, transition: { duration: 0.2, ease: 'easeIn' } }}>
-                <FarmerFace mood={moodFor(def, moment)} beat={`${def.id}:${moment ?? 'says'}`} />
+                <FarmerFace mood={moodFor(line, moment)} beat={`${def.id}:${line?.turn ?? -1}:${moment ?? 'says'}`} />
                 <AnimatePresence mode="wait" initial={false}>
                   {phase === 'ask' ? (
                     <m.div
@@ -252,11 +262,13 @@ export function StepHint() {
                         whileTap={{ scale: 0.96 }}
                         transition={SPRING.pop}
                         onClick={walk}
-                        aria-label={`${def.say} — walk there`}
+                        aria-label={`${line?.say ?? def.say} — walk there`}
                         aria-pressed={going}
+                        data-step={def.id}
+                        data-turn={line?.turn ?? -1}
                       >
-                        <img className="art step-pic" src={picOf(def)} alt="" draggable={false} />
-                        <Typed text={def.say} whole={done} />
+                        <img className="art step-pic" src={picOf(line ?? def)} alt="" draggable={false} />
+                        <Typed text={line?.say ?? def.say} whole={done} />
                         <m.span
                           ref={(el) => {
                             if (el) reward.current = el

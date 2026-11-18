@@ -1,6 +1,7 @@
 import { farmSound } from '../../audio/sound'
 import { clock } from '../../lib/time'
 import { OFFICE_SCREEN, OFFICE_UPGRADES, ORDERS, orderSlots, orderWait, TRACTOR, type OfficeUpgradeId } from '../data'
+import { isFirstOrder } from '../firstSteps'
 import { cratesFor, isComplete, makeOrder, orderKey, orderPay, type Order, type OrderSlot } from '../orders'
 import { tripSeconds } from '../tractorRoute'
 import { boundary, type FarmLayout } from '../layout'
@@ -31,9 +32,6 @@ export function firstOrder(): Order {
   const lines = ORDERS.first.map((l) => ({ good: l.good, want: l.want, have: 0 }))
   return { id: orderKey(), lines, coins: orderPay(lines), surprise: false }
 }
-
-/** The starter order, by what it asks for. */
-const isFirstOrder = (o: Order) => o.lines.length === ORDERS.first.length && ORDERS.first.every((l, k) => o.lines[k].good === l.good && o.lines[k].want === l.want)
 
 /** A new farm's board: the starter order in its first place, a new order coming in each of the others straight away. */
 export const firstBoard = (places: number): OrderSlot[] => [{ order: firstOrder() }, ...Array.from({ length: places - 1 }, () => ({ wait: 0 }))]
