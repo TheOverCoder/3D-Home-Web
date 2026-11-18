@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { test as base, expect, type Browser, type Page } from '@playwright/test'
+import { test as base, expect, type Browser, type Locator, type Page } from '@playwright/test'
 import type { Rect, WalkIn, WalkInRoom } from '../../src/data/buildings'
 import { unpaidCoins, xpAt } from '../../src/farm/xp'
 
@@ -619,6 +619,27 @@ export function walkInPoses(w: WalkIn) {
   }
   if (!outside || !inside) throw new Error(`${w.id}: no outer door, or no room with a door`)
   return { first: [outside, ...first], outside: { ...outside, name: `${w.id}: third person outside` }, inside }
+}
+
+/**
+ * Presses a target the farm draws again or moves while a finger goes to it: an order's buttons (the board is drawn again
+ * every second, its planks settling as goods go in), a compass mark (it slides as the view turns). It must be shown and
+ * pressable (anything else is a failure of its own); then a real click, which waits for it to be still, in view and on
+ * top; when it is replaced, still moving or covered at every try (a slow page's frames are long), the click goes to the
+ * element itself, as the tap a player sees land on it.
+ */
+export async function press(target: Locator, tries = 2) {
+  await expect(target).toBeVisible()
+  await expect(target).toBeEnabled()
+  for (let k = 0; k < tries; k++) {
+    try {
+      await target.click({ timeout: 10_000 })
+      return
+    } catch (e) {
+      if (!/detached|stable|intercepts pointer events|Timeout/i.test(String(e))) throw e
+    }
+  }
+  await target.dispatchEvent('click')
 }
 
 export { expect }

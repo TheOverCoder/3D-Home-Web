@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { test, expect, bootApp, watchErrors, BASE } from './helpers'
+import { test, expect, bootApp, press, watchErrors, BASE } from './helpers'
 import type { Page } from '@playwright/test'
 import { FRONT_DOOR, HALL } from '../../src/data/market'
 
@@ -75,7 +75,7 @@ test.describe('take me there', () => {
       () => (window as any).__home.walk && (window as any).__home.maps.space((window as any).__home.playerState.position.x, (window as any).__home.playerState.position.z) === 'market',
     )
     await watchRooms(page)
-    await mark.click()
+    await press(mark)
     // on the way: the mark ringed (and pressed), its arrow over the nest
     await expect(mark).toHaveClass(/going/)
     await expect(mark).toHaveAttribute('aria-pressed', 'true')
@@ -115,7 +115,7 @@ test.describe('take me there', () => {
     const mark = page.getByRole('button', { name: /^6 eggs ready/ })
     await expect(mark).toBeVisible()
     // a step of your own (W): it stops, the mark is no longer ringed, and the body comes to rest
-    await mark.click()
+    await press(mark)
     await movedFrom(page, start, 0.4)
     await page.keyboard.press('KeyW')
     await ended(page, 30_000)
@@ -124,7 +124,7 @@ test.describe('take me there', () => {
     await page.waitForFunction(() => (window as any).__home.playerState.speed < 0.1, null, { timeout: 30_000, polling: 200 })
     // the mark again: it stops, and the arrow over the nest goes
     const here = await page.evaluate(() => ({ ...(window as any).__home.playerState.position }))
-    await mark.click()
+    await press(mark)
     await movedFrom(page, here, 0.4)
     // (tapped while it slides along the compass: the view turns with the way, so the mark is never still)
     await mark.dispatchEvent('click')
@@ -132,7 +132,7 @@ test.describe('take me there', () => {
     expect(await walk(page)).toMatchObject({ ended: 'again', guide: null })
     // a panel opening (the farm shop's, as from its door)
     const there = await page.evaluate(() => ({ ...(window as any).__home.playerState.position }))
-    await mark.click()
+    await press(mark)
     await movedFrom(page, there, 0.4)
     await page.evaluate(() => (window as any).__home.useHome.getState().openPanel({ kind: 'shop' }))
     await ended(page, 30_000)
@@ -159,7 +159,7 @@ test.describe('take me there', () => {
       world.createCollider(rapier.ColliderDesc.cuboid(0.25, 0.9, 0.9), body)
       ;(window as any).__home.__blockers = [body]
     })
-    await page.getByRole('button', { name: /^6 eggs ready/ }).click()
+    await press(page.getByRole('button', { name: /^6 eggs ready/ }))
     // held up, it plans again round what stands there now, and walks on; then things that move close in all round it
     // (put there in the same call that sees it walking again)
     await page.evaluate(
