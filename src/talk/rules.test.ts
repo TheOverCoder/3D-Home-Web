@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { LONG_WAIT, TALK, TALK_GAP, type TalkMoment } from './lines'
+import { NEIGHBOUR_IDS } from '../data/people'
+import { MOST_HEARTS } from '../farm/people/friends'
+import { TALK, TALK_GAP, voiceMood, type Line, type TalkMoment } from './lines'
 import { freshMemory, mayTalk, nextLine, type TalkWorld } from './rules'
 
 // When a character may say a line (./rules.ts, the lines ./lines.ts): only where the device can speak, with the game's
 // sound on and started, never over a film or the drive or with the page hidden, only on your map and near you; never
 // sooner than the gap after any line or the moment's own wait (an answer to you excepted from the gap); then on the
-// moment's chance. And the lines themselves: short, plain, never the same one twice in a row.
+// moment's chance. And the lines themselves: short, plain, never the same one twice in a row; a neighbour's opening as
+// their hearts grow.
 
 /** The farm as a moment finds it: you beside the speaker, the sound on, nothing else said. */
 const world = (w: Partial<TalkWorld> = {}): TalkWorld => ({
@@ -88,21 +91,57 @@ describe('when a line may be said', () => {
     for (const row of Object.values(TALK)) if (row.who !== 'agent') expect(row.chance).toBeLessThan(1)
   })
 
-  it('the lines: a few plain words each, never the same twice in a row, and a sigh only after a long wait', () => {
+  it("the lines: a few plain words each, said by the moment's speaker, never the same twice in a row", () => {
     for (const [moment, row] of Object.entries(TALK)) {
-      expect(row.lines.length, moment).toBeGreaterThan(1)
-      for (const line of row.lines) {
-        expect(line.length, line).toBeLessThanOrEqual(38)
-        expect(line, line).toMatch(/^[A-Z][A-Za-z ,.!?']*$/)
+      const lines: readonly Line[] = row.lines
+      expect(lines.filter((l) => !l.hearts).length, moment).toBeGreaterThan(1)
+      for (const line of lines) {
+        expect(line.who, line.say).toBe(row.who)
+        expect(line.say.length, line.say).toBeLessThanOrEqual(38)
+        expect(line.say, line.say).toMatch(/^[A-Z][A-Za-z ,.!?']*$/)
       }
     }
     const m = freshMemory()
     let last = ''
     for (let i = 0; i < 20; i++) {
-      const line = nextLine('buyer-thanks', m, 1000 + i * 100, 0.1)
+      const line = nextLine('buyer-thanks', m, 1000 + i * 100, 0.1).say
       expect(line).not.toBe(last)
       last = line
     }
-    expect(LONG_WAIT).toBeGreaterThanOrEqual(60)
+  })
+
+  it("a neighbour's lines open as their hearts grow: none before its heart, every one by the last", () => {
+    for (const who of NEIGHBOUR_IDS)
+      for (const moment of [`${who}-arrive`, `${who}-thanks`] as const) {
+        const lines: readonly Line[] = TALK[moment].lines
+        // a greeting and thanks from the first meeting, and a new line at each heart
+        for (let h = 1; h <= MOST_HEARTS; h++) expect(lines.filter((l) => l.hearts === h).length, `${moment} at ${h}`).toBeGreaterThan(0)
+        for (let hearts = 0; hearts <= MOST_HEARTS; hearts++) {
+          const m = freshMemory()
+          const said = new Set<string>()
+          for (let i = 0; i < 400; i++) {
+            const line = nextLine(moment, m, i, (i * 0.618) % 1, hearts)
+            expect(line.hearts ?? 0, `${moment}: "${line.say}" at ${hearts}`).toBeLessThanOrEqual(hearts)
+            said.add(line.say)
+          }
+          // everything open is said in time
+          expect(said.size, `${moment} at ${hearts}`).toBe(lines.filter((l) => (l.hearts ?? 0) <= hearts).length)
+        }
+      }
+  })
+
+  it('each face read in a voice: glad warm, a question or a "go on" plainly, a surprise lifted', () => {
+    expect(voiceMood('cheerful')).toBe('warm')
+    expect(voiceMood('curious')).toBe('flat')
+    expect(voiceMood('encouraging')).toBe('flat')
+    expect(voiceMood('excited')).toBe('shock')
+    // the moments of before read as they did: the agent warm, a buyer's greeting plain and thanks warm, the driver's
+    // working words plain and his chat warm
+    const read = (moment: TalkMoment) => [...new Set(TALK[moment].lines.map((l) => voiceMood(l.mood)))]
+    expect(read('agent-hello')).toEqual(['warm'])
+    expect(read('buyer-arrive')).toEqual(['flat'])
+    expect(read('buyer-thanks')).toEqual(['warm'])
+    expect(read('driver-load')).toEqual(['flat'])
+    expect(read('driver-chat')).toEqual(['warm'])
   })
 })
