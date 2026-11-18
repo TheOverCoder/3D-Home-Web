@@ -1,10 +1,10 @@
-import { AnimatePresence, m } from 'motion/react'
+import { AnimatePresence, m, type Variants } from 'motion/react'
 import { useState } from 'react'
 import { art } from '../../ui/art'
 import { GarmentPic } from '../../ui/GarmentPic'
 import { Check } from '../../ui/glyphs'
 import { Road } from '../../ui/Road'
-import { ITEM, SPRING, STAGGER } from '../../ui/motion'
+import { EASE, ITEM, SPRING, STAGGER } from '../../ui/motion'
 import { PanelSheet } from '../../ui/PanelSheet'
 import { Odds } from '../DailyCard'
 import type { ProduceId } from '../data'
@@ -140,6 +140,14 @@ function SeasonRoad({ r }: { r: SeasonRoadView }) {
   )
 }
 
+/** A tab's page: it comes in from the side, its blocks one after another (each an ITEM), and goes quickly. It holds
+ *  its blocks' variants itself, so a page opened after the sheet came in still brings them in. */
+const TAB: Variants = {
+  hidden: { opacity: 0, x: 16 },
+  show: { opacity: 1, x: 0, transition: { duration: 0.22, ease: EASE.out, staggerChildren: 0.05 } },
+  out: { opacity: 0, transition: { duration: 0.1 } },
+}
+
 export function NewsCard({
   v,
   road = null,
@@ -177,13 +185,13 @@ export function NewsCard({
           </button>
         </div>
       )}
-      <AnimatePresence mode="wait" initial={false}>
+      <AnimatePresence mode="wait">
         {road && tab === 'season' ? (
-          <m.div key="season" className="nw-body" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, transition: { duration: 0.1 } }}>
+          <m.div key="season" className="nw-body" variants={TAB} initial="hidden" animate="show" exit="out">
             <SeasonRoad r={road} />
           </m.div>
         ) : (
-          <m.div key="week" className="nw-body" initial={false} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, transition: { duration: 0.1 } }}>
+          <m.div key="week" className="nw-body" variants={TAB} initial="hidden" animate="show" exit="out">
             <m.section className="nw-now" variants={ITEM} aria-label="Active now">
               <h3 className="nw-kicker">
                 {v.now.length > 0 && <i className="nw-live" aria-hidden="true" />}

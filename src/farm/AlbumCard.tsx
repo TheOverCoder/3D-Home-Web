@@ -1,4 +1,4 @@
-import { AnimatePresence, m } from 'motion/react'
+import { AnimatePresence, m, type Variants } from 'motion/react'
 import { useState } from 'react'
 import { art } from '../ui/art'
 import { GarmentPic } from '../ui/GarmentPic'
@@ -47,14 +47,19 @@ export function AlbumCard({ v, onClose }: { v: AlbumView; onClose: () => void })
       className="album-card"
       onClose={onClose}
     >
-      <AnimatePresence mode="wait" initial={false}>
-        {page ? <Page key={page.id} p={page} /> : <Contents key="contents" v={v} onOpen={setAt} />}
-      </AnimatePresence>
+      <AnimatePresence mode="wait">{page ? <Page key={page.id} p={page} /> : <Contents key="contents" v={v} onOpen={setAt} />}</AnimatePresence>
     </PanelSheet>
   )
 }
 
-const SLIDE = { initial: { opacity: 0, x: 18 }, animate: { opacity: 1, x: 0 }, exit: { opacity: 0, x: -18, transition: { duration: 0.12 } }, transition: { duration: 0.22, ease: EASE.out } }
+/** The contents or a page: it comes in from the side, its blocks one after another, and goes quickly. It holds its
+ *  blocks' variants itself, so one opened after the sheet came in still brings them in. */
+const PAGE: Variants = {
+  hidden: { opacity: 0, x: 18 },
+  show: { opacity: 1, x: 0, transition: { duration: 0.22, ease: EASE.out, staggerChildren: 0.05 } },
+  out: { opacity: 0, x: -18, transition: { duration: 0.12 } },
+}
+const SLIDE = { variants: PAGE, initial: 'hidden', animate: 'show', exit: 'out' } as const
 
 /** The contents: the long ladders, then every page as a row. */
 function Contents({ v, onOpen }: { v: AlbumView; onOpen: (id: string) => void }) {

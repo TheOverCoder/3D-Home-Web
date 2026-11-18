@@ -33,6 +33,14 @@ const play = (game: Game, xp: number) =>
 
 const road = (game: Game) => game.page.evaluate(() => ({ ...(window as any).__home.road.record() }))
 
+/** Waits until the sheet's page has come in (no transform left on it, nor any of its blocks). */
+const settled = (card: import('@playwright/test').Locator, sel: string) =>
+  expect
+    .poll(() => card.locator(sel).evaluateAll((els) => els.every((el) => ['none', 'matrix(1, 0, 0, 1, 0, 0)'].includes(getComputedStyle(el).transform) && getComputedStyle(el).opacity === '1')), {
+      timeout: 10_000,
+    })
+    .toBe(true)
+
 async function openSeason(game: Game) {
   await game.page.locator('.top-menu-btn').click()
   await game.page.locator('.top-dial-btn.news-open').click()
@@ -40,6 +48,8 @@ async function openSeason(game: Game) {
   await expect(card).toBeVisible()
   await card.getByRole('tab', { name: 'This season' }).click()
   await expect(card.locator('.nw-road')).toBeVisible()
+  // (the tab's page in, its road no longer see-through: it is shown)
+  await settled(card, '.nw-body, .nw-road')
   return card
 }
 
@@ -98,6 +108,7 @@ test.describe('the season road', () => {
         await expect.poll(() => card.evaluate((el) => getComputedStyle(el).transform), { timeout: 10_000 }).toMatch(/^(none|matrix\(1, 0, 0, 1, 0, 0\))$/)
         await card.getByRole('tab', { name: 'This season' }).click()
         await expect(card.locator('.nw-road')).toBeVisible()
+        await settled(card, '.nw-body, .nw-road')
         const boxes = await card
           .locator('[role="tab"], [aria-label="Close (Esc)"], .sr-road')
           .evaluateAll((els) =>

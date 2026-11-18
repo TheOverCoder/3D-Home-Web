@@ -31,6 +31,14 @@ async function openAlbum(game: Game) {
   await expect(game.page.locator(CARD)).toBeVisible()
 }
 
+/** Waits until the sheet's page has come in (no transform left on it, nor any of its blocks). */
+const settled = (card: import('@playwright/test').Locator, sel: string) =>
+  expect
+    .poll(() => card.locator(sel).evaluateAll((els) => els.every((el) => ['none', 'matrix(1, 0, 0, 1, 0, 0)'].includes(getComputedStyle(el).transform) && getComputedStyle(el).opacity === '1')), {
+      timeout: 10_000,
+    })
+    .toBe(true)
+
 const closeAlbum = async (game: Game) => {
   await game.page.locator(CARD).getByRole('button', { name: 'Close (Esc)' }).click()
   await expect(game.page.locator(CARD)).toHaveCount(0)
@@ -108,15 +116,18 @@ test.describe('the farm album', () => {
             const b = await el.evaluate((e) => ({ ...e.getBoundingClientRect().toJSON(), w: (e as HTMLElement).offsetWidth, h: (e as HTMLElement).offsetHeight, name: e.getAttribute('aria-label') }))
             const where = `${b.name} at ${size.width}×${size.height}`
             expect(b.left, where).toBeGreaterThanOrEqual(0)
-            expect(b.right, where).toBeLessThanOrEqual(size.width)
-            expect(b.top, where).toBeGreaterThanOrEqual(0)
-            expect(b.bottom, where).toBeLessThanOrEqual(size.height)
+            // (a part of a pixel past the edge is where a list scrolled to its end stops)
+            expect(b.right, where).toBeLessThanOrEqual(size.width + 1)
+            expect(b.top, where).toBeGreaterThanOrEqual(-1)
+            expect(b.bottom, where).toBeLessThanOrEqual(size.height + 1)
             expect(Math.min(b.w, b.h), where).toBeGreaterThanOrEqual(44)
           }
         }
+        await settled(card, '.al-contents, .al-pages > li')
         await fits('[aria-label="Close (Esc)"]', false)
         await fits('.al-row', true)
         await card.locator('.al-row').first().click()
+        await settled(card, '.al-page, .al-tiles > li')
         await fits('.al-tile', true)
         await fits('[aria-label="Back"]', false)
         await page.evaluate(() => (window as any).__home.useHome.getState().closePanel())
