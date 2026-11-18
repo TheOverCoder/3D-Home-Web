@@ -6,6 +6,10 @@ export const coarsePointer = typeof matchMedia === 'function' && matchMedia('(po
 /** The phone can buzz (Android browsers; iPhones cannot from a web page). */
 export const canVibrate = typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function'
 
+/** An iPhone or iPad (an iPad says it is a Mac, but has a touch screen): its ring switch, or silent mode, silences the
+ *  game's sound, as the settings say (the page leaves `navigator.audioSession` at its default, so the switch is kept). */
+export const appleTouch = typeof navigator !== 'undefined' && (/iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1))
+
 /** The game's touches: one for each kind of thing that happens under the player's hand. */
 export type Haptic = 'tick' | 'sale' | 'buy' | 'gift' | 'level' | 'lift' | 'drop'
 

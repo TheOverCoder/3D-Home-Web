@@ -16,6 +16,8 @@ export interface Settings {
   volume: number // 0..1
   music: boolean // background music (generated in the browser, nothing is downloaded)
   musicVolume: number // 0..1, under the sound volume
+  effectsVolume: number // 0..1, under the sound volume: work, coins, the animals, footsteps, the interface (src/audio/mix.ts)
+  ambienceVolume: number // 0..1, under the sound volume: the room tone, the open air, birds and crickets
   musicTrack: number
   vibration: boolean // a touch as an action is done (phones that can: Android; src/lib/device.ts, haptic)
   hudMode: 'all' | 'compass' | 'clean' // the top of the screen: everything, only the compass, or nothing (the button in the corner, or H)
@@ -38,6 +40,8 @@ export const DEFAULT_SETTINGS: Settings = {
   volume: 0.7,
   music: true,
   musicVolume: 0.5,
+  effectsVolume: 1,
+  ambienceVolume: 1,
   musicTrack: 0,
   vibration: true,
   hudMode: 'all',
@@ -68,6 +72,9 @@ interface SettingsStore extends Settings {
   reset: () => void
 }
 
+/** A volume as kept: 0..1 (anything else is full, as it starts). */
+const level = (x: unknown) => (typeof x === 'number' && Number.isFinite(x) ? Math.max(0, Math.min(1, x)) : 1)
+
 const pick = (s: Settings): Settings => ({
   fov: s.fov,
   sensitivity: s.sensitivity,
@@ -81,6 +88,8 @@ const pick = (s: Settings): Settings => ({
   volume: s.volume,
   music: s.music,
   musicVolume: s.musicVolume,
+  effectsVolume: level(s.effectsVolume),
+  ambienceVolume: level(s.ambienceVolume),
   musicTrack: s.musicTrack,
   vibration: s.vibration,
   hudMode: s.hudMode === 'compass' || s.hudMode === 'clean' ? s.hudMode : 'all',

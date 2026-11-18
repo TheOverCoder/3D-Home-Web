@@ -144,7 +144,7 @@ export function StoryFilm() {
       p.stage?.dispose()
       p.scene.clear()
       window.removeEventListener('keydown', onKey, true)
-      duckAmbient(false)
+      duckAmbient(false, 'film')
       if (p.music) playMusic()
       storyControls.skip = storyControls.again = storyControls.close = () => {}
       useStory.setState({ on: null })
@@ -251,7 +251,7 @@ export function StoryFilm() {
       playing = p
       // the game's music and its room tone step aside while it plays
       if (p.music) pauseMusic(false)
-      duckAmbient(true)
+      duckAmbient(true, 'film')
       window.addEventListener('keydown', onKey, true)
       storyControls.skip = () => go('skip')
       storyControls.again = () => go('again')
