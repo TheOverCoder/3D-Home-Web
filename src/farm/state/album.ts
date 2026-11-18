@@ -1,3 +1,4 @@
+import { farmSound } from '../../audio/sound'
 import { debugSet } from '../../lib/debug'
 import { albumView, pageById, pagesDone, tilesEarned, type AlbumRecord, type AlbumView } from '../album'
 import { albumGarment } from '../outfit'
@@ -44,6 +45,7 @@ export function albumOn() {
   if (garment) {
     give([{ garment: garment.id }], 'page')
     toast(`Album: ${pageById(page)?.name ?? 'a page'} done · a ${garment.name.toLowerCase()} for your wardrobe`, 'open-book')
+    farmSound('garment')
   }
   bump()
   save()

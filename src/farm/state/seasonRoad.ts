@@ -1,3 +1,4 @@
+import { farmSound } from '../../audio/sound'
 import { debugSet } from '../../lib/debug'
 import { onHere } from '../../lib/quiet'
 import { longDay, markPlayed as playedOn, type Played } from '../calendar'
@@ -92,7 +93,9 @@ export function feedRoad(xp: number) {
   }
   const last = reached[reached.length - 1]
   const words = all.map(prizeWords).join(', ')
-  toast(last.stop >= SEASON_ROAD.length ? `${seasonName(last.on).name}’s road done · ${words}` : `Season road, stop ${last.stop} · ${words}`, 'triangular-flag')
+  const done = last.stop >= SEASON_ROAD.length
+  toast(done ? `${seasonName(last.on).name}’s road done · ${words}` : `Season road, stop ${last.stop} · ${words}`, 'triangular-flag')
+  farmSound(done ? 'garment' : 'chime')
   bump()
 }
 
