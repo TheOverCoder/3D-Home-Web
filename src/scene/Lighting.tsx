@@ -24,7 +24,10 @@ import { setShadowCheck, sunLeftOut, view } from '../lib/visibility/pass'
 import { useHome } from '../store'
 import { moodAt, phaseDef } from '../farm/day'
 import { DAY } from '../farm/data'
-import { dayIsFrozen, farm } from '../farm/state'
+import { dayIsFrozen, farm, seasonNow, weatherNow } from '../farm/state'
+import { setSculptSeason, setSculptShelters } from '../lib/sculpt/material'
+import { mapNow, shelters } from '../lib/world'
+import { CLEAR_FOG, lookOf, moodWith } from './weatherLook'
 
 const SUN_DIR = SUN
 
@@ -302,17 +305,26 @@ export function tint(out: Color, from: Color, warm: number, to: Tint) {
   return out
 }
 
+// the fog's density with the player's haze on (Settings, as `Lighting` makes the fog)
+const HAZE = 0.04
+
 /**
- * The time of day (src/farm/day.ts, moodAt): the sun's and the sky light's colour and strength, how much the
- * environment lights, the haze and the background, and the sun's height in the sky you see — never a light added or
- * taken away, never the sun moved, never its shadow camera, so nothing drawn changes, only how bright and what colour.
- * With the day stopped (the tests: freezeDay) it is noon, as the light always was.
+ * The time of day (src/farm/day.ts, moodAt), under the season and the weather (src/scene/weatherLook.ts, `lookOf`: the
+ * farm's `seasonNow()` and `weatherNow()`): the sun's and the sky light's colour and strength, how much the environment
+ * lights, the haze and the background, the sun's height in the sky you see, the sky's own haze (turbidity, rayleigh) and
+ * the fog's density (the weather's over the player's haze) — never a light added or taken away, never the sun moved,
+ * never its shadow camera, so nothing drawn changes, only how bright and what colour. And the season on the materials
+ * (src/lib/sculpt/material.ts: snow, the leaves, the lawn), with the roofs of the map in the scene (`shelters`). With the
+ * day stopped (the tests: freezeDay) it is noon, as the light always was; spring in clear weather is the light as it
+ * always was, number for number.
  */
 function DayLight({ sun, hemi, sky }: { sun: { current: DirectionalLight | null }; hemi: { current: HemisphereLight | null }; sky: { current: { material: unknown } | null } }) {
   const scene = useThree((s) => s.scene)
   const noon = phaseDef('noon').mood
+  const sheltersOf = useRef<string | null>(null)
   useFrame(() => {
-    const m = dayIsFrozen() ? noon : moodAt(farm.day.t)
+    const look = lookOf(seasonNow(), weatherNow())
+    const m = moodWith(dayIsFrozen() ? noon : moodAt(farm.day.t), look)
     const s = sun.current
     if (s) {
       s.intensity = NOON.sun * m.sun
@@ -327,12 +339,26 @@ function DayLight({ sun, hemi, sky }: { sun: { current: DirectionalLight | null 
     // set every frame: the environment's own component sets it again whenever it renders
     scene.environmentIntensity = envIntensity() * m.sky
     const fog = scene.fog as FogExp2 | null
-    if (fog) tint(fog.color, base.fog, m.warm, TINT.haze).multiplyScalar(m.sky)
+    if (fog) {
+      tint(fog.color, base.fog, m.warm, TINT.haze).multiplyScalar(m.sky)
+      // the weather's own fog over the player's haze (with the haze on, as it starts, a morning's fog still shows)
+      fog.density = (useSettings.getState().haze ? HAZE : CLEAR_FOG) + (look.fog - CLEAR_FOG)
+    }
     const bg = scene.background as Color | null
     if (bg?.isColor) tint(bg, base.background, m.warm, TINT.haze).multiplyScalar(m.sky)
-    // the sky's own sun (a copy of SUN, lowered towards the horizon as the light goes: a sunset sky, a night sky)
-    const uniform = (sky.current?.material as ShaderMaterial | undefined)?.uniforms?.sunPosition
-    if (uniform) skySun(m.sun, uniform.value as Vector3)
+    // the sky's own sun (a copy of SUN, lowered towards the horizon as the light goes: a sunset sky, a night sky), and
+    // its haze: greyer under cloud and rain
+    const u = (sky.current?.material as ShaderMaterial | undefined)?.uniforms
+    if (u?.sunPosition) skySun(m.sun, u.sunPosition.value as Vector3)
+    if (u?.turbidity) u.turbidity.value = look.turbidity
+    if (u?.rayleigh) u.rayleigh.value = look.rayleigh
+    // the season on the materials, and where the roofs are on this map (set again when the map changes)
+    setSculptSeason(look)
+    const map = mapNow()
+    if (sheltersOf.current !== map) {
+      sheltersOf.current = map
+      setSculptShelters(shelters())
+    }
   })
   return null
 }

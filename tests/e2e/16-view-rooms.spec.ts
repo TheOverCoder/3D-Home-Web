@@ -262,6 +262,40 @@ test.describe('the drawing pass leaves out only what cannot be seen: the house, 
     console.log(log.join('\n'))
   })
 
+  // The rain round the house (update-v1/missions/10-seasons-weather.md: src/fx/quarks.ts, `weatherFx`), seen from the
+  // kitchen through its east window: the outside, for the pass, drawn through the window and never inside the house
+  // (it ends at the roof). Set round you by hand and its time stopped, so the frames compared show it.
+  test('640×360: rain from the kitchen’s east window, its time stopped', async ({ game }) => {
+    await setUp(game)
+    const { page } = game
+    const log: string[] = []
+    const pose = ROOMS.find((p) => p.name === 'kitchen, the east window')!
+    try {
+      await page.evaluate(() => {
+        const h = (window as any).__home
+        h.season.set('spring')
+        h.season.weather.set({ kind: 'rain', amount: 1, wind: 0.5, rainbow: 0 })
+      })
+      await page.waitForFunction(() => (window as any).__home.weatherFx?.stats != null, null, { timeout: 60_000, polling: 250 })
+      await standAt(game, pose)
+      const fell = await page.evaluate(() => {
+        const h = (window as any).__home
+        h.weatherFx.settle(4)
+        h.fx.time.speed = 0
+        return h.weatherFx.stats
+      })
+      expect(fell.rain, 'rain falls round the house').toBeGreaterThan(100)
+      await compareAt(game, { ...pose, name: `rain: ${pose.name}` }, log)
+    } finally {
+      await page.evaluate(() => {
+        const h = (window as any).__home
+        h.fx.time.speed = 1
+        h.season.quiet(true)
+      })
+    }
+    console.log(log.join('\n'))
+  })
+
   test('afterwards: the house as it was, no console errors', async ({ game }) => {
     await game.ready()
     await emptyFarm(game.page)

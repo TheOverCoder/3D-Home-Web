@@ -1,6 +1,40 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { test, expect, type Pose, emptyFarm } from './helpers'
-import { EYE, YARD, compareAt, off, setUp } from './16-view'
+import { test, expect, type Game, type Pose, emptyFarm } from './helpers'
+import { EYE, P, YARD, compareAt, off, setUp, standAt } from './16-view'
+
+/** The season and the weather of the poses that follow (src/farm/state/season.ts: a test's own, standing), once the
+ *  weather's renderer is there (it comes a moment after play, as the bursts' does). */
+async function seasonAndWeather(game: Game, season: string, weather: { kind: string; amount: number; wind: number; rainbow: number } | null) {
+  await game.page.evaluate(
+    ([season, weather]) => {
+      const h = (window as any).__home
+      h.season.set(season)
+      h.season.weather.set(weather)
+    },
+    [season, weather] as const,
+  )
+  await game.page.waitForFunction(() => (window as any).__home.weatherFx?.stats != null, null, { timeout: 60_000, polling: 250 })
+}
+
+/** What falls round where you stand now (its look and box set at once: a page drawn in software has few frames), its
+ *  clock run on, and unless told otherwise its time stopped: how many drops and flakes there are. */
+async function fallen(game: Game, stop = true) {
+  return game.page.evaluate((stop) => {
+    const h = (window as any).__home
+    h.weatherFx.settle(4)
+    if (stop) h.fx.time.speed = 0
+    return h.weatherFx.stats
+  }, stop)
+}
+
+/** Spring and clear again, what falls running on. */
+async function quietAgain(game: Game) {
+  await game.page.evaluate(() => {
+    const h = (window as any).__home
+    h.fx.time.speed = 1
+    h.season.quiet(true)
+  })
+}
 
 // 16, the drawing pass (16-view.ts says how), on the farm's map: the yard over it, where the house stood, the pasture
 // and the gate with a full line; third person and the edit mode over it; the hedge and the woods in pieces.
@@ -87,6 +121,62 @@ test.describe('the drawing pass leaves out only what cannot be seen: the farm', 
     }
     // and the new pieces draw the same as one mesh too
     for (const p of [YARD[0], { name: 'the north meadow, looking north', x: 0, z: -16, yaw: 0, pitch: -0.05 }]) await landAt(p)
+    console.log(log.join('\n'))
+  })
+
+  // The farm's year and its weather (update-v1/missions/10-seasons-weather.md): winter's look (snow on what faces the sky,
+  // the leaves turned) on the materials there are, and what falls (src/fx/quarks.ts, `weatherFx`: the outside, for the
+  // pass), each frame drawn both ways the same. What falls is set round you by hand and its time stopped (`settle`,
+  // `__home.fx.time`), so the frames compared show it.
+  test('winter: the yard over the farm, where the house stood, and the hedge and the woods in pieces as one mesh each', async ({ game }) => {
+    await setUp(game, 'farm')
+    const { page } = game
+    const log: string[] = []
+    try {
+      await seasonAndWeather(game, 'winter', null)
+      for (const p of [YARD[0], YARD[1]]) await compareAt(game, { ...p, name: `winter: ${p.name}` }, log)
+      // the land drawn both ways in winter: every crown turned by its own tree's place, the same in one mesh
+      await standAt(game, YARD[0])
+      const r = await page.evaluate((pose) => (window as any).__viewProbe.land(pose), [YARD[0].x, YARD[0].y ?? EYE, YARD[0].z, YARD[0].yaw, YARD[0].pitch ?? 0])
+      log.push(
+        `winter, the land (${r.size.join('×')}): one mesh each ${r.whole.calls} / ${r.whole.triangles}, in pieces ${r.pieces.calls} / ${r.pieces.triangles}; ${r.differ} pixels and ${r.texels} sun texels differ`,
+      )
+      expect(r.differ, `pixels ${JSON.stringify(r.pixels)}`).toBe(0)
+      expect(r.texels).toBe(0)
+    } finally {
+      await quietAgain(game)
+    }
+    console.log(log.join('\n'))
+  })
+
+  test('snow over the yard and at the gate, its time stopped', async ({ game }) => {
+    await setUp(game, 'farm')
+    const log: string[] = []
+    try {
+      await seasonAndWeather(game, 'winter', { kind: 'snow', amount: 1, wind: 0.3, rainbow: 0 })
+      for (const p of [YARD[0], YARD[4]]) {
+        await standAt(game, p)
+        expect((await fallen(game)).snow, `${p.name}: snow falls round you`).toBeGreaterThan(100)
+        await compareAt(game, { ...p, name: `snow: ${p.name}` }, log)
+      }
+    } finally {
+      await quietAgain(game)
+    }
+    console.log(log.join('\n'))
+  })
+
+  test('third person in the rain on the farm', async ({ game }) => {
+    await setUp(game, 'farm')
+    const log: string[] = []
+    try {
+      await seasonAndWeather(game, 'spring', { kind: 'rain', amount: 1, wind: 0.5, rainbow: 0 })
+      await standAt(game, { name: 'the yard', x: -6, z: 9, yaw: P })
+      expect((await fallen(game, false)).rain, 'rain falls round you').toBeGreaterThan(100)
+      // (the rain runs on during the camera's flight: the two frames compared are drawn with no frame between them)
+      await off(game, log, 'third person in the rain, the yard', 'third', -6, 9)
+    } finally {
+      await quietAgain(game)
+    }
     console.log(log.join('\n'))
   })
 
