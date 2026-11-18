@@ -88,7 +88,7 @@ export function claimDaily(): Prize[] | null {
   const prizes = rollDay(s.day, levelOf(farm.xp.points), farm.made, random)
   const next = claimed(farm.daily, day, prizes)
   if (!next) return null
-  for (const p of prizes) give(p)
+  give(prizes, 'daily')
   farm.daily = next
   // (its sound and its touch come as it bursts open on its card)
   bump()
