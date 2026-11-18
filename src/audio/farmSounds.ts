@@ -4,7 +4,7 @@
 // its row, with the touch of what the player did.
 import { haptic, type Haptic } from '../lib/device'
 import { burst, live, rnd, tone, voice, type Engine } from './engine'
-import { vary } from './palette'
+import { note, vary } from './palette'
 import { SOUNDS } from './sounds'
 
 export type FarmSound =
@@ -35,10 +35,15 @@ export type FarmSound =
   | 'garment' // a new garment for the wardrobe: a bright flourish
   | 'keys' // the house bought: its keys handed over, jingling, and a warm chord
 
-/** Crystals landing one close behind another climb this scale (semitones over the first note), then hold its top. */
-const XP_STEPS = [0, 2, 4, 7, 9, 12, 14, 16]
+/** Crystals landing one close behind another climb the key from A6 (its 4th note), a step each, for this many steps,
+ *  then hold the top. */
+const XP_FROM = 4
+const XP_STEPS = 8
 let xpRun = 0
 let xpLast = -Infinity
+
+/** The keys' clinks, steps of the key in octave 7 (A7 to E8: a bright jingle, the same each time). */
+const KEY_CLINKS = [5, 7, 4, 6, 5, 7]
 
 /** A sound written at audio time `t` into `e`; `v` is how near it is (0.25..1: its loudness), `pan` where (−1..1). */
 type Synth = (e: Engine, t: number, v: number, pan: number) => void
@@ -63,10 +68,10 @@ const SYNTHS: Record<FarmSound, Synth> = {
     tone(e, t + 0.12, { type: 'triangle', f0: 520, f1: 300, gain: 0.05 * v, attack: 0.003, decay: 0.08, pan })
   },
   coins(e, t) {
-    // clink, clink, chime
-    tone(e, t, { type: 'sine', f0: 2093, gain: 0.05, attack: 0.002, decay: 0.25, key: true })
-    tone(e, t + 0.07, { type: 'sine', f0: 2637, gain: 0.05, attack: 0.002, decay: 0.35, key: true })
-    tone(e, t + 0.14, { type: 'sine', f0: 3136, gain: 0.04, attack: 0.002, decay: 0.5, key: true })
+    // clink, clink, chime: C7, E7, G7
+    tone(e, t, { type: 'sine', f0: note(0, 7), gain: 0.05, attack: 0.002, decay: 0.25, key: true })
+    tone(e, t + 0.07, { type: 'sine', f0: note(2, 7), gain: 0.05, attack: 0.002, decay: 0.35, key: true })
+    tone(e, t + 0.14, { type: 'sine', f0: note(3, 7), gain: 0.04, attack: 0.002, decay: 0.5, key: true })
     burst(e, t, { type: 'highpass', freq: 6000, q: 0.7, gain: 0.03, attack: 0.001, decay: 0.05 })
   },
   cluck(e, t, v, pan) {
@@ -79,14 +84,14 @@ const SYNTHS: Record<FarmSound, Synth> = {
     }
   },
   bell(e, t, v, pan) {
-    // the gate bell: someone is here
+    // the gate bell: someone is here. E6 with a bell's minor third (G6) and octave over it, then C6
     for (const [f, d, g] of [
-      [1318, 1.4, 0.05],
-      [1975, 1.0, 0.025],
-      [2637, 0.6, 0.015],
+      [note(2, 6), 1.4, 0.05],
+      [note(3, 6), 1.0, 0.025],
+      [note(2, 7), 0.6, 0.015],
     ])
-      tone(e, t, { type: 'sine', f0: f, gain: g * v, attack: 0.003, decay: d, pan })
-    tone(e, t + 0.28, { type: 'sine', f0: 1046, gain: 0.04 * v, attack: 0.003, decay: 1.2, pan })
+      tone(e, t, { type: 'sine', f0: f, gain: g * v, attack: 0.003, decay: d, pan, key: true })
+    tone(e, t + 0.28, { type: 'sine', f0: note(0, 6), gain: 0.04 * v, attack: 0.003, decay: 1.2, pan, key: true })
   },
   build(e, t, v, pan) {
     // hammer knocks into timber
@@ -96,9 +101,9 @@ const SYNTHS: Record<FarmSound, Synth> = {
     }
   },
   decline(e, t) {
-    // a soft falling "oh well"
-    tone(e, t, { type: 'triangle', f0: 392, gain: 0.03, attack: 0.01, decay: 0.2 })
-    tone(e, t + 0.15, { type: 'triangle', f0: 311, gain: 0.03, attack: 0.01, decay: 0.3 })
+    // a soft falling "oh well": G4 down to E4
+    tone(e, t, { type: 'triangle', f0: note(3, 4), gain: 0.03, attack: 0.01, decay: 0.2, key: true })
+    tone(e, t + 0.15, { type: 'triangle', f0: note(2, 4), gain: 0.03, attack: 0.01, decay: 0.3, key: true })
   },
   moo(e, t, v, pan) {
     // a low "mmm-ooo" that opens up and falls away
@@ -145,8 +150,8 @@ const SYNTHS: Record<FarmSound, Synth> = {
     burst(e, t + 0.1, { type: 'lowpass', freq: 220, q: 0.6, gain: 0.25 * v, attack: 0.2, decay: 0.9, pan })
   },
   surprise(e, t) {
-    // a surprise found: a quick rising sparkle of four notes
-    ;[1568, 1976, 2349, 3136].forEach((f, i) => tone(e, t + i * 0.07, { type: 'sine', f0: f, gain: 0.04, attack: 0.003, decay: 0.35 + i * 0.1 }))
+    // a surprise found: a quick rising sparkle of four notes, G6 C7 D7 G7
+    ;[note(3, 6), note(0, 7), note(1, 7), note(3, 7)].forEach((f, i) => tone(e, t + i * 0.07, { type: 'sine', f0: f, gain: 0.04, attack: 0.003, decay: 0.35 + i * 0.1, key: true }))
     burst(e, t + 0.2, { type: 'highpass', freq: 7000, q: 0.7, gain: 0.025, attack: 0.01, decay: 0.3 })
   },
   chug(e, t, v, pan) {
@@ -155,37 +160,41 @@ const SYNTHS: Record<FarmSound, Synth> = {
     burst(e, t, { type: 'lowpass', freq: 240, q: 0.8, gain: 0.12 * v, attack: 0.004, decay: 0.08, pan })
   },
   xp(e, t) {
-    // a crystal joins the bar: a glassy tink, a step up the scale for each that lands close behind the one before
+    // a crystal joins the bar: a glassy tink, a step up the key for each that lands close behind the one before, with
+    // the key's note three steps over it (near a fifth) and its octave for the glass
     const now = performance.now()
-    xpRun = now - xpLast < 450 ? Math.min(xpRun + 1, XP_STEPS.length - 1) : 0
+    xpRun = now - xpLast < 450 ? Math.min(xpRun + 1, XP_STEPS - 1) : 0
     xpLast = now
-    const f = 1760 * 2 ** (XP_STEPS[xpRun] / 12)
-    tone(e, t, { type: 'sine', f0: f, gain: 0.035, attack: 0.002, decay: 0.16 })
-    tone(e, t, { type: 'triangle', f0: f * 1.5, gain: 0.01, attack: 0.002, decay: 0.1 })
-    tone(e, t, { type: 'sine', f0: f * 2.01, gain: 0.012, attack: 0.002, decay: 0.07 })
+    const step = XP_FROM + xpRun
+    tone(e, t, { type: 'sine', f0: note(step, 6), gain: 0.035, attack: 0.002, decay: 0.16, key: true })
+    tone(e, t, { type: 'triangle', f0: note(step + 3, 6), gain: 0.01, attack: 0.002, decay: 0.1, key: true })
+    tone(e, t, { type: 'sine', f0: note(step, 7), gain: 0.012, attack: 0.002, decay: 0.07, key: true })
   },
   level(e, t) {
-    // a new level: a quick rising arpeggio, then its chord rings on under a shimmer
-    ;[1047, 1319, 1568, 2093].forEach((f, i) => tone(e, t + i * 0.08, { type: 'triangle', f0: f, gain: 0.05, attack: 0.004, decay: 0.25 }))
-    for (const f of [1047, 1319, 1568, 2093]) tone(e, t + 0.34, { type: 'sine', f0: f, gain: 0.028, attack: 0.012, decay: 1.3 })
-    tone(e, t + 0.34, { type: 'sine', f0: 4186, gain: 0.008, attack: 0.012, decay: 0.8 })
+    // a new level: a quick rising arpeggio (C6 E6 G6 C7), then its chord rings on under a shimmer (C8)
+    const chord = [note(0, 6), note(2, 6), note(3, 6), note(0, 7)]
+    chord.forEach((f, i) => tone(e, t + i * 0.08, { type: 'triangle', f0: f, gain: 0.05, attack: 0.004, decay: 0.25, key: true }))
+    for (const f of chord) tone(e, t + 0.34, { type: 'sine', f0: f, gain: 0.028, attack: 0.012, decay: 1.3, key: true })
+    tone(e, t + 0.34, { type: 'sine', f0: note(0, 8), gain: 0.008, attack: 0.012, decay: 0.8, key: true })
     burst(e, t, { type: 'highpass', freq: 3000, sweepTo: 9000, q: 0.7, gain: 0.03, attack: 0.25, decay: 0.5 })
   },
   till(e, t) {
-    // the till: its drawer rolls out and knocks open, the bell rings, the coins clink
+    // the till: its drawer rolls out and knocks open, the bell rings (E7, with a bell's minor third and octave over
+    // it), the coins clink (C7, G7)
     burst(e, t, { type: 'bandpass', freq: 1800, sweepTo: 700, q: 1.2, gain: 0.1, attack: 0.01, decay: 0.12 })
     burst(e, t + 0.12, { type: 'lowpass', freq: 500, q: 0.8, gain: 0.22, attack: 0.002, decay: 0.06 })
-    tone(e, t + 0.14, { type: 'sine', f0: 2637, gain: 0.055, attack: 0.002, decay: 0.9, key: true })
-    tone(e, t + 0.14, { type: 'sine', f0: 3951, gain: 0.025, attack: 0.002, decay: 0.6, key: true })
-    tone(e, t + 0.14, { type: 'sine', f0: 5274, gain: 0.01, attack: 0.002, decay: 0.3, key: true })
-    tone(e, t + 0.34, { type: 'sine', f0: 2093, gain: 0.03, attack: 0.002, decay: 0.2, key: true })
-    tone(e, t + 0.41, { type: 'sine', f0: 2794, gain: 0.03, attack: 0.002, decay: 0.3, key: true })
+    tone(e, t + 0.14, { type: 'sine', f0: note(2, 7), gain: 0.055, attack: 0.002, decay: 0.9, key: true })
+    tone(e, t + 0.14, { type: 'sine', f0: note(3, 7), gain: 0.025, attack: 0.002, decay: 0.6, key: true })
+    tone(e, t + 0.14, { type: 'sine', f0: note(2, 8), gain: 0.01, attack: 0.002, decay: 0.3, key: true })
+    tone(e, t + 0.34, { type: 'sine', f0: note(0, 7), gain: 0.03, attack: 0.002, decay: 0.2, key: true })
+    tone(e, t + 0.41, { type: 'sine', f0: note(3, 7), gain: 0.03, attack: 0.002, decay: 0.3, key: true })
   },
   chime(e, t) {
-    // news worth hearing: three soft handbell notes rising, each with its bell's high overtone
-    ;[880, 1175, 1760].forEach((f, i) => {
-      tone(e, t + i * 0.16, { type: 'sine', f0: f, gain: 0.04, attack: 0.003, decay: 1.1 })
-      tone(e, t + i * 0.16, { type: 'sine', f0: f * 2.76, gain: 0.008, attack: 0.002, decay: 0.3 })
+    // news worth hearing: three soft handbell notes rising (A5 D6 A6), each with its bell's high overtone (2.76 times
+    // it: off the key, but a fifth as loud, a colour rather than a note)
+    ;[note(4, 5), note(1, 6), note(4, 6)].forEach((f, i) => {
+      tone(e, t + i * 0.16, { type: 'sine', f0: f, gain: 0.04, attack: 0.003, decay: 1.1, key: true })
+      tone(e, t + i * 0.16, { type: 'sine', f0: f * 2.76, gain: 0.008, attack: 0.002, decay: 0.3, key: true })
     })
   },
   dress(e, t) {
@@ -194,26 +203,27 @@ const SYNTHS: Record<FarmSound, Synth> = {
     burst(e, t + 0.13, { type: 'bandpass', freq: 2600, sweepTo: 1300, q: 0.7, gain: 0.05, attack: 0.03, decay: 0.18 })
   },
   garment(e, t) {
-    // a new garment: a skip up the scale, then a bright bell over a soft shimmer
-    ;[1319, 1568, 1976].forEach((f, i) => tone(e, t + i * 0.09, { type: 'triangle', f0: f, gain: 0.045, attack: 0.004, decay: 0.22 }))
-    tone(e, t + 0.3, { type: 'sine', f0: 2637, gain: 0.05, attack: 0.004, decay: 1.2 })
-    tone(e, t + 0.3, { type: 'sine', f0: 3951, gain: 0.015, attack: 0.004, decay: 0.6 })
+    // a new garment: a skip up the key (E6 G6 C7), then a bright bell (E7, its minor third over it) over a soft shimmer
+    ;[note(2, 6), note(3, 6), note(0, 7)].forEach((f, i) => tone(e, t + i * 0.09, { type: 'triangle', f0: f, gain: 0.045, attack: 0.004, decay: 0.22, key: true }))
+    tone(e, t + 0.3, { type: 'sine', f0: note(2, 7), gain: 0.05, attack: 0.004, decay: 1.2, key: true })
+    tone(e, t + 0.3, { type: 'sine', f0: note(3, 7), gain: 0.015, attack: 0.004, decay: 0.6, key: true })
     burst(e, t + 0.28, { type: 'highpass', freq: 5000, sweepTo: 10000, q: 0.7, gain: 0.025, attack: 0.1, decay: 0.6 })
   },
   keys(e, t) {
-    // a bunch of keys handed over: small bright clinks close together, then a warm chord rings on
-    for (let i = 0; i < 6; i++) {
+    // a bunch of keys handed over: small bright clinks close together (high notes of the key), then a warm chord
+    // rings on (G5 C6 E6 G6)
+    KEY_CLINKS.forEach((step, i) => {
       const at = t + i * 0.055 + Math.random() * 0.03
-      tone(e, at, { type: 'sine', f0: rnd(3400, 5200), gain: 0.03, attack: 0.001, decay: 0.09 })
+      tone(e, at, { type: 'sine', f0: note(step, 7), gain: 0.03, attack: 0.001, decay: 0.09, key: true })
       burst(e, at, { type: 'highpass', freq: 7000, q: 0.8, gain: 0.02, attack: 0.001, decay: 0.03 })
-    }
-    for (const f of [784, 988, 1175, 1568]) tone(e, t + 0.42, { type: 'sine', f0: f, gain: 0.03, attack: 0.01, decay: 1.4 })
+    })
+    for (const f of [note(3, 5), note(0, 6), note(2, 6), note(3, 6)]) tone(e, t + 0.42, { type: 'sine', f0: f, gain: 0.03, attack: 0.01, decay: 1.4, key: true })
   },
   ding(e, t) {
-    // the kitchen timer: it is ready
-    tone(e, t, { type: 'sine', f0: 1568, gain: 0.06, attack: 0.003, decay: 1.2 })
-    tone(e, t, { type: 'sine', f0: 3136, gain: 0.02, attack: 0.003, decay: 0.5 })
-    tone(e, t + 0.18, { type: 'sine', f0: 2093, gain: 0.05, attack: 0.003, decay: 1.4 })
+    // the kitchen timer: it is ready (G6 and its octave, then C7)
+    tone(e, t, { type: 'sine', f0: note(3, 6), gain: 0.06, attack: 0.003, decay: 1.2, key: true })
+    tone(e, t, { type: 'sine', f0: note(3, 7), gain: 0.02, attack: 0.003, decay: 0.5, key: true })
+    tone(e, t + 0.18, { type: 'sine', f0: note(0, 7), gain: 0.05, attack: 0.003, decay: 1.4, key: true })
   },
   crow(e, t, v, pan) {
     // cock-a-doodle-doo

@@ -180,7 +180,7 @@ export interface ToneOpts {
   attack: number
   decay: number
   pan?: number
-  /** a note of the key (./palette.ts): it stays in tune when the sound's pitch varies */
+  /** a note of the key (./palette.ts), or a bell's overtone over one: it stays in tune when the sound's pitch varies */
   key?: boolean
 }
 

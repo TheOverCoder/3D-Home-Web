@@ -96,6 +96,17 @@ describe('playing a sound into an engine', () => {
     }
   })
 
+  it('plays a cue and a "no" on the same notes every time, through its row (the dice left free)', () => {
+    const freqs = (kind: FarmSound) => {
+      const ctx = new FakeContext()
+      play(makeEngine(ctx.audio), kind, { at: 1, ...vary(SOUNDS[kind]) })
+      return [...notesOf(ctx).map((n) => n.f), ...filtersOf(ctx)]
+    }
+    const cues = KINDS.filter((k) => SOUNDS[k].family === 'cue' || SOUNDS[k].family === 'no')
+    expect(cues.length).toBeGreaterThanOrEqual(6)
+    for (const kind of cues) expect(freqs(kind), kind).toEqual(freqs(kind))
+  })
+
   it('plays a sound as loud as its row lets it vary, and as near as it is (a quarter at least)', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.5)
     const loudest = (o: Parameters<typeof play>[2]) => {
