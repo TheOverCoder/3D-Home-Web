@@ -22,8 +22,9 @@ const DOOR_H = 2.1
 
 /** The market's west wall's outer face (its hall's west wall, x 6.05 less its 0.15): the office stands against it. */
 const MARKET_WEST = 5.9
-/** The lane's south edge (src/data/layout.ts, LANE: z 15 ± 1.3): the office's front stands on it. */
-const LANE_SOUTH = 16.3
+/** The lane's south edge (src/data/layout.ts, LANE: z 15 ± 1.3): the office's front stands on it, as every front on the
+ *  lot does (src/data/lot.ts). */
+export const LANE_SOUTH = 16.3
 
 /** The office's room: from its front wall on the lane's edge to as deep as the sun's shadow box allows at its west
  *  wall (2.2 m by 2 m), and its east wall against the market's. */

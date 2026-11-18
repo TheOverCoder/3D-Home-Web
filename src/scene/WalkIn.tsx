@@ -3,22 +3,26 @@
 // its lights. Everything comes from the row: a new building is a row and a model, and this draws it.
 //
 // The shell is one part that casts (walls, roof and parapet, and whatever stands with it: the contractor's cabin beside
-// the market — src/models/market.ts), so the sun's map draws it once. Nothing inside casts: no opening faces the sun,
-// so the shell already shades all of it. Its walls never fade (the camera stays inside the room your body is in, or
-// outside every walk-in: src/scene/Player.tsx), so each is a hiding piece always: what stands inside is not drawn from
-// outside, nor the farm from inside, unless it shows through a door. The lights are there from the start, so walking
-// in compiles no shader again.
+// the market, the estate office's parking sign — src/models/market.ts). The shells of every walk-in on the lot are drawn
+// together under one group (`LotShells`, by the first walk-in in the scene), and drawn into the sun's map by one mesh
+// (`castAsOne`, src/lib/sculpt/sun.ts): one draw of the sun's for the lot's buildings, where each would be one. Nothing
+// inside casts: no opening faces the sun, so the shell already shades all of it. Its walls never fade (the camera stays
+// inside the room your body is in, or outside every walk-in: src/scene/Player.tsx), so each is a hiding piece always:
+// what stands inside is not drawn from outside, nor the farm from inside, unless it shows through a door. The lights are
+// there from the start, so walking in compiles no shader again.
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { CuboidCollider, RigidBody } from '@react-three/rapier'
 import { BufferAttribute, BufferGeometry, type Group, type Object3D } from 'three'
 import { bounds, walkInRoomAt, type AutoDoor, type Box, type Rect, type WalkIn as WalkInDef } from '../data/buildings'
 import { groundDistance } from '../lib/interaction'
+import { castAsOne, type CastAsOne } from '../lib/sculpt/sun'
 import { playerState } from '../lib/playerState'
 import { surface } from '../lib/proceduralTextures'
 import { addWalls, type Enclosure, type WallPiece } from '../lib/visibility/walls'
 import { walkInShellParts } from '../models/market'
+import type { Parts } from '../lib/sculpt'
 import { FIT, putSlidingDoor, slidingDoorParts } from '../models/slidingDoor'
 
 /** The floors' height (m): just over the ground outside, under the doors' thresholds. */
@@ -133,6 +137,78 @@ export function shownInScene(o: Object3D | null): boolean {
   return true
 }
 
+// ───────────────────────────── the lot's shells ─────────────────────────────
+
+/** The walk-ins in the scene, in the order they came (each adds itself as it mounts): the first draws every one's shell
+ *  (`LotShells`). */
+let shown: readonly WalkInDef[] = []
+const listeners = new Set<() => void>()
+const subscribe = (f: () => void) => {
+  listeners.add(f)
+  return () => void listeners.delete(f)
+}
+const shownNow = () => shown
+function show(def: WalkInDef) {
+  shown = [...shown, def]
+  for (const f of listeners) f()
+  return () => {
+    shown = shown.filter((d) => d !== def)
+    for (const f of listeners) f()
+  }
+}
+
+/** The lot's sun mesh now (null while no walk-in is in the scene), for the tests. */
+let lotSun: CastAsOne | null = null
+export const lotSunMesh = () => lotSun
+
+/**
+ * Every walk-in's shell under one group, each its own crowd as before (the camera draws one a building, and the drawing
+ * pass leaves out each one nobody can see), drawn into the sun's map by one mesh: `castAsOne` takes in their sun meshes
+ * once they are put, and they cast no more on their own. A shell is made once for its row and kept while its walk-in is
+ * in the scene; the one mesh is made again whenever one comes or goes.
+ */
+function LotShells({ defs }: { defs: readonly WalkInDef[] }) {
+  const root = useRef<Group>(null)
+  const made = useRef(new Map<WalkInDef, Parts<'shell'>>())
+  const shells = useMemo(() => {
+    const kept = made.current
+    for (const [def, parts] of kept)
+      if (!defs.includes(def)) {
+        parts.dispose()
+        parts.meshes.shell.geometry.dispose()
+        kept.delete(def)
+      }
+    for (const def of defs) if (!kept.has(def)) kept.set(def, walkInShellParts(def))
+    return defs.map((def) => kept.get(def)!)
+  }, [defs])
+  useEffect(
+    () => () => {
+      for (const parts of made.current.values()) {
+        parts.dispose()
+        parts.meshes.shell.geometry.dispose()
+      }
+      made.current.clear()
+    },
+    [],
+  )
+  // (before a frame is drawn: the shells are in the group by now, put where they stand)
+  useLayoutEffect(() => {
+    const one = castAsOne(root.current!)
+    lotSun = one
+    return () => {
+      one.release()
+      if (lotSun === one) lotSun = null
+    }
+  }, [shells])
+  return (
+    <group ref={root} name="lot-shells">
+      {shells.map((parts, i) => (
+        <primitive key={defs[i].id} object={parts.group} />
+      ))}
+    </group>
+  )
+}
+
 /** On your way out of a building whose door is locked, how far from its doorway you are before it locks behind you
  *  (m, on the ground: clear of your body, so the door never shuts on you). */
 const LOCK_CLEAR = 0.6
@@ -147,14 +223,10 @@ const LOCK_CLEAR = 0.6
  */
 export function WalkIn({ def, hiders = NONE, walkers, closed }: { def: WalkInDef; hiders?: readonly Box[]; walkers?: () => Iterable<{ x: number; z: number }>; closed?: () => boolean }) {
   const root = useRef<Group>(null)
-  const shell = useMemo(() => walkInShellParts(def), [def])
-  useEffect(
-    () => () => {
-      shell.dispose()
-      shell.meshes.shell.geometry.dispose()
-    },
-    [shell],
-  )
+  // its shell is drawn with the lot's (`LotShells`), by whichever walk-in came first
+  useEffect(() => show(def), [def])
+  const all = useSyncExternalStore(subscribe, shownNow)
+  const host = all[0] === def
   const floor = useMemo(() => floorGeometry([...def.rooms, ...def.doors], TILE[def.floor]), [def])
   useEffect(() => () => floor.dispose(), [floor])
   const tex = useMemo(() => surface(def.floor === 'boards' ? 'wood' : 'tile', 1, 1), [def.floor])
@@ -218,7 +290,7 @@ export function WalkIn({ def, hiders = NONE, walkers, closed }: { def: WalkInDef
 
   return (
     <group ref={root} name={`walk-in-${def.id}`}>
-      <primitive object={shell.group} />
+      {host && <LotShells defs={all} />}
       {leaves && <primitive object={leaves.group} />}
       <mesh geometry={floor} receiveShadow name={`walk-in-${def.id}-floor`}>
         <meshStandardMaterial map={tex.map} normalMap={tex.normalMap} roughnessMap={tex.roughnessMap} roughness={1} color="#efe9df" />

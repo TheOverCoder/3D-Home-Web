@@ -17,17 +17,17 @@ import {
   PARK_AREA,
   WALK_INS_PLANNED,
 } from './lotPlan'
-import { FARM_SUN_BOX_PLANNED, inBox } from './sunBox'
+import { FARM_SUN_BOX, inBox } from './sunBox'
 import { SUN_MARGIN, cornerMargins, roomMargins } from './sunCheck'
 import { QUEUE, WALK_Z, queueSpot } from '../farm/data'
 import { CAR_SHAPE, carHalf } from '../models/car'
 
 // The lot as update-v1/missions/11-buildings.md plans it (src/data/lotPlan.ts), held to the rules today's rows keep before
-// any of it is drawn: against the farm's planned sun box every floor and every sunward wall's inside up to its roof, the
+// any of it is drawn: against the farm's sun box every floor and every sunward wall's inside up to its roof, the
 // cabin and the cars for sale inside it, the car park wholly outside it; nothing overlapping; today's doors, ways in and
 // car where they are; each walk-in a building its poses can be made from (one outer door, every room reached).
 
-const BOX = FARM_SUN_BOX_PLANNED
+const BOX = FARM_SUN_BOX
 const EPS = 1e-9
 const area = (r: Rect) => (r.x1 - r.x0) * (r.z1 - r.z0)
 const inRect = (r: Rect, x: number, z: number) => x >= r.x0 - EPS && x <= r.x1 + EPS && z >= r.z0 - EPS && z <= r.z1 + EPS
@@ -45,7 +45,7 @@ function grid(r: Rect): [number, number][] {
   return out
 }
 
-describe('the planned lot against the farm’s planned sun box', () => {
+describe('the planned lot against the farm’s sun box', () => {
   for (const w of WALK_INS_PLANNED)
     for (const room of w.rooms)
       it(`${w.id}, ${room.space}: its floor, and the inside of its west and north walls up to its roof`, () => {

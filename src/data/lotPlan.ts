@@ -6,7 +6,7 @@ import { FRONT_DOOR, MARKET_WALKIN } from './market'
 // dealer, the contractor's cabin moved against the hall's new east wall, the car park, and the lot's walkable ground.
 // Rows only: no game file imports this, and nothing here is drawn or walked on until the rows replace today's
 // (src/data/market.ts, src/data/estate.ts). src/data/lotPlan.test.ts holds them to the rules today's rows keep, against
-// the farm's planned sun box (src/data/sunBox.ts, FARM_SUN_BOX_PLANNED): every floor, and the inside of every wall the
+// the farm's sun box (src/data/sunBox.ts, FARM_SUN_BOX): every floor, and the inside of every wall the
 // sun shines at, inside it; the car park wholly outside it (its cars cast nothing and keep their soft shadows).
 //
 // What stays where it is: the market's front door and the way in to it (MARKET_PATH), the estate office's door and its
@@ -139,7 +139,7 @@ export const DISPLAY_BAYS_PLANNED: readonly Rect[] = [
 
 // ───────────────────────────── the car park and the lot ─────────────────────────────
 
-/** The car park, west of the estate office along the lane's south edge, wholly outside the planned box. Its bays and
+/** The car park, west of the estate office along the lane's south edge, wholly outside the farm's sun box. Its bays and
  *  stages: src/farm/park.ts. */
 export const PARK_AREA: Rect = { x0: -26, x1: -7.2, z0: LANE_SOUTH, z1: 30.5 }
 
