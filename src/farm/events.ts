@@ -9,7 +9,11 @@
 
 import type { ArtId } from '../ui/art'
 import { isObject } from '../lib/saved'
+import { dateKey } from './calendar'
 import { SELLABLE, type ProduceId } from './data'
+
+// (the device's local date of a moment, from its home: src/farm/calendar.ts)
+export { dateKey } from './calendar'
 
 export type EventId = 'market' | 'harvest' | 'gifts' | 'rush' | 'lucky'
 /** What an event changes: the drawn goods' price, the gifts a sale brings, how often buyers come, how fast crops grow,
@@ -56,13 +60,6 @@ export interface Occurrence {
   key: string
   start: number
   end: number
-}
-
-const pad = (n: number) => String(n).padStart(2, '0')
-/** The device's local date of a moment: "2026-11-21". */
-export const dateKey = (ms: number) => {
-  const d = new Date(ms)
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
 /** The event's time on the local day `k` days after the one of `ms`, or null when it does not fall on that weekday. (The
