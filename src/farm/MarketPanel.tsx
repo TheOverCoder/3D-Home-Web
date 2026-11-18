@@ -324,7 +324,7 @@ export function MarketPlacePanel({ place }: { place: number }) {
   }
   const fill = () => {
     if (!good || !fillPlace(place, good, n)) return
-    farmSound('plant')
+    farmSound('shelf')
     playGesture('interact')
     back()
   }

@@ -152,6 +152,15 @@ export function out(e: Engine, pan?: number): AudioNode {
   return p
 }
 
+/** A gain at nothing from the start, before its envelope is written: a node's gain is 1 until its first event takes
+ *  over, and the frame a source starts in (a sub-sample start) could otherwise pass at full size, a click (a highpassed
+ *  noise's first sample came out near 0 dBFS). */
+function silentGain(ac: BaseAudioContext): GainNode {
+  const g = ac.createGain()
+  g.gain.value = 0
+  return g
+}
+
 /** A filtered noise burst with a fast attack and an exponential decay (its filter moves with the sound's pitch). */
 export function burst(e: Engine, t: number, o: BurstOpts) {
   const { ac } = e
@@ -164,7 +173,7 @@ export function burst(e: Engine, t: number, o: BurstOpts) {
   f.frequency.setValueAtTime(o.freq * p, t)
   if (o.sweepTo) f.frequency.exponentialRampToValueAtTime(o.sweepTo * p, t + o.attack + o.decay)
   f.Q.value = o.q ?? 0.8
-  const g = ac.createGain()
+  const g = silentGain(ac)
   g.gain.setValueAtTime(0.0001, t)
   g.gain.exponentialRampToValueAtTime(Math.max(0.0002, o.gain * (e.level ?? 1)), t + o.attack)
   g.gain.exponentialRampToValueAtTime(0.0001, t + o.attack + o.decay)
@@ -192,7 +201,7 @@ export function tone(e: Engine, t: number, o: ToneOpts) {
   osc.type = o.type
   osc.frequency.setValueAtTime(o.f0 * p, t)
   if (o.f1) osc.frequency.exponentialRampToValueAtTime(o.f1 * p, t + o.attack + o.decay)
-  const g = ac.createGain()
+  const g = silentGain(ac)
   g.gain.setValueAtTime(0.0001, t)
   g.gain.exponentialRampToValueAtTime(Math.max(0.0002, o.gain * (e.level ?? 1)), t + o.attack)
   g.gain.exponentialRampToValueAtTime(0.0001, t + o.attack + o.decay)
@@ -219,9 +228,9 @@ export function voice(e: Engine, t: number, notes: [number, number][], seconds: 
   f.frequency.setValueAtTime(cutoff[0], t)
   f.frequency.linearRampToValueAtTime(cutoff[1], t + seconds * 0.6)
   f.frequency.linearRampToValueAtTime(cutoff[0], t + seconds)
-  const g = ac.createGain()
+  const g = silentGain(ac)
   g.gain.setValueAtTime(0.0001, t)
-  notes.forEach(([, level], i) => g.gain.linearRampToValueAtTime(Math.max(0.0002, gain * level), t + Math.max(0.03, i * step)))
+  notes.forEach(([, level], i) => g.gain.linearRampToValueAtTime(Math.max(0.0002, gain * level * (e.level ?? 1)), t + Math.max(0.03, i * step)))
   g.gain.linearRampToValueAtTime(0.0001, t + seconds + 0.08)
   osc.connect(f).connect(g).connect(out(e, pan))
   osc.start(t)

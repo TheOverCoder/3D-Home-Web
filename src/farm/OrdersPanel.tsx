@@ -40,7 +40,7 @@ const actions: OrdersActions = {
     const n = fillOrder(k)
     if (n) {
       uiClick()
-      farmSound('plant')
+      farmSound('crate')
     }
     return n
   },

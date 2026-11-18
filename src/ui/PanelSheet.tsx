@@ -59,6 +59,7 @@ export function PanelSheet({
   className = '',
   near,
   closing = false,
+  onLeave,
   onClose,
   children,
 }: {
@@ -81,6 +82,9 @@ export function PanelSheet({
   near?: ReactNode
   /** the panel asks it to go out (it then calls `onClose`) */
   closing?: boolean
+  /** it starts on its way out by itself (✕, the shade, a swipe, Esc): what is still on it can go from where it stands
+   *  (the daily gift's goods fly home), before `onClose` once it has gone */
+  onLeave?: () => void
   onClose: () => void
   children: ReactNode
 }) {
@@ -88,6 +92,15 @@ export function PanelSheet({
   // taken away by its host (AnimatePresence): it goes out all the same, and never calls onClose for it
   const here = useIsPresent()
   const [leaving, setLeaving] = useState(false)
+  // on its way out by itself: told once (onLeave), then out
+  const leaveNow = useRef(onLeave)
+  leaveNow.current = onLeave
+  const went = useRef(false)
+  const leave = () => {
+    if (!went.current) leaveNow.current?.()
+    went.current = true
+    setLeaving(true)
+  }
   const out = leaving || closing || !here
   const sheet = useRef<HTMLDivElement>(null)
   const root = useRef<HTMLDivElement>(null)
@@ -101,7 +114,7 @@ export function PanelSheet({
       if (e.key !== 'Escape' || above(root.current)) return
       e.stopPropagation()
       if (backNow.current) backNow.current()
-      else setLeaving(true)
+      else leave()
     }
     window.addEventListener('keydown', key, true)
     return () => window.removeEventListener('keydown', key, true)
@@ -111,7 +124,7 @@ export function PanelSheet({
   const shade = useTransform(pull, [0, 360], [1, 0.15])
   const along = (i: PanInfo) => Math.max(0, mode === 'right' ? i.offset.x : i.offset.y)
   const letGo = (_: unknown, i: PanInfo) => {
-    if (swipedAway(mode, i)) setLeaving(true)
+    if (swipedAway(mode, i)) leave()
     else void animate(pull, 0, SPRING.pop)
   }
   const picture =
@@ -135,7 +148,7 @@ export function PanelSheet({
         animate={{ opacity: out ? 0 : 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: out ? 0.18 : 0.24 }}
-        onClick={() => setLeaving(true)}
+        onClick={leave}
       >
         <m.span style={{ opacity: shade }} />
       </m.div>
@@ -192,7 +205,7 @@ export function PanelSheet({
             <h2>{title}</h2>
             {sub && <div className="mp-sub">{sub}</div>}
           </div>
-          <m.button className="mp-round" onClick={() => setLeaving(true)} aria-label="Close (Esc)" {...PRESS}>
+          <m.button className="mp-round" onClick={leave} aria-label="Close (Esc)" {...PRESS}>
             <X weight="bold" />
           </m.button>
         </header>

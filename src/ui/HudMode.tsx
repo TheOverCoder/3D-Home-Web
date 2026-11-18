@@ -1,6 +1,9 @@
 import { AnimatePresence, m } from 'motion/react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useDailyWaiting } from '../farm/useDaily'
+import { BusyCard, useNextReady, whenReady } from '../farm/Busy'
+import { produceById } from '../farm/data'
+import { iconUrl } from '../farm/icons'
 import { editHere, openEdit } from '../home/decorate'
 import { newsBadge, useFarm } from '../farm/state'
 import { useSettings, type Settings } from '../settings'
@@ -44,6 +47,8 @@ export function HudMode() {
   useFarm((s) => s.rev)
   const news = newsBadge()
   const gift = useDailyWaiting()
+  // while the farm is busy (src/farm/Busy.tsx): what is ready next, and when
+  const next = useNextReady()
   const [open, setOpen] = useState(false)
   const box = useRef<HTMLDivElement>(null)
   const shown = phase === 'playing' && !occupied
@@ -75,108 +80,127 @@ export function HudMode() {
   }, [open])
   if (!shown && open) setOpen(false)
 
-  if (!shown) return null
+  // the busy card (its own top slot) lives beside the menu, as the menu comes and goes
+  if (!shown)
+    return (
+      <>
+        <BusyCard />
+      </>
+    )
   const ViewIcon = mode === 'all' ? SquaresFour : mode === 'compass' ? CompassRose : EyeSlash
   // the dial's buttons: the daily gift while it waits, the news, edit where there is something to edit, the view, the
   // settings (five: on a phone on its side they go in two columns, see HudMode.css)
-  const buttons = (gift ? 1 : 0) + 1 + (edit ? 1 : 0) + 2
+  const buttons = (gift ? 1 : 0) + (next ? 1 : 0) + 1 + (edit ? 1 : 0) + 2
   return (
-    <MotionRoot>
-      <div className="top-menu" ref={box}>
-        <m.button
-          className={`top-menu-btn${open ? ' on' : ''}${gift ? ' gift' : ''}`}
-          {...PRESS}
-          onClick={() => setOpen((o) => !o)}
-          aria-expanded={open}
-          aria-label={`Menu: ${gift ? "today's gift waits; " : ''}the farm news${news ? ` (${news} new)` : ''}, edit, the top's view, settings`}
-          title="Menu"
-        >
-          {open ? <X weight="bold" /> : <List weight="bold" />}
+    <>
+      <BusyCard />
+      <MotionRoot>
+        <div className="top-menu" ref={box}>
+          <m.button
+            className={`top-menu-btn${open ? ' on' : ''}${gift ? ' gift' : ''}`}
+            {...PRESS}
+            onClick={() => setOpen((o) => !o)}
+            aria-expanded={open}
+            aria-label={`Menu: ${gift ? "today's gift waits; " : ''}${next ? `next ready ${whenReady(next.ready)}; ` : ''}the farm news${news ? ` (${news} new)` : ''}, edit, the top's view, settings`}
+            title="Menu"
+          >
+            {open ? <X weight="bold" /> : <List weight="bold" />}
+            <AnimatePresence>
+              {gift && !open && (
+                <m.span
+                  key="gift"
+                  className="top-menu-gift"
+                  aria-hidden="true"
+                  initial={{ scale: 0, rotate: -30 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  exit={{ scale: 0, transition: { duration: 0.12 } }}
+                  transition={SPRING.pop}
+                >
+                  <img src={art('wrapped-gift')} alt="" />
+                </m.span>
+              )}
+              {news > 0 && !open && <Badge key="news" n={news} />}
+            </AnimatePresence>
+          </m.button>
           <AnimatePresence>
-            {gift && !open && (
-              <m.span
-                key="gift"
-                className="top-menu-gift"
-                aria-hidden="true"
-                initial={{ scale: 0, rotate: -30 }}
-                animate={{ scale: 1, rotate: 0 }}
-                exit={{ scale: 0, transition: { duration: 0.12 } }}
-                transition={SPRING.pop}
+            {open && (
+              <m.ul
+                className={`top-dial${buttons > 4 ? ' many' : ''}`}
+                initial="shut"
+                animate="open"
+                exit="shut"
+                variants={{ open: { transition: { staggerChildren: 0.045 } }, shut: { transition: { staggerChildren: 0.03, staggerDirection: -1 } } }}
               >
-                <img src={art('wrapped-gift')} alt="" />
-              </m.span>
+                {gift && (
+                  <Dial
+                    className="daily-open"
+                    icon={<img className="art" src={art('wrapped-gift')} alt="" />}
+                    word="Daily gift"
+                    label="Daily gift: today's is waiting"
+                    onTap={() => {
+                      setOpen(false)
+                      useHome.getState().openPanel({ kind: 'daily' })
+                    }}
+                  />
+                )}
+                {next && 'item' in next.what && (
+                  <m.li variants={dial} className="next-ready" role="note" aria-label={`Next ready: ${produceById(next.what.item).plural}, ${whenReady(next.ready)}`}>
+                    <span className="top-dial-btn">
+                      <span className="top-dial-word">Next ready {whenReady(next.ready)}</span>
+                      <span className="top-dial-icon">
+                        <img className="art" src={iconUrl(next.what.item)} alt="" width={30} height={30} />
+                      </span>
+                    </span>
+                  </m.li>
+                )}
+                <Dial
+                  className="news-open"
+                  icon={<Newspaper weight="bold" />}
+                  badge={news}
+                  word="Farm news"
+                  label={`The farm news: the week's events${news ? ` — ${news} new` : ''}`}
+                  onTap={() => {
+                    setOpen(false)
+                    if (!useHome.getState().panel) useHome.getState().openPanel({ kind: 'news' })
+                  }}
+                />
+                {edit && (
+                  <Dial
+                    className="edit-open"
+                    icon={edit === 'farm' ? <ArrowsOutCardinal weight="bold" /> : <Couch weight="bold" />}
+                    word={edit === 'farm' ? 'Edit the farm' : 'Decorate'}
+                    label={`${edit === 'farm' ? 'Edit the farm: move things, buy land and decoration' : 'Decorate: move, turn and put away the furniture'} (B)`}
+                    onTap={() => {
+                      setOpen(false)
+                      openEdit()
+                    }}
+                  />
+                )}
+                <Dial
+                  className="hud-mode"
+                  mode={mode}
+                  icon={<ViewIcon weight="bold" />}
+                  word={`Top: ${WORD[mode]}`}
+                  label={`${SAYS[mode]} — tap to change`}
+                  title={`${SAYS[mode]} (H)`}
+                  onTap={() => useSettings.getState().update({ hudMode: NEXT[mode] })}
+                />
+                <Dial
+                  className="settings-open"
+                  icon={<GearSix weight="bold" />}
+                  word="Settings"
+                  label="Settings and controls (Esc)"
+                  onTap={() => {
+                    setOpen(false)
+                    useHome.getState().setSettingsOpen(true)
+                  }}
+                />
+              </m.ul>
             )}
-            {news > 0 && !open && <Badge key="news" n={news} />}
           </AnimatePresence>
-        </m.button>
-        <AnimatePresence>
-          {open && (
-            <m.ul
-              className={`top-dial${buttons > 4 ? ' many' : ''}`}
-              initial="shut"
-              animate="open"
-              exit="shut"
-              variants={{ open: { transition: { staggerChildren: 0.045 } }, shut: { transition: { staggerChildren: 0.03, staggerDirection: -1 } } }}
-            >
-              {gift && (
-                <Dial
-                  className="daily-open"
-                  icon={<img className="art" src={art('wrapped-gift')} alt="" />}
-                  word="Daily gift"
-                  label="Daily gift: today's is waiting"
-                  onTap={() => {
-                    setOpen(false)
-                    useHome.getState().openPanel({ kind: 'daily' })
-                  }}
-                />
-              )}
-              <Dial
-                className="news-open"
-                icon={<Newspaper weight="bold" />}
-                badge={news}
-                word="Farm news"
-                label={`The farm news: the week's events${news ? ` — ${news} new` : ''}`}
-                onTap={() => {
-                  setOpen(false)
-                  if (!useHome.getState().panel) useHome.getState().openPanel({ kind: 'news' })
-                }}
-              />
-              {edit && (
-                <Dial
-                  className="edit-open"
-                  icon={edit === 'farm' ? <ArrowsOutCardinal weight="bold" /> : <Couch weight="bold" />}
-                  word={edit === 'farm' ? 'Edit the farm' : 'Decorate'}
-                  label={`${edit === 'farm' ? 'Edit the farm: move things, buy land and decoration' : 'Decorate: move, turn and put away the furniture'} (B)`}
-                  onTap={() => {
-                    setOpen(false)
-                    openEdit()
-                  }}
-                />
-              )}
-              <Dial
-                className="hud-mode"
-                mode={mode}
-                icon={<ViewIcon weight="bold" />}
-                word={`Top: ${WORD[mode]}`}
-                label={`${SAYS[mode]} — tap to change`}
-                title={`${SAYS[mode]} (H)`}
-                onTap={() => useSettings.getState().update({ hudMode: NEXT[mode] })}
-              />
-              <Dial
-                className="settings-open"
-                icon={<GearSix weight="bold" />}
-                word="Settings"
-                label="Settings and controls (Esc)"
-                onTap={() => {
-                  setOpen(false)
-                  useHome.getState().setSettingsOpen(true)
-                }}
-              />
-            </m.ul>
-          )}
-        </AnimatePresence>
-      </div>
-    </MotionRoot>
+        </div>
+      </MotionRoot>
+    </>
   )
 }
 

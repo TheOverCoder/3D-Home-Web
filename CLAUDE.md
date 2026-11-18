@@ -250,7 +250,9 @@ The README has the overview; `tests/README.md` what each test guards.
 - What is collected goes in only while there is room (`store` in `state.ts`), and nothing is lost: what does not fit
   stays where it was (on the animal, in the bed, in the machine) and its offer turns into a status (`full` on the icon);
   goods coming back from an order and surprises always go in, past full. A new source of goods follows the same rule.
-- Time away (the page closed or hidden: `cameBack` in `state.ts`) runs the farm on in steps for up to three hours and
+  A full building never stands in the way: *Make room* (`makeRoom`, `src/farm/state/stores.ts`; on the welcome back's
+  full row) sells at fair price, in one press, the surplus no buyer or order wants, just enough for what waits.
+- Time away (the page closed or hidden: `cameBack` in `state.ts`) runs the farm on in steps for up to a day (`AWAY_MOST`) and
   tells what happened (`AwayPanel.tsx`, from what was ready before and after): a new producer or machine is in it by
   being a row. A goal is a row in `GOALS` (`src/farm/goals.ts`) whose `count` says what it counts as data
   (`src/farm/measure.ts`: goods got, a stat, what a machine made…); a new good the farm makes is counted in `got` where

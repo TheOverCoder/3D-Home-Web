@@ -47,6 +47,8 @@ export function land(kind: FloorKind, strength: number) {
   const v = Math.max(0.3, Math.min(1, strength))
   burst(e, t, { type: 'lowpass', freq: kind === 'carpet' ? 260 : 340, q: 0.7, gain: 0.8 * v, attack: 0.004, decay: 0.16 })
   tone(e, t, { type: 'sine', f0: 82, f1: 44, gain: 0.35 * v, attack: 0.004, decay: 0.14 })
+  // the knock of it a phone's speaker plays (it carries nothing of the thump under 500 Hz)
+  burst(e, t, { type: 'bandpass', freq: kind === 'carpet' ? 700 : 900, q: 1.2, gain: 0.22 * v, attack: 0.003, decay: 0.06 })
   if (kind !== 'carpet') burst(e, t + 0.012, { type: 'bandpass', freq: kind === 'tile' ? 2600 : 1100, q: 1.4, gain: 0.12 * v, attack: 0.002, decay: 0.05 })
   footstep(kind, v * 0.6)
 }
