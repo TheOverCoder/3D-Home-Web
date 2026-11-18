@@ -1,4 +1,4 @@
-import { BoxGeometry, Color, DirectionalLight, Frustum, Group, InstancedMesh, Matrix4, PerspectiveCamera, Raycaster, SphereGeometry, Vector3 } from 'three'
+import { BoxGeometry, Color, DirectionalLight, Frustum, Group, InstancedMesh, Matrix4, PerspectiveCamera, Quaternion, Raycaster, SphereGeometry, Vector3 } from 'three'
 import { describe, expect, it } from 'vitest'
 import { Parts, liveParts, type ModelTest } from './parts'
 import { copiesMade, lodReady } from './lod'
@@ -229,6 +229,53 @@ describe('a crowd drawn model by model', () => {
       parts.cull(null, null)
     }
     expect(held()).toEqual(before)
+  })
+
+  it('a model sized along each of its axes (a reaction’s stretch): its parts scaled so, its box grown by its largest; one size, as before', () => {
+    const one = (scale?: number | Vector3) => {
+      const parts = new Parts({ body: { geometry: new BoxGeometry(1, 0.6, 1.6), max: 4 }, pole: { geometry: new BoxGeometry(0.1, 2, 0.1), max: 4, castShadow: true } })
+      parts.begin()
+      if (scale === undefined) parts.at(3, 0, -2, 0.7)
+      else parts.at(3, 0, -2, 0.7, scale)
+      parts.put('body', 0, 0.9, 0)
+      parts.put('pole', 0, 1, -1)
+      parts.end()
+      return parts
+    }
+    // at one size, a number or the same on every axis: the very matrices of before
+    const before = one()
+    for (const same of [1, new Vector3(1, 1, 1)]) {
+      const now = one(same)
+      for (const k of ['body', 'pole']) expect(matrices(now, k)).toEqual(matrices(before, k))
+      expect(Array.from(casterOf(now, 'pole').instanceMatrix.array.slice(0, 16))).toEqual(Array.from(casterOf(before, 'pole').instanceMatrix.array.slice(0, 16)))
+    }
+    // at (1.2, 0.8, 1.2): the body stretched so about the model's own axes, the pole's shadow with it
+    const stretch = new Vector3(1.2, 0.8, 1.2)
+    const parts = one(stretch)
+    const root = new Matrix4().compose(new Vector3(3, 0, -2), new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), 0.7), stretch)
+    const body = root.clone().multiply(new Matrix4().makeTranslation(0, 0.9, 0))
+    matrices(parts, 'body').forEach((v, i) => expect(v).toBeCloseTo(body.elements[i], 5))
+    expect(Array.from(casterOf(parts, 'pole').instanceMatrix.array.slice(0, 16))).toEqual(matrices(parts, 'pole'))
+    // its box: round the body where it is put, by its bounding sphere grown by the largest axis
+    const body1 = new Parts({ body: { geometry: new BoxGeometry(1, 0.6, 1.6), max: 4 } })
+    const boxOf = (scale: number | Vector3) => {
+      body1.begin().at(3, 0, -2, 0.7, scale).put('body', 0, 0.9, 0)
+      body1.end()
+      const boxes: number[][] = []
+      body1.cull((...box) => (boxes.push(box), true))
+      return boxes
+    }
+    const g = new BoxGeometry(1, 0.6, 1.6)
+    g.computeBoundingSphere()
+    const radius = g.boundingSphere!.radius
+    const grown = 1.2 * radius
+    const [box] = boxOf(stretch)
+    const want = [3 - grown, 0.9 * 0.8 - grown, -2 - grown, 3 + grown, 0.9 * 0.8 + grown, -2 + grown]
+    want.forEach((v, i) => expect(box[i]).toBeCloseTo(v, 5))
+    // the same at one size: its sphere where it stands, as big as it is
+    const [plain] = boxOf(1)
+    const at1 = [3 - radius, 0.9 - radius, -2 - radius, 3 + radius, 0.9 + radius, -2 + radius]
+    at1.forEach((v, i) => expect(plain[i]).toBeCloseTo(v, 5))
   })
 
   it('is a live crowd while its group is in a scene', () => {
