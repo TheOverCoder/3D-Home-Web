@@ -71,13 +71,14 @@ export const PEOPLE = {
   // The neighbours (decisions 11 and 12): names in the game's own style, none a buyer's (NAMES in src/farm/data.ts) or
   // an animal's; each looks like their trade and sounds like their age. They come to the gate with a basket, as
   // buyers do. When they keep their hours (a HOURS row each) is 03's next part.
-  /** the baker: broad, in white, his cap a white beanie; a warm, round voice */
+  /** the baker: broad, in white, his cap a white beanie (over brown skin, so they read as his clothes); a warm, round
+   *  voice */
   baker: {
     name: 'Moshe',
     role: 'neighbour',
     look: {
       seed: 3307,
-      over: { sex: 'm', shirt: '#f6f0e4', trousers: '#5a4636', skin: '#e0ac87', hair: '#5a3a22', hairStyle: 0, hat: 'beanie', hatBand: '#f6f0e4', height: 1, shoulders: 1.1, hips: 1 },
+      over: { sex: 'm', shirt: '#f6f0e4', trousers: '#5a4636', skin: '#c68863', hair: '#5a3a22', hairStyle: 0, hat: 'beanie', hatBand: '#f6f0e4', height: 1, shoulders: 1.1, hips: 1 },
     },
     voice: { pitch: 104, speed: 4.2, size: 1.12, bright: 0.42, rasp: 0.1, swing: 0.6 },
     pic: 'people/baker',
@@ -85,22 +86,22 @@ export const PEOPLE = {
     birthday: { month: 3, date: 14 },
     trait: 'up since four; everything is about bread',
   },
-  /** the teacher: a purple blouse, her hair in a bun; a clear voice that rises and falls */
+  /** the teacher: a purple blouse, long auburn hair; a clear voice that rises and falls */
   teacher: {
     name: 'Dalia',
     role: 'neighbour',
-    look: { seed: 5113, over: { sex: 'f', shirt: '#7b5aa6', trousers: '#283044', skin: '#f1c7a5', hair: '#2b2017', hairStyle: 2, hat: false, height: 1.02 } },
+    look: { seed: 5113, over: { sex: 'f', shirt: '#7b5aa6', trousers: '#283044', skin: '#f1c7a5', hair: '#7b4b2a', hairStyle: 1, hat: false, height: 1.02 } },
     voice: { pitch: 212, speed: 4.3, size: 0.86, bright: 0.62, rasp: 0.03, swing: 0.75 },
     pic: 'people/teacher',
     likes: ['lemon', 'strawberry'],
     birthday: { month: 9, date: 1 },
     trait: 'gives top marks for everything',
   },
-  /** the knitter: grey curls under a mustard beanie of her own making, a red cardigan; slower, a little rasp */
+  /** the knitter: grey curls, small, in a red cardigan of her own making; slower, a little rasp */
   knitter: {
     name: 'Rina',
     role: 'neighbour',
-    look: { seed: 7741, over: { sex: 'f', shirt: '#b23a48', trousers: '#6b6255', skin: '#f6d5bd', hair: '#b9b2a8', hairStyle: 3, hat: 'beanie', hatBand: '#d9a441', height: 0.92 } },
+    look: { seed: 7741, over: { sex: 'f', shirt: '#b23a48', trousers: '#6b6255', skin: '#f6d5bd', hair: '#b9b2a8', hairStyle: 3, hat: false, height: 0.92 } },
     voice: { pitch: 190, speed: 3.8, size: 0.9, bright: 0.48, rasp: 0.2, swing: 0.65 },
     pic: 'people/knitter',
     likes: ['wool', 'cloth'],
@@ -111,18 +112,18 @@ export const PEOPLE = {
   beekeeper: {
     name: 'Uri',
     role: 'neighbour',
-    look: { seed: 2203, over: { sex: 'm', shirt: '#f2cc8f', trousers: '#1f2a24', skin: '#c68863', hair: '#a8743f', hairStyle: 3, hat: 'straw', hatBand: '#d9a441', height: 1.06 } },
+    look: { seed: 2203, over: { sex: 'm', shirt: '#f2cc8f', trousers: '#1f2a24', skin: '#e0ac87', hair: '#a8743f', hairStyle: 3, hat: 'straw', hatBand: '#d9a441', height: 1.06 } },
     voice: { pitch: 98, speed: 3.7, size: 1.06, bright: 0.32, rasp: 0.08, swing: 0.3 },
     pic: 'people/beekeeper',
     likes: ['sugar', 'lemon_cake'],
     birthday: { month: 5, date: 20 },
     trait: 'calm and slow; hums like his bees',
   },
-  /** the child: small, a big head and a ponytail, in teal; high and quick */
+  /** the child: small, a big head and dark curls, in teal; high and quick */
   child: {
     name: 'Tali',
     role: 'neighbour',
-    look: { seed: 6029, over: { sex: 'f', shirt: '#2f8f8a', trousers: '#3d4a5c', skin: '#9a6646', hair: '#7b4b2a', hairStyle: 4, hat: false, height: 0.9, head: 1.1, shoulders: 0.88, hips: 1 } },
+    look: { seed: 6029, over: { sex: 'f', shirt: '#2f8f8a', trousers: '#3d4a5c', skin: '#9a6646', hair: '#1c1c1c', hairStyle: 3, hat: false, height: 0.9, head: 1.1, shoulders: 0.88, hips: 1 } },
     voice: { pitch: 290, speed: 5.2, size: 0.72, bright: 0.82, rasp: 0, swing: 1 },
     pic: 'people/child',
     likes: ['milk', 'egg'],
