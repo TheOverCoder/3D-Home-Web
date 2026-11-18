@@ -6,6 +6,7 @@ import { tripSeconds } from '../tractorRoute'
 import { boundary, type FarmLayout } from '../layout'
 import { bump, farm, putBack, random, save, toast } from './core'
 import { gainXp } from './levels'
+import { foundPrizes, rewarded } from './rewards'
 import { gainItems, rollGifts, surpriseWords } from './stores'
 import { knownGoods } from './buyers'
 
@@ -75,6 +76,7 @@ export function sendOrder(k: number) {
   gainXp('sale', o.coins, OFFICE_SCREEN)
   farm.dispatch.waiting = Math.min(MOST_CRATES, farm.dispatch.waiting + cratesFor(o))
   farm.orders[k] = { order: makeOrder(knownGoods(), random) }
+  rewarded('order', [{ coins: o.coins }, ...foundPrizes(items)], OFFICE_SCREEN)
   toast(`Order sent · + ${o.coins} coins${surpriseWords(items)}`, items[0] ?? 'coin')
   farmSound('coins')
   bump()

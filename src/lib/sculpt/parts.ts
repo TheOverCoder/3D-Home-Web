@@ -276,10 +276,13 @@ export class Parts<K extends string = string> {
   }
 
   /** Where the next model stands (the ground under its middle), which way it faces (radians about y; 0 looks
-   *  along +z) and how big it is. Each `at` starts a model: the view draws a model whole, or not at all. */
-  at(x: number, y: number, z: number, heading = 0, scale = 1) {
+   *  along +z) and how big it is: one size, or one along each of its own axes (a reaction's stretch, src/fx/react.ts;
+   *  its box and its copies follow its largest). Each `at` starts a model: the view draws a model whole, or not at all. */
+  at(x: number, y: number, z: number, heading = 0, scale: number | Vector3 = 1) {
     this.q.setFromAxisAngle(this.v.set(0, 1, 0), heading)
-    this.root.compose(this.v.set(x, y, z), this.q, this.s.set(scale, scale, scale))
+    if (typeof scale === 'number') this.s.set(scale, scale, scale)
+    else this.s.copy(scale)
+    this.root.compose(this.v.set(x, y, z), this.q, this.s)
     this.startModel()
     return this
   }

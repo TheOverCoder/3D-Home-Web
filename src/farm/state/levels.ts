@@ -3,10 +3,11 @@ import { xpFx } from '../../fx/fx'
 import { count, XP_FOR, type XpAction } from '../data'
 import { levelOf, levelReward, unpaidCoins, xpAt, xpForSale } from '../xp'
 import { boxesReached, boxOf, CAME_KEPT, isOpen as giftOpen, rollArrival, rollBox, settle, waitingBoxes, type Opened } from '../gifts'
-import { garmentById, putOn } from '../outfit'
+import { GARMENTS, garmentById, putOn } from '../outfit'
 import { goalById, goalReward, goalTarget, MOST_STEPS, type GoalId } from '../goals'
-import { bump, farm, putBack, random, save, toast, type At } from './core'
-import { give } from './rewards'
+import type { Prize } from '../prize'
+import { bump, farm, random, save, toast, type At } from './core'
+import { give, rewarded } from './rewards'
 
 // Levels: the XP every action gives, what a level reached brings by itself, the gift boxes on its bar, the goals board
 // and the wardrobe.
@@ -49,15 +50,19 @@ export function xpNow() {
  * not something the player did.
  */
 function arrive(was: number, now: number) {
-  farm.coins = Math.min(Number.MAX_SAFE_INTEGER, farm.coins + unpaidCoins({ points: xpAt(now), paid: farm.xp.paid }))
+  const coins = unpaidCoins({ points: xpAt(now), paid: farm.xp.paid })
   farm.xp.paid = Math.max(farm.xp.paid, now)
   const came = farm.gifts.came.filter((c) => c.level <= was)
+  const prizes: Prize[] = coins > 0 ? [{ coins }] : []
   for (let level = was + 1; level <= now; level++) {
     const prize = rollArrival(level, random)
-    give(prize)
+    prizes.push(prize)
     came.push({ level, coins: levelReward(level), prize })
   }
+  // (its coins and its gifts: one reward, however many levels at once)
+  give(prizes, 'level')
   farm.gifts = { ...farm.gifts, gave: [], came: came.slice(-CAME_KEPT) }
+  for (const g of GARMENTS) if (g.level > was && g.level <= now) rewarded('garment', [{ garment: g.id }])
 }
 
 /** The boxes reached and waiting to be opened, oldest first: this level's and every level's before. */
@@ -75,7 +80,10 @@ export function openGifts(boxes?: readonly number[]): Opened[] {
   const list = [...new Set(boxes ?? giftsWaiting())].filter((k) => Number.isInteger(k) && k >= 0 && k < reached && !giftOpen(g, k)).sort((a, b) => a - b)
   if (!list.length) return []
   const out = list.map((box): Opened => ({ box, prize: rollBox(box, farm.made, random) }))
-  for (const o of out) give(o.prize)
+  give(
+    out.map((o) => o.prize),
+    'box',
+  )
   const { open, also } = settle(g.open, [...g.also, ...list])
   // what this level's boxes gave stays on its bar (an older level's is gone from view)
   const gave = [...g.gave, ...out].filter((o) => boxOf(o.box).level === level).sort((a, b) => a.box - b.box)
@@ -103,7 +111,7 @@ export function claimLevel(upTo?: number): number {
   if (!(level > farm.xp.paid)) return 0
   const coins = unpaidCoins({ points: xpAt(level), paid: farm.xp.paid })
   if (!(coins > 0)) return 0
-  farm.coins = Math.min(Number.MAX_SAFE_INTEGER, farm.coins + coins)
+  give([{ coins }], 'level')
   farm.xp.paid = level
   toast(`Level ${level} · + ${coins} coins`, 'coin')
   farmSound('coins')
@@ -120,8 +128,7 @@ export function claimGoal(id: GoalId) {
   if (!def || step >= MOST_STEPS || def.measure(farm) < goalTarget(def, step)) return null
   const reward = goalReward(def, step, farm)
   farm.goals[id] = step + 1
-  farm.coins += reward.coins
-  putBack(reward.item, reward.count)
+  give([{ coins: reward.coins }, { item: reward.item, n: reward.count }], 'goal')
   gainXp('goal')
   toast(`${def.say(goalTarget(def, step))} · + ${reward.coins} coins, + ${count(reward.item, reward.count)}`, reward.item)
   farmSound('coins')

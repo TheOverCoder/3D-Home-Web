@@ -40,7 +40,7 @@ export function stepsOn() {
   if (stepsQuiet || farm.firstSteps.over) return
   const { rec, passed } = advance(farm.firstSteps, farm)
   if (rec === farm.firstSteps) return
-  for (const step of passed) give(step.reward)
+  for (const step of passed) give([step.reward], 'step')
   farm.firstSteps = rec
   passedNow.push(...passed)
   bump()

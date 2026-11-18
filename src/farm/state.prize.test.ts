@@ -4,11 +4,11 @@ import { REWARD_KIND_IDS, rewardKind, tierRank } from '../lib/tier'
 import { MOST_PLANTS } from './data'
 import { SHOP } from './decor'
 import { rewardTier } from './worth'
-import { capacity, farm, give, resetFarm, used, xpEventCount } from './state'
+import { capacity, farm, give, resetFarm, resetRewardCounts, rewardCounts, used, xpEventCount } from './state'
 import { levelOf } from './xp'
 
 // Every prize into the farm through one door (src/farm/state/rewards.ts, give): coins, goods past full, a piece of
-// decoration into the farm's store, each where it lives, as one reward with its tier; never XP.
+// decoration into the farm's store, each where it lives, counted once as one reward with its tier; never XP.
 
 beforeEach(() => {
   localStorage.clear()
@@ -50,11 +50,12 @@ describe('give', () => {
     expect(give([{ coins: 3 }], 'level')).toBe('big')
   })
 
-  it('one prize of no kind named: given the same, by its worth alone', () => {
-    const coins = farm.coins
-    expect(give({ coins: 5 })).toBe(rewardTier([{ coins: 5 }], levelOf(farm.xp.points)))
-    give({ item: 'plank', n: 1 })
-    expect([farm.coins, farm.inv.plank]).toEqual([coins + 5, 1])
+  it('counted once, as its kind at its tier (rewarded): however many prizes it holds', () => {
+    resetRewardCounts()
+    const tier = give([{ coins: 4 }, { item: 'egg', n: 2 }, { decor: 'lamp' }], 'stop')
+    const counts = rewardCounts()
+    expect(counts.stop[tier]).toBe(1)
+    expect(Object.values(counts).reduce((n, byTier) => n + Object.values(byTier).reduce((a, b) => a + b, 0), 0)).toBe(1)
   })
 
   it('no XP: a reward is not something done', () => {

@@ -4,6 +4,7 @@ import { rollItems } from '../storage'
 import type { Placement } from '../layout'
 import { bump, cropOpen, farm, isUnlocked, random, save, toast } from './core'
 import { gainXp } from './levels'
+import { foundPrizes, rewarded } from './rewards'
 import { gainItems, room, store, surpriseWords } from './stores'
 
 // The beds: what each is doing, planting, watering, harvesting (a press does every like bed in reach), building one,
@@ -143,6 +144,7 @@ export function harvestBeds(beds: number[]) {
     if (full) toast('The silo is full', 'silo')
     return 0
   }
+  rewarded('harvest', [...[...got].map(([item, n]) => ({ item, n })), ...foundPrizes(found)], bedAt(beds[0]))
   toast(`+ ${[...got].map(([crop, n]) => count(crop, n)).join(', ')}${full ? ' · the silo is full' : ''}${surpriseWords(found)}`, found[0] ?? [...got][0][0])
   bump()
   save()
