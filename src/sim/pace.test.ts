@@ -26,7 +26,6 @@ const DAYS = 7
 const DEBTS: Partial<Record<'first' | 'night' | 'income', string>> = {
   first: 'mission 04 pays it: the first steps end on "Plant something long before you go" (04b, JOURNEY.md fix 1)',
   night: 'mission 01 pays it: every timer is short, so a night is worth what a break is (the long crops, 01a, change 5)',
-  income: 'mission 01’s waves pay it: new recipes, beds and animals from level 14 (01b, changes 7 and 8)',
 }
 
 let runs: SimRun[] = []
