@@ -7,24 +7,26 @@ import { useHome } from '../store'
 import { cardShowing, cardTurn, mayOpen, newVisit, stepsEndedThisVisit, subscribeCards } from './cardQueue'
 
 // Nothing is over the game: you are playing, on a map that is in view (no curtain, no drive), and there is no panel, no
-// screen, no settings, no edit or decorate mode, no film or story film, no card that opened by itself (./cardQueue.ts:
-// "Unlocked!" too, which is not a panel), and no welcome-back card waiting to open. What comes by itself waits for it:
-// the cards that open by themselves (a toast too: `toast`), and a new farm's next step.
+// screen, no settings, no edit or decorate mode, no film or story film, and no welcome-back card waiting to open. What
+// comes by itself waits for it: the cards that open by themselves (./cardQueue.ts; a toast too: `toast`), and a new
+// farm's next step. A card that opened is a panel (the welcome back, the day's gift), so it is over the game as one;
+// "Unlocked!" is not: like the level's show it plays over the game without stopping it (the steps' hint stays under
+// it), and only the queue waits for it to end.
 
 type Home = ReturnType<typeof useHome.getState>
 
 /** Something of the game's own is over it (`toast`: a word at the top counts too). */
 const over = (s: Home, toast: boolean) => s.phase !== 'playing' || !s.mapReady || s.curtain || !!(s.panel || s.editing || s.decorating || s.screen || s.settingsOpen || (toast && s.toast))
 
-/** Nothing is over the game and no card shows: the cards' own question (the welcome back waiting is one of them). */
-const clearForCards = ({ toast = false } = {}) => !over(useHome.getState(), toast) && useFilm.getState().on === null && useStory.getState().on === null && cardShowing() === null
+/** Nothing of the game's own is over it now. */
+const nothingOver = (toast: boolean) => !over(useHome.getState(), toast) && useFilm.getState().on === null && useStory.getState().on === null
 
 /** The welcome back waits to open: it comes first, and holds back what comes by itself. */
 const welcomeWaits = () => awaySummary() !== null && mayOpen('away')
 
 /** Whether nothing is over the game now (`toast`: a word at the top counts too). For a check a moment later. */
 export function gameFree({ toast = false } = {}) {
-  return clearForCards({ toast }) && !welcomeWaits()
+  return nothingOver(toast) && !welcomeWaits()
 }
 
 /** Follows the cards, the farm (the welcome back's report) and the game's state. */
@@ -34,19 +36,18 @@ const followCards = (f: () => void) => {
 }
 const noCard = () => cardShowing() === null
 
-/** Whether nothing is over the game but, maybe, the welcome back still to open; kept as it changes. */
-function useClearForCards({ toast = false } = {}) {
+/** Whether nothing of the game's own is over it, kept as it changes. */
+function useNothingOver(toast: boolean) {
   const playing = useHome((s) => s.phase === 'playing' && s.mapReady && !s.curtain)
   const busy = useHome((s) => !!(s.panel || s.editing || s.decorating || s.screen || s.settingsOpen || (toast && s.toast)))
   const film = useFilm((s) => s.on !== null)
   const story = useStory((s) => s.on !== null)
-  const none = useSyncExternalStore(followCards, noCard)
-  return playing && !busy && !film && !story && none
+  return playing && !busy && !film && !story
 }
 
 /** Whether nothing is over the game, kept as it changes (`toast`: a word at the top counts too). */
 export function useGameFree({ toast = false } = {}) {
-  const clear = useClearForCards({ toast })
+  const clear = useNothingOver(toast)
   const waits = useSyncExternalStore(followCards, welcomeWaits)
   return clear && !waits
 }
@@ -99,16 +100,19 @@ function useVisits() {
   }, [])
 }
 
-/** Opens the cards that open by themselves (./cardQueue.ts), one at a time: once the game has been free a beat (a toast
- *  counted, the welcome back waiting not: it is the first of them), the next due in order, within the visit's budget. */
+/** Opens the cards that open by themselves (./cardQueue.ts), one at a time: once the game has been free a beat with no
+ *  card showing (a toast counted, the welcome back waiting not: it is the first of them), the next due in order, within
+ *  the visit's budget. */
 export function CardWatcher() {
-  const free = useClearForCards({ toast: true })
+  const clear = useNothingOver(true)
+  const none = useSyncExternalStore(followCards, noCard)
+  const free = clear && none
   useVisits()
   useEffect(() => {
     if (!free) return
     // (looked at again each beat while free: a card comes due as the farm changes, the day turns, a level is reached)
     const t = window.setInterval(() => {
-      if (clearForCards({ toast: true })) cardTurn(true)
+      if (nothingOver(true) && noCard()) cardTurn(true)
     }, BEAT_MS)
     return () => window.clearInterval(t)
   }, [free])
