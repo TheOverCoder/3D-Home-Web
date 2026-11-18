@@ -1,4 +1,4 @@
-import { amount, cycle, field, int, isObject, list, num, seconds } from '../../lib/saved'
+import { amount, cycle, field, int, isObject, list, MOST, num, seconds } from '../../lib/saved'
 import { useHome } from '../../store'
 import {
   arrivalEvery,
@@ -31,6 +31,7 @@ import {
 import { levelOf, sanitizeXp, savedOnToday, seedXp, unpaidCoins } from '../xp'
 import { giftsFor, sanitizeGifts } from '../gifts'
 import { dailyFresh, sanitizeDaily } from '../daily'
+import { freshPlayed, sanitizePlayed } from '../calendar'
 import { machineLevel, QUEUE } from '../machineView'
 import { freshMachine, jobSeconds, recipeOf, type MachineState } from '../machines'
 import { freshEvents, sanitizeEvents } from '../events'
@@ -52,7 +53,7 @@ import { fullWater } from './beds'
 import { stocksFor } from './producers'
 import { fitPlants } from './decor'
 import { newVisitor, standInLine } from './buyers'
-import { gateX, MOST_CRATES } from './orders'
+import { firstBoard, gateX, MOST_CRATES, starterOrderIn } from './orders'
 import { dayClock } from './day'
 import { forgetWalkers } from './market'
 import { takePassed } from './steps'
@@ -93,8 +94,6 @@ function freshProducer(id: ProducerId): ProducerState {
   const n = stocksFor(id, animals, {})
   return { animals, stock: Array.from({ length: n }, () => PRODUCERS[id].fresh), timer: Array.from({ length: n }, () => 0) }
 }
-/** A board of empty places: a new order comes in each straight away. */
-const emptyBoard = (n: number): OrderSlot[] => Array.from({ length: n }, () => ({ wait: 0 }))
 
 function fresh(): FarmData {
   return {
@@ -119,7 +118,7 @@ function fresh(): FarmData {
     layout: defaultLayout(),
     home: defaultHome(),
     nextVisitorIn: VISITOR.firstAfter,
-    orders: emptyBoard(orderSlots(0)),
+    orders: firstBoard(orderSlots(0)),
     office: { slots: 0, wait: 0 },
     dispatch: { waiting: 0, aboard: 0, trip: -1 },
     clock: 0,
@@ -136,6 +135,7 @@ function fresh(): FarmData {
     apartment: { owned: false },
     events: freshEvents(),
     firstSteps: stepsFresh(),
+    played: freshPlayed(),
     ledger: freshLedger(),
   }
 }
@@ -378,6 +378,8 @@ export function load(text: string | null = readRaw(KEY)): { data: FarmData; save
     data.daily = sanitizeDaily(raw.daily, calendarDay())
     // the first steps: as saved (a farm from before them has done them: it never sees them)
     data.firstSteps = sanitizeSteps(raw.firstSteps)
+    // a farm on its first steps that has sent no order gets the starter order once (ORDERS.first)
+    starterOrderIn(data)
     // the clothes: as saved, each one the wardrobe has at the farm's level (a farm from before it: what it always wore)
     data.outfit = sanitizeOutfit(raw.outfit, levelOf(data.xp.points))
     // the market, the contractor and the day (a farm from before them: as on a new farm)
@@ -392,6 +394,8 @@ export function load(text: string | null = readRaw(KEY)): { data: FarmData; save
     data.place = place === 'home' && data.apartment.owned ? 'home' : 'farm'
     // the week's events: the lucky draw as saved and the events the news has shown (a farm from before them: none)
     data.events = sanitizeEvents(raw.events)
+    // days played: as saved; a farm from before them starts from its daily gift's streak and the day it last claimed one
+    data.played = sanitizePlayed(raw.played, calendarDay(), { days: amount(field(raw.daily, 'streak'), 0), last: int(field(raw.daily, 'last'), -1, -1, MOST) })
     // the sales book: the days of the last two weeks as saved (a farm from before it: an empty book)
     data.ledger = sanitizeLedger(raw.ledger, calendarDay())
     const queue = list(raw.queue)

@@ -4,7 +4,7 @@ import { takeFx } from '../fx/fx'
 import { useHome } from '../store'
 import { ITEMS } from './data'
 import { dayCoins, dayMaterials, dayNumber } from './daily'
-import { calendarDay, capacity, claimDaily, dailyDue, dailyNow, dailyWaiting, farm, offerDaily, quietDaily, resetFarm, setDailyClock, setRandom, used, xpEventCount } from './state'
+import { calendarDay, capacity, claimDaily, dailyDue, dailyNow, dailyWaiting, farm, markPlayed, offerDaily, quietDaily, resetFarm, setDailyClock, setRandom, tick, used, xpEventCount } from './state'
 import { OLD_SAVE, justSaved, savedNow, startFrom } from './testSaves'
 import { levelOf } from './xp'
 
@@ -170,6 +170,53 @@ describe('offered once a day, on a farm that has begun', () => {
     setDailyClock(() => new Date(2026, 10, 3, 0, 0, 5).getTime())
     expect(calendarDay()).toBe(day + 1)
     expect(day).toBe(dayNumber(NOON))
+  })
+})
+
+describe('days played', () => {
+  it('counted once a calendar day, the first time the farm runs that day; how long the player was away', () => {
+    expect(farm.played).toEqual({ days: 0, last: -1 })
+    expect(markPlayed()).toBe(0)
+    expect(farm.played).toEqual({ days: 1, last: calendarDay() })
+    // the same day again, later: nothing
+    setDailyClock(() => NOON + 11 * 3600_000)
+    expect(markPlayed()).toBe(0)
+    expect(farm.played.days).toBe(1)
+    // three days on: one more day played, three away
+    at(3)
+    expect(markPlayed()).toBe(3)
+    expect(farm.played).toEqual({ days: 2, last: calendarDay() })
+  })
+
+  it('each frame asks: a farm left open over midnight counts the new day', () => {
+    tick(1)
+    expect(farm.played.days).toBe(1)
+    tick(1)
+    at(1)
+    tick(1)
+    expect(farm.played).toEqual({ days: 2, last: calendarDay() })
+  })
+
+  it('never falls: the clock moved back counts nothing, and it waits through any absence', () => {
+    at(5)
+    markPlayed()
+    for (const k of [4, 0, -30]) {
+      at(k)
+      expect(markPlayed(), `${k}`).toBe(0)
+      expect(farm.played.days).toBe(1)
+    }
+    at(40)
+    expect(markPlayed()).toBe(35)
+    expect(farm.played.days).toBe(2)
+  })
+
+  it('kept in the save: saved and loaded as it was', () => {
+    markPlayed()
+    at(2)
+    markPlayed()
+    const played = { ...farm.played }
+    startFrom(justSaved(savedNow()))
+    expect(farm.played).toEqual(played)
   })
 })
 

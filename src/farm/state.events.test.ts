@@ -1,11 +1,12 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { ITEMS, cropById, produceById, type ProduceId } from './data'
+import { ITEMS, WATER_SHARE, cropById, produceById, type ProduceId } from './data'
 import { orderPay } from './orders'
 import { priceOf } from './prices'
 import {
   acceptOffer,
   addJob,
+  bedStage,
   buy,
   cameBack,
   drawLucky,
@@ -185,8 +186,9 @@ describe('gift day', () => {
 
 describe('faster while on, and a time away across an event’s edge', () => {
   it('the harvest festival: crops grow twice as fast, and the time left says so', () => {
-    buy('sprinkler')
+    // sprinklers: every bed waters itself, so the growth alone is measured (buying them took 60 coins it did not have)
     farm.coins = 100
+    expect(buy('sprinkler')).toBe(true)
     plant(0, 'pumpkin')
     setEventClock(at(18, 10))
     tick(10)
@@ -196,9 +198,32 @@ describe('faster while on, and a time away across an event’s edge', () => {
     expect(farm.beds[0].growth).toBe(30)
   })
 
+  it('the harvest festival: the soil dries as fast as the crop grows, so a bed needs its watering as on any day', () => {
+    const grown = () => farm.beds[0].growth / cropById('lettuce').growSeconds
+    // in play: Tuesday, then the festival, a frame at a time until the bed is thirsty
+    for (const day of [at(17, 10), at(18, 10)]) {
+      resetFarm()
+      plant(0, 'lettuce')
+      setEventClock(day)
+      for (let t = 0; t < 200 && bedStage(0) !== 'thirsty'; t++) tick(0.25)
+      expect(bedStage(0), new Date(day).toDateString()).toBe('thirsty')
+      expect(grown()).toBeCloseTo(WATER_SHARE, 6)
+    }
+    // in a time away on the festival (in steps of 5 s), and across midnight into it: dry at the same share, not ripe
+    for (const back of [at(18, 12), at(18, 0, 0, 20)]) {
+      resetFarm()
+      plant(0, 'lettuce')
+      setEventClock(back)
+      cameBack(60)
+      expect(bedStage(0)).toBe('thirsty')
+      expect(grown()).toBeCloseTo(WATER_SHARE, 6)
+    }
+  })
+
   it('a time away counts each event only for its part: away across midnight into the festival', () => {
-    buy('sprinkler')
+    // sprinklers: every bed waters itself, so the growth alone is measured (buying them took 60 coins it did not have)
     farm.coins = 100
+    expect(buy('sprinkler')).toBe(true)
     plant(0, 'pumpkin')
     expect(cropById('pumpkin').growSeconds).toBeGreaterThan(160)
     // back at 00:00:50 on Wednesday after 100 s away: 50 s on Tuesday, 50 s of the festival
