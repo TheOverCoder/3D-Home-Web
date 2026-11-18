@@ -328,7 +328,7 @@ function drawPictures(c: HTMLCanvasElement, pics: Pics, sold: boolean, map: MapS
   g.textAlign = 'center'
   g.font = `600 44px ${DISPLAY}`
   g.fillText('ESTATE AGENT', l.x + l.w / 2, l.y + 268)
-  // the farm's map, and in the wide window: dark glass, a red banner, the map
+  // the farm's map, and in the wide window, on dark glass: the map under a red banner, and the house's poster beside it
   const m = REGIONS.map
   drawMap(g, m, map)
   const d = REGIONS.display
@@ -338,17 +338,21 @@ function drawPictures(c: HTMLCanvasElement, pics: Pics, sold: boolean, map: MapS
   dark.addColorStop(1, '#1b2a37')
   g.fillStyle = dark
   g.fillRect(d.x, d.y, d.w, d.h)
-  const band = 46
-  const ph = d.h - band - 30
+  const pad = 18
+  const band = 40
+  const ph = d.h - band - pad * 2
   const pw = (ph * m.w) / m.h
-  const p0 = d.x + (d.w - pw) / 2
+  const p0 = d.x + pad
   g.fillStyle = RED
-  g.fillRect(p0, d.y + 14, pw, band)
+  g.fillRect(p0, d.y + pad, pw, band)
   g.fillStyle = '#ffffff'
-  g.font = `600 30px ${DISPLAY}`
+  g.textAlign = 'center'
+  g.font = `600 26px ${DISPLAY}`
   g.textBaseline = 'middle'
-  g.fillText('LAND FOR SALE', d.x + d.w / 2, d.y + 14 + band / 2 + 2)
-  g.drawImage(c, m.x, m.y, m.w, m.h, p0, d.y + 14 + band, pw, ph)
+  g.fillText('LAND FOR SALE', p0 + pw / 2, d.y + pad + band / 2 + 2)
+  g.drawImage(c, m.x, m.y, m.w, m.h, p0, d.y + pad + band, pw, ph)
+  const h0 = p0 + pw + pad
+  poster(g, { x: h0, y: d.y + pad, w: d.x + d.w - pad - h0, h: d.h - pad * 2 }, pics, sold)
 }
 
 /** One picture's quad: its middle, which way is right and up on it (its face looks along right × up), half its size,
