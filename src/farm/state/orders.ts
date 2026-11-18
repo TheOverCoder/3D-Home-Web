@@ -75,10 +75,10 @@ export function sendOrder(k: number) {
   gainItems(items, OFFICE_SCREEN)
   gainXp('order', 1, OFFICE_SCREEN)
   gainXp('sale', o.coins, OFFICE_SCREEN)
-  befriend(o)
   farm.dispatch.waiting = Math.min(MOST_CRATES, farm.dispatch.waiting + cratesFor(o))
   farm.orders[k] = { order: makeOrder(knownGoods(), random) }
   rewarded('order', [{ coins: o.coins }, ...foundPrizes(items)], OFFICE_SCREEN)
+  befriend(o)
   toast(`Order sent · + ${o.coins} coins${surpriseWords(items)}`, items[0] ?? 'coin')
   farmSound('coins')
   bump()
