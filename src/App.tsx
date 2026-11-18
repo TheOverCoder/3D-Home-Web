@@ -2,11 +2,10 @@ import { lazy, Suspense, useEffect, type ReactNode } from 'react'
 import { ErrorBoundary } from './lib/ErrorBoundary'
 import { preload, useLoader } from './lib/loader'
 import { useMusic } from './audio/music'
-import { currentSlot, deleteSlot, exportSlot, importSlot, slotSummary, switchSlot } from './farm/state'
 import { playerState } from './lib/playerState'
 import { handleContextLost, handleSceneError } from './lib/startup'
 import { useHome } from './store'
-import { Intro } from './ui/Intro'
+import { farmIn, Intro, loadFarm } from './ui/Intro'
 import { MotionRoot } from './ui/motion'
 import { collectDiagnostics } from './lib/diagnostics'
 
@@ -42,21 +41,32 @@ const Experience = lazy(async () => {
 })
 
 if (import.meta.env.DEV || new URLSearchParams(location.search).has('debug')) {
-  ;(window as unknown as Record<string, unknown>).__home = {
+  const hooks: Record<string, unknown> = {
     useHome,
     playerState,
     loader: useLoader,
     music: useMusic,
-    slots: { switchSlot, exportSlot, importSlot, slotSummary, deleteSlot, currentSlot },
     // the report Copy diagnostics gives (and with the game's interface, src/ui/GameLayer.tsx: `guard`, a part of the
     // interface that throws on purpose, and `cards`, the cards that open by themselves)
     diagnostics: collectDiagnostics,
   }
+  ;(window as unknown as Record<string, unknown>).__home = hooks
+  // the save slots, once the farm is in (it is not part of the page shell: src/ui/Intro.tsx)
+  void farmIn.then(({ switchSlot, exportSlot, importSlot, slotSummary, deleteSlot, currentSlot }) => {
+    hooks.slots = { switchSlot, exportSlot, importSlot, slotSummary, deleteSlot, currentSlot }
+  })
 }
 
 export function App() {
   // a new attempt (after the graphics were lost, or in light graphics) mounts a fresh scene on a fresh context
   const attempt = useHome((s) => s.attempt)
+  // the farm, right after the intro's first paint (it is not part of the page shell; the scene brings it too). A timer,
+  // not a frame: a tab opened behind another draws no frames, and its farm must still come (it takes the farm: src/farm/
+  // state/save.ts)
+  useEffect(() => {
+    const t = setTimeout(() => void loadFarm().catch((e: unknown) => console.error('[farm] did not load', e)))
+    return () => clearTimeout(t)
+  }, [])
   useEffect(
     () =>
       useHome.subscribe((s, prev) => {

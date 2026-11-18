@@ -52,6 +52,7 @@ import {
   type WebGLRenderer,
 } from 'three'
 import { HOUSE } from '../../data/layout'
+import { farEye } from '../sculpt/lod'
 import { liveParts, type LodView, type Parts } from '../sculpt/parts'
 import { sunCopies } from '../sculpt/sun'
 import { CELLS, MOST_PORTALS, OUTER_PORTALS, OUTSIDE, Portals, portalBox, type Cell } from './portals'
@@ -524,6 +525,8 @@ function beforeRender(renderer: WebGLRenderer, scene: Scene, camera: Camera) {
     lodView.z = e[14]
     lodView.pixels = (height * cam.zoom) / (2 * Math.tan((cam.fov * Math.PI) / 360))
   }
+  // the same eye for the lighter copies of a model loaded from a file (src/lib/sculpt/sun.ts, `farFromCopies`)
+  farEye.view = lodOn ? lodView : null
   crowdScene = scene
   liveParts.forEach(cullCrowd)
   if (ours) {
@@ -540,6 +543,7 @@ const eye = { x: 0, y: 0, z: 0 }
 function afterRender(scene: Scene) {
   if (!hooks || scene !== hooks.scene) return
   inRender = false
+  farEye.view = null
   cameraFrustum = null
   if (stats.testMs > stats.maxTestMs) stats.maxTestMs = stats.testMs
 }
