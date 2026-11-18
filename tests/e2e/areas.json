@@ -84,7 +84,13 @@
         "src/farm/FarmUI.tsx"
       ]
     },
-    { "name": "cards that open by themselves", "specs": ["20-away", "22-xp", "35-daily", "36-unlocks", "37-first-steps"], "paths": ["src/ui/cardQueue.ts"] },
+    { "name": "cards that open by themselves", "specs": ["20-away", "22-xp", "35-daily", "36-unlocks", "37-first-steps", "40-safety"], "paths": ["src/ui/cardQueue.ts"] },
+    { "name": "a part of the interface that throws", "specs": ["40-safety", "14-hud", "22-xp"], "paths": ["src/ui/PanelGuard.tsx"] },
+    {
+      "name": "the farm's own panels (the seed packets, a bed's gear, a bed to build, the line at the gate)",
+      "specs": ["08-garden", "10-smart-farm", "36-unlocks", "25-button", "40-safety"],
+      "paths": ["src/farm/panels/**"]
+    },
     {
       "name": "the body and the camera",
       "specs": ["01-boot", "02-interactions", "04-physics"],

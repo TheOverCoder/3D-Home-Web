@@ -192,31 +192,41 @@ export function setEventClock(at: number | 'device' | null): void
 ### 1.5 `PanelGuard`: `src/ui/PanelGuard.tsx` (owner 08, phase 0)
 
 ```tsx
-/** An error in rendering what is inside closes the panel: closePanel(), toast "That didn't open properly", and the
- *  error goes into diagnostics (Copy diagnostics). It renders nothing then. Keyed by the panel's kind, so the next panel
- *  mounts fresh. */
-export function PanelGuard(props: { name: string; children: ReactNode }): ReactNode
+/** An error in rendering what is inside closes what is open (`close`, by default closePanel()), toasts "That didn't
+ *  open properly" (DIDNT_OPEN), and goes into diagnostics (Copy diagnostics). It renders nothing then, and draws from
+ *  fresh once `name` (what it holds now: the open panel's kind, '' when nothing is) changes. `layer`: a part of the
+ *  screen, not something opened: left out with no toast and nothing closed, drawn again once what is over the game
+ *  changes, LAYER_TRIES (3) times in a row at most. */
+export function PanelGuard(props: { name: string; children: ReactNode; close?: () => void; layer?: boolean }): ReactNode
+export const guardHooks: { fail(name: string): void }   // ?debug `__home.guard`: a fault inside that guard, once
 ```
 - **Rules:**
-  - It wraps every panel slot in `FarmUI.tsx`, and `Hud` and `HudMode`.
+  - One guard holds `FarmUI.tsx`'s whole slot list (`name` the open panel's kind); the edit and decorate cards, the
+    settings and a screen have their own (their `close` leaves the mode or closes them). `Hud`, `HudMode`, the
+    dashboard, the level's show, the steps' hint, the watchers, the photo button and the touch controls are layers.
   - It goes outside `PanelSheet`, never inside it.
-  - 07 keeps it when it moves the panels onto the sheet.
-  - A new panel needs nothing.
-- **Called by:** `FarmUI.tsx`, `App.tsx`. It is tested by `40-safety` (§2, B12).
+  - 07 keeps it when it moves the panels onto the sheet; 08b keeps `App.tsx`'s guards when they move to `GameLayer`.
+  - A new panel needs nothing: its slot line goes inside the guard.
+  - An error nothing caught goes into diagnostics too (`createRoot`'s `onUncaughtError`, `main.tsx`).
+- **Called by:** `FarmUI.tsx`, `App.tsx`. It is tested by `PanelGuard.test.ts` and `40-safety` (§2, B12).
 
 ### 1.6 The card queue: `src/ui/cardQueue.ts` (owner 08, phase 0; its budget **[review]**)
 
 ```ts
 // Pure core: no React, no DOM, so the sim's journey (src/sim/journey.ts) imports the same order and budget.
-/** The order the cards that open by themselves come in; the ids are this list's. [review: no 'season' card] */
-export const CARD_ORDER = ['away', 'daily', 'unlocked', 'letter', 'counts'] as const
+/** The order the cards that open by themselves come in; the ids are this list's. [review: no 'season' card] No
+ *  'counts' card: decision 20 is no. */
+export const CARD_ORDER = ['away', 'daily', 'unlocked', 'letter'] as const
 export type CardId = (typeof CARD_ORDER)[number]
 /** [review] At most this many open by themselves in one visit, the welcome back counted. Each of the rest waits where it
- *  lives (the gift in the corner menu, an unlock on the level chip, a letter on the mailbox's flag, the counts' question
- *  in Settings). */
+ *  lives (the gift in the corner menu, an unlock on the level chip, a letter on the mailbox's flag). */
 export const VISIT_MOST = 2
 /** [review] The cards that may open by themselves in the visit the first steps end in. */
 export const AFTER_STEPS: readonly CardId[] = ['away']
+/** The cards that may open more than once a visit (within VISIT_MOST): each level's reveal is its own. */
+export const AGAIN: readonly CardId[] = ['unlocked']
+/** This visit can no longer open the card by itself: the budget spent, opened already (not AGAIN), or after the steps. */
+export function spent(id: CardId, q: Pick<QueueNow, 'opened' | 'stepsEndedThisVisit'>): boolean
 export interface QueueNow {
   due: readonly CardId[]          // the cards that want to open now
   opened: readonly CardId[]       // the ones opened by themselves this visit
@@ -228,14 +238,24 @@ export interface QueueNow {
  *  AFTER_STEPS in the visit the first steps ended in; none twice a visit; else the first due in CARD_ORDER. */
 export function nextCard(q: QueueNow): CardId | null
 
-// The runtime, wired by 08 in phase 0:
-export interface CardDef { due(): boolean; open(): void; showing(): boolean }
+// The runtime, wired by 08 in phase 0, in the same file and still with no React and no DOM:
+export interface CardDef { due(): boolean; open(): void; showing(): boolean; pass?(): void }   // pass: let go past the budget
 export function registerCard(id: CardId, def: CardDef): () => void
-export function CardWatcher(): null          // a beat (900 ms) of the game free, then nextCard → open; replaces DailyWatcher's own timer
-export function cardShowing(): CardId | null // gameFree() counts a card showing as busy
+export function cardShowing(): CardId | null
+export function visitNow(): { opened: readonly CardId[]; passed: readonly CardId[]; stepsEnded: boolean }
+export function newVisit(): void; export function stepsEndedThisVisit(): void
+export function cardTurn(free: boolean): CardId | null   // passes the spent cards due, then opens the next in order
+// src/ui/useGameFree.ts (React: kept out of the sim's import):
+export function CardWatcher(): null          // a beat (900 ms) of the game free, a toast counted, no card showing → cardTurn; replaces DailyWatcher's own timer
+// gameFree() counts the panels (the welcome back and the day's gift are panels) and the welcome back while it can still
+// open; "Unlocked!" plays over the game like the level's show (the steps' hint stays under it): only CardWatcher waits.
 ```
 - **Rules:**
-  - **A visit** is a load, or a return after `AWAY_TELLS` (2 min) or more.
+  - **A visit** is a load, or a return after `AWAY_TELLS` (2 min) or more (the page shown again after that long hidden,
+    or a time away told); also a new day while the game is open (its gift is a new day's), and another farm (another
+    slot, or one started again: its XP fell).
+  - **Past the budget** a card due is let pass (`pass`, kept in the visit's `passed`): a level's reveal is let go, not
+    put off to a later visit.
   - **The daily gift** carries the season's line ("Summer, day 1 of 7"), so a season has no card of its own. The first
     spring has no card at all. **[review]**
   - **The first steps' end** lands over three visits **[review]**:
@@ -244,17 +264,17 @@ export function cardShowing(): CardId | null // gameFree() counts a card showing
     2. **The next visit:** the daily gift's first day, the first neighbour, and their letter.
     3. **Day 2:** the news.
   - **The first letter** is the only letter that opens by itself.
-  - **The counts' question** (08, decision 20) is asked once, from the second visit on, and only if the decision is
-    yes.
-  - The welcome back is the existing `{ kind: 'away' }` panel. `unlocked` is `Unlocked.tsx`: a level's reveal waits
-    for the queue, as it waits for `useGameFree()` today.
+  - **No counts' question:** decision 20 is no.
+  - The welcome back is the existing `{ kind: 'away' }` panel (`AwayWatcher` registers it), the day's gift the `daily`
+    panel (`DailyWatcher`). `unlocked` is `Unlocked.tsx`: the reveal `XpChip`'s `LevelUp` asks for registers and waits
+    for its turn; past the budget it is let go.
 - **Called by:**
   - 02: the daily gift;
   - 03: the first letter;
   - 04: the steps' end, and the welcome back's *Next*;
-  - 08: the counts;
-  - `XpChip`: unlocked;
-  - the journey's `AUTO_CARDS`, which becomes an import of `CARD_ORDER` and `VISIT_MOST`, not a copy (§2, B16).
+  - `XpChip` (through `Unlocked`): unlocked;
+  - the journey's `AUTO_CARDS`, which opens its cards through `nextCard` (the order and the budget), not a copy (§2,
+    B16).
 
 ### 1.7 Less motion: `src/ui/still.ts` (owner 07, the first commit of phase 1)
 
@@ -942,7 +962,6 @@ has passed, and at most `VISIT_MOST` (2) a visit, the welcome back counted. **[r
 | 2 | `daily`: the day's gift, with the season's line and the welcome-back gift | the first view of a day played, after the visit the steps ended in | in the corner menu |
 | 3 | `unlocked`: what a level opened | after the level's show and its garment, in the top slot | on the level chip |
 | 4 | `letter`: the first letter only | the visit after the steps end | on the mailbox's flag, and the compass |
-| 5 | `counts`: 08's question (only if decision 20 is yes) | once, from the second visit | in Settings |
 
 **3. The top column** (`TopStack`, in this order): `compass` 1, `steps` 2, `toast` 3, `level` 4, `busy` 5.
 - 04 drops `hint` (the controls are taught in place).
