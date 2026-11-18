@@ -1,4 +1,5 @@
 import { GARDEN, GATE } from '../data/layout'
+import { isObject } from '../lib/saved'
 import { FARM_SHRUBS, CORNER_TREES } from '../data/garden'
 import { WALK_INS, bounds } from '../data/buildings'
 import { CABIN, LOT } from '../data/market'
@@ -630,8 +631,6 @@ const ALL_LAND = landBounds({ ...defaultLayout(), land: PARCEL_IDS })
 const MOST_STANDING = 1500
 /** The highest id a piece may have (a count of pieces ever put down: no farm comes near it). */
 const MOST_ID = 1e9
-
-const isObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object'
 
 /** A placement as saved, made safe: on the land there is (one saved far off is moved onto it: no huge number reaches the
  *  checks), a quarter turn from 0 to 3; null for one that is no placement. */

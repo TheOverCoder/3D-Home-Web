@@ -2,6 +2,7 @@
 // noon and in the evening. He buys building materials, and sells a few pieces a day — first the ones the next level
 // of the silo or the barn is shortest of, so what he has is what you need. Pure.
 
+import { isObject, num } from '../lib/saved'
 import { CONTRACTOR, ITEMS, LADDERS, STORE_IDS, type ItemId, type ProduceId, type StoreId } from './data'
 import { nextLevel, randomItem } from './storage'
 
@@ -42,10 +43,10 @@ export function dailyOffers(f: { inv: Record<ProduceId, number>; storage: Record
 /** The saved contractor read back: a whole day (-1: none yet, so the next day seen makes its offers), only materials,
  *  never more offers than the day allows. */
 export function sanitizeContractor(raw: unknown, perDay: number): Contractor {
-  const r = (raw && typeof raw === 'object' ? raw : {}) as Partial<Contractor>
-  const day = typeof r.day === 'number' && Number.isFinite(r.day) ? Math.max(-1, Math.floor(r.day)) : -1
+  const r = (isObject(raw) ? raw : {}) as Partial<Contractor>
+  const day = Math.max(-1, Math.floor(num(r.day, -1)))
   const offers = (Array.isArray(r.offers) ? r.offers : [])
-    .filter((o): o is { item: ItemId; sold: boolean } => !!o && typeof o === 'object' && (ITEMS as readonly string[]).includes((o as { item: string }).item))
+    .filter((o): o is { item: ItemId; sold: boolean } => isObject(o) && (ITEMS as readonly string[]).includes((o as { item: string }).item))
     .slice(0, whole(perDay))
     .map((o) => ({ item: o.item, sold: o.sold === true }))
   return { day, offers }

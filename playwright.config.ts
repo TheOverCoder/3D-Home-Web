@@ -15,7 +15,9 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : [['list']],
+  // on CI, also each spec file's seconds and every flaky or failed test, in the job's summary (tests/e2e/fileTimes.ts:
+  // the times scripts/ci-shards.mjs deals the shards out by, in tests/e2e/times.json)
+  reporter: process.env.CI ? [['list'], ['html', { open: 'never' }], ['./tests/e2e/fileTimes.ts']] : [['list']],
   use: {
     baseURL: `http://localhost:${port}`,
     viewport: { width: 640, height: 360 },
@@ -30,7 +32,9 @@ export default defineConfig({
   webServer: {
     command: `npm run build && npx vite preview --port ${port} --strictPort`,
     url: `http://localhost:${port}`,
-    reuseExistingServer: !process.env.CI,
+    // outside CI a server already answering on the port is used as it is, unless E2E_FRESH says never: a run killed
+    // half way can leave an old build's server there, and the next run would test it
+    reuseExistingServer: !process.env.CI && !process.env.E2E_FRESH,
     timeout: 300_000,
   },
 })

@@ -1,6 +1,7 @@
 import { AnimatePresence, m, useAnimate } from 'motion/react'
 import { useLessMotion } from '../../ui/still'
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { clock } from '../../lib/time'
 import { art } from '../../ui/art'
 import { flyGoods } from '../../ui/fly'
 import { ArrowRight, Check, Clock, PaintBrush } from '../../ui/glyphs'
@@ -55,8 +56,6 @@ interface Line {
   text: ReactNode
 }
 
-/** m:ss */
-const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.max(0, Math.ceil(s % 60))).padStart(2, '0')}`
 const cap = (t: string) => t[0].toUpperCase() + t.slice(1)
 type Tap = (spot: number | undefined, from: Element | null) => void
 

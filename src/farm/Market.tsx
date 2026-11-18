@@ -40,6 +40,7 @@ import { playGesture } from '../lib/gestures'
 import { groundDistance, useInteractable, type ActionIcon } from '../lib/interaction'
 import { playerState } from '../lib/playerState'
 import { Parts, type PartDef } from '../lib/sculpt'
+import { clock } from '../lib/time'
 import { BAY_DEPTH, CABIN_WINDOW, MARKET_SCREEN, MARKET_SIGN, fittingShapes, marketFittingsParts, putMarketFittings, type FittingPart } from '../models/market'
 import { hidingPiece, walkInDoor, WalkIn } from '../scene/WalkIn'
 import { useHome } from '../store'
@@ -49,10 +50,6 @@ import { MarketGoods, goodsTriangles } from './marketGoods'
 import { useMarketPeople } from './marketPeople'
 import { contractorBackIn, contractorHere, farm, weighGoods, ladderOpen, managerNow, managerPays, marketForSale, placesNow, restockPlaces, shoppersNow, takeTill, tillReady, useFarm } from './state'
 
-const mmss = (seconds: number) => {
-  const t = Math.max(0, Math.ceil(seconds))
-  return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`
-}
 const middle = (b: Box) => ({ x: (b.x0 + b.x1) / 2, y: (b.y0 + b.y1) / 2, z: (b.z0 + b.z1) / 2 })
 const half = (b: Box): [number, number, number] => [(b.x1 - b.x0) / 2, (b.y1 - b.y0) / 2, (b.z1 - b.z0) / 2]
 
@@ -415,7 +412,7 @@ function Counterparts() {
     position: [CONTRACTOR_STAND.x, 1.0, CONTRACTOR_STAND.z],
     aim: [CONTRACTOR_SPOT.x, 1.5, CONTRACTOR_SPOT.z],
     radius: 1.3,
-    label: () => (contractorHere() ? 'Trade with the contractor' : `The contractor is back in the morning · ${mmss(contractorBackIn())}`),
+    label: () => (contractorHere() ? 'Trade with the contractor' : `The contractor is back in the morning · ${clock(contractorBackIn())}`),
     icon: () => (contractorHere() ? { verb: 'shop', art: 'construction-worker' } : { verb: 'wait', art: 'construction-worker', seconds: Math.ceil(contractorBackIn()) }),
     run: () => {
       if (contractorHere()) openPanel({ kind: 'contractor' })

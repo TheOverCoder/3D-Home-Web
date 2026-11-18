@@ -11,6 +11,7 @@ import { farmFx } from '../fx/fx'
 import { useInteractable } from '../lib/interaction'
 import { playerState } from '../lib/playerState'
 import { boxProject } from '../lib/boxProject'
+import { clock } from '../lib/time'
 import { material, surface } from '../lib/proceduralTextures'
 import { B } from '../scene/Furnishings'
 import { StaticBatch } from '../scene/House'
@@ -158,11 +159,6 @@ import { Workshop } from './Workshop'
 import { OrderYard } from './OrderYard'
 import { Decor, glowLevel } from './decorScene'
 import { FarmTalk } from '../talk/FarmTalk'
-
-const mmss = (seconds: number) => {
-  const t = Math.max(0, Math.ceil(seconds))
-  return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`
-}
 
 function signTexture(lines: string[], w = 512, h = 256, bg = '#f3ead8', fg = '#3b2a1c'): CanvasTexture {
   const canvas = document.createElement('canvas')
@@ -434,7 +430,7 @@ function Bed({ index }: { index: number }) {
         if (n > 1) return `${stage === 'ripe' ? 'Harvest' : 'Water'} ${n} beds`
         return stage === 'ripe' ? `Harvest ${count(crop.id, yieldOf(crop.id))}` : `Water the ${crop.plural}`
       }
-      return `${crop.plural[0].toUpperCase()}${crop.plural.slice(1)} · ready in ${mmss((crop.growSeconds - b.growth) / eventSpeed('crops'))}`
+      return `${crop.plural[0].toUpperCase()}${crop.plural.slice(1)} · ready in ${clock((crop.growSeconds - b.growth) / eventSpeed('crops'))}`
     },
     // the prompt's pictures and numbers: what the press does to every bed in reach, or (growing) how long
     icon: () => {
@@ -478,7 +474,7 @@ function Bed({ index }: { index: number }) {
       } else {
         const b = farm.beds[index]
         const crop = cropById(b.crop!)
-        showToast(`${Math.round(bedProgress(index) * 100)}% grown · ${mmss((crop.growSeconds - b.growth) / eventSpeed('crops'))} to go`)
+        showToast(`${Math.round(bedProgress(index) * 100)}% grown · ${clock((crop.growSeconds - b.growth) / eventSpeed('crops'))} to go`)
       }
     },
     // looked at: a plot to build or a field to buy carries its price tag (it opens a card that asks, with the price

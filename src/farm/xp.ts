@@ -4,6 +4,7 @@
 // 3,742,500. Reaching level L pays LEVELS.reward · L coins, claimed in the level's card (the level chip opens it);
 // every fifth level brings a garment too (./outfit.ts). Pure: everything here reads numbers, nothing changes the farm.
 
+import { MOST, isObject, num } from '../lib/saved'
 import { LEVELS } from './data'
 
 /** The saved XP: every point ever gained, and the highest level already paid for. */
@@ -104,8 +105,9 @@ export function seedXp(stats: { harvested?: number; baked?: number; earned?: num
  *  seeded from what the farm did. */
 export function sanitizeXp(raw: unknown, seed: number): Xp {
   const r = (raw ?? null) as Partial<Xp> | null
-  const int = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? Math.min(Math.floor(v), Number.MAX_SAFE_INTEGER) : d)
-  if (!r || typeof r !== 'object' || typeof r.points !== 'number') {
+  // a count from 0, its whole part (not a number, or below 0: `d`)
+  const int = (v: unknown, d: number) => (num(v, -1) >= 0 ? Math.min(Math.floor(v as number), MOST) : d)
+  if (!isObject(r) || typeof r.points !== 'number') {
     const points = wholePoints(seed)
     return { points, paid: levelOf(points) }
   }

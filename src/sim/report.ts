@@ -2,14 +2,12 @@
 // bought, and every stretch with nothing useful to do — as plain text, with each level's band from PACE beside it.
 
 import { LADDERS, TOOL_KINDS, TOOLS, toolLadder, type LadderId } from '../farm/data'
+import { clock } from '../lib/time'
 import { toolBoughtAt, type SimRun } from './play'
 import { PACE } from './targets'
 
-/** Minutes as m:ss. */
-export const mmss = (minutes: number) => {
-  const s = Math.round(minutes * 60)
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
-}
+/** Minutes of play as the game's clock writes them (src/lib/time.ts): 4:05, 1:02:10. */
+export const mmss = (minutes: number) => clock(minutes * 60)
 
 export function report(run: SimRun, levels = 30): string {
   const out: string[] = []

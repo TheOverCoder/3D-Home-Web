@@ -1,26 +1,15 @@
+import { clock, span } from '../../lib/time'
 import type { QueueSlot, RecipeView } from '../machineView'
 
 // The machine panel's own arithmetic, with nothing drawn: the places of the queue as the panel shows them (with a job
 // being dragged over them: where it would go, the others making room), what a drop does, and a stable key for each
 // job so a place that moves slides rather than pops (the view gives the jobs in order, without names of their own).
 
-/** Seconds as the game's clock writes them: 0:35, 4:05, 1:02:10. */
-export function clock(seconds: number): string {
-  const t = Math.max(0, Math.ceil(seconds))
-  const h = Math.floor(t / 3600)
-  const m = Math.floor((t % 3600) / 60)
-  const s = String(t % 60).padStart(2, '0')
-  return h ? `${h}:${String(m).padStart(2, '0')}:${s}` : `${m}:${s}`
-}
+/** Seconds as the game's clock writes them (src/lib/time.ts): 0:35, 4:05, 1:02:10. */
+export { clock }
 
-/** Minutes of work as words: 45 min, 6 h, 6 h 40 min. */
-export function workTime(minutes: number): string {
-  const t = Math.max(0, Math.round(minutes))
-  const h = Math.floor(t / 60)
-  const m = t % 60
-  if (!h) return `${m} min`
-  return m ? `${h} h ${m} min` : `${h} h`
-}
+/** Minutes of work as the game writes a length (src/lib/time.ts): 45 min, 6 h, 6 h 40 min, 1 day 4 h. */
+export const workTime = (minutes: number) => span(minutes * 60)
 
 /** Seconds until every job in the queue is done (the working one's time left and every waiting one's). */
 export const queueLeft = (slots: QueueSlot[]) => slots.reduce((t, s) => t + (s.state === 'working' ? s.left : s.state === 'waiting' ? s.seconds : 0), 0)

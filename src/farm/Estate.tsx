@@ -13,6 +13,7 @@ import type { Box } from '../data/buildings'
 import { AGENT_SEAT, AGENT_STAND, CABINET, ESTATE_DESK, ESTATE_HOURS, ESTATE_PATH, ESTATE_ROOM, ESTATE_SIGN, ESTATE_WALKIN, ESTATE_WINDOW, PARKING_SIGN, PLANT, SALE_BOARD } from '../data/estate'
 import { debugSet } from '../lib/debug'
 import { useInteractable } from '../lib/interaction'
+import { clock } from '../lib/time'
 import { estateFittingsParts, parkingLotParts } from '../models/estate'
 import { WalkIn, hidingPiece, walkInDoor } from '../scene/WalkIn'
 import { AGENT, talk } from '../talk/speech'
@@ -21,11 +22,6 @@ import { art } from '../ui/art'
 import { ESTATE } from './data'
 import { clockOf, hoursText, opensAt } from './day'
 import { agentBackIn, agentHere, estateAgentNow, estateOpen, estateOpensIn, farm, useFarm } from './state'
-
-const mmss = (seconds: number) => {
-  const t = Math.max(0, Math.ceil(seconds))
-  return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`
-}
 
 // ───────────────────────────── the pictures ─────────────────────────────
 
@@ -340,7 +336,7 @@ function Counterparts() {
     label: () => {
       if (agentHere()) return 'Talk to the estate agent'
       // the office open, he is on his way in from the lane; shut, he is back when it opens
-      return estateOpen() ? `The estate agent is on his way in · ${mmss(agentBackIn())}` : `The estate agent is back at ${clockOf(opensAt('estate'))} · ${mmss(agentBackIn())}`
+      return estateOpen() ? `The estate agent is on his way in · ${clock(agentBackIn())}` : `The estate agent is back at ${clockOf(opensAt('estate'))} · ${clock(agentBackIn())}`
     },
     icon: () => (agentHere() ? { verb: 'talk', art: 'man-office-worker' } : { verb: 'wait', art: 'man-office-worker', seconds: Math.ceil(agentBackIn()) }),
     run: () => {
@@ -380,7 +376,7 @@ function Counterparts() {
     aim: [outside.x, 1.4, ESTATE_PATH[2].z - 0.3],
     radius: 1.6,
     enabled: () => !estateOpen(),
-    label: () => `The estate office opens at ${clockOf(opensAt('estate'))} · ${mmss(estateOpensIn())}`,
+    label: () => `The estate office opens at ${clockOf(opensAt('estate'))} · ${clock(estateOpensIn())}`,
     icon: () => ({ verb: 'wait', art: 'man-office-worker', seconds: Math.ceil(estateOpensIn()) }),
     run: () => {},
   })

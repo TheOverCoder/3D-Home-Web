@@ -14,8 +14,9 @@ The README has the overview; `tests/README.md` what each test guards.
   agent, no team. A rule or a save change gets a unit test beside its code (`src/**/*.test.ts`, `tests/README.md`).
 - A new package goes on `src/deps.allowed.json` (held by `src/deps.test.ts`) only after the vetting in
   `update-v1/REUSE.md`, with its row there; `.npmrc` pins it exactly and runs none of its install scripts.
-- A push runs the core suite on GitHub (`ci.yml`: everything but the `@full` tests, six shards side by side), and the
-  site is published only from a commit it passed on (`deploy.yml` waits for CI): a red push never reaches players.
+- A push runs the core suite on GitHub (`ci.yml`: everything but the `@full` tests, eight shards side by side,
+  balanced by `scripts/ci-shards.mjs` from `tests/e2e/times.json`), and the site is published only from a commit it
+  passed on (`deploy.yml` waits for CI): a red push never reaches players.
   The `@full` tests — stable ones that boot a page of their own, the budget walk at ten times the farm, the counting
   check (26), two of 16's groups — run every night and by hand (`full.yml`, Run workflow). A red CI, or a red night,
   is the next thing to fix.
