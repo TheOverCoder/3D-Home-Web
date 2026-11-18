@@ -6,12 +6,16 @@ import { BACK, CABIN, CONTRACTOR_STAND, FRONT_DOOR, HALL, INNER_DOOR, MARKET_PAT
 import { AGENT_STAND, ESTATE_DOOR, ESTATE_PATH, ESTATE_ROOM, PARKING } from './estate'
 import { ARRIVE, CAR_SPOT } from './maps'
 import { CAR_SHAPE, carHalf } from '../models/car'
+import { SUN_BOXES, boxMargin } from './sunBox'
+import { SUN_MARGIN, cornerMargins, floorMargins, wallMargins } from './sunCheck'
 
 // Walk-in buildings (src/data/buildings.ts) against the sun's shadow box: outside the box three lights a surface as if
 // nothing shaded it, so every floor, and the inside of every wall the sun shines at, must stand inside it (and the
-// contractor's cabin too); and which space a point is in, for the action button.
+// contractor's cabin too: the rule is src/data/sunCheck.ts, on the farm's box); and which space a point is in, for the
+// action button.
 
-const MARGIN = 0.1
+/** The farm's sun box (src/data/sunBox.ts): the walk-ins stand on the farm. */
+const BOX = SUN_BOXES.farm
 
 // the sun's shadow camera, made as src/scene/Lighting.tsx makes it: three's directional light shadow camera stands at
 // the light's position and looks at its target (the origin), with three's own up
@@ -27,7 +31,6 @@ function inside(x: number, y: number, z: number) {
   return Math.min(SUN_SHADOW.half - Math.abs(v.x), SUN_SHADOW.half - Math.abs(v.y), depth - SUN_SHADOW.near, SUN_SHADOW.far - depth)
 }
 
-const HEIGHTS = [0, 1, 2, 3]
 const along = (a: number, b: number) => [a, (a + b) / 2, b]
 
 describe('the shadow box', () => {
@@ -56,51 +59,40 @@ describe('the shadow box', () => {
       expect(Math.abs(inside(x, 0, z)), `${x}, ${z}`).toBeLessThan(0.05)
     expect(inside(30, 0, 30)).toBeLessThan(0)
   })
+
+  it("is the farm's box, and the rule's margin is this camera's (src/data/sunCheck.ts measures with it)", () => {
+    expect(BOX).toEqual({ left: -SUN_SHADOW.half, right: SUN_SHADOW.half, bottom: -SUN_SHADOW.half, top: SUN_SHADOW.half })
+    for (let k = 0; k < 200; k++) {
+      const x = -20 + ((k * 37) % 45) + 0.31
+      const z = -20 + ((k * 53) % 45) + 0.17
+      const y = (k % 5) * 0.9
+      expect(boxMargin(x, y, z, BOX), `${x}, ${y}, ${z}`).toBeCloseTo(inside(x, y, z), 9)
+    }
+  })
 })
 
 describe('every walk-in stands in the sun’s shadow box', () => {
   for (const w of WALK_INS)
     for (const room of w.rooms) {
       it(`${w.id}, ${room.space}: the floor's corners`, () => {
-        for (const x of [room.x0, room.x1])
-          for (const z of [room.z0, room.z1]) {
-            const m = inside(x, 0, z)
-            expect(m, `${room.space} floor corner ${x}, ${z}: ${m.toFixed(3)} m inside`).toBeGreaterThanOrEqual(MARGIN)
-          }
+        for (const p of floorMargins(room, BOX)) expect(p.margin, `${room.space} ${p.what} ${p.x}, ${p.z}: ${p.margin.toFixed(3)} m inside`).toBeGreaterThanOrEqual(SUN_MARGIN)
       })
 
-      it(`${w.id}, ${room.space}: the inside of the walls the sun shines at (facing +x: the west wall; facing +z: the north), up to 3 m`, () => {
-        for (const y of HEIGHTS) {
-          for (const z of along(room.z0, room.z1)) {
-            const m = inside(room.x0, y, z)
-            expect(m, `${room.space} west wall's inside at y ${y}, z ${z}: ${m.toFixed(3)} m inside`).toBeGreaterThanOrEqual(MARGIN)
-          }
-          for (const x of along(room.x0, room.x1)) {
-            const m = inside(x, y, room.z0)
-            expect(m, `${room.space} north wall's inside at y ${y}, x ${x}: ${m.toFixed(3)} m inside`).toBeGreaterThanOrEqual(MARGIN)
-          }
-        }
+      it(`${w.id}, ${room.space}: the inside of the walls the sun shines at (facing +x: the west wall; facing +z: the north), up to its roof`, () => {
+        for (const p of wallMargins(room, w.roof.y, BOX))
+          expect(p.margin, `${room.space} ${p.what} at y ${p.y}, x ${p.x}, z ${p.z}: ${p.margin.toFixed(3)} m inside`).toBeGreaterThanOrEqual(SUN_MARGIN)
       })
     }
 
   it('the car in its bay on the farm: its footprint on the ground and at its roof (its shadow falls where it is drawn)', () => {
     const c = CAR_SPOT.farm
     const h = carHalf(c.heading)
-    for (const y of [0, CAR_SHAPE.height])
-      for (const x of [c.x - h.x, c.x + h.x])
-        for (const z of [c.z - h.z, c.z + h.z]) {
-          const m = inside(x, y, z)
-          expect(m, `car corner ${x}, ${y}, ${z}: ${m.toFixed(3)} m inside`).toBeGreaterThanOrEqual(MARGIN)
-        }
+    for (const p of cornerMargins({ x0: c.x - h.x, x1: c.x + h.x, z0: c.z - h.z, z1: c.z + h.z }, [0, CAR_SHAPE.height], BOX))
+      expect(p.margin, `car corner ${p.x}, ${p.y}, ${p.z}: ${p.margin.toFixed(3)} m inside`).toBeGreaterThanOrEqual(SUN_MARGIN)
   })
 
   it("the contractor's cabin: its footprint on the ground and at its top", () => {
-    for (const y of [0, CABIN.y1])
-      for (const x of [CABIN.x0, CABIN.x1])
-        for (const z of [CABIN.z0, CABIN.z1]) {
-          const m = inside(x, y, z)
-          expect(m, `cabin corner ${x}, ${y}, ${z}: ${m.toFixed(3)} m inside`).toBeGreaterThanOrEqual(MARGIN)
-        }
+    for (const p of cornerMargins(CABIN, [0, CABIN.y1], BOX)) expect(p.margin, `cabin corner ${p.x}, ${p.y}, ${p.z}: ${p.margin.toFixed(3)} m inside`).toBeGreaterThanOrEqual(SUN_MARGIN)
   })
 })
 
