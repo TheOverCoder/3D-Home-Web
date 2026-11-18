@@ -74,7 +74,7 @@
   88% { opacity: 0.8; }
   100% { transform: translate(-6px, -100vh); opacity: 0; }
 }
-@media (prefers-reduced-motion: reduce) {
+:where(:root[data-motion='less']) {
   .loading-screen .ls-rays,
   .loading-screen .ls-motes i { animation: none; }
   .loading-screen .ls-motes { display: none; }
@@ -142,7 +142,7 @@
 @keyframes lb-rock { from { transform: scaleX(-1) translateY(0) rotate(0); } to { transform: scaleX(-1) translateY(-2px) rotate(1.5deg); } }
 @keyframes lb-dust { 0% { opacity: 0.8; transform: translate(0, 0) scale(0.4); } 100% { opacity: 0; transform: translate(-46px, -20px) scale(1.6); } }
 
-@media (prefers-reduced-motion: reduce) {
+:where(:root[data-motion='less']) {
   .loading-screen .lb-plane,
   .loading-screen .lb-road i,
   .loading-screen .lb-clouds i,
@@ -187,7 +187,7 @@
 /* a paper card */
 .load-card { padding: 14px 16px 16px; border: 3px solid #fff; border-radius: 26px; background: var(--paper); box-shadow: 0 6px 0 var(--paper-3), 0 16px 34px rgba(60, 35, 10, 0.18); }
 @keyframes load-ribs { to { background-position: -19.8px 0; } }
-@media (prefers-reduced-motion: reduce) {
+:where(:root[data-motion='less']) {
   .load-card .load-bar i { animation: none; }
 }
 

@@ -59,7 +59,7 @@
   25% { rotate: -12deg; }
   75% { rotate: 12deg; }
 }
-@media (prefers-reduced-motion: reduce) {
+:where(:root[data-motion='less']) {
   .thing-tag, .thing-tag img { animation: none; }
 }
 /* a thing not open yet: the level card's berry ribbon is the tag ("Level 5"), lifted off the scene by a white rim */

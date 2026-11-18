@@ -1,4 +1,5 @@
-import { AnimatePresence, animate, m, useMotionValue, useReducedMotion, useTransform } from 'motion/react'
+import { AnimatePresence, animate, m, useMotionValue, useTransform } from 'motion/react'
+import { useLessMotion } from './still'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { audioGraph, farmSound } from '../audio/sound'
 import { levelProgress } from '../farm/xp'
@@ -85,7 +86,7 @@ export function FilmScreen({
 }) {
   const tl = run.tl
   const film = run.film
-  const reduced = !!useReducedMotion()
+  const reduced = useLessMotion()
   const vignette = useRef<HTMLDivElement>(null)
   const grade = useRef<HTMLDivElement>(null)
   const iris = useRef<HTMLDivElement>(null)
@@ -413,7 +414,7 @@ export function FilmEndCard({ end, xp, sound, onAgain, onClose }: { end: EndCard
  *  counting up. Past a level, the bar fills to its end and flashes, the badge pops to the new level ("Level n!"), and
  *  the bar fills on from nothing. With less motion: where it ends, at once. */
 function XpGain({ from, to, gained }: { from: number; to: number; gained: number }) {
-  const still = !!useReducedMotion()
+  const still = useLessMotion()
   const a = levelProgress(from)
   const b = levelProgress(to)
   const ups = b.level - a.level

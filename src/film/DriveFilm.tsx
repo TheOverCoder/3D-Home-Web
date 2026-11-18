@@ -7,6 +7,7 @@ import { debugSet } from '../lib/debug'
 import { envIntensity } from '../scene/Lighting'
 import { setDriveFilm } from '../scene/travel'
 import { art } from '../ui/art'
+import { lessMotion } from '../ui/still'
 import { driveFilm, momentAt, shotAt, type DriveFilm as Film, type Trip } from './drive'
 import { DriveSet, picture } from './driveSet'
 import { EngineSound } from './driveSound'
@@ -23,7 +24,7 @@ import { onSkip, useFilm } from './state'
 /** How long the picture takes to fade in and out (src/styles.css, .drive-film's veil, takes as long). */
 export const FILM_FADE_MS = 400
 
-const reduced = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+const reduced = lessMotion
 
 /** The film's world, made the first time a drive plays and kept while the scene is up. */
 let made: DriveSet | null = null

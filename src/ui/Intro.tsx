@@ -20,6 +20,7 @@ import { ItemPic } from './ItemPic'
 import { GameName, Loading, useLoadView, type LoadView } from './Loading'
 import { EASE, MotionRoot, PRESS, SPRING } from './motion'
 import { LevelStar, SavesPanel } from './SavesPanel'
+import { lessMotion } from './still'
 import './Intro.css'
 
 // The way in (the design lab's boards "loading", B, and "intro", E). From the moment the page opens the loading screen
@@ -68,7 +69,7 @@ function Opening() {
   useEffect(() => {
     if (menu || !ready) return
     const now = () => setMenu(true)
-    const t = setTimeout(now, matchMedia('(prefers-reduced-motion: reduce)').matches ? 300 : HANDOVER_MS)
+    const t = setTimeout(now, lessMotion() ? 300 : HANDOVER_MS)
     // a tap, a click, Enter, Space or Esc skips the moment: whoever has seen it before goes straight on to the menu (on
     // the click, after the finger is up, so the menu coming in under it is never pressed by the same tap)
     const key = (e: KeyboardEvent) => {

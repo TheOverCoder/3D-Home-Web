@@ -3,8 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { MathUtils, MeshBasicMaterial, type Group } from 'three'
 import { aimPointOf } from '../lib/interaction'
 import { busy, useHome } from '../store'
-
-const reducedMotion = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+import { lessMotion } from '../ui/still'
 
 /**
  * A quiet focus cue on whatever E would act on: a thin ring with a soft centre that settles onto the thing's
@@ -66,7 +65,7 @@ export function AimMarker() {
     g.position.set(m.x, m.y, m.z)
     g.quaternion.copy(camera.quaternion)
     const dist = camera.position.distanceTo(g.position)
-    const breathe = reducedMotion ? 1 : 1 + 0.05 * Math.sin(m.t * 2.6)
+    const breathe = lessMotion() ? 1 : 1 + 0.05 * Math.sin(m.t * 2.6)
     // ~1.3° across: constant on screen, settling in from a little larger
     g.scale.setScalar(Math.max(0.05, dist) * 0.023 * (1.35 - 0.35 * m.grow) * breathe)
     material.opacity = 0.62 * m.a

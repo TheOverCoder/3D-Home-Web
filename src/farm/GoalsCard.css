@@ -205,7 +205,7 @@
 .goals-card .gc-thumb .gc-face .item-pic .art { width: 22px; height: 22px; }
 .goals-card .gc-dot { position: absolute; top: 3px; right: 3px; width: 12px; height: 12px; border-radius: 50%; background: var(--leaf); box-shadow: 0 0 0 2px #fff; }
 
-@media (prefers-reduced-motion: no-preference) {
+:where(:root:not([data-motion='less'])) {
   .goals-card .gc-medal.done .gc-shine { animation: gc-shine 3.2s ease-in-out 0.8s infinite; }
   .goals-card .gc-steps i.now { animation: gc-now 1.8s ease-in-out infinite; }
 }

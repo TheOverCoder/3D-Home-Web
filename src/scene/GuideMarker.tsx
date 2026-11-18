@@ -3,8 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { ConeGeometry, MeshBasicMaterial, type Group } from 'three'
 import { aimPointOf } from '../lib/interaction'
 import { useHome } from '../store'
-
-const reducedMotion = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+import { lessMotion } from '../ui/still'
 
 /**
  * Where a mark tapped on the compass is: a warm arrow pointing down at it from above, the same size on screen near
@@ -29,7 +28,7 @@ export function GuideMarker() {
     if (!p) return
     const d = camera.position.distanceTo(g.position)
     const size = Math.max(0.14, d * 0.045)
-    const bob = reducedMotion ? 0 : Math.sin(state.clock.elapsedTime * 4) * size * 0.35
+    const bob = lessMotion() ? 0 : Math.sin(state.clock.elapsedTime * 4) * size * 0.35
     g.position.set(p.x, p.y + 0.45 + size * 1.2 + bob, p.z)
     g.scale.setScalar(size)
   })

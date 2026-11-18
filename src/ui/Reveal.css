@@ -41,6 +41,6 @@
 .reveal.small .reveal-pic .art { width: 30px; height: 30px; }
 .reveal-done { position: absolute; right: -3px; bottom: -3px; display: grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; background: var(--leaf); color: #fff; box-shadow: 0 0 0 2px #fff; }
 .reveal-done svg { width: 11px; height: 11px; }
-@media (prefers-reduced-motion: reduce) {
+:where(:root[data-motion='less']) {
   .reveal-rays { display: none; }
 }

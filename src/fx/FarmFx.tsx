@@ -4,6 +4,7 @@ import { Vector3 } from 'three'
 import { debugSet } from '../lib/debug'
 import { profile } from '../lib/profile'
 import { useHome } from '../store'
+import { onLessMotion } from '../ui/still'
 import { flyCoins, flyItem } from './coins'
 import { flyXp } from './xp'
 import { iconUrl } from '../farm/icons'
@@ -28,16 +29,10 @@ const at = new Vector3()
 /** For screenshots and tests (`window.__home.fx.time`): how fast the particles' clock runs. */
 const time = { speed: 1 }
 
-/** Follows the player's "reduce motion" choice while the game runs. */
+/** Follows the player's "less motion" choice (src/ui/still.ts) while the game runs. */
 function useMotionOk() {
   const [ok, setOk] = useState(effectsOn)
-  useEffect(() => {
-    if (typeof matchMedia !== 'function') return
-    const q = matchMedia('(prefers-reduced-motion: reduce)')
-    const update = () => setOk(effectsOn())
-    q.addEventListener?.('change', update)
-    return () => q.removeEventListener?.('change', update)
-  }, [])
+  useEffect(() => onLessMotion(() => setOk(effectsOn())), [])
   return ok
 }
 

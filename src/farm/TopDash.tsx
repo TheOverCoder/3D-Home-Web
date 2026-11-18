@@ -1,4 +1,5 @@
-import { animate, m, useAnimate, useMotionValue, useReducedMotion, useTransform } from 'motion/react'
+import { animate, m, useAnimate, useMotionValue, useTransform } from 'motion/react'
+import { useLessMotion } from '../ui/still'
 import { Popover } from 'radix-ui'
 import { useEffect, useLayoutEffect, useRef, useSyncExternalStore, type ReactNode } from 'react'
 import { coinsHeld, onCoinsHeld } from '../fx/coins'
@@ -107,7 +108,7 @@ function Coins() {
   // (and the daily gift's, still on its card: let go as they take off for the chip)
   const held = level + useSyncExternalStore(onCoinsHeld, coinsHeld)
   const coins = Math.max(0, farm.coins - held)
-  const still = useReducedMotion()
+  const still = useLessMotion()
   const value = useMotionValue(coins)
   const text = useTransform(value, (n) => Math.round(n).toLocaleString('en-US'))
   const [chip, play] = useAnimate<HTMLSpanElement>()

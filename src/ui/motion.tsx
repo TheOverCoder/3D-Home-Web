@@ -1,19 +1,22 @@
-import { LazyMotion, MotionConfig, animate, m, useMotionValue, useReducedMotion, useTransform, type Transition, type Variants } from 'motion/react'
+import { LazyMotion, MotionConfig, animate, m, useMotionValue, useTransform, type AnimationPlaybackControls, type Transition, type Variants } from 'motion/react'
 import { useEffect, type ReactNode } from 'react'
+import { lessMotion, useLessMotion } from './still'
 
 // The interface's motion: Motion for React (motion.dev) — springs, gestures (a press, a drag, a swipe), elements coming
 // in and going out (AnimatePresence), layout changes — with the game's own feel kept in one place. Components animate
 // with `m.div`, `m.button`… (never `motion.div`: the root is strict, so the bundle carries only what it loads once);
-// they take their springs and curves from here, so every screen moves the same way. Whoever prefers less motion
-// (prefers-reduced-motion) gets the end of each move at once: MotionConfig does it for transforms and layout,
-// `CountUp` and `burst` (./burst.ts) for themselves.
+// they take their springs and curves from here, so every screen moves the same way. Whoever wants less motion (the
+// game's setting, or the device's: ./still.ts) gets the end of each move at once: MotionConfig does it for transforms
+// and layout, `nope`, `did`, `CountUp` and `burst` (./burst.ts) for themselves.
 
 const features = () => import('./motionFeatures').then((f) => f.default)
 
-/** Round the interface (the game's, or a lab frame): Motion's features, loaded once, and reduced motion respected. */
+/** Round the interface (the game's, or a lab frame): Motion's features, loaded once, and less motion respected (the
+ *  game's answer, not only the device's: Motion's own "user" reads only the device). */
 export function MotionRoot({ children }: { children: ReactNode }) {
+  const still = useLessMotion()
   return (
-    <MotionConfig reducedMotion="user">
+    <MotionConfig reducedMotion={still ? 'always' : 'never'}>
       <LazyMotion features={features} strict>
         {children}
       </LazyMotion>
@@ -39,8 +42,8 @@ export const EASE = {
 } as const
 
 // The micro-interactions (the designer's checklist, .claude/agents/ui-designer.md): every one quick, never in the way of
-// the next press, and nothing for whoever prefers less motion (MotionConfig, above; the CSS ones in src/styles.css stop
-// under prefers-reduced-motion). The game's shared pieces — .btn, cards, chips, tags, the switch, the action button —
+// the next press, and nothing for whoever wants less motion (MotionConfig, above; the CSS ones in src/styles.css stop
+// under `data-motion="less"`). The game's shared pieces — .btn, cards, chips, tags, the switch, the action button —
 // do the same in CSS (src/styles.css, "micro-interactions"): use these where a piece moves with Motion.
 
 /** A press: `<m.button {...PRESS}>` sinks a little under the finger and springs back (a round or flat button). */
@@ -64,13 +67,24 @@ export const POP: Variants = {
   show: { opacity: 1, scale: 1, transition: SPRING.pop },
   out: { opacity: 0, scale: 0.8, transition: { duration: 0.12 } },
 }
-/** It worked: a little pop, bigger and home (`animate(el, DID.keyframes, DID.options)`). */
+/** It worked: a little pop, bigger and home (played by `did(el)`). */
 export const DID = { keyframes: { scale: [1, 1.14, 1] }, options: { duration: 0.32, ease: EASE.out } } as const
-/** Not now: a short shake from side to side (an error; a press that cannot do anything yet). */
+/** Not now: a short shake from side to side (an error; a press that cannot do anything yet; played by `nope(el)`). */
 export const NOPE = { keyframes: { x: [0, -7, 6, -4, 2, 0] }, options: { duration: 0.32, ease: 'easeOut' } } as const
+/** It worked, on `el` (DID): nothing with less motion (the change it shows is there all the same). `delay` in
+ *  seconds. Motion's `animate` on an element runs outside MotionConfig, so it asks here. */
+export function did(el: Element | null | undefined, delay = 0): AnimationPlaybackControls | null {
+  if (!el || lessMotion()) return null
+  return animate(el, DID.keyframes, { ...DID.options, delay })
+}
+/** Not now, on `el` (NOPE): nothing with less motion. (06's "cannot" sound goes in here.) */
+export function nope(el: Element | null | undefined): AnimationPlaybackControls | null {
+  if (!el || lessMotion()) return null
+  return animate(el, NOPE.keyframes, NOPE.options)
+}
 
 // A face's moves (the farmer's moods, src/farm/FarmerFace.tsx): each from rest and home again, played over the whole
-// portrait as its face comes (`animate(el, HOP.keyframes, HOP.options)`); whoever prefers less motion gets none.
+// portrait as its face comes (`animate(el, HOP.keyframes, HOP.options)`); whoever wants less motion gets none.
 /** Happy: a little hop, leaning back as it goes up. */
 export const HOP = { keyframes: { y: [0, -10, 0], rotate: [0, -10, 0] }, options: { duration: 0.45, ease: 'easeOut' } } as const
 /** Curious (a question, a wink): the head tilts to one side, stays a moment, and comes back. */
@@ -107,7 +121,7 @@ export const DEAL: Variants = {
  *  FLIP.options)`. */
 export const FLIP = { keyframes: { rotateX: [80, 0], opacity: [0.3, 1] }, options: { duration: 0.42, ease: EASE.pop } } as const
 /** A slow light that crosses a premium thing again and again (`<m.i className="shine" {...SHIMMER(delay)}>`, in a
- *  parent that clips it): it stands still, out of sight, for whoever prefers less motion. */
+ *  parent that clips it): it stands still, out of sight, for whoever wants less motion. */
 export const SHIMMER = (delay = 0.6) => ({
   initial: { x: '-140%' },
   animate: { x: ['-140%', '240%'] },
@@ -134,7 +148,7 @@ export function swipedAway(mode: SheetMode, i: { offset: { x: number; y: number 
 
 /** A number that counts to `to` (from `from`, 0 at first): the XP into a level, the coins of a claim. */
 export function CountUp({ to, from = 0, duration = 0.9, format = whole }: { to: number; from?: number; duration?: number; format?: (n: number) => string }) {
-  const still = useReducedMotion()
+  const still = useLessMotion()
   const value = useMotionValue(still ? to : from)
   const text = useTransform(value, format)
   useEffect(() => {

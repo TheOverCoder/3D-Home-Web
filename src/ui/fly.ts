@@ -1,9 +1,11 @@
+import { lessMotion } from './still'
+
 // Goods flying on the page (the Web Animations API, over everything; the base's flying-goods helper): a machine's done
 // job from its place in the queue into the Collect button and up into the barn's chip at the top of the screen, an
 // egg from its nest into the barn's chip on the tool's panel. Each on an arc of its own, one a moment after another;
 // nothing for whoever prefers less motion (the counts change all the same).
 
-const still = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+const still = lessMotion
 
 export interface Flight {
   src: string

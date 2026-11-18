@@ -8,6 +8,7 @@ import { debugSet } from '../lib/debug'
 import { loadSolids } from '../lib/sculpt'
 import { envIntensity } from '../scene/Lighting'
 import { loadFilmOverlay } from '../ui/FilmLayer'
+import { lessMotion } from '../ui/still'
 import { askFilm, filmAsked, onFilmAsked, storyControls, storyStep, takeFilm, useStory, type FilmAsk, type FilmId, type StoryEvent } from './films'
 import type { FilmRun, FrameInfo } from './run'
 import type { FilmStage } from './stage3d'
@@ -25,7 +26,7 @@ import type { FilmStage } from './stage3d'
 /** How long the veil takes to fade out or in (src/ui/Film.css, .film-veil, takes as long). */
 export const STORY_FADE_MS = 400
 
-const reduced = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+const reduced = lessMotion
 const wait = (ms: number) => new Promise<void>((r) => window.setTimeout(r, ms))
 const size = new Vector2()
 

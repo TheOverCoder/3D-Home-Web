@@ -15,7 +15,7 @@
 :root[data-dash][data-hud='all'] .top-slot-compass { position: fixed; z-index: 1; left: var(--hole-x); top: calc(var(--hole-y) + 5px); width: var(--hole-w); }
 :root[data-dash][data-hud='all'] .top-slot-compass .compass { width: 100%; }
 /* it opens from its middle */
-@media (prefers-reduced-motion: no-preference) {
+:where(:root:not([data-motion='less'])) {
   .compass-strip { animation: compass-open 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
 }
 @keyframes compass-open { from { opacity: 0; clip-path: inset(-60% 50% -60% 50% round 999px); } to { opacity: 1; clip-path: inset(-60% -10% -60% -10% round 999px); } }
@@ -93,7 +93,7 @@
 /* walking there by yourself (the mark tapped, or its "+N"): a sun-yellow ring that breathes until you get there */
 .compass-mark.going .compass-pin { box-shadow: 0 0 0 2.5px var(--sun), 0 0 0 6px color-mix(in srgb, var(--sun) 35%, transparent), 0 2px 6px rgba(20, 12, 6, 0.4); animation: compass-going 1.4s ease-in-out infinite; }
 @keyframes compass-going { 50% { scale: 1.12; } }
-@media (prefers-reduced-motion: reduce) {
+:where(:root[data-motion='less']) {
   .compass-mark.going .compass-pin { animation: none; }
 }
 /* two or more behind you at an edge (or more than the strip holds) fold into one: how many, on a small pill; a tap

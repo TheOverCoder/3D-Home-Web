@@ -1,4 +1,5 @@
-import { AnimatePresence, m, useReducedMotion } from 'motion/react'
+import { AnimatePresence, m } from 'motion/react'
+import { useLessMotion } from './still'
 import { useState } from 'react'
 import { useSettings } from '../settings'
 import { busy, useHome } from '../store'
@@ -69,7 +70,7 @@ export function PhotoButton() {
   const phase = useHome((s) => s.phase)
   const occupied = useHome(busy)
   const mode = useSettings((s) => s.hudMode)
-  const still = useReducedMotion()
+  const still = useLessMotion()
   const [shot, setShot] = useState<{ url: string; n: number } | null>(null)
   const [taking, setTaking] = useState(false)
   if (phase !== 'playing' || occupied || mode !== 'clean') return null
