@@ -18,6 +18,15 @@ export function note(step: number, octave: number): number {
   return hz(12 * (o + 1) + KEY[((step % n) + n) % n])
 }
 
+/** A note of the key by its name and octave, as the tables write it ('G6': a machine's ding, src/farm/data.ts). */
+export type KeyNote = `${'C' | 'D' | 'E' | 'G' | 'A'}${4 | 5 | 6 | 7}`
+const NAMES = 'CDEGA'
+
+/** A key note's step and octave, as `note` takes them ('A6': step 4 in octave 6). */
+export function keyStep(n: KeyNote): { step: number; octave: number } {
+  return { step: NAMES.indexOf(n[0]), octave: Number(n.slice(1)) }
+}
+
 /** How far `f` (Hz) lies from the nearest note of the key, in cents (a hundredth of a semitone). */
 export function offKey(f: number): number {
   const pc = (((69 + 12 * Math.log2(f / 440)) % 12) + 12) % 12

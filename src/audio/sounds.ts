@@ -30,6 +30,7 @@ export interface SoundRow {
 
 const work = (twin: Twin = 'motion'): SoundRow => ({ family: 'work', feel: 'tick', vary: 1, climb: 'work', twin })
 const world = (twin: Twin): SoundRow => ({ family: 'world', feel: null, vary: 0, twin })
+const ui = (feel: Feel): SoundRow => ({ family: 'ui', feel, vary: 1, twin: 'motion' })
 const cue = (twin: Twin, feel: Haptic | null = null): SoundRow => ({ family: 'cue', feel, vary: 0, twin })
 
 export const SOUNDS: Readonly<Record<FarmSound, SoundRow>> = {
@@ -59,6 +60,18 @@ export const SOUNDS: Readonly<Record<FarmSound, SoundRow>> = {
   garment: { family: 'reward', feel: null, vary: 0, twin: 'motion' },
   xp: { family: 'reward', feel: null, vary: 0, climb: 'xp', twin: 'chip' },
   dress: { family: 'ui', feel: 'tick', vary: 0, twin: 'motion' },
+  // each action its own (mission 06 c5): fruit picked, a machine's goods taken out (the mill's, the loom's, the oven's),
+  // goods put into an order and up on a shelf, coins paid out, a "no", decoration lifted and put down
+  pick: work(),
+  sack: work('toast'),
+  bolt: work('toast'),
+  tray: work('toast'),
+  crate: work('count'),
+  shelf: work('count'),
+  pay: { family: 'coins', feel: 'buy', vary: 1, twin: 'chip' },
+  nope: { family: 'no', feel: null, vary: 0, twin: 'motion' },
+  lift: ui('lift'),
+  thud: ui('drop'),
 }
 
 /** A reward's touch: its family picks the pattern (coins in a double, a gift a roll, a level the strongest, goods

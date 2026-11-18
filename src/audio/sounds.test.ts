@@ -1,15 +1,17 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { MACHINES, MACHINE_IDS, PRODUCERS, PRODUCER_IDS } from '../farm/data'
 import { HAPTICS } from '../lib/device'
 import { REWARD_KIND_IDS, TIERS } from '../lib/tier'
 import { makeEngine } from './engine'
 import { FakeContext, filtersOf, notesOf } from './fakeAudio'
 import { play, type FarmSound } from './farmSounds'
-import { VARY_LEVEL, vary } from './palette'
+import { VARY_LEVEL, keyStep, note, vary } from './palette'
 import { SOUNDS, rewardFeel } from './sounds'
 
 // The table of the farm's sounds (update-v1/CONTRACTS.md §1.12), and the sounds played by it (./farmSounds.ts) into the
 // recording fake (./fakeAudio.ts). Each row's touch is the one each sound had before the table (sound.ts's FEEL, written
-// out here as it stood): the table changed where the touches are kept, not what is felt.
+// out here as it stood): the table changed where the touches are kept, not what is felt; and each action's own sound
+// (mission 06 c5) its touch from the haptics map (src/lib/device.ts).
 const FEEL_TODAY: Record<string, string> = {
   plant: 'tick',
   water: 'tick',
@@ -24,11 +26,20 @@ const FEEL_TODAY: Record<string, string> = {
   surprise: 'gift',
   level: 'level',
   keys: 'level',
+  pick: 'tick',
+  sack: 'tick',
+  bolt: 'tick',
+  tray: 'tick',
+  crate: 'tick',
+  shelf: 'tick',
+  pay: 'buy',
+  lift: 'lift',
+  thud: 'drop',
 }
 
 describe('the table of sounds', () => {
-  it('has a row for each of the farm’s 26 sounds', () => {
-    expect(Object.keys(SOUNDS)).toHaveLength(26)
+  it('has a row for each of the farm’s 36 sounds', () => {
+    expect(Object.keys(SOUNDS)).toHaveLength(36)
   })
 
   it('gives each the touch it has today', () => {
@@ -141,5 +152,70 @@ describe('a reward’s touch', () => {
     expect(rewardFeel('harvest', 'medium')).toBe('tick')
     expect(rewardFeel('order', 'small')).toBe('sale')
     expect(rewardFeel('order', 'huge')).toBe('sale+')
+  })
+})
+
+/** What a sound writes into the fake, its dice held (the noise's start, the animals' voices): its notes and its
+ *  filters, rounded to a hundredth of a hertz, as a fingerprint. */
+function fingerprint(kind: FarmSound, o: Parameters<typeof play>[2] = {}) {
+  vi.spyOn(Math, 'random').mockReturnValue(0.5)
+  const ctx = new FakeContext()
+  play(makeEngine(ctx.audio), kind, { at: 1, ...o })
+  vi.restoreAllMocks()
+  const r = (x: number) => Math.round(x * 100) / 100
+  return JSON.stringify({ notes: notesOf(ctx).map((n) => [r(n.t), r(n.f), n.f1 && r(n.f1)]), filters: filtersOf(ctx).map(r) })
+}
+
+describe('each action its own sound (mission 06 c5)', () => {
+  it('renders no two kinds alike', () => {
+    const seen = new Map<string, FarmSound>()
+    for (const kind of KINDS) {
+      const f = fingerprint(kind)
+      expect(seen.get(f), `${kind} sounds like ${seen.get(f)}`).toBeUndefined()
+      seen.set(f, kind)
+    }
+  })
+
+  it('gives every machine its own ding, on a note of the key, and its own sound as its goods are taken out', () => {
+    const dings = new Set<string>()
+    const collects = new Set<FarmSound>()
+    for (const id of MACHINE_IDS) {
+      const s = MACHINES[id].sounds
+      expect(s.done, id).toBeTruthy()
+      expect(s.collect, id).toBeTruthy()
+      expect(SOUNDS[s.collect].family, id).toBe('work')
+      expect(s.collect, id).not.toBe('harvest')
+      dings.add(s.done)
+      collects.add(s.collect)
+      // the ding rings on its own note: that note first, two steps of the key over it after
+      const ctx = new FakeContext()
+      play(makeEngine(ctx.audio), 'ding', { at: 1, note: s.done })
+      const { step, octave } = keyStep(s.done)
+      expect(notesOf(ctx)[0].f, id).toBeCloseTo(note(step, octave), 6)
+      expect(notesOf(ctx).at(-1)!.f, id).toBeCloseTo(note(step + 2, octave), 6)
+    }
+    expect(dings.size).toBe(MACHINE_IDS.length)
+    expect(collects.size).toBe(MACHINE_IDS.length)
+    // the oven's as the ding always was
+    expect(fingerprint('ding', { note: MACHINES.oven.sounds.done })).toBe(fingerprint('ding'))
+  })
+
+  it('picks fruit with a sound of its own, not the crops’ harvest', () => {
+    for (const id of PRODUCER_IDS) if (id === 'tree' || PRODUCERS[id].plant) expect(PRODUCERS[id].sound, id).toBe('pick')
+  })
+
+  it('puts a thing down with a thud by its size: deeper and louder the bigger', () => {
+    const thud = (size: number) => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5)
+      const ctx = new FakeContext()
+      play(makeEngine(ctx.audio), 'thud', { at: 1, size })
+      vi.restoreAllMocks()
+      return notesOf(ctx)[0]
+    }
+    const [stool, chair, sofa] = [0.4, 1, 2.2].map(thud)
+    expect(stool.f).toBeGreaterThan(chair.f)
+    expect(chair.f).toBeGreaterThan(sofa.f)
+    expect(sofa.gain).toBeGreaterThan(chair.gain)
+    expect(chair.gain).toBeGreaterThan(stool.gain)
   })
 })

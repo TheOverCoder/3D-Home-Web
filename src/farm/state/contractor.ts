@@ -94,7 +94,7 @@ export function buyFromContractor(k: number): boolean {
   putBack(offer.item, 1)
   itemFx(AT_CONTRACTOR.x, AT_CONTRACTOR.y, AT_CONTRACTOR.z, offer.item)
   toast(`+ ${count(offer.item, 1)} · ${price} coins`, offer.item)
-  farmSound('coins')
+  farmSound('pay')
   bump()
   save()
   return true

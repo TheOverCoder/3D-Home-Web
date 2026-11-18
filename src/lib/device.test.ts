@@ -73,6 +73,12 @@ describe('haptics', () => {
     expect(felt('till')).toEqual(d.HAPTICS.sale)
     expect(felt('build')).toEqual(d.HAPTICS.buy)
     expect(felt('surprise')).toEqual(d.HAPTICS.gift)
+    // each action's own sound keeps the map's meaning: work a tick, coins out firmer, lifted and put down, a "no" none
+    for (const s of ['pick', 'sack', 'bolt', 'tray', 'crate', 'shelf'] as const) expect(felt(s), s).toEqual(d.HAPTICS.tick)
+    expect(felt('pay')).toEqual(d.HAPTICS.buy)
+    expect(felt('lift')).toEqual(d.HAPTICS.lift)
+    expect(felt('thud')).toEqual(d.HAPTICS.drop)
+    expect(felt('nope')).toBeNull()
     expect(felt('level')).toEqual(d.HAPTICS.level)
     for (const s of ['cluck', 'moo', 'baa', 'crow', 'bell', 'ding', 'chug', 'xp', 'creak', 'loom', 'garment', 'chime'] as const) expect(felt(s), s).toBeNull()
     // a sound both the farm and the player make is felt where the call says so (the hens collected), or not at all

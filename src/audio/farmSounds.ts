@@ -4,7 +4,7 @@
 // its row, with the touch of what the player did.
 import { haptic, type Haptic } from '../lib/device'
 import { burst, live, rnd, tone, voice, type Engine } from './engine'
-import { note, vary } from './palette'
+import { keyStep, note, vary, type KeyNote } from './palette'
 import { SOUNDS } from './sounds'
 
 export type FarmSound =
@@ -34,6 +34,16 @@ export type FarmSound =
   | 'dress' // a garment put on: cloth rustling
   | 'garment' // a new garment for the wardrobe: a bright flourish
   | 'keys' // the house bought: its keys handed over, jingling, and a warm chord
+  | 'pick' // fruit picked (the lemon tree, the fruit trees and bushes): a twig springs back, a soft plop
+  | 'sack' // flour or sugar taken out of the mill: a sack set down, a puff
+  | 'bolt' // cloth taken off the loom: a bolt of cloth, a swish and a soft thud
+  | 'tray' // a cake taken out of the oven: the tray slides out and is set down
+  | 'crate' // goods put into an order: a hollow knock on the crate, straw
+  | 'shelf' // goods put up on a shelf of the market: two taps, a slide
+  | 'pay' // coins paid out (the shop, the contractor's piece): two falling clinks
+  | 'nope' // cannot (the store is full, a piece went back): decline's soft fall, shorter and higher
+  | 'lift' // decoration or furniture lifted under the finger
+  | 'thud' // put down where it fits: a thud by its size
 
 /** Crystals landing one close behind another climb the key from A6 (its 4th note), a step each, for this many steps,
  *  then hold the top. */
@@ -45,8 +55,14 @@ let xpLast = -Infinity
 /** The keys' clinks, steps of the key in octave 7 (A7 to E8: a bright jingle, the same each time). */
 const KEY_CLINKS = [5, 7, 4, 6, 5, 7]
 
-/** A sound written at audio time `t` into `e`; `v` is how near it is (0.25..1: its loudness), `pan` where (−1..1). */
-type Synth = (e: Engine, t: number, v: number, pan: number) => void
+/** A sound written at audio time `t` into `e`; `v` is how near it is (0.25..1: its loudness), `pan` where (−1..1), `o`
+ *  how it was asked for (a ding's note, a thud's size). */
+type Synth = (e: Engine, t: number, v: number, pan: number, o: PlayOpts) => void
+
+/** A ding's note when none is asked for: G6, the oven's. */
+const DING: KeyNote = 'G6'
+/** How big a thing put down is, 0..1, from its size across (m): a stool small, a sofa or a shed the biggest. */
+const heft = (size = 1) => Math.max(0.15, Math.min(1, size / 2.5))
 
 const SYNTHS: Record<FarmSound, Synth> = {
   plant(e, t, v, pan) {
@@ -219,11 +235,13 @@ const SYNTHS: Record<FarmSound, Synth> = {
     })
     for (const f of [note(3, 5), note(0, 6), note(2, 6), note(3, 6)]) tone(e, t + 0.42, { type: 'sine', f0: f, gain: 0.03, attack: 0.01, decay: 1.4, key: true })
   },
-  ding(e, t) {
-    // the kitchen timer: it is ready (G6 and its octave, then C7)
-    tone(e, t, { type: 'sine', f0: note(3, 6), gain: 0.06, attack: 0.003, decay: 1.2, key: true })
-    tone(e, t, { type: 'sine', f0: note(3, 7), gain: 0.02, attack: 0.003, decay: 0.5, key: true })
-    tone(e, t + 0.18, { type: 'sine', f0: note(0, 7), gain: 0.05, attack: 0.003, decay: 1.4, key: true })
+  ding(e, t, v, pan, o) {
+    // the kitchen timer: it is ready. Its note and its octave, then two steps of the key over it (the oven's G6 then
+    // C7, the mill's E6 then A6, the loom's A6 then D7): each machine its own, from where it stands
+    const { step, octave } = keyStep(o.note ?? DING)
+    tone(e, t, { type: 'sine', f0: note(step, octave), gain: 0.06 * v, attack: 0.003, decay: 1.2, pan, key: true })
+    tone(e, t, { type: 'sine', f0: note(step, octave + 1), gain: 0.02 * v, attack: 0.003, decay: 0.5, pan, key: true })
+    tone(e, t + 0.18, { type: 'sine', f0: note(step + 2, octave), gain: 0.05 * v, attack: 0.003, decay: 1.4, pan, key: true })
   },
   crow(e, t, v, pan) {
     // cock-a-doodle-doo
@@ -281,11 +299,87 @@ const SYNTHS: Record<FarmSound, Synth> = {
       burst(e, t + i * 0.32 + 0.16, { type: 'lowpass', freq: 420, q: 0.8, gain: 0.3 * v, attack: 0.002, decay: 0.08, pan })
     }
   },
+  pick(e, t, v, pan) {
+    // fruit picked: the leaves rustle, the twig springs back (a quick falling twang), the fruit drops soft into the hand
+    burst(e, t, { type: 'bandpass', freq: 3400, q: 0.9, gain: 0.07 * v, attack: 0.01, decay: 0.14, pan })
+    burst(e, t + 0.02, { type: 'highpass', freq: 2800, q: 0.8, gain: 0.1 * v, attack: 0.002, decay: 0.03, pan })
+    tone(e, t + 0.02, { type: 'triangle', f0: 1300, f1: 700, gain: 0.03 * v, attack: 0.002, decay: 0.07, pan })
+    tone(e, t + 0.12, { type: 'sine', f0: 560, f1: 280, gain: 0.08 * v, attack: 0.004, decay: 0.08, pan })
+    burst(e, t + 0.12, { type: 'bandpass', freq: 900, q: 1.2, gain: 0.14 * v, attack: 0.003, decay: 0.06, pan })
+  },
+  sack(e, t, v, pan) {
+    // a sack from the mill set down: a soft heavy thump, its cloth, and a puff of flour
+    burst(e, t, { type: 'lowpass', freq: 600, q: 0.7, gain: 0.3 * v, attack: 0.01, decay: 0.13, pan })
+    burst(e, t, { type: 'bandpass', freq: 950, q: 1.2, gain: 0.14 * v, attack: 0.006, decay: 0.09, pan })
+    tone(e, t, { type: 'sine', f0: 150, f1: 90, gain: 0.08 * v, attack: 0.006, decay: 0.1, pan })
+    burst(e, t + 0.05, { type: 'bandpass', freq: 1300, sweepTo: 2200, q: 0.7, gain: 0.08 * v, attack: 0.03, decay: 0.25, pan })
+  },
+  bolt(e, t, v, pan) {
+    // a bolt of cloth off the loom: two swishes as it is rolled off, then a soft thud as it is laid down
+    burst(e, t, { type: 'bandpass', freq: 1200, sweepTo: 2400, q: 0.8, gain: 0.07 * v, attack: 0.04, decay: 0.12, pan })
+    burst(e, t + 0.12, { type: 'bandpass', freq: 2000, sweepTo: 1000, q: 0.8, gain: 0.06 * v, attack: 0.03, decay: 0.14, pan })
+    burst(e, t + 0.28, { type: 'lowpass', freq: 520, q: 0.7, gain: 0.22 * v, attack: 0.006, decay: 0.1, pan })
+    burst(e, t + 0.28, { type: 'bandpass', freq: 800, q: 1.3, gain: 0.1 * v, attack: 0.004, decay: 0.07, pan })
+  },
+  tray(e, t, v, pan) {
+    // the oven's tray slides out over its runners and is set down on the stone with a little ring of tin (E7)
+    burst(e, t, { type: 'bandpass', freq: 2400, sweepTo: 1600, q: 2, gain: 0.07 * v, attack: 0.03, decay: 0.2, pan })
+    burst(e, t + 0.26, { type: 'bandpass', freq: 1500, q: 3, gain: 0.14 * v, attack: 0.002, decay: 0.05, pan })
+    burst(e, t + 0.26, { type: 'lowpass', freq: 450, q: 0.8, gain: 0.14 * v, attack: 0.003, decay: 0.06, pan })
+    tone(e, t + 0.26, { type: 'sine', f0: note(2, 7), gain: 0.018 * v, attack: 0.002, decay: 0.32, pan, key: true })
+  },
+  crate(e, t, v, pan) {
+    // goods into an order's crate: a hollow knock on its boards, a softer one, and the straw
+    for (const [at, g] of [
+      [0, 1],
+      [0.11, 0.6],
+    ]) {
+      burst(e, t + at, { type: 'bandpass', freq: 620, q: 4, gain: 0.32 * g * v, attack: 0.002, decay: 0.07, pan })
+      tone(e, t + at, { type: 'sine', f0: 230, f1: 180, gain: 0.07 * g * v, attack: 0.002, decay: 0.09, pan })
+    }
+    burst(e, t + 0.05, { type: 'bandpass', freq: 2600, q: 0.8, gain: 0.05 * v, attack: 0.03, decay: 0.2, pan })
+  },
+  shelf(e, t, v, pan) {
+    // goods put up on a shelf: two light taps on the board, then a short slide back into place
+    burst(e, t, { type: 'bandpass', freq: 1800, q: 3, gain: 0.15 * v, attack: 0.001, decay: 0.03, pan })
+    burst(e, t + 0.08, { type: 'bandpass', freq: 1600, q: 3, gain: 0.12 * v, attack: 0.001, decay: 0.03, pan })
+    burst(e, t + 0.14, { type: 'bandpass', freq: 1400, sweepTo: 2600, q: 1.4, gain: 0.07 * v, attack: 0.03, decay: 0.13, pan })
+  },
+  pay(e, t) {
+    // coins paid out: two clinks falling (E7, C7), the coins' own going the other way
+    tone(e, t, { type: 'sine', f0: note(2, 7), gain: 0.05, attack: 0.002, decay: 0.22, key: true })
+    tone(e, t + 0.08, { type: 'sine', f0: note(0, 7), gain: 0.045, attack: 0.002, decay: 0.32, key: true })
+    burst(e, t, { type: 'highpass', freq: 6000, q: 0.7, gain: 0.025, attack: 0.001, decay: 0.04 })
+  },
+  nope(e, t) {
+    // cannot: decline's soft falling notes, shorter and higher (E5 down to C5)
+    tone(e, t, { type: 'triangle', f0: note(2, 5), gain: 0.035, attack: 0.008, decay: 0.1, key: true })
+    tone(e, t + 0.09, { type: 'triangle', f0: note(0, 5), gain: 0.035, attack: 0.008, decay: 0.16, key: true })
+  },
+  lift(e, t) {
+    // lifted: a breath of air rising and a little lift in a soft tone
+    burst(e, t, { type: 'bandpass', freq: 380, sweepTo: 1500, q: 1.1, gain: 0.07, attack: 0.04, decay: 0.1 })
+    tone(e, t + 0.05, { type: 'sine', f0: 560, f1: 760, gain: 0.03, attack: 0.006, decay: 0.09 })
+  },
+  thud(e, t, _v, _pan, o) {
+    // put down: a thud, deeper, longer and louder the bigger the thing, with a knock a phone's speaker carries
+    const h = heft(o.size)
+    burst(e, t, { type: 'lowpass', freq: 560 - 300 * h, q: 0.8, gain: 0.2 + 0.25 * h, attack: 0.004, decay: 0.08 + 0.1 * h })
+    tone(e, t, { type: 'sine', f0: 150 - 60 * h, f1: 85 - 35 * h, gain: 0.07 + 0.12 * h, attack: 0.004, decay: 0.1 + 0.08 * h })
+    burst(e, t + 0.004, { type: 'bandpass', freq: 1300 - 450 * h, q: 1.2, gain: 0.08 + 0.06 * h, attack: 0.002, decay: 0.05 })
+  },
+}
+
+/** What a sound may be asked for beyond where it is: a ding's note (a machine's own: `MACHINES[].sounds.done`) and a
+ *  thud's size across (m: what was put down). */
+export interface SoundMore {
+  note?: KeyNote
+  size?: number
 }
 
 /** How a sound is played: where it is (`pan` −1 left … 1 right), how near (`near` 0..1, heard at a quarter at least),
  *  its pitch and loudness this time (factors, 1 as written; ./palette.ts, vary) and when (audio time; now if not given). */
-export interface PlayOpts {
+export interface PlayOpts extends SoundMore {
   pan?: number
   near?: number
   pitch?: number
@@ -297,14 +391,14 @@ export interface PlayOpts {
  *  tests' fake. */
 export function play(e: Engine, kind: FarmSound, o: PlayOpts = {}) {
   const t = o.at ?? e.ac.currentTime + 0.004
-  SYNTHS[kind]({ ...e, pitch: o.pitch ?? 1, level: o.level ?? 1 }, t, Math.max(0.25, o.near ?? 1), o.pan ?? 0)
+  SYNTHS[kind]({ ...e, pitch: o.pitch ?? 1, level: o.level ?? 1 }, t, Math.max(0.25, o.near ?? 1), o.pan ?? 0, o)
 }
 
 /** Garden work and the people and animals in it, where it can be heard, a little different each time its row allows;
  *  what the player did is felt too (`feel`: its touch, its row's by default; null for none), whether the sound plays
- *  or not. */
-export function farmSound(kind: FarmSound, pan = 0, near = 1, feel: Haptic | null = SOUNDS[kind].feel) {
+ *  or not. `more`: a ding's note, a thud's size. */
+export function farmSound(kind: FarmSound, pan = 0, near = 1, feel: Haptic | null = SOUNDS[kind].feel, more: SoundMore = {}) {
   haptic(feel)
   const e = live()
-  if (e) play(e, kind, { pan, near, ...vary(SOUNDS[kind]) })
+  if (e) play(e, kind, { pan, near, ...vary(SOUNDS[kind]), ...more })
 }
