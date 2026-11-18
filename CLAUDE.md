@@ -185,8 +185,8 @@ The README has the overview; `tests/README.md` what each test guards.
 - Days played (`farm.played`, `src/farm/calendar.ts`): the days the farm has been opened, each counted once, the first
   frame it runs on a calendar day (`markPlayed`, asked from `tick`). They never fall, and they are the long game's clock
   (`longDay`). A claim's or a gift's prizes (`src/farm/prize.ts`: coins, goods, a piece of decoration, a garment) go in
-  through one door, `give(prizes, kind, at)` (`src/farm/state/rewards.ts`), which returns the reward's tier; their coins
-  are `sized` from the next level's. A road of stops (`src/farm/road.ts`: the daily week, a goal's counts) is drawn by
+  through one door, `give(prizes, kind, at)` (`src/farm/state/rewards.ts`), which counts the reward once (`rewarded`)
+  and returns its tier; their coins are `sized` from the next level's. A road of stops (`src/farm/road.ts`: the daily week, a goal's counts) is drawn by
   `src/ui/Road.tsx`.
 - A new farm's first steps are rows of `FIRST_STEPS` (`src/farm/firstSteps.ts`: the words, the farmer's mood (his face
   and move, `FarmerFace.tsx`), the picture, when it is
