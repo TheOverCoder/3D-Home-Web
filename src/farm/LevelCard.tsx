@@ -295,6 +295,16 @@ function GiftBox({ b, next, onOpen }: { b: BoxView; next: boolean; onOpen: (el: 
   )
 }
 
+/** The next big thing the coins are saved for (src/farm/economy.ts, nextSaving): its picture, its name, and the coins
+ *  towards it, "Market 640 / 1500". */
+const Saving = ({ s }: { s: NonNullable<LevelView['saving']> }) => (
+  <span className="tag lf-saving" aria-label={`Saving for the ${s.name.toLowerCase()}: ${s.have} of ${s.of} coins`}>
+    <img src={art(s.art)} alt="" />
+    {s.name} <img src={art('coin')} alt="" />
+    {s.have} / {s.of}
+  </span>
+)
+
 /** What the next level brings, all of it by itself as it is reached: its coins, its garment every fifth level (else a
  *  small picture of the next garment and its level), and a gift; and under them, what it opens, a small card each. */
 function Next({ v }: { v: LevelView }) {
@@ -330,6 +340,7 @@ function Next({ v }: { v: LevelView }) {
         <Check weight="bold" /> Comes by itself
       </span>
       {v.opens.length > 0 && <UnlockRow ids={v.opens} />}
+      {v.saving && <Saving s={v.saving} />}
     </m.section>
   )
 }
