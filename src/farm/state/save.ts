@@ -1,4 +1,4 @@
-import { amount, cycle, field, int, isObject, list, num, seconds } from '../../lib/saved'
+import { amount, cycle, field, int, isObject, list, MOST, num, seconds } from '../../lib/saved'
 import { useHome } from '../../store'
 import {
   arrivalEvery,
@@ -31,6 +31,7 @@ import {
 import { levelOf, sanitizeXp, savedOnToday, seedXp, unpaidCoins } from '../xp'
 import { giftsFor, sanitizeGifts } from '../gifts'
 import { dailyFresh, sanitizeDaily } from '../daily'
+import { freshPlayed, sanitizePlayed } from '../calendar'
 import { machineLevel, QUEUE } from '../machineView'
 import { freshMachine, jobSeconds, recipeOf, type MachineState } from '../machines'
 import { freshEvents, sanitizeEvents } from '../events'
@@ -133,6 +134,7 @@ function fresh(): FarmData {
     apartment: { owned: false },
     events: freshEvents(),
     firstSteps: stepsFresh(),
+    played: freshPlayed(),
   }
 }
 
@@ -390,6 +392,8 @@ export function load(text: string | null = readRaw(KEY)): { data: FarmData; save
     data.place = place === 'home' && data.apartment.owned ? 'home' : 'farm'
     // the week's events: the lucky draw as saved and the events the news has shown (a farm from before them: none)
     data.events = sanitizeEvents(raw.events)
+    // days played: as saved; a farm from before them starts from its daily gift's streak and the day it last claimed one
+    data.played = sanitizePlayed(raw.played, calendarDay(), { days: amount(field(raw.daily, 'streak'), 0), last: int(field(raw.daily, 'last'), -1, -1, MOST) })
     const queue = list(raw.queue)
       .map(savedBuyer)
       .filter((b): b is SavedBuyer => !!b)

@@ -5,6 +5,7 @@ import type { ToolView } from '../toolView'
 import { isSkinStyle, skinBuyProblem, skinPrice, wearing, withSkin, type SkinStyle } from '../skins'
 import { bump, farm, random, save, toast, type At } from './core'
 import { gainXp } from './levels'
+import { foundPrizes, rewarded } from './rewards'
 import { capacity, gainItems, roomFor, store, surpriseWords, used } from './stores'
 import { ladderMaxed, ladderNextPrice } from './ladders'
 
@@ -57,6 +58,7 @@ function takeFrom(id: ProducerId, i: number, most: number, at?: At): { n: number
   const items = rollItems(def.surprise === 'each' ? n : 1, def.surprise === 'each' ? ITEM_ODDS.unit : ITEM_ODDS.harvest, random)
   gainItems(items, at)
   gainXp('collect', n, at)
+  rewarded('collect', [{ item: def.good, n }, ...foundPrizes(items)], at)
   return { n, items }
 }
 
