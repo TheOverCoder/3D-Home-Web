@@ -560,8 +560,22 @@ export const UPGRADES: Upgrade[] = [
 /** The order board on the office's computer: three orders at a time to begin with, and after one is declined a new one
  *  takes ten minutes to come in; the office's upgrades take it up to nine at a time and the wait down to five minutes.
  *  An order asks for one to nine kinds of goods, pays a quarter over their fair price, and one in two brings a
- *  surprise (ITEM_ODDS.order). No time limit: it waits until it is sent or declined. */
-export const ORDERS = { slots: 3, maxSlots: 9, wait: 600, fastest: 300, step: 60, kinds: 9, markup: 1.25 } as const
+ *  surprise (ITEM_ODDS.order). No time limit: it waits until it is sent or declined. `first` is a new farm's starter
+ *  order, in the board's first place: what the first steps taught (eggs, and the cloth woven at the loom), paid as any
+ *  order (src/farm/state/orders.ts, firstOrder). */
+export const ORDERS = {
+  slots: 3,
+  maxSlots: 9,
+  wait: 600,
+  fastest: 300,
+  step: 60,
+  kinds: 9,
+  markup: 1.25,
+  first: [
+    { good: 'egg', want: 3 },
+    { good: 'cloth', want: 1 },
+  ],
+} as const
 export const SLOT_LEVELS = ORDERS.maxSlots - ORDERS.slots
 export const WAIT_LEVELS = (ORDERS.wait - ORDERS.fastest) / ORDERS.step
 export const orderSlots = (level: number) => ORDERS.slots + level

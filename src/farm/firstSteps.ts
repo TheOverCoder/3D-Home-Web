@@ -17,8 +17,8 @@ export type StepId = 'plant' | 'eggs' | 'water' | 'harvest' | 'sell' | 'shear' |
 
 /** How the farmer feels as he says a line: his face (`farmer-<mood>` in src/ui/art.ts, made by
  *  scripts/render-farmer-faces.mjs) and how he moves as it comes (src/farm/FarmerFace.tsx). */
-export type FarmerMood = 'cheerful' | 'proud' | 'excited' | 'curious' | 'encouraging' | 'surprised' | 'laughing' | 'winking' | 'pleading' | 'sighing'
-export const FARMER_MOODS: readonly FarmerMood[] = ['cheerful', 'proud', 'excited', 'curious', 'encouraging', 'surprised', 'laughing', 'winking', 'pleading', 'sighing']
+export type FarmerMood = 'cheerful' | 'proud' | 'excited' | 'curious' | 'encouraging' | 'surprised' | 'laughing' | 'winking' | 'sighing'
+export const FARMER_MOODS: readonly FarmerMood[] = ['cheerful', 'proud', 'excited', 'curious', 'encouraging', 'surprised', 'laughing', 'winking', 'sighing']
 
 /** The hint's moments besides a step's own line: a step just done (its tick), the walk a tap started, the skip
  *  question, the last card ("All set!"), and a tap with nowhere to walk to yet. */
@@ -28,8 +28,8 @@ export const MOMENT_MOODS: Readonly<Record<Moment, FarmerMood>> = {
   passed: 'proud',
   // off you go: a nod, that way
   walk: 'encouraging',
-  // "Skip the tips?": he would rather you stayed
-  ask: 'pleading',
+  // "Skip the tips?": a kind nod, either way is fine (never a plea to stay)
+  ask: 'encouraging',
   // every step done: stars in his eyes
   final: 'excited',
   // nothing to walk to yet (no bed at that stage, no egg laid): a sigh, and the bubble shakes
