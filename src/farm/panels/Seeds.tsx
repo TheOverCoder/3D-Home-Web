@@ -3,7 +3,7 @@ import { farmSound, placeSound } from '../../audio/sound'
 import { playGesture } from '../../lib/gestures'
 import { playerState } from '../../lib/playerState'
 import { useHome } from '../../store'
-import { LockCorner, opensWords, useNope } from '../../ui/LockTag'
+import { LockCorner, LockTag, opensWords, useNope } from '../../ui/LockTag'
 import { Purse, Shell } from '../../ui/Sheet'
 import { art } from '../../ui/art'
 import { Clock } from '../../ui/glyphs'
@@ -16,7 +16,9 @@ import { cap, cropLock } from './crops'
 
 // The seed packets: what an empty bed (and every empty bed in reach with it) is planted with. Twelve of them, from the
 // lettuce's 45 seconds to the cotton's night (update-v1/missions/01-loop-economy.md): a phone shows them three to a
-// row upright, more sideways (the compact grid).
+// row upright, more sideways (the compact grid). What the farm's level has not opened yet is folded under them into one
+// row of small faded pictures, each with the level it opens at (update-v1/missions/04-first-session.md, change 11): a
+// new farm's first choice is between the two it can plant, and what comes next is still in sight.
 
 /** A crop of an hour or more is for while you are away: its packet says when it will be ready, on the device's clock. */
 export const LONG_CROP = 3600
@@ -86,6 +88,24 @@ function SeedCard({ c, k, perBed, onChoose }: { c: CropDef; k: number | null; pe
   )
 }
 
+/** A crop not open yet, folded: its small faded picture and the level it opens at; a tap shakes it. */
+function FoldedSeed({ c, level }: { c: CropDef; level: number }) {
+  const [scope, nope] = useNope<HTMLButtonElement>()
+  return (
+    <button
+      ref={scope}
+      className="seed-folded locked"
+      aria-disabled="true"
+      aria-label={`${cap(c.plural)}: ${opensWords(level)}`}
+      onClick={nope}
+      style={{ display: 'grid', justifyItems: 'center', gap: 2, flex: 'none', minWidth: 48, minHeight: 48, padding: '2px 0', border: 0, background: 'none', cursor: 'default' }}
+    >
+      <img className="art" src={iconUrl(c.id)} alt="" style={{ width: 34, height: 34 }} />
+      <LockTag level={level} words={`Lv ${level}`} />
+    </button>
+  )
+}
+
 export function SeedsPanel({ bed }: { bed: number }) {
   useFarm((s) => s.rev)
   const close = useHome((s) => s.closePanel)
@@ -94,6 +114,10 @@ export function SeedsPanel({ bed }: { bed: number }) {
   // what is open first, then what a level opens next (in the order the levels come); the keys 1–9 go to the open ones
   const crops = openFirst(CROPS, cropLock)
   const open = crops.filter((c) => cropLock(c) === null)
+  const later = crops.flatMap((c) => {
+    const lock = cropLock(c)
+    return lock === null ? [] : [{ c, lock }]
+  })
   const choose = (crop: CropId) => {
     if (!plantBeds(bedsForSeeds(bed, crop, playerState.position.x, playerState.position.z), crop)) return
     const at = bedSpot(bed)
@@ -113,11 +137,17 @@ export function SeedsPanel({ bed }: { bed: number }) {
   return (
     <Shell title={beds.length > 1 ? `Plant ${beds.length} beds` : 'Plant seeds'} art={art('seedling')} sub={<Purse />} onClose={close}>
       <div className="farm-grid compact">
-        {crops.map((c) => {
-          const k = open.indexOf(c)
-          return <SeedCard key={c.id} c={c} k={k >= 0 ? k + 1 : null} perBed={beds.length > 1} onChoose={choose} />
-        })}
+        {open.map((c, k) => (
+          <SeedCard key={c.id} c={c} k={k + 1} perBed={beds.length > 1} onChoose={choose} />
+        ))}
       </div>
+      {later.length > 0 && (
+        <div className="seed-fold" role="group" aria-label="Seeds at later levels" style={{ display: 'flex', gap: 8, marginTop: 12, padding: '6px 4px', overflowX: 'auto', scrollbarWidth: 'none' }}>
+          {later.map(({ c, lock }) => (
+            <FoldedSeed key={c.id} c={c} level={lock} />
+          ))}
+        </div>
+      )}
     </Shell>
   )
 }
