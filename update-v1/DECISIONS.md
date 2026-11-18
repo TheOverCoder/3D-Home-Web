@@ -91,3 +91,6 @@ The orchestrator runs the plan to the end without asking:
 - **01a starts before phase 1's last three agents (07b, 06b, 11b) finish.** Its waits (04a's drain and
   `ORDERS.first`, 05a) are merged and CI is green; it is the root most of phase 2 waits on (its PACE, its orders, its
   crops), and it touches none of 07b's, 06b's or 11b's files.
+- **11a's payer accepted:** `src/lib/batch.ts` (`sunAsOne`), its test and one line of `src/scene/House.tsx`'s
+  `StaticBatch`, outside 11a's row and owned by no agent, pay for the bigger farm sun box (the phone sizes reached 250
+  sun draws without them). The farm's sun map is byte for byte the same with them; 16 and 27 stay equal.
