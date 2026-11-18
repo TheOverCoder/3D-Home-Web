@@ -12,6 +12,8 @@ The README has the overview; `tests/README.md` what each test guards.
   WebGL, a few minutes a file; it builds and serves on :4185). `05` and `16` only when the change is to geometry,
   models, materials, lighting or `src/lib/visibility`, and only the group it touches (`-g`). A small request is one
   agent, no team. A rule or a save change gets a unit test beside its code (`src/**/*.test.ts`, `tests/README.md`).
+- A new package goes on `src/deps.allowed.json` (held by `src/deps.test.ts`) only after the vetting in
+  `update-v1/REUSE.md`, with its row there; `.npmrc` pins it exactly and runs none of its install scripts.
 - A push runs the core suite on GitHub (`ci.yml`: everything but the `@full` tests, six shards side by side), and the
   site is published only from a commit it passed on (`deploy.yml` waits for CI): a red push never reaches players.
   The `@full` tests — stable ones that boot a page of their own, the budget walk at ten times the farm, the counting
