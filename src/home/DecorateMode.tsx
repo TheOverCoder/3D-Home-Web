@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { FogExp2, MathUtils, Matrix4, Quaternion, Vector3, type PerspectiveCamera } from 'three'
-import { uiClick } from '../audio/sound'
+import { farmSound } from '../audio/sound'
 import { HOUSE, ROOMS, type RoomId } from '../data/layout'
 import { FloorOutlines, outlinesWarmup, type FloorRect } from './FloorOutlines'
 import { farm, useFarm } from '../farm/state'
@@ -366,6 +366,7 @@ function DecorateInput({ view, goal }: { view: React.RefObject<View>; goal: Reac
       const pr = press
       if (!pr) return
       if (!pr.moved && Math.hypot(e.clientX - pr.start[0], e.clientY - pr.start[1]) < 7) return
+      if (!pr.moved && pr.kind === 'piece' && pr.id) farmSound('lift')
       pr.moved = true
       if (pr.kind === 'piece' && pr.id) {
         const g = floor(e.clientX, e.clientY)
@@ -390,8 +391,9 @@ function DecorateInput({ view, goal }: { view: React.RefObject<View>; goal: Reac
       if (!pr || !active()) return
       const deco = useDecorate.getState()
       if (pr.kind === 'piece' && pr.moved) {
-        dropPiece()
-        uiClick()
+        const fit = dropPiece()
+        const kind = farm.home.pieces.find((q) => q.id === pr.id)?.type
+        farmSound(fit && !fit.ok ? 'nope' : 'thud', 0, 1, undefined, { size: kind ? Math.max(...PIECES[kind].size) : undefined })
         return
       }
       if (pr.moved) return
