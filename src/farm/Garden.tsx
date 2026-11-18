@@ -459,13 +459,13 @@ function Bed({ index }: { index: number }) {
         if (!r) openPanel({ kind: 'seeds', bed: index })
         else if (plantBeds(r.beds, r.crop.id)) {
           playGesture('interact')
-          farmSound('plant', pan, near)
+          farmSound('plant', pan, near, undefined, { times: r.beds.length })
         }
       } else if (stage === 'thirsty') {
         const beds = bedsInReach(index, 'thirsty')
         waterBeds(beds)
         playGesture('interact')
-        farmSound('water', pan, near)
+        farmSound('water', pan, near, undefined, { times: beds.length })
         for (const i of beds) farmFx('water', bedSpot(i).x, BED.h + 0.03, bedSpot(i).z)
       } else if (stage === 'ripe') {
         const beds = bedsInReach(index, 'ripe')
@@ -473,7 +473,7 @@ function Bed({ index }: { index: number }) {
         const crops = beds.map((i) => farm.beds[i].crop ?? undefined)
         harvestBeds(beds)
         playGesture('interact')
-        farmSound('harvest', pan, near)
+        farmSound('harvest', pan, near, undefined, { times: beds.length })
         beds.forEach((i, k) => farmFx('harvest', bedSpot(i).x, BED.h + 0.12, bedSpot(i).z, { good: crops[k] }))
       } else {
         const b = farm.beds[index]
@@ -893,7 +893,7 @@ function SeedKeys() {
         const at = bedSpot(index)
         const { pan, near } = placeSound(at.x, at.z)
         playGesture('interact')
-        farmSound('plant', pan, near)
+        farmSound('plant', pan, near, undefined, { times: beds.length })
       } else useHome.getState().showToast(`${crop.plural[0].toUpperCase()}${crop.plural.slice(1)} seeds cost ${crop.seedCost} coins — you have ${farm.coins}`)
     }
     window.addEventListener('keydown', onKey)
