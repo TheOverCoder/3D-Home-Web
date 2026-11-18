@@ -1,3 +1,4 @@
+import { clock } from '../../lib/time'
 import type { ArtId } from '../../ui/art'
 import { OFFICE_UPGRADES, orderSlots, orderWait, produceById, type OfficeUpgradeId, type ProduceId } from '../data'
 import type { Order, OrderSlot } from '../orders'
@@ -41,8 +42,8 @@ export interface OfficeRow {
   price: number
 }
 
-/** m:ss */
-export const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
+/** A countdown as the game's clock writes it (src/lib/time.ts): 9:58, rounded up. */
+export { clock }
 
 /** A good's name, one or many. */
 export const nameOf = (good: ProduceId, n: number) => (n === 1 ? produceById(good).name : produceById(good).plural)

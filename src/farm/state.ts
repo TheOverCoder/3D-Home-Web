@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { farmSound, placeSound } from '../audio/sound'
 import { coinsFx, farmFx, itemFx, xpFx } from '../fx/fx'
 import { dampAngle } from '../lib/damp'
+import { clock as clockText } from '../lib/time'
 import { groundDistance } from '../lib/interaction'
 import { useHome } from '../store'
 import {
@@ -1480,11 +1481,8 @@ export const machineActions = (id: MachineId): MachineActions => ACTIONS[id]
 
 // ───────────────────────────── the shop ─────────────────────────────
 
-const mmss = (seconds: number) => {
-  const t = Math.max(0, Math.ceil(seconds))
-  return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`
-}
-export { mmss as clockText }
+/** A countdown as the game writes it (src/lib/time.ts): for the labels and panels that read it from here. */
+export { clockText }
 
 /** Steps bought of an upgrade that comes one step at a time (0 for the others). */
 export const upgradeLevel = (u: UpgradeId) => (u === 'queue' ? farm.queueLevel : u === 'pace' ? farm.paceLevel : 0)
@@ -1541,7 +1539,7 @@ export function buy(id: UpgradeId) {
   } else if (id === 'pace') {
     farm.paceLevel = Math.min(PACE_LEVELS, farm.paceLevel + 1)
     farm.nextVisitorIn = Math.min(farm.nextVisitorIn, arrivalSeconds())
-    note = `A buyer every ${mmss(arrivalSeconds())}`
+    note = `A buyer every ${clockText(arrivalSeconds())}`
   } else if (id === 'east' || id === 'west') {
     farm.expansions[id] = true
     BEDS.forEach((def, i) => {
@@ -2127,7 +2125,7 @@ export function buyOffice(id: OfficeUpgradeId) {
   } else {
     const wait = orderWaitSeconds()
     farm.orders = farm.orders.map((slot) => ('wait' in slot ? { wait: Math.min(slot.wait, wait) } : slot))
-    toast(`A new order every ${mmss(wait)}`)
+    toast(`A new order every ${clockText(wait)}`)
   }
   bump()
   save()

@@ -1,4 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { orderWait } from '../../src/farm/data'
+import { clock } from '../../src/lib/time'
 import { test, expect, type Game } from './helpers'
 
 // The silo and the barn (what is in them, how full, made bigger with building materials), the surprises (a building
@@ -187,7 +189,19 @@ test.describe('the silo, the barn, surprises and orders', () => {
     await page.locator('.farm-order').nth(1).getByRole('button', { name: 'Decline this order' }).click()
     await until(game, () => (window as any).__home.farm.orderAt(1) === null)
     expect((await state(game)).inv[second.lines[0].good]).toBe(1)
-    await expect(page.locator('.farm-order.waiting')).toContainText('New order in 10:00')
+    // its place counts down from the office's wait, written as the game's clock writes it: what the board shows and the
+    // farm's own wait read in one call (the farm ticks every frame), until the board has drawn the second it is on
+    const board = () =>
+      page.evaluate(() => ({
+        shown: document.querySelector('.farm-order.waiting .ob-wait-words')?.textContent ?? '',
+        wait: (window as any).__home.farm.state.orders[1].wait as number,
+      }))
+    await expect
+      .poll(async () => {
+        const b = await board()
+        return b.shown === `New order in ${clock(b.wait)}` && b.wait > orderWait(0) - 60
+      })
+      .toBe(true)
     await page.evaluate(() => (window as any).__home.useHome.getState().closePanel())
   })
 
