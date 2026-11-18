@@ -14,11 +14,58 @@ CLAUDE.md, and the scaffolds already in (`src/farm/ledger.ts`, `src/farm/compute
 it, and the owner of the engine agrees. A mission that needs something an engine does not give asks the owner. It
 never writes a second copy.
 
-**Written for the journey review's recommendations** (`JOURNEY.md` §3, fixes 2, 3, 4, 7 and 9), as the coordinator
-asked. Each place they decide is marked **[review]**. If the user chooses otherwise, those places change:
-- **one long clock, days played**, instead of claims, days played and the calendar month (§1.10, §1.15, A5, §3);
-- **at most two cards a visit** open by themselves (§1.6, §4);
-- **the busy card is not "All set"** (§1.17, §4).
+**Written for the journey review's recommendations** (`JOURNEY.md` §3), as the coordinator asked. Each place they
+decide is marked **[review]**. They are not yet the user's decisions.
+
+## If the user decides otherwise
+
+Each **[review]** choice lives in one constant or one function, so a different answer is a one-line change there.
+"Written" is in the scaffold now. "To come" is where the owner puts it when building, as one constant or function, and
+nowhere else.
+
+| The choice (`JOURNEY.md` fix) | Where it lives | A different answer |
+|---|---|---|
+| Days played is the long game's one clock (4) | `LONG_CLOCK` and `longDay()`, `src/farm/calendar.ts` (written) | `'calendar'`: the daily week, the seasons and the season road count calendar days |
+| The daily week is the season's week (4) | `dailyDay()`, `src/farm/daily.ts` (02, to come), reading `longDay()` and `seasonAt` | the gifts claimed count the week again (02's own plan) |
+| The season road: 10 stops a season, fed by XP, never reset by the calendar (4) | `SEASON_ROAD` and `sanitizeSeasonRoad()`, `src/farm/seasonRoad.ts` (02, to come) | the calendar month's road: `MONTHS`, `src/farm/month.ts`, `farm.month` (A5) |
+| At most two cards open by themselves a visit (2) | `VISIT_MOST`, `src/ui/cardQueue.ts` (written) | another number; `Infinity` for no cap |
+| A season has no card: its arrival is the daily card's line (2) | `CARD_ORDER`, `src/ui/cardQueue.ts` (written) | `'season'` after `'daily'` in the list |
+| The end of the first steps lands over three visits (3) | `AFTER_STEPS`, `src/ui/cardQueue.ts` (written) | every card: `[...CARD_ORDER]` |
+| The busy card is the stopping cue: nothing calls while it shows (9) | `BUSY_RESTS`, `src/ui/calls.ts` (written) | `false` |
+| 01's card says "Busy till 07:40", never "All set" (9) | `busyWords()`, `src/farm/appointments.ts` (01, to come) | its words |
+| Only the nearest "almost there" glows (10) | the `almost` row of `CALLS`, `src/ui/calls.ts` (written) | delete the row: each glows on its own |
+| `nextUp` is never empty (7) | `NEXT_SOURCES`, `src/farm/nextUp.ts` (04, to come) | only the `step` and `goal` rows |
+| The welcome-back card holds at most 4 rows of pictures (11) | `AWAY_ROWS`, `src/farm/AwayPanel.tsx` (04, to come) | another number |
+| The events keep their names; a season adds only its picture (12) | `SEASONS[].events`, `src/farm/season.ts` (10's). Written the other way today: its rows rename events, and 10 drops the names when it wires them | keep the rows as they are |
+
+## Which file is which
+
+**One name, one file, one idea.** Where two files are named alike, each holds a different half, and nothing is defined
+in both.
+
+| Files | Which is which |
+|---|---|
+| `src/lib/tier.ts` · `src/farm/worth.ts` | The words of a reward (`Tier`, `RewardKind`, families, floors; no imports) · the measure (`worthOf`, `rewardTier`). The contract's first draft put the measure in `src/farm/tier.ts`; it is `worth.ts`, so `tier.ts` is one file |
+| `src/farm/season.ts` · `src/farm/weather.ts` · `src/scene/weatherLook.ts` | 10's: the year's rows and the season at a day played · the weather at a farm moment · the numbers a renderer reads |
+| `src/farm/calendar.ts` | 02's: the calendar and days played, the clock the seasons count in; no seasons |
+| `src/farm/seasonRoad.ts` (to come) | 02's: the season road's stops and record; the road engine is `src/farm/road.ts` |
+| `src/farm/<x>.ts` · `src/farm/state/<x>.ts` (08's split) | The pure rules, rows and sanitizer · the live farm's side, which calls them. The pairs: `ledger`, `daily`, `market`, `contractor`, `decor`, `orders`, `day`, `season` |
+| `src/film/cast.ts` `lookOf` · `src/data/people.ts` `personLook` | A film's cast member's look (the player, a roll, a herd animal) · a person of the table's. Named apart; `lookOf` will call `personLook` for `{ person }` |
+| `src/ui/motion.tsx` · `src/ui/still.ts` | Motion's presets and `MotionConfig` · whether anything should move at all. There is no `src/lib/motion.ts` |
+| `src/audio/sound.ts` · `src/audio/sounds.ts` | The synths and the buses · the table of rows the synths are looked up by |
+
+**Two homes for a while.** The scaffold is each idea's home; until its owner moves the callers, today's copy stays, and
+a test holds the two equal.
+
+| Home now | Today's copy | Removed by | Held equal by |
+|---|---|---|---|
+| `calendar.ts`: `dayNumber`, `dayStart`, `dateKey` | `daily.ts`, `events.ts` | 02 (F4) | `calendar.test.ts` |
+| `prize.ts`: `Prize`, `savedPrize`, `prizeWords`; `sized` | `gifts.ts`; the bases of `dayCoins` and `boxCoins` | 02 (F1) | `prize.test.ts` |
+| `saved.ts` | the readers of ten sanitizers | 08 (commit 2) | `saved.test.ts` |
+| `quiet.ts` | three functions in `state.ts` | 08 (the split) | `quiet.test.ts` |
+| `still.ts` | 14 `matchMedia` reads, `fx.ts`'s `reducedMotion` | 07 | 07's guard test |
+| `sounds.ts`: each row's `feel` | `sound.ts`'s `FEEL` | 06 | `sounds.test.ts` |
+| `people.ts`: `steadyLook`, the looks and voices | `state.ts`, `film/cast.ts`, `film/voice.ts`, `talk/speech.ts`, `models/tractor.ts` | 03 (change 1) | `people.test.ts` |
 
 ## 0. The engines at a glance
 
@@ -34,7 +81,7 @@ asked. Each place they decide is marked **[review]**. If the user chooses otherw
 | 1.8 | The sheet and the attention budget | 07 | `src/ui/PanelSheet.tsx`, `src/ui/calls.ts` | 1 | 01, 02, 03, 04, 05, 09, 10, 11 |
 | 1.9 | `Prize` and `give()` | 02 | `src/farm/prize.ts`, `src/farm/state/rewards.ts` | 1 | 02, 03, 04, 05, 10 |
 | 1.10 | The calendar, days played (the long clock) and the road of stops | 02 | `src/farm/calendar.ts`, `src/farm/road.ts` | 1 | 02, 03, 04, 08, 09, 10 |
-| 1.11 | The reward tier, `celebrate`, `rewarded`, reactions | 05 | `src/lib/tier.ts`, `src/farm/tier.ts`, `src/fx/reward.ts`, `src/fx/react.ts` | 1 | every payout: 01, 02, 03, 04, 06, 09 |
+| 1.11 | The reward tier, `celebrate`, `rewarded`, reactions | 05 | `src/lib/tier.ts`, `src/farm/worth.ts`, `src/fx/reward.ts`, `src/fx/react.ts` | 1 | every payout: 01, 02, 03, 04, 06, 09 |
 | 1.12 | The sound table and the haptics map | 06 | `src/audio/sounds.ts`, `src/lib/device.ts` | 1 | 01, 02, 03, 05, 09, 10, 11 |
 | 1.13 | The people table, lines, friendship, orders with a sender | 03 | `src/data/people.ts` and `src/farm/people/` | 1 | 04, 06, 08 (film), 10, 11 |
 | 1.14 | The ledger, `priceAt`, `BUYER_OFFERS`, the mood | 09 | `src/farm/ledger.ts`, `src/farm/prices.ts`, `src/farm/mood.ts` | 1 | 01, 03, 09 |
@@ -161,13 +208,15 @@ export function PanelGuard(props: { name: string; children: ReactNode }): ReactN
 
 ```ts
 // Pure core: no React, no DOM, so the sim's journey (src/sim/journey.ts) imports the same order and budget.
-export type CardId = 'away' | 'daily' | 'unlocked' | 'letter' | 'counts'
-/** The order the cards that open by themselves come in. */
-export const CARD_ORDER: readonly CardId[] = ['away', 'daily', 'unlocked', 'letter', 'counts']
-/** At most this many open by themselves in one visit, the welcome back counted. Each of the rest waits where it lives
- *  (the gift in the corner menu, an unlock on the level chip, a letter on the mailbox's flag, the counts' question in
- *  Settings). */
+/** The order the cards that open by themselves come in; the ids are this list's. [review: no 'season' card] */
+export const CARD_ORDER = ['away', 'daily', 'unlocked', 'letter', 'counts'] as const
+export type CardId = (typeof CARD_ORDER)[number]
+/** [review] At most this many open by themselves in one visit, the welcome back counted. Each of the rest waits where it
+ *  lives (the gift in the corner menu, an unlock on the level chip, a letter on the mailbox's flag, the counts' question
+ *  in Settings). */
 export const VISIT_MOST = 2
+/** [review] The cards that may open by themselves in the visit the first steps end in. */
+export const AFTER_STEPS: readonly CardId[] = ['away']
 export interface QueueNow {
   due: readonly CardId[]          // the cards that want to open now
   opened: readonly CardId[]       // the ones opened by themselves this visit
@@ -175,8 +224,8 @@ export interface QueueNow {
   showing: CardId | null
   stepsEndedThisVisit: boolean    // the first steps ended in this visit: only their own card this time
 }
-/** The card to open now, or null: none while one shows or the game is not free; none past VISIT_MOST; none but `away`
- *  in the visit the first steps ended in; else the first due in CARD_ORDER. */
+/** The card to open now, or null: none while one shows or the game is not free; none past VISIT_MOST; only those
+ *  AFTER_STEPS in the visit the first steps ended in; none twice a visit; else the first due in CARD_ORDER. */
 export function nextCard(q: QueueNow): CardId | null
 
 // The runtime, wired by 08 in phase 0:
@@ -253,11 +302,13 @@ export function PanelSheet(props: {
 // (09's window adds the attribute; nobody edits PanelSheet for it).
 
 // src/ui/calls.ts
-export type CallId = 'daily' | 'boxes' | 'goal' | 'almost' | 'news' | 'compass' | 'tag'
-export const CALLS: readonly { id: CallId; rank: number }[]   // daily 1, boxes 2, goal 3, almost 4, news 5, compass 6, tag 7
-/** The one call that moves now: the highest that applies; none while the busy card shows (it is the stopping cue). */
-export function calling(applies: ReadonlySet<CallId>, resting?: boolean): CallId | null
-export function useCalling(id: CallId): boolean
+export const CALLS = [/* daily 1, boxes 2, goal 3, almost 4 [review], news 5, compass 6, tag 7 */] as const   // { id, rank } rows
+export type CallId = (typeof CALLS)[number]['id']        // 'daily' | 'boxes' | 'goal' | 'almost' | 'news' | 'compass' | 'tag'
+/** [review] While the busy card shows, nothing calls: it is the stopping cue. */
+export const BUSY_RESTS: boolean = true
+/** The one call that moves now: the highest that applies; none while the busy card shows (`busy`, with BUSY_RESTS). */
+export function calling(applies: ReadonlySet<CallId>, busy?: boolean): CallId | null
+export function useCalling(id: CallId): boolean           // 07, with the hook
 ```
 - **Rules:**
   - **At rest, at most one loop runs at the top.**
@@ -284,6 +335,8 @@ export const prizeKind: (p: Prize) => PrizeKind
 /** A prize as saved, or null: coins from 1 to 1e9; a sellable good or a material, 1 to 99; a shop kind (and a look its
  *  row has); a garment that does not come with a level. */
 export function savedPrize(raw: unknown): Prize | null
+export function looksOf(kind: ShopKind): readonly string[]   // the looks a kind may wear (02's `tints`; none today)
+export function isGiftGarment(id: unknown): id is string     // a garment that does not come with a level (02's `Garment.from`; none today)
 export function prizeWords(p: Prize): string           // '12 coins', '2 planks', 'a season banner', 'a green cap'
 /** Coins sized from the next level's own (levelReward(level + 1)): the one yardstick of every prize's coins and of the
  *  tier (§1.11). At least `least`. */
@@ -323,6 +376,10 @@ export function markPlayed(p: Played, today: number): { played: Played; away: nu
 /** As saved, against today: `last` no later than today, `days` a count. A farm from before it: from `before` (its old
  *  daily streak and last claim). */
 export function sanitizePlayed(raw: unknown, today: number, before?: Played): Played
+/** [review] The one switch for the long clock: 'played', or 'calendar' to run the long game on the calendar instead. */
+export const LONG_CLOCK: 'played' | 'calendar' = 'played'
+/** The long clock's day now: what the daily week, the seasons and the season road count in. */
+export const longDay: (played: Played, today: number) => number
 
 // src/farm/road.ts. Pure: a road of stops counted in anything (claims, XP, tiles, levels).
 export type Road = readonly number[]                     // the count each stop is reached at, rising
@@ -333,8 +390,8 @@ export interface Nearest { stop: number; at: number; left: number; share: number
 export function nearest(road: Road, have: number): Nearest | null  // the next stop (share: from the last one); null past the end
 ```
 - **Rules: one long clock, days played.** **[review, `JOURNEY.md` fix 4]**
-  - `markPlayed()` runs on the first view of each calendar day (`state/daily.ts`). The seasons and the daily week read
-    `played.days`, and the calendar month runs nothing.
+  - `markPlayed()` runs on the first view of each calendar day (`state/daily.ts`). The seasons, the daily week and the
+    season road read `longDay(played, today)`, which is `played.days`, and the calendar month runs nothing.
   - **The daily week is the season's week.** Day N of 7 is the season's day N, from
     `seasonAt(played.days, season.from).day` (§1.15), and day 7's big gift is the season's last day. The week waits
     through any absence, because days played do.
@@ -372,12 +429,14 @@ export type RewardKind =
   | 'page' | 'garment'                                          // a garment given (an album page, a level's)
   | 'keys'                                                      // the house's keys
   | 'harvest' | 'collect' | 'made'                              // goods collected (beds, animals, machines)
-export const REWARD_KINDS: Readonly<Record<RewardKind, { family: Family; least?: Tier }>>
+export const REWARD_KINDS: Readonly<Record<RewardKind, { family: Family; least?: Tier }>>   // RewardKind is its keys
 //   level: least 'big'; page, garment: least 'big'; keys: least 'huge'; every other kind by worth alone
+export const REWARD_KIND_IDS: RewardKind[]
+export const rewardKind: (kind: RewardKind) => { family: Family; least?: Tier }
 export const tierRank: (t: Tier) => number
 export const atLeast: (t: Tier, least?: Tier) => Tier
 
-// src/farm/tier.ts. Pure (Node, the sim).
+// src/farm/worth.ts (the contract's first draft called it src/farm/tier.ts: renamed, so one name is one file). Pure.
 export const TIER_AT = { medium: 0.25, big: 1, huge: 3 } as const      // shares of levelReward(level + 1), tuned with the sim
 /** What prizes are worth in coins: coins; a good at its fair PRODUCE price (never an event's, a machine level's or the
  *  mood's); a material at CONTRACTOR.buys; a piece at its shop row's first price (0 for one not sold); a garment 0
@@ -430,16 +489,18 @@ export function freeze(ms: number | null): void
 export type SoundFamily = 'work' | 'coins' | 'reward' | 'no' | 'world' | 'cue' | 'ui'
 /** What tells the same news without sound ('none' only for ambience). */
 export type Twin = 'toast' | 'compass' | 'chip' | 'count' | 'motion' | 'none'
+/** A touch: today's Haptic, and 06's stronger "coins in" ('sale+'), which joins Haptic with 06's commit 9. */
+export type Feel = Haptic | 'sale+'
 export interface SoundRow {
   family: SoundFamily
-  feel: Haptic | null     // the touch with it (replaces sound.ts's FEEL)
+  feel: Feel | null       // the touch with it (replaces sound.ts's FEEL)
   vary: number            // semitones of random pitch: 1 for work, coins and build; 0 for a cue
-  climb?: string          // the streak it climbs in (palette.ts, climb)
+  climb?: 'work' | 'xp'   // the streak it climbs in (palette.ts, climb)
   twin: Twin
 }
 export const SOUNDS: Readonly<Record<FarmSound, SoundRow>>
 /** A reward's touch: its family picks the pattern, its tier only the strength. */
-export function rewardFeel(kind: RewardKind, tier: Tier): Haptic | null
+export function rewardFeel(kind: RewardKind, tier: Tier): Feel
 // src/audio/sound.ts
 export function rewardSound(kind: RewardKind, tier: Tier): void   // the sting, in C major pentatonic, longer and richer by tier
 export function coinLand(i: number): void                          // a quiet tink a step higher for each coin landing
@@ -479,8 +540,8 @@ export function duck(bus: 'sfx' | 'amb' | 'music' | 'all', dB: number, holdMs: n
 export interface PersonDef {
   name: string
   role: 'farmer' | 'staff' | 'neighbour' | 'seller'
-  /** a roll on dice of their own over overrides (steadyLook), or a whole look (the driver's) */
-  look: { seed: number; over: Partial<PersonLook> } | { whole: PersonLook }
+  /** a roll on dice of their own over overrides (steadyLook), or a whole look (the driver's); none: no body (the farmer) */
+  look?: { seed: number; over: Partial<PersonLook> } | { whole: PersonLook }
   voice?: Voice                 // src/film/voice.ts's; none: read, never heard (the farmer)
   pic: string                   // src/assets/people/<id>.webp; the farmer: his Fluent faces
   hours?: Keeper                // a HOURS row (src/farm/data.ts) they keep
@@ -491,10 +552,13 @@ export interface PersonDef {
 /** Ids by role, so names can change: the five staff of today, the five neighbours (03), the dealer's seller (11). */
 export const PEOPLE = { farmer, manager, contractor, agent, driver /* baker, teacher, knitter, beekeeper, child (03); dealer (11) */ } as const satisfies Record<string, PersonDef>
 export type PersonId = keyof typeof PEOPLE
+export const PERSON_IDS: PersonId[]
 export type NeighbourId = 'baker' | 'teacher' | 'knitter' | 'beekeeper' | 'child'
+export const personById: (id: PersonId) => PersonDef
 export function steadyLook(seed: number, over: Partial<PersonLook>): PersonLook   // the one copy (state.ts and film/cast.ts drop theirs)
-export function lookOf(id: PersonId): PersonLook
-export function talkerOf(id: PersonId): Talker                                    // src/talk/speech.ts
+/** Not `lookOf`: src/film/cast.ts's lookOf takes a film's Look, and will call this one for `{ person }`. */
+export function personLook(id: PersonId): PersonLook | null                       // null: no body (the farmer)
+export function talkerOf(id: PersonId): Talker | null                             // src/talk/speech.ts; null: never heard
 
 // src/talk/lines.ts: one line type for whatever anyone says, on screen or aloud
 export interface Line { who: PersonId | 'buyer'; say: string; mood: FarmerMood; hearts?: number }
@@ -665,7 +729,7 @@ export function farmBusy(f: FarmData): boolean      // every built bed sown, eve
 
 | # | Conflict | Missions | Resolution |
 |---|---|---|---|
-| A1 | The tier's function and file: `rewardTier` in `src/farm/tier.ts` against `tierOf` in `src/farm/reward.ts` | 05, 06 | 05's: `rewardTier`, `src/farm/tier.ts`; the names a tier can have in `src/lib/tier.ts` |
+| A1 | The tier's function and file: `rewardTier` in `src/farm/tier.ts` against `tierOf` in `src/farm/reward.ts` | 05, 06 | 05's name, `rewardTier`, in `src/farm/worth.ts` (not `tier.ts`: `src/lib/tier.ts` already holds the names a tier can have, and one name is one file) |
 | A2 | The top tier: `huge` against `grand` | 05, 06 | `huge`. 06's text already took it; any `grand` left goes |
 | A3 | The fan-out's arguments: `celebrate(kind, tier, at)`, `feelOf(kind, tier)`, `rewardSound(kind, tier)` against `celebrate(tier, from)`, `rewardFeel(tier, kind)`, `rewardSound(tier, kind = 'coins')` | 05, 06 | Kind first, always a `RewardKind`: `celebrate(kind, tier, at)`, `rewardSound(kind, tier)`, `rewardFeel(kind, tier)`. `feelOf` is not made |
 | A4 | Less motion: `lessMotion()` in `src/lib/motion.ts`; `stillNow()` and `useStill()` in `src/ui/still.ts`; PLAN's `lessMotion()` in `src/ui/still.ts`. The owner is 06 by 06's and 07's texts, 07 by PLAN's. And today's `reducedMotion()`, `still`, `reduced` and 14 `matchMedia` reads | 05, 06, 07 | `src/ui/still.ts`, owned by 07 as phase 1's first commit, with `lessMotion`, `useLessMotion`, `onLessMotion` and `setMotionPref`. 06 owns the setting that drives it. `src/lib/motion.ts` is not made |
@@ -955,28 +1019,30 @@ rules:
 | `tick.ts` | `tick`, and `grow` calling each module's | — |
 | `away.ts` | `goOn`, `cameBack`, `AwayReport` | 01: `AWAY_MOST` 24 h; 10: `rained`; 03: `letters` |
 
-## Scaffold proposal
+## Scaffold (approved and written)
 
-The contracts as code: types, tables and pure functions, each with its unit test.
-- **Invisible and imported by no game file.** The old copies stay until each owner's commit moves its callers.
-- **No three.js, no DOM, no React, no save, and no new package.** `src/deps.test.ts` is untouched.
-- **`npm run check` stays green.** About 1,100 lines with the tests, in one commit, once approved.
+The contracts as code: types, tables and pure functions, each with its unit test (687 lines, and 770 of tests).
+- **Invisible and imported by no game file.** Nothing that exists changed. The old copies stay until each owner's
+  commit moves its callers (above, "Two homes for a while").
+- **No three.js, no DOM, no React, no save, and no new package.** `src/deps.test.ts` is untouched; the tests read the
+  game's modules only to hold the copies equal.
+- **`npm run check` is green.**
 
 | File | What it holds | Its test |
 |---|---|---|
-| `src/lib/time.ts` | `clock`, `span`, `readyAt` (§1.1) | `time.test.ts`, as a table: 59.5 → 1:00; 3725 → 1:02:05; NaN, negative → 0:00; never 0:00 above 0; each `span` form; `readyAt` past midnight, and 12/24 h through two locales |
-| `src/lib/saved.ts` | the readers (§1.2) | `saved.test.ts` (fast-check): each reader's range on anything; `amount`, `int` and `num` equal `state.ts`'s on 1,000 values; `floorCount` equals the ledger's `whole`; `intIn` equals the gifts' `whole` |
-| `src/lib/quiet.ts` | `onInPlay`, `onHere` (§1.3) | `quiet.test.ts`: on in play; off in test; off on `?debug` unless `&x=on`; equals today's three functions' answers |
-| `src/ui/still.ts` | `MotionPref`, `isStill`, `lessMotion` (device and preference), `setMotionPref`, `onLessMotion`; no hook and no `data-motion` yet (07's) | `still.test.ts`: the table of preference × device; listeners are told once a change, and not after unsubscribing |
-| `src/ui/cardQueue.ts` | `CardId`, `CARD_ORDER`, `VISIT_MOST`, `QueueNow`, `nextCard` (pure core only) | `cardQueue.test.ts`: the order; none while one shows or the game is busy; none past two a visit, the welcome back counted; only `away` in the visit the steps end in |
-| `src/ui/calls.ts` | `CallId`, `CALLS`, `calling` (pure core only) | `calls.test.ts`: the highest that applies wins; none applies → null; resting → null; ranks unique |
-| `src/lib/tier.ts` | `TIERS`, `Tier`, `Family`, `RewardKind`, `REWARD_KINDS`, `tierRank`, `atLeast` | `tier.test.ts` (lib): every kind has a family; `least` only on level, page, garment and keys; `atLeast` |
-| `src/farm/prize.ts` | `Prize` (four kinds), `PrizeKind`, `prizeKind`, `savedPrize`, `prizeWords`, `sized` | `prize.test.ts`: `savedPrize` equals `gifts.ts`'s on every coin and good prize (fast-check), and reads the two new kinds; `sized` gives `dayCoins`' and `boxCoins`' numbers |
-| `src/farm/tier.ts` | `TIER_AT`, `worthOf`, `rewardTier` | `tier.test.ts` (farm): the worth of coins, goods (fair, not `priceOf`), materials, pieces and garments; the bounds; `least`; the same sale shrinks as the level rises |
-| `src/farm/calendar.ts` | `dayNumber`, `dayStart`, `dateKey`, `dateOf`, `Played`, `freshPlayed`, `markPlayed`, `sanitizePlayed` | `calendar.test.ts`: equal to `daily.ts`' and `events.ts`' copies every hour across two years; `markPlayed` once a day, never back, the gap; sanitize, and the old streak's conversion |
-| `src/farm/road.ts` | `Road`, `stops`, `reached`, `nearest`, `ALMOST` | `road.test.ts`: rising stops; `reached` at, before and after each stop; `nearest` past the end is null; `almost` from 85 %; the daily week as a road of 7 |
-| `src/audio/sounds.ts` | `SoundFamily`, `Twin`, `SoundRow`, `SOUNDS` (today's 26 sounds), `rewardFeel` | `sounds.test.ts`: every `FarmSound` has a row; each row's `feel` is today's `FEEL` (captured); cues vary 0; `rewardFeel` changes only `sale` to `sale+` across tiers, as the map |
-| `src/data/people.ts` | `PersonDef`, `PEOPLE` (the five staff), `PersonId`, `NeighbourId`, `steadyLook`, `lookOf`, `talkerOf` | `people.test.ts`: the four fixed looks equal today's (captured); the voices equal `VOICES`, `AGENT` and `DRIVER`; names unique; each look passes `sanitizeLook` |
+| `src/lib/time.ts` | `clock`, `span`, `readyAt` (§1.1) | `time.test.ts`, as a table: 59.5 → 1:00; 3725 → 1:02:05; NaN, negative → 0:00; never :60; each `span` form; `readyAt` past midnight, a weekday, 12 and 24 h |
+| `src/lib/saved.ts` | the readers (§1.2) | `saved.test.ts` (fast-check, 1,000 runs): each reader equals the copy it replaces (`state.ts`'s, the ledger's `whole`, the gifts' `whole`) and keeps its range on anything |
+| `src/lib/quiet.ts` | `onInPlay`, `onHere` (§1.3) | `quiet.test.ts`: on in play, off in test, off on `?debug` unless `&x=on`; equal to today's three functions on 11 pages, in a test and out |
+| `src/lib/tier.ts` | `TIERS`, `Tier`, `Family`, `REWARD_KINDS`, `RewardKind`, `REWARD_KIND_IDS`, `rewardKind`, `tierRank`, `atLeast` | `tier.test.ts`: every kind has a family; floors only on level, page, garment and keys; `atLeast` |
+| `src/farm/worth.ts` | `TIER_AT`, `worthOf`, `rewardTier` | `worth.test.ts`: the worth of coins, goods (fair, never an event's), materials, pieces and garments; the bounds; floors; the same sale smaller as the level rises |
+| `src/farm/prize.ts` | `Prize` (four kinds), `PrizeKind`, `prizeKind`, `savedPrize`, `looksOf`, `isGiftGarment`, `prizeWords`, `sized` | `prize.test.ts`: `savedPrize` equals `gifts.ts`'s on coins and goods (fast-check, 2,000 runs); pieces and garments read; `sized` gives `dayCoins`' and `boxCoins`' numbers at every level |
+| `src/farm/calendar.ts` | `dayNumber`, `dayStart`, `dateKey`, `dateOf`, `Played`, `freshPlayed`, `markPlayed`, `sanitizePlayed`, `LONG_CLOCK`, `longDay` | `calendar.test.ts`: equal to `daily.ts`' and `events.ts`' copies every hour across two years; days played once a day, never back, the gap; sanitize, and the old streak's conversion |
+| `src/farm/road.ts` | `Road`, `stops`, `reached`, `nearest`, `ALMOST` | `road.test.ts`: rising stops; reached at, before and after each; the next stop and "almost"; the daily week as a road of 7 |
+| `src/ui/still.ts` | `MotionPref`, `isStill`, `lessMotion`, `setMotionPref`, `onLessMotion` (no hook and no `data-motion` yet: 07's) | `still.test.ts`: the choice × the device; listeners told once a change, from the setting or the device, and not after they stop |
+| `src/ui/cardQueue.ts` | `CARD_ORDER`, `CardId`, `VISIT_MOST`, `AFTER_STEPS`, `QueueNow`, `nextCard` (the pure core) | `cardQueue.test.ts`: the order; none while one shows or the game is busy; two a visit, the welcome back counted; none twice; only `away` the visit the steps end |
+| `src/ui/calls.ts` | `CALLS`, `CallId`, `BUSY_RESTS`, `calling` (the pure core) | `calls.test.ts`: ranks unique; the highest that applies wins; none, or the busy card, → null |
+| `src/audio/sounds.ts` | `SoundFamily`, `Twin`, `Feel`, `SoundRow`, `SOUNDS` (today's 26 sounds), `rewardFeel` | `sounds.test.ts`: a row for each sound; each row's touch is today's `FEEL`; cues and "no"s never vary; only ambience has no twin; a reward's touch changes with its tier only from `sale` to `sale+` |
+| `src/data/people.ts` | `PersonDef`, `PEOPLE` (the five of today), `PersonId`, `PERSON_IDS`, `NeighbourId`, `personById`, `steadyLook`, `personLook`, `talkerOf` | `people.test.ts`: the looks equal `film/cast.ts`'s, `tractor.ts`'s and the agent's captured from `state.ts`; the voices equal `VOICES`, `AGENT` and `DRIVER`; names unique |
 | `src/specs.test.ts` | — | no two e2e specs share a number (B12) |
 
 **Left out, on purpose:**
