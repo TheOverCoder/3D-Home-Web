@@ -96,8 +96,9 @@ The README has the overview; `tests/README.md` what each test guards.
 - Shadow copies: what casts is drawn into the sun's map by a mesh no camera draws (`src/lib/sculpt/sun.ts`), from a
   copy of its shape measured within half a texel of the sun's sharpest map (`sunLodsOf`, `sunEnough`: well inside the
   shadow's bias), chosen by the sun alone, so the map kept between frames holds. A crowd part that casts needs nothing;
-  a model loaded from a file casts so through `castFromCopies` (the furniture). `27` bounds what they change
-  (`__home.view.sunLod`). Something new that stands still casts through one such mesh for all its parts and looks
+  a model loaded from a file (the furniture, `GlbProp`) casts as one mesh a piece (`castAsOne`), and is drawn by the
+  game's camera from its far copies by the crowds' rule (`farFromCopies`, the crowds' eye `farEye`, switched with
+  `__home.view.lod`). `27` bounds what they change (`__home.view.sunLod`). Something new that stands still casts through one such mesh for all its parts and looks
   (`castAsOne`: the same triangles from the same sides, one draw), as the farm's merged static meshes do (`batchStatic`'s
   `sunAsOne`: one a quarter and side; the house keeps its looks apart, as its sun leaves them out room by room).
 - The sun's shadow box is the map's (`src/data/sunBox.ts`): the house's ±12 m, the farm's 16⅛ m to the south-west and

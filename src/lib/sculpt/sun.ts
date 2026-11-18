@@ -16,7 +16,7 @@ import {
   type Side,
   type SkinnedMesh,
 } from 'three'
-import { lodLoaded, lodReady, sunEnough, sunLodsLater } from './lod'
+import { farCopy, farEye, lodLoaded, lodReady, lodsLater, sunEnough, sunLodsLater } from './lod'
 
 // Casters drawn into the sun's shadow map from lighter copies (lod.ts: `sunLodsOf`, `sunEnough`): a mesh of their own,
 // drawn only into shadow maps and never by a camera, holds the copy, while the mesh seen keeps every triangle and no
@@ -57,45 +57,66 @@ export function shadowOnly<T extends Mesh>(m: T, whole?: BufferGeometry, copy?: 
   return m
 }
 
-/** Whether a mesh's sun copy would cast exactly what it does, but for its shape: one material, no cut-outs, nothing moved
- *  in the shader, no groups (a copy's triangles are not in a group's ranges). */
-function plain(m: Mesh): boolean {
+// ───────────────────────────── far copies of a loaded model ─────────────────────────────
+
+/** Whether a mesh can be drawn from a far copy: one material and no groups (a copy's triangles are not in a group's
+ *  ranges), nothing skinned, morphed or instanced. */
+function copyable(m: Mesh): boolean {
   const g = m.geometry
-  if ((m as InstancedMesh).isInstancedMesh || (m as SkinnedMesh).isSkinnedMesh || Array.isArray(m.material) || g.groups.length > 0 || g.morphAttributes.position) return false
-  const mat = m.material as Material & { alphaMap?: unknown; displacementMap?: unknown }
-  return !mat.alphaMap && !mat.displacementMap && !(mat.alphaTest > 0) && !mat.transparent
+  return !(m as InstancedMesh).isInstancedMesh && !(m as SkinnedMesh).isSkinnedMesh && !Array.isArray(m.material) && g.groups.length === 0 && !g.morphAttributes.position && !!g.index
 }
 
+const centre = new Vector3()
+
 /**
- * Casts the meshes under `root` (a model loaded from a file: a piece of furniture) into the sun's map from their lighter
- * copies: each that casts gets a child drawn only into shadow maps, with the coarsest copy that keeps its shadow to the
- * texel at the size it stands (`sunEnough`), and stops casting itself — once the copy is made, in idle time. Call with
- * `root` not yet scaled by a parent (its own scale counts).
+ * Draws the meshes under `root` (a model loaded from a file: a piece of furniture) for the game's camera from their
+ * lighter copies where they are far enough (lod.ts: the crowds' rule, `farEnough`, for the same eye: `farEye`): render
+ * by render, the coarsest copy whose difference is under half a pixel; up close the mesh whole. A copy is the mesh's one
+ * draw with fewer triangles, so any far enough is worth drawing. Every other render, the sun's map and a ray get the
+ * mesh whole; a mesh that casts itself is drawn whole (the sun's map is chosen by the sun alone: `castAsOne`). Its
+ * copies are made in idle time once the simplifier has loaded (until then: whole), once a geometry, shared by every
+ * piece of its kind.
  */
-export function castFromCopies(root: Object3D) {
+export function farFromCopies(root: Object3D) {
   if (!lodLoaded()) {
-    void lodReady().then(() => castFromCopies(root))
+    void lodReady().then(() => farFromCopies(root))
     return
   }
-  root.updateWorldMatrix(true, true)
-  const meshes: Mesh[] = []
   root.traverse((o) => {
     const m = o as Mesh
-    if (m.isMesh && m.castShadow && !m.userData.shadowOnly && plain(m)) meshes.push(m)
-  })
-  for (const m of meshes) {
-    const scale = m.matrixWorld.getMaxScaleOnAxis()
-    // made in the page's idle time (lod.ts: `later`): until then the mesh casts whole
-    sunLodsLater(m.geometry, (copies) => {
-      let copy = null
-      for (const c of copies) if (sunEnough(c.error, scale)) copy = c
-      if (!copy || !m.castShadow) return
-      const caster = shadowOnly(new Mesh(copy.geometry, m.material), m.geometry, copy.geometry)
-      caster.name = `${m.name}-sun`
-      m.castShadow = false
-      m.add(caster)
+    if (!m.isMesh || m.userData.shadowOnly || m.userData.farCopies || !copyable(m)) return
+    m.userData.farCopies = true
+    const whole = m.geometry
+    // what it casts is its whole shape, whatever a camera last drew it from (castAsOne, taking it in later)
+    m.userData.sunWhole = whole
+    lodsLater(whole, (copies) => {
+      if (!copies.length || m.geometry !== whole) return
+      if (!whole.boundingSphere) whole.computeBoundingSphere()
+      const sphere = whole.boundingSphere!
+      m.intersectsFrustum = function (this: Mesh, f: Frustum) {
+        const eye = shadowFrustums.has(f) || this.castShadow ? null : farEye.view
+        let c = -1
+        if (eye) {
+          const e = this.matrixWorld.elements
+          const scale = Math.sqrt(Math.max(e[0] * e[0] + e[1] * e[1] + e[2] * e[2], e[4] * e[4] + e[5] * e[5] + e[6] * e[6], e[8] * e[8] + e[9] * e[9] + e[10] * e[10]))
+          centre.copy(sphere.center).applyMatrix4(this.matrixWorld)
+          c = farCopy(copies, scale, centre.x, centre.y, centre.z, sphere.radius * scale, eye)
+        }
+        this.geometry = c < 0 ? whole : copies[c].geometry
+        return Mesh.prototype.intersectsFrustum.call(this, f)
+      }
+      // a ray meets the mesh whole
+      m.raycast = function (this: Mesh, ...args: Parameters<Mesh['raycast']>) {
+        const drawn = this.geometry
+        this.geometry = whole
+        try {
+          Mesh.prototype.raycast.apply(this, args)
+        } finally {
+          this.geometry = drawn
+        }
+      }
     })
-  }
+  })
 }
 
 // ───────────────────────────── one sun mesh for many ─────────────────────────────
