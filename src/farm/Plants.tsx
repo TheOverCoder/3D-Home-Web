@@ -29,6 +29,10 @@ const LAYOUT: Record<CropId, [number, number][]> = {
   pumpkin: grid(2, 1, 0.78, 0),
   wheat: grid(5, 3, 0.3, 0.24),
   sugarcane: grid(3, 2, 0.5, 0.34),
+  sunflower: grid(3, 1, 0.5, 0),
+  potato: grid(4, 2, 0.38, 0.36),
+  melon: grid(2, 1, 0.78, 0),
+  cotton: grid(3, 2, 0.5, 0.3),
 }
 
 function grid(cols: number, rows: number, dx: number, dz: number): [number, number][] {

@@ -220,8 +220,16 @@ export function steadyLook(seed: number, overrides: Partial<PersonLook>) {
 /** The device's clock for the daily gift (src/farm/daily.ts): its calendar day is the gift's day. Tests set their own
  *  (setDailyClock). Here, before the farm first loads: a save's daily gift is read on today. */
 let dailyClock: () => number = () => Date.now()
-/** Today, on the device's own calendar (a day number of src/farm/daily.ts). */
-export const calendarDay = () => dayNumber(dailyClock())
+/** While the farm goes on for a time away: the calendar's moment of the step it is on, or null (src/farm/state/away.ts,
+ *  goOn). */
+let calendarStep: number | null = null
+/** Today, on the device's own calendar (a day number of src/farm/daily.ts); during a time away, the step's own day (a
+ *  sale in the shop while away goes into the ledger on the day it was made). */
+export const calendarDay = () => dayNumber(calendarStep ?? dailyClock())
+/** The time away's step on the calendar's clock (ms), or null once it is over (src/farm/state/away.ts, goOn). */
+export function setCalendarStep(at: number | null) {
+  calendarStep = at
+}
 
 /** The moment on the daily gift's clock (ms of the device's, unless a test set its own). */
 export const calendarTime = () => dailyClock()

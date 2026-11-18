@@ -22,8 +22,12 @@ describe('a new farm, the events off', () => {
       ['pumpkin', 7.2],
       ['wheat', 6],
       ['sugarcane', 3.43],
+      ['potato', 1.85],
+      ['sunflower', 0.97],
+      ['melon', 0.42],
+      ['cotton', 0.28],
     ])
-    expect(rounded(v.beds, 'perPress').map(([, n]) => n)).toEqual([10, 19, 10, 12, 19, 24, 8, 8])
+    expect(rounded(v.beds, 'perPress').map(([, n]) => n)).toEqual([10, 19, 10, 12, 19, 24, 8, 8, 37, 58, 101, 134])
   })
 
   it("ranks the jobs by what they add to their ingredients a minute of the machine's work", () => {

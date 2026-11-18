@@ -75,4 +75,129 @@ test.describe('settings', () => {
     a = await audio()
     expect([a.buses.sfx.volume, a.buses.amb.volume, a.buses.amb.duck]).toEqual([1, 1, 0])
   })
+
+  test('less motion: chosen in Settings, nothing flies or animates and walking sway is off; it persists, and off brings motion back', async ({ game }) => {
+    // on the farm: its compass opens with a move, and its particles play
+    await game.ready('farm')
+    const { page } = game
+    const drawer = async (open: boolean) => {
+      if (open) await page.keyboard.press('Escape')
+      else await page.getByRole('button', { name: 'Close (Esc)' }).click()
+      await page.waitForFunction((open) => (window as any).__home.useHome.getState().settingsOpen === open, open, { timeout: 30_000 })
+    }
+    // what moves, read at once: <html data-motion>, the compass strip's opening, the stored choice, walking sway, and
+    // whether the particles' engine is up (it goes under less motion)
+    const look = async () => {
+      // (the compass stands at the top on the farm: wait for it, as it mounts with the map)
+      await expect(page.locator('.compass-strip')).toHaveCount(1, { timeout: 30_000 })
+      return page.evaluate(() => {
+        const strip = document.querySelector('.compass-strip')
+        return {
+          marked: document.documentElement.dataset.motion === 'less',
+          compass: strip ? getComputedStyle(strip).animationName : null,
+          motion: JSON.parse(localStorage.getItem('3d-home:settings:v1') ?? '{}').motion ?? 'device',
+          sway: (window as any).__home.settings.getState().headBob as boolean,
+        }
+      })
+    }
+    const fxUp = (up: boolean) => page.waitForFunction((up) => (window as any).__home.fx?.stats.loaded === up, up, { timeout: 60_000 })
+    await fxUp(true)
+    expect(await look()).toEqual({ marked: false, compass: 'compass-open', motion: 'device', sway: true })
+
+    await drawer(true)
+    const row = page.locator('#set-motion')
+    await expect(row).toHaveAttribute('aria-checked', 'false')
+    await expect(page.getByText('Follows your device')).toBeVisible()
+    await row.click()
+    await expect(row).toHaveAttribute('aria-checked', 'true')
+    await drawer(false)
+    expect(await look()).toEqual({ marked: true, compass: 'none', motion: 'less', sway: false })
+    // the particles' engine goes, and an effect asked for starts nothing
+    await fxUp(false)
+    const started = await page.evaluate(() => {
+      const fx = (window as any).__home.fx
+      fx.play('water', 0, 0.4, 0)
+      return fx.stats.started as number
+    })
+    await page.waitForTimeout(500)
+    expect(await page.evaluate(() => (window as any).__home.fx.stats.started)).toBe(started)
+
+    // a reload keeps it, still from the first frame
+    await bootApp(page)
+    expect(await look()).toMatchObject({ marked: true, compass: 'none', motion: 'less' })
+    await drawer(true)
+    await expect(page.locator('#set-motion')).toHaveAttribute('aria-checked', 'true')
+
+    // off: full motion, walking sway back, the particles again
+    await page.locator('#set-motion').click()
+    await expect(page.locator('#set-motion')).toHaveAttribute('aria-checked', 'false')
+    await drawer(false)
+    expect(await look()).toEqual({ marked: false, compass: 'compass-open', motion: 'full', sway: true })
+    await fxUp(true)
+    const before = await page.evaluate(() => {
+      const fx = (window as any).__home.fx
+      fx.play('water', 0, 0.4, 0)
+      return fx.stats.started as number
+    })
+    await page.waitForFunction((n) => (window as any).__home.fx.stats.started > n, before, { timeout: 30_000, polling: 100 })
+
+    // left to the device again, as later tests expect
+    await page.evaluate(() => (window as any).__home.settings.getState().update({ motion: 'device', headBob: true }))
+    expect(await look()).toEqual({ marked: false, compass: 'compass-open', motion: 'device', sway: true })
+  })
+
+  test('Show the tips again: a young farm that skipped its first steps has them back from Settings, where it was', async ({ game }) => {
+    await game.ready('farm')
+    const { page } = game
+    const drawer = async (open: boolean) => {
+      if (open) await page.keyboard.press('Escape')
+      await page.waitForFunction((open) => (window as any).__home.useHome.getState().settingsOpen === open, open, { timeout: 30_000 })
+    }
+    const record = () => page.evaluate(() => (window as any).__home.farm.steps.record() as { step: number; over: boolean })
+    // a new farm, its steps running (as src/farm/firstSteps.ts plays them): nothing to bring back
+    await page.evaluate(() => {
+      const f = (window as any).__home.farm
+      f.reset()
+      f.steps.quiet(false)
+      f.useFarm.setState((s: any) => ({ rev: s.rev + 1 }))
+    })
+    await expect(page.locator('.step-hint')).toBeVisible({ timeout: 30_000 })
+    await drawer(true)
+    await expect(page.locator('#set-tips')).toHaveCount(0)
+    await page.getByRole('button', { name: 'Close (Esc)' }).click()
+    await drawer(false)
+    // skipped: gone, and Settings offers them again
+    await page.evaluate(() => (window as any).__home.farm.steps.skip())
+    await expect(page.locator('.step-hint')).toHaveCount(0)
+    expect(await record()).toMatchObject({ step: 0, over: true })
+    await drawer(true)
+    await page.locator('#set-tips').click()
+    // back on the step they were skipped at, the drawer closed so the hint shows; offered no more
+    await drawer(false)
+    expect(await record()).toMatchObject({ step: 0, over: false })
+    await expect(page.locator('.step-hint')).toBeVisible({ timeout: 30_000 })
+    await drawer(true)
+    await expect(page.locator('#set-tips')).toHaveCount(0)
+    await page.getByRole('button', { name: 'Close (Esc)' }).click()
+    await drawer(false)
+  })
+
+  // The phone mix (src/audio/measure.ts): every sound the player causes rendered offline at full size, as the game
+  // plays it. `SOUND_MEASURE=1` prints the table without the checks (as BUDGET_MEASURE does for the drawing budget).
+  test('the phone mix: every sound the player causes carries on a phone’s speaker, peaks under −1 dBFS and sits at its family’s loudness', async ({ game }) => {
+    await game.ready()
+    const rows: { kind: string; family: string; peak: number; loud: number; band: number; seconds: number; faults: string[] }[] = await game.page.evaluate(() => (window as any).__home.audio.measure())
+    const head = ['sound', 'family', 'peak dBFS', 'LUFS', 'in 0.5–4 kHz', 's', 'faults']
+    const lines = rows.map((r) => [r.kind, r.family, r.peak.toFixed(1), r.loud.toFixed(1), `${Math.round(r.band * 100)} %`, r.seconds.toFixed(2), r.faults.join('; ')])
+    const widths = head.map((h, i) => Math.max(h.length, ...lines.map((l) => l[i].length)))
+    const fmt = (l: string[]) => `| ${l.map((c, i) => c.padEnd(widths[i])).join(' | ')} |`
+    if (process.env.SOUND_MEASURE) {
+      console.log([fmt(head), fmt(widths.map((w) => '-'.repeat(w))), ...lines.map(fmt)].join('\n'))
+      return
+    }
+    // (which sounds the player causes is src/audio/measure.test.ts's: here they are all there and each is held)
+    expect(rows.length).toBeGreaterThan(25)
+    expect(new Set(rows.map((r) => r.kind)).size).toBe(rows.length)
+    expect(rows.filter((r) => r.faults.length).map((r) => `${r.kind}: ${r.faults.join('; ')}`)).toEqual([])
+  })
 })

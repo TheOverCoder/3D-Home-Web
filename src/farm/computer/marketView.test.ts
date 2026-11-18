@@ -208,8 +208,8 @@ describe('the week and the mood', () => {
     expect(good(v, 'brick').now).toBe(CONTRACTOR.buys)
     expect(good(v, 'brick').why).toEqual([])
     // the vegetable index: every other crop at 3, tomatoes at 1.01, the mean ×100
-    expect(v.index.now).toBeCloseTo((100 * (7 * 3 + 1.01)) / 8)
-    expect(v.index.tomorrow).toBeCloseTo((100 * (7 * 3 + 1.02)) / 8)
+    expect(v.index.now).toBeCloseTo((100 * (11 * 3 + 1.01)) / 12)
+    expect(v.index.tomorrow).toBeCloseTo((100 * (11 * 3 + 1.02)) / 12)
   })
 
   it("reads what you got a unit from the farm's sales book", () => {

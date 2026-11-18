@@ -7,15 +7,34 @@ import { LockCorner, opensWords, useNope } from '../../ui/LockTag'
 import { Purse, Shell } from '../../ui/Sheet'
 import { art } from '../../ui/art'
 import { Clock } from '../../ui/glyphs'
+import { readyAt, span } from '../../lib/time'
 import { CROPS, type CropDef, type CropId } from '../data'
 import { iconUrl } from '../icons'
-import { bedSpot, bedsForSeeds, bedsNear, farm, plantBeds, useFarm } from '../state'
+import { bedSpot, bedsForSeeds, bedsNear, eventSpeed, farm, plantBeds, useFarm } from '../state'
 import { openFirst } from '../unlockArt'
 import { cap, cropLock } from './crops'
 
-// The seed packets: what an empty bed (and every empty bed in reach with it) is planted with.
+// The seed packets: what an empty bed (and every empty bed in reach with it) is planted with. Twelve of them, from the
+// lettuce's 45 seconds to the cotton's night (update-v1/missions/01-loop-economy.md): a phone shows them three to a
+// row upright, more sideways (the compact grid).
 
-const seconds = (s: number) => (s < 60 ? `${s} s` : `${Math.round((s / 60) * 10) / 10} min`)
+/** A crop of an hour or more is for while you are away: its packet says when it will be ready, on the device's clock. */
+export const LONG_CROP = 3600
+
+/** How long a crop grows now (the week's events: the harvest festival's crops grow twice as fast), in real seconds. */
+const growing = (c: CropDef) => c.growSeconds / eventSpeed('crops')
+
+/** What a packet's time says: how long (45 s, 20 min), or for a long crop when it will be ready, on the device's clock
+ *  (21:40; the moon for tomorrow's, 07:10: a night's crop — a chip's room on a phone has no space for the word). */
+export function packetTime(c: CropDef, now = Date.now()): { text: string; night: boolean } {
+  if (c.growSeconds < LONG_CROP) return { text: span(growing(c)), night: false }
+  const at = readyAt(growing(c), now)
+  if (at.startsWith(TOMORROW)) return { text: at.slice(TOMORROW.length), night: true }
+  // (past tomorrow its weekday: none of the crops grows that long, but a festival's speed never makes it so)
+  return /^\d/.test(at) ? { text: at, night: false } : { text: span(growing(c)), night: false }
+}
+/** How readyAt (src/lib/time.ts) begins a time of tomorrow. */
+const TOMORROW = 'tomorrow '
 
 /** A seed packet: its picture, its name, how long it grows and what its seeds cost (a key on a computer) — or, not open
  *  yet at the farm's level, faded with the level it opens at across its corner (a tap shakes it). */
@@ -28,10 +47,15 @@ function SeedCard({ c, k, perBed, onChoose }: { c: CropDef; k: number | null; pe
       {farm.inv[c.id]}
     </span>
   )
+  const when = packetTime(c)
   const time = (
-    <span className="tag">
-      <Clock weight="bold" />
-      {seconds(c.growSeconds)}
+    <span
+      className="tag"
+      title={c.growSeconds >= LONG_CROP ? `Grows ${span(growing(c))}, ready ${when.night ? 'tomorrow ' : ''}${when.text}` : undefined}
+      aria-label={c.growSeconds >= LONG_CROP ? `ready ${when.night ? 'tomorrow ' : ''}${when.text}` : undefined}
+    >
+      {when.night ? <img src={art('crescent-moon')} alt="" /> : <Clock weight="bold" />}
+      {when.text}
     </span>
   )
   if (lock !== null)
@@ -88,7 +112,7 @@ export function SeedsPanel({ bed }: { bed: number }) {
   })
   return (
     <Shell title={beds.length > 1 ? `Plant ${beds.length} beds` : 'Plant seeds'} art={art('seedling')} sub={<Purse />} onClose={close}>
-      <div className="farm-grid">
+      <div className="farm-grid compact">
         {crops.map((c) => {
           const k = open.indexOf(c)
           return <SeedCard key={c.id} c={c} k={k >= 0 ? k + 1 : null} perBed={beds.length > 1} onChoose={choose} />

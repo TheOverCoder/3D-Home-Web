@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { lessMotion } from './ui/still'
+import { lessMotion, setMotionPref, type MotionPref } from './ui/still'
 
 // Player preferences, remembered between visits. Everything is optional: storage may be blocked
 // (private windows, embedded frames), in which case the defaults simply apply for the session.
@@ -22,9 +22,11 @@ export interface Settings {
   vibration: boolean // a touch as an action is done (phones that can: Android; src/lib/device.ts, haptic)
   hudMode: 'all' | 'compass' | 'clean' // the top of the screen: everything, only the compass, or nothing (the button in the corner, or H)
   followMove: boolean // touch: the view turns towards where you walk with the stick (the button beside it)
+  motion: MotionPref // less motion: left to the device, less whatever it says, or full (src/ui/still.ts reads it)
 }
 
-// People who ask their system for less motion get a still camera by default (they can still turn sway on)
+// People who ask their system for less motion get a still camera by default (they can still turn sway on): the
+// device's own answer, read before the stored choice is handed to src/ui/still.ts below
 const reducedMotion = lessMotion()
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -46,14 +48,20 @@ export const DEFAULT_SETTINGS: Settings = {
   vibration: true,
   hudMode: 'all',
   followMove: false,
+  motion: 'device',
 }
 
 const KEY = '3d-home:settings:v1'
 
+/** A motion choice as kept: one of the three (anything else is the device's, as it starts). */
+const motionOf = (x: unknown): MotionPref => (x === 'less' || x === 'full' ? x : 'device')
+
 function load(): Settings {
   try {
     const raw = localStorage.getItem(KEY)
-    return raw ? { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<Settings>) } : DEFAULT_SETTINGS
+    if (!raw) return DEFAULT_SETTINGS
+    const s = { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<Settings>) }
+    return { ...s, motion: motionOf(s.motion) }
   } catch {
     return DEFAULT_SETTINGS
   }
@@ -94,11 +102,18 @@ const pick = (s: Settings): Settings => ({
   vibration: s.vibration,
   hudMode: s.hudMode === 'compass' || s.hudMode === 'clean' ? s.hudMode : 'all',
   followMove: s.followMove === true,
+  motion: motionOf(s.motion),
 })
 
 export const useSettings = create<SettingsStore>()((set, get) => ({
   ...load(),
   update: (patch) => {
+    // less motion chosen: walking sway follows it (off when still), unless the same change sets it too; it can be
+    // turned on again after
+    if (patch.motion !== undefined && patch.motion !== get().motion && patch.headBob === undefined) {
+      setMotionPref(motionOf(patch.motion))
+      patch = { ...patch, headBob: !lessMotion() }
+    }
     set(patch)
     persist(pick(get()))
   },
@@ -107,3 +122,10 @@ export const useSettings = create<SettingsStore>()((set, get) => ({
     persist(DEFAULT_SETTINGS)
   },
 }))
+
+// The motion choice drives the one reader (src/ui/still.ts) as the page loads and on every change, however made (a
+// row of Settings, Reset to defaults, a test)
+setMotionPref(useSettings.getState().motion)
+useSettings.subscribe((s, p) => {
+  if (s.motion !== p.motion) setMotionPref(motionOf(s.motion))
+})
