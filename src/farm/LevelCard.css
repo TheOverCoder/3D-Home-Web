@@ -1,27 +1,19 @@
 /* The level's card (LevelCard.tsx, the design lab's F): the level's bar with a gift box on each quarter, what the next
-   level brings, the gift button, and the opening in the middle of the card. The sheet and its motion: SwipeSheet
-   (`scrolls`: the body scrolls on a small phone, the title moves the sheet). Every rule under .level-card. */
-.level-card .farm-panel { display: flex; flex-direction: column; gap: 10px; padding-top: 18px; }
-/* Motion presses these (SINK, PRESS): no CSS transition fighting it over their transform */
-.level-card .btn,
-.level-card .farm-panel .close { transition: box-shadow 0.1s ease-out, filter 0.15s, outline-offset 0.18s var(--ease-sheet); }
-.level-card .btn:active:not(:disabled),
-.level-card .farm-panel .close:active { transform: none; }
+   level brings, the gift button, and the opening in the middle of the card. The sheet, its head (the star, "Level N",
+   ✕) and its motion are PanelSheet's (src/ui/PanelSheet.tsx): this is what is on it. Every rule under .level-card. */
+/* Motion presses these (SINK): no CSS transition fighting it over their transform */
+.level-card .btn { transition: box-shadow 0.1s ease-out, filter 0.15s, outline-offset 0.18s var(--ease-sheet); }
+.level-card .btn:active:not(:disabled) { transform: none; }
 
-/* the title: the star with the level on it, "Level N", the close */
-.level-card .lf-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0; }
-.level-card .lf-head h2 { flex: 1; min-width: 0; margin: 0; font: 600 25px/1.1 var(--font-display); color: var(--ink); }
+/* the star with the level on it (the sheet's picture, and the next level's at the bar's end) */
 .level-card .lf-star { position: relative; display: grid; place-items: center; flex: none; width: 50px; height: 50px; }
 .level-card .lf-star .art { position: absolute; inset: 0; width: 100%; height: 100%; }
 .level-card .lf-star b { position: relative; top: 2px; font: 900 18px/1 var(--font-text); color: #fff; -webkit-text-stroke: 4px var(--xp-lip); paint-order: stroke fill; font-variant-numeric: tabular-nums; }
 .level-card .lf-star b.long { font-size: 14px; -webkit-text-stroke-width: 3.5px; }
-.level-card .lf-head .lf-star { margin: -8px 0; }
+.level-card .mp-head .lf-star { width: 100%; height: 100%; }
 
-.level-card .lf-body { display: flex; flex-direction: column; gap: 12px; flex: 1; min-height: 0; overflow: auto; margin: 0 -6px; padding: 2px 6px 4px; scrollbar-width: none; }
-
-/* the level just reached: what came in by itself (upright a row of its own under the title; sideways in the title's
-   place) */
-.level-card .lf-reached { order: 3; flex: 1 0 100%; display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 18px; background: color-mix(in oklab, var(--leaf) 13%, var(--paper)); box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--leaf) 30%, transparent); }
+/* the level just reached: what came in by itself, a row of its own at the top of the sheet */
+.level-card .lf-reached { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 18px; background: color-mix(in oklab, var(--leaf) 13%, var(--paper)); box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--leaf) 30%, transparent); }
 .level-card .lf-reached-badge { display: grid; place-items: center; flex: none; width: 32px; height: 32px; border-radius: 50%; background: var(--leaf); color: #fff; box-shadow: 0 2px 0 var(--leaf-lip); }
 .level-card .lf-reached-badge svg { width: 18px; height: 18px; }
 .level-card .lf-reached-words { display: flex; flex-direction: column; flex: 1; min-width: 0; }
@@ -178,13 +170,8 @@
 
 /* a phone on its side: the hero across the sheet, the next level and the gift button side by side under it */
 @media (orientation: landscape) and (max-height: 560px) {
-  .level-card .swipe-box { width: min(540px, 66vw); }
-  .level-card .farm-panel { gap: 8px; padding-top: 10px; padding-right: calc(14px + env(safe-area-inset-right)); }
-  .level-card .lf-head h2 { font-size: 22px; }
-  .level-card .lf-head .lf-star { width: 42px; height: 42px; margin: -6px 0; }
-  .level-card .lf-body { gap: 8px; }
-  .level-card .lf-head:has(.lf-reached) h2 { display: none; }
-  .level-card .lf-reached { order: 0; flex: 1 1 auto; min-width: 0; padding: 3px 10px 3px 4px; }
+  .level-card .mp-head .lf-star b { font-size: 15px; -webkit-text-stroke-width: 3.5px; }
+  .level-card .lf-reached { padding: 3px 10px 3px 4px; }
   .level-card .lf-reached-words small { display: none; }
   .level-card .lf-reached-badge { width: 26px; height: 26px; }
   .level-card .lf-reached-words b { font-size: 16px; }

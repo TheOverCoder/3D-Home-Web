@@ -22,6 +22,8 @@ import {
   suspendForHidden,
   uiClick,
   unlockAudio,
+  type FarmSound,
+  type PlayOpts,
 } from './sound'
 import { wireMusic } from './music'
 
@@ -33,7 +35,16 @@ import { wireMusic } from './music'
 export function SoundDirector() {
   useEffect(() => wireMusic(), [])
   useEffect(() => {
-    debugSet('audio', audioStatus)
+    // ?debug: the engine's state (`__home.audio()`), and the phone mix measured offline (./measure.ts, loaded only when
+    // asked): one sound (`render(kind)`), every sound the player causes (`measure()`), and a demo to listen to
+    debugSet(
+      'audio',
+      Object.assign(() => audioStatus(), {
+        render: (kind: FarmSound, o?: PlayOpts) => import('./measure').then(async (m) => m.measureSamples(await m.renderSound(kind, o))),
+        measure: () => import('./measure').then((m) => m.measureSounds()),
+        demo: () => import('./measure').then((m) => m.demo()),
+      }),
+    )
     const unlock = () => unlockAudio()
     // the switch and the four volumes (the main one, effects, ambience, music) into the mixer
     const apply = () => setSoundPrefs(useSettings.getState())

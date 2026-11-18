@@ -101,9 +101,9 @@ test.describe('the goals board', () => {
         const claim = board.getByRole('button', { name: /Claim/ })
         await expect(claim).toHaveCount(1)
         // measured once the sheet has slid in (it comes from below upright, from the right sideways)
-        await expect.poll(() => board.evaluate((el) => getComputedStyle(el.closest('.swipe-box')!).transform), { timeout: 10_000 }).toMatch(/^(none|matrix\(1, 0, 0, 1, 0, 0\))$/)
+        await expect.poll(() => board.evaluate((el) => getComputedStyle(el).transform), { timeout: 10_000 }).toMatch(/^(none|matrix\(1, 0, 0, 1, 0, 0\))$/)
         const boxes = await board
-          .locator('.gc-thumb, .gc-claim, .close')
+          .locator('.gc-thumb, .gc-claim, [aria-label="Close (Esc)"]')
           .evaluateAll((els) => els.map((e) => ({ name: e.getAttribute('aria-label'), ...e.getBoundingClientRect().toJSON(), w: (e as HTMLElement).offsetWidth, h: (e as HTMLElement).offsetHeight })))
         expect(boxes.length).toBe(8)
         for (const b of boxes) {
