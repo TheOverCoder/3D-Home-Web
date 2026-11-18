@@ -1,4 +1,4 @@
-import { IcosahedronGeometry, type BufferGeometry } from 'three'
+import { Float32BufferAttribute, IcosahedronGeometry, type BufferGeometry } from 'three'
 import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js'
 import { fbm3, merge, mixRgb, noise3, rgb, Shape, smoothstep, spin, tube, type SculptMaterialOptions, type V3 } from '../lib/sculpt'
 import { mulberry } from '../scene/flora'
@@ -47,8 +47,14 @@ function leafy(g: Greens, y: number, bottom: number, top: number) {
 
 const barkPaint = (x: number, y: number, z: number) => mixRgb(BARK, BARK_LIGHT, 0.25 + 0.35 * noise3(x * 14, y * 4, z * 14, 31))
 
-/** The crowns' material: a leafy relief finer than its vertices (the lemon tree's, sized for a tree four times it). */
-export const CROWN_MATERIAL: SculptMaterialOptions = { roughness: 0.9, detail: { scale: 3, bump: 0.12, shade: 0.1 } }
+/** The crowns' material: a leafy relief finer than its vertices (the lemon tree's, sized for a tree four times it); the
+ *  season turns it tree by tree, by where each stands (src/lib/sculpt/material.ts: `foliage`), and snow caps it. */
+export const CROWN_MATERIAL: SculptMaterialOptions = { roughness: 0.9, detail: { scale: 3, bump: 0.12, shade: 0.1 }, foliage: true }
+/** The same for crowns made where they stand (`placeBigTree`: the woods, the house's garden and the countryside), in
+ *  the world's coordinates: each vertex carries its tree's place (`leafAt`). */
+export const PLACED_CROWN_MATERIAL: SculptMaterialOptions = { ...CROWN_MATERIAL, foliage: 'placed' }
+/** How much of the season a pine keeps out (0–1): an evergreen darkens a little in winter, never turns in autumn. */
+export const EVERGREEN = 0.8
 /** The trunks' bark; the birch's white bark its own. */
 export const WOOD_MATERIAL: SculptMaterialOptions = { roughness: 0.95, surface: { kind: 'bark', size: 0.6 } }
 export const BIRCH_MATERIAL: SculptMaterialOptions = { roughness: 0.85, surface: { kind: 'bark', size: 0.45, bump: 0.6 } }
@@ -343,15 +349,23 @@ export const gardenTree = (height: number): BigTree => ({ height, seed: 61, inde
 export const countryTree = (index: number, height: number): BigTree => ({ height, seed: 70 + index, index, corner: false })
 
 /** A big tree's geometries where it stands (x, z, in the world): its crown (its normals softened) and its trunk, and
- *  the trunk's bark (a birch's is white). */
+ *  the trunk's bark (a birch's is white). The crown carries where its tree stands and how much of the season it keeps
+ *  out (`leafAt`: x, z, a pine's EVERGREEN), for PLACED_CROWN_MATERIAL: one mesh of many crowns turns tree by tree. */
 export interface PlacedTree {
   crown: BufferGeometry
   wood: BufferGeometry
   bark: SculptMaterialOptions
 }
 export function placeBigTree(t: BigTree, x: number, z: number): PlacedTree {
-  const model = bigTreeModel(t)
-  return { crown: partGeometry(model.crown).translate(x, 0, z), wood: partGeometry(model.wood).translate(x, 0, z), bark: model.wood.material ?? WOOD_MATERIAL }
+  const kind = bigTreeKind(t)
+  const model = bigTreeModel(t, kind)
+  const crown = partGeometry(model.crown).translate(x, 0, z)
+  const n = crown.getAttribute('position').count
+  const at = new Float32Array(n * 3)
+  const stay = kind === 'pine' ? EVERGREEN : 0
+  for (let i = 0; i < n; i++) at.set([x, z, stay], i * 3)
+  crown.setAttribute('leafAt', new Float32BufferAttribute(at, 3))
+  return { crown, wood: partGeometry(model.wood).translate(x, 0, z), bark: model.wood.material ?? WOOD_MATERIAL }
 }
 
 /** The trunks of many trees as one geometry for each bark (a few dozen triangles a tree: a draw costs more than drawing

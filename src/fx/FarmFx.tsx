@@ -9,7 +9,10 @@ import { flyCoins, flyItem } from './coins'
 import { flyXp } from './xp'
 import { iconUrl } from '../farm/icons'
 import { coinsFx, coinsToFly, effectsOn, farmFx, fxStats, takeFx, type FxRequest } from './fx'
-import type { FxEngine } from './quarks'
+import type { FxEngine, WeatherEngine } from './quarks'
+import { seasonNow, weatherNow } from '../farm/state'
+import { mapNow } from '../lib/world'
+import { lookOf } from '../scene/weatherLook'
 
 // Plays the effects the game asks for (src/fx/fx.ts). The particle engine (three.quarks, src/fx/quarks.ts) is a chunk
 // of its own, imported a moment after the game starts playing — never before the first frame — and only where effects
@@ -50,6 +53,8 @@ export function FarmFx() {
   useEffect(() => {
     debugSet('fx', { stats: fxStats, time, play: farmFx, coins: coinsFx })
   }, [])
+  // the weather's rain, snow and rainbow: a renderer of their own, fed the season's and the weather's look (below)
+  useWeatherFx(playing && motionOk)
 
   useEffect(() => {
     if (!playing || !motionOk) return
@@ -140,3 +145,85 @@ export function FarmFx() {
 
   return null
 }
+
+/** For the tests and the stills (`window.__home.weatherFx`): what falls, how long its script takes, how many drops at
+ *  the full (`most`: null, the tier's), and the weather run on by hand (`settle`: its clock that many seconds on, with
+ *  the season's and the weather's look now, round the camera now). */
+const weatherHook = { engine: null as WeatherEngine | null, most: null as number | null }
+
+/**
+ * The weather's feed (update-v1/missions/10-seasons-weather.md, change 4): rain, snow and the rainbow
+ * (src/fx/quarks.ts, `weatherFx`) from the look of the season and the weather now (src/scene/weatherLook.ts), each frame,
+ * on both maps, round the camera, as many as the tier draws (src/lib/profile.ts, `weather`), ending at the roofs of the
+ * map in the scene (src/lib/world.ts, `shelters`, as the materials have them). Loaded as the bursts' engine is, once
+ * playing and only with motion on (`on`): with less motion nothing falls, and the grey sky and the fog stay
+ * (src/scene/Lighting.tsx, DayLight). Its clock is the effects' (`__home.fx.time`: 0 stops it).
+ */
+function useWeatherFx(on: boolean) {
+  const scene = useThree((s) => s.scene)
+  const gl = useThree((s) => s.gl)
+  const get = useThree((s) => s.get)
+  const engine = useRef<WeatherEngine | null>(null)
+  const map = useRef<string | null>(null)
+  useEffect(() => {
+    debugSet('weatherFx', {
+      get stats() {
+        return weatherHook.engine?.stats ?? null
+      },
+      get most() {
+        return weatherHook.most
+      },
+      set most(n: number | null) {
+        weatherHook.most = n
+      },
+      get tiers() {
+        return profile.weather
+      },
+      settle: (seconds: number) => {
+        const s = get()
+        weatherHook.engine?.update(lookOf(seasonNow(), weatherNow()), s.camera, seconds, mostNow(), pixelsOf(s.size.height, s.gl))
+      },
+    })
+  }, [get])
+  useEffect(() => {
+    if (!on) return
+    let gone = false
+    let made: WeatherEngine | null = null
+    const idle = (fn: () => void) => (typeof requestIdleCallback === 'function' ? requestIdleCallback(fn, { timeout: 2500 }) : window.setTimeout(fn, 1200))
+    const handle = idle(() => {
+      import('./quarks')
+        .then(({ weatherFx }) => {
+          if (gone) return
+          made = weatherFx(scene)
+          engine.current = weatherHook.engine = made
+          return made.warm(gl, get().camera, scene)
+        })
+        .catch(() => {
+          /* no weather drawn this time (offline before the chunk was kept): the sky and the light still show it */
+        })
+    })
+    return () => {
+      gone = true
+      if (typeof cancelIdleCallback === 'function') cancelIdleCallback(handle as number)
+      else window.clearTimeout(handle as number)
+      made?.dispose()
+      engine.current = weatherHook.engine = null
+    }
+  }, [on, scene, gl, get])
+  useFrame(({ camera, size, gl }, dt) => {
+    const w = engine.current
+    if (!w) return
+    // another map: what fell on the last one goes
+    const here = mapNow()
+    if (map.current !== here) {
+      if (map.current !== null) w.clear()
+      map.current = here
+    }
+    w.update(lookOf(seasonNow(), weatherNow()), camera, dt * time.speed, mostNow(), pixelsOf(size.height, gl))
+  })
+}
+
+/** How many drops fall at the full: the tests' own, or the tier's. */
+const mostNow = () => weatherHook.most ?? profile.weather[useHome.getState().quality]
+/** The drawing buffer's height in pixels (a flake's size on the screen). */
+const pixelsOf = (height: number, gl: { getPixelRatio(): number }) => height * gl.getPixelRatio()
