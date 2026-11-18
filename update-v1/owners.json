@@ -1,0 +1,443 @@
+{
+  "about": "RUN.md §1 and §2 as data, read by scripts/v1-scope.mjs: per agent the files it owns and the files it may touch (each with how). A unit test beside an owned or touched file counts with it. 'anyone' may be touched by every agent in the stated way; 'never' by none. Globs: * within a folder, ** across folders, {a,b} either. Change a row here in the same commit as RUN.md.",
+  "base": "claude/tender-albattani-7rxfvz",
+  "never": ["lab/audit.json", "lab/check.json", "package.json", "package-lock.json", ".npmrc"],
+  "anyone": [
+    { "path": "tests/README.md", "how": "only your specs' and unit tests' rows; in the debts list only the row you add or pay" },
+    { "path": "CLAUDE.md", "how": "only your section's sentences; the shared paragraphs are the orchestrator's" },
+    { "path": "{src/ui/art.ts,src/data/credits.ts,CREDITS.md}", "how": "append a picture's row and its credit" },
+    { "path": "src/assets/art/**", "how": "your new pictures only" },
+    { "path": "{src/models/gallery.ts,src/models/checks.ts}", "how": "append your models" },
+    { "path": "{lab/boards.ts,lab/boards/**}", "how": "your panel's board, appended" },
+    { "path": "{src/farm/FarmUI.tsx,src/store.ts}", "how": "a new panel: one slot line, its kind appended to Panel and PANEL_KINDS" },
+    { "path": "src/farm/state.ts", "how": "one export line for a new state module" },
+    { "path": "src/farm/state/tick.ts", "how": "one grow() call for a new state module" },
+    { "path": "update-v1/CONTRACTS.md", "how": "a contract change, agreed with the engine's owner, before the code that needs it" }
+  ],
+  "hot": [
+    "src/farm/FarmUI.tsx",
+    "src/farm/panels/Seeds.tsx",
+    "src/styles.css",
+    "src/farm/data.ts",
+    "src/farm/state.ts",
+    "src/farm/state/**",
+    "src/farm/save*.test.ts",
+    "src/farm/{unlocks,unlockArt,orders}.ts",
+    "src/sim/{targets,report,journey}.ts",
+    "src/sim/{pace,journey}.test.ts",
+    "src/store.ts",
+    "src/ui/{HudMode,TopStack,SettingsPanel}.tsx",
+    "src/settings.ts",
+    "src/farm/AwayPanel.tsx",
+    "src/farm/news/**",
+    "src/farm/{DailyCard,LevelCard,GoalsCard,XpChip}.tsx",
+    "src/farm/orderBoard/**",
+    "src/farm/machine/MachinePanelView.tsx",
+    "src/scene/{Lighting,Furnishings}.tsx",
+    "src/lib/sculpt/sun.ts",
+    "src/fx/{quarks.ts,FarmFx.tsx}",
+    "src/audio/{sounds,farmSounds}.ts",
+    "tests/e2e/helpers.ts",
+    "tests/e2e/{05,16,25}-*.spec.ts",
+    "tests/README.md",
+    "CLAUDE.md"
+  ],
+  "agents": {
+    "P0-split": {
+      "phase": 0,
+      "owns": ["src/farm/state.ts", "src/farm/state/**", "src/lib/{time,saved,quiet}.ts"],
+      "touch": [
+        {
+          "path": "{src/farm/{Market,Estate,Garden,AwayPanel}.tsx,src/farm/machine/{queue.ts,MachineLevel.tsx},src/farm/tool/ToolPanelView.tsx}",
+          "how": "the countdown or duration line only, onto time.ts"
+        },
+        { "path": "{src/farm/orderBoard/view.ts,src/farm/panels/Seeds.tsx,src/ui/{Intro,SavesPanel}.tsx,src/sim/report.ts}", "how": "the countdown or duration line only, onto time.ts" },
+        { "path": "src/farm/{daily,season,xp,contractor,ledger,layout,gifts,events,unlocks,firstSteps}.ts", "how": "the save readers onto saved.ts, a quiet switch onto quiet.ts" },
+        { "path": "tests/e2e/17-*.spec.ts", "how": "one line: the board's text through clock()" }
+      ]
+    },
+    "P0-ci": {
+      "phase": 0,
+      "owns": ["tests/e2e/helpers.ts", "tests/e2e/{05,12,16,17,19}-*.spec.ts", ".github/workflows/**", "playwright.config.ts", "src/specs.test.ts", "src/models/checks.test.ts"],
+      "touch": [{ "path": "tests/e2e/*.spec.ts", "how": "real-time reads into one evaluate, press(): each named in the report" }]
+    },
+    "P0-guard": {
+      "phase": 0,
+      "owns": ["src/ui/{PanelGuard.tsx,cardQueue.ts,useGameFree.ts}", "src/farm/FarmUI.tsx", "src/farm/panels/**", "src/{main,App}.tsx", "tests/e2e/40-*.spec.ts"],
+      "touch": [
+        { "path": "src/farm/{DailyPanel,AwayPanel,Unlocked}.tsx", "how": "how each opens: onto the card queue" },
+        { "path": "src/sim/journey.ts", "how": "the AUTO_CARDS line: an import of CARD_ORDER and VISIT_MOST" },
+        { "path": "src/lib/diagnostics.ts", "how": "a panel's error recorded" }
+      ]
+    },
+    "07a": {
+      "phase": 0,
+      "owns": ["src/ui/{still.ts,PanelSheet.tsx,calls.ts,motion.tsx}", "src/styles.css", "src/store.ts", "tests/e2e/readable.ts", "tests/e2e/39-*.spec.ts"],
+      "touch": [
+        { "path": "src/**/*.{ts,tsx}", "how": "a reduced-motion reader's line only, onto still.ts" },
+        { "path": "src/**/*.css", "how": "the media query's selector only" },
+        { "path": "lab/**", "how": "the lab's motion switch sets data-motion; boards keep building" }
+      ]
+    },
+    "06a": {
+      "phase": 0,
+      "owns": ["src/audio/**", "src/lib/device.ts"],
+      "touch": [
+        { "path": "src/settings.ts", "how": "the volume keys" },
+        { "path": "src/ui/{SettingsPanel,Intro}.tsx", "how": "the volume rows" },
+        { "path": "{src/film/StoryFilm.tsx,src/ui/MusicPlayer.tsx}", "how": "their bus lines" },
+        { "path": "tests/e2e/03-*.spec.ts", "how": "append" }
+      ]
+    },
+    "11a": {
+      "phase": 0,
+      "owns": ["src/data/{sunBox,sunCheck}.ts", "src/data/buildings.test.ts", "src/lib/sculpt/sun.ts"],
+      "touch": [
+        { "path": "src/data/layout.ts", "how": "inSunShadow by map" },
+        { "path": "src/scene/Lighting.tsx", "how": "the box and the map's size" },
+        { "path": "tests/e2e/27-*.spec.ts", "how": "its sun bounds" }
+      ]
+    },
+    "02a": {
+      "phase": 1,
+      "owns": ["src/farm/{prize,gifts,calendar,measure,road,goals}.ts", "src/ui/Road.tsx", "src/farm/state/{rewards,daily}.ts"],
+      "touch": [
+        { "path": "src/farm/{daily,events}.ts", "how": "re-exports" },
+        { "path": "src/farm/DailyCard.tsx", "how": "the road's drawing" },
+        { "path": "src/farm/state/save.ts", "how": "one line in fresh() and load() each: played, goals.fruit" },
+        { "path": "src/farm/save*.test.ts", "how": "the lines of played and goals.fruit" }
+      ]
+    },
+    "07b": {
+      "phase": 1,
+      "owns": ["src/ui/{Shell,SwipeSheet}.tsx"],
+      "touch": [
+        { "path": "src/farm/{LevelCard,GoalsCard,DailyCard,MarketPanel}.{tsx,css}", "how": "the frame only: head, sheet, frame CSS" },
+        { "path": "{src/farm/news/NewsCard.*,src/farm/orderBoard/**,src/farm/machine/**}", "how": "the frame only: head, sheet, frame CSS" },
+        { "path": "src/styles.css", "how": "the frame rules it deletes" },
+        { "path": "tests/e2e/helpers.ts", "how": "append closePanel()" },
+        { "path": "tests/e2e/*.spec.ts", "how": "closePanel() where a panel closes" },
+        { "path": "lab/**", "how": "the boards of the cards it moves keep building" }
+      ]
+    },
+    "04a": {
+      "phase": 1,
+      "owns": ["src/farm/{firstSteps,walkTargets}.ts", "src/farm/{FirstSteps,FarmerFace}.{tsx,css}", "src/ui/TopStack.tsx", "src/farm/state/steps.ts", "src/farm/steps.walk.test.ts"],
+      "touch": [
+        { "path": "src/farm/state/beds.ts", "how": "the festival drain line in grow()" },
+        { "path": "src/farm/state.events.test.ts", "how": "the drain's test" },
+        { "path": "src/farm/data.ts", "how": "ORDERS.first" },
+        { "path": "src/farm/state/{orders,save}.ts", "how": "the starter order in slot 0 of fresh() and load()" },
+        { "path": "{scripts/render-farmer-faces.mjs,src/assets/art/farmer-pleading.webp}", "how": "the pleading face out" },
+        { "path": "tests/e2e/{22,37}-*.spec.ts", "how": "the column's order; the turns" }
+      ]
+    },
+    "05a": {
+      "phase": 1,
+      "owns": ["src/lib/tier.ts", "src/farm/worth.ts", "src/farm/state/rewards.ts", "src/fx/{react,reward}.ts", "src/lib/sculpt/parts.ts", "src/farm/state.reward*.test.ts"],
+      "touch": [{ "path": "src/farm/state/{buyers,orders,market,contractor,levels,daily,beds,producers,machines,steps}.ts", "how": "one rewarded() line in each payout" }]
+    },
+    "03a": {
+      "phase": 1,
+      "owns": ["src/data/people.ts", "src/ui/Portrait.tsx", "src/farm/people/friends.ts", "src/talk/**", "src/assets/people/**", "src/farm/state/neighbours.ts"],
+      "touch": [
+        { "path": "src/farm/FarmerFace.tsx", "how": "re-export Portrait" },
+        { "path": "{src/film/{cast,voice}.ts,src/models/{tractor,look}.ts}", "how": "looks and voices from PEOPLE" },
+        { "path": "src/farm/state/{buyers,orders}.ts", "how": "one befriend line in the sale and send paths" },
+        { "path": "src/farm/state/{market,contractor}.ts", "how": "the staff's dresses from PEOPLE" },
+        { "path": "src/farm/state/save.ts", "how": "one line in fresh() and load() each: friends" },
+        { "path": "src/farm/save*.test.ts", "how": "the lines of friends" },
+        { "path": "scripts/render-item-art.mjs", "how": "the people mode" }
+      ]
+    },
+    "09a": {
+      "phase": 1,
+      "owns": ["src/farm/{prices,ledger}.ts", "src/farm/state/ledger.ts", "src/farm/computer/**"],
+      "touch": [
+        { "path": "src/farm/state/{buyers,orders,market,contractor}.ts", "how": "one sold() line in each sale; priceFor on BUYER_OFFERS" },
+        { "path": "src/farm/state/save.ts", "how": "one line in fresh() and load() each: ledger" },
+        { "path": "src/farm/save*.test.ts", "how": "the lines of ledger" }
+      ]
+    },
+    "08b": {
+      "phase": 1,
+      "owns": ["src/ui/{GameLayer,SavesPanel}.tsx", "vite.config.ts", "src/farm/state/save.ts", "src/lib/startup.ts"],
+      "touch": [
+        { "path": "src/App.tsx", "how": "the lazy imports, once" },
+        { "path": "tests/e2e/{11,40}-*.spec.ts", "how": "append" },
+        { "path": "src/farm/save*.test.ts", "how": "the broken slot, :prev, the tab's stamp" }
+      ]
+    },
+    "06b": {
+      "phase": 1,
+      "owns": ["src/audio/**", "src/lib/device.ts"],
+      "touch": [
+        { "path": "src/settings.ts", "how": "the motion key" },
+        { "path": "src/ui/SettingsPanel.tsx", "how": "the Less motion row" },
+        { "path": "src/farm/data.ts", "how": "the sounds and sound fields" },
+        {
+          "path": "{src/farm/machine/**,src/farm/{useMachine.ts,OrdersPanel.tsx,MarketPanel.tsx,Market.tsx,ToolPanel.tsx,EditMode.tsx},src/home/DecorateMode.tsx}",
+          "how": "one sound line at each call site"
+        },
+        { "path": "src/farm/state/{market,contractor}.ts", "how": "one sound line" },
+        { "path": "src/farm/Garden.tsx", "how": "the beds' count to the sound" },
+        { "path": "tests/e2e/03-*.spec.ts", "how": "append" }
+      ]
+    },
+    "10a": {
+      "phase": 1,
+      "owns": ["src/farm/{season,weather}.ts", "src/farm/state/season.ts"],
+      "touch": [
+        { "path": "src/farm/state/save.ts", "how": "one line in fresh() and load() each: season" },
+        { "path": "src/farm/save*.test.ts", "how": "the lines of season" },
+        { "path": "tests/e2e/helpers.ts", "how": "one line in ready() and bootApp" }
+      ]
+    },
+    "11b": {
+      "phase": 1,
+      "owns": ["src/data/{lot,estate}.ts", "src/models/estate.ts", "src/farm/{Estate.tsx,landGeometry.ts}", "src/scene/WalkIn.tsx", "src/farm/state.estate.test.ts"],
+      "touch": [
+        { "path": "{src/data/market.ts,src/models/market.ts,src/data/buildings.ts}", "how": "the lot's rows" },
+        { "path": "src/farm/layout.ts", "how": "the lot" },
+        { "path": "src/farm/script.ts", "how": "the agent's way in" },
+        { "path": "tests/e2e/{05,16,30}-*.spec.ts", "how": "append" }
+      ]
+    },
+    "01a": {
+      "phase": 2,
+      "owns": [
+        "src/farm/{economy,appointments,orders,levelView}.ts",
+        "src/farm/Busy*.{tsx,css}",
+        "src/sim/{policy,targets,report,play,run.sim,journey}.ts",
+        "src/sim/{pace,journey}.test.ts",
+        "src/models/{crops,plants}.ts",
+        "src/farm/state/{stores,away}.ts",
+        "src/farm/panels/Seeds.tsx",
+        "tests/e2e/42-*.spec.ts"
+      ],
+      "touch": [
+        { "path": "src/farm/data.ts", "how": "CROPS rows, CropDef.water" },
+        { "path": "src/farm/state/{orders,beds}.ts", "how": "orders by level and the quick slot; water" },
+        { "path": "src/farm/LevelCard.tsx", "how": "the savings line" },
+        { "path": "src/ui/TopStack.tsx", "how": "the busy slot" },
+        { "path": "src/ui/HudMode.tsx", "how": "the Next ready line" },
+        { "path": "src/farm/AwayPanel.tsx", "how": "rows (C17)" },
+        { "path": "src/farm/{unlocks,unlockArt}.ts", "how": "rows; the cadence test" },
+        { "path": "src/farm/Garden.tsx", "how": "readyAt in a bed's status" },
+        { "path": "src/models/goods.ts", "how": "the long crops' goods" },
+        { "path": "src/assets/items/**", "how": "your goods' pictures only" },
+        { "path": "tests/e2e/{17,20,22,25,36}-*.spec.ts", "how": "the busy slot's box; long timers' text" }
+      ]
+    },
+    "03b": {
+      "phase": 2,
+      "owns": ["src/farm/people/**", "src/talk/**", "src/farm/state/neighbours.ts", "src/farm/{Mailbox,Visitors}.tsx", "tests/e2e/45-*.spec.ts"],
+      "touch": [
+        { "path": "src/farm/orders.ts", "how": "from, chapter, makeRequest" },
+        { "path": "{src/farm/orderBoard/**,src/farm/OrdersPanel.tsx,src/farm/panels/Queue.tsx}", "how": "the content: a sender's portrait and hearts, requests" },
+        { "path": "src/farm/state/{buyers,orders}.ts", "how": "who; requests" },
+        { "path": "src/farm/data.ts", "how": "NAMES, PEOPLE_ODDS" },
+        { "path": "src/farm/{unlocks,unlockArt,levelView}.ts", "how": "person: rows; the next chapter's silhouette" },
+        { "path": "src/ui/HudMode.tsx", "how": "the Neighbours line" },
+        { "path": "src/farm/AwayPanel.tsx", "how": "the letters row" },
+        { "path": "src/models/structures.ts", "how": "the mailbox model" },
+        { "path": "src/scene/Maps.tsx", "how": "mount the mailbox" },
+        { "path": "src/sim/{policy,targets}.ts", "how": "requests filled as orders; the story row" },
+        { "path": "src/farm/state/save.ts", "how": "one line in fresh() and load() each: mail, story, requests" },
+        { "path": "src/farm/save*.test.ts", "how": "the lines of mail, story, requests and orders' from" },
+        { "path": "tests/e2e/helpers.ts", "how": "the neighbours quiet switch" },
+        { "path": "tests/e2e/{05,16,17,25,37}-*.spec.ts", "how": "append" }
+      ]
+    },
+    "04b": {
+      "phase": 2,
+      "owns": ["src/farm/{reveal,nextUp}.ts", "src/farm/AwayPanel.tsx", "src/scene/GuideMarker.tsx", "src/ui/{Hud,TouchControls,GoodPic}.tsx", "src/lib/stick.ts"],
+      "touch": [
+        { "path": "{src/data/maps.ts,src/scene/maps.ts}", "how": "FARM_START; a Spot's pitch" },
+        { "path": "src/settings.ts", "how": "learnt" },
+        { "path": "src/ui/SettingsPanel.tsx", "how": "Show the tips again" },
+        { "path": "{src/farm/{TopDash,XpChip,Garden}.tsx,src/ui/{HudMode,Compass}.{tsx,css}}", "how": "the shows() gates" },
+        { "path": "src/ui/TopStack.tsx", "how": "the hint slot out" },
+        { "path": "src/farm/orderBoard/OrdersBoard.{tsx,css}", "how": "the foot: Show me" },
+        { "path": "src/farm/{goals,firstSteps}.ts", "how": "go; step rows" },
+        { "path": "{src/farm/state/steps.ts,src/farm/FirstSteps.tsx}", "how": "shows(), resumeSteps, the steps' end" },
+        { "path": "src/farm/panels/Seeds.tsx", "how": "the fold of locked crops" },
+        { "path": "src/ui/glyphs.ts", "how": "HandSwipeRight" },
+        { "path": "tests/e2e/helpers.ts", "how": "FARM_START; learnt in ready()" },
+        { "path": "tests/e2e/{01,03,04,07,17,20,22,29,36,37}-*.spec.ts", "how": "append, or update to the held parts" }
+      ]
+    },
+    "05b": {
+      "phase": 2,
+      "owns": ["src/fx/{reward,coins,fx,react,xp}.ts", "src/fx/reward.css", "src/ui/fly.ts", "src/farm/{Plants,Herd}.tsx"],
+      "touch": [
+        { "path": "src/fx/FarmFx.tsx", "how": "its reward request" },
+        { "path": "{src/farm/{DailyCard,GoalsCard,LevelCard,XpChip,FirstSteps}.tsx,src/farm/orderBoard/OrdersBoard.tsx,src/farm/machine/MachinePanelView.tsx}", "how": "their burst and sound lines" },
+        { "path": "src/farm/TopDash.tsx", "how": "StoreGauge" },
+        { "path": "{src/farm/{edit.ts,decorScene.tsx,Garden.tsx},src/home/decorate.ts,src/scene/Furnishings.tsx}", "how": "settle" },
+        { "path": "src/models/{cow,sheep,chicken}.ts", "how": "an optional root scale" },
+        { "path": "src/farm/state/{stores,beds,producers}.ts", "how": "store(id, n, at); react() calls" },
+        { "path": "src/sim/{targets,report}.ts", "how": "the rewards row" },
+        { "path": "src/sim/pace.test.ts", "how": "the rewards row" },
+        { "path": "tests/e2e/{08,16}-*.spec.ts", "how": "flights; the frozen pose" }
+      ]
+    },
+    "02b": {
+      "phase": 2,
+      "owns": [
+        "src/farm/{daily,album,seasonRoad,outfit,goalsView}.ts",
+        "src/farm/{AlbumCard,AlbumPanel}.{tsx,css}",
+        "src/farm/state/{seasonRoad,album}.ts",
+        "src/farm/news/view.ts",
+        "src/assets/garments/**",
+        "tests/e2e/{43,44}-*.spec.ts"
+      ],
+      "touch": [
+        { "path": "{src/farm/{DailyCard,GoalsCard}.tsx,src/farm/news/{NewsCard,NewsPanel}.tsx}", "how": "the body (07b has the frame)" },
+        { "path": "src/farm/LevelCard.tsx", "how": "the boxes' odds" },
+        { "path": "src/ui/HudMode.tsx", "how": "the Album line" },
+        { "path": "src/farm/gifts.ts", "how": "the box count" },
+        { "path": "src/farm/state/{daily,levels}.ts", "how": "the week on seasonDay; the road fed in gainXp" },
+        { "path": "src/farm/state/save.ts", "how": "one line in fresh() and load() each: daily, seasonRoad, album, outfit.owned" },
+        { "path": "src/farm/save*.test.ts", "how": "their lines" },
+        { "path": "src/sim/targets.ts", "how": "the road row" },
+        { "path": "tests/e2e/helpers.ts", "how": "the road quiet switch" },
+        { "path": "tests/e2e/{21,22,34,35}-*.spec.ts", "how": "the week, the words, the odds" }
+      ]
+    },
+    "10b": {
+      "phase": 2,
+      "owns": [
+        "src/scene/weatherLook.ts",
+        "src/lib/sculpt/material.ts",
+        "src/models/trees.ts",
+        "src/farm/{Land,Ground}.tsx",
+        "src/scene/{Exterior,House}.tsx",
+        "src/lib/{world,profile}.ts",
+        "src/fx/quarks.ts"
+      ],
+      "touch": [
+        { "path": "src/scene/Lighting.tsx", "how": "DayLight" },
+        { "path": "src/fx/FarmFx.tsx", "how": "the weather feed" },
+        { "path": "src/scene/Maps.tsx", "how": "the weather on both maps" },
+        { "path": "tests/e2e/{05,16,26}-*.spec.ts", "how": "winter, rain and snow poses" }
+      ]
+    },
+    "11c": {
+      "phase": 2,
+      "owns": [
+        "src/data/market.ts",
+        "src/models/{market,park,dealer}.ts",
+        "src/farm/{Market,Park,Dealer,DealerPanel}.tsx",
+        "src/farm/{marketGoods,park,carPaints,script}.ts",
+        "src/farm/state/{market,car}.ts",
+        "src/farm/state.market.test.ts"
+      ],
+      "touch": [
+        { "path": "src/models/car.ts", "how": "the paint's tint mask" },
+        { "path": "src/farm/data.ts", "how": "LADDERS.places, SHOP.cafe, an HOURS row" },
+        { "path": "src/data/{people,buildings}.ts", "how": "the seller row; the dealer's row" },
+        { "path": "src/farm/{unlocks,unlockArt,market}.ts", "how": "paint: rows; 16 places" },
+        { "path": "src/farm/MarketPanel.tsx", "how": "the 16-place grid" },
+        { "path": "{src/film/**,src/farm/car/**}", "how": "the car's paint" },
+        { "path": "src/scene/Maps.tsx", "how": "mount the car park and the dealer" },
+        { "path": "tests/e2e/helpers.ts", "how": "marketFill's cars" },
+        { "path": "tests/e2e/{05,16,23,25,27,30}-*.spec.ts", "how": "append" }
+      ]
+    },
+    "09b": {
+      "phase": 2,
+      "owns": ["src/farm/mood.ts", "src/home/Computer.tsx", "src/farm/computer/**", "tests/e2e/41-*.spec.ts"],
+      "touch": [
+        { "path": "src/home/catalogue.ts", "how": "the computer row" },
+        { "path": "src/scene/Furnishings.tsx", "how": "its PieceModel case" },
+        { "path": "src/farm/state/day.ts", "how": "the priceEvents line" },
+        { "path": "src/scene/Experience.tsx", "how": "mount on home" },
+        { "path": "src/assets/furniture/**", "how": "its picture only" },
+        { "path": "tests/e2e/helpers.ts", "how": "the mood quiet switch; a computer on the plenty farm" },
+        { "path": "tests/e2e/{15,25,34}-*.spec.ts", "how": "append" }
+      ]
+    },
+    "01b": {
+      "phase": 2,
+      "owns": ["src/models/buildings.ts", "src/farm/{Workshop.tsx,unlocks.ts}"],
+      "touch": [
+        { "path": "src/farm/data.ts", "how": "RECIPES, MACHINES rows, EXPANSIONS, BEDS, herd rows" },
+        { "path": "src/farm/{layout,decor,storage,unlockArt,decorModels}.ts", "how": "PLACES; the hive's store and crowd; rows" },
+        { "path": "src/farm/decorScene.tsx", "how": "the hive's crowd" },
+        { "path": "src/farm/state/{machines,producers,shop}.ts", "how": "the new rows wired" },
+        { "path": "src/models/{goods,decor}.ts", "how": "the new goods; the hive" },
+        { "path": "src/assets/items/**", "how": "your goods' pictures only" },
+        { "path": "src/audio/{sounds,farmSounds}.ts", "how": "a row and a synth for each new machine" },
+        { "path": "src/farm/state/save.ts", "how": "one line in fresh() and load() each: expansions, machines, producers" },
+        { "path": "src/farm/save*.test.ts", "how": "their lines" },
+        { "path": "tests/e2e/helpers.ts", "how": "fillFarm: a line" },
+        { "path": "tests/e2e/{05,16}-*.spec.ts", "how": "append" }
+      ]
+    },
+    "02c": {
+      "phase": 2,
+      "owns": ["src/farm/{charm,decorModels}.ts", "src/farm/{DecorShop,EditPanel}.tsx", "src/farm/state/decor.ts", "src/models/decor.ts", "src/assets/decor/**", "src/farm/layoutDecor.test.ts"],
+      "touch": [
+        { "path": "src/farm/decor.ts", "how": "set, tints, the banner row" },
+        { "path": "src/farm/decorScene.tsx", "how": "SOLID" },
+        { "path": "src/farm/layout.ts", "how": "DECOR_FEET" },
+        { "path": "src/farm/seasonRoad.ts", "how": "the banner's stop" },
+        { "path": "src/farm/news/{view.ts,NewsCard.tsx}", "how": "the charm column" },
+        { "path": "src/farm/state/save.ts", "how": "one line in fresh() and load() each: layout's looks, charm" },
+        { "path": "src/farm/save*.test.ts", "how": "their lines" },
+        { "path": "tests/e2e/{05,33}-*.spec.ts", "how": "append" }
+      ]
+    },
+    "10c": {
+      "phase": 2,
+      "owns": ["src/farm/season.ts", "src/farm/state/season.ts", "tests/e2e/46-*.spec.ts"],
+      "touch": [
+        { "path": "src/farm/state/{beds,away}.ts", "how": "rain; yieldOf; seasonal; rained" },
+        { "path": "{src/farm/AwayPanel.tsx,src/farm/panels/Seeds.tsx,src/farm/DailyCard.tsx}", "how": "a line each: rain, In season, the season's line" },
+        { "path": "src/farm/news/{view.ts,NewsCard.tsx,NewsPanel.tsx}", "how": "the season's section" },
+        { "path": "src/farm/{decor,unlocks,unlockArt,decorModels,album}.ts", "how": "rows" },
+        { "path": "src/farm/decorScene.tsx", "how": "the seasonal kinds" },
+        { "path": "src/models/decor.ts", "how": "the four seasonal models" },
+        { "path": "src/assets/decor/**", "how": "their pictures only" },
+        { "path": "{src/audio/sound.ts,src/talk/lines.ts}", "how": "rain and wind ambience; weather lines" },
+        { "path": "src/sim/{targets,policy,run.sim}.ts", "how": "rows; a farm started in any season" },
+        { "path": "src/farm/state/save.ts", "how": "one line in fresh() and load() each: beds' seasonal" },
+        { "path": "src/farm/save*.test.ts", "how": "its line" },
+        { "path": "tests/e2e/{05,33,34}-*.spec.ts", "how": "append" }
+      ]
+    },
+    "06c": {
+      "phase": 2,
+      "owns": ["src/audio/**", "src/ui/MusicPlayer.tsx"],
+      "touch": [
+        { "path": "src/farm/{DailyCard,LevelCard,DailyPanel,LevelPanel}.tsx", "how": "onShake" },
+        { "path": "src/fx/coins.ts", "how": "landed(i)" },
+        { "path": "src/settings.ts", "how": "musicTrack" },
+        { "path": "src/ui/{Intro,SettingsPanel}.tsx", "how": "Auto in the Sound rows" }
+      ]
+    },
+    "08c": {
+      "phase": 2,
+      "owns": ["src/lib/sculpt/sun.ts", "src/scene/Furnishings.tsx", "src/sim/{health,sessions}.ts", "src/sim/{health,sessions}.test.ts"],
+      "touch": [
+        { "path": "src/lib/sculpt/lod.ts", "how": "farEnough for a loaded model" },
+        { "path": "src/home/layout.ts", "how": "ROOM_WEIGHT" },
+        { "path": "{src/App.tsx,src/ui/{Intro,SavesPanel}.tsx,vite.config.ts}", "how": "the shell's step 2: lazy pieces, a light reader, SHELL_BYTES" },
+        { "path": "src/sim/run.sim.ts", "how": "the health table" },
+        { "path": "tests/e2e/{05,15,16,27}-*.spec.ts", "how": "its two debts paid; poses" }
+      ]
+    },
+    "07c": {
+      "phase": 2,
+      "owns": ["src/ui/{still.ts,PanelSheet.tsx,calls.ts,motion.tsx}", "src/styles.css", "src/store.ts", "tests/e2e/readable.ts", "tests/e2e/39-*.spec.ts"],
+      "touch": [
+        { "path": "src/**/*.css", "how": "loops, sizes and contrast" },
+        { "path": "src/**/*.tsx", "how": "GoodPic, motion presets, the calls, sizes; never a panel's content" },
+        { "path": "tests/e2e/{03,07,14,22,28}-*.spec.ts", "how": "the sizes and the calls" }
+      ]
+    },
+    "P3-play": { "phase": 3, "owns": [], "touch": [] },
+    "P3-budget": { "phase": 3, "owns": [], "touch": [] }
+  }
+}
