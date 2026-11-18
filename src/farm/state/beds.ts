@@ -182,15 +182,16 @@ export function fixBed(i: number, crop: CropId | null) {
 }
 
 /** The beds grow for `dt` seconds, `crops` times as fast (the harvest festival): only while the soil is wet, never past
- *  ripe; the soil dries as they do. */
+ *  ripe; the soil dries as they grow, at their pace (a festival's crop dries twice as fast too), so each crop needs
+ *  its watering on every day: a bed dries at the same share of its growth (WATER_SHARE) whatever the day. */
 export function growBeds(dt: number, crops: number) {
   for (const b of farm.beds) {
     if (!b.crop) continue
     const def = cropById(b.crop)
     if (b.growth >= def.growSeconds) continue
-    // growth stops while the soil is dry; with sprinklers it never is
-    const wet = farm.sprinkler ? dt : Math.min(dt, b.water)
+    // growth stops while the soil is dry; with sprinklers it never is (the water is counted in seconds of growth)
+    const wet = farm.sprinkler ? dt : Math.min(dt, b.water / crops)
     b.growth = Math.min(def.growSeconds, b.growth + wet * crops)
-    if (!farm.sprinkler) b.water = Math.max(0, b.water - dt)
+    if (!farm.sprinkler) b.water = Math.max(0, b.water - dt * crops)
   }
 }
