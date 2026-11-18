@@ -3,10 +3,10 @@ import { xpFx } from '../../fx/fx'
 import { count, XP_FOR, type XpAction } from '../data'
 import { levelOf, levelReward, unpaidCoins, xpAt, xpForSale } from '../xp'
 import { boxesReached, boxOf, CAME_KEPT, isOpen as giftOpen, rollArrival, rollBox, settle, waitingBoxes, type Opened } from '../gifts'
-import { garmentById, putOn } from '../outfit'
+import { GARMENTS, garmentById, putOn } from '../outfit'
 import { goalById, goalReward, goalTarget, MOST_STEPS, type GoalId } from '../goals'
 import { bump, farm, putBack, random, save, toast, type At } from './core'
-import { give } from './rewards'
+import { give, rewarded } from './rewards'
 
 // Levels: the XP every action gives, what a level reached brings by itself, the gift boxes on its bar, the goals board
 // and the wardrobe.
@@ -58,6 +58,11 @@ function arrive(was: number, now: number) {
     came.push({ level, coins: levelReward(level), prize })
   }
   farm.gifts = { ...farm.gifts, gave: [], came: came.slice(-CAME_KEPT) }
+  rewarded(
+    'level',
+    came.filter((c) => c.level > was).flatMap((c) => [{ coins: c.coins }, c.prize]),
+  )
+  for (const g of GARMENTS) if (g.level > was && g.level <= now) rewarded('garment', [{ garment: g.id }])
 }
 
 /** The boxes reached and waiting to be opened, oldest first: this level's and every level's before. */
@@ -76,6 +81,10 @@ export function openGifts(boxes?: readonly number[]): Opened[] {
   if (!list.length) return []
   const out = list.map((box): Opened => ({ box, prize: rollBox(box, farm.made, random) }))
   for (const o of out) give(o.prize)
+  rewarded(
+    'box',
+    out.map((o) => o.prize),
+  )
   const { open, also } = settle(g.open, [...g.also, ...list])
   // what this level's boxes gave stays on its bar (an older level's is gone from view)
   const gave = [...g.gave, ...out].filter((o) => boxOf(o.box).level === level).sort((a, b) => a.box - b.box)
@@ -105,6 +114,7 @@ export function claimLevel(upTo?: number): number {
   if (!(coins > 0)) return 0
   farm.coins = Math.min(Number.MAX_SAFE_INTEGER, farm.coins + coins)
   farm.xp.paid = level
+  rewarded('level', [{ coins }])
   toast(`Level ${level} · + ${coins} coins`, 'coin')
   farmSound('coins')
   bump()
@@ -122,6 +132,7 @@ export function claimGoal(id: GoalId) {
   farm.goals[id] = step + 1
   farm.coins += reward.coins
   putBack(reward.item, reward.count)
+  rewarded('goal', [{ coins: reward.coins }, { item: reward.item, n: reward.count }])
   gainXp('goal')
   toast(`${def.say(goalTarget(def, step))} · + ${reward.coins} coins, + ${count(reward.item, reward.count)}`, reward.item)
   farmSound('coins')
