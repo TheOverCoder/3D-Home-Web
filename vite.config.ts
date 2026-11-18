@@ -1,6 +1,7 @@
 import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { createHash } from 'node:crypto'
+import { gzipSync } from 'node:zlib'
 
 // BASE_PATH is set by the GitHub Pages workflow (e.g. "/3D-Home-Web/").
 
@@ -78,11 +79,23 @@ function wayTo(from: Map<string, string | null>, end: string) {
 }
 
 /**
+ * The most the page shell may weigh, gzipped (bytes): the entry, every chunk it imports statically and their styles —
+ * what index.html loads before the intro shows (update-v1 decision 18: 250 KB with the game's interface out of it,
+ * src/ui/GameLayer.tsx; 160 KB once the farm's state is out too). Measured at the default level of gzip, as served.
+ */
+export const SHELL_BYTES = 250_000
+
+/** The shell's files with their gzipped sizes, biggest first (each file gzipped alone, as it is served). */
+function shellSizes(files: { name: string; code: string | Uint8Array }[]) {
+  return files.map((f) => ({ name: f.name, bytes: gzipSync(f.code).length })).sort((a, b) => b.bytes - a.bytes)
+}
+
+/**
  * Keeps the page shell light: the entry and every chunk it imports statically (what index.html loads and preloads
  * before the intro shows) hold nothing of the 3D side. One static import from the shell's code into it (a constant
  * read from a module that also draws, say) would put three.js in front of the intro on every phone: the build fails
  * instead, naming the chain of imports to cut (move what the shell needs into a module without three.js, or import
- * the 3D side with `import()`). 11-startup checks the served index.html the same way.
+ * the 3D side with `import()`). 11-startup checks the served index.html the same way (and `shellWeight` its weight).
  */
 function lightShell(): Plugin {
   return {
@@ -115,6 +128,47 @@ function lightShell(): Plugin {
             `\nThe shell may import only what the intro, the menu and the loading screen need: move what it reads into a module without three.js, or import the 3D side with import().`,
         )
       }
+    },
+  }
+}
+
+/**
+ * Keeps the page shell's weight (the entry, every chunk it imports statically, and their styles: what index.html loads
+ * before the intro shows) at SHELL_BYTES gzipped or less: past it the build fails, naming the biggest files. It runs
+ * after every other plugin, on the files as they are served.
+ */
+function shellWeight(): Plugin {
+  return {
+    name: 'home-shell-weight',
+    apply: 'build',
+    generateBundle: {
+      order: 'post',
+      handler(_, bundle) {
+        const entry = Object.values(bundle).find((o) => o.type === 'chunk' && o.isEntry)
+        if (entry?.type !== 'chunk') return
+        const files: { name: string; code: string | Uint8Array }[] = []
+        const walk = (f: string) => {
+          const c = bundle[f]
+          if (c?.type !== 'chunk' || files.some((x) => x.name === f)) return
+          files.push({ name: f, code: c.code })
+          for (const css of c.viteMetadata?.importedCss ?? []) {
+            const a = bundle[css]
+            if (a?.type === 'asset' && !files.some((x) => x.name === css)) files.push({ name: css, code: a.source })
+          }
+          c.imports.forEach(walk)
+        }
+        walk(entry.fileName)
+        const sizes = shellSizes(files)
+        const total = sizes.reduce((n, s) => n + s.bytes, 0)
+        if (total > SHELL_BYTES)
+          this.error(
+            `The page shell is ${total.toLocaleString('en-US')} bytes gzipped, over SHELL_BYTES (${SHELL_BYTES.toLocaleString('en-US')}): what the intro needs comes first, the rest with import().` +
+              `\nIts biggest files: ${sizes
+                .slice(0, 6)
+                .map((s) => `${s.name} ${s.bytes.toLocaleString('en-US')}`)
+                .join(', ')}`,
+          )
+      },
     },
   }
 }
@@ -266,7 +320,7 @@ self.addEventListener('fetch', (event) => {
 
 export default defineConfig({
   base: process.env.BASE_PATH ?? '/',
-  plugins: [react(), rapierWasmAsFile(), lightShell(), offlineAndProgress()],
+  plugins: [react(), rapierWasmAsFile(), lightShell(), shellWeight(), offlineAndProgress()],
   assetsInclude: ['**/*.glb', '**/*.gltf', '**/*.hdr', '**/*.exr', '**/*.ktx2'],
   build: {
     target: 'es2022',
@@ -292,6 +346,13 @@ export default defineConfig({
             // the particle engine and the effects made with it, imported once the game is playing (`later`)
             { name: 'effects', test: /node_modules[\\/](three\.quarks|quarks\.core)[\\/]|src[\\/]fx[\\/]quarks\./, priority: 45, includeDependenciesRecursively: false },
             { name: 'vendor-react', test: /node_modules[\\/](react|react-dom|scheduler|zustand|use-sync-external-store)[\\/]|vite[\\/]preload-helper/, priority: 40 },
+            // the page shell (what index.html loads before the intro: every module the entry imports statically) in
+            // three files rather than a dozen pieces shared with the scene: React, the other libraries it needs
+            // (long-lived, like React), and the game's own code with the entry. The same code, fewer requests, and
+            // gzip finds more to share in one stream (5 KB less of SHELL_BYTES); the scene and the game's interface
+            // import it from there, already loaded
+            { name: 'vendor-shell', tags: ['$initial'], test: /node_modules[\\/]/, priority: 36 },
+            { name: 'shell', tags: ['$initial'], priority: 35 },
             { name: 'vendor-physics', test: PHYSICS, priority: 30 },
             { name: 'vendor-three', test: THREE, priority: 20 },
             // the sculpted models and the kit they are made with: shared by the scene and the model gallery. Only their own
