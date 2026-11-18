@@ -6,6 +6,7 @@ import { PLACES, type Placement } from './layout'
 import { addJob, buyPiece, collect, farm, freeSpotFor, gateX, inLine, machineStage, placeStored, storePiece, tick } from './state'
 import { levelOf, seedXp } from './xp'
 import { dayNumber } from './calendar'
+import { goalById, goalTarget, startStep, type GoalId } from './goals'
 import { tripSeconds } from './tractorRoute'
 import { OLD_SAVE, playedSave, savedNow, startFrom } from './testSaves'
 import { defaultHome } from '../home/layout'
@@ -348,6 +349,15 @@ describe('a save broken or edited by hand', () => {
     expect(farm.played).toEqual({ days: 9, last: today - 1 })
     startFrom({ ...OLD_SAVE, time: NOW })
     expect(farm.played).toEqual({ days: 0, last: -1 })
+  })
+
+  it('a save from before a goal (the fruit): it starts where its count is, what was picked before not paid again', () => {
+    const goals = { ...(played.goals as Record<string, number>) }
+    delete goals.fruit
+    startFrom({ ...played, goals, got: { ...(played.got as object), apple: 40, cherry: 5 } })
+    expect(farm.goals.fruit).toBe(startStep(goalById('fruit'), farm))
+    expect(goalTarget(goalById('fruit'), farm.goals.fruit)).toBeGreaterThan(45)
+    for (const [id, step] of Object.entries(goals)) expect(farm.goals[id as GoalId], id).toBe(step)
   })
 
   it('a buyer in line saved before the people engine (a hat yes or no, three hair styles) loads as they were', () => {
