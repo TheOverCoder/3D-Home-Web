@@ -68,3 +68,15 @@ The orchestrator runs the plan to the end without asking:
 - **A builder may fold in an improvement it finds** when it serves the goal and stays inside its files. It names
   the improvement in its report.
 - **At the end:** an orderly review of the whole update, then a short report to the user.
+
+## RUN.md's N1–N4 (taken 2026-11-18)
+
+- **N1, the early lane: yes.** 07a, 06a and 11a start beside phase 0. 07b starts as soon as the things it waits for
+  are in.
+- **N2, the daily week: the season's week,** on days played. 8's welcome-back gift stays, and so does days played.
+  An unclaimed day's prize joins the next claim.
+- **N3, a lab board for 09: no.** It is built in the game's own look (CLAUDE.md: designers only when the user asks).
+- **N4, the busy card:** as CONTRACTS has it, a top slot. It shows only when no card is up, and it never counts
+  toward `VISIT_MOST`.
+- **The heavy lock** (RUN.md §0) lives in the session's scratchpad:
+  `/tmp/claude-0/-home-user-3D-Home-Web/c164316d-9885-5f35-97a5-084ad876b169/scratchpad/locks/heavy-<slot % 2>.lock`.
