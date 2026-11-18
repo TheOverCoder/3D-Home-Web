@@ -6,10 +6,35 @@ import { expect, test, type Game } from './helpers'
 // panel closes, a toast says "That didn't open properly", the farm draws on, the error is in Copy diagnostics, and the
 // next panel opens; a layer of the screen (the corner menu) is left out, and drawn again once what is over the game
 // changes. The faults are armed through the debug hook (`__home.guard.fail(name)`): the next time the guard of that
-// name draws, a part inside it throws, as a part with a bug would. On the shared page; the errors they make on purpose
-// are taken out of its list, the rest must be none.
+// name draws, a part inside it throws, as a part with a bug would. And the cards that open by themselves come through
+// one queue (src/ui/cardQueue.ts): one at a time, in its order, two a visit at most, the rest waiting where they live;
+// one that throws closes like any panel and is not opened again in the visit. On the shared page; the errors the
+// faults make on purpose are taken out of its list, the rest must be none.
 
 const panel = (page: Page) => page.evaluate(() => (window as any).__home.useHome.getState().panel?.kind ?? null)
+/** The cards opened by themselves in this visit (`__home.cards`, ?debug). */
+const opened = (page: Page) => page.evaluate(() => (window as any).__home.cards.visit().opened as string[])
+
+/** The hens' nests and the barn emptied, then the farm away half an hour: what they lay is a welcome back to tell (a
+ *  return of AWAY_TELLS or more with news: a new visit). `daily`: the day's gift let out of the way in the same call,
+ *  so both are due as the visit begins. */
+const away = (page: Page, { daily = false } = {}) =>
+  page.evaluate((daily) => {
+    const f = (window as any).__home.farm
+    const s = f.state
+    s.producers.hens.stock = s.producers.hens.stock.map(() => 0)
+    s.producers.hens.timer = s.producers.hens.timer.map(() => 0)
+    for (const k of Object.keys(s.inv)) s.inv[k] = 0
+    if (daily) f.daily.quiet(false)
+    f.cameBack(30 * 60)
+  }, daily)
+
+/** XP from play up to `to` (each gain a sale's: the level's show follows, as from a sale). */
+const reach = (page: Page, to: number) =>
+  page.evaluate((to) => {
+    const f = (window as any).__home.farm
+    for (let i = 0; i < 500 && f.xpNow().level < to; i++) f.gainXp('sale', 10)
+  }, to)
 const frame = (page: Page) => page.evaluate(() => (window as any).__home.gl.info.render.frame as number)
 /** The lines of the diagnostics' report (Settings → Copy diagnostics) about what failed. */
 const diagnosed = (page: Page) => page.evaluate(() => (JSON.parse((window as any).__home.diagnostics()).recent as string[]).filter((l) => l.includes('[3d-home]')))
@@ -87,5 +112,90 @@ test.describe('safety', () => {
     await expect(page.locator('.top-dial')).toHaveCount(0)
     expect(await toasts(page)).toEqual([])
     expect(othersThan(game), game.errors.join('\n')).toEqual([])
+  })
+
+  test('the cards that open by themselves: one at a time, the welcome back first and the day’s gift after it, two a visit; past them a level’s reveal is let go, and the next visit’s comes', async ({
+    game,
+  }) => {
+    test.setTimeout(400_000)
+    const { page } = game
+    await game.ready('farm')
+    // a new farm with its locks on, begun (a bed of lettuce: the day's gift waits for a farm that has begun)
+    await page.evaluate(() => {
+      const f = (window as any).__home.farm
+      f.reset()
+      f.unlocks.all(false)
+      f.state.coins = 500
+      f.plant(
+        f.state.beds.findIndex((b: any) => b.built && !b.crop),
+        'lettuce',
+      )
+    })
+    await expect(page.locator('.top-road .xp-star b')).toHaveText('1')
+    // back after half an hour, the day's gift due too: the welcome back first, alone
+    await away(page, { daily: true })
+    await expect.poll(() => panel(page), { timeout: 30_000 }).toBe('away')
+    await page.waitForTimeout(2500)
+    expect(await panel(page), 'the gift never over the welcome back').toBe('away')
+    const welcome = page.locator('.farm-panel[aria-label="Welcome back"]')
+    await welcome.getByRole('button', { name: 'Close', exact: true }).click()
+    // the day's gift after it, by itself; two cards this visit
+    await expect.poll(() => panel(page), { timeout: 30_000 }).toBe('daily')
+    expect(await opened(page)).toEqual(['away', 'daily'])
+    await page.evaluate(() => (window as any).__home.useHome.getState().closePanel())
+    await expect.poll(() => panel(page)).toBe(null)
+
+    // level 2 reached in the same visit: its show, but its reveal is let go (the budget is spent); it never comes later
+    await reach(page, 2)
+    await expect(page.locator('.level-up-show')).toBeVisible({ timeout: 30_000 })
+    await expect(page.locator('.level-up-show')).toHaveCount(0, { timeout: 30_000 })
+    await page.waitForTimeout(5000)
+    await expect(page.locator('.unlocked')).toHaveCount(0)
+    expect(await opened(page)).toEqual(['away', 'daily'])
+    expect(await page.evaluate(() => (window as any).__home.cards.free())).toBe(true)
+
+    // the next visit: the welcome back again (the day's gift opened by itself today already), then level 3's reveal
+    await away(page)
+    await expect.poll(() => panel(page), { timeout: 30_000 }).toBe('away')
+    await welcome.getByRole('button', { name: 'Close', exact: true }).click()
+    await expect.poll(() => panel(page)).toBe(null)
+    await reach(page, 3)
+    await expect(page.locator('.unlocked')).toBeAttached({ timeout: 60_000 })
+    await expect(page.locator('.unlocked')).toHaveAttribute('aria-label', /^Unlocked at level 3: /)
+    expect(await opened(page)).toEqual(['away', 'unlocked'])
+    expect(await page.evaluate(() => (window as any).__home.cards.showing())).toBe('unlocked')
+    await page.locator('.unlocked').click({ position: { x: 20, y: 200 } })
+    await expect(page.locator('.unlocked')).toHaveCount(0, { timeout: 10_000 })
+    await expect.poll(() => page.evaluate(() => (window as any).__home.cards.showing())).toBe(null)
+    await page.evaluate(() => (window as any).__home.farm.daily.quiet(true))
+    expect(game.errors, game.errors.join('\n')).toEqual([])
+  })
+
+  test('a card that opens by itself and throws closes with a word, is not opened again in the visit, and holds nothing back', async ({ game }) => {
+    const { page } = game
+    await game.ready('farm')
+    await watchToasts(page)
+    await page.evaluate(() => (window as any).__home.guard.fail('away'))
+    await away(page)
+    await expect.poll(() => toasts(page), { timeout: 30_000 }).toContain("That didn't open properly")
+    await expect.poll(() => panel(page)).toBe(null)
+    await page.waitForTimeout(3000)
+    expect(await panel(page), 'not opened again this visit').toBe(null)
+    expect(await opened(page)).toEqual(['away'])
+    // the welcome back holds nothing back now: the game is free
+    expect(await page.evaluate(() => (window as any).__home.cards.free())).toBe(true)
+    await drawing(page)
+    // opened by hand it is whole, and Close tells it
+    await page.evaluate(() => (window as any).__home.useHome.getState().openPanel({ kind: 'away' }))
+    const welcome = page.locator('.farm-panel[aria-label="Welcome back"]')
+    await welcome.getByRole('button', { name: 'Close', exact: true }).click()
+    await expect.poll(() => page.evaluate(() => (window as any).__home.farm.awaySummary())).toBe(null)
+    expect(othersThan(game), game.errors.join('\n')).toEqual([])
+  })
+
+  test("afterwards: today's farm, everything open", async ({ game }) => {
+    await game.ready('farm')
+    await game.page.evaluate(() => (window as any).__home.farm.reset())
+    await game.ready()
   })
 })

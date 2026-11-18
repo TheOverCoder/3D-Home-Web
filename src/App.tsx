@@ -21,6 +21,8 @@ import { coarsePointer } from './lib/device'
 import { MotionRoot } from './ui/motion'
 import { guardHooks, PanelGuard } from './ui/PanelGuard'
 import { collectDiagnostics } from './lib/diagnostics'
+import { cardShowing, visitNow } from './ui/cardQueue'
+import { gameFree } from './ui/useGameFree'
 
 // three.js, Rapier and the whole scene load in their own chunks so the intro paints immediately. First the loader
 // fetches every file the scene needs with a progress count (and the service worker keeps them on the device);
@@ -47,6 +49,8 @@ if (import.meta.env.DEV || new URLSearchParams(location.search).has('debug')) {
     // a part of the interface that throws, on purpose (src/ui/PanelGuard.tsx), and the report Copy diagnostics gives
     guard: guardHooks,
     diagnostics: collectDiagnostics,
+    // the cards that open by themselves (src/ui/cardQueue.ts): this visit, the card showing, whether the game is free
+    cards: { visit: visitNow, showing: cardShowing, free: () => gameFree() },
   }
 }
 

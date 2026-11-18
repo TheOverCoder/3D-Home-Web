@@ -33,6 +33,7 @@ import { OrdersPanel } from './OrdersPanel'
 import { StorePanel, StoreUpgradePanel } from './StorePanel'
 import { GoodWaysContext } from '../ui/GoodPic'
 import { PanelGuard } from '../ui/PanelGuard'
+import { CardWatcher } from '../ui/useGameFree'
 import { GAME_WAYS } from './goods/ways'
 
 // The farm's interface: the dashboard at the top, the edit modes' cards, and a slot for each panel — each panel a file of
@@ -113,10 +114,13 @@ export function FarmUI() {
       <PanelGuard name="level-up" layer>
         <LevelUp />
       </PanelGuard>
+      {/* the cards that open by themselves, each offered to the queue that opens them (src/ui/cardQueue.ts), one at
+          a time, two a visit at most */}
       <PanelGuard name="watchers" layer>
         <AwayWatcher />
         <NewsWatcher />
         <DailyWatcher />
+        <CardWatcher />
       </PanelGuard>
       <PanelGuard name="first-steps" layer>
         <StepHint />

@@ -1,10 +1,11 @@
 import { m, useAnimate, useReducedMotion, type AnimationPlaybackControls } from 'motion/react'
-import { useEffect, useLayoutEffect, useRef, type CSSProperties } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { farmSound } from '../audio/sound'
 import { haptic } from '../lib/device'
 import { art } from '../ui/art'
 import { burst } from '../ui/burst'
+import { registerCard } from '../ui/cardQueue'
 import { DID, EASE, SPRING } from '../ui/motion'
 import { unlockPic, whereOf } from './unlockArt'
 import { unlockName, type UnlockId } from './unlocks'
@@ -76,8 +77,37 @@ const middle = (el: Element) => {
   return { x: r.left + r.width / 2, y: r.top + r.height / 2 }
 }
 
+/** What one level opened, as the level's show asks for it once the show and its garment are over (./XpChip.tsx,
+ *  LevelUp): one of the cards that open by themselves (src/ui/cardQueue.ts), so it comes when the queue opens it — one
+ *  at a time, after the welcome back and the day's gift, a beat after the game is free — and only within the visit's
+ *  budget. Past it the reveal is let go (`onDone` at once): what the level opened shows as itself, open, where it is
+ *  found, and the level card goes on to the next. `onDone` once the cards are home, tapped away or let go. */
+export function Unlocked(props: { level: number; opens: UnlockId[]; onDone: () => void }) {
+  const [open, setOpen] = useState(false)
+  const done = useRef(props.onDone)
+  useEffect(() => {
+    done.current = props.onDone
+  })
+  // (shown once: then it shows until it is done, and is due no more)
+  const shown = useRef(false)
+  useEffect(
+    () =>
+      registerCard('unlocked', {
+        due: () => !shown.current,
+        open: () => {
+          shown.current = true
+          setOpen(true)
+        },
+        showing: () => shown.current,
+        pass: () => done.current(),
+      }),
+    [],
+  )
+  return open ? <UnlockedShow {...props} /> : null
+}
+
 /** The reveal of what one level opened; `onDone` once the cards are home (or it was tapped away). */
-export function Unlocked({ level, opens, onDone }: { level: number; opens: UnlockId[]; onDone: () => void }) {
+function UnlockedShow({ level, opens, onDone }: { level: number; opens: UnlockId[]; onDone: () => void }) {
   const still = useReducedMotion()
   const [scope, animate] = useAnimate<HTMLDivElement>()
   const n = opens.length
