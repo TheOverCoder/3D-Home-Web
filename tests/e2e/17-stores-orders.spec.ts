@@ -262,16 +262,35 @@ test.describe('the silo, the barn, surprises and orders', () => {
     // a few seconds on: loaded, and on its way west along the track (still in sight: on the software renderer a few
     // seconds more can pass before the next frame is drawn)
     await page.evaluate(() => (window as any).__home.farm.tick(4.5))
-    await page.waitForFunction(() => (window as any).__home.scene.getObjectByName('tractor-body').instanceMatrix.array[12] < -13, null, { timeout: 30_000, polling: 100 })
-    const out = await tractorX()
+    // (waited for and read in the same call: it drives on between two calls, and out of sight it is not drawn)
+    const out = await (
+      await page.waitForFunction(
+        () => {
+          const m = (window as any).__home.scene.getObjectByName('tractor-body')
+          const a = m.instanceMatrix.array
+          return a[12] < -13 ? { x: a[12], z: a[14], drawn: m.count } : null
+        },
+        null,
+        { timeout: 30_000, polling: 100 },
+      )
+    ).jsonValue()
     expect(out.drawn).toBe(1)
     expect(out.z).toBeCloseTo(7.9, 1)
     // the trip done, it stands in its yard again
     await page.evaluate(() => (window as any).__home.farm.tick(120))
     await until(game, () => (window as any).__home.farm.state.dispatch.trip === -1)
     // (drawn there on the next frame: on the software renderer one can take more than a second)
-    await page.waitForFunction((x) => Math.abs((window as any).__home.scene.getObjectByName('tractor-body').instanceMatrix.array[12] - x) < 0.05, home.x, { timeout: 30_000, polling: 100 })
-    const back = await tractorX()
+    const back = await (
+      await page.waitForFunction(
+        (x) => {
+          const m = (window as any).__home.scene.getObjectByName('tractor-body')
+          const a = m.instanceMatrix.array
+          return Math.abs(a[12] - x) < 0.05 ? { x: a[12], z: a[14], drawn: m.count } : null
+        },
+        home.x,
+        { timeout: 30_000, polling: 100 },
+      )
+    ).jsonValue()
     expect(back.x).toBeCloseTo(home.x, 1)
     expect(back.drawn).toBe(1)
   })
