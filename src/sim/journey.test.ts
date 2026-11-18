@@ -17,7 +17,7 @@ const DAYS = 7
 const DEBTS: Partial<Record<Bound, string>> = {
   quiet: 'mission 01 pays it: nothing opens after level 13, reached on day 3 (its unlock rows from level 14, change 7)',
   burst: 'missions 04 and 02 pay it: gift boxes and goals come one on another (fixes 3 and 10)',
-  pull: 'mission 01 pays it: every timer is short, so the farm is ripe within minutes of leaving (long crops, fix 1)',
+  pull: 'mission 04 pays the first sitting (its last step, "Plant something long before you go", fix 1); open: the visit back within the hour, at level 6, has only the hour-long sunflower for the 2.5 hours to the first evening (cotton opens at 7, decision 1)',
 }
 
 /** Bounds a week cannot judge, with where they are measured and the mission that pays them. */
