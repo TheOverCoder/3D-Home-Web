@@ -2,6 +2,8 @@
 // (a Fluent 3D picture, src/assets/art), the view it draws (./marketView.ts, ./planView.ts, ./bookView.ts) and its
 // window's tabs, the first open as it opens. The desktop draws a row each, in this order: a new app is a row.
 
+import type { ArtId } from '../../ui/art'
+
 /** The view an app draws: the market's prices, the plan of what to grow and make, the sales book. */
 export type AppView = 'market' | 'plan' | 'book'
 
@@ -9,8 +11,8 @@ export interface AppRow {
   id: string
   /** its name, under its icon and on its window's title bar */
   name: string
-  /** its picture: a Fluent 3D emoji's name (src/assets/art/<pic>.webp) */
-  pic: string
+  /** its picture: a Fluent 3D emoji's name (src/assets/art/<pic>.webp, src/ui/art.ts) */
+  pic: ArtId
   view: AppView
   /** its window's tabs, the first open as it opens */
   tabs: readonly { id: string; name: string }[]
