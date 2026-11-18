@@ -31,12 +31,18 @@ async function openAlbum(game: Game) {
   await expect(game.page.locator(CARD)).toBeVisible()
 }
 
-/** Waits until the sheet's page has come in (no transform left on it, nor any of its blocks). */
+/** Waits until the sheet's page has come in: it is there, with no transform left on it, nor any of its blocks. */
 const settled = (card: import('@playwright/test').Locator, sel: string) =>
   expect
-    .poll(() => card.locator(sel).evaluateAll((els) => els.every((el) => ['none', 'matrix(1, 0, 0, 1, 0, 0)'].includes(getComputedStyle(el).transform) && getComputedStyle(el).opacity === '1')), {
-      timeout: 10_000,
-    })
+    .poll(
+      () =>
+        card
+          .locator(sel)
+          .evaluateAll((els) => els.length > 0 && els.every((el) => ['none', 'matrix(1, 0, 0, 1, 0, 0)'].includes(getComputedStyle(el).transform) && getComputedStyle(el).opacity === '1')),
+      {
+        timeout: 10_000,
+      },
+    )
     .toBe(true)
 
 const closeAlbum = async (game: Game) => {
