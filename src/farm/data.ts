@@ -507,6 +507,19 @@ export const WALK_Z = LANE.z + 0.45 // the far side of the lane, where people wa
 export const LANE_ENDS = [-34, 34] as const
 export const VISITOR = { firstAfter: 20, speed: 1.25 } as const
 
+/** What a buyer at the gate offers against what the goods are worth (priceOf, src/farm/prices.ts): mostly fair, now
+ *  and then generous, sometimes cheeky. Each factor with its odds; the odds sum to 1. `priceFor` in src/farm/state.ts
+ *  rolls these same five, in this order: a change here must be made there too until it reads this table. */
+export const BUYER_OFFERS = [
+  { factor: 0.6, odds: 0.15 },
+  { factor: 0.85, odds: 0.23 },
+  { factor: 1, odds: 0.28 },
+  { factor: 1.25, odds: 0.2 },
+  { factor: 1.6, odds: 0.14 },
+] as const
+/** What a buyer offers on average, against what the goods are worth (1.0395: a little over). */
+export const buyerMean = () => BUYER_OFFERS.reduce((sum, o) => sum + o.factor * o.odds, 0)
+
 /** The queue: five places and a new buyer every two minutes to begin with; up to fifteen places, and one every thirty seconds. */
 export const QUEUE = { places: 5, maxPlaces: 15, every: 120, fastest: 30, step: 15, spacing: 0.85 } as const
 export const QUEUE_LEVELS = QUEUE.maxPlaces - QUEUE.places

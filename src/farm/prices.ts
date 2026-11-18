@@ -28,6 +28,16 @@ export function priceEvents(f: (good: ProduceId) => number) {
   event = f
 }
 
+/** What one of a good is worth with its parts given, the way priceOf works it out from the farm's own: its fair price,
+ *  `more` for the level of the machine that makes it (0.2: a fifth more; nothing below 0) and `factor` for the day
+ *  (what the events multiply it by; 1: nothing). Not rounded: each sale rounds its own total. For a view of the prices
+ *  on a farm given to it (src/farm/computer), which must never disagree with a sale. */
+export function priceAt(good: ProduceId, more = 0, factor = 1): number {
+  const base = produceById(good).price
+  const price = more > 0 ? base * (1 + more) : base
+  return factor !== 1 ? price * factor : price
+}
+
 /** What one of a good is worth: its fair price, a share more for what a machine of a higher level makes, and the
  *  events' factor (the lucky draw's). */
 export function priceOf(good: ProduceId): number {
