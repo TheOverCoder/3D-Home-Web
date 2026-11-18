@@ -57,6 +57,7 @@ import { dayClock } from './day'
 import { forgetWalkers } from './market'
 import { takePassed } from './steps'
 import { cameBack, forgetAway } from './away'
+import { savedSeason, seasonFresh } from './season'
 
 // The save: a new farm, reading a saved one safely (a hand-edited or old save can never break the game), writing it,
 // the three slots, and a slot as a file to keep or load.
@@ -135,6 +136,7 @@ function fresh(): FarmData {
     events: freshEvents(),
     firstSteps: stepsFresh(),
     played: freshPlayed(),
+    season: seasonFresh(),
   }
 }
 
@@ -394,6 +396,8 @@ export function load(text: string | null = readRaw(KEY)): { data: FarmData; save
     data.events = sanitizeEvents(raw.events)
     // days played: as saved; a farm from before them starts from its daily gift's streak and the day it last claimed one
     data.played = sanitizePlayed(raw.played, calendarDay(), { days: amount(field(raw.daily, 'streak'), 0), last: int(field(raw.daily, 'last'), -1, -1, MOST) })
+    // the farm's year: as saved (a farm from before it begins its first spring today)
+    data.season = savedSeason(raw.season, data.played)
     const queue = list(raw.queue)
       .map(savedBuyer)
       .filter((b): b is SavedBuyer => !!b)

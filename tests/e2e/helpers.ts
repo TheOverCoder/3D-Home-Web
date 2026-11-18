@@ -63,6 +63,8 @@ export async function bootApp(page: Page, query = 'debug&quality=low') {
   )
   await quietDaily(page)
   await quietEvents(page)
+  // the season and the weather quiet (src/farm/state/season.ts): every spec stands in spring, in clear weather
+  await page.evaluate(() => (window as any).__home?.season?.quiet?.(true))
 }
 
 /** Puts the shared page on a map (the house yours first): the scene changes behind its curtain, you at that map's start.
@@ -199,6 +201,9 @@ export async function openGame(browser: Browser, counting = false): Promise<{ ga
         // a new farm's first steps quiet (src/farm/firstSteps.ts), as a ?debug page starts: a spec that turned them on
         // (37-first-steps) leaves them quiet for the next
         h.farm?.steps?.quiet?.(true)
+        // the season and the weather quiet (src/farm/state/season.ts: spring and clear), as a ?debug page starts: a spec
+        // that turned them on or set its own leaves them quiet for the next
+        h.season?.quiet?.(true)
       }, map)
     },
   }

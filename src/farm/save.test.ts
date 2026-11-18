@@ -3,7 +3,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import { endsWithin } from '../lib/endsWithin'
 import { BEDS, DAY, MACHINES, PRODUCERS, PRODUCER_IDS } from './data'
 import { PLACES, type Placement } from './layout'
-import { addJob, buyPiece, collect, farm, freeSpotFor, gateX, inLine, machineStage, placeStored, storePiece, tick } from './state'
+import { addJob, buyPiece, collect, farm, freeSpotFor, gateX, inLine, machineStage, placeStored, seasonDay, storePiece, tick } from './state'
 import { levelOf, seedXp } from './xp'
 import { dayNumber } from './calendar'
 import { goalById, goalTarget, startStep, type GoalId } from './goals'
@@ -358,6 +358,30 @@ describe('a save broken or edited by hand', () => {
     expect(farm.goals.fruit).toBe(startStep(goalById('fruit'), farm))
     expect(goalTarget(goalById('fruit'), farm.goals.fruit)).toBeGreaterThan(45)
     for (const [id, step] of Object.entries(goals)) expect(farm.goals[id as GoalId], id).toBe(step)
+  })
+
+  it('the farm’s year: kept as saved, begun no later than today; a farm from before the seasons begins its first spring today', () => {
+    const today = dayNumber(NOW)
+    expect(farm.season).toEqual({ from: 1, told: 0 })
+    // forty days played, its seasons begun on the 15th: winter's fifth day, winter's arrival shown
+    startFrom({ ...played, played: { days: 40, last: today }, season: { from: 15, told: 3 } })
+    expect(farm.season).toEqual({ from: 15, told: 3 })
+    expect(seasonDay()).toMatchObject({ id: 'winter', day: 5, ordinal: 3 })
+    // begun ahead of today, an arrival shown ahead of its season: begun today, nothing ahead of it shown
+    startFrom({ ...played, played: { days: 40, last: today }, season: { from: 41, told: 9 } })
+    expect(farm.season).toEqual({ from: 40, told: 0 })
+    // unreadable: begun today
+    startFrom({ ...played, season: 'winter' })
+    expect(farm.season).toEqual({ from: 1, told: -1 })
+    // a farm from before the seasons, nine days played until yesterday: its first spring begins today, its tenth
+    startFrom({ ...without(played, 'season'), played: { days: 9, last: today - 1 } })
+    expect(farm.season).toEqual({ from: 10, told: -1 })
+    tick(0.1)
+    expect(farm.played).toEqual({ days: 10, last: today })
+    expect(seasonDay()).toMatchObject({ id: 'spring', day: 1, ordinal: 0 })
+    // and the oldest, from before days played too
+    startFrom({ ...OLD_SAVE, time: NOW })
+    expect(farm.season).toEqual({ from: 1, told: -1 })
   })
 
   it('a buyer in line saved before the people engine (a hat yes or no, three hair styles) loads as they were', () => {
