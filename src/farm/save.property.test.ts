@@ -373,13 +373,16 @@ function farmProblems(): string[] {
       unique(g.came.map((e) => e.level)),
   )
   bad('gifts.seen', Number.isInteger(g.seen) && g.seen >= 1 && g.seen <= level)
-  // the daily gift: the last day claimed (or none), a streak only once one was, the day it last opened by itself; the
-  // week's days taken, never more than the streak's place in its week, each what it gave (one prize, or the big one's
-  // three)
+  // the daily gift: the last day claimed (or none), the day it last opened by itself, the day played of the last claim
+  // (0: none, or not known), a welcome-back gift waiting only after a claim; the season's week's days taken (none while
+  // the day played of the last claim is not known), each what it gave (one prize, or the big one's three)
   const dl = farm.daily
   const day = (v: unknown) => Number.isInteger(v) && (v as number) >= -1
-  bad('daily', sameKeys(dl, ['last', 'streak', 'offered', 'week']) && day(dl.last) && day(dl.offered) && isCount(dl.streak) && (dl.last >= 0 || dl.streak === 0))
-  bad('daily.week', dl.week.length <= (dl.streak ? ((dl.streak - 1) % 7) + 1 : 0) && dl.week.every((d) => Array.isArray(d) && d.length <= 3 && d.every(isPrize)))
+  bad(
+    'daily',
+    sameKeys(dl, ['last', 'offered', 'at', 'week', 'back']) && day(dl.last) && day(dl.offered) && isCount(dl.at) && typeof dl.back === 'boolean' && (dl.last >= 0 || (dl.at === 0 && !dl.back)),
+  )
+  bad('daily.week', dl.week.length <= 7 && (dl.at > 0 || dl.week.length === 0) && dl.week.every((d) => Array.isArray(d) && d.length <= 3 && d.every(isPrize)))
   // days played: a count, and the day last played (or none), never past today
   const pl = farm.played
   bad('played', sameKeys(pl, ['days', 'last']) && isCount(pl.days) && Number.isInteger(pl.last) && pl.last >= -1 && pl.last <= calendarDay())

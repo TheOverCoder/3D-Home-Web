@@ -182,9 +182,11 @@ The README has the overview; `tests/README.md` what each test guards.
 - An upgrade bought a step at a time is a row in `LADDERS` (one buy, `buyLadder`; one card, `LadderCard`; its level in
   `farm.ladders`), with `say(k)` for what step k gives.
 - The daily gift (`src/farm/daily.ts`, `farm.daily`; its card `DailyCard.tsx`, its watcher `DailyPanel.tsx`): once a
-  day of the device's calendar, a week of seven gifts that grow (the seventh the big one), rolled on the farm's dice as
-  it is claimed, goods past full, no XP; one missed day is forgiven, two start a new week, and the clock moved back
-  gives nothing twice. It opens by itself once a day on a farm that has begun, after whatever is over the game (the
+  day played, the season's week of seven gifts that grow (`dailyDay`: day N is the season's day N in days played, so it
+  waits through any absence; the seventh the big one), rolled on the farm's dice as it is claimed, goods past full, no
+  XP. A day played whose gift was not claimed joins the next claim (`OWED_MOST`), a return after two whole days away
+  brings a fixed welcome-back gift with it (`BACK_GIFT`), its "?" shows the odds, its words never say lost or missed,
+  and the clock moved back gives nothing twice. It opens by itself once a day on a farm that has begun, after whatever is over the game (the
   intro, a film, the drive, the welcome-back card, a panel), and waits in the corner menu until claimed. Specs not about
   it put it out of the way (`quietDaily`: `ready()` and `bootApp` in `helpers.ts`); `35-daily` tests it.
 - Days played (`farm.played`, `src/farm/calendar.ts`): the days the farm has been opened, each counted once, the first

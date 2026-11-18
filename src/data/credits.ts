@@ -56,4 +56,10 @@ export const CREDITS: Credit[] = [
   { what: 'Phosphor Icons (interface glyphs)', by: 'Phosphor Icons', license: 'MIT', url: 'https://phosphoricons.com' },
   { what: 'Fredoka and Nunito typefaces', by: 'The Fredoka Project Authors; The Nunito Project Authors', license: 'SIL OFL 1.1', url: 'https://fonts.google.com/specimen/Fredoka' },
   { what: 'three.js, react-three-fiber, drei, Rapier, ecctrl, three.quarks, meshoptimizer', by: 'their respective authors', license: 'MIT / Apache-2.0' },
+  {
+    what: 'Fluent Emoji 3D (the farm album’s open book, the season road’s flag, the daily gift’s welcome-back wave)',
+    by: 'Microsoft Corporation',
+    license: 'MIT',
+    url: 'https://github.com/microsoft/fluentui-emoji',
+  },
 ]

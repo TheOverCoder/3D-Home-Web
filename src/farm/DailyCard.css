@@ -7,7 +7,7 @@
 .daily-card .btn { transition: box-shadow 0.1s ease-out, filter 0.15s, outline-offset 0.18s var(--ease-sheet); }
 .daily-card .btn:active:not(:disabled) { transform: none; }
 
-/* the streak, a chip in the sheet's head */
+/* the days played ("Day 23"), a chip in the sheet's head */
 .daily-card .dg-streak {
   flex: none;
   display: inline-flex;
@@ -23,7 +23,7 @@
 }
 .daily-card .dg-streak .art { width: 30px; height: 30px; margin: -4px 0; transform-origin: 50% 90%; filter: drop-shadow(0 2px 2px rgba(150, 50, 0, 0.3)); }
 .daily-card .dg-streak b { font: 900 20px/1 var(--font-text); font-variant-numeric: tabular-nums; }
-.daily-card .dg-streak small { font: 800 13px/1 var(--font-text); color: var(--ink-2); margin-inline-start: 2px; }
+.daily-card .dg-streak small { font: 800 13px/1 var(--font-text); color: var(--ink-2); margin-inline: 2px 3px; }
 /* the flame is alive: it flickers (its own scale, beside Motion's transform) */
 :where(:root:not([data-motion='less'])) {
   .daily-card .dg-streak .art { animation: daily-flicker 1.9s ease-in-out infinite; }
@@ -224,6 +224,9 @@
 .daily-card .past .dg-disc { width: 40px; height: 40px; background: #fff; box-shadow: 0 0 0 3px color-mix(in oklab, var(--leaf) 45%, #fff), 0 2px 0 var(--paper-3); }
 .daily-card .today .dg-disc { width: 46px; height: 46px; background: #fff; box-shadow: 0 0 0 3px var(--sun), 0 3px 0 var(--sun-lip); }
 .daily-card .today .dg-disc .art { width: 34px; height: 34px; }
+/* a day played whose gift waited: it comes with today's, so it glows with it, softer */
+.daily-card .owed .dg-disc { background: #fff; box-shadow: 0 0 0 3px color-mix(in srgb, var(--sun) 70%, #fff), 0 2px 0 var(--sun-lip); }
+.daily-card .owed .dg-day { color: var(--sun-lip); }
 .daily-card .today .dg-disc::before { content: ''; position: absolute; z-index: -1; inset: -10px; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--sun) 80%, #fff), color-mix(in srgb, var(--sun) 35%, transparent) 60%, transparent); }
 :where(:root:not([data-motion='less'])) {
   .daily-card .today .dg-disc::before { animation: daily-glow 1.6s ease-in-out infinite; }
@@ -307,3 +310,23 @@
   .daily-card .dg-tomorrow-title { justify-content: center; }
   .daily-card .dg-tomorrow-box > .art { width: 50px; height: 50px; }
 }
+
+/* the welcome-back gift on the stage, beside today's box: a wave and its coins */
+.daily-card .dg-back { position: absolute; z-index: 2; left: 10px; bottom: 10px; display: inline-flex; align-items: center; gap: 2px; padding: 3px 10px 3px 4px; border-radius: 999px; background: #fff; color: var(--ink); box-shadow: 0 3px 0 var(--sun-lip), 0 0 0 2px var(--sun); }
+.daily-card .dg-back .art { width: 30px; height: 30px; margin: -6px 0; }
+.daily-card .dg-back img:not(.art) { width: 20px; height: 20px; }
+.daily-card .dg-back b { font: 900 15px/1 var(--font-text); font-variant-numeric: tabular-nums; }
+/* the "?" on the stage: in its top corner */
+.daily-card .dg-odds { position: absolute; z-index: 3; top: 4px; right: 4px; }
+
+/* The odds of a gift (Odds in DailyCard.tsx; the level's boxes and the lucky draw use it too): a "?" with a 44 px
+   target, and the sheet of what it can hold and how likely, under it. */
+.odds { position: relative; display: inline-grid; place-items: center; }
+.odds-btn { display: grid; place-items: center; width: 44px; height: 44px; margin: 0; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--ink); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.odds-btn > span { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: #fff; font: 600 18px/1 var(--font-display); box-shadow: 0 2px 0 var(--paper-3), 0 0 0 1.5px var(--edge-soft); }
+.odds-btn[aria-expanded='true'] > span { background: var(--ink); color: #fff; box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25); }
+.odds-btn:focus-visible { outline: 3px solid var(--sun); outline-offset: -2px; }
+.odds-sheet { position: absolute; z-index: 6; top: calc(100% - 2px); right: 0; display: grid; gap: 4px; width: max-content; max-width: min(300px, 80vw); padding: 10px 12px; border-radius: 14px; background: var(--ink); color: #fff; font: 700 15px/1.3 var(--font-text); text-align: start; box-shadow: 0 6px 16px rgba(40, 24, 10, 0.3); transform-origin: 90% 0; }
+.odds-title { color: var(--sun); font: 600 15px/1.25 var(--font-display); }
+.odds-row { display: flex; justify-content: space-between; gap: 14px; }
+.odds-row b { flex: none; font-weight: 900; font-variant-numeric: tabular-nums; }
