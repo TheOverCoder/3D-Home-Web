@@ -2,7 +2,8 @@ import { create } from 'zustand'
 import { farmSound, placeSound } from '../audio/sound'
 import { coinsFx, farmFx, itemFx, xpFx } from '../fx/fx'
 import { dampAngle } from '../lib/damp'
-import { clock as clockText } from '../lib/time'
+import { amount, cycle, field, int, isObject, list, num, seconds } from '../lib/saved'
+import { clock } from '../lib/time'
 import { groundDistance } from '../lib/interaction'
 import { useHome } from '../store'
 import {
@@ -361,19 +362,6 @@ function fresh(): FarmData {
   }
 }
 
-const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : d)
-const int = (v: unknown, d: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, Math.round(num(v, d))))
-/** A count as saved (coins, goods, stats): a whole number from 0, up to the last one that still counts (past 2^53, one
- *  more is the same number). */
-const amount = (v: unknown, d: number) => int(v, d, 0, Number.MAX_SAFE_INTEGER)
-/** Seconds as saved, from 0 up to `most`: what a crop has grown, the water in its soil, a machine's job done. */
-const span = (v: unknown, most: number) => Math.min(most, Math.max(0, num(v, 0)))
-/** A clock as saved, counting towards the next one: from 0 to under its period, as the game leaves it; anything else
- *  starts again. (Growing takes the period off until the clock is under it: from 1e20, minus 40 is 1e20, never.) */
-const clock = (v: unknown, every: number) => {
-  const t = num(v, 0)
-  return t > 0 && t < every ? t : 0
-}
 const isProduce = (v: unknown): v is ProduceId => produceIds.includes(v as ProduceId)
 /** A good buyers and orders ask for (not a building material). */
 const isSellable = (v: unknown): v is ProduceId => SELLABLE.includes(v as ProduceId)
@@ -390,10 +378,6 @@ interface SavedBuyer {
   offer: number
   gift: boolean
 }
-
-const isObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object'
-/** A field of a saved object, or an item of a saved list (anything else: nothing). */
-const field = (v: unknown, k: string | number) => (isObject(v) ? v[k] : undefined)
 
 /** Where a save from before the tables in src/farm/data.ts kept what each producer held: a field of its own for the
  *  count and one for the clock (a list of each for the cows and the sheep), and one for how many animals. */
@@ -423,7 +407,7 @@ function savedProducer(id: ProducerId, raw: Record<string, unknown>, ladders: St
   return {
     animals,
     stock: Array.from({ length: n }, (_, i) => int(field(p.stock, i), def.fresh, 0, most)),
-    timer: Array.from({ length: n }, (_, i) => clock(field(p.timer, i), def.every)),
+    timer: Array.from({ length: n }, (_, i) => cycle(field(p.timer, i), def.every)),
   }
 }
 
@@ -450,7 +434,7 @@ function batchMachine(id: MachineId, m: Record<string, unknown>): MachineState {
   if (!r) return freshMachine()
   const count = int(m.count, 0, 0, QUEUE.max)
   if (count) {
-    const spent = span(m.progress, count * r.seconds)
+    const spent = seconds(m.progress, count * r.seconds)
     const done = Math.min(count, Math.floor(spent / r.seconds))
     return { ...freshMachine(), jobs: Array.from({ length: count }, () => r.id), done, progress: done < count ? spent - done * r.seconds : 0 }
   }
@@ -465,29 +449,29 @@ function savedMachine(id: MachineId, raw: Record<string, unknown>): MachineState
   const saved = field(raw.machines, id)
   const m = isObject(saved) ? saved : oldMachine(id, raw)
   if (!('jobs' in m)) return batchMachine(id, m)
-  const list: unknown[] = Array.isArray(m.jobs) ? m.jobs : []
-  const savedDone = int(m.done, 0, 0, list.length)
+  const savedJobs = list(m.jobs)
+  const savedDone = int(m.done, 0, 0, savedJobs.length)
   const jobs: string[] = []
   let done = 0
-  list.forEach((job, i) => {
+  savedJobs.forEach((job, i) => {
     const r = recipeOf(id, job)
     if (!r || jobs.length >= QUEUE.max) return
     jobs.push(r.id)
     if (i < savedDone) done++
   })
-  const worked = span(m.worked, Number.MAX_SAFE_INTEGER)
+  const worked = seconds(m.worked, Number.MAX_SAFE_INTEGER)
   const working = done < jobs.length ? recipeOf(id, jobs[done]) : undefined
   return {
     jobs,
     done,
-    progress: working ? span(m.progress, jobSeconds(working, machineLevel(worked).boost)) : 0,
+    progress: working ? seconds(m.progress, jobSeconds(working, machineLevel(worked).boost)) : 0,
     capacity: int(m.capacity, QUEUE.start, QUEUE.start, QUEUE.max),
     worked,
   }
 }
 
 function savedBuyer(raw: unknown): SavedBuyer | null {
-  if (!raw || typeof raw !== 'object') return null
+  if (!isObject(raw)) return null
   const b = raw as Partial<SavedBuyer>
   // a look as saved, made safe (an older save's look loads as it was); one that is not a look: no buyer
   const look = sanitizeLook(b.look)
@@ -510,7 +494,7 @@ const MOST_CRATES = 999
 /** An order as saved, made safe: the goods it asks for (each once, none a building material), how many of each have
  *  been put in (never more than it wants), what it pays; an order of nothing is no order (a new one comes). */
 function savedOrder(raw: unknown): Order | null {
-  const lines: unknown[] = isObject(raw) && Array.isArray(raw.lines) ? raw.lines : []
+  const lines = list(field(raw, 'lines'))
   const out: OrderLine[] = []
   for (const l of lines.slice(0, 9)) {
     if (!isObject(l) || !isSellable(l.good) || out.some((o) => o.good === l.good)) continue
@@ -525,7 +509,7 @@ function savedOrder(raw: unknown): Order | null {
 function savedPlace(raw: unknown, wait: number): OrderSlot {
   const order = savedOrder(raw)
   if (order) return { order }
-  return { wait: span(field(raw, 'wait'), wait) }
+  return { wait: seconds(field(raw, 'wait'), wait) }
 }
 
 /** Where the tractor's track crosses the farm's west edge (the gate in the hedge): the garden's own, or the west
@@ -558,7 +542,7 @@ function load(text: string | null = readRaw(KEY)): { data: FarmData; savedAt: nu
     data.expansions = { east: !!raw.expansions?.east, west: !!raw.expansions?.west }
     // the beds, read only from a list: on anything else a list method threw half-way, and everything read after the
     // beds came back as on a new farm (and was saved over the farm)
-    const beds: unknown[] = Array.isArray(raw.beds) ? raw.beds : []
+    const beds = list(raw.beds)
     BEDS.forEach((def, i) => {
       const b = beds[i]
       if (!isObject(b)) return
@@ -569,8 +553,8 @@ function load(text: string | null = readRaw(KEY)): { data: FarmData; savedAt: nu
       data.beds[i] = {
         built,
         crop,
-        growth: crop ? span(b.growth, cropById(crop).growSeconds) : 0,
-        water: crop ? span(b.water, fullWater(crop)) : 0,
+        growth: crop ? seconds(b.growth, cropById(crop).growSeconds) : 0,
+        water: crop ? seconds(b.water, fullWater(crop)) : 0,
         fixed: isCrop(b.fixed) ? b.fixed : null,
       }
     })
@@ -592,8 +576,8 @@ function load(text: string | null = readRaw(KEY)): { data: FarmData; savedAt: nu
     data.sprinkler = !!raw.sprinkler
     data.compost = !!raw.compost
     data.started = !!raw.started
-    data.planted = Array.isArray(raw.planted) ? [...new Set(raw.planted.filter(isCrop))] : []
-    data.made = Array.isArray(raw.made) ? [...new Set(raw.made.filter(isProduce))] : []
+    data.planted = [...new Set(list(raw.planted).filter(isCrop))]
+    data.made = [...new Set(list(raw.made).filter(isProduce))]
     // each stat a count, and no others (spread in as saved, a count saved as text made a harvest add "7" + 3 = "73")
     for (const k of Object.keys(data.stats) as (keyof FarmData['stats'])[]) data.stats[k] = amount(field(raw.stats, k), 0)
     for (const id of produceIds) data.got[id] = amount(field(raw.got, id), 0)
@@ -609,13 +593,13 @@ function load(text: string | null = readRaw(KEY)): { data: FarmData; savedAt: nu
     // the order board, as many places as the office has, each an order or a wait (a farm from before the office: a
     // new order in each place straight away); the crates sent, and the tractor's trip
     data.office = { slots: int(field(raw.office, 'slots'), 0, 0, SLOT_LEVELS), wait: int(field(raw.office, 'wait'), 0, 0, WAIT_LEVELS) }
-    const board: unknown[] = Array.isArray(raw.orders) ? raw.orders : []
+    const board = list(raw.orders)
     data.orders = Array.from({ length: orderSlots(data.office.slots) }, (_, k) => savedPlace(board[k], orderWait(data.office.wait)))
     const aboard = int(field(raw.dispatch, 'aboard'), 0, 0, TRACTOR.load)
     data.dispatch = {
       waiting: int(field(raw.dispatch, 'waiting'), 0, 0, MOST_CRATES),
       aboard,
-      trip: aboard ? span(field(raw.dispatch, 'trip'), tripSeconds(aboard, gateX(data.layout))) : -1,
+      trip: aboard ? seconds(field(raw.dispatch, 'trip'), tripSeconds(aboard, gateX(data.layout))) : -1,
     }
     // the goals: each on the step it was saved on; a farm from before them starts each where it is (what it did before
     // is not paid for again)
@@ -652,7 +636,9 @@ function load(text: string | null = readRaw(KEY)): { data: FarmData; savedAt: nu
     data.place = place === 'home' && data.apartment.owned ? 'home' : 'farm'
     // the week's events: the lucky draw as saved and the events the news has shown (a farm from before them: none)
     data.events = sanitizeEvents(raw.events)
-    const queue = (Array.isArray(raw.queue) ? raw.queue : []).map(savedBuyer).filter((b): b is SavedBuyer => !!b)
+    const queue = list(raw.queue)
+      .map(savedBuyer)
+      .filter((b): b is SavedBuyer => !!b)
     return { data, savedAt: num(raw.time, 0) || null, queue: queue.slice(0, queuePlaces(data.queueLevel)) }
   } catch {
     return { data, savedAt: null, queue: [] }
@@ -1482,7 +1468,7 @@ export const machineActions = (id: MachineId): MachineActions => ACTIONS[id]
 // ───────────────────────────── the shop ─────────────────────────────
 
 /** A countdown as the game writes it (src/lib/time.ts): for the labels and panels that read it from here. */
-export { clockText }
+export { clock as clockText }
 
 /** Steps bought of an upgrade that comes one step at a time (0 for the others). */
 export const upgradeLevel = (u: UpgradeId) => (u === 'queue' ? farm.queueLevel : u === 'pace' ? farm.paceLevel : 0)
@@ -1539,7 +1525,7 @@ export function buy(id: UpgradeId) {
   } else if (id === 'pace') {
     farm.paceLevel = Math.min(PACE_LEVELS, farm.paceLevel + 1)
     farm.nextVisitorIn = Math.min(farm.nextVisitorIn, arrivalSeconds())
-    note = `A buyer every ${clockText(arrivalSeconds())}`
+    note = `A buyer every ${clock(arrivalSeconds())}`
   } else if (id === 'east' || id === 'west') {
     farm.expansions[id] = true
     BEDS.forEach((def, i) => {
@@ -2125,7 +2111,7 @@ export function buyOffice(id: OfficeUpgradeId) {
   } else {
     const wait = orderWaitSeconds()
     farm.orders = farm.orders.map((slot) => ('wait' in slot ? { wait: Math.min(slot.wait, wait) } : slot))
-    toast(`A new order every ${clockText(wait)}`)
+    toast(`A new order every ${clock(wait)}`)
   }
   bump()
   save()
@@ -3302,7 +3288,7 @@ export const dayNow = () => ({ hour: hourOf(farm.day.t), phase: phaseOf(farm.day
 /** The day's clock as saved: seconds from 0. Past what any farm can have been played, adding a frame would no longer
  *  move it on: it keeps its hour and starts counting days again. */
 function dayClock(v: unknown): number {
-  const t = typeof v === 'number' && Number.isFinite(v) ? Math.max(0, v) : 0
+  const t = Math.max(0, num(v, 0))
   return t > 1e10 ? t % DAY.length : t
 }
 

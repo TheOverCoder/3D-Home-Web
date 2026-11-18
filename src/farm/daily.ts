@@ -10,6 +10,7 @@
 // last day claimed again: no day is ever claimed twice. Pure: the rules and the record kept in the save;
 // src/farm/state.ts gives what they say, on the farm's own dice. None of it is XP: a gift is not something done.
 
+import { intIn, isObject, list } from '../lib/saved'
 import { SELLABLE, type ProduceId } from './data'
 import { savedPrize, type Prize } from './gifts'
 import { randomItem } from './storage'
@@ -202,9 +203,6 @@ export function dailyView(d: Daily, today: number, level: number, now?: number):
   }
 }
 
-const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object'
-const whole = (v: unknown, lo: number, hi: number): v is number => typeof v === 'number' && Number.isInteger(v) && v >= lo && v <= hi
-
 /**
  * The daily gift as saved, read safe on `today`. Missing (a farm from before it): never claimed. Broken where it says
  * which day was taken: today counts as taken (no gift twice), its streak kept when it can be read. The week holds what
@@ -213,15 +211,15 @@ const whole = (v: unknown, lo: number, hi: number): v is number => typeof v === 
  */
 export function sanitizeDaily(raw: unknown, today: number): Daily {
   if (raw === undefined) return dailyFresh()
-  if (!isObj(raw)) return { last: today, streak: 0, offered: -1, week: [] }
-  const last = whole(raw.last, -1, LAST_DAY) ? raw.last : today
-  const streak = last >= 0 && whole(raw.streak, 0, Number.MAX_SAFE_INTEGER) ? raw.streak : 0
-  const offered = whole(raw.offered, -1, LAST_DAY) ? raw.offered : -1
+  if (!isObject(raw)) return { last: today, streak: 0, offered: -1, week: [] }
+  const last = intIn(raw.last, -1, LAST_DAY) ? raw.last : today
+  const streak = last >= 0 && intIn(raw.streak, 0, Number.MAX_SAFE_INTEGER) ? raw.streak : 0
+  const offered = intIn(raw.offered, -1, LAST_DAY) ? raw.offered : -1
   const days = streak >= 1 ? weekDay(streak) : 0
-  const saved: unknown[] = Array.isArray(raw.week) ? raw.week.slice(0, days) : []
+  const saved = list(raw.week).slice(0, days)
   const week = saved.map((e) => {
-    const list = Array.isArray(e) ? e.slice(0, 3).map(savedPrize) : []
-    return list.every((p) => p !== null) ? (list as Prize[]) : []
+    const prizes = list(e).slice(0, 3).map(savedPrize)
+    return prizes.every((p) => p !== null) ? (prizes as Prize[]) : []
   })
   return { last, streak, offered, week }
 }
