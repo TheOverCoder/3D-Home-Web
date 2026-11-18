@@ -1,9 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import fs from 'node:fs'
 import { test, expect, watchErrors, BASE } from './helpers'
 
 // The sculpted models (src/models): the gallery page shows every one of them and runs the kit's checks on each (every
 // piece holds on to its model, every model stands on its ground, in every variant and pose); in the game the herd,
 // the flock, the hens, the queue and the garden are drawn with them — each a handful of instanced draws.
+
+/** The gallery's entries, as src/models/gallery.ts lists them, in order (each entry's `id`; src/models/checks.test.ts holds
+ *  this reading equal to GALLERY itself, and every entry to a check of MODEL_CHECKS). */
+const GALLERY_IDS = [...fs.readFileSync(new URL('../../src/models/gallery.ts', import.meta.url), 'utf8').matchAll(/^ {4}id: '([\w-]+)',$/gm)].map((m) => m[1])
 
 test.describe('sculpted models', () => {
   test('the model gallery shows every model', async ({ browser }) => {
@@ -16,27 +21,7 @@ test.describe('sculpted models', () => {
     // every entry draws something once the first frames have posed it
     await page.waitForFunction(() => (window as any).__gallery.entries.every((e: any) => e.triangles > 1000), null, { timeout: 60_000, polling: 250 })
     const entries = await page.evaluate(() => (window as any).__gallery.entries.map((e: any) => e.id))
-    expect(entries).toEqual([
-      'cow',
-      'sheep',
-      'chickens',
-      'people',
-      'crops',
-      'farm',
-      'stores',
-      'office',
-      'market',
-      'tractor',
-      'car',
-      'car-road',
-      'estate',
-      'goods',
-      'decor',
-      'fruit',
-      'scarecrows',
-      'woods',
-      'tools',
-    ])
+    expect(entries).toEqual(GALLERY_IDS)
     // the checks catch a piece a centimetre off its model, and a model two centimetres above the ground
     expect(await page.evaluate(() => (window as any).__gallery.selfTest())).toEqual(['loose', 'open', 'floating'])
     // the kit's checks, on every model in every variant and pose: no piece apart from its model, nothing floating
