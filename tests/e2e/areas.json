@@ -7,7 +7,7 @@
   },
   "nightly": ["26-counting"],
   "areas": [
-    { "name": "documents", "final": true, "specs": [], "paths": ["**/*.md", "docs/**", "plans/**", "tips/**", ".claude/**"] },
+    { "name": "documents", "final": true, "specs": [], "paths": ["**/*.md", "docs/**", "plans/**", "tips/**", ".claude/**", "update-v1/**"] },
     {
       "name": "unit tests and what only they use",
       "final": true,
@@ -23,10 +23,8 @@
       "paths": [
         "scripts/{fetch-assets,fetch-polyhaven,hdr-to-gainmap,optimize-models,render-farmer-faces,render-furniture-art,render-item-art}.mjs",
         "scripts/assets.manifest.json",
-        "scripts/{affected-specs,ci-shards}.{mjs,d.mts}",
+        "scripts/{affected-specs,ci-shards,v1-scope}.{mjs,d.mts}",
         "scripts/v1-merge.sh",
-        "scripts/v1-scope.{mjs,d.mts}",
-        "update-v1/owners.json",
         "tests/e2e/{areas,times}.json",
         "tests/e2e/fileTimes.ts",
         "src/tools/**",
