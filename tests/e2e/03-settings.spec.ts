@@ -142,4 +142,40 @@ test.describe('settings', () => {
     await page.evaluate(() => (window as any).__home.settings.getState().update({ motion: 'device', headBob: true }))
     expect(await look()).toEqual({ marked: false, compass: 'compass-open', motion: 'device', sway: true })
   })
+
+  test('Show the tips again: a young farm that skipped its first steps has them back from Settings, where it was', async ({ game }) => {
+    await game.ready('farm')
+    const { page } = game
+    const drawer = async (open: boolean) => {
+      if (open) await page.keyboard.press('Escape')
+      await page.waitForFunction((open) => (window as any).__home.useHome.getState().settingsOpen === open, open, { timeout: 30_000 })
+    }
+    const record = () => page.evaluate(() => (window as any).__home.farm.steps.record() as { step: number; over: boolean })
+    // a new farm, its steps running (as src/farm/firstSteps.ts plays them): nothing to bring back
+    await page.evaluate(() => {
+      const f = (window as any).__home.farm
+      f.reset()
+      f.steps.quiet(false)
+      f.useFarm.setState((s: any) => ({ rev: s.rev + 1 }))
+    })
+    await expect(page.locator('.step-hint')).toBeVisible({ timeout: 30_000 })
+    await drawer(true)
+    await expect(page.locator('#set-tips')).toHaveCount(0)
+    await page.getByRole('button', { name: 'Close (Esc)' }).click()
+    await drawer(false)
+    // skipped: gone, and Settings offers them again
+    await page.evaluate(() => (window as any).__home.farm.steps.skip())
+    await expect(page.locator('.step-hint')).toHaveCount(0)
+    expect(await record()).toMatchObject({ step: 0, over: true })
+    await drawer(true)
+    await page.locator('#set-tips').click()
+    // back on the step they were skipped at, the drawer closed so the hint shows; offered no more
+    await drawer(false)
+    expect(await record()).toMatchObject({ step: 0, over: false })
+    await expect(page.locator('.step-hint')).toBeVisible({ timeout: 30_000 })
+    await drawer(true)
+    await expect(page.locator('#set-tips')).toHaveCount(0)
+    await page.getByRole('button', { name: 'Close (Esc)' }).click()
+    await drawer(false)
+  })
 })

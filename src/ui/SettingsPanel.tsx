@@ -8,6 +8,7 @@ import { MusicPlayer } from './MusicPlayer'
 import { profile, setLightMode } from '../lib/profile'
 import { restartGraphics } from '../lib/startup'
 import { useLessMotion } from './still'
+import { resumeSteps, stepsResumable, useFarm } from '../farm/state'
 
 function Segmented<T extends string>({ value, options, onChange, label }: { value: T; options: { value: T; label: string }[]; onChange: (v: T) => void; label: string }) {
   return (
@@ -85,6 +86,8 @@ export function SettingsPanel() {
   const settings = useSettings()
   const update = (patch: Partial<Settings>) => settings.update(patch)
   const still = useLessMotion()
+  // the first steps' tips, skipped on a farm still young enough for them: they can come back (src/farm/state/steps.ts)
+  const tips = useFarm(() => stepsResumable())
   const closeRef = useRef<HTMLButtonElement>(null)
   const [copied, setCopied] = useState<'idle' | 'ok' | 'failed'>('idle')
   const copyReport = async () => {
@@ -145,6 +148,19 @@ export function SettingsPanel() {
                   </ul>
                   <p className="muted">On a touch screen, use the left joystick to walk and drag the scene to look.</p>
                 </>
+              )}
+              {tips && (
+                <Row label="Show the tips again" hint="The farmer's hints, from where you skipped them">
+                  <button
+                    id="set-tips"
+                    className="ghost"
+                    onClick={() => {
+                      if (resumeSteps()) setOpen(false)
+                    }}
+                  >
+                    Show
+                  </button>
+                </Row>
               )}
             </section>
 
