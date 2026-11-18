@@ -1,4 +1,5 @@
-import { m, useAnimate, useReducedMotion, type AnimationPlaybackControls } from 'motion/react'
+import { m, useAnimate, type AnimationPlaybackControls } from 'motion/react'
+import { useLessMotion } from '../ui/still'
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { farmSound } from '../audio/sound'
@@ -6,7 +7,7 @@ import { haptic } from '../lib/device'
 import { art } from '../ui/art'
 import { burst } from '../ui/burst'
 import { registerCard } from '../ui/cardQueue'
-import { DID, EASE, SPRING } from '../ui/motion'
+import { EASE, SPRING, did } from '../ui/motion'
 import { unlockPic, whereOf } from './unlockArt'
 import { unlockName, type UnlockId } from './unlocks'
 import './Unlocked.css'
@@ -112,7 +113,7 @@ export function Unlocked(props: { level: number; opens: UnlockId[]; onDone: () =
 
 /** The reveal of what one level opened; `onDone` once the cards are home (or it was tapped away). */
 function UnlockedShow({ level, opens, onDone }: { level: number; opens: UnlockId[]; onDone: () => void }) {
-  const still = useReducedMotion()
+  const still = useLessMotion()
   const [scope, animate] = useAnimate<HTMLDivElement>()
   const n = opens.length
   const stage = useRef<'deal' | 'home' | 'gone'>('deal')
@@ -168,7 +169,7 @@ function UnlockedShow({ level, opens, onDone }: { level: number; opens: UnlockId
         { duration: t, delay, ease: [0.5, 0, 0.75, 1], times: [0, 0.3, 1] },
       )
       void animate(card, { opacity: [1, 1, 0.3] }, { duration: t, delay, times: [0, 0.8, 1] })
-      if (star.el) later(() => void animate(star.el!, DID.keyframes, DID.options), delay + t * 0.95)
+      if (star.el) later(() => void did(star.el), delay + t * 0.95)
     })
     later(() => farmSound('surprise'), t * 0.9)
     later(finish, t + cards.length * (quick ? 0.03 : 0.07) + 0.05)

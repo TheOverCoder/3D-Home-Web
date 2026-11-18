@@ -321,6 +321,10 @@ The README has the overview; `tests/README.md` what each test guards.
   panel's look is a component of its own fed with data (`LevelCard` from `levelView`; `LevelPanel` reads the farm), so
   the lab shows it as it is. Motion is Motion for React through `src/ui/motion.tsx` (`m.*`, the game's springs,
   reduced motion respected), a celebration `burst` (`src/ui/burst.ts`), form controls Radix primitives.
+- Less motion is one answer, `src/ui/still.ts` (the player's setting over the device's): `lessMotion()`,
+  `useLessMotion()`, `onLessMotion(f)`, `nope(el)` and `did(el)` in `motion.tsx`; in CSS what stops sits under
+  `:where(:root[data-motion='less'])` and what moves only when it may under `:where(:root:not([data-motion='less']))`.
+  Nothing else asks the device or uses Motion's `useReducedMotion` (`still.test.ts` reads the sources).
 - Use the tokens and classes, not new colours or fonts: `.paper` sheets, `.btn` (`.soft`, `.leaf`, `.berry`,
   `.small`, `.round`) or `.primary`, `.tag` chips, `.art` pictures. Fredoka for titles/buttons, Nunito for text
   and numbers. Glyphs from `glyphs.ts` (Phosphor, bold/fill), pictures from `art.ts` (Fluent 3D) — add a file
@@ -330,8 +334,12 @@ The README has the overview; `tests/README.md` what each test guards.
 - Build a panel on the base: motion presets in `src/ui/motion.tsx` (`PRESS`, `SINK`, `SQUISH`, `TIP`, `POP`, `DID`,
   `NOPE`, `ARRIVE`, `REVEAL`, `DEAL`, `FLIP`, `SHIMMER`, `SHEET`), surfaces and tokens in `src/styles.css` ("the base":
   `.wood`, `.velvet` and its premium tokens, `.ribbon`, `.chip`, `.count`, `.stars`, `.shine`, `.sheet-heading`), and the
-  shared pieces: `PanelSheet` (a sheet from the edge), `GoodPic` (a good's picture that says where it is made: use it
-  where a good's picture stands outside a button), `flyGoods` (`src/ui/fly.ts`), `Shell` for a centred card.
+  shared pieces: `PanelSheet` (a sheet from the edge; `size: 'card'` for a question, `foot` its two buttons, `back`
+  for pages; what opens over it carries `data-over-sheet`), `GoodPic` (a good's picture that says where it is made:
+  use it where a good's picture stands outside a button), `flyGoods` (`src/ui/fly.ts`), `Shell` for a centred card. A
+  new panel's kind is one line in `PANEL_KINDS` (`src/store.ts`): `39-panels` opens it on a phone and measures what
+  can be read and pressed (`tests/e2e/readable.ts`). What may move at the top to call asks `useCalling(id)`
+  (`src/ui/calls.ts`): one at a time.
 - A panel: picture, a few-word title, chips, at most one line of text, at most two buttons (Cancel first, the
   action last with its price). 44 px targets, text ≥ 15 px (never < 13). A good's picture where goods change hands
   or go into a machine is an `ItemPic` with its count (the round badge, 1 included), never the picture repeated.

@@ -1,3 +1,6 @@
+import { readdirSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { isStill, lessMotion, onLessMotion, setMotionPref, type MotionPref } from './still'
 
@@ -66,5 +69,27 @@ describe('less motion', () => {
     expect(d.handlers.size).toBe(0)
     setMotionPref('full')
     expect(heard).toEqual([true, false, true])
+  })
+})
+
+describe('one reader', () => {
+  // Everything that moves asks ./still.ts: a file that asks the device itself (its media query, in code or in CSS) or
+  // Motion's own hook (which reads only the device, never the game's setting) would keep moving when the player asks
+  // for less. The CSS reads `:root[data-motion='less']` instead (src/styles.css, and each component's own file).
+  const src = fileURLToPath(new URL('..', import.meta.url))
+  const files = readdirSync(src, { recursive: true, encoding: 'utf8' }).filter((f) => /\.(tsx?|css)$/.test(f) && !f.endsWith('.test.ts') && f !== join('ui', 'still.ts'))
+
+  it('is the only one that asks the device', () => {
+    expect(files.length).toBeGreaterThan(300)
+    const asks = files.filter((f) => /prefers-reduced-motion/.test(readFileSync(join(src, f), 'utf8')))
+    expect(asks, 'ask src/ui/still.ts (lessMotion, useLessMotion, onLessMotion; in CSS :root[data-motion=less])').toEqual([])
+  })
+
+  it("is the only one Motion's components and hooks follow", () => {
+    const hooks = files.filter((f) => /\buseReducedMotion\b/.test(readFileSync(join(src, f), 'utf8')))
+    expect(hooks, 'useLessMotion (src/ui/still.ts) in place of Motion’s useReducedMotion').toEqual([])
+    // Motion's components follow MotionRoot (./motion.tsx), whose MotionConfig reads the game's answer
+    const configs = files.filter((f) => /reducedMotion="user"/.test(readFileSync(join(src, f), 'utf8')))
+    expect(configs).toEqual([])
   })
 })

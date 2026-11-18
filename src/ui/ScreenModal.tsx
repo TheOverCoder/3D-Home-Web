@@ -2,9 +2,10 @@ import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as Reac
 import { SCREENS, screenById, type Card, type Cta, type ScreenDef, type ScreenTab, type Stat } from '../data/screens'
 import { useHome } from '../store'
 import { drawArt } from './screens/art'
+import { lessMotion } from './still'
 import './screens/screenModal.css'
 
-const reducedMotion = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
+const reducedMotion = lessMotion
 
 /** "140+" counts 0 → 140 and keeps the "+"; values without a number ("Mon–Fri") are shown as they are. */
 function CountUp({ value }: { value: string }) {

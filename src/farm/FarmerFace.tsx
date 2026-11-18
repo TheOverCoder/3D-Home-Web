@@ -1,4 +1,5 @@
-import { AnimatePresence, animate, m, useReducedMotion } from 'motion/react'
+import { AnimatePresence, animate, m } from 'motion/react'
+import { useLessMotion } from '../ui/still'
 import { useEffect, useRef } from 'react'
 import { art } from '../ui/art'
 import { GIGGLE, HOP, NOD, SIGH, SPRING, SQUASH, TILT } from '../ui/motion'
@@ -32,7 +33,7 @@ export { Portrait } from '../ui/Portrait'
 
 /** The portrait: `mood` his face; `beat` names what he is saying, so a new line in the same mood moves him again. */
 export function FarmerFace({ mood, beat = mood, small }: { mood: FarmerMood; beat?: string; small?: boolean }) {
-  const still = useReducedMotion()
+  const still = useLessMotion()
   const face = useRef<HTMLSpanElement>(null)
   useEffect(() => {
     if (still || !face.current) return

@@ -1,4 +1,5 @@
-import { AnimatePresence, m, useDragControls, useIsPresent, useReducedMotion, type PanInfo, type Variants } from 'motion/react'
+import { AnimatePresence, m, useDragControls, useIsPresent, type PanInfo, type Variants } from 'motion/react'
+import { useLessMotion } from '../../ui/still'
 import { Tabs } from 'radix-ui'
 import { useEffect, useRef, useState, type Ref } from 'react'
 import { flyCoins } from '../../fx/coins'
@@ -81,7 +82,7 @@ let flightId = 0
 
 function Board({ v, act, asking, onAsk, onClose }: OrdersBoardProps) {
   const mode = useSheetMode()
-  const still = useReducedMotion()
+  const still = useLessMotion()
   const [tab, setTabNow] = useState(asking ? 'office' : 'orders')
   // the sheet keeps the tallest height it had from one tab to the other (it never jumps under the finger)
   const [tall, setTall] = useState<number | null>(null)
@@ -359,7 +360,7 @@ function Plank({
   onSend: (k: number, el: HTMLElement) => void
   onDecline: (k: number) => void
 }) {
-  const still = useReducedMotion()
+  const still = useLessMotion()
   // on its way out (sent, declined) it is no longer one of the board's orders
   const present = useIsPresent()
   const [falling, setFalling] = useState(false)

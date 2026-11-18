@@ -29,7 +29,7 @@
 .daily-card .dg-streak b { font: 900 20px/1 var(--font-text); font-variant-numeric: tabular-nums; }
 .daily-card .dg-streak small { font: 800 13px/1 var(--font-text); color: var(--ink-2); margin-inline-start: 2px; }
 /* the flame is alive: it flickers (its own scale, beside Motion's transform) */
-@media (prefers-reduced-motion: no-preference) {
+:where(:root:not([data-motion='less'])) {
   .daily-card .dg-streak .art { animation: daily-flicker 1.9s ease-in-out infinite; }
 }
 @keyframes daily-flicker { 0%, 100% { scale: 1; } 25% { scale: 0.95 1.07; } 50% { scale: 1.05 0.96; } 75% { scale: 0.98 1.04; } }
@@ -63,7 +63,7 @@
   mask: radial-gradient(circle, #000 8%, transparent 62%);
   pointer-events: none;
 }
-@media (prefers-reduced-motion: no-preference) {
+:where(:root:not([data-motion='less'])) {
   .daily-card .dg-rays { animation: daily-spin 36s linear infinite; }
   .daily-card .shake .dg-rays { animation-duration: 9s; }
   .daily-card .open .dg-rays { animation-duration: 6s; }
@@ -96,7 +96,7 @@
 .daily-card .dg-sparkles { position: absolute; z-index: 1; top: 2px; left: 50%; width: 44px; height: 44px; pointer-events: none; }
 .daily-card .dg-sparkles.left { margin-left: -98px; rotate: -18deg; }
 .daily-card .dg-sparkles.right { top: 44px; margin-left: 58px; width: 34px; height: 34px; rotate: 14deg; }
-@media (prefers-reduced-motion: no-preference) {
+:where(:root:not([data-motion='less'])) {
   .daily-card .dg-sparkles { animation: daily-twinkle 1.8s ease-in-out infinite; }
   .daily-card .dg-sparkles.right { animation-delay: 0.9s; }
 }
@@ -125,7 +125,7 @@
 .daily-card .dg-tag img { width: 22px; height: 22px; }
 .daily-card .dg-tag.big img + img { margin-left: -5px; }
 .daily-card .dg-tag b { margin-left: 3px; font: 900 15px/1 var(--font-text); font-variant-numeric: tabular-nums; }
-@media (prefers-reduced-motion: no-preference) {
+:where(:root:not([data-motion='less'])) {
   .daily-card .dg-tag { animation: daily-sway 3.7s ease-in-out infinite; }
 }
 @keyframes daily-sway { 0%, 100% { rotate: 14deg; } 50% { rotate: 6deg; } }
@@ -169,7 +169,7 @@
 .daily-card .dg-tomorrow-box .dg-peek { width: 28px; height: 28px; right: -8px; bottom: -6px; }
 .daily-card .dg-tomorrow-box .dg-peek img { width: 20px; height: 20px; }
 /* it waits, and sways now and then; in its last minute it can hardly wait */
-@media (prefers-reduced-motion: no-preference) {
+:where(:root:not([data-motion='less'])) {
   .daily-card .dg-tomorrow-box { animation: daily-wait 4.2s ease-in-out 1.2s infinite; }
   .daily-card .dg-tomorrow.soon .dg-tomorrow-box { animation: daily-eager 0.9s ease-in-out infinite; }
 }
@@ -201,7 +201,7 @@
 .daily-card .dg-clock-face > i { font-style: normal; padding: 0 1px; }
 .daily-card .dg-digit { position: relative; display: inline-grid; width: 0.6em; height: 1.2em; overflow: hidden; place-items: center; }
 .daily-card .dg-digit > span { grid-area: 1 / 1; }
-@media (prefers-reduced-motion: no-preference) {
+:where(:root:not([data-motion='less'])) {
   .daily-card .dg-clock-face > i { animation: daily-blink 1s steps(1, end) infinite; }
 }
 @keyframes daily-blink { 50% { opacity: 0.35; } }
@@ -229,7 +229,7 @@
 .daily-card .today .dg-disc { width: 46px; height: 46px; background: #fff; box-shadow: 0 0 0 3px var(--sun), 0 3px 0 var(--sun-lip); }
 .daily-card .today .dg-disc .art { width: 34px; height: 34px; }
 .daily-card .today .dg-disc::before { content: ''; position: absolute; z-index: -1; inset: -10px; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--sun) 80%, #fff), color-mix(in srgb, var(--sun) 35%, transparent) 60%, transparent); }
-@media (prefers-reduced-motion: no-preference) {
+:where(:root:not([data-motion='less'])) {
   .daily-card .today .dg-disc::before { animation: daily-glow 1.6s ease-in-out infinite; }
   .daily-card .today .dg-disc .dg-disc-in > .art { animation: daily-nudge 3.7s ease-in-out 1.6s infinite; }
   .daily-card .now .dg-disc::after { content: ''; position: absolute; inset: -3px; border-radius: 50%; box-shadow: 0 0 0 3px var(--leaf); animation: daily-stamp 0.7s ease-out both; pointer-events: none; }
@@ -284,7 +284,7 @@
 .daily-card .dg-claim { position: relative; overflow: hidden; }
 .daily-card .dg-claim .art { width: 32px; height: 32px; margin: -6px 0; }
 .daily-card .dg-claim.opening { filter: saturate(0.7) brightness(0.97); pointer-events: none; }
-@media (prefers-reduced-motion: no-preference) {
+:where(:root:not([data-motion='less'])) {
   .daily-card .dg-claim::after { content: ''; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.55) 48%, transparent 66%); translate: -110% 0; animation: daily-sheen 3.4s ease-in-out 1.4s infinite; pointer-events: none; }
   .daily-card .dg-claim.opening::after { animation: none; opacity: 0; }
 }

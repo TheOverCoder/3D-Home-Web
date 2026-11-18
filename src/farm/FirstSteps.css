@@ -41,7 +41,7 @@
 .step-walk { position: absolute; top: -10px; left: 6px; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--sun); color: var(--ink); box-shadow: 0 0 0 2px #fff; }
 .step-walk svg { width: 13px; height: 13px; }
 .step-bubble.going { border-color: var(--sun); box-shadow: 0 3px 0 var(--sun-lip), 0 0 0 4px color-mix(in srgb, var(--sun) 30%, transparent), 0 10px 24px rgba(40, 24, 10, 0.3); }
-@media (prefers-reduced-motion: no-preference) {
+:where(:root:not([data-motion='less'])) {
   .step-bubble.going { animation: step-going 1.4s ease-in-out infinite; }
 }
 @keyframes step-going { 50% { box-shadow: 0 3px 0 var(--sun-lip), 0 0 0 8px color-mix(in srgb, var(--sun) 16%, transparent), 0 10px 24px rgba(40, 24, 10, 0.3); } }

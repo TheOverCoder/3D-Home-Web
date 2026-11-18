@@ -1,4 +1,5 @@
-import { AnimatePresence, animate, m, useReducedMotion } from 'motion/react'
+import { AnimatePresence, m } from 'motion/react'
+import { useLessMotion } from '../ui/still'
 import { useEffect, useRef, useState } from 'react'
 import { farmSound, uiClick } from '../audio/sound'
 import { flyCoins, flyItem } from '../fx/coins'
@@ -9,7 +10,7 @@ import { useHome } from '../store'
 import { art } from '../ui/art'
 import { burst } from '../ui/burst'
 import { Check, PersonSimpleWalk, X } from '../ui/glyphs'
-import { NOPE, POP, SPRING } from '../ui/motion'
+import { POP, SPRING, nope } from '../ui/motion'
 import { Reveal } from '../ui/Reveal'
 import { TopSlot } from '../ui/TopStack'
 import { useGameFree } from '../ui/useGameFree'
@@ -47,7 +48,7 @@ const ALL_COINS = FIRST_STEPS.reduce((n, s) => n + ('coins' in s.reward ? s.rewa
  *  when it is done: the tick stamps a line that can be read); the rest of the line is kept, unseen, so the bubble is
  *  its full size from the start and nothing moves as the letters come. A new line types in again. */
 function Typed({ text, whole }: { text: string; whole?: boolean }) {
-  const still = useReducedMotion()
+  const still = useLessMotion()
   const [n, setN] = useState(still ? text.length : 0)
   useEffect(() => {
     setN(still ? text.length : 0)
@@ -107,7 +108,6 @@ export function StepHint() {
   // a tap with nowhere to walk to yet: the farmer sighs a moment (a timer of its own: a step passing clears the others)
   const [nowhere, setNowhere] = useState(false)
   const sigh = useRef(0)
-  const still = useReducedMotion()
   // the bubble on the screen now and its reward (each kept as it comes in: one going out leaves them be)
   const reward = useRef<HTMLSpanElement | null>(null)
   const bubble = useRef<HTMLButtonElement | null>(null)
@@ -182,7 +182,7 @@ export function StepHint() {
     if (!def || !line || phase !== 'show') return
     const id = walkTarget(line.target)
     if (!id) {
-      if (bubble.current && !still) void animate(bubble.current, NOPE.keyframes, NOPE.options)
+      nope(bubble.current)
       window.clearTimeout(sigh.current)
       setNowhere(true)
       sigh.current = window.setTimeout(() => setNowhere(false), NOWHERE_MS)

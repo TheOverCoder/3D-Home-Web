@@ -1,4 +1,5 @@
-import { animate, m, useMotionValue, useReducedMotion, type AnimationPlaybackControls } from 'motion/react'
+import { animate, m, useMotionValue, type AnimationPlaybackControls } from 'motion/react'
+import { useLessMotion } from '../../ui/still'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { art } from '../../ui/art'
 import { burst } from '../../ui/burst'
@@ -72,7 +73,7 @@ function Reel({
   skip: number
   onStop: (k: number) => void
 }) {
-  const still = useReducedMotion()
+  const still = useLessMotion()
   const { cells, from } = useMemo(() => cellsOf(pool, k, good, mode), [pool, k, good, mode])
   const y = useMotionValue(yFor(from))
   const run = useRef<AnimationPlaybackControls | null>(null)

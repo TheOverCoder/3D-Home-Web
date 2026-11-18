@@ -1,5 +1,5 @@
 import { useAnimate } from 'motion/react'
-import { DID, NOPE } from './motion'
+import { did, nope } from './motion'
 
 // The one face of a thing not open yet (src/farm/unlocks.ts; the design lab's board "unlocks", C): the level card's
 // berry ribbon with the level it opens at, "Level 6", where its price would be — across a card's top corner, as the
@@ -25,12 +25,11 @@ export const opensWords = (level: number) => `opens at level ${level}`
 
 /** A locked thing's answer to a tap: `[ref, nope]` — a short shake of the element, its ribbon popping. */
 export function useNope<T extends HTMLElement>() {
-  const [scope, animate] = useAnimate<T>()
-  const nope = () => {
+  const [scope] = useAnimate<T>()
+  const shake = () => {
     if (!scope.current) return
-    void animate(scope.current as Element, NOPE.keyframes, NOPE.options)
-    const ribbon = scope.current.querySelector('.lock-tag')
-    if (ribbon) void animate(ribbon, DID.keyframes, DID.options)
+    nope(scope.current)
+    did(scope.current.querySelector('.lock-tag'))
   }
-  return [scope, nope] as const
+  return [scope, shake] as const
 }

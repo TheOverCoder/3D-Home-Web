@@ -1,4 +1,5 @@
-import { AnimatePresence, animate, m, useReducedMotion } from 'motion/react'
+import { AnimatePresence, animate, m } from 'motion/react'
+import { useLessMotion } from './still'
 import { useEffect, useRef, type CSSProperties } from 'react'
 import { personById, type PersonId } from '../data/people'
 import { faceOf, MOOD_MOVES } from '../farm/FarmerFace'
@@ -34,7 +35,7 @@ const fill: CSSProperties = { position: 'absolute', inset: 0, width: '100%', hei
 /** The portrait: `mood` their face and how they move; `size` its width in px (56, the farmer's hint's); `move` false
  *  holds it still; `beat` names what they are saying, so a new line in the same mood moves them again. */
 export function Portrait({ who, mood = 'cheerful', size = 56, move = true, beat = mood }: { who: PersonId; mood?: FarmerMood; size?: number; move?: boolean; beat?: string }) {
-  const still = useReducedMotion()
+  const still = useLessMotion()
   const face = useRef<HTMLSpanElement>(null)
   useEffect(() => {
     if (!move || still || !face.current) return

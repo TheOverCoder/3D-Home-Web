@@ -1,4 +1,5 @@
-import { AnimatePresence, m, useReducedMotion } from 'motion/react'
+import { AnimatePresence, m } from 'motion/react'
+import { lessMotion, useLessMotion } from '../ui/still'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { flyCoins, flyItem } from '../fx/coins'
 import { coinsToFly } from '../fx/fx'
@@ -36,7 +37,7 @@ import './LevelCard.css'
 // tap (onOpen): closing the card at any moment loses nothing.
 
 const pct = (n: number) => `${Math.round(Math.min(1, Math.max(0, n)) * 100)}%`
-const quiet = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+const quiet = lessMotion
 
 /** A prize's picture: coins with their count, or a good with its count. */
 function PrizePic({ p, big = false }: { p: Prize; big?: boolean }) {
@@ -74,7 +75,7 @@ export function LevelCard({
   /** the moment a gift bursts open (its sound and touch) */
   onReveal?: () => void
 }) {
-  const still = useReducedMotion()
+  const still = useLessMotion()
   const share = v.top ? 1 : v.into / v.need
   const before = Math.max(0, v.into - v.gain) / v.need
   const next = v.level + 1
@@ -201,7 +202,7 @@ const Star = ({ level }: { level: number }) => (
 /** The bar of the level: a dark track, a glossy fill that runs from where it was to where it is (what was gained lit),
  *  the quarters marked, the numbers inside, a ghost of what is ready on the farm. */
 function Bar({ v, before }: { v: LevelView; before: number }) {
-  const still = useReducedMotion()
+  const still = useLessMotion()
   const share = v.top ? 1 : v.into / v.need
   const ghost = v.ready && !v.top ? Math.min(1, (v.into + v.ready.xp) / v.need) : share
   return (
@@ -242,7 +243,7 @@ function Bar({ v, before }: { v: LevelView; before: number }) {
 /** A box on the bar, at its quarter's end: locked (grey; the next one says how far), ready (it glows and hops; a tap
  *  opens it), or open (what it gave, with a ✓). */
 function GiftBox({ b, next, onOpen }: { b: BoxView; next: boolean; onOpen: (el: HTMLElement) => void }) {
-  const still = useReducedMotion()
+  const still = useLessMotion()
   const style = { '--at': `${(b.q + 1) * 25}%` } as CSSProperties
   if (b.state === 'open')
     return (
@@ -374,7 +375,7 @@ function Reached({ level, came }: { level: number; came: NonNullable<LevelView['
  * burst into their prizes, and wait for a tap: Collect sends them home.
  */
 function Opening({ got, from, onReveal, onDone }: { got: Opened[]; from: DOMRect | null; onReveal?: () => void; onDone: () => void }) {
-  const still = useReducedMotion()
+  const still = useLessMotion()
   const [phase, setPhase] = useState<'shake' | 'open'>(still ? 'open' : 'shake')
   const stage = useRef<HTMLDivElement>(null)
   const one = got.length === 1

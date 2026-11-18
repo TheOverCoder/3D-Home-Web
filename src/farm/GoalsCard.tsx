@@ -1,4 +1,5 @@
-import { AnimatePresence, animate, m, useAnimate, useIsPresent, useMotionValue, useReducedMotion, useTransform, type PanInfo } from 'motion/react'
+import { AnimatePresence, animate, m, useAnimate, useIsPresent, useMotionValue, useTransform, type PanInfo } from 'motion/react'
+import { useLessMotion } from '../ui/still'
 import { useEffect, useRef, useState } from 'react'
 import { flyCoins, flyItem } from '../fx/coins'
 import { coinsToFly } from '../fx/fx'
@@ -40,7 +41,7 @@ const RING = { big: 6.5, small: 9 }
 const TURN = 380
 
 export function GoalsCard({ v, onClaim, onClose }: { v: GoalsView; onClaim: (id: GoalId) => unknown; onClose: () => void }) {
-  const still = useReducedMotion()
+  const still = useLessMotion()
   const wide = useSideways()
   // the goal in the middle, by its id: a claim sorts the board again, and the medal in the hand stays the same
   const [atId, setAtId] = useState<GoalId | null>(null)
@@ -210,7 +211,7 @@ function howFar(g: GoalView) {
  *  Claim in the bar's place). `fresh`: the step was just reached by a claim, and part of the next is already there. The
  *  one going out as another comes in is hidden from the screen reader. */
 function Info({ goal, fresh, onClaim }: { goal: GoalView; fresh: boolean; onClaim: (button: HTMLElement) => void }) {
-  const still = useReducedMotion()
+  const still = useLessMotion()
   const here = useIsPresent()
   const have = Math.min(goal.have, goal.target)
   return (

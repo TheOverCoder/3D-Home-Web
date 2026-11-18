@@ -1,4 +1,5 @@
-import { m, useReducedMotion } from 'motion/react'
+import { m } from 'motion/react'
+import { useLessMotion } from '../ui/still'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { farmSound } from '../audio/sound'
 import { coinsToFly, reducedMotion } from '../fx/fx'
@@ -134,7 +135,7 @@ function useFirstFill(fill: { current: HTMLElement | null }) {
 export function XpChip() {
   useFarm((s) => s.rev)
   const seen = useSeenXp()
-  const still = useReducedMotion()
+  const still = useLessMotion()
   const shown = Math.max(0, seen.points - seen.flying)
   const { level, into, need, top, gift: garment } = levelView(shown, farm.xp.paid)
   const k = Math.min(1, into / need)

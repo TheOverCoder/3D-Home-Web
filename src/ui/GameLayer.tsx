@@ -1,4 +1,5 @@
-import { AnimatePresence, m, useAnimate, useReducedMotion } from 'motion/react'
+import { AnimatePresence, m, useAnimate } from 'motion/react'
+import { useLessMotion } from './still'
 import { ToggleGroup } from 'radix-ui'
 import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react'
 import { SoundDirector } from '../audio/SoundDirector'
@@ -355,7 +356,7 @@ export function SavesList({ onPlay }: { onPlay: () => void }) {
  */
 export function HoldToClear({ onDone, label, children }: { onDone: () => void; label: string; children: ReactNode }) {
   const [scope, animate] = useAnimate<HTMLButtonElement>()
-  const still = useReducedMotion()
+  const still = useLessMotion()
   const [held, setHeld] = useState(false)
   const run = useRef<ReturnType<typeof animate> | null>(null)
   const start = () => {

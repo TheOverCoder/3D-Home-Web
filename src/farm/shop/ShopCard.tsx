@@ -1,9 +1,10 @@
-import { animate, m, useAnimate, useReducedMotion } from 'motion/react'
+import { m, useAnimate } from 'motion/react'
+import { useLessMotion } from '../../ui/still'
 import { useEffect, useRef, useState } from 'react'
 import { art } from '../../ui/art'
 import { ArrowRight, Check, Clock, Crown, LockSimple, Users } from '../../ui/glyphs'
 import { LockCorner, LockTag, opensWords, useNope } from '../../ui/LockTag'
-import { DEAL, DID, FLIP, NOPE, SHIMMER, SINK } from '../../ui/motion'
+import { DEAL, FLIP, SHIMMER, SINK, did, nope as shake } from '../../ui/motion'
 import { Coins, Shell } from '../../ui/Shell'
 import type { LadderId, ToolKind, UpgradeId } from '../data'
 import type { AnimalCard, FarmRow, RemoteTile, UpgradesView } from './view'
@@ -39,7 +40,7 @@ const Price = ({ n }: { n: number }) => (
 
 export function ShopCard({ v, act, onClose }: { v: UpgradesView; act: ShopActions; onClose: () => void }) {
   const shelf = useRef<HTMLDivElement>(null)
-  const still = useReducedMotion()
+  const still = useLessMotion()
   const [at, setAt] = useState(0)
   const go = (i: number, smooth = true) => {
     const el = shelf.current
@@ -114,8 +115,8 @@ function Animal({ a, i, coins, act }: { a: AnimalCard; i: number; coins: number;
     was.current = tool.state
   }, [tool.state, flip, toolEl])
   const more = (el: HTMLElement) => {
-    if (coins < herd.price || !act.buy(herd.upgrade)) return void animate(el, NOPE.keyframes, NOPE.options)
-    void animate(el, DID.keyframes, DID.options)
+    if (coins < herd.price || !act.buy(herd.upgrade)) return void shake(el)
+    void did(el)
   }
   return (
     <m.article ref={scope} className={`shop-animal${tool.state === 'sale' ? ' ready' : ''}`} data-kind={a.kind} aria-label={a.title} variants={DEAL} custom={i} initial="hidden" animate="show">
@@ -214,7 +215,7 @@ function Row({ r, coins, act }: { r: FarmRow; coins: number; act: ShopActions })
       <button
         className={`btn small${r.owned ? ' soft' : ''}`}
         disabled={r.owned || coins < r.price}
-        onClick={() => act.buy(r.id) && row.current && void animate(row.current, DID.keyframes, DID.options)}
+        onClick={() => act.buy(r.id) && void did(row.current)}
         aria-label={r.owned ? `${r.name}: done` : `Buy ${r.name}${repeat ? `, level ${r.level + 1}` : ''}, for ${r.price} coins`}
       >
         {r.owned ? <Check weight="bold" /> : <Coins n={r.price} />}

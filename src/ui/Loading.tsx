@@ -1,4 +1,5 @@
-import { AnimatePresence, m, useReducedMotion } from 'motion/react'
+import { AnimatePresence, m } from 'motion/react'
+import { useLessMotion } from './still'
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { iconUrl } from '../farm/icons'
 import { secondsLeft, useLoader } from '../lib/loader'
@@ -137,7 +138,7 @@ const LETTER = {
 /** The loading screen. */
 export function Loading({ v }: { v: LoadView }) {
   const wide = useWide()
-  const still = useReducedMotion()
+  const still = useLessMotion()
   const tip = useTip()
   const stage = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -289,7 +290,7 @@ const Trees = ({ y, n, seed }: { y: number; n: number; seed: number }) => (
 
 /** The road home, through the round window. */
 function Road({ v }: { v: LoadView }) {
-  const still = useReducedMotion()
+  const still = useLessMotion()
   const [hop, setHop] = useState(0)
   useEffect(() => {
     if (!v.ready) return

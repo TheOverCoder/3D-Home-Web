@@ -1,4 +1,5 @@
-import { animate, m, useReducedMotion } from 'motion/react'
+import { animate, m } from 'motion/react'
+import { useLessMotion } from './still'
 import { Popover } from 'radix-ui'
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { produceById, type ProduceId } from '../farm/data'
@@ -130,7 +131,7 @@ function Bubble({ good, lines, walk, ways, close }: { good: ProduceId; lines?: R
 /** A remote's button (the premium look: night velvet, a crown, its gold words): pressed, the remote's waves go out of
  *  it, then the panel opens from afar (at once with less motion). */
 export function OpenButton({ words, pic, run }: { words: string; pic: string; run: () => void }) {
-  const still = useReducedMotion()
+  const still = useLessMotion()
   const press = (el: HTMLElement) => {
     if (still) return run()
     el.querySelectorAll<HTMLElement>('.good-wave').forEach((w, i) => void animate(w, { scale: [0.6, 2.4], opacity: [0.9, 0] }, { duration: 0.55, delay: i * 0.12, ease: 'easeOut' }))
