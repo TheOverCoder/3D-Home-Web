@@ -69,19 +69,20 @@
     { "name": "what people say", "specs": ["23-market", "24-day", "30-house-for-sale"], "paths": ["src/talk/**"] },
     {
       "name": "the top of the screen",
-      "specs": ["14-hud", "22-xp", "37-first-steps"],
+      "specs": ["14-hud", "22-xp", "37-first-steps", "39-panels"],
       "paths": ["src/ui/{TopStack,HudMode,Compass,PhotoButton,Reveal}.{tsx,css}", "src/farm/{TopDash,XpChip,DayChip}.{tsx,css}", "src/farm/Xp.css"]
     },
     { "name": "the action button", "specs": ["02-interactions", "10-smart-farm", "25-button"], "paths": ["src/ui/{Hud,ActionGlyph,ThingTag}.{tsx,css}", "src/lib/interaction.ts"] },
     { "name": "touch", "specs": ["07-phone"], "paths": ["src/ui/TouchControls.tsx", "src/lib/{stick,gestures}.ts"] },
     {
       "name": "the panels' base",
-      "specs": ["17-stores-orders", "21-goals", "22-xp", "25-button", "32-machine-queue", "38-animal-tools"],
+      "specs": ["17-stores-orders", "21-goals", "22-xp", "25-button", "32-machine-queue", "38-animal-tools", "39-panels"],
       "paths": [
         "src/ui/{PanelSheet,Shell,Sheet,SwipeSheet,ScreenModal,ConfirmCard,ItemPic,GoodPic,GarmentPic,motion,motionFeatures,burst,fly,art,glyphs,still,calls,sheetMode,useGameFree}.{ts,tsx,css}",
         "src/ui/screens/**",
         "src/styles.css",
-        "src/farm/FarmUI.tsx"
+        "src/farm/FarmUI.tsx",
+        "tests/e2e/readable.ts"
       ]
     },
     { "name": "cards that open by themselves", "specs": ["20-away", "22-xp", "35-daily", "36-unlocks", "37-first-steps"], "paths": ["src/ui/cardQueue.ts"] },

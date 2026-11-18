@@ -68,6 +68,44 @@ export type Panel =
   | { kind: 'machine-slot'; id: 'mill' | 'loom' | 'oven' } // the card that asks before a machine's next place is bought
   | { kind: 'news' } // the farm news: the week's events on now and coming, and the lucky draw (src/farm/news)
 
+/** Every kind of panel, as one that opens on a farm with plenty of everything (tests/e2e/39-panels opens each, upright
+ *  and sideways, and measures what can be read and pressed). The type holds every kind of `Panel` once: a new panel
+ *  is one line here, appended, and it is measured by being here. */
+export const PANEL_KINDS: { readonly [K in Panel['kind']]: Extract<Panel, { kind: K }> } = {
+  seeds: { kind: 'seeds', bed: 0 },
+  build: { kind: 'build', bed: 4 },
+  bed: { kind: 'bed', bed: 0 },
+  queue: { kind: 'queue' },
+  shop: { kind: 'shop' },
+  store: { kind: 'store', store: 'silo' },
+  'store-upgrade': { kind: 'store-upgrade', store: 'barn' },
+  orders: { kind: 'orders' },
+  'office-upgrade': { kind: 'office-upgrade', id: 'slots' },
+  furniture: { kind: 'furniture' },
+  'buy-piece': { kind: 'buy-piece', type: 'sofa' },
+  'decor-shop': { kind: 'decor-shop', tab: 'decor' },
+  'decor-buy': { kind: 'decor-buy', item: 'lamp' },
+  away: { kind: 'away' },
+  daily: { kind: 'daily' },
+  goals: { kind: 'goals' },
+  level: { kind: 'level' },
+  wardrobe: { kind: 'wardrobe', piece: 'wardrobe' },
+  manager: { kind: 'manager' },
+  market: { kind: 'market' },
+  'market-place': { kind: 'market-place', place: 0 },
+  'market-buy': { kind: 'market-buy' },
+  contractor: { kind: 'contractor' },
+  car: { kind: 'car' },
+  estate: { kind: 'estate' },
+  'house-buy': { kind: 'house-buy' },
+  ladder: { kind: 'ladder', id: 'rate' },
+  machine: { kind: 'machine', id: 'mill' },
+  tool: { kind: 'tool', tool: 'hens' },
+  skins: { kind: 'skins', tool: 'hens' },
+  'machine-slot': { kind: 'machine-slot', id: 'mill' },
+  news: { kind: 'news' },
+}
+
 /** The thing you look at carries a tag (src/ui/ThingTag.tsx): a gear for what can be set about it, or a price tag for
  *  what it costs to build or buy; tapped (or G), it opens its card. */
 export interface ThingTag {
