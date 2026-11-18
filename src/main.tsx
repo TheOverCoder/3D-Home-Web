@@ -19,7 +19,11 @@ if (params.has('console')) import('./debug/console').catch(failed('console'))
 
 installDiagnostics()
 
-const root = createRoot(document.getElementById('root')!)
+// an error no part of the page caught stops it (every panel and layer of the game has a guard: src/ui/PanelGuard.tsx):
+// it goes into the diagnostics (Settings → Copy diagnostics), with where it happened
+const root = createRoot(document.getElementById('root')!, {
+  onUncaughtError: (error, info) => console.error(`[3d-home] uncaught, the page stopped: ${error instanceof Error ? `${error.name}: ${error.message}` : String(error)}`, info.componentStack ?? ''),
+})
 if (params.has('gallery')) {
   // the model gallery (src/models/Gallery.tsx): its own small page, loaded only when asked for
   // (its models are built at once, so the solid engine some of them are cut with loads first)

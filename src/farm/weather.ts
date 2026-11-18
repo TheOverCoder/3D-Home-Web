@@ -4,7 +4,8 @@
 // the same clock always gives the same weather, so a time away judges each of its steps at its own time and the sim and
 // the tests see what a player would. A spell eases in and out over SPELL.ease real seconds; fog comes only in the
 // morning; after rain by day, a rainbow one time in two. It only ever helps play (rain waters the beds: `wets`); what
-// it looks like is src/scene/weatherLook.ts's, whichever renderer draws it. Pure, and not yet wired to the farm.
+// it looks like is src/scene/weatherLook.ts's, whichever renderer draws it. Pure: the farm asks for the weather now in
+// src/farm/state/season.ts (`weatherNow`).
 
 import { DAY } from './data'
 import { dayOf, hourOf } from './day'
@@ -139,6 +140,14 @@ export function weatherAt(t: number, season: SeasonId): Weather {
     if (rainbow > 0) return { ...CLEAR, rainbow }
   }
   return CLEAR
+}
+
+/** A weather at its fullest, standing (a test's, or a ?debug page's `&weather=rain`): its kind fully in, with the
+ *  strongest wind its spells have; `rainbow`: clear weather with the whole rainbow. */
+export function standing(kind: WeatherKind | 'rainbow'): Weather {
+  if (kind === 'clear') return CLEAR
+  if (kind === 'rainbow') return { ...CLEAR, rainbow: 1 }
+  return { kind, amount: 1, wind: SPELL.wind[kind][1], rainbow: 0 }
 }
 
 /** Does it rain enough to water the beds? */

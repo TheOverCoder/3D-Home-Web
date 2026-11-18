@@ -9,6 +9,8 @@ import { growDispatch, growOrders } from './orders'
 import { runDay } from './day'
 import { runShop, shelvesEmpty } from './market'
 import { stepsOn } from './steps'
+import { markPlayed } from './daily'
+import { seasonOn } from './season'
 
 // The farm going on, frame by frame: everything grows, the people walk, the shop and the day run.
 
@@ -72,6 +74,8 @@ export function tick(dt: number) {
   runDay(dt)
   neverStuck()
   stepsOn()
+  markPlayed()
+  seasonOn()
   if (stageKey() !== before) {
     bump()
     save()

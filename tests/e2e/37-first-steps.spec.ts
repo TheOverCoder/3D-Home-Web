@@ -5,9 +5,10 @@ import { expect, test } from './helpers'
 
 // A new farm's first steps (src/farm/firstSteps.ts; the hint, src/farm/FirstSteps.tsx), as a player's farm has them (a
 // ?debug page keeps them quiet: they run here, `steps.quiet(false)`, and `ready()` quiets them again): the farmer's
-// bubble under the compass says the step, a tap on it walks you there, each step done moves it on and pays its reward,
+// bubble under the compass says the step (its line following the farm: a bed still wet, then dry), a tap on it walks
+// you there, each step done moves it on and pays its reward,
 // and after the last ("All set!") the slot is free and the daily gift comes; skipped (✕, then Skip) it is gone for good;
-// it stands aside under a panel and in the house, and in its place in the top column under a toast and the level-up.
+// it stands aside under a panel and in the house, and in its place in the top column, above a toast and the level-up.
 
 /** A new farm, its steps running, the locks on as a player's (once the interface has seen it at level 1). */
 async function newFarm(page: Page) {
@@ -45,6 +46,36 @@ const doStep = (page: Page, id: string) =>
     else throw new Error(`a step with no way to do it here: ${id}`)
   }, id)
 
+/** A step just done with a harvest's toast coming in (in the page, as the tick is stamped): at 0.3, 0.6 and 0.9 s the
+ *  bubble has not moved (the toast's slot is under the step's, src/ui/TopStack.tsx), the toast is clear of it, and the
+ *  done line is whole (Typed: a tick on a half-typed line cannot be read). What is wrong, or nothing. */
+const toastOnTheTick = (page: Page) =>
+  page.evaluate(async () => {
+    const h = (window as any).__home
+    const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
+    for (let i = 0; i < 500 && !document.querySelector('.step-bubble.done'); i++) await wait(20)
+    const bubbleBox = () => document.querySelector('.step-bubble')?.getBoundingClientRect()
+    const before = bubbleBox()
+    if (!before) return ['no bubble with its tick']
+    h.useHome.getState().showToast('+ 4 lettuces', 'lettuce')
+    const out: string[] = []
+    const t0 = performance.now()
+    for (const at of [300, 600, 900]) {
+      await wait(Math.max(0, t0 + at - performance.now()))
+      const b = bubbleBox()
+      const t = document.querySelector('.toast')?.getBoundingClientRect()
+      if (!b) {
+        out.push(`${at} ms: no bubble`)
+        continue
+      }
+      if (Math.abs(b.top - before.top) > 1) out.push(`${at} ms: the bubble moved ${Math.round(b.top - before.top)} px`)
+      if (t && t.width && t.left + 1 < b.right && b.left + 1 < t.right && t.top + 1 < b.bottom && b.top + 1 < t.bottom) out.push(`${at} ms: the toast over the bubble`)
+      const done = document.querySelector('.step-bubble.done')
+      if (done && done.querySelector('.step-ghost')?.textContent) out.push(`${at} ms: the done line half typed`)
+    }
+    return out
+  })
+
 test.describe("a new farm's first steps", () => {
   test('the hint walks you to each step, each done moves it on and pays its reward; after the last the daily gift comes', async ({ game }) => {
     test.setTimeout(400_000)
@@ -71,13 +102,26 @@ test.describe("a new farm's first steps", () => {
     expect((await record(page)).coins).toBe(before.coins - seeds + (FIRST_STEPS[0].reward as { coins: number }).coins)
     expect(await page.evaluate(() => (window as any).__home.farm.daily.waiting())).toBe(false)
 
-    // each next step: the bubble says it, the farm does it, the step moves on and pays its reward
+    // each next step: the bubble says it (its own line, or the turn the farm is at), the farm does it, the step moves
+    // on and pays its reward
     for (let k = 1; k < FIRST_STEPS.length; k++) {
       const s = FIRST_STEPS[k]
-      await expect(bubble(page)).toHaveAttribute('aria-label', `${s.say} — walk there`, { timeout: 15_000 })
+      await expect(bubble(page)).toHaveAttribute('data-step', s.id, { timeout: 15_000 })
+      await expect(bubble(page)).toHaveAttribute('aria-label', / — walk there$/)
       await expect(bubble(page)).toContainText(`+${(s.reward as { coins: number }).coins}`)
+      // the line follows the farm: the lettuce still wet from its soak, then dry
+      if (s.id === 'water') {
+        await expect(bubble(page)).toHaveAttribute('aria-label', "Water it once it's dry — walk there")
+        await page.evaluate(() => {
+          const f = (window as any).__home.farm.state
+          for (const b of f.beds) if (b.crop) b.water = 0
+        })
+        await expect(bubble(page)).toHaveAttribute('aria-label', `${s.say} — walk there`, { timeout: 15_000 })
+        await expect(bubble(page)).toHaveAttribute('data-turn', '-1')
+      }
       const was = await record(page)
       await doStep(page, s.id)
+      if (s.id === 'harvest') expect(await toastOnTheTick(page)).toEqual([])
       await expect.poll(async () => (await record(page)).step, { timeout: 15_000 }).toBe(k + 1)
       expect((await record(page)).coins - was.coins, s.id).toBe((s.reward as { coins: number }).coins)
     }
@@ -119,7 +163,7 @@ test.describe("a new farm's first steps", () => {
     expect((await record(page)).coins).toBeLessThan(coins)
   })
 
-  test('aside under a panel and in the house; in its place in the top column under a toast and the level-up, upright and sideways at phone size', async ({ game }) => {
+  test('aside under a panel and in the house; in its place in the top column, above a toast and the level-up, upright and sideways at phone size', async ({ game }) => {
     test.setTimeout(400_000)
     const { page } = game
     await game.ready('farm')
@@ -135,7 +179,7 @@ test.describe("a new farm's first steps", () => {
     await expect(hint(page)).toBeHidden()
     await page.evaluate(() => document.documentElement.setAttribute('data-hud', 'all'))
 
-    // the column full: a toast, the level's show, the step — one under another, none over another, on the screen
+    // the column full: the step, a toast, the level's show — one under another, none over another, on the screen
     // (measured in the page the first moment all three stand: a toast lasts two seconds)
     for (const size of [
       { width: 844, height: 390 },
@@ -163,8 +207,9 @@ test.describe("a new farm's first steps", () => {
           const [toast, level, step] = ['.toast', '.level-up-show', '.step-talk'].map(box)
           if (!toast || !level || !step || w.__column) return
           const out: string[] = []
+          // the step right under the compass, then the toast, then the level-up (src/ui/TopStack.tsx)
+          if (step.bottom > toast.top + 1) out.push('the step over the toast')
           if (toast.bottom > level.top + 1) out.push('the toast over the level-up')
-          if (level.bottom > step.top + 1) out.push('the level-up over the step')
           if (step.left < 0 || step.right > innerWidth || step.bottom > innerHeight)
             out.push(`the step off the screen (${Math.round(step.left)}–${Math.round(step.right)}, ${Math.round(step.top)}–${Math.round(step.bottom)})`)
           w.__column = out

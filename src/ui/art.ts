@@ -29,7 +29,6 @@ export type ArtId =
   | 'farmer-encouraging'
   | 'farmer-excited'
   | 'farmer-laughing'
-  | 'farmer-pleading'
   | 'farmer-proud'
   | 'farmer-sighing'
   | 'farmer-surprised'

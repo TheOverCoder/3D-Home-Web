@@ -189,7 +189,9 @@ The README has the overview; `tests/README.md` what each test guards.
   it put it out of the way (`quietDaily`: `ready()` and `bootApp` in `helpers.ts`); `35-daily` tests it.
 - A new farm's first steps are rows of `FIRST_STEPS` (`src/farm/firstSteps.ts`: the words, the farmer's mood (his face
   and move, `FarmerFace.tsx`), the picture, when it is
-  done by the farm's own numbers, where a tap walks you, the reward); `state.ts` passes and pays them a frame after the
+  done by the farm's own numbers, where a tap walks you (a `Target`, `walkTargets.ts`), the reward, and its turns: what
+  he says instead while the farm is elsewhere, so no step is a dead end on any day (`lineFor`; `steps.walk.test.ts`
+  follows only the hint on every weekday's events); `state.ts` passes and pays them a frame after the
   farm does them, and the farmer's hint under the compass says them (`src/farm/FirstSteps.tsx`, its own top slot,
   `steps`). They end after the last, skipped, or at level 5, and the daily gift waits for them. A ?debug page keeps
   them quiet (`&steps=on`, or `__home.farm.steps.quiet(false)`, runs them); specs not about them keep them quiet
@@ -263,6 +265,19 @@ The README has the overview; `tests/README.md` what each test guards.
 - The corner menu reads, top to bottom: the daily gift (while it waits), the farm news, edit, the top's view,
   settings. Its button shows both on its right-hand corners in that order: the waiting gift on the top one, the news's
   sun badge on the top one alone and on the bottom one beside the gift (the left side is the dashboard's).
+
+## Seasons and weather (src/farm/season.ts, weather.ts, src/farm/state/season.ts)
+
+- The farm's year is four seasons of `SEASON_DAYS` (7) days played each (`farm.played`: it waits through any absence),
+  counted from the day played its first spring began (`farm.season`); every farm starts in spring, the farm as it
+  always looked. They start once the first steps end (`SEASONS_AFTER_STEPS`): while the steps run the first spring
+  waits. The season moves only on a new day played, so a time away runs in the season it was left in. The weather is
+  a function of the farm's clock (`weatherAt`), never saved.
+- Whatever a season or the weather changes asks `seasonNow()` and `weatherNow()`: spring and clear while the steps run,
+  and where the game is tested (under Vitest; on a ?debug page unless `&season=on` or a season's name, `&weather=on`
+  or a weather's name). The clock itself, `seasonDay()`, is never quiet: the daily week counts on it. Specs stand in
+  spring and clear (`ready()`, `bootApp`); one turns them on or sets its own with `__home.season` (`set`,
+  `weather.set`, `quiet(false)`), a unit test with `setSeason`, `setWeather`, `quietSeasons`.
 
 ## The farm's decoration (src/farm/decor.ts, layout.ts, decorScene.tsx, DecorShop.tsx)
 

@@ -5,7 +5,7 @@
 // harvest, at least one: never less than any other season gives), the land's look and the light's colour and strength
 // (src/scene/weatherLook.ts turns them into numbers for the renderer), the week's events under seasonal names (their days,
 // hours and numbers unchanged), and the season's decoration. The weather's odds by season are in ./weather.ts.
-// Pure, and not yet wired to the farm: the farm keeps the record (`SeasonRecord`) once the mission's first change lands.
+// Pure: the farm keeps the record (`farm.season`) and asks what season it is in src/farm/state/season.ts.
 
 import { isObject } from '../lib/saved'
 import { CROPS, type CropId } from './data'
@@ -71,8 +71,14 @@ export const SEASONS = {
 } as const satisfies Record<SeasonId, SeasonDef>
 export const SEASON_IDS = Object.keys(SEASONS) as SeasonId[]
 
-/** How many days played a season lasts (a year: four times as many). */
+/** How many days played a season lasts (a year: four times as many). Days played wait through any absence
+ *  (src/farm/calendar.ts, LONG_CLOCK), so a season waits for you. */
 export const SEASON_DAYS = 7
+
+/** The seasons start once a new farm's first steps end: until then it stays in spring's sunshine (spring, clear weather),
+ *  and its first spring begins on the day played the steps end. False: the year begins on the farm's first day played,
+ *  whatever the steps. */
+export const SEASONS_AFTER_STEPS = true
 
 /** A count read as a whole number of days (not a number: none). */
 const whole = (n: number) => (Number.isFinite(n) ? Math.floor(n) : 0)
@@ -108,7 +114,8 @@ export function eventLook(id: EventId, season: SeasonId): { name: string; pic: s
 export const cropSeasons = () => CROPS.map((c) => ({ crop: c.id, season: seasonOf(c.id) }))
 
 /** What the farm keeps of its year: the day played its seasons began on (its first spring), and the last season (by
- *  `ordinal`) whose arrival it has shown (-1: none yet). */
+ *  `ordinal`) whose arrival it has shown (-1: none yet, the year not begun; its first spring, which has no arrival to
+ *  show, makes it 0 as it begins: src/farm/state/season.ts, seasonOn). */
 export interface SeasonRecord {
   from: number
   told: number

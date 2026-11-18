@@ -9,6 +9,7 @@ import { CROPS, MACHINE_IDS, type StoreId } from '../farm/data'
 import { garmentAt } from '../farm/outfit'
 import { AWAY_TELLS, awayNews, bedStage, dailyDue, farm, machineSecondsLeft, machineStage, stepNow, type AwayReport } from '../farm/state'
 import { opensAt, unlockName } from '../farm/unlocks'
+import { nextCard, type CardId } from '../ui/cardQueue'
 import { levelOf } from '../farm/xp'
 import { playVisits, type PaceId, type ProfileId, type Visit } from './sessions'
 import { JOURNEY } from './targets'
@@ -102,11 +103,21 @@ export const SOURCES: Source<unknown>[] = [
   source({ id: 'work', look: longest, news: () => [], pull: (now) => now }),
 ]
 
-/** The cards that open by themselves as a visit begins, in their order (the plan's card queue reads the same rows). */
-export const AUTO_CARDS: { id: string; opens: (back: AwayReport | null) => boolean }[] = [
-  { id: 'welcome back', opens: (back) => back !== null && back.seconds >= AWAY_TELLS && awayNews(back) },
-  { id: 'daily gift', opens: () => dailyDue() },
+/** The cards that open by themselves as a visit begins (`card`: its id in the game's queue, src/ui/cardQueue.ts), and
+ *  the ones that open: as the queue opens them, in its order and within its budget. */
+export const AUTO_CARDS: { id: string; card: CardId; opens: (back: AwayReport | null) => boolean }[] = [
+  { id: 'welcome back', card: 'away', opens: (back) => back !== null && back.seconds >= AWAY_TELLS && awayNews(back) },
+  { id: 'daily gift', card: 'daily', opens: () => dailyDue() },
 ]
+function autoCards(back: AwayReport | null): string[] {
+  const due = AUTO_CARDS.filter((c) => c.opens(back)).map((c) => c.card)
+  const opened: CardId[] = []
+  for (;;) {
+    const id = nextCard({ due, opened, free: true, showing: null, stepsEndedThisVisit: false })
+    if (!id) return opened.map((card) => AUTO_CARDS.find((c) => c.card === card)!.id)
+    opened.push(id)
+  }
+}
 
 export interface VisitNews extends Visit {
   /** minutes played before it */
@@ -141,7 +152,7 @@ export function journey(opts: { profile: ProfileId; days: number; pace?: PaceId;
   playVisits(opts, {
     begin(visit, back) {
       if (out.length) out[out.length - 1].gap = back?.seconds ?? null
-      const auto = AUTO_CARDS.filter((c) => c.opens(back)).map((c) => c.id)
+      const auto = autoCards(back)
       now = {
         ...visit,
         minute,

@@ -192,31 +192,41 @@ export function setEventClock(at: number | 'device' | null): void
 ### 1.5 `PanelGuard`: `src/ui/PanelGuard.tsx` (owner 08, phase 0)
 
 ```tsx
-/** An error in rendering what is inside closes the panel: closePanel(), toast "That didn't open properly", and the
- *  error goes into diagnostics (Copy diagnostics). It renders nothing then. Keyed by the panel's kind, so the next panel
- *  mounts fresh. */
-export function PanelGuard(props: { name: string; children: ReactNode }): ReactNode
+/** An error in rendering what is inside closes what is open (`close`, by default closePanel()), toasts "That didn't
+ *  open properly" (DIDNT_OPEN), and goes into diagnostics (Copy diagnostics). It renders nothing then, and draws from
+ *  fresh once `name` (what it holds now: the open panel's kind, '' when nothing is) changes. `layer`: a part of the
+ *  screen, not something opened: left out with no toast and nothing closed, drawn again once what is over the game
+ *  changes, LAYER_TRIES (3) times in a row at most. */
+export function PanelGuard(props: { name: string; children: ReactNode; close?: () => void; layer?: boolean }): ReactNode
+export const guardHooks: { fail(name: string): void }   // ?debug `__home.guard`: a fault inside that guard, once
 ```
 - **Rules:**
-  - It wraps every panel slot in `FarmUI.tsx`, and `Hud` and `HudMode`.
+  - One guard holds `FarmUI.tsx`'s whole slot list (`name` the open panel's kind); the edit and decorate cards, the
+    settings and a screen have their own (their `close` leaves the mode or closes them). `Hud`, `HudMode`, the
+    dashboard, the level's show, the steps' hint, the watchers, the photo button and the touch controls are layers.
   - It goes outside `PanelSheet`, never inside it.
-  - 07 keeps it when it moves the panels onto the sheet.
-  - A new panel needs nothing.
-- **Called by:** `FarmUI.tsx`, `App.tsx`. It is tested by `40-safety` (§2, B12).
+  - 07 keeps it when it moves the panels onto the sheet; 08b keeps `App.tsx`'s guards when they move to `GameLayer`.
+  - A new panel needs nothing: its slot line goes inside the guard.
+  - An error nothing caught goes into diagnostics too (`createRoot`'s `onUncaughtError`, `main.tsx`).
+- **Called by:** `FarmUI.tsx`, `App.tsx`. It is tested by `PanelGuard.test.ts` and `40-safety` (§2, B12).
 
 ### 1.6 The card queue: `src/ui/cardQueue.ts` (owner 08, phase 0; its budget **[review]**)
 
 ```ts
 // Pure core: no React, no DOM, so the sim's journey (src/sim/journey.ts) imports the same order and budget.
-/** The order the cards that open by themselves come in; the ids are this list's. [review: no 'season' card] */
-export const CARD_ORDER = ['away', 'daily', 'unlocked', 'letter', 'counts'] as const
+/** The order the cards that open by themselves come in; the ids are this list's. [review: no 'season' card] No
+ *  'counts' card: decision 20 is no. */
+export const CARD_ORDER = ['away', 'daily', 'unlocked', 'letter'] as const
 export type CardId = (typeof CARD_ORDER)[number]
 /** [review] At most this many open by themselves in one visit, the welcome back counted. Each of the rest waits where it
- *  lives (the gift in the corner menu, an unlock on the level chip, a letter on the mailbox's flag, the counts' question
- *  in Settings). */
+ *  lives (the gift in the corner menu, an unlock on the level chip, a letter on the mailbox's flag). */
 export const VISIT_MOST = 2
 /** [review] The cards that may open by themselves in the visit the first steps end in. */
 export const AFTER_STEPS: readonly CardId[] = ['away']
+/** The cards that may open more than once a visit (within VISIT_MOST): each level's reveal is its own. */
+export const AGAIN: readonly CardId[] = ['unlocked']
+/** This visit can no longer open the card by itself: the budget spent, opened already (not AGAIN), or after the steps. */
+export function spent(id: CardId, q: Pick<QueueNow, 'opened' | 'stepsEndedThisVisit'>): boolean
 export interface QueueNow {
   due: readonly CardId[]          // the cards that want to open now
   opened: readonly CardId[]       // the ones opened by themselves this visit
@@ -228,14 +238,24 @@ export interface QueueNow {
  *  AFTER_STEPS in the visit the first steps ended in; none twice a visit; else the first due in CARD_ORDER. */
 export function nextCard(q: QueueNow): CardId | null
 
-// The runtime, wired by 08 in phase 0:
-export interface CardDef { due(): boolean; open(): void; showing(): boolean }
+// The runtime, wired by 08 in phase 0, in the same file and still with no React and no DOM:
+export interface CardDef { due(): boolean; open(): void; showing(): boolean; pass?(): void }   // pass: let go past the budget
 export function registerCard(id: CardId, def: CardDef): () => void
-export function CardWatcher(): null          // a beat (900 ms) of the game free, then nextCard → open; replaces DailyWatcher's own timer
-export function cardShowing(): CardId | null // gameFree() counts a card showing as busy
+export function cardShowing(): CardId | null
+export function visitNow(): { opened: readonly CardId[]; passed: readonly CardId[]; stepsEnded: boolean }
+export function newVisit(): void; export function stepsEndedThisVisit(): void
+export function cardTurn(free: boolean): CardId | null   // passes the spent cards due, then opens the next in order
+// src/ui/useGameFree.ts (React: kept out of the sim's import):
+export function CardWatcher(): null          // a beat (900 ms) of the game free, a toast counted, no card showing → cardTurn; replaces DailyWatcher's own timer
+// gameFree() counts the panels (the welcome back and the day's gift are panels) and the welcome back while it can still
+// open; "Unlocked!" plays over the game like the level's show (the steps' hint stays under it): only CardWatcher waits.
 ```
 - **Rules:**
-  - **A visit** is a load, or a return after `AWAY_TELLS` (2 min) or more.
+  - **A visit** is a load, or a return after `AWAY_TELLS` (2 min) or more (the page shown again after that long hidden,
+    or a time away told); also a new day while the game is open (its gift is a new day's), and another farm (another
+    slot, or one started again: its XP fell).
+  - **Past the budget** a card due is let pass (`pass`, kept in the visit's `passed`): a level's reveal is let go, not
+    put off to a later visit.
   - **The daily gift** carries the season's line ("Summer, day 1 of 7"), so a season has no card of its own. The first
     spring has no card at all. **[review]**
   - **The first steps' end** lands over three visits **[review]**:
@@ -244,17 +264,17 @@ export function cardShowing(): CardId | null // gameFree() counts a card showing
     2. **The next visit:** the daily gift's first day, the first neighbour, and their letter.
     3. **Day 2:** the news.
   - **The first letter** is the only letter that opens by itself.
-  - **The counts' question** (08, decision 20) is asked once, from the second visit on, and only if the decision is
-    yes.
-  - The welcome back is the existing `{ kind: 'away' }` panel. `unlocked` is `Unlocked.tsx`: a level's reveal waits
-    for the queue, as it waits for `useGameFree()` today.
+  - **No counts' question:** decision 20 is no.
+  - The welcome back is the existing `{ kind: 'away' }` panel (`AwayWatcher` registers it), the day's gift the `daily`
+    panel (`DailyWatcher`). `unlocked` is `Unlocked.tsx`: the reveal `XpChip`'s `LevelUp` asks for registers and waits
+    for its turn; past the budget it is let go.
 - **Called by:**
   - 02: the daily gift;
   - 03: the first letter;
   - 04: the steps' end, and the welcome back's *Next*;
-  - 08: the counts;
-  - `XpChip`: unlocked;
-  - the journey's `AUTO_CARDS`, which becomes an import of `CARD_ORDER` and `VISIT_MOST`, not a copy (§2, B16).
+  - `XpChip` (through `Unlocked`): unlocked;
+  - the journey's `AUTO_CARDS`, which opens its cards through `nextCard` (the order and the budget), not a copy (§2,
+    B16).
 
 ### 1.7 Less motion: `src/ui/still.ts` (owner 07, the first commit of phase 1)
 
@@ -447,10 +467,18 @@ export function rewardTier(prizes: readonly Prize[], level: number, least?: Tier
 // src/farm/state/rewards.ts (05)
 /** Counts a reward once, queues the world's show where `at` is a world point, and returns its tier. */
 export function rewarded(kind: RewardKind, prizes: readonly Prize[], at?: At): Tier
-export function rewardCounts(): Readonly<Record<RewardKind, Readonly<Record<Tier, number>>>>   // the sim, __home.reward
+export function rewardCounts(): Readonly<Record<RewardKind, Readonly<Record<Tier, number>>>>   // the sim, __home.reward (a copy)
+export function resetRewardCounts(): void                                                      // a sim's new farm, a test
+export const foundPrizes: (items: readonly ItemId[]) => Prize[]   // the surprises found with a payout, as its prizes
 
 // src/fx/reward.ts (05)
+/** Decision 15, confetti only for real rewards: the least tier that throws it, the one floor. */
+export const CONFETTI_FROM: Tier = 'big'
 export const SHOW: Readonly<Record<Tier, { pop: number; holdMs: number; confetti: { count: number; spread: number; power: number } | null }>>
+/** The world's shows `rewarded` queues (none under lessMotion; the latest MOST_SHOWS kept), taken once a frame by the
+ *  effects (05b's `reward` request in FarmFx.tsx). */
+export function showReward(kind: RewardKind, tier: Tier, at: { x: number; y: number; z: number }): void
+export function takeRewardShows(): { kind: RewardKind; tier: Tier; x: number; y: number; z: number; at: number }[]
 /** The one fan-out: rewardSound(kind, tier) and haptic(rewardFeel(kind, tier)) (§1.12), the number pop and the
  *  confetti by SHOW[tier] (none under lessMotion; at most one confetti every 1.5 s). */
 export function celebrate(kind: RewardKind, tier: Tier, at: Element | { x: number; y: number } | null): void
@@ -460,21 +488,27 @@ export type Reaction = 'pluck' | 'pick' | 'sprout' | 'perk' | 'wiggle' | 'rustle
 export type ReactOwner = 'plant' | 'fruit' | 'animal' | 'thing'
 export const REACTIONS: Readonly<Record<Reaction, { ms: number; keys: readonly (readonly [t: number, xz: number, y: number])[] }>>
 export function react(owner: ReactOwner, id: string | number, kind: Reaction, data?: unknown): void   // nothing under lessMotion
-export function reaction(owner: ReactOwner, id: string | number): { xz: number; y: number } | null
+export function reaction(owner: ReactOwner, id: string | number): { xz: number; y: number; kind: Reaction; data: unknown } | null
 export function reacting(owner: ReactOwner): boolean
 export function freeze(ms: number | null): void
+export function scaleAt(kind: Reaction, share: number): { xz: number; y: number }   // eased between the row's moments
+export function stopReactions(): void                                                // another farm, a test
 // src/lib/sculpt/parts.ts: at(x, y, z, heading = 0, scale: number | Vector3 = 1)
 ```
 - **Rules:**
   - **The amount decides, never dice, a streak or a near miss.**
-  - **What counts nothing:** a decline, a cancel, a refund, or a full store.
-  - **Each payout counts once:** selling to the whole line is one.
+  - **What counts nothing:** a decline, a cancel, a refund, a purchase, or a full store.
+  - **Each payout counts once:** selling to the whole line is one; so is everything sold to the manager at once, and
+    one open of gift boxes. A level reached is one however many levels at once; the garment a level comes with is
+    a `garment` reward of its own. The surprises found with a payout are among its prizes (`foundPrizes`), never a
+    reward apart. Each first step passed is one.
   - **`least` comes only from `REWARD_KINDS`.** The seventh day, the fourth box and the milestone levels are bigger
     only by what they hold, and 02 can give them more.
   - **The prizes are rolled at the press**, as today. The card then shakes and reveals, so the tier is known before
     the shake, and 06's huge duck can start 300 ms before it.
   - **A card payout's UI calls `celebrate`** with the tier the action returns.
-  - **A world payout's show** is queued by `rewarded()`, through `fx/fx.ts`, as `coinsFx` is.
+  - **A world payout's show** is queued by `rewarded()` in `fx/reward.ts` (`showReward`), as `coinsFx` is in
+    `fx/fx.ts`; the effects take it with `takeRewardShows()`.
   - **`.pop-num` is 15 px or more at the small tier**, so it passes `readable.ts`.
 - **Called by:**
   - every payout: the sales in 01's, 03's and 09's modules;
@@ -621,21 +655,29 @@ export function moodOf(good: ProduceId, day: number): number                    
 ### 1.15 Season and weather (owner 10, phase 1; already written, unwired)
 
 ```ts
-// src/farm/season.ts (as written): SeasonId, SEASONS, SEASON_DAYS = 7, seasonAt(played, from) → { id, day, ordinal, left, next },
-// inSeason, seasonOf, seasonExtra, SeasonRecord { from, told }, freshSeason, sanitizeSeason(raw, played)
-// src/farm/weather.ts (as written): Weather, CLEAR, weatherAt(t, season), wets(w)
+// src/farm/season.ts (as written): SeasonId, SEASONS, SEASON_DAYS = 7, SEASONS_AFTER_STEPS = true, seasonAt(played, from) →
+// { id, day, ordinal, left, next }, inSeason, seasonOf, seasonExtra, SeasonRecord { from, told }, freshSeason, sanitizeSeason(raw, played)
+// src/farm/weather.ts (as written): Weather, CLEAR, weatherAt(t, season), standing(kind), wets(w)
 // src/scene/weatherLook.ts (as written): Look, IDENTITY, lookOf(season, weather), moodWith(mood, look)
 // src/farm/state/season.ts (10)
 export function seasonNow(): SeasonId          // the season's look and effects: spring while the steps run or the seasons are quiet
-export function seasonDay(): { id: SeasonId; day: number; ordinal: number }   // the clock itself: never quiet (the daily week reads it)
+export const seasonDay: () => { id: SeasonId; day: number; ordinal: number; left: number; next: SeasonId }   // the clock itself: never quiet (the daily week reads it)
 export function weatherNow(): Weather          // CLEAR while the steps run or the weather is quiet
-export function setSeason(id: SeasonId | null): void
-export function setWeather(w: Weather | null): void
+export function setSeason(to: SeasonId | 'clock' | null): void   // a test's own season, by the clock as in play, or quiet (spring)
+export function setWeather(to: Weather | 'clock' | null): void   // a test's own weather, by the farm's clock as in play, or quiet (clear)
+export function quietSeasons(on: boolean): void                  // both quiet (true), or both by their clocks; ?debug: __home.season.quiet
+export function seasonOn(): void               // each frame, from tick: while the first steps run, the first spring waits
+export const savedSeason: (raw: unknown, played: Played) => SeasonRecord   // load(): sanitizeSeason against days played, today counted
 // src/farm/state/beds.ts
 export function yieldOf(crop: CropId, bed?: BedState): number   // compost, then the season (a bed sown in season keeps it)
 ```
 - **Rules:**
   - **The season's clock** (`seasonDay`) is days played, and is never quiet: the daily week runs on it in tests too.
+  - **The seasons start once the first steps end** (`SEASONS_AFTER_STEPS`): while the steps run, `from` follows the days
+    played (`seasonOn`), so the first spring's day 1 is the day played they end. Then the year has begun, once: `told`
+    becomes 0 (the first spring has no arrival to show), and the tips shown again from Settings never turn it back.
+  - **A farm loads before it counts today** (`markPlayed` runs on its first frame), so its year is read against the days
+    played with today counted (`savedSeason`): a farm from before the seasons begins its first spring on today's day played.
   - **What is quiet** in tests and on `?debug` is the season's effects: the look, the in-season yield, the weather, and
     the news's season line.
   - **Keep the events' names** **[review, fix 12]**. A season shows its own picture beside an event's name.
@@ -891,7 +933,7 @@ Every new or changed field of the farm's save (`FarmData`, `3d-home:farm:v1…`)
 | `orders[k].order.from`, `.chapter` | 03 | optional `PersonId`, `ChapterId` | `from` kept only for a neighbour met; `chapter` never on the board (requests hold chapters) | `orders.k: an order`: `sameKeys` accepts the optional `from`; `bad('orders.k.from', o.from === undefined \|\| met(o.from))` |
 | `queue[k].who` (the saved line) | 03 | optional `NeighbourId` | a neighbour met, once in the line; else a stranger | `bad('buyer who', v.who === undefined \|\| (met(v.who) && unique whos))` |
 | `ledger` | 09 | `Ledger` (`src/farm/ledger.ts`) | `sanitizeLedger(raw.ledger, calendarDay())`; missing: empty | `bad('ledger', days ascending, unique, within LEDGER_DAYS of TODAY, none empty, every tally two counts, soldAt(good, channel))`; coupling: `time` → `ledger` (the shop's sales while away) |
-| `season` | 10 | `SeasonRecord { from: number; told: number }` | `sanitizeSeason(raw.season, data.played.days)`; missing: its first spring begins today | `bad('season', sameKeys(s, ['from','told']) && Number.isInteger(s.from) && s.from >= 1 && s.from <= Math.max(1, farm.played.days) && Number.isInteger(s.told) && s.told >= -1 && s.told <= seasonAt(farm.played.days, s.from).ordinal)`; coupling: `played`, and `daily` on a save without `played` → `season` |
+| `season` | 10 | `SeasonRecord { from: number; told: number }`: `told` -1 until the year begins (the first steps end), then the last season whose arrival was shown | `savedSeason(raw.season, data.played)`: `sanitizeSeason` against the days played with today counted; missing: its first spring begins today | with `playedToday = played.days + (played.last < TODAY ? 1 : 0)`: `bad('season', sameKeys(s, ['from','told']) && Number.isInteger(s.from) && s.from >= 1 && s.from <= Math.max(1, playedToday) && Number.isInteger(s.told) && s.told >= -1 && s.told <= seasonAt(playedToday, s.from).ordinal)`; coupling: `played`, and `daily` on a save without `played` → `season` |
 | `beds[i].seasonal` | 10 | `boolean` (sown in season) | `!!b.seasonal && crop !== null` | `beds.i: its fields` gains `'seasonal'`; `bad('beds.i.seasonal', typeof b.seasonal === 'boolean' && (!b.seasonal \|\| b.crop !== null))` |
 | `car` | 11 | `{ owned: PaintId[]; worn: PaintId }` | missing: `{ owned: ['red'], worn: 'red' }`; `owned` in `CAR_PAINTS` order, red always; `worn` owned | `bad('car', sameKeys(c, ['owned','worn']) && json(c.owned) === json(CAR_PAINT_IDS.filter(p => c.owned.includes(p))) && c.owned.includes('red') && c.owned.includes(c.worn))` |
 | `expansions.north`, `.meadow`, `.far` | 01 | `boolean` | `!!raw.expansions?.[k]` | `sameKeys(farm.expansions, EXPANSION_IDS)` in place of the literal `['east','west']` |
@@ -942,7 +984,6 @@ has passed, and at most `VISIT_MOST` (2) a visit, the welcome back counted. **[r
 | 2 | `daily`: the day's gift, with the season's line and the welcome-back gift | the first view of a day played, after the visit the steps ended in | in the corner menu |
 | 3 | `unlocked`: what a level opened | after the level's show and its garment, in the top slot | on the level chip |
 | 4 | `letter`: the first letter only | the visit after the steps end | on the mailbox's flag, and the compass |
-| 5 | `counts`: 08's question (only if decision 20 is yes) | once, from the second visit | in Settings |
 
 **3. The top column** (`TopStack`, in this order): `compass` 1, `steps` 2, `toast` 3, `level` 4, `busy` 5.
 - 04 drops `hint` (the controls are taught in place).

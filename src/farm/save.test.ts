@@ -3,8 +3,9 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import { endsWithin } from '../lib/endsWithin'
 import { BEDS, DAY, MACHINES, PRODUCERS, PRODUCER_IDS } from './data'
 import { PLACES, type Placement } from './layout'
-import { addJob, buyPiece, collect, farm, freeSpotFor, gateX, inLine, machineStage, placeStored, storePiece, tick } from './state'
+import { addJob, buyPiece, collect, farm, freeSpotFor, gateX, inLine, machineStage, placeStored, seasonDay, storePiece, tick } from './state'
 import { levelOf, seedXp } from './xp'
+import { dayNumber } from './calendar'
 import { tripSeconds } from './tractorRoute'
 import { OLD_SAVE, playedSave, savedNow, startFrom } from './testSaves'
 import { defaultHome } from '../home/layout'
@@ -23,7 +24,8 @@ let loaded: Save
 const without = (save: Save, ...keys: string[]) => Object.fromEntries(Object.entries(save).filter(([k]) => !keys.includes(k)))
 
 beforeAll(() => {
-  played = playedSave()
+  // (played on the device's own calendar: as of the day these tests stand on, its first day played)
+  played = { ...playedSave(), played: { days: 1, last: dayNumber(NOW) } }
 })
 beforeEach(() => {
   // the clock stands still: a save made "now" loads with no time away, the same every time
@@ -333,6 +335,43 @@ describe('a save broken or edited by hand', () => {
     }
     startFrom({ ...played, place: 'home' })
     expect(farm.place).toBe('home')
+  })
+
+  it('days played: kept as saved, never past today; a farm from before them starts from its daily streak and last claim', () => {
+    const today = dayNumber(NOW)
+    expect(farm.played).toEqual({ days: 1, last: today })
+    startFrom({ ...played, played: { days: 40, last: today + 9 } })
+    expect(farm.played).toEqual({ days: 40, last: today })
+    startFrom({ ...played, played: 'lots' })
+    expect(farm.played).toEqual({ days: 2, last: dayNumber(Date.UTC(2026, 10, 9, 12)) })
+    startFrom({ ...without(played, 'played'), daily: { last: today - 1, streak: 9, offered: -1, week: [] } })
+    expect(farm.played).toEqual({ days: 9, last: today - 1 })
+    startFrom({ ...OLD_SAVE, time: NOW })
+    expect(farm.played).toEqual({ days: 0, last: -1 })
+  })
+
+  it('the farm’s year: kept as saved, begun no later than today; a farm from before the seasons begins its first spring today', () => {
+    const today = dayNumber(NOW)
+    expect(farm.season).toEqual({ from: 1, told: 0 })
+    // forty days played, its seasons begun on the 15th: winter's fifth day, winter's arrival shown
+    startFrom({ ...played, played: { days: 40, last: today }, season: { from: 15, told: 3 } })
+    expect(farm.season).toEqual({ from: 15, told: 3 })
+    expect(seasonDay()).toMatchObject({ id: 'winter', day: 5, ordinal: 3 })
+    // begun ahead of today, an arrival shown ahead of its season: begun today, nothing ahead of it shown
+    startFrom({ ...played, played: { days: 40, last: today }, season: { from: 41, told: 9 } })
+    expect(farm.season).toEqual({ from: 40, told: 0 })
+    // unreadable: begun today
+    startFrom({ ...played, season: 'winter' })
+    expect(farm.season).toEqual({ from: 1, told: -1 })
+    // a farm from before the seasons, nine days played until yesterday: its first spring begins today, its tenth
+    startFrom({ ...without(played, 'season'), played: { days: 9, last: today - 1 } })
+    expect(farm.season).toEqual({ from: 10, told: -1 })
+    tick(0.1)
+    expect(farm.played).toEqual({ days: 10, last: today })
+    expect(seasonDay()).toMatchObject({ id: 'spring', day: 1, ordinal: 0 })
+    // and the oldest, from before days played too
+    startFrom({ ...OLD_SAVE, time: NOW })
+    expect(farm.season).toEqual({ from: 1, told: -1 })
   })
 
   it('a buyer in line saved before the people engine (a hat yes or no, three hair styles) loads as they were', () => {
