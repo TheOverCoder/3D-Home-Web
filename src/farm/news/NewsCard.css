@@ -178,3 +178,36 @@
   .news-card .nw-won-names { flex-direction: column; gap: 2px; }
   .news-card .nw-won-names b { width: auto; }
 }
+
+/* ── the two tabs: this week (the events), this season (the season road) ── */
+.news-card .nw-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 0 0 10px; padding: 4px; border-radius: 999px; background: var(--paper-2); box-shadow: inset 0 2px 2px rgba(110, 84, 64, 0.12); }
+.news-card .nw-tab { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; margin: 0; padding: 0 12px; border: 0; border-radius: 999px; background: none; color: var(--ink-2); font: 600 16px/1 var(--font-display); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.news-card .nw-tab .art { width: 24px; height: 24px; margin: -4px 0; }
+.news-card .nw-tab.on { background: #fff; color: var(--ink); box-shadow: 0 2px 0 var(--paper-3); }
+.news-card .nw-tab:focus-visible { outline: 3px solid var(--sun); outline-offset: -2px; }
+
+/* ── this season: the season road ── */
+.news-card .nw-road { display: grid; gap: 12px; }
+.news-card .nw-road-head { display: flex; align-items: center; gap: 10px; }
+.news-card .nw-road-head > .art { flex: none; width: 46px; height: 46px; }
+.news-card .nw-road-words { display: grid; gap: 2px; flex: 1; min-width: 0; }
+.news-card .nw-road-words b { font: 600 22px/1.1 var(--font-display); color: var(--ink); }
+.news-card .nw-road-words small { font: 700 14px/1.2 var(--font-text); color: var(--ink-2); }
+.news-card .nw-road-line { margin: 0; font: 700 15px/1.3 var(--font-text); color: var(--ink-2); text-align: center; }
+/* the road: ten stops on a line (their middles 19 px down their row), filled as far as the XP has come */
+.news-card .sr-road { position: relative; display: grid; margin: 0; padding: 0; list-style: none; }
+.news-card .sr-line-track { position: absolute; z-index: 0; top: 15px; height: 8px; border-radius: 999px; background: var(--paper-3); box-shadow: inset 0 2px 2px rgba(110, 84, 64, 0.18); overflow: hidden; }
+.news-card .sr-line-fill { position: absolute; inset: 0; transform-origin: 0 50%; border-radius: 999px; background: linear-gradient(to bottom, color-mix(in srgb, var(--leaf) 60%, #fff), var(--leaf) 60%); }
+.news-card .sr-line-next { position: absolute; inset: 0 auto 0 0; border-radius: 999px; background: repeating-linear-gradient(-45deg, var(--sun) 0 5px, color-mix(in srgb, var(--sun) 35%, #fff) 5px 10px); }
+.news-card .sr-stop { position: relative; z-index: 1; display: grid; justify-items: center; gap: 2px; min-width: 0; }
+.news-card .sr-disc { position: relative; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--paper-2); box-shadow: 0 0 0 2px #fff, 0 2px 0 var(--paper-3); }
+.news-card .sr-disc .art { width: 20px; height: 20px; }
+.news-card .later .sr-disc .art { filter: grayscale(0.85) brightness(1.08); opacity: 0.62; }
+.news-card .got .sr-disc { background: #fff; box-shadow: 0 0 0 3px color-mix(in oklab, var(--leaf) 45%, #fff), 0 2px 0 var(--paper-3); }
+.news-card .next .sr-disc { background: #fff; box-shadow: 0 0 0 3px var(--sun), 0 2px 0 var(--sun-lip); }
+.news-card .sr-stop.big .sr-disc { width: 36px; height: 36px; margin-top: -3px; }
+.news-card .sr-stop.big .sr-disc .art { width: 30px; height: 30px; }
+.news-card .sr-check { position: absolute; top: -6px; right: -7px; display: grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; background: var(--leaf); color: #fff; box-shadow: 0 0 0 2px #fff; }
+.news-card .sr-check svg { width: 10px; height: 10px; }
+.news-card .sr-num { font: 800 13px/1.2 var(--font-text); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.news-card .next .sr-num { color: var(--ink); }

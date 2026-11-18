@@ -44,6 +44,8 @@
     "37-first-steps.spec.ts": 65,
     "38-animal-tools.spec.ts": 121,
     "39-panels.spec.ts": 540,
-    "40-safety.spec.ts": 60
+    "40-safety.spec.ts": 60,
+    "43-album.spec.ts": 60,
+    "44-season-road.spec.ts": 45
   }
 }
