@@ -4,9 +4,10 @@ The eleven missions, checked against the goal: a game that is easy from the firs
 to every day because coming back is good, never because they are pressed. The journey below is what the missions
 would make. The holes are where it breaks, and the fixes are changes to the missions, ranked.
 
-**How it was measured.** A scratch session runner, which is the session runner mission 08 proposes, played the
-sim's good player (`src/sim/policy.ts`) through sessions and nights, using the game's own `tick` and `cameBack`. The
-runner is at `/tmp/claude-0/-home-user-3D-Home-Web/c164316d-9885-5f35-97a5-084ad876b169/scratchpad/journey/`.
+**How it was measured.** The session runner mission 08 proposes, written for this as `src/sim/sessions.ts`, played
+the sim's good player (`src/sim/policy.ts`) through visits and nights, using the game's own `tick` and `cameBack`.
+It is the only session runner: 08's health table builds on it, and does not add a second one. Every figure here
+comes from `SIM_JOURNEY=daily npm run sim` or `SIM_JOURNEY=light npm run sim` (seed 1).
 - **The real player** walks at 1.5 m/s and takes 4 s a press: about 0.6× the good player's XP a minute (level 5 at
   15 minutes, against the good player's level 7).
 - **Daily:** three visits a day (08's `SESSIONS`: morning 8 min, noon 5, evening 12). Day 1 has a 15-min first
@@ -18,16 +19,16 @@ Today's game was played as it is, and each mission's rows were laid over the lev
 
 | Day | 1 | 2 | 3 | 7 | 10 | 14 | 21 | 30 |
 |---|---|---|---|---|---|---|---|---|
-| Level, daily player (play so far) | 8 (31 min) | 11 | 13 | 20 | 25 | 30 (6 h) | 37 | 45 (12.8 h) |
-| Level, light player | 8 | 9 | 10 | 12 | 15 | 16 | 20 | 24 |
+| Level, daily player (play so far) | 8 (31 min) | 11 | 13 | 20 | 25 | 29 (6 h) | 36 | 44 (12.8 h) |
+| Level, light player | 8 | 9 | 10 | 12 | 14 | 16 | 19 | 23 |
 | Season (10: 7 days played), daily / light | spring | spring | spring | spring | summer / summer | summer / summer | autumn / autumn | spring again / winter |
 
 **What the runner found in today's game:**
 - **A dense first sitting:** in 15 minutes, 4 levels, 17 unlock rows, 19 of the level's gift boxes, 12 goals, the
   daily gift and a garment.
 - **Short timers:** after every visit the whole farm is ripe within 2 minutes.
-- **Full stores:** 59 of 89 returns (66 %) find the silo or the barn full, and so do 23 of 29 mornings. The light
-  player finds them full on 16 of 23 returns.
+- **Full stores:** 65 of 89 returns (73 %) find the silo or the barn full, and so do 20 of 29 mornings. The light
+  player finds them full on 11 of 23 returns (48 %).
 - **The unlock wall:** nothing unlocks after level 13, which is day 3 for the daily player and day 8 for the light one.
 
 ## 1. The journey, as the missions would make it
@@ -70,7 +71,7 @@ serves (`psychology.md` §, `farm-games.md` P, `ftue-ux.md` F).
 **Day 2, the morning return** (07:30, 10 h away, level 8 → 9)
 - **Sees and does:** the start menu says "10 h away" with what waits, and the farm opens facing ripe beds. The
   welcome-back card (about 70 goods and 9 buyers, *Next*, *Go there*), then the day-2 gift, then the first letter if it
-  did not open yesterday. The harvest ends on a full silo two mornings in three (hole 3).
+  did not open yesterday. The harvest ends on a full silo or barn on 20 mornings of 29 (hole 3).
 - **New:** "Day 2 on the farm", days played, a count that never falls (02); melon (4 h, 01) and the west field at
   level 9.
 - **Pull:** melon ready by noon, chapter 2, an album page (02), a neighbour at the gate.
@@ -88,7 +89,7 @@ serves (`psychology.md` §, `farm-games.md` P, `ftue-ux.md` F).
 - **Pull:** a level a day, each opening something; the next garment; the week's big gift; "Next: summer" (10).
 - **Serves:** P6, §1.2 moderate steady novelty, §1.3 the goal gradient, §1.12 temporal landmarks, P8.
 
-**Week 2** (days 8–14, level 20 → 30; light player 13 → 16)
+**Week 2** (days 8–14, level 20 → 29; light player 12 → 16)
 - **Sees and does:** summer (its look, its crops in season, the parasol, 10). The dairy (21), bread (22), cheese (23),
   the beehive (24) and the jam kettle (25): three buildings in four days. Then a recipe or an animal at each level to
   30. The car's paints at 16, 22 and 28 (11). The market at 1,500, chosen through 01's savings line, with the car park
@@ -97,27 +98,27 @@ serves (`psychology.md` §, `farm-games.md` P, `ftue-ux.md` F).
   coins by about day 17).
 - **Serves:** P1 a chain that grows, P6 coins with a goal, §1.11 progress you can see.
 
-**Weeks 3 and 4** (days 15–30, level 30 → 45; light player 16 → 24)
+**Weeks 3 and 4** (days 15–30, a level a day from 30 to 44; light player 16 → 23)
 - **Sees and does:** autumn on day 15, winter on day 22, spring again on day 29. The house is bought (about day 17),
   then its computer (09). The album's pages fill, and the neighbours' hearts bring letters.
-- **New:** a row every 3 levels (ice cream 33, marmalade 36, Far beds 39, a 6th sheep 42, raspberry jam 45), garments
-  at 35, 40 and 45, paints at 34 and 40.
+- **New:** a row every 3 levels (ice cream 33, marmalade 36, Far beds 39, a 6th sheep 42; raspberry jam at 45 comes
+  just after day 30), garments at 35 and 40, paints at 34 and 40.
 - **Pull:** the house; the season about to turn; album pages nearly done; the next unlock, now 2–3 days away. Days 16,
-  21, 25, 27 and 28 bring no level row, season, garment or paint (hole 7).
+  17, 23, 26, 28 and 30 bring no level row, season, garment or paint (hole 7).
 - **Serves:** P9 collections, P10 decoration with an audience, P12 a rhythm above the week, §1.10 completion.
 
 ## 2. The holes, ranked
 
 1. **The first night has no night crop.** At bedtime on day 1 a real player is at level 8, and so is the light one;
-   the good player reaches only 11. With 01's cotton at 12 and melon at 9, the first night grows a 1-hour sunflower
+   the good player reaches only 10. With 01's cotton at 12 and melon at 9, the first night grows a 1-hour sunflower
    and stands idle for the other 9 h. That night decides day 2. 01's own `night` rule (20–40 min of income on day 2)
    cannot pass, and 01 calls cotton "the first night" all the same.
 2. **Overload where the first steps end** (minute 10–12). Within about a minute: the steps' own "All set!"; four parts
    held back until now; about 15 gift boxes and 10 goals that were held; the daily gift, the first neighbour and their
    letter; level 5's show; and possibly 10's spring card. That is about four times the four chunks F1.5 allows.
-3. **The morning return starts on a full store**, two returns in three today. 01's long crops add a night's harvest on
-   top: 10 beds of cotton make 60 units, against a silo of 50–100. No mission adds the "make room" press that P7 and
-   `farm-games.md` top 10 #9 ask for. The first thing a player does on day 2 can be a refusal.
+3. **The morning return starts on a full store**, nearly three returns in four today. 01's long crops add a night's
+   harvest on top: 10 beds of cotton make 60 units, against a silo of 50–100. No mission adds the "make room" press
+   that P7 and `farm-games.md` top 10 #9 ask for. The first thing a player does on day 2 can be a refusal.
 4. **Five clocks run the long game:** claims (02's week), days played (10's seasons, 02's days), the calendar month
    (02's road), the weekday (events) and the farm's 20-minute day (light, weather, people's hours). "Day 3 of 7" can
    mean two things. The month's road misses at both ends:
@@ -130,7 +131,7 @@ serves (`psychology.md` §, `farm-games.md` P, `ftue-ux.md` F).
    limit. Day 8's morning, as planned, opens up to five before the first tap: welcome back, a new week's gift,
    "Summer on the farm", a letter and the dairy's unlock (§2 #8).
 7. **Weeks 3–4 thin out, and the year repeats.** Past 30, 01 opens a row only every 3 levels: for the daily player, days
-   16, 21, 25, 27 and 28 bring nothing new. Day 29 is a second spring with nothing new in it. A good player at the
+   16, 17, 23, 26, 28 and 30 bring nothing new. Day 29 is a second spring with nothing new in it. A good player at the
    same 25 minutes a day passes level 45 in under three weeks.
 8. **Moments without a next goal.**
    - 04's `nextUp` knows only the steps and the goals, and goals slow to 0–1 claims a visit after day 10, because each
@@ -155,7 +156,7 @@ serves (`psychology.md` §, `farm-games.md` P, `ftue-ux.md` F).
 |---|---|---|
 | Day 2, 07:30, level 8 | "10 h away" → welcome back → day-2 gift → first letter → Go there → harvest → *silo full* | welcome back with the night's cotton → gift → Go there → harvest fits (or one *Make room*) → the letter waits on the mailbox's flag |
 | Day 7, level 20 (light: 12) | welcome back → the big seventh gift → events badge; nothing says tomorrow is summer; the month's road half done | welcome back → "Spring, day 7: the big gift" (one card) → "Next: summer tomorrow" on the season road's last stop |
-| Day 30, level 45 (light: 24) | welcome back → week 5's gift → a second spring like the first; act 1 long over; the road waits for the 1st; the next unlock 3 levels away | welcome back → gift → Next: act 2's chapter or the nearest of road, album and unlock; year 2's spring garment on its road |
+| Day 30, level 44 (light: 23) | welcome back → week 5's gift → a second spring like the first; act 1 long over; the road waits for the 1st; the next unlock 3 levels away | welcome back → gift → Next: act 2's chapter or the nearest of road, album and unlock; year 2's spring garment on its road |
 
 ## 3. The fixes, ranked by value for effort
 
@@ -182,9 +183,9 @@ serves (`psychology.md` §, `farm-games.md` P, `ftue-ux.md` F).
      buyer or order wants, at fair price, until what waits fits.
    - Long crops pay in price, not count: cotton 3 at 50, sunflower 2 at 34, potato 3 at 14. That is the same net a bed
      with half the room; the quilt takes 2 cotton.
-   - Hold `full` at 1 return in 4 or fewer on the runner from day 2. It is 66 % today.
+   - Hold `full` at 1 return in 4 or fewer on the runner from day 2. It is 73 % today.
 6. **Mission 03: a story for the month.** Act 1 moves to levels 5, 8, 12, 17 and 23: days 1, 1, 3, 5 and 9 for a daily
-   player, days 1, 1, 7, 15 and 28 for a light one. At most one chapter a visit. Write act 2 (five rows, levels 27–45)
+   player, days 1, 1, 7, 15 and 29 for a light one. At most one chapter a visit. Write act 2 (five rows, levels 27–45)
    in v1, and always show the next chapter's silhouette. A birthday letter waits in the mailbox for the first visit
    within 7 days of the date.
 7. **Mission 04: `nextUp` is never empty.** It names the step; else a request that can be filled now; else a goal to
@@ -200,43 +201,49 @@ serves (`psychology.md` §, `farm-games.md` P, `ftue-ux.md` F).
     10 shows its rain line only on a farm without sprinklers.
 12. **Mission 10: keep the events' names** and add the season's picture beside them.
 
-## Scaffold proposal
+## Scaffold (written)
 
-All of it is pure and invisible: nothing in the game imports it, it uses no three.js and no DOM beyond the sim's
-happy-dom, it touches no save, and `npm run check` stays green. It waits for your approval.
+Approved and written. It is pure and invisible: nothing in the game imports it, it uses no three.js and no DOM
+beyond the sim's happy-dom, and it touches no save.
 
 | File | What it holds |
 |---|---|
-| `src/sim/sessions.ts` (new) | 08's runner, first cut |
-| `src/sim/journey.ts` (new) | each visit's news and pulls |
-| `src/sim/targets.ts` (+) | `JOURNEY`, the journey's bounds |
-| `src/sim/journey.test.ts` (new) | the bounds, held on days 1–7 |
-| `src/sim/run.sim.ts` (+) | prints the journey |
+| `src/sim/sessions.ts` (new) | the session runner, mission 08's, and the only one |
+| `src/sim/journey.ts` (new) | each visit's news and pulls, one row a system |
+| `src/sim/targets.ts` (+) | `SESSIONS` (where 08 puts them) and `JOURNEY`, the bounds |
+| `src/sim/journey.test.ts` (new) | the runner's rules, and the bounds on days 1–7 |
+| `src/sim/run.sim.ts` (+) | `SIM_JOURNEY=daily` or `light` prints the journey |
 
-- **`src/sim/sessions.ts`** (08's commit 11 extends it with `health.ts`):
-  - `Visit` and `SESSIONS`: `daily` (day 1: 15, 6 and 10 min; then 8, 5 and 12) and `light` (10 min, two days off a
-    week). `PACES`: `good` is the sim's `WALK`; `real` is 1.5 m/s, a 4-s press and 0.5-s taps.
-  - `playVisits(schedule, { pace, seed, days, observe })`: the policy's moves within each visit, the game's own
-    `cameBack` between visits, the daily clock moving by the calendar; every clock and switch restored after.
+- **`src/sim/sessions.ts`** is mission 08's session runner (its change 11), written first for the journey. There is
+  only one: 08's `health.ts` and every later measure of visits watch it through its observer and never play visits of
+  their own.
+  - `PACES`: `good` is the sim's `WALK`; `real` is 1.5 m/s, a 4-s press and 0.5-s taps.
+  - `visitsOf(profile, days)` turns `SESSIONS` into visits.
+  - `playVisits({ profile, days, pace, seed }, { begin, moved, end })` plays the policy's moves within each visit and
+    the game's own `cameBack` between visits, with the daily calendar moving with them. It puts every clock and switch
+    back as the tests have them.
 - **`src/sim/journey.ts`**:
-  - `Beat` (`kind`: `unlock`, `level`, `garment`, `step`, `card`, `prize`; `what`; `auto`, when it opens by itself),
-    `Pull` (`kind`: `timer`, `unlock`, `goal`, `gift`; `in`, the minutes until it) and `VisitNews` (day, label, level,
-    beats, pulls, the return's goods, a store found full).
-  - `SOURCES` rows, one a system: `{ id, news(before, after), pulls(after) }`. Today's rows are levels, `UNLOCKS`,
-    garments, first steps, the daily gift, goals, gift boxes and timers. Each mission's system (album, road, letters,
-    chapters, season) joins as one row in its own commit.
-  - `AUTO_CARDS`: the queue's order and its per-visit budget as data, to be shared with the plan's `cardQueue`.
-  - `journey(profile, days, seed)` returns `VisitNews[]`; `holes(news, JOURNEY)` names each bound broken, in words.
-- **`src/sim/targets.ts`** gains `JOURNEY` beside `PACE` (01 owns both and agrees the numbers):
-  - `quiet: 1`: no two visits in a row with nothing new, on days 1–7;
-  - `quietDays: 2`: no 2 days with nothing new, on days 8–30;
-  - `burst: { most: 3, within: 60 }`: no more than 3 new things in any 60 s of play;
-  - `auto: 2`: cards that open by themselves, a visit;
-  - `pull: 1`: every visit ends with a timer that runs into the gap, or a named reward;
-  - `full: 0.25`: the share of returns that find a store full.
-- **`src/sim/journey.test.ts`** (happy-dom): the daily profile, days 1–7, one seed, about 0.5 s. It tests the runner's
-  own rules (time away goes through `cameBack`; a seed repeats a run) and `auto`, `burst` and `pull`. These **fail
-  with today's game** (19 boxes in 15 minutes; the farm ripe within 2 minutes of leaving), as do `quiet` (on day 4) and
-  `full` (66 %). So they land as `it.todo` and turn on with their fixes.
-- **`src/sim/run.sim.ts`** (+ one switch): `SIM_JOURNEY=daily|light` prints 30 days, one line a visit, with what was
-  new, what waited, and the bounds broken.
+  - `SOURCES` rows, one a system (`{ id, look, news, pull }`): the first steps, levels with what they open and their
+    garment, gift boxes, goals, the daily gift, and the work on its way. A mission's system joins as a row in its own
+    commit.
+  - `AUTO_CARDS`: the cards that open by themselves as a visit begins, in their order, for the plan's `cardQueue` to
+    share.
+  - `journey()` returns each visit's `VisitNews`; `holes()` names each bound broken, in words (null where a run cannot
+    judge it); `journeyReport()` prints both.
+- **`JOURNEY`** (in `src/sim/targets.ts`, beside `PACE`; 01 owns the numbers):
+  - `quiet`: at most 1 visit in a row with nothing new, on days 1–7;
+  - `quietDays`: at most 1 day in a row with nothing new, from day 8;
+  - `burst`: no more than 3 things within 60 s of a visit;
+  - `auto`: at most 2 cards that open by themselves before a visit's first tap;
+  - `pull`: something on its way through half of each time away (4 h at most);
+  - `full`: at most 1 return in 4 that finds a store full.
+- **`src/sim/journey.test.ts`** plays the daily player's first week, about 2 s in all. What holds today is held now:
+  the runner's rules and `auto`. Each bound broken today is a listed debt, an expected failure that names the mission
+  paying it, so it can neither pass in silence nor stay once paid:
+  - `quiet` (01's rows from level 14);
+  - `burst` (04 and 02, fixes 3 and 10);
+  - `pull` (01, fix 1);
+  - `full` (01, fix 5).
+
+  `quietDays` is skipped and named as 01's debt (fix 8), since a week cannot judge it; the 30-day report shows it
+  broken.
