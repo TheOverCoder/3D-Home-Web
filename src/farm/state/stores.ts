@@ -1,9 +1,13 @@
 import { farmSound } from '../../audio/sound'
 import { itemFx } from '../../fx/fx'
 import { count, isItem, storeCapacity, storeOf, STORES, type ItemId, type ProduceId, type StoreId } from '../data'
-import { canUpgrade, nextLevel, randomItem, roomIn, usedIn } from '../storage'
-import { bump, eventSpeed, farm, putBack, random, save, toast } from './core'
+import { priceOf } from '../prices'
+import { canUpgrade, nextLevel, randomItem, roomIn, STORE_GOODS, usedIn } from '../storage'
+import { bump, eventSpeed, farm, isSellable, putBack, random, save, toast, type At } from './core'
 import { gainXp } from './levels'
+import { sold } from './ledger'
+import { rewarded } from './rewards'
+import { waitingFor } from './ready'
 
 // The silo and the barn: how full each is, goods going in while there is room, surprises (always taken in), and
 // making a building bigger.
@@ -70,4 +74,57 @@ export function upgradeStore(id: StoreId) {
   bump()
   save()
   return true
+}
+
+// ───────────────────────────── Make room ─────────────────────────────
+// A full silo or barn never stands between the player and what waits (update-v1/JOURNEY.md fix 5, farm-games.md P7):
+// one press sells, at its fair price, the surplus no buyer in the line and no order wants, just as much as lets what
+// waits go in. Nothing is lost for being away, and the first press of a morning is never a refusal.
+
+/** How many of a good the line at the gate and the orders on the board still want. */
+function wanted(good: ProduceId): number {
+  let n = 0
+  for (const v of farm.visitors) if (v.phase !== 'leaving' && v.want === good) n += v.qty
+  for (const slot of farm.orders) if ('order' in slot) for (const l of slot.order.lines) if (l.good === good) n += l.want - l.have
+  return n
+}
+
+/** What Make room would sell now in a building: the surplus nobody wants, the biggest first, as much as lets what waits
+ *  go in (none while it fits already: ./ready.ts, waitingFor). Each good with how many, and the coins. */
+export function makeRoomPreview(id: StoreId): { goods: { item: ProduceId; count: number }[]; coins: number } {
+  let need = waitingFor(id) - room(id)
+  const goods: { item: ProduceId; count: number }[] = []
+  if (need <= 0) return { goods, coins: 0 }
+  const spare = STORE_GOODS[id]
+    .filter((g) => isSellable(g))
+    .map((g) => ({ g, n: farm.inv[g] - wanted(g) }))
+    .filter((x) => x.n > 0)
+    .sort((a, b) => b.n - a.n)
+  for (const { g, n } of spare) {
+    if (need <= 0) break
+    const k = Math.min(n, need)
+    goods.push({ item: g, count: k })
+    need -= k
+  }
+  return { goods, coins: goods.reduce((sum, x) => sum + x.count * priceOf(x.item), 0) }
+}
+
+/** Make room: sells at fair price, in one press, the surplus of a building that no buyer or order wants, until what
+ *  waits fits (makeRoomPreview). A sale like any other: XP for its coins, counted once, in the sales book. The coins. */
+export function makeRoom(id: StoreId, at?: At): number {
+  const { goods, coins } = makeRoomPreview(id)
+  if (!goods.length) return 0
+  for (const g of goods) farm.inv[g.item] -= g.count
+  const units = goods.reduce((n, g) => n + g.count, 0)
+  farm.coins = Math.min(Number.MAX_SAFE_INTEGER, farm.coins + coins)
+  farm.stats.sold += units
+  farm.stats.earned += coins
+  gainXp('sale', coins, at)
+  rewarded('sale', [{ coins }], at)
+  for (const g of goods) sold('manager', g.item, g.count, g.count * priceOf(g.item))
+  toast(`${STORES[id].name}: room made · + ${coins} coins`, goods[0].item)
+  farmSound('coins')
+  bump()
+  save()
+  return coins
 }

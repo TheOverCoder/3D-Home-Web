@@ -10,7 +10,7 @@ import { Coins, Shell } from '../ui/Sheet'
 import { Clock, NavigationArrow } from '../ui/glyphs'
 import { STORES, count, produceById } from './data'
 import { iconUrl } from './icons'
-import { awaySummary, clearAwaySummary, useFarm } from './state'
+import { awaySummary, clearAwaySummary, makeRoom, makeRoomPreview, room, useFarm, waitingFor } from './state'
 
 // Welcome back: after a time away (the page closed, or hidden while you were in another app or the phone was locked),
 // the farm has gone on for it (src/farm/state.ts, cameBack) — and this card says what happened: each good that came to
@@ -129,12 +129,27 @@ export function AwayPanel() {
             <span>Dry beds</span>
           </div>
         )}
-        {r.full.map((id) => (
-          <div key={id} className="farm-basket-item needs" title={`${STORES[id].name} full`}>
-            <img className="art" src={iconUrl(id)} alt="" />
-            <span>{STORES[id].name} full</span>
-          </div>
-        ))}
+        {r.full.map((id) => {
+          // a building too full for what waits: one press makes room (src/farm/state/stores.ts: the surplus nobody
+          // wants, sold at its fair price), and its row then says so
+          const made = room(id) >= waitingFor(id)
+          const sell = makeRoomPreview(id)
+          return (
+            <div key={id} className={`farm-basket-item${made ? '' : ' needs'}`} title={made ? `${STORES[id].name}: room made` : `${STORES[id].name} full`}>
+              <img className="art" src={iconUrl(id)} alt="" />
+              <span>{made ? 'Room made' : `${STORES[id].name} full`}</span>
+              {!made && sell.goods.length > 0 && (
+                <button
+                  className="btn small leaf make-room"
+                  onClick={() => makeRoom(id)}
+                  aria-label={`Make room in the ${STORES[id].name.toLowerCase()}: sell what nobody wants for ${sell.coins} coins`}
+                >
+                  Make room
+                </button>
+              )}
+            </div>
+          )
+        })}
       </div>
       <p className="farm-empty away-line">{capped ? `The farm went on for ${awayText(r.counted)} of it.` : 'The farm went on while you were away.'}</p>
       <div className="farm-confirm">
