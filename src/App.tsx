@@ -19,6 +19,8 @@ import { ScreenModal } from './ui/ScreenModal'
 import { SettingsPanel } from './ui/SettingsPanel'
 import { coarsePointer } from './lib/device'
 import { MotionRoot } from './ui/motion'
+import { guardHooks, PanelGuard } from './ui/PanelGuard'
+import { collectDiagnostics } from './lib/diagnostics'
 
 // three.js, Rapier and the whole scene load in their own chunks so the intro paints immediately. First the loader
 // fetches every file the scene needs with a progress count (and the service worker keeps them on the device);
@@ -42,7 +44,30 @@ if (import.meta.env.DEV || new URLSearchParams(location.search).has('debug')) {
     loader: useLoader,
     music: useMusic,
     slots: { switchSlot, exportSlot, importSlot, slotSummary, deleteSlot, currentSlot },
+    // a part of the interface that throws, on purpose (src/ui/PanelGuard.tsx), and the report Copy diagnostics gives
+    guard: guardHooks,
+    diagnostics: collectDiagnostics,
   }
+}
+
+/** The screen open (the television, a computer): if it throws, it closes. */
+function ScreenSlot() {
+  const screen = useHome((s) => s.screen)
+  return (
+    <PanelGuard name={screen ? `screen:${screen}` : ''} close={useHome.getState().closeScreen}>
+      <ScreenModal />
+    </PanelGuard>
+  )
+}
+
+/** The settings: if they throw, they close. */
+function SettingsSlot() {
+  const open = useHome((s) => s.settingsOpen)
+  return (
+    <PanelGuard name={open ? 'settings' : ''} close={() => useHome.getState().setSettingsOpen(false)}>
+      <SettingsPanel />
+    </PanelGuard>
+  )
 }
 
 export function App() {
@@ -55,7 +80,9 @@ export function App() {
       }),
     [],
   )
-  // the interface moves with Motion (src/ui/motion.tsx): its features, and less motion for whoever asks for it
+  // the interface moves with Motion (src/ui/motion.tsx): its features, and less motion for whoever asks for it. Each
+  // part of it that can throw is guarded (src/ui/PanelGuard.tsx): what is open closes, a layer is left out a moment,
+  // and the game plays on
   return (
     <MotionRoot>
       <ErrorBoundary key={attempt} fallback={null} onError={handleSceneError}>
@@ -64,21 +91,29 @@ export function App() {
         </Suspense>
       </ErrorBoundary>
       <SoundDirector />
-      <Hud />
+      <PanelGuard name="hud" layer>
+        <Hud />
+      </PanelGuard>
       <FarmUI />
       {coarsePointer && (
-        <Suspense fallback={null}>
-          <TouchControls />
-        </Suspense>
+        <PanelGuard name="touch" layer>
+          <Suspense fallback={null}>
+            <TouchControls />
+          </Suspense>
+        </PanelGuard>
       )}
-      <ScreenModal />
+      <ScreenSlot />
       <Curtain />
       <FilmLayer />
-      <SettingsPanel />
+      <SettingsSlot />
       <Intro />
       <GraphicsNotice />
-      <HudMode />
-      <PhotoButton />
+      <PanelGuard name="corner" layer>
+        <HudMode />
+      </PanelGuard>
+      <PanelGuard name="photo" layer>
+        <PhotoButton />
+      </PanelGuard>
     </MotionRoot>
   )
 }
