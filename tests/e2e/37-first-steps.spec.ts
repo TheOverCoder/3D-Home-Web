@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { Page } from '@playwright/test'
-import { FIRST_STEPS } from '../../src/farm/firstSteps'
-import { expect, test } from './helpers'
+import { FIRST_STEPS, longestOpen } from '../../src/farm/firstSteps'
+import { FARM_START, expect, test } from './helpers'
 
 // A new farm's first steps (src/farm/firstSteps.ts; the hint, src/farm/FirstSteps.tsx), as a player's farm has them (a
 // ?debug page keeps them quiet: they run here, `steps.quiet(false)`, and `ready()` quiets them again): the farmer's
@@ -32,19 +32,28 @@ const record = (page: Page) =>
   })
 
 /** Does a step after the first (which is played: a bed planted) as src/farm/firstSteps.test.ts does: what doing it
- *  leaves in the farm's numbers, quick. */
-const doStep = (page: Page, id: string) =>
-  page.evaluate((id) => {
-    const f = (window as any).__home.farm.state
-    if (id === 'eggs') f.got.egg = 1
-    else if (id === 'water') f.stats.watered = 1
-    else if (id === 'harvest') f.got.lettuce = 4
-    else if (id === 'sell') f.stats.sold = 4
-    else if (id === 'shear') f.got.wool = 1
-    else if (id === 'weave') f.got.cloth = 1
-    else if (id === 'order') f.stats.sent = 1
-    else throw new Error(`a step with no way to do it here: ${id}`)
-  }, id)
+ *  leaves in the farm's numbers, quick. The last sows the longest crop the farm's level has open. */
+const doStep = async (page: Page, id: string) => {
+  const points = await page.evaluate(() => (window as any).__home.farm.state.xp.points as number)
+  const crop = longestOpen({ xp: { points } } as Parameters<typeof longestOpen>[0])
+  return page.evaluate(
+    ([id, crop]) => {
+      const f = (window as any).__home.farm.state
+      if (id === 'long') {
+        const bed = f.beds.find((b: any) => b.built && !b.crop)
+        Object.assign(bed, { crop, growth: 0, water: 999 })
+      } else if (id === 'eggs') f.got.egg = 1
+      else if (id === 'water') f.stats.watered = 1
+      else if (id === 'harvest') f.got.lettuce = 4
+      else if (id === 'sell') f.stats.sold = 4
+      else if (id === 'shear') f.got.wool = 1
+      else if (id === 'weave') f.got.cloth = 1
+      else if (id === 'order') f.stats.sent = 1
+      else throw new Error(`a step with no way to do it here: ${id}`)
+    },
+    [id, crop] as const,
+  )
+}
 
 /** A step just done with a harvest's toast coming in (in the page, as the tick is stamped): at 0.3, 0.6 and 0.9 s the
  *  bubble has not moved (the toast's slot is under the step's, src/ui/TopStack.tsx), the toast is clear of it, and the
@@ -229,6 +238,72 @@ test.describe("a new farm's first steps", () => {
     await page.evaluate(() => (window as any).__home.farm.steps.quiet(false))
     await page.waitForTimeout(1000)
     await expect(hint(page)).toHaveCount(0)
+    expect(game.errors, game.errors.join('\n')).toEqual([])
+  })
+
+  test('the first frame: facing a bed, two taps plant it with no walk; the top holds back what does not matter yet, the barn comes with the eggs, everything with Skip', async ({ game }) => {
+    const { page } = game
+    await game.ready('farm')
+    await newFarm(page)
+    // where a new farm starts: the east beds in front, planting offered
+    await game.teleport(FARM_START.x, FARM_START.y, FARM_START.z, FARM_START.heading, FARM_START.pitch)
+    const from = await page.evaluate(() => ({ ...(window as any).__home.playerState.position }))
+    await expect(bubble(page)).toBeVisible({ timeout: 30_000 })
+    // the top on the first frame: the coins, the level, the menu with no badge, the compass; no tank, no line, no
+    // trophy, no gifts' glow
+    const dash = page.locator('.top-dash')
+    await expect(dash.locator('.coins')).toBeVisible()
+    await expect(dash.locator('.top-gauge')).toHaveCount(0)
+    await expect(dash.locator('.top-road-gifts')).toHaveCount(0)
+    await expect(page.locator('.top-menu-btn .top-badge')).toHaveCount(0)
+    // two taps: the button (the prompt, E), then a seed packet — no walk
+    await page.waitForFunction(() => ((window as any).__home.useHome.getState().nearby?.id ?? '').startsWith('farm-bed-'), null, { timeout: 30_000, polling: 250 })
+    await page.locator('.hud-prompt .prompt').click()
+    await expect(page.locator('.farm-panel .farm-grid .farm-card:not(.locked)').first()).toBeVisible({ timeout: 10_000 })
+    await page.locator('.farm-panel .farm-grid .farm-card:not(.locked)').first().click()
+    await expect.poll(() => page.evaluate(() => (window as any).__home.farm.state.planted.length), { timeout: 10_000 }).toBeGreaterThan(0)
+    const to = await page.evaluate(() => ({ ...(window as any).__home.playerState.position }))
+    expect(Math.hypot(to.x - from.x, to.z - from.z), 'planted where the farm starts, with no walk').toBeLessThan(0.3)
+    // the line comes in with the first planting (buyers come from then on)
+    await expect(dash.locator('.top-gauge.line')).toHaveCount(1, { timeout: 10_000 })
+    // the barn's tank with the first eggs; the silo's waits for the first harvest
+    await page.evaluate(() => {
+      const f = (window as any).__home.farm
+      f.state.got.egg = 1
+      f.useFarm.setState((s: any) => ({ rev: s.rev + 1 }))
+    })
+    await expect(dash.locator('.top-gauge.store.barn')).toHaveCount(1, { timeout: 10_000 })
+    await expect(dash.locator('.top-gauge.store.silo')).toHaveCount(0)
+    await expect(dash.locator('.top-gauge.goals')).toHaveCount(0)
+    // skipped: everything at once
+    await page.evaluate(() => (window as any).__home.farm.steps.skip())
+    await expect(dash.locator('.top-gauge.store')).toHaveCount(2, { timeout: 10_000 })
+    await expect(dash.locator('.top-gauge.goals')).toHaveCount(1)
+    expect(game.errors, game.errors.join('\n')).toEqual([])
+  })
+
+  test('skipped, Settings brings the tips back on the step they were skipped at (Show the tips again)', async ({ game }) => {
+    const { page } = game
+    await game.ready('farm')
+    await newFarm(page)
+    await expect(bubble(page)).toBeVisible({ timeout: 30_000 })
+    await page.evaluate(() => {
+      const f = (window as any).__home.farm
+      f.plant(
+        f.state.beds.findIndex((b: any) => b.built && !b.crop),
+        'lettuce',
+      )
+    })
+    await expect.poll(async () => (await record(page)).step, { timeout: 15_000 }).toBe(1)
+    await page.locator('.step-x').click()
+    await page.getByRole('button', { name: 'Skip', exact: true }).click()
+    await expect(hint(page)).toHaveCount(0)
+    await page.keyboard.press('Escape')
+    await page.waitForFunction(() => (window as any).__home.useHome.getState().settingsOpen === true, null, { timeout: 30_000 })
+    await page.locator('#set-tips').click()
+    await page.waitForFunction(() => (window as any).__home.useHome.getState().settingsOpen === false, null, { timeout: 30_000 })
+    expect(await record(page)).toMatchObject({ step: 1, over: false })
+    await expect(bubble(page)).toHaveAttribute('data-step', FIRST_STEPS[1].id, { timeout: 30_000 })
     expect(game.errors, game.errors.join('\n')).toEqual([])
   })
 

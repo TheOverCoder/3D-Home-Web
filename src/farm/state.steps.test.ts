@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { FIRST_STEPS, STEPS_UNTIL_LEVEL, type StepId } from './firstSteps'
+import { FIRST_STEPS, STEPS_UNTIL_LEVEL, longestOpen, type StepId } from './firstSteps'
 import {
   acceptOffer,
   addJob,
@@ -105,6 +105,11 @@ const PLAY: Record<StepId, () => void> = {
     for (const l of o.lines) farm.inv[l.good] += l.want - l.have
     fillOrder(0)
     expect(sendOrder(0)).toBe(true)
+  },
+  // the longest crop open, sown in a free bed for the time away
+  long: () => {
+    const i = farm.beds.findIndex((b) => b.built && !b.crop)
+    expect(plant(i, longestOpen(farm))).toBe(true)
   },
 }
 

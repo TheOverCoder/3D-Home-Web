@@ -44,6 +44,7 @@ export const WALKS_TO: Record<StepId, string> = {
   shear: 'לכבשה הקרובה',
   weave: 'לנול',
   order: 'למשרד, להזמנות',
+  long: 'לערוגה פנויה',
 }
 
 /** SAMPLE (the lab's stand-in for the action button): what doing the step is, in words. */
@@ -56,6 +57,7 @@ export const DOES: Record<StepId, string> = {
   shear: 'לגזוז כבשה',
   weave: 'לארוג בד',
   order: 'לשלוח הזמנה',
+  long: 'לזרוע יבול ארוך',
 }
 
 /** The dashboard behind (lab/boards/top, D: the game's top today) for a new farm at this step. */

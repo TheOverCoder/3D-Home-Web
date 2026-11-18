@@ -8,17 +8,17 @@
 
 import { isObject, num } from '../lib/saved'
 import type { ArtId } from '../ui/art'
-import { BEDS, CROPS, MACHINES, MACHINE_IDS, ORDERS, cropById, produceById, type ProduceId } from './data'
+import { BEDS, CROPS, MACHINES, MACHINE_IDS, ORDERS, cropById, produceById, type CropId, type ProduceId } from './data'
 import type { Prize } from './gifts'
 import { goalById, type GoalId } from './goals'
 import { isWorking, recipeOf } from './machines'
 import type { Order } from './orders'
 import type { BedStage, FarmData } from './state'
-import type { UnlockId } from './unlocks'
+import { lockedAt, type UnlockId } from './unlocks'
 import type { Target } from './walkTargets'
 import { levelOf } from './xp'
 
-export type StepId = 'plant' | 'eggs' | 'water' | 'harvest' | 'sell' | 'shear' | 'weave' | 'order'
+export type StepId = 'plant' | 'eggs' | 'water' | 'harvest' | 'sell' | 'shear' | 'weave' | 'order' | 'long'
 
 /** How the farmer feels as he says a line: his face (`farmer-<mood>` in src/ui/art.ts, made by
  *  scripts/render-farmer-faces.mjs) and how he moves as it comes (src/farm/FarmerFace.tsx). */
@@ -175,11 +175,31 @@ const lineShort = (f: FarmData): ProduceId => [...queued(f)].sort((a, b) => a.qt
 /** The loom has cloth done (`done`), or at work. */
 const loomHas = (f: FarmData, done: boolean) => (done ? f.machines.loom.done > 0 : isWorking(f.machines.loom))
 
+/** The longest crop the farm's level has opened (what a time away is best set with: update-v1/JOURNEY.md fix 1). */
+export function longestOpen(f: FarmData): CropId {
+  const level = levelOf(f.xp.points)
+  return CROPS.filter((c) => lockedAt(`crop:${c.id}`, level) === null).reduce((a, b) => (b.growSeconds > a.growSeconds ? b : a)).id
+}
+/** Some bed grows the longest crop open (or one as long), not ripe yet: something long on its way. */
+const growingLong = (f: FarmData) => {
+  const least = cropById(longestOpen(f)).growSeconds
+  return f.beds.some((b, i) => b.crop !== null && cropById(b.crop).growSeconds >= least && stageOf(f, i) !== 'ripe')
+}
+/** The last step's words, naming the crop where the bubble has room for its name. */
+const longLine = (f: FarmData) => {
+  const named = `Sow ${produceById(longestOpen(f)).plural} for later`
+  return named.length <= LINE_MOST ? named : 'Sow a long crop for later'
+}
+/** The most letters a line may have: two lines of the bubble on a narrow phone. */
+export const LINE_MOST = 26
+
 /** Nothing growing: the first thing is a bed to plant. */
 const PLANT_FIRST: Turn = { when: (f) => !anyCrop(f), say: 'Plant some seeds first', mood: 'cheerful', pic: { art: 'seedling' }, target: { bed: ['empty'] } }
 
 /** The steps, in order: a crop from seed to sale with an egg collected while it grows, a fleece woven at the loom
- *  (both there on a new farm), and the first order sent — every lesson of the farm's loop, on what a new farm has.
+ *  (both there on a new farm), the first order sent — every lesson of the farm's loop, on what a new farm has — and,
+ *  last, the longest crop open sown for the time away, so the first sitting ends with something on its way
+ *  (update-v1/JOURNEY.md fix 1).
  *  Each line is the farmer's, said as he feels it: hello and off we go (cheerful), the hens have laid (surprised),
  *  go on, water them (encouraging), the first crop is ripe (excited, stars in his eyes), a word in your ear about the
  *  buyers (winking), a sheep's haircut (laughing), what the loom makes (curious), the last one (proud). Their turns
@@ -268,7 +288,7 @@ export const FIRST_STEPS: readonly StepDef[] = [
   },
   {
     id: 'order',
-    say: 'Last one: send an order!',
+    say: 'Now send an order!',
     mood: 'proud',
     pic: { art: 'tractor' },
     done: reached('orders'),
@@ -285,6 +305,21 @@ export const FIRST_STEPS: readonly StepDef[] = [
       },
     ],
     reward: { coins: 25 },
+  },
+  {
+    id: 'long',
+    say: 'Sow a long crop for later',
+    mood: 'winking',
+    pic: { art: 'crescent-moon' },
+    done: growingLong,
+    target: { bed: ['empty'] },
+    turns: [
+      // every bed taken: one to free first (harvest it, or wait for it)
+      { when: (f) => !anyBed(f, 'empty'), say: 'Free a bed for later', mood: 'encouraging', pic: { art: 'basket' }, target: { bed: ['ripe', 'thirsty', 'growing'] } },
+      // the longest crop open, by name, and a walk to a bed for it
+      { when: () => true, say: longLine, pic: (f) => ({ item: longestOpen(f) }), target: (f) => ({ good: longestOpen(f) }) },
+    ],
+    reward: { coins: 18 },
   },
 ]
 
