@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { bounds, type Rect, type WalkIn } from './buildings'
-import { ESTATE_DOOR, ESTATE_PATH, ESTATE_ROOM, ESTATE_WALKIN } from './estate'
+import { ESTATE_DOOR, ESTATE_PATH, ESTATE_WALKIN } from './estate'
 import { BACK, FRONT_DOOR, HALL, MARKET_PATH, MARKET_WALKIN } from './market'
 import { ARRIVE, CAR_SPOT } from './maps'
 import {
@@ -155,7 +155,8 @@ describe('the planned lot on the ground', () => {
     const floor = (w: WalkIn) => w.rooms.reduce((a, r) => a + area(r), 0)
     expect(floor(MARKET_PLANNED)).toBeGreaterThan(2 * (area(HALL) + area(BACK)))
     expect(area(BACK_PLANNED)).toBeGreaterThan(2 * area(BACK))
-    expect(area(ESTATE_ROOM_PLANNED)).toBeGreaterThan(4 * area(ESTATE_ROOM))
+    // (the office is built: its room before, 2.2 m by 1.97 m)
+    expect(area(ESTATE_ROOM_PLANNED)).toBeGreaterThan(4 * 2.2 * 1.97)
     expect(WALK_INS_PLANNED.reduce((n, w) => n + w.lights.length, 0)).toBeLessThanOrEqual(4)
     for (const w of WALK_INS_PLANNED)
       for (const l of w.lights) {

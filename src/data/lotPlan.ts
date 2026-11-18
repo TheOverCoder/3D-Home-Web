@@ -1,5 +1,5 @@
 import type { AutoDoor, Box, Rect, WalkIn } from './buildings'
-import { ESTATE_DOOR, ESTATE_WALKIN, PARKING } from './estate'
+import { ESTATE_ROOM, ESTATE_WALKIN, PARKING } from './estate'
 import { FRONT_DOOR, MARKET_WALKIN } from './market'
 
 // The lot beyond the lane as update-v1/missions/11-buildings.md plans it: a bigger supermarket and estate office, a car
@@ -27,28 +27,10 @@ function wallX(xa: number, xb: number, z0: number, z1: number, high: number, o?:
 
 // ───────────────────────────── the estate office ─────────────────────────────
 
-/** One room, 4.4 times today's: from its front on the lane's edge as deep as the box allows at its west wall, its east
- *  wall against the market's west wall (x 5.9) as today. Its door is today's. */
-export const ESTATE_ROOM_PLANNED: Rect = { x0: 0.2, x1: 5.75, z0: LANE_SOUTH + T, z1: 19.9 }
-const ER = ESTATE_ROOM_PLANNED
-const ESTATE_H = 2.9
-
-export const ESTATE_PLANNED: WalkIn = {
-  id: 'estate',
-  walls: [
-    ...wallX(ER.x0 - T, ER.x1 + T, ESTATE_DOOR.z0, ESTATE_DOOR.z1, ESTATE_H, ESTATE_DOOR, 2.1),
-    box(ER.x0 - T, ER.x1 + T, ER.z1, ER.z1 + T, 0, ESTATE_H),
-    box(ER.x0 - T, ER.x0, ER.z0, ER.z1, 0, ESTATE_H),
-    box(ER.x1, ER.x1 + T, ER.z0, ER.z1, 0, ESTATE_H),
-  ],
-  roof: { y: 2.55, thick: 0.12 },
-  rooms: [{ space: 'estate', ...ER, top: 2.43 }],
-  doors: [ESTATE_DOOR],
-  floor: 'boards',
-  look: 'boards',
-  lights: [{ x: (ER.x0 + ER.x1) / 2, y: 2.3, z: (ER.z0 + ER.z1) / 2, color: '#fff1dc', intensity: 4, distance: 6.5 }],
-  autoDoor: ESTATE_WALKIN.autoDoor,
-}
+/** Built: the office's own row (src/data/estate.ts), one room 4.4 times the one before (4.33 m²), from its front on
+ *  the lane's edge as deep as the box allows at its west wall, its east wall against the market's west wall (x 5.9). */
+export const ESTATE_ROOM_PLANNED: Rect = ESTATE_ROOM
+export const ESTATE_PLANNED: WalkIn = ESTATE_WALKIN
 
 // ───────────────────────────── the supermarket ─────────────────────────────
 

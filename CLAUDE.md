@@ -72,7 +72,8 @@ The README has the overview; `tests/README.md` what each test guards.
   the house the walls still judge what is outdoors (what the portals let in through a window). The rooms, portals and
   the sun's culling are the house's map's; on the farm only the walk-ins' walls hide things. A walk-in building adds
   its walls as another source, and while its doors are shut it hides everything wholly inside its rooms from an eye
-  outside (its `enclosure`).
+  outside (its `enclosure`). The walk-ins' shells cast into the sun's map through one mesh (`castAsOne`, `LotShells` in
+  `src/scene/WalkIn.tsx`): a new walk-in joins it by being a row.
 - The house's shell (walls, floors, ceilings, doors) is drawn always: it is under `userData.cell = 'always'`
   (`House.tsx`), as is your own body for the camera (the sun judges it like anything in a room: `userData.sun =
   'room'`). What is outdoors is under `cell: 'outside'` (the farm on its map; the house's own garden and
@@ -206,7 +207,11 @@ The README has the overview; `tests/README.md` what each test guards.
   near) and lights. The model, the colliders, the hiding pieces, the camera's limits, the action button's spaces
   (`spaceAt`), the walk-to, the footsteps and the woods' clearing all follow from the row; every floor and every inner
   face that looks at the sun must be inside the sun's shadow box (`buildings.test.ts` fails otherwise), and `16-view`
-  makes its poses from the row.
+  makes its poses from the row (05's walk too). The ground outside the garden you can walk on is the lot's rows
+  (`src/data/lot.ts`: the lane, the market's forecourt, the contractor's corner): the action button's lane, the reach,
+  the invisible walls round it and the woods' clearing read them; new ground there is a row. The estate office shows the
+  house as a model on a table (1:25, from the save's shell) and the farm's map, each meadow for sale on it a price tag
+  that opens the edit mode's card for it.
 - A new character is a row of `PEOPLE` (`src/data/people.ts`: a name, a look — a roll of the people engine,
   `rollLook` in `src/models/look.ts`, over overrides on dice of their own —, a voice, a portrait drawn from their own
   model by `node scripts/render-item-art.mjs --people`) and a movement script (`src/farm/script.ts`); whatever draws

@@ -4,11 +4,13 @@
 // out and named.
 //
 // The office is a walk-in building of one room (its row: ESTATE_WALKIN), against the market's west wall, its door in
-// its north wall facing the lane. Its floor is fitted to the sun's shadow box as the market's is — the box's south-west
-// side runs diagonally across this corner of the lot, so the room is as deep as the box allows at its west wall
-// (src/data/buildings.test.ts checks it). The estate agent sits behind his desk across the room, facing the door; the
-// house for sale hangs on the west wall (a board, with its price tag). He keeps the office's hours (HOURS.estate in
-// src/farm/data.ts): out of them its door stays shut.
+// its north wall facing the lane. Its floor is fitted to the farm's sun box (src/data/sunBox.ts): from its front on the
+// lane's edge west along the lane and as deep as the box allows at its west wall (src/data/buildings.test.ts checks
+// it). The estate agent sits behind his desk across the room, facing the door, the house for sale on a board on the
+// wall beside it (its price tag); in the west half the house itself stands as a model on a table (1:25, as the save's
+// shell has it), and the farm's map hangs on the west wall with the meadows for sale on it (each its price tag); a
+// bench by the front for those who wait. He keeps the office's hours (HOURS.estate in src/farm/data.ts): out of them
+// its door stays shut.
 //
 // The parking lot is the strip of lane west of the garden's gate, between the fence and the walkers' line (z 15.45:
 // people walk past it, and the buyers' line stands east of the gate): asphalt with two parallel bays and a kerb along
@@ -26,9 +28,9 @@ const MARKET_WEST = 5.9
  *  lot does (src/data/lot.ts). */
 export const LANE_SOUTH = 16.3
 
-/** The office's room: from its front wall on the lane's edge to as deep as the sun's shadow box allows at its west
- *  wall (2.2 m by 2 m), and its east wall against the market's. */
-export const ESTATE_ROOM: Rect = { x0: 3.55, x1: MARKET_WEST - T, z0: LANE_SOUTH + T, z1: 18.42 }
+/** The office's room: from its front wall on the lane's edge to as deep as the farm's sun box allows at its west wall
+ *  (5.55 m by 3.45 m), and its east wall against the market's. */
+export const ESTATE_ROOM: Rect = { x0: 0.2, x1: MARKET_WEST - T, z0: LANE_SOUTH + T, z1: 19.9 }
 /** The front door in its north wall, in the middle of its front (the sliding leaves go into the wall either side). */
 export const ESTATE_DOOR: Rect = { x0: 4.2, x1: 5.1, z0: LANE_SOUTH, z1: ESTATE_ROOM.z0 }
 
@@ -52,35 +54,62 @@ export const ESTATE_WALKIN: WalkIn = {
   doors: [D],
   floor: 'boards',
   look: 'boards',
-  lights: [{ x: (R.x0 + R.x1) / 2, y: 2.3, z: (R.z0 + R.z1) / 2, color: '#fff1dc', intensity: 3, distance: 4.5 }],
+  lights: [{ x: (R.x0 + R.x1) / 2, y: 2.3, z: (R.z0 + R.z1) / 2, color: '#fff1dc', intensity: 4, distance: 6.5 }],
   // two navy leaves, each sliding 0.45 m into the wall at its side
   autoDoor: { ...D, height: DOOR_H, thick: 0.04, travel: 0.46, color: '#22344f' },
 }
 
 // ───────────────────────────── inside ─────────────────────────────
 
-/** The agent's desk across the room in front of the south wall, a panel down its front (the side you stand at). */
-export const ESTATE_DESK: Box = { x0: 4.05, x1: 5.25, z0: 17.5, z1: 17.98, y0: 0, y1: 0.74 }
+/** The agent's desk across the room in front of the south wall, east of the middle (across from the door), a panel down
+ *  its front (the side you stand at). */
+export const ESTATE_DESK: Box = { x0: 4.05, x1: 5.25, z0: 18.98, z1: 19.46, y0: 0, y1: 0.74 }
 /** Where the agent sits (his chair behind the desk, facing the door), and where you stand to talk to him. */
-export const AGENT_SEAT = { x: (ESTATE_DESK.x0 + ESTATE_DESK.x1) / 2, z: 18.17, heading: Math.PI } as const
-export const AGENT_STAND = { x: AGENT_SEAT.x, z: 17.0 } as const
+export const AGENT_SEAT = { x: (ESTATE_DESK.x0 + ESTATE_DESK.x1) / 2, z: R.z1 - 0.25, heading: Math.PI } as const
+export const AGENT_STAND = { x: AGENT_SEAT.x, z: ESTATE_DESK.z0 - 0.5 } as const
 /** His chair's seat, the height he sits at. */
 export const SEAT_Y = 0.47
-/** The house for sale: a board on the west wall's inside (its face's middle, half its size, facing east into the room).
- *  It carries the house's price tag. */
-export const SALE_BOARD = { x: R.x0 + 0.025, y: 1.45, z: 17.35, half: [0.4, 0.3] as [number, number], heading: Math.PI / 2 } as const
-/** A filing cabinet in the corner behind the board, and a plant in the corner by the door. */
-export const CABINET: Box = { x0: R.x0, x1: R.x0 + 0.42, z0: R.z1 - 0.5, z1: R.z1, y0: 0, y1: 1.0 }
+/** The house for sale: a board on the east wall's inside, between the door and his desk (its face's middle, half its
+ *  size, facing west into the room). It carries the house's price tag. */
+export const SALE_BOARD = { x: R.x1 - 0.025, y: 1.45, z: 17.6, half: [0.4, 0.3] as [number, number], heading: -Math.PI / 2 } as const
+/** A filing cabinet against the south wall at the desk's west end (its drawers facing him), and a plant in the corner
+ *  by the door. */
+export const CABINET: Box = { x0: ESTATE_DESK.x0 - 0.7, x1: ESTATE_DESK.x0 - 0.28, z0: R.z1 - 0.5, z1: R.z1, y0: 0, y1: 1.0 }
 export const PLANT = { x: R.x1 - 0.24, z: R.z0 + 0.26 } as const
+/** A bench along the front wall west of the door, for those who wait (its back to the wall). */
+export const BENCH: Box = { x0: 0.75, x1: 2.35, z0: R.z0, z1: R.z0 + 0.46, y0: 0, y1: 0.46 }
+
+/** The table in the west half with the house on it, and the model: the house at 1:25 (its walls, floors and openings as
+ *  the save's shell has them: src/home/shell.ts), its garden side turned to the door. `x`, `z`: its middle; `y`: the
+ *  table's top, where its base stands. */
+export const HOUSE_TABLE: Box = { x0: 1.85, x1: 3.05, z0: 17.75, z1: 18.75, y0: 0, y1: 0.76 }
+export const HOUSE_MODEL = { x: (HOUSE_TABLE.x0 + HOUSE_TABLE.x1) / 2, y: HOUSE_TABLE.y1, z: (HOUSE_TABLE.z0 + HOUSE_TABLE.z1) / 2, scale: 1 / 25, heading: Math.PI } as const
+
+/** The farm's map on the west wall's inside (its face's middle, half its size, facing east into the room), north up: the
+ *  ground it shows (in the farm's metres: the garden and every meadow round it, the lane and the lot beyond), each
+ *  meadow for sale carrying its price tag where it is on the map. */
+export const ESTATE_MAP = { x: R.x0 + 0.025, y: 1.45, z: 18.25, half: [0.7, 0.6] as [number, number], heading: Math.PI / 2 } as const
+export const MAP_AREA: Rect = { x0: -28, x1: 28, z0: -27, z1: 21 }
+
+/** A point of the farm (x, z, in its metres) where the map shows it, on the wall: the map's right is the farm's east
+ *  (the room's north: −z), its up the farm's north. */
+export function onMap(fx: number, fz: number): { x: number; y: number; z: number } {
+  const s = (ESTATE_MAP.half[0] * 2) / (MAP_AREA.x1 - MAP_AREA.x0)
+  const cx = (MAP_AREA.x0 + MAP_AREA.x1) / 2
+  const cz = (MAP_AREA.z0 + MAP_AREA.z1) / 2
+  return { x: ESTATE_MAP.x, y: ESTATE_MAP.y - (fz - cz) * s, z: ESTATE_MAP.z - (fx - cx) * s }
+}
 
 // ───────────────────────────── outside ─────────────────────────────
 
-/** The front: its sign over the door (the logo, a house and a key, and the words), the plaque with the opening hours
- *  beside the door, and the window east of it with the house for sale in it — each a face's middle and half its size,
- *  on the wall's outer face (z LANE_SOUTH), facing the lane. The scene draws them from one picture (src/farm/Estate.tsx). */
+/** The front: its sign across the middle of it (the logo, a house and a key, and the words), the plaque with the
+ *  opening hours beside the door, the window east of it with the house for sale in it and the wide window west of it
+ *  with the farm's map — each a face's middle and half its size, on the wall's outer face (z LANE_SOUTH), facing the
+ *  lane. The scene draws them from one picture (src/farm/Estate.tsx). */
 export const ESTATE_SIGN = { x: (R.x0 - T + R.x1 + T) / 2, y: 2.56, z: LANE_SOUTH, half: [1.15, 0.27] as [number, number] } as const
-export const ESTATE_HOURS = { x: (R.x0 - T + D.x0) / 2, y: 1.45, z: LANE_SOUTH, half: [0.3, 0.22] as [number, number] } as const
+export const ESTATE_HOURS = { x: D.x0 - 0.42, y: 1.45, z: LANE_SOUTH, half: [0.3, 0.22] as [number, number] } as const
 export const ESTATE_WINDOW = { x: (D.x1 + R.x1 + T) / 2, y: 1.35, z: LANE_SOUTH, half: [0.3, 0.5] as [number, number] } as const
+export const ESTATE_DISPLAY = { x: 1.75, y: 1.3, z: LANE_SOUTH, half: [1.05, 0.6] as [number, number] } as const
 
 /** The way in from the lane, for the agent: on the lane in front of the door, outside it, inside it. */
 export const ESTATE_PATH = [
