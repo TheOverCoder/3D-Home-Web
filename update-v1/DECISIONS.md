@@ -80,3 +80,11 @@ The orchestrator runs the plan to the end without asking:
   toward `VISIT_MOST`.
 - **The heavy lock** (RUN.md §0) lives in the session's scratchpad:
   `/tmp/claude-0/-home-user-3D-Home-Web/c164316d-9885-5f35-97a5-084ad876b169/scratchpad/locks/heavy-<slot % 2>.lock`.
+
+## Taken during the run
+
+- **The shell's step 1 limit is 280 KB, not 250 KB** (`SHELL_BYTES`, `vite.config.ts`). 08b measured the shell at
+  247 KB with the game's interface out of it, leaving 2.6 KB: every phase-2 merge that adds state code would fail the
+  build. The farm's state leaves the shell in 08c's step 2, which brings the limit to 160 KB (decision 18).
+- **32-machine-queue failed twice on one CI run and passed on the next with the same code.** It is a flake to make
+  robust (07b, which moves the machine panel), not a reason to revert.

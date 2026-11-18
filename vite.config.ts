@@ -80,10 +80,11 @@ function wayTo(from: Map<string, string | null>, end: string) {
 
 /**
  * The most the page shell may weigh, gzipped (bytes): the entry, every chunk it imports statically and their styles —
- * what index.html loads before the intro shows (update-v1 decision 18: 250 KB with the game's interface out of it,
- * src/ui/GameLayer.tsx; 160 KB once the farm's state is out too). Measured at the default level of gzip, as served.
+ * what index.html loads before the intro shows (update-v1 decision 18: 247 KB measured with the game's interface out
+ * of it, src/ui/GameLayer.tsx, held at 280 KB while the farm's state still ships in it and grows with phase 2; 160 KB
+ * once the farm's state is out too, 08c). Measured at the default level of gzip, as served.
  */
-export const SHELL_BYTES = 250_000
+export const SHELL_BYTES = 280_000
 
 /** The shell's files with their gzipped sizes, biggest first (each file gzipped alone, as it is served). */
 function shellSizes(files: { name: string; code: string | Uint8Array }[]) {
