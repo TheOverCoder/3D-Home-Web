@@ -25,7 +25,7 @@ import './FirstSteps.css'
 // neighbour, a round portrait under the compass, says the step in a word bubble — its picture, its words typed in, its
 // reward — and a tap on the bubble walks you there (the compass's own walk: walkTo, ./walkTargets.ts; again, it stops;
 // nowhere to go, it shakes). His face is the mood of what he says (./FarmerFace.tsx: each line's own, and the
-// moments': a nod as you walk, a sigh with nowhere to go, pleading at the skip question), changing as the line types
+// moments': a nod as you walk, a sigh with nowhere to go, a kind nod at the skip question), changing as the line types
 // in. Done (the farm passes it a frame later, src/farm/state.ts), a tick is stamped on the bubble, the reward flies to
 // its chip, the farmer beams and hops, and the next line comes; one done under a panel plays when the panel closes.
 // After the last, "All set!" with every step's picture ticked and all the coins they gave, stars in his eyes, and

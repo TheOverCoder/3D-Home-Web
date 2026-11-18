@@ -1,10 +1,10 @@
 import { farmSound } from '../../audio/sound'
 import { clock } from '../../lib/time'
-import { OFFICE_SCREEN, OFFICE_UPGRADES, orderSlots, orderWait, TRACTOR, type OfficeUpgradeId } from '../data'
-import { cratesFor, isComplete, makeOrder, type Order } from '../orders'
+import { OFFICE_SCREEN, OFFICE_UPGRADES, ORDERS, orderSlots, orderWait, TRACTOR, type OfficeUpgradeId } from '../data'
+import { cratesFor, isComplete, makeOrder, orderKey, orderPay, type Order, type OrderSlot } from '../orders'
 import { tripSeconds } from '../tractorRoute'
 import { boundary, type FarmLayout } from '../layout'
-import { bump, farm, putBack, random, save, toast } from './core'
+import { bump, farm, putBack, random, save, toast, type FarmData } from './core'
 import { gainXp } from './levels'
 import { foundPrizes, rewarded } from './rewards'
 import { gainItems, rollGifts, surpriseWords } from './stores'
@@ -25,6 +25,30 @@ let gateCache: { key: string; x: number } | null = null
 
 /** The most crates that wait on the pallet. */
 export const MOST_CRATES = 999
+
+/** A new farm's starter order (ORDERS.first): what the first steps taught, eggs and the cloth woven at the loom, paid
+ *  as any order is (a quarter over their fair price), with no surprise. */
+export function firstOrder(): Order {
+  const lines = ORDERS.first.map((l) => ({ good: l.good, want: l.want, have: 0 }))
+  return { id: orderKey(), lines, coins: orderPay(lines), surprise: false }
+}
+
+/** The starter order, by what it asks for. */
+const isFirstOrder = (o: Order) => o.lines.length === ORDERS.first.length && ORDERS.first.every((l, k) => o.lines[k].good === l.good && o.lines[k].want === l.want)
+
+/** A new farm's board: the starter order in its first place, a new order coming in each of the others straight away. */
+export const firstBoard = (places: number): OrderSlot[] => [{ order: firstOrder() }, ...Array.from({ length: places - 1 }, () => ({ wait: 0 }))]
+
+/** A saved farm still on its first steps that has sent no order gets the starter order once (a save from before it):
+ *  in the first place with nothing put in (an order, or one on its way), so nothing put in is lost. A board that has
+ *  it already, a farm that has sent one or is past the steps, or a board where every order has something in keeps its
+ *  board. */
+export function starterOrderIn(data: FarmData) {
+  if (data.firstSteps.over || data.stats.sent > 0) return
+  if (data.orders.some((slot) => 'order' in slot && isFirstOrder(slot.order))) return
+  const k = data.orders.findIndex((slot) => !('order' in slot) || slot.order.lines.every((l) => !l.have))
+  if (k >= 0) data.orders[k] = { order: firstOrder() }
+}
 
 /** How many orders the board holds at a time, and how long a new one takes after one is declined. */
 export const orderPlaces = () => orderSlots(farm.office.slots)
