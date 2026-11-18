@@ -86,21 +86,31 @@ export function restartGraphics(light: boolean, auto = false) {
   }))
 }
 
+/**
+ * Whether the scene starts again after it failed, and how: for a failure of this kind, before the scene was up (`warm`
+ * false) or after, with this many restarts already this visit (MAX_RESTARTS in all). A graphics failure gets a few
+ * tries; any other one (but a download or WebAssembly that is not there: another try finds the same) gets one, before
+ * the scene was up as in the middle of a game — the farm lives outside the scene, so a fresh scene goes on where you
+ * stood. Never got going: in the lightest settings; it had been running: the same settings, lighter from the second.
+ * Null: no more tries, the intro says why.
+ */
+export function retryPlan(kind: Failure['kind'], warm: boolean, restarts: number): { light: boolean } | null {
+  const tries = kind === 'graphics' ? MAX_RESTARTS : kind === 'other' ? 1 : 0
+  if (restarts >= tries) return null
+  return { light: !warm || restarts > 0 }
+}
+
 /** The 3D scene threw while starting (or later): restart it if that can help, otherwise explain. */
 export function handleSceneError(error: unknown) {
   console.warn('[startup] the 3D scene failed:', error)
   const s = useHome.getState()
   const lost = s.graphics === 'lost'
   const failure = lost ? classify(new Error(`WebGL context lost (${String((error as Error)?.message ?? error)})`)) : classify(error)
-  // a failure before the scene was up is often the graphics running short too (an error thrown by a context that
-  // was lost as it started): one try in light graphics is cheap; a graphics failure gets a few tries
-  const early = !s.ready.warm
-  const retries = failure.kind === 'graphics' ? MAX_RESTARTS : failure.kind === 'other' && early ? 1 : 0
-  const canRetry = restarts < retries && webglAvailable()
-  if (canRetry) {
-    // never got going: try the lightest settings; it had been running: the same settings on a new context
-    const started = useHome.getState().ready.warm
-    window.setTimeout(() => restartGraphics(!started || restarts > 0, true), 400)
+  // a failure before the scene was up is often the graphics running short too (an error thrown by a context that was
+  // lost as it started): one try in light graphics is cheap; a failure mid-game gets one fresh scene where you stood
+  const plan = retryPlan(failure.kind, s.ready.warm, restarts)
+  if (plan && webglAvailable()) {
+    window.setTimeout(() => restartGraphics(plan.light, true), 400)
     return
   }
   useHome.getState().setFailure(failure)

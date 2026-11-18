@@ -7,9 +7,12 @@
 // what they say. None of it is XP: a reward is not something the player did.
 
 import { field, intIn, isObject, list } from '../lib/saved'
-import { LEVELS, SELLABLE, count, isItem, type ProduceId } from './data'
+import { LEVELS, SELLABLE, type ProduceId } from './data'
+import { savedPrize as anyPrize, sized, type Prize as AnyPrize } from './prize'
 import { randomItem } from './storage'
-import { levelOf, levelProgress, levelReward, xpAt } from './xp'
+import { levelOf, levelProgress, xpAt } from './xp'
+
+export { prizeWords } from './prize'
 
 /** The boxes on each level's bar: one at each quarter. */
 export const PER_LEVEL = 4
@@ -21,8 +24,10 @@ export const GIFT_ODDS = { coins: 0.55, material: 0.3 } as const
 /** How many levels reached by play are remembered with what they brought (the level-up show and the card tell it). */
 export const CAME_KEPT = 5
 
-/** A prize: coins, or `n` of a good (a building material, or a good the farm makes). */
-export type Prize = { coins: number } | { item: ProduceId; n: number }
+/** A gift's prize: coins, or `n` of a good (a building material, or a good the farm makes): the two kinds of
+ *  src/farm/prize.ts's prizes a box, a level's arrival, the daily gift or a first step holds (their records keep no
+ *  other). */
+export type Prize = Extract<AnyPrize, { coins: number } | { item: ProduceId; n: number }>
 
 /** A box opened, and what it gave. */
 export interface Opened {
@@ -93,9 +98,9 @@ export function settle(open: number, also: readonly number[]): { open: number; a
   return { open: at, also: rest.filter((k) => k > at) }
 }
 
-/** The coins of a box: about a tenth of the next level's own, more for the later quarters (the last stretch pays most),
- *  at least 3. */
-export const boxCoins = (level: number, q: number) => Math.max(3, Math.round((levelReward(level + 1) / 10) * (1 + q / 2)))
+/** The coins of a box: about a tenth of the next level's own (`sized`), more for the later quarters (the last stretch
+ *  pays most), at least 3. */
+export const boxCoins = (level: number, q: number) => sized((1 + q / 2) / 10, level, 3)
 
 /** The goods a gift may hold: those the farm has made (never a building material: those come as materials). */
 const goodsOf = (made: readonly ProduceId[]) => made.filter((id) => SELLABLE.includes(id))
@@ -116,9 +121,6 @@ export function rollBox(k: number, made: readonly ProduceId[], random: () => num
  *  of the six alike), more at the higher levels (2, up to 6). */
 export const rollArrival = (level: number, random: () => number): Prize => ({ item: randomItem(random), n: Math.min(6, 2 + Math.floor(level / 15)) })
 
-/** A prize in words: "12 coins", "2 planks". */
-export const prizeWords = (p: Prize) => ('coins' in p ? `${p.coins} coins` : count(p.item, p.n))
-
 /** The gifts of a farm with this many XP points from before them: the boxes of the levels before count as opened (what
  *  was reached before is not given again); its own level's boxes reached so far wait for it. */
 export function giftsFor(points: number): Gifts {
@@ -126,11 +128,11 @@ export function giftsFor(points: number): Gifts {
   return { open: Math.min(boxesReached(points), boxAt(level, 0)), also: [], gave: [], came: [], seen: level }
 }
 
-/** A prize as saved, or null: coins from 1, or a known good from 1 to 99. */
+/** A gift's prize as saved, or null: read as any prize is (src/farm/prize.ts: coins from 1, a known good from 1 to 99),
+ *  and only coins or goods (a gift's record holds no other kind). */
 export function savedPrize(raw: unknown): Prize | null {
-  if (!isObject(raw)) return null
-  if ('coins' in raw) return intIn(raw.coins, 1, 1e9) ? { coins: raw.coins } : null
-  return typeof raw.item === 'string' && (SELLABLE.includes(raw.item as ProduceId) || isItem(raw.item)) && intIn(raw.n, 1, 99) ? { item: raw.item as ProduceId, n: raw.n } : null
+  const p = anyPrize(raw)
+  return p && ('coins' in p || 'item' in p) ? p : null
 }
 
 /**

@@ -1,20 +1,25 @@
 import { describe, expect, it } from 'vitest'
 import { dateKey, dateOf, dayNumber, dayStart, freshPlayed, longDay, markPlayed, sanitizePlayed } from './calendar'
-import { dayNumber as dayNumberToday, dayStart as dayStartToday } from './daily'
-import { dateKey as dateKeyToday } from './events'
+import { dayNumber as dailyDayNumber, dayStart as dailyDayStart } from './daily'
+import { dateKey as eventsDateKey } from './events'
 
-// The calendar and days played (update-v1/CONTRACTS.md §1.10). Until 02 moves their callers, the copies in daily.ts and
-// events.ts must give the same answers: every hour across two years, summer time's changes among them.
+// The calendar and days played (update-v1/CONTRACTS.md §1.10): its days whole on the device's clock every hour across
+// two years, summer time's changes among them; daily.ts and events.ts hand on these same functions.
 
 describe('the calendar', () => {
-  it('answers as today’s copies do, every hour across two years', () => {
+  it('every hour across two years: the moment is inside its day, from its midnight to the next, and its date is the day’s', () => {
     const from = new Date(2026, 0, 1).getTime()
     for (let h = 0; h < 2 * 366 * 24; h++) {
       const ms = from + h * 3_600_000
-      expect(dayNumber(ms)).toBe(dayNumberToday(ms))
-      expect(dateKey(ms)).toBe(dateKeyToday(ms))
+      const day = dayNumber(ms)
+      expect(dayStart(day) <= ms && ms < dayStart(day + 1), new Date(ms).toString()).toBe(true)
+      const { year, month, date } = dateOf(day)
+      expect(dateKey(ms)).toBe(`${year}-${String(month).padStart(2, '0')}-${String(date).padStart(2, '0')}`)
     }
-    for (let day = dayNumber(from); day < dayNumber(from) + 2 * 366; day++) expect(dayStart(day)).toBe(dayStartToday(day))
+  })
+
+  it('is the one the daily gift and the week’s events count on', () => {
+    expect([dailyDayNumber, dailyDayStart, eventsDateKey]).toEqual([dayNumber, dayStart, dateKey])
   })
 
   it('a day number’s date is the local date it was made from', () => {

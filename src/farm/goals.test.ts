@@ -1,9 +1,9 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it } from 'vitest'
-import { PRODUCERS, STORES } from './data'
-import { GOALS, GOAL_IDS, MOST_STEPS, boardGoals, goalById, goalReward, goalTarget, goalsReady, startStep } from './goals'
-import { capacity, claimGoal, collect, farm, resetFarm, room } from './state'
-import { OLD_SAVE, savedNow, startFrom } from './testSaves'
+import { MACHINES, PRODUCE, PRODUCERS, STORES, type ProduceId, type ProducerId } from './data'
+import { GOALS, GOAL_IDS, MOST_STEPS, boardGoals, goalById, goalNear, goalReward, goalTarget, goalsNow, goalsReady, nearestGoal, startStep, type GoalId } from './goals'
+import { capacity, claimGoal, collect, farm, resetFarm, room, type FarmData } from './state'
+import { OLD_SAVE, OLD_SAVE_2, playedSave, savedNow, seeded, startFrom } from './testSaves'
 
 // The goals board (src/farm/goals.ts, GoalsPanel.tsx): ladders of counts that never end, each count reached claimed
 // once for coins and the building material the silo or the barn is shortest of.
@@ -90,5 +90,86 @@ describe('the goals', () => {
     expect(board[1].def.id).toBe('milk')
     expect(new Set(board.map((g) => g.def.id)).size).toBe(board.length)
     expect(board.every((g) => GOAL_IDS.includes(g.def.id))).toBe(true)
+  })
+})
+
+/** What each goal counted before its rows said it as data (the closures it had), to hold the counts the same. */
+const CROP_IDS = PRODUCE.filter((p) => !p.material && !Object.values(PRODUCERS).some((d) => d.good === p.id) && !Object.values(MACHINES).some((m) => m.recipes.some((r) => r.makes === p.id))).map(
+  (p) => p.id,
+)
+const MATERIALS = PRODUCE.filter((p) => p.material).map((p) => p.id)
+const madeBy = (machine: keyof typeof MACHINES) => [...new Set(MACHINES[machine].recipes.map((r) => r.makes))]
+const sum = (f: FarmData, ids: readonly ProduceId[]) => ids.reduce((n, id) => n + (f.got[id] ?? 0), 0)
+const fromAnimal = (id: ProducerId) => (f: FarmData) => f.got[PRODUCERS[id].good] ?? 0
+const BEFORE: Record<Exclude<GoalId, 'fruit'>, (f: FarmData) => number> = {
+  harvest: (f) => sum(f, CROP_IDS),
+  eggs: fromAnimal('hens'),
+  milk: fromAnimal('cows'),
+  wool: fromAnimal('sheep'),
+  lemons: fromAnimal('tree'),
+  mill: (f) => sum(f, madeBy('mill')),
+  cloth: (f) => sum(f, madeBy('loom')),
+  cakes: (f) => sum(f, madeBy('oven')),
+  sell: (f) => f.stats.sold,
+  earn: (f) => f.stats.earned,
+  orders: (f) => f.stats.sent,
+  surprises: (f) => sum(f, MATERIALS),
+}
+
+describe('the goals as rows', () => {
+  it('each counts what it always did: the same numbers on today’s farms', () => {
+    const random = seeded(3)
+    const farms: [string, () => void][] = [
+      ['new', () => resetFarm()],
+      ['played', () => startFrom({ ...playedSave(), time: Date.now() })],
+      ['old', () => startFrom({ ...OLD_SAVE, time: Date.now() })],
+      ['old 2', () => startFrom({ ...OLD_SAVE_2, time: Date.now() })],
+      [
+        'every good got',
+        () => {
+          resetFarm()
+          for (const id of Object.keys(farm.got) as ProduceId[]) farm.got[id] = Math.floor(random() * 500)
+          for (const k of Object.keys(farm.stats) as (keyof FarmData['stats'])[]) farm.stats[k] = Math.floor(random() * 5000)
+        },
+      ],
+    ]
+    for (const [name, start] of farms) {
+      start()
+      for (const [id, before] of Object.entries(BEFORE)) expect(goalById(id as GoalId).measure(farm), `${id} on ${name}`).toBe(before(farm))
+      // and the first steps' reading of a goal is the same count
+      for (const g of goalsNow(farm)) expect(g.have).toBe(g.def.measure(farm))
+    }
+  })
+
+  it('Pick fruit: the fruit of the trees and bushes bought, never the lemons', () => {
+    Object.assign(farm.got, { apple: 4, cherry: 3, raspberry: 2, lemon: 30 })
+    expect(goalById('fruit').measure(farm)).toBe(9)
+    farm.got.apple = goalTarget(goalById('fruit'), 0)
+    expect(goalsNow(farm).find((g) => g.def.id === 'fruit')!.done).toBe(true)
+    expect(claimGoal('fruit')).not.toBeNull()
+    expect(farm.goals.fruit).toBe(1)
+  })
+
+  it('a new farm’s board shows what it can do first: the fruit comes last of the rows', () => {
+    expect(GOAL_IDS[GOAL_IDS.length - 1]).toBe('fruit')
+    expect(boardGoals(farm).map((g) => g.def.id)).not.toContain('fruit')
+  })
+})
+
+describe('the nearest goal', () => {
+  it('the one most of the way to its next count, not reached; how near it is, and almost there in its last stretch', () => {
+    farm.got.egg = 9
+    farm.got.milk = 3
+    expect(nearestGoal(farm)?.def.id).toBe('eggs')
+    const eggs = goalsNow(farm).find((g) => g.def.id === 'eggs')!
+    expect(goalNear(eggs)).toEqual({ stop: 1, at: 10, left: 1, share: 0.9, almost: true })
+    // reached, it waits to be claimed: the next nearest
+    farm.got.egg = 10
+    expect(goalNear(goalsNow(farm).find((g) => g.def.id === 'eggs')!)).toBeNull()
+    expect(nearestGoal(farm)?.def.id).toBe('milk')
+    // claimed, it is on its next count, from the one before
+    claimGoal('eggs')
+    const next = goalsNow(farm).find((g) => g.def.id === 'eggs')!
+    expect(goalNear(next)).toMatchObject({ stop: 2, at: 30, left: 20, share: 0, almost: false })
   })
 })
