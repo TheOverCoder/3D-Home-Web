@@ -97,3 +97,29 @@ describe('less motion', () => {
     expect(JSON.parse(localStorage.getItem(KEY)!).motion).toBe('device')
   })
 })
+
+describe('what the player has learnt of the controls', () => {
+  it('an older stored object loads with nothing learnt (each is taught once), the rest as it was', async () => {
+    const { useSettings, DEFAULT_SETTINGS } = await loaded({ sound: true, volume: 0.4 })
+    expect(DEFAULT_SETTINGS.learnt).toEqual({ stick: false, look: false })
+    expect(useSettings.getState().learnt).toEqual({ stick: false, look: false })
+    expect(useSettings.getState().volume).toBe(0.4)
+  })
+
+  it('is kept once done, each on its own, survives a reload, and Reset to defaults keeps it', async () => {
+    let s = await loaded()
+    s.learn('stick')
+    expect(JSON.parse(localStorage.getItem(KEY)!).learnt).toEqual({ stick: true, look: false })
+    s = await loaded(JSON.parse(localStorage.getItem(KEY)!))
+    expect(s.useSettings.getState().learnt).toEqual({ stick: true, look: false })
+    s.learn('look')
+    s.useSettings.getState().reset()
+    expect(s.useSettings.getState().learnt).toEqual({ stick: true, look: true })
+    expect(JSON.parse(localStorage.getItem(KEY)!).learnt).toEqual({ stick: true, look: true })
+  })
+
+  it('a garbled record is nothing learnt', async () => {
+    const s = await loaded({ learnt: { stick: 'yes', look: 1 } })
+    expect(s.useSettings.getState().learnt).toEqual({ stick: false, look: false })
+  })
+})

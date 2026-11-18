@@ -66,7 +66,12 @@ export async function bootApp(page: Page, query = 'debug&quality=low') {
   await quietEvents(page)
   // the season and the weather quiet (src/farm/state/season.ts): every spec stands in spring, in clear weather
   await page.evaluate(() => (window as any).__home?.season?.quiet?.(true))
+  await learntControls(page)
 }
+
+/** The controls marked learnt on this device (src/settings.ts, `learnt`): every spec sees today's controls — the three
+ *  buttons over the stick, no ring and no hand teaching them, no keyboard line — but 07-phone's, which teaches them. */
+export const learntControls = (page: Page) => page.evaluate(() => (window as any).__home?.settings?.getState?.().update?.({ learnt: { stick: true, look: true } }))
 
 /** Puts the shared page on a map (the house yours first): the scene changes behind its curtain, you at that map's start.
  *  Nothing happens when you are on it already. */
@@ -206,6 +211,8 @@ export async function openGame(browser: Browser, counting = false): Promise<{ ga
         // the season and the weather quiet (src/farm/state/season.ts: spring and clear), as a ?debug page starts: a spec
         // that turned them on or set its own leaves them quiet for the next
         h.season?.quiet?.(true)
+        // the controls learnt (src/settings.ts): a spec that taught them leaves them learnt for the next
+        h.settings?.getState?.().update?.({ learnt: { stick: true, look: true } })
       }, map)
     },
   }

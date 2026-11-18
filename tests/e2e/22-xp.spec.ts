@@ -513,18 +513,17 @@ test.describe('levels', () => {
 /** Two boxes overlap (by more than a pixel each way). */
 const overlap = (a: Box, b: Box) => a.x + 1 < b.x + b.width && b.x + 1 < a.x + a.width && a.y + 1 < b.y + b.height && b.y + 1 < a.y + a.height
 
-/** In the page: the boxes of what is shown at the top of the screen and of the touch controls. With `crowded`, a toast,
- *  the first hint and the busy card are shown first (each time: a toast lasts two seconds), and measured once all stand. */
+/** In the page: the boxes of what is shown at the top of the screen and of the touch controls. With `crowded`, a toast
+ *  and the busy card are shown first (each time: a toast lasts two seconds), and measured once both stand. (The controls
+ *  are taught where they are, src/ui/TouchControls.tsx: no line of words in the column.) */
 const boxes = (page: Page, crowded = false) =>
   page.evaluate(async (crowded) => {
     if (crowded) {
       const h = (window as any).__home
       h.useHome.getState().showToast('+ 4 lettuces', 'lettuce')
-      h.useHome.setState({ hintShown: false })
       // the busy card (src/farm/Busy.tsx) in its own slot, at the column's end
       h.busy?.show?.()
-      for (let i = 0; i < 100 && !(document.querySelector('.toast') && document.querySelector('.first-hint.touch') && document.querySelector('.busy-card')); i++)
-        await new Promise((r) => setTimeout(r, 20))
+      for (let i = 0; i < 100 && !(document.querySelector('.toast') && document.querySelector('.busy-card')); i++) await new Promise((r) => setTimeout(r, 20))
     }
     const shown = (sel: string) =>
       Array.from(document.querySelectorAll(sel))
@@ -540,7 +539,7 @@ const boxes = (page: Page, crowded = false) =>
       bar: shown('.xp-bar'),
       compass: shown('.compass'),
       // the rest of the top column (src/ui/TopStack.tsx)
-      column: [...shown('.toast'), ...shown('.first-hint.touch'), ...shown('.level-up-show'), ...shown('.busy-card')],
+      column: [...shown('.toast'), ...shown('.level-up-show'), ...shown('.busy-card')],
       // its slots under the compass's, each with its place in the order (the compass's stands in the dashboard's hole)
       slots: Array.from(document.querySelectorAll<HTMLElement>('.top-stack > .top-slot:not(.top-slot-compass)'))
         .filter((e) => e.getClientRects().length > 0 && e.getBoundingClientRect().height > 0)
@@ -552,13 +551,12 @@ const boxes = (page: Page, crowded = false) =>
 
 /** What is wrong at the top of the screen now: everything there on the screen and clear of each other, the touch
  *  controls clear of all of it; the level-up show (where it stood) on the screen and clear of the touch controls.
- *  `crowded`: with a toast and the first hint as well, each in its place in the top column and clear of the rest. */
+ *  `crowded`: with a toast and the busy card as well, each in its place in the top column and clear of the rest. */
 async function layoutProblems(page: Page, show: Box | null, crowded = false) {
   const b = await boxes(page, crowded)
   const out: string[] = []
   if (crowded) {
     if (!b.column.some((x) => /toast/.test(x.what))) out.push('no toast')
-    if (!b.column.some((x) => /first-hint/.test(x.what))) out.push('no first hint')
     if (!b.column.some((x) => /busy-card/.test(x.what))) out.push('no busy card')
     const top = [...b.chips, ...b.bar, ...b.compass, ...b.corner]
     for (const c of b.column) {
@@ -567,7 +565,7 @@ async function layoutProblems(page: Page, show: Box | null, crowded = false) {
       for (const t of b.touch) if (overlap(c, t)) out.push(`${c.what} over ${t.what}`)
     }
     for (let i = 0; i < b.column.length; i++) for (let j = i + 1; j < b.column.length; j++) if (overlap(b.column[i], b.column[j])) out.push(`${b.column[i].what} over ${b.column[j].what}`)
-    // one under another in the column's order: the step, the toast, the level-up, the hint, the busy card
+    // one under another in the column's order: the step, the toast, the level-up, the busy card
     const slots = [...b.slots].sort((x, y) => x.order - y.order)
     for (let i = 1; i < slots.length; i++) if (slots[i].top + 1 < slots[i - 1].bottom) out.push(`${slots[i].what} above ${slots[i - 1].what}`)
   }
@@ -615,7 +613,7 @@ async function photoProblems(page: Page) {
 /** The top of the screen, once its layout has settled (a chip that grows wraps the row, and the compass under it
  *  follows on the next frame), has nothing wrong. */
 const checkLayout = (page: Page, show: Box | null, size: string, crowded = false) =>
-  expect.poll(() => layoutProblems(page, show, crowded), { timeout: 15_000, message: `${size}: the top of the screen${crowded ? ', with a toast and the hint' : ''}` }).toEqual([])
+  expect.poll(() => layoutProblems(page, show, crowded), { timeout: 15_000, message: `${size}: the top of the screen${crowded ? ', with a toast and the busy card' : ''}` }).toEqual([])
 
 // A phone held upright and turned sideways: a page of its own with touch (coarse pointer), and opened again.
 test.describe('levels on a phone', { tag: '@boot' }, () => {

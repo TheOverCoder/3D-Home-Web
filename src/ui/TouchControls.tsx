@@ -1,15 +1,19 @@
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react'
+import { m } from 'motion/react'
 import { VirtualButton, useJoystickStore } from 'ecctrl/input'
 import { PICKUPS } from '../data/layout'
 import { uiClick } from '../audio/sound'
+import { farm, shows, stepsBusy, useFarm } from '../farm/state'
 import { coarsePointer } from '../lib/device'
 import { triggerInteraction } from '../lib/interaction'
+import { lookedAt } from '../lib/look'
 import { DEAD, RUN_AT, touchLayout, turnRound, useStick } from '../lib/stick'
 import { stopWalk, useWalk } from '../lib/route/walking'
-import { useSettings } from '../settings'
+import { learn, useSettings } from '../settings'
 import { busy, useHome, type Nearby } from '../store'
 import { ActionFace, TurnHint, actionWord } from './ActionGlyph'
-import { ArrowULeftDown, NavigationArrow, PersonSimpleRun, PersonSimpleWalk } from './glyphs'
+import { ArrowULeftDown, HandSwipeRight, NavigationArrow, PersonSimpleRun, PersonSimpleWalk } from './glyphs'
+import { useLessMotion } from './still'
 
 const PAD = 14 // gap to the screen edge, on top of the safe area (notches, gesture bar)
 const TOOL = 44 // the round buttons over the stick
@@ -100,9 +104,11 @@ function ActionButton({ action, main, size, at }: { action: Nearby; main?: boole
  * The stick. It rests in the bottom-left corner, and comes to wherever the thumb lands in the area round it, so the
  * first touch never pushes it by itself; a quiet middle (a thumb settling) does nothing, and past the ring on its
  * base it runs — the ring lights up and the knob shows a runner. Taking it stops walking on by itself, and walking to a
- * compass mark. It writes ecctrl's stick store, which the player reads every frame.
+ * compass mark. It writes ecctrl's stick store, which the player reads every frame. Until a player has walked with it
+ * once on this device (`learnt`, src/settings.ts), a ring breathes round it where it rests (`teach`: once the farmer's
+ * first step is done, so the first thing taught is the tap that walks you); still, with less motion.
  */
-function Stick({ size }: { size: Size }) {
+function Stick({ size, teach }: { size: Size; teach: boolean }) {
   const side = leftSide(size)
   const base = Math.round(size.stick * 0.62)
   const r = base / 2 // how far the knob goes
@@ -113,6 +119,9 @@ function Stick({ size }: { size: Size }) {
   const knobEl = useRef<HTMLDivElement>(null)
   // the finger holding it, the middle it came to (in the area) and where the area is on the screen
   const held = useRef<{ id: number; x: number; y: number; left: number; top: number } | null>(null)
+  // it walked while held (pushed past its quiet middle): learnt, once let go
+  const walked = useRef(false)
+  const still = useLessMotion()
 
   const show = (x: number, y: number, dx: number, dy: number, state: 'rest' | 'walk' | 'run') => {
     const el = ring.current
@@ -126,6 +135,8 @@ function Stick({ size }: { size: Size }) {
     held.current = null
     useJoystickStore.getState().resetJoystick()
     show(home.x, home.y, 0, 0, 'rest')
+    if (walked.current) learn('stick')
+    walked.current = false
   }
   const move = (e: PointerEvent) => {
     const h = held.current
@@ -140,7 +151,10 @@ function Stick({ size }: { size: Size }) {
     const push = Math.min(1, d / r)
     show(h.x, h.y, dx, dy, push > RUN_AT ? 'run' : 'walk')
     if (push < DEAD) useJoystickStore.getState().setJoystick(0, 0)
-    else useJoystickStore.getState().setJoystick(dx / r, -dy / r)
+    else {
+      useJoystickStore.getState().setJoystick(dx / r, -dy / r)
+      walked.current = true
+    }
   }
 
   // nothing held over when the controls go (a panel opened)
@@ -170,6 +184,26 @@ function Stick({ size }: { size: Size }) {
       onPointerCancel={(e) => held.current?.id === e.pointerId && release()}
       onLostPointerCapture={(e) => held.current?.id === e.pointerId && release()}
     >
+      {/* not walked with yet on this device: a sun ring breathing round its place at rest (still, with less motion) */}
+      {teach && (
+        <m.i
+          className="stick-teach"
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            left: home.x - base / 2 - 10,
+            top: home.y - base / 2 - 10,
+            width: base + 20,
+            height: base + 20,
+            borderRadius: '50%',
+            boxShadow: '0 0 0 3px var(--sun), 0 0 14px color-mix(in srgb, var(--sun) 60%, transparent)',
+            pointerEvents: 'none',
+          }}
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={still ? { opacity: 1, scale: 1 } : { opacity: [0.95, 0.35, 0.95], scale: [1, 1.12, 1] }}
+          transition={still ? { duration: 0.2 } : { duration: 1.6, ease: 'easeInOut', repeat: Infinity }}
+        />
+      )}
       {/* at rest where it belongs; held, moved straight on the page (no render for every move of the thumb) */}
       <div
         ref={ring}
@@ -240,6 +274,36 @@ function StickTools({ size }: { size: Size }) {
   )
 }
 
+/** Once the stick has walked and before the view has been turned with a drag on this device: a hand drifting across the
+ *  middle of the scene, "Drag to look", until the first drag (still, with less motion). */
+function LookHint() {
+  const still = useLessMotion()
+  useEffect(() => {
+    const since = performance.now()
+    const t = window.setInterval(() => {
+      if (lookedAt.time > since) learn('look')
+    }, 200)
+    return () => window.clearInterval(t)
+  }, [])
+  return (
+    <div
+      className="look-teach"
+      aria-hidden="true"
+      style={{ position: 'fixed', left: '50%', top: '52%', zIndex: 9, display: 'grid', justifyItems: 'center', gap: 6, translate: '-50% -50%', pointerEvents: 'none' }}
+    >
+      <m.span
+        style={{ display: 'grid', color: '#fff', filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45))' }}
+        initial={{ opacity: 0 }}
+        animate={still ? { opacity: 1 } : { opacity: 1, x: [-44, 44, -44] }}
+        transition={still ? { duration: 0.2 } : { duration: 2.4, ease: 'easeInOut', repeat: Infinity }}
+      >
+        <HandSwipeRight weight="fill" size={44} />
+      </m.span>
+      <span style={{ padding: '6px 14px', borderRadius: 999, background: 'rgba(10, 12, 16, 0.55)', color: '#fff', font: '700 15px/1.2 var(--font-text)' }}>Drag to look</span>
+    </div>
+  )
+}
+
 /**
  * On-screen stick, its buttons, the jump button and the action buttons — only on touch devices; the player reads the
  * stick and jump stores each frame. The big round button does what is in front of you or, when you look at nothing,
@@ -252,6 +316,13 @@ export function TouchControls() {
   const carrying = useHome((s) => s.carrying)
   const asking = useHome((s) => s.confirm !== null)
   const [size, setSize] = useState(measure)
+  // the controls taught in context, once on this device (src/settings.ts, learnt): after a new farm's first step (the
+  // first thing taught is the farmer's tap, which walks you), the stick until it has walked, then the drag to look; the
+  // three buttons over the stick come in once it has walked (their place kept), or with the steps' end
+  useFarm((s) => s.rev)
+  const learnt = useSettings((s) => s.learnt)
+  const teach = !stepsBusy() || farm.firstSteps.step > 0
+  const tools = learnt.stick || shows('stickTools')
 
   useEffect(() => {
     if (!coarsePointer) return
@@ -299,8 +370,9 @@ export function TouchControls() {
 
   return (
     <>
-      <Stick size={size} />
-      <StickTools size={size} />
+      <Stick size={size} teach={teach && !learnt.stick} />
+      {tools && <StickTools size={size} />}
+      {teach && learnt.stick && !learnt.look && <LookHint />}
       <VirtualButton
         id="jump"
         label="JUMP"

@@ -249,6 +249,44 @@ test.describe('phone', { tag: '@boot' }, () => {
     await tools.nth(0).tap()
     await expect(tools.nth(0)).toHaveAttribute('aria-pressed', 'false')
 
+    // the controls taught once on this device (src/settings.ts, learnt; src/ui/TouchControls.tsx): a new farm on its
+    // steps, on a device that has not walked with the stick yet. On the first step nothing is taught (the farmer's tap
+    // is) and the buttons over the stick wait; after it a ring breathes round the stick; a walk with it is learnt
+    // (kept), the buttons come in where they always were, and a hand teaches the drag until the view is turned
+    const learnt = () => page.evaluate(() => ({ ...(window as any).__home.settings.getState().learnt }))
+    await page.evaluate(() => {
+      const h = (window as any).__home
+      h.farm.reset()
+      h.farm.steps.quiet(false)
+      h.settings.getState().update({ learnt: { stick: false, look: false } })
+      h.farm.useFarm.setState((s: any) => ({ rev: s.rev + 1 }))
+    })
+    await stand()
+    await expect(tools).toHaveCount(0)
+    await expect(page.locator('.stick-teach')).toHaveCount(0)
+    await page.evaluate(() => (window as any).__home.farm.plant(0, 'lettuce'))
+    await expect(page.locator('.stick-teach')).toHaveCount(1, { timeout: 15_000 })
+    await expect(page.locator('.look-teach')).toHaveCount(0)
+    await touch('touchStart', [{ ...thumb, id: 1 }])
+    for (let i = 1; i <= 4; i++) await touch('touchMove', [{ x: thumb.x, y: thumb.y - 9 * i, id: 1 }])
+    await page.waitForTimeout(800)
+    await touch('touchEnd', [])
+    await expect.poll(learnt, { timeout: 15_000 }).toEqual({ stick: true, look: false })
+    expect(JSON.parse((await page.evaluate(() => localStorage.getItem('3d-home:settings:v1')))!).learnt).toEqual({ stick: true, look: false })
+    await expect(tools).toHaveCount(3)
+    await expect(page.locator('.stick-teach')).toHaveCount(0)
+    await expect(page.locator('.look-teach')).toBeVisible()
+    expect(
+      (await toolBoxes()).map((b) => [Math.round(b.x), Math.round(b.y)]),
+      'the buttons over the stick where they always were',
+    ).toEqual(toolsL.map((b) => [Math.round(b.x), Math.round(b.y)]))
+    await touch('touchStart', [{ x: 400, y: 160, id: 1 }])
+    for (let i = 1; i <= 6; i++) await touch('touchMove', [{ x: 400 + i * 12, y: 160, id: 1 }])
+    await touch('touchEnd', [])
+    await expect.poll(learnt, { timeout: 15_000 }).toEqual({ stick: true, look: true })
+    await expect(page.locator('.look-teach')).toHaveCount(0)
+    await page.evaluate(() => (window as any).__home.farm.steps.quiet(true))
+
     expect(errors, errors.join('\n')).toEqual([])
     await context.close()
   })

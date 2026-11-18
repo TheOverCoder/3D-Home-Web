@@ -23,6 +23,15 @@ export interface Settings {
   hudMode: 'all' | 'compass' | 'clean' // the top of the screen: everything, only the compass, or nothing (the button in the corner, or H)
   followMove: boolean // touch: the view turns towards where you walk with the stick (the button beside it)
   motion: MotionPref // less motion: left to the device, less whatever it says, or full (src/ui/still.ts reads it)
+  learnt: Learnt // what this player has done once with the controls on this device: each is taught until then
+}
+
+/** What a player has done once with the controls, on this device (taught in context until then, src/ui/TouchControls.tsx
+ *  and src/ui/Hud.tsx): walked with the stick (or the keys), and turned the view with a drag (or the mouse). A record of
+ *  what was done, not a preference: Reset to defaults keeps it. */
+export interface Learnt {
+  stick: boolean
+  look: boolean
 }
 
 // People who ask their system for less motion get a still camera by default (they can still turn sway on): the
@@ -49,9 +58,16 @@ export const DEFAULT_SETTINGS: Settings = {
   hudMode: 'all',
   followMove: false,
   motion: 'device',
+  learnt: { stick: false, look: false },
 }
 
 const KEY = '3d-home:settings:v1'
+
+/** The controls' record as kept: each true only if it was (an older stored object has none: nothing learnt yet). */
+const learntOf = (x: unknown): Learnt => {
+  const l = (typeof x === 'object' && x !== null ? x : {}) as Partial<Record<keyof Learnt, unknown>>
+  return { stick: l.stick === true, look: l.look === true }
+}
 
 /** A motion choice as kept: one of the three (anything else is the device's, as it starts). */
 const motionOf = (x: unknown): MotionPref => (x === 'less' || x === 'full' ? x : 'device')
@@ -61,7 +77,7 @@ function load(): Settings {
     const raw = localStorage.getItem(KEY)
     if (!raw) return DEFAULT_SETTINGS
     const s = { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<Settings>) }
-    return { ...s, motion: motionOf(s.motion) }
+    return { ...s, motion: motionOf(s.motion), learnt: learntOf(s.learnt) }
   } catch {
     return DEFAULT_SETTINGS
   }
@@ -103,6 +119,7 @@ const pick = (s: Settings): Settings => ({
   hudMode: s.hudMode === 'compass' || s.hudMode === 'clean' ? s.hudMode : 'all',
   followMove: s.followMove === true,
   motion: motionOf(s.motion),
+  learnt: learntOf(s.learnt),
 })
 
 export const useSettings = create<SettingsStore>()((set, get) => ({
@@ -118,10 +135,18 @@ export const useSettings = create<SettingsStore>()((set, get) => ({
     persist(pick(get()))
   },
   reset: () => {
-    set(DEFAULT_SETTINGS)
-    persist(DEFAULT_SETTINGS)
+    // (what the player has learnt stays learnt)
+    const kept = { ...DEFAULT_SETTINGS, learnt: get().learnt }
+    set(kept)
+    persist(kept)
   },
 }))
+
+/** The player has done this with the controls once on this device: it is no longer taught. Kept at once. */
+export function learn(what: keyof Learnt) {
+  const { learnt, update } = useSettings.getState()
+  if (!learnt[what]) update({ learnt: { ...learnt, [what]: true } })
+}
 
 // The motion choice drives the one reader (src/ui/still.ts) as the page loads and on every change, however made (a
 // row of Settings, Reset to defaults, a test)
