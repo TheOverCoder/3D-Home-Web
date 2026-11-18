@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { DAY } from './data'
 import { SEASON_IDS, type SeasonId } from './season'
-import { CLEAR, SPELL, WEATHER, spellOn, unit, weatherAt, wets, type SpellKind, type Weather } from './weather'
+import { CLEAR, SPELL, WEATHER, spellOn, standing, unit, weatherAt, wets, type SpellKind, type Weather } from './weather'
 
 // The farm's weather (src/farm/weather.ts): a function of the farm's clock alone — the same time, the same weather —
 // with at most one spell a farm day on its season's odds, easing in and out, fog only in the morning, snow only in
@@ -128,5 +128,14 @@ describe('rain waters the beds', () => {
     expect(wets({ kind: 'rain', amount: 0.5, wind: 0, rainbow: 0 })).toBe(true)
     expect(wets({ kind: 'rain', amount: 0.49, wind: 0, rainbow: 0 })).toBe(false)
     for (const kind of ['snow', 'fog', 'cloudy', 'wind', 'clear'] as const) expect(wets({ kind, amount: 1, wind: 0, rainbow: 0 })).toBe(false)
+  })
+})
+
+describe('a weather standing (the tests’ and the screenshots’)', () => {
+  it('each kind fully in with its strongest wind; clear is clear; the rainbow on a clear day; heavy rain waters', () => {
+    for (const kind of Object.keys(SPELL.wind) as SpellKind[]) expect(standing(kind)).toEqual({ kind, amount: 1, wind: SPELL.wind[kind][1], rainbow: 0 })
+    expect(standing('clear')).toEqual(CLEAR)
+    expect(standing('rainbow')).toEqual({ ...CLEAR, rainbow: 1 })
+    expect(wets(standing('rain'))).toBe(true)
   })
 })

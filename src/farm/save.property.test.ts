@@ -46,6 +46,7 @@ import { FIRST_STEP, levelOf, levelProgress } from './xp'
 import { BOX_COUNT, CAME_KEPT, PER_LEVEL, boxAt, boxesReached } from './gifts'
 import { EVENT_IDS, LUCKY_GOODS, SEEN_KEPT } from './events'
 import { FIRST_STEPS } from './firstSteps'
+import { seasonAt } from './season'
 import { LEDGER_DAYS, soldAt, type Channel } from './ledger'
 import { QUEUE, machineLevel } from './machineView'
 import { garmentById, garmentsAt } from './outfit'
@@ -190,6 +191,7 @@ const OLD_PARTS: Record<string, string> = {
  *    pieces a day); the market (whether the shop is yours) → the ladders (the shop's own are 0 until it is); the
  *    animals' tools among the ladders → their herds' counts and clocks (a nest a hen with the coop; each up to the
  *    tool's most), and their skins (a tool not the farm's owns its own only, and wears it)
+ *  - days played → the farm's year: its first spring begun no later than today, no arrival shown ahead of its season
  */
 function alsoChanges(part: string): RegExp | null {
   if (part.startsWith('expansions')) return /^beds\.|^layout$/
@@ -205,6 +207,8 @@ function alsoChanges(part: string): RegExp | null {
   if (part === 'time') return /^(beds|producers|machines)\.|^nextVisitorIn$|^queue$|^orders$|^dispatch$|^(market|contractor|day|ledger)$/
   if (part === 'home.pieces') return /^home\.(stored|next)$/
   if (part === 'home.shell' || part.startsWith('home.shell.')) return /^home\.(pieces|stored|next)$/
+  // the farm's year is read against its days played (src/farm/season.ts, sanitizeSeason)
+  if (part === 'played' || part.startsWith('played.')) return /^season$/
   // you are in the house only while it is yours (src/farm/state.ts, load)
   if (part === 'apartment' || part.startsWith('apartment.')) return /^place$/
   // the ladders decide how many places the shop has and how often shoppers come, and how many pieces the contractor
@@ -230,6 +234,8 @@ function free(base: Base, path: Key[], names: string[]): (name: string) => boole
   if (base.old && /^stats(\.|$)/.test(at)) coupled.push(/^(xp|outfit|gifts)(\.|$)/)
   // and its days played start from its daily gift's streak and the day it last claimed one
   if (base.old && /^daily(\.|$)/.test(at)) coupled.push(/^played$/)
+  // and so its year (src/farm/season.ts: read against its days played)
+  if (base.old && /^daily(\.|$)/.test(at)) coupled.push(/^season$/)
   return (n) => touched.includes(n) || coupled.some((r) => r.test(n))
 }
 
@@ -375,6 +381,20 @@ function farmProblems(): string[] {
   // days played: a count, and the day last played (or none), never past today
   const pl = farm.played
   bad('played', sameKeys(pl, ['days', 'last']) && isCount(pl.days) && Number.isInteger(pl.last) && pl.last >= -1 && pl.last <= calendarDay())
+  // the farm's year: begun on a day played from the first to today (today counted, as the farm's first frame of the day
+  // counts it), an arrival shown no later than the season it is now
+  const ss = farm.season
+  const playedToday = pl.days + (pl.last < calendarDay() ? 1 : 0)
+  bad(
+    'season',
+    sameKeys(ss, ['from', 'told']) &&
+      Number.isInteger(ss.from) &&
+      ss.from >= 1 &&
+      ss.from <= Math.max(1, playedToday) &&
+      Number.isInteger(ss.told) &&
+      ss.told >= -1 &&
+      ss.told <= seasonAt(playedToday, ss.from).ordinal,
+  )
   // the ladders: a step count each, to its top; the shop's own none until the shop is yours; a tool's upgrades none
   // without the tool
   const l = farm.ladders
