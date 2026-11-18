@@ -8,6 +8,7 @@
 // Pure: src/farm/state.ts keeps the record, judges each moment (each step of a time away its own) and gives what it says.
 
 import type { ArtId } from '../ui/art'
+import { isObject } from '../lib/saved'
 import { SELLABLE, type ProduceId } from './data'
 
 export type EventId = 'market' | 'harvest' | 'gifts' | 'rush' | 'lucky'
@@ -176,7 +177,6 @@ export function newsWaiting(rec: EventsRecord, ms: number | null): number {
   return keys.size
 }
 
-const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object'
 const DAY = /^\d{4}-\d{2}-\d{2}$/
 const KEY = new RegExp(`^(${EVENT_IDS.join('|')})@\\d{4}-\\d{2}-\\d{2}$`)
 
@@ -184,10 +184,10 @@ const KEY = new RegExp(`^(${EVENT_IDS.join('|')})@\\d{4}-\\d{2}-\\d{2}$`)
  *  out); the keys of events shown (each once, the last SEEN_KEPT). Missing or unreadable (a farm from before the
  *  events): nothing drawn, nothing shown. */
 export function sanitizeEvents(raw: unknown): EventsRecord {
-  if (!isObj(raw)) return freshEvents()
+  if (!isObject(raw)) return freshEvents()
   const d = raw.draw
   let draw: EventsRecord['draw'] = null
-  if (isObj(d) && typeof d.day === 'string' && DAY.test(d.day) && Array.isArray(d.goods)) {
+  if (isObject(d) && typeof d.day === 'string' && DAY.test(d.day) && Array.isArray(d.goods)) {
     const goods = [...new Set(d.goods)].filter((g): g is ProduceId => SELLABLE.includes(g as ProduceId)).slice(0, LUCKY_GOODS)
     if (goods.length) draw = { day: d.day, goods }
   }

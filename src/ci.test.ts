@@ -62,7 +62,14 @@ describe('which specs a change reaches (tests/e2e/areas.json)', () => {
     expect(reach('src/farm/daily.test.ts')).toEqual([])
     expect(reach('update-v1/CHECKS.md')).toEqual([])
     expect(reach('tests/e2e/21-goals.spec.ts')).toEqual(['21-goals.spec.ts'])
-    expect(reach('src/lib/sculpt/lod.ts')).toEqual(['05-budget-and-fallback.spec.ts', '16-view.spec.ts', '27-far-copies.spec.ts'])
+    expect(reach('src/lib/sculpt/lod.ts')).toEqual([
+      '05-budget-and-fallback.spec.ts',
+      '16-view-buildings.spec.ts',
+      '16-view-farm.spec.ts',
+      '16-view-openings.spec.ts',
+      '16-view-rooms.spec.ts',
+      '27-far-copies.spec.ts',
+    ])
     const everything = affected(['tests/e2e/helpers.ts'], map, specs)
     expect(everything.all).toEqual(['tests/e2e/helpers.ts'])
     expect([...everything.specs.keys()].sort()).toEqual(map.smoke.map((s) => `${s}.spec.ts`).sort())

@@ -2,6 +2,7 @@ import { HOUSE, LAMPS, ROOMS, roomAt, type RoomId } from '../data/layout'
 import { SCREENS, type ScreenDef } from '../data/screens'
 import { carry, rectToWorld, type Fit, type Placement, type Rect } from '../farm/layout'
 import { debugFlag } from '../lib/debug'
+import { isObject } from '../lib/saved'
 import { PIECES, isPieceType, onWall, type PieceType } from './catalogue'
 import {
   RUNS,
@@ -595,7 +596,7 @@ export function findFreeSpot(layout: HomeLayout, type: PieceType, room: RoomId, 
  *  walls' things could move (no shell) has them where they always were. */
 export function sanitizeHome(raw: unknown): HomeLayout {
   const base = defaultHome()
-  if (!raw || typeof raw !== 'object') return base
+  if (!isObject(raw)) return base
   const r = raw as Partial<HomeLayout>
   const shell = sanitizeShell(r.shell)
   // `next` numbers the pieces taken out of storage from now on: a whole number from 1 that still counts up
@@ -604,7 +605,7 @@ export function sanitizeHome(raw: unknown): HomeLayout {
   // with no list of pieces, today's furniture stands; what waits in storage is kept
   if (!Array.isArray(r.pieces)) return { ...base, stored: out.stored, next, shell }
   // a save from before the walls' things moved: they come where they always were, after its own pieces are checked
-  const older = !r.shell || typeof r.shell !== 'object'
+  const older = !isObject(r.shell)
   const seen = new Set<string>()
   for (const p of r.pieces as Partial<HomePiece>[]) {
     if (!p || typeof p.id !== 'string' || seen.has(p.id) || !isPieceType(p.type)) continue

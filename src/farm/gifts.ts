@@ -6,6 +6,7 @@
 // (LEVELS) are claimed in the card as before. Pure: the rules and the record kept in the save; src/farm/state.ts gives
 // what they say. None of it is XP: a reward is not something the player did.
 
+import { field, intIn, isObject, list } from '../lib/saved'
 import { LEVELS, SELLABLE, count, isItem, type ProduceId } from './data'
 import { randomItem } from './storage'
 import { levelOf, levelProgress, levelReward, xpAt } from './xp'
@@ -125,15 +126,11 @@ export function giftsFor(points: number): Gifts {
   return { open: Math.min(boxesReached(points), boxAt(level, 0)), also: [], gave: [], came: [], seen: level }
 }
 
-const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object'
-const field = (v: unknown, k: string) => (isObj(v) ? v[k] : undefined)
-const whole = (v: unknown, lo: number, hi: number): v is number => typeof v === 'number' && Number.isInteger(v) && v >= lo && v <= hi
-
 /** A prize as saved, or null: coins from 1, or a known good from 1 to 99. */
 export function savedPrize(raw: unknown): Prize | null {
-  if (!isObj(raw)) return null
-  if ('coins' in raw) return whole(raw.coins, 1, 1e9) ? { coins: raw.coins } : null
-  return typeof raw.item === 'string' && (SELLABLE.includes(raw.item as ProduceId) || isItem(raw.item)) && whole(raw.n, 1, 99) ? { item: raw.item as ProduceId, n: raw.n } : null
+  if (!isObject(raw)) return null
+  if ('coins' in raw) return intIn(raw.coins, 1, 1e9) ? { coins: raw.coins } : null
+  return typeof raw.item === 'string' && (SELLABLE.includes(raw.item as ProduceId) || isItem(raw.item)) && intIn(raw.n, 1, 99) ? { item: raw.item as ProduceId, n: raw.n } : null
 }
 
 /**
@@ -143,26 +140,29 @@ export function savedPrize(raw: unknown): Prize | null {
  * A count that cannot be read counts every box reached as opened: nothing is given twice.
  */
 export function sanitizeGifts(raw: unknown, points: number): Gifts {
-  if (!isObj(raw)) return giftsFor(points)
+  if (!isObject(raw)) return giftsFor(points)
   const reached = boxesReached(points)
   const level = levelOf(points)
-  const first = whole(raw.open, 0, reached) ? raw.open : reached
-  const { open, also } = settle(first, Array.isArray(raw.also) ? raw.also.filter((k): k is number => whole(k, 0, reached - 1)) : [])
+  const first = intIn(raw.open, 0, reached) ? raw.open : reached
+  const { open, also } = settle(
+    first,
+    list(raw.also).filter((k): k is number => intIn(k, 0, reached - 1)),
+  )
   const done = (k: number) => k < open || also.includes(k)
   const gave: Opened[] = []
-  for (const e of Array.isArray(raw.gave) ? raw.gave : []) {
+  for (const e of list(raw.gave)) {
     const prize = savedPrize(field(e, 'prize'))
     const box = field(e, 'box')
-    if (prize && whole(box, 0, reached - 1) && done(box) && boxOf(box).level === level && !gave.some((x) => x.box === box)) gave.push({ box, prize })
+    if (prize && intIn(box, 0, reached - 1) && done(box) && boxOf(box).level === level && !gave.some((x) => x.box === box)) gave.push({ box, prize })
   }
   gave.sort((a, b) => a.box - b.box)
   const came: Came[] = []
-  for (const e of Array.isArray(raw.came) ? raw.came : []) {
+  for (const e of list(raw.came)) {
     const prize = savedPrize(field(e, 'prize'))
     const at = field(e, 'level')
     const coins = field(e, 'coins')
-    if (prize && whole(at, 2, level) && whole(coins, 0, Number.MAX_SAFE_INTEGER) && !came.some((x) => x.level === at)) came.push({ level: at, coins, prize })
+    if (prize && intIn(at, 2, level) && intIn(coins, 0, Number.MAX_SAFE_INTEGER) && !came.some((x) => x.level === at)) came.push({ level: at, coins, prize })
   }
   came.sort((a, b) => a.level - b.level)
-  return { open, also, gave, came: came.slice(-CAME_KEPT), seen: whole(raw.seen, 1, level) ? raw.seen : level }
+  return { open, also, gave, came: came.slice(-CAME_KEPT), seen: intIn(raw.seen, 1, level) ? raw.seen : level }
 }

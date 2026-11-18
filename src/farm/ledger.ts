@@ -1,3 +1,4 @@
+import { MOST, floorCount, isRecord } from '../lib/saved'
 import { PRODUCE, SELLABLE, isItem, type ProduceId } from './data'
 
 // The farm's sales book: what was sold on each of the last LEDGER_DAYS days of the device's calendar (a day number of
@@ -32,17 +33,12 @@ export const freshLedger = (): Ledger => ({ days: [] })
 const GOODS: readonly string[] = PRODUCE.map((p) => p.id)
 const isGood = (v: unknown): v is ProduceId => typeof v === 'string' && GOODS.includes(v)
 const isChannel = (v: unknown): v is Channel => typeof v === 'string' && (CHANNELS as readonly string[]).includes(v)
-const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v)
 
 /** A good can be sold there: a building material only to the contractor, every other good anywhere but to him. */
 export const soldAt = (good: ProduceId, channel: Channel) => (channel === 'contractor' ? isItem(good) : SELLABLE.includes(good))
 
 /** A day the book keeps on `today`: today, or one of the LEDGER_DAYS − 1 before it. */
 const kept = (day: number, today: number) => day <= today && day > today - LEDGER_DAYS
-
-const MOST = Number.MAX_SAFE_INTEGER
-/** A count as the book keeps it: a whole number from 0 (anything else: 0), up to the last one that still counts. */
-const whole = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? Math.min(MOST, Math.floor(v)) : 0)
 
 /** The book on `today`: the days too old for it left out, and any after today (a clock moved back). The same book
  *  when nothing goes. */
@@ -70,8 +66,8 @@ const copyDay = (d: LedgerDay): LedgerDay => ({
  * day that is not a whole number, or one that cannot happen there (a material at the gate, a crop to the contractor).
  */
 export function noteSale(book: Ledger, day: number, channel: Channel, good: ProduceId, units: number, coins: number): Ledger {
-  const u = whole(units)
-  const c = whole(coins)
+  const u = floorCount(units)
+  const c = floorCount(coins)
   if (!Number.isInteger(day) || !isChannel(channel) || !isGood(good) || !soldAt(good, channel) || (u === 0 && c === 0)) return book
   const days = trimLedger(book, day).days.slice()
   const at = days.findIndex((d) => d.day === day)
@@ -91,18 +87,19 @@ export function noteSale(book: Ledger, day: number, channel: Channel, good: Prod
  * out. Missing or unreadable (a farm from before the book): an empty book.
  */
 export function sanitizeLedger(raw: unknown, today: number): Ledger {
-  if (!isObj(raw) || !Array.isArray(raw.days) || !Number.isInteger(today)) return freshLedger()
+  if (!isRecord(raw) || !Array.isArray(raw.days) || !Number.isInteger(today)) return freshLedger()
   const byDay = new Map<number, LedgerDay>()
   for (const d of raw.days) {
-    if (!isObj(d) || !Number.isInteger(d.day) || !kept(d.day as number, today) || !isObj(d.sold)) continue
+    if (!isRecord(d) || !Number.isInteger(d.day) || !kept(d.day as number, today) || !isRecord(d.sold)) continue
     for (const good of Object.keys(d.sold)) {
       const places = d.sold[good]
-      if (!isGood(good) || !isObj(places)) continue
+      if (!isGood(good) || !isRecord(places)) continue
       for (const channel of CHANNELS) {
         const t = Object.hasOwn(places, channel) ? places[channel] : undefined
         if (!soldAt(good, channel) || !Array.isArray(t)) continue
-        const u = whole(t[0])
-        const c = whole(t[1])
+        // (a count as the book keeps it: a whole number from 0, anything else 0)
+        const u = floorCount(t[0])
+        const c = floorCount(t[1])
         if (u === 0 && c === 0) continue
         const day = d.day as number
         const into = byDay.get(day) ?? { day, sold: {} }

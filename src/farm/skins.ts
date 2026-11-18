@@ -1,3 +1,4 @@
+import { field } from '../lib/saved'
 import type { ToolStyle } from '../models/tools'
 import { TOOL_KINDS, type ToolKind } from './data'
 import { toolOf, type Steps } from './tools'
@@ -54,8 +55,6 @@ export type Skins = Record<ToolKind, ToolSkins>
 export const freshSkins = (): Skins => Object.fromEntries(TOOL_KINDS.map((k) => [k, { owned: [FREE_SKIN], worn: FREE_SKIN }])) as Skins
 
 export const isSkinStyle = (v: unknown): v is SkinStyle => (SKIN_STYLES as readonly unknown[]).includes(v)
-
-const field = (v: unknown, k: string) => (v && typeof v === 'object' ? (v as Record<string, unknown>)[k] : undefined)
 
 /** The skins as saved, made safe on a farm with these ladders: each owned skin once, in order, the free one always; the
  *  one worn an owned one (else the free one). A tool that is not the farm's owns its own skin only, and wears it. */

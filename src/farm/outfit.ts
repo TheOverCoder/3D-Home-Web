@@ -5,6 +5,7 @@
 // same clothes in more colours. Pure: what is worn is in the farm's save (`outfit`), changed by state.ts.
 
 import type { HatKind } from '../models/person'
+import { isObject } from '../lib/saved'
 import { LEVELS } from './data'
 
 export type GarmentSlot = 'shirt' | 'trousers' | 'hat'
@@ -223,7 +224,7 @@ const worn = (id: unknown, slot: GarmentSlot, level: number) => {
 /** A saved outfit read back at the farm's level: each garment one the wardrobe has (a farm from before the wardrobe, or
  *  anything else: the clothes it always wore); the new marks from the level saved. */
 export function sanitizeOutfit(raw: unknown, level: number): Outfit {
-  const r = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
+  const r = isObject(raw) ? raw : {}
   const seen = typeof r.seen === 'number' && Number.isFinite(r.seen) ? Math.min(level, Math.max(1, Math.floor(r.seen))) : 1
   return {
     shirt: worn(r.shirt, 'shirt', level) ?? DEFAULT_OUTFIT.shirt,
