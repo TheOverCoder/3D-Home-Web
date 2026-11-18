@@ -21,6 +21,8 @@ export interface CropDef {
   growSeconds: number
   yield: number // produce per harvest
   price: number // a fair price per piece; buyers offer around it
+  /** the share of its growing time one watering lasts (WATER_SHARE unless given): a long crop's soak lasts it all */
+  water?: number
 }
 
 export const CROPS: CropDef[] = [
@@ -120,7 +122,8 @@ export const storeOf = (id: ProduceId): StoreId => (CROPS.some((c) => c.id === i
  *  tree; an order in two at the office. */
 export const ITEM_ODDS = { buyer: 0.5, unit: 0.05, harvest: 0.05, order: 0.5 } as const
 
-/** Water lasts this share of a crop's growing time: plant (and water) once, water once more halfway. */
+/** Water lasts this share of a crop's growing time: plant (and water) once, water once more halfway (a crop of its own
+ *  `water` share: as long as that). */
 export const WATER_SHARE = 0.55
 
 // ───────────────────────────── the kitchen of the farm ─────────────────────────────

@@ -1,6 +1,6 @@
 import { MACHINE_IDS, PRODUCER_IDS, PRODUCERS, STORE_IDS, storeOf, type MachineId, type ProduceId, type ProducerId, type StoreId } from '../data'
 import { dayOf, phaseOf } from '../day'
-import { bump, eventSpeed, eventTime, farm, save, setStepAt } from './core'
+import { bump, calendarTime, eventSpeed, eventTime, farm, save, setCalendarStep, setStepAt } from './core'
 import { room } from './stores'
 import { bedStage, yieldOf } from './beds'
 import { machineDone } from './machines'
@@ -13,8 +13,10 @@ import { grow } from './tick'
 
 // Time away (the page closed or hidden): the farm goes on for it, and what happened is kept for the welcome back.
 
-/** The most of a time away the farm goes on for: the page closed, or hidden (another app, the phone locked). */
-export const AWAY_MOST = 3 * 3600
+/** The most of a time away the farm goes on for: the page closed, or hidden (another app, the phone locked). A day
+ *  (decision 2): a night away pays, and nothing set before it outlasts it (state.away.test.ts holds every crop and
+ *  every machine's full queue to it). */
+export const AWAY_MOST = 24 * 3600
 /** Away at least this long, the game tells you what happened (shorter, it just goes on). */
 export const AWAY_TELLS = 120
 
@@ -98,8 +100,10 @@ export const awayNews = (r: AwayReport) => r.goods.length > 0 || r.buyers > 0 ||
  *  finishes in the step it would have), buyers joining the line as they come, as many as it has room for; shoppers
  *  visit your shop and buy as they would have; the day goes on (frozen or not: a test's frozen light is for play), and
  *  a new day brings the contractor's new pieces. The week's events count for each step at its own time (`from`: when
- *  the time away began, by the events' clock): one that began or ended while you were away, only for its part. */
-function goOn(seconds: number, from: number | null = null) {
+ *  the time away began, by the events' clock): one that began or ended while you were away, only for its part. Each
+ *  step is on its own calendar day too (`day`: when the time away began, by the calendar's clock): a sale in the shop
+ *  goes into the ledger on the day it was made. */
+function goOn(seconds: number, from: number | null = null, day: number | null = null) {
   // the seconds the buyers' countdown ran beyond the time (twice as fast on a market day)
   let more = 0
   let into = 0
@@ -107,6 +111,7 @@ function goOn(seconds: number, from: number | null = null) {
     for (let left = seconds; left > 0; left -= 5) {
       const dt = Math.min(5, left)
       if (from !== null) setStepAt(from + into * 1000)
+      if (day !== null) setCalendarStep(day + into * 1000)
       farm.clock += dt
       farm.day.t += dt
       grow(dt)
@@ -116,6 +121,7 @@ function goOn(seconds: number, from: number | null = null) {
     }
   } finally {
     setStepAt(null)
+    setCalendarStep(null)
   }
   contractorDay()
   if (farm.started) {
@@ -144,15 +150,15 @@ export function forgetAway() {
   lastAway = null
 }
 
-/** Back after `seconds` away (the page hidden, or closed): the farm goes on for that time (at most three hours), and
- *  what happened is kept for the game to tell, when it was long enough and anything did. */
+/** Back after `seconds` away (the page hidden, or closed): the farm goes on for that time (at most a day, AWAY_MOST),
+ *  and what happened is kept for the game to tell, when it was long enough and anything did. */
 export function cameBack(seconds: number): AwayReport | null {
   if (!(seconds > 0)) return null
   const counted = Math.min(AWAY_MOST, seconds)
   const before = snapshot()
-  // the time away began `seconds` ago, by the events' clock
+  // the time away began `seconds` ago, by the events' clock and by the calendar's
   const now = eventTime()
-  goOn(counted, now === null ? null : now - seconds * 1000)
+  goOn(counted, now === null ? null : now - seconds * 1000, calendarTime() - seconds * 1000)
   const report = awayReport(before, seconds, counted)
   // the morning that came while away is not told as it turns (the contractor's word is for one seen in play)
   setLastPhase(phaseOf(farm.day.t))

@@ -34,7 +34,8 @@ beforeAll(() => {
   // as long as the first hour and the top band take (a little past its end, to see a level that is late)
   runs = SEEDS.map((seed) => simulate({ seed, minutes: PACE.idle.within, until: TOP, most: PACE.levels[TOP][1] + 5, open: false }))
   week = journey({ profile: 'daily', days: DAYS })
-})
+  // (about 6 s alone: three runs to level 30 and a week of visits; more on a loaded machine)
+}, 120_000)
 
 describe('the pace of a new farm', () => {
   it.each(LEVELS)('level %i is reached within its band', (level) => {
