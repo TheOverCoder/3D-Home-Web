@@ -5,6 +5,7 @@ import { BEDS, DAY, MACHINES, PRODUCERS, PRODUCER_IDS } from './data'
 import { PLACES, type Placement } from './layout'
 import { addJob, buyPiece, collect, farm, freeSpotFor, gateX, inLine, machineStage, placeStored, storePiece, tick } from './state'
 import { levelOf, seedXp } from './xp'
+import { dayNumber } from './calendar'
 import { tripSeconds } from './tractorRoute'
 import { OLD_SAVE, playedSave, savedNow, startFrom } from './testSaves'
 import { defaultHome } from '../home/layout'
@@ -23,7 +24,8 @@ let loaded: Save
 const without = (save: Save, ...keys: string[]) => Object.fromEntries(Object.entries(save).filter(([k]) => !keys.includes(k)))
 
 beforeAll(() => {
-  played = playedSave()
+  // (played on the device's own calendar: as of the day these tests stand on, its first day played)
+  played = { ...playedSave(), played: { days: 1, last: dayNumber(NOW) } }
 })
 beforeEach(() => {
   // the clock stands still: a save made "now" loads with no time away, the same every time
@@ -333,6 +335,19 @@ describe('a save broken or edited by hand', () => {
     }
     startFrom({ ...played, place: 'home' })
     expect(farm.place).toBe('home')
+  })
+
+  it('days played: kept as saved, never past today; a farm from before them starts from its daily streak and last claim', () => {
+    const today = dayNumber(NOW)
+    expect(farm.played).toEqual({ days: 1, last: today })
+    startFrom({ ...played, played: { days: 40, last: today + 9 } })
+    expect(farm.played).toEqual({ days: 40, last: today })
+    startFrom({ ...played, played: 'lots' })
+    expect(farm.played).toEqual({ days: 2, last: dayNumber(Date.UTC(2026, 10, 9, 12)) })
+    startFrom({ ...without(played, 'played'), daily: { last: today - 1, streak: 9, offered: -1, week: [] } })
+    expect(farm.played).toEqual({ days: 9, last: today - 1 })
+    startFrom({ ...OLD_SAVE, time: NOW })
+    expect(farm.played).toEqual({ days: 0, last: -1 })
   })
 
   it("the neighbours' friendships: kept as saved; a farm from before them has met no one; broken, made safe and the rest as it was", () => {

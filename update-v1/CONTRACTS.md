@@ -467,10 +467,18 @@ export function rewardTier(prizes: readonly Prize[], level: number, least?: Tier
 // src/farm/state/rewards.ts (05)
 /** Counts a reward once, queues the world's show where `at` is a world point, and returns its tier. */
 export function rewarded(kind: RewardKind, prizes: readonly Prize[], at?: At): Tier
-export function rewardCounts(): Readonly<Record<RewardKind, Readonly<Record<Tier, number>>>>   // the sim, __home.reward
+export function rewardCounts(): Readonly<Record<RewardKind, Readonly<Record<Tier, number>>>>   // the sim, __home.reward (a copy)
+export function resetRewardCounts(): void                                                      // a sim's new farm, a test
+export const foundPrizes: (items: readonly ItemId[]) => Prize[]   // the surprises found with a payout, as its prizes
 
 // src/fx/reward.ts (05)
+/** Decision 15, confetti only for real rewards: the least tier that throws it, the one floor. */
+export const CONFETTI_FROM: Tier = 'big'
 export const SHOW: Readonly<Record<Tier, { pop: number; holdMs: number; confetti: { count: number; spread: number; power: number } | null }>>
+/** The world's shows `rewarded` queues (none under lessMotion; the latest MOST_SHOWS kept), taken once a frame by the
+ *  effects (05b's `reward` request in FarmFx.tsx). */
+export function showReward(kind: RewardKind, tier: Tier, at: { x: number; y: number; z: number }): void
+export function takeRewardShows(): { kind: RewardKind; tier: Tier; x: number; y: number; z: number; at: number }[]
 /** The one fan-out: rewardSound(kind, tier) and haptic(rewardFeel(kind, tier)) (§1.12), the number pop and the
  *  confetti by SHOW[tier] (none under lessMotion; at most one confetti every 1.5 s). */
 export function celebrate(kind: RewardKind, tier: Tier, at: Element | { x: number; y: number } | null): void
@@ -480,21 +488,27 @@ export type Reaction = 'pluck' | 'pick' | 'sprout' | 'perk' | 'wiggle' | 'rustle
 export type ReactOwner = 'plant' | 'fruit' | 'animal' | 'thing'
 export const REACTIONS: Readonly<Record<Reaction, { ms: number; keys: readonly (readonly [t: number, xz: number, y: number])[] }>>
 export function react(owner: ReactOwner, id: string | number, kind: Reaction, data?: unknown): void   // nothing under lessMotion
-export function reaction(owner: ReactOwner, id: string | number): { xz: number; y: number } | null
+export function reaction(owner: ReactOwner, id: string | number): { xz: number; y: number; kind: Reaction; data: unknown } | null
 export function reacting(owner: ReactOwner): boolean
 export function freeze(ms: number | null): void
+export function scaleAt(kind: Reaction, share: number): { xz: number; y: number }   // eased between the row's moments
+export function stopReactions(): void                                                // another farm, a test
 // src/lib/sculpt/parts.ts: at(x, y, z, heading = 0, scale: number | Vector3 = 1)
 ```
 - **Rules:**
   - **The amount decides, never dice, a streak or a near miss.**
-  - **What counts nothing:** a decline, a cancel, a refund, or a full store.
-  - **Each payout counts once:** selling to the whole line is one.
+  - **What counts nothing:** a decline, a cancel, a refund, a purchase, or a full store.
+  - **Each payout counts once:** selling to the whole line is one; so is everything sold to the manager at once, and
+    one open of gift boxes. A level reached is one however many levels at once; the garment a level comes with is
+    a `garment` reward of its own. The surprises found with a payout are among its prizes (`foundPrizes`), never a
+    reward apart. Each first step passed is one.
   - **`least` comes only from `REWARD_KINDS`.** The seventh day, the fourth box and the milestone levels are bigger
     only by what they hold, and 02 can give them more.
   - **The prizes are rolled at the press**, as today. The card then shakes and reveals, so the tier is known before
     the shake, and 06's huge duck can start 300 ms before it.
   - **A card payout's UI calls `celebrate`** with the tier the action returns.
-  - **A world payout's show** is queued by `rewarded()`, through `fx/fx.ts`, as `coinsFx` is.
+  - **A world payout's show** is queued by `rewarded()` in `fx/reward.ts` (`showReward`), as `coinsFx` is in
+    `fx/fx.ts`; the effects take it with `takeRewardShows()`.
   - **`.pop-num` is 15 px or more at the small tier**, so it passes `readable.ts`.
 - **Called by:**
   - every payout: the sales in 01's, 03's and 09's modules;
