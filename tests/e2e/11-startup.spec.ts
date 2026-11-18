@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { test, expect, watchErrors, type Game, BASE } from './helpers'
+import { gzipSync } from 'node:zlib'
+import { SHELL_BYTES } from '../../vite.config'
 
 // Starting up: the loading screen's account of what it downloads, the service worker keeping it on the device (a
 // second visit loads from there), the music and the saved farms in the opening menu, the restart in light graphics
@@ -158,6 +160,29 @@ test.describe('starting up', () => {
     expect(r.cleared).toBe(false)
     expect(r.bad.ok).toBe(false)
     expect(r.coins1).toBe(123)
+    expect(game.errors, game.errors.join('\n')).toEqual([])
+  })
+})
+
+// The page shell (update-v1 mission 08 c5): what index.html loads before the intro shows is the intro's own, and weighs
+// SHELL_BYTES gzipped at most (vite.config.ts fails the build first); the game's interface (src/ui/GameLayer.tsx) is
+// not in it, but among what the loader fetches, and in before the game can be entered.
+test.describe('the page shell', () => {
+  test("the intro's own, within SHELL_BYTES; the game's interface loads behind it", async ({ game }) => {
+    await game.ready('farm')
+    const { page } = game
+    const html = await (await page.request.get('/index.html')).text()
+    const files = [...html.matchAll(/(?:src|href)="\/(assets\/[^"]+\.(?:js|css))"/g)].map((m) => m[1])
+    expect(files.length).toBeGreaterThan(3)
+    expect(files.filter((f) => /GameLayer-/.test(f))).toEqual([])
+    let bytes = 0
+    for (const f of files) bytes += gzipSync(await (await page.request.get(`/${f}`)).body()).length
+    expect(bytes, `the shell, gzipped: ${bytes} bytes`).toBeLessThanOrEqual(SHELL_BYTES)
+    const listed: string[] = await page.evaluate(async () => (await (await fetch('/assets-manifest.json')).json()).files.map((f: any) => f.url))
+    expect(listed.filter((u) => /(^|\/)GameLayer-[\w-]{8}\.js$/.test(u))).toHaveLength(1)
+    // in before the game was entered: its parts are drawn (the corner menu) and its hooks are there
+    await expect(page.locator('.top-menu-btn')).toBeVisible()
+    expect(await page.evaluate(() => ['cards', 'guard', 'saves'].map((k) => typeof (window as any).__home[k]))).toEqual(['object', 'object', 'object'])
     expect(game.errors, game.errors.join('\n')).toEqual([])
   })
 })
