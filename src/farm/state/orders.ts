@@ -8,6 +8,7 @@ import { bump, farm, putBack, random, save, toast } from './core'
 import { gainXp } from './levels'
 import { gainItems, rollGifts, surpriseWords } from './stores'
 import { knownGoods } from './buyers'
+import { befriend } from './neighbours'
 
 // The order board on the office's computer, the office's upgrades, and the tractor that takes the crates away.
 
@@ -73,6 +74,7 @@ export function sendOrder(k: number) {
   gainItems(items, OFFICE_SCREEN)
   gainXp('order', 1, OFFICE_SCREEN)
   gainXp('sale', o.coins, OFFICE_SCREEN)
+  befriend(o)
   farm.dispatch.waiting = Math.min(MOST_CRATES, farm.dispatch.waiting + cratesFor(o))
   farm.orders[k] = { order: makeOrder(knownGoods(), random) }
   toast(`Order sent · + ${o.coins} coins${surpriseWords(items)}`, items[0] ?? 'coin')

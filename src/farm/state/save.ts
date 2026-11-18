@@ -46,6 +46,8 @@ import { sanitizeSteps, stepsFresh } from '../firstSteps'
 import { mostAt, ownsEach, type Steps } from '../tools'
 import { freshSkins, sanitizeSkins } from '../skins'
 import { defaultHome, sanitizeHome } from '../../home/layout'
+import { NEIGHBOUR_IDS } from '../../data/people'
+import { sanitizeFriends } from '../people/friends'
 import { asLook, bump, calendarDay, farm, isSellable, saveNow, type FarmData, type Look, type ProducerState } from './core'
 import { fullWater } from './beds'
 import { stocksFor } from './producers'
@@ -135,6 +137,7 @@ function fresh(): FarmData {
     apartment: { owned: false },
     events: freshEvents(),
     firstSteps: stepsFresh(),
+    friends: {},
   }
 }
 
@@ -390,6 +393,9 @@ export function load(text: string | null = readRaw(KEY)): { data: FarmData; save
     data.place = place === 'home' && data.apartment.owned ? 'home' : 'farm'
     // the week's events: the lucky draw as saved and the events the news has shown (a farm from before them: none)
     data.events = sanitizeEvents(raw.events)
+    // the neighbours' friendships, as saved, for each met (a farm from before them has met no one; who is met comes
+    // with the story, src/farm/people)
+    data.friends = sanitizeFriends(raw.friends, NEIGHBOUR_IDS)
     const queue = list(raw.queue)
       .map(savedBuyer)
       .filter((b): b is SavedBuyer => !!b)

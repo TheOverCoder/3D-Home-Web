@@ -10,6 +10,7 @@ import { asLook, bump, eventSpeed, farm, isSellable, random, save, toast, type L
 import { gainXp } from './levels'
 import { gainItems, rollGifts, surpriseWords } from './stores'
 import { arrivalSeconds, placesInLine } from './shop'
+import { befriend } from './neighbours'
 
 // The buyers at the garden gate: who comes and what they ask for, the line, selling and declining, and their walking.
 
@@ -125,6 +126,7 @@ function sell(v: Visitor): ItemId[] {
   v.gift = false
   gainItems(items, { x: v.x, y: 1.9, z: v.z })
   gainXp('sale', v.offer, { x: v.x, y: 1.9, z: v.z })
+  befriend(v)
   leave(v, 'happy')
   return items
 }

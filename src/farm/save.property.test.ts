@@ -48,6 +48,8 @@ import { FIRST_STEPS } from './firstSteps'
 import { QUEUE, machineLevel } from './machineView'
 import { garmentById, garmentsAt } from './outfit'
 import { sanitizeLook } from '../models/look'
+import { isNeighbour } from '../data/people'
+import { heartsOf } from './people/friends'
 import { arrivalSeconds, claimDaily, farm, gateX, giftsWaiting, inLine, placesInLine, tick } from './state'
 import { tripSeconds } from './tractorRoute'
 import { OLD_SAVE, OLD_SAVE_2, playedSave, savedNow, seeded, startFrom } from './testSaves'
@@ -422,6 +424,12 @@ function farmProblems(): string[] {
   bad('events.seen', e.seen.length <= SEEN_KEPT && unique(e.seen) && e.seen.every((k) => typeof k === 'string' && EVENT_IDS.includes(k.split('@')[0] as never) && date(k.split('@')[1])))
   // the first steps: the step it is on, from the first to past the last, and whether they are over
   bad('firstSteps', sameKeys(farm.firstSteps, ['step', 'over']) && isCount(farm.firstSteps.step, FIRST_STEPS.length) && typeof farm.firstSteps.over === 'boolean')
+  // the neighbours' friendships: each a neighbour's (met: the story's, with 03's next part), its points a count, the
+  // hearts whose letter came no more than its points reach
+  bad(
+    'friends',
+    Object.entries(farm.friends).every(([id, x]) => isNeighbour(id) && !!x && sameKeys(x, ['points', 'told']) && isCount(x.points) && isCount(x.told, heartsOf(x.points))),
+  )
   return out
 }
 
