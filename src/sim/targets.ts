@@ -26,11 +26,44 @@ export const PACE = {
     13: [38, 78],
     14: [44, 90],
     15: [50, 105],
+    // from 16 (update-v1/missions/01-loop-economy.md): from 0.6 times the soonest to 1.2 times the latest of seeds 1–3
+    // as the farm stood before the update's rows, so the new rows (01's waves, the neighbours' recipes) keep its pace
+    16: [40, 86],
+    17: [46, 95],
+    18: [50, 104],
+    19: [55, 116],
+    20: [62, 125],
+    21: [68, 139],
+    22: [74, 149],
+    23: [79, 161],
+    24: [86, 175],
+    25: [92, 190],
+    26: [100, 203],
+    27: [107, 218],
+    28: [115, 236],
+    29: [121, 248],
+    30: [130, 264],
   } as Record<number, readonly [number, number]>,
   /** in the first `within` minutes, no stretch with nothing useful to do longer than `most` minutes */
   idle: { within: 60, most: 5 },
   /** each animal's tool (plans/animal-tools.md) is bought within `within` minutes of play after its herd is full */
   tools: { within: 20 },
+  // The rest are held on the session runner (./sessions.ts, ./journey.ts: the daily player at a real player's pace,
+  // who leaves at the end of each visit as ./policy.ts LEAVING has it): a session ends by setting something long, a
+  // night pays, and play pays more as the levels go up (update-v1/missions/01-loop-economy.md, the PACE additions).
+  /** the first sitting ends with something on its way at least `seconds` long (a session ends by setting the next
+   *  appointment) */
+  first: { seconds: 3600 },
+  /** a night's return, on the mornings of `days`: worth `minutes` of play's income at its level (src/farm/economy.ts,
+   *  incomeAt; decision 3: about 30); and as the evening before ended, what was on its way through the night at least
+   *  `break.times` what a break of `break.seconds` would bring */
+  night: { days: [2, 7, 14], minutes: [20, 40], break: { seconds: 30 * 60, times: 2 } },
+  /** coins a minute of play (the good player, ./play.ts) over the levels of `high`, at least `times` those over `low`:
+   *  play pays more as it goes on */
+  income: { low: [13, 15], high: [28, 30], times: 1.4 },
+  /** of the rewards paid in the first `within` minutes of play (src/farm/state/rewards.ts, rewardCounts), the share
+   *  that is small, and the share that is big or huge (measured by 05a on seeds 1–3: 71–76 % and 6–7 %) */
+  rewards: { within: 60, small: [0.65, 0.85], big: [0.03, 0.12] },
 } as const
 
 /** One visit of a player's day: the hour it begins (18.9 is 18:54) and how long it lasts. */
@@ -90,6 +123,6 @@ export const JOURNEY = {
   auto: { most: 2 },
   /** each visit ends with something on its way through at least `share` of the time away (at most `most` seconds) */
   pull: { share: 0.5, most: 4 * 3600 },
-  /** the share of returns, at most, that find the silo or the barn full */
-  full: { share: 0.25 },
+  /** the share of returns from day `from` on, at most, that find the silo or the barn full */
+  full: { share: 0.25, from: 2 },
 } as const

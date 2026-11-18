@@ -1,4 +1,4 @@
-import { ITEM_ODDS, ORDERS, produceById, type ProduceId } from './data'
+import { ITEM_ODDS, ORDERS, SELLABLE, produceById, type ProduceId } from './data'
 import { priceOf } from './prices'
 
 // The orders that come in on the office's computer, as data: what one asks for, what it pays, and how many crates it
@@ -37,18 +37,44 @@ export const mostAsked = (good: ProduceId) => Math.max(1, Math.round(produceById
  *  a higher level makes). */
 export const orderPay = (lines: { good: ProduceId; want: number }[]) => Math.max(1, Math.round(lines.reduce((sum, l) => sum + priceOf(l.good) * l.want, 0) * ORDERS.markup))
 
+/** How many kinds of goods an order may ask for grows with the farm's level (farm-games.md P5a): `from` at first, one
+ *  more every `every` levels, never more than ORDERS.kinds (nine). */
+export const ORDER_KINDS = { from: 3, every: 6 } as const
+export const orderKinds = (level: number) => Math.min(ORDERS.kinds, ORDER_KINDS.from + Math.floor(Math.max(1, level) / ORDER_KINDS.every))
+
 /**
- * A new order, from the goods the farm grows and makes (`known`, never a building material): one to nine kinds of them
- * (mostly a few), each a few at a time; one in two brings a surprise.
+ * A new order, from the goods the farm grows and makes (`known`, never a building material): one to as many kinds of
+ * them as the farm's level allows (orderKinds; mostly a few), each a few at a time; one in two brings a surprise.
  */
-export function makeOrder(known: ProduceId[], random: () => number): Order {
+export function makeOrder(known: ProduceId[], random: () => number, level = Infinity): Order {
   const pool = [...new Set(known)]
-  const most = Math.max(1, Math.min(ORDERS.kinds, pool.length))
+  const most = Math.max(1, Math.min(orderKinds(level), pool.length))
   // fewer kinds are likelier than many: one to three most of the time, up to all nine now and then
   const kinds = Math.min(most, 1 + Math.floor(random() ** 1.7 * most))
   const goods: ProduceId[] = []
   while (goods.length < kinds && pool.length) goods.push(pool.splice(Math.floor(random() * pool.length), 1)[0])
   const lines = goods.map((good) => ({ good, want: 1 + Math.floor(random() * mostAsked(good)), have: 0 }))
+  return { id: orderKey(), lines, coins: orderPay(lines), surprise: random() < ITEM_ODDS.order }
+}
+
+/** The most kinds a quick order asks for. */
+export const QUICK_KINDS = 2
+
+/** An order the silo and the barn could fill now, all of it: it can go at once. */
+export const canGoNow = (o: Order, inv: Partial<Record<ProduceId, number>>) => o.lines.every((l) => l.want - l.have <= (inv[l.good] ?? 0))
+
+/**
+ * A quick order (farm-games.md P5a: the board always holds one that can go at once): one or two kinds of what the silo
+ * and the barn hold now, never more of each than they hold, paid as any order is. Null when they hold nothing an order
+ * may ask for.
+ */
+export function makeQuick(inv: Partial<Record<ProduceId, number>>, random: () => number): Order | null {
+  const pool = SELLABLE.filter((g) => (inv[g] ?? 0) > 0)
+  if (!pool.length) return null
+  const kinds = Math.min(pool.length, 1 + Math.floor(random() * QUICK_KINDS))
+  const goods: ProduceId[] = []
+  while (goods.length < kinds) goods.push(pool.splice(Math.floor(random() * pool.length), 1)[0])
+  const lines = goods.map((good) => ({ good, want: 1 + Math.floor(random() * Math.min(inv[good]!, mostAsked(good))), have: 0 }))
   return { id: orderKey(), lines, coins: orderPay(lines), surprise: random() < ITEM_ODDS.order }
 }
 

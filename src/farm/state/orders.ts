@@ -2,7 +2,8 @@ import { farmSound } from '../../audio/sound'
 import { clock } from '../../lib/time'
 import { OFFICE_SCREEN, OFFICE_UPGRADES, ORDERS, orderSlots, orderWait, TRACTOR, type OfficeUpgradeId } from '../data'
 import { isFirstOrder } from '../firstSteps'
-import { cratesFor, isComplete, makeOrder, orderKey, orderPay, type Order, type OrderSlot } from '../orders'
+import { canGoNow, cratesFor, isComplete, makeOrder, makeQuick, orderKey, orderPay, type Order, type OrderSlot } from '../orders'
+import { levelOf } from '../xp'
 import { tripSeconds } from '../tractorRoute'
 import { boundary, type FarmLayout } from '../layout'
 import { bump, farm, putBack, random, save, toast, type FarmData } from './core'
@@ -48,6 +49,21 @@ export function starterOrderIn(data: FarmData) {
   if (data.orders.some((slot) => 'order' in slot && isFirstOrder(slot.order))) return
   const k = data.orders.findIndex((slot) => !('order' in slot) || slot.order.lines.every((l) => !l.have))
   if (k >= 0) data.orders[k] = { order: firstOrder() }
+}
+
+/** The quick orders on the board this visit (by key: not saved; one read back from a save is an order like any). */
+const quick = new Set<number>()
+
+/** A new order for place `k` of the board: as many kinds as the farm's level allows (orderKinds); a quick one — what
+ *  the silo and the barn hold now, to go at once — when no other order on the board could go now, so the board holds
+ *  one whenever the farm holds something. Not in the place of a quick order just sent (`after`): the next quick one
+ *  comes as another order is sent or a wait ends, so it is something to do, never a till that sells the stores. */
+export function newOrder(k: number, after?: Order): Order {
+  const one = farm.orders.some((slot, j) => j !== k && 'order' in slot && canGoNow(slot.order, farm.inv))
+  const made = !one && !(after && quick.has(after.id)) ? makeQuick(farm.inv, random) : null
+  if (after) quick.delete(after.id)
+  if (made) quick.add(made.id)
+  return made ?? makeOrder(knownGoods(), random, levelOf(farm.xp.points))
 }
 
 /** How many orders the board holds at a time, and how long a new one takes after one is declined. */
@@ -99,7 +115,7 @@ export function sendOrder(k: number) {
   gainXp('order', 1, OFFICE_SCREEN)
   gainXp('sale', o.coins, OFFICE_SCREEN)
   farm.dispatch.waiting = Math.min(MOST_CRATES, farm.dispatch.waiting + cratesFor(o))
-  farm.orders[k] = { order: makeOrder(knownGoods(), random) }
+  farm.orders[k] = { order: newOrder(k, o) }
   rewarded('order', [{ coins: o.coins }, ...foundPrizes(items)], OFFICE_SCREEN)
   for (const l of orderShares(o)) sold('order', l.good, l.units, l.coins)
   befriend(o)
@@ -139,7 +155,7 @@ export function buyOffice(id: OfficeUpgradeId) {
   farm.office = { ...farm.office, [id]: farm.office[id] + 1 }
   gainXp('build', 1, OFFICE_SCREEN)
   if (id === 'slots') {
-    farm.orders.push({ order: makeOrder(knownGoods(), random) })
+    farm.orders.push({ order: newOrder(farm.orders.length) })
     toast(`The board holds ${orderPlaces()} orders`)
   } else {
     const wait = orderWaitSeconds()
@@ -156,7 +172,7 @@ export function growOrders(dt: number) {
   farm.orders.forEach((slot, k) => {
     if (!('wait' in slot)) return
     slot.wait = Math.max(0, slot.wait - dt)
-    if (slot.wait <= 0) farm.orders[k] = { order: makeOrder(knownGoods(), random) }
+    if (slot.wait <= 0) farm.orders[k] = { order: newOrder(k) }
   })
 }
 

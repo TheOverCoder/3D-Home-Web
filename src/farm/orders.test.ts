@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { ITEMS, ORDERS, SELLABLE, TRACTOR, orderSlots, orderWait, produceById, type ProduceId } from './data'
-import { cratesFor, isComplete, makeOrder, mostAsked, orderPay, type Order } from './orders'
+import { QUICK_KINDS, canGoNow, cratesFor, isComplete, makeOrder, makeQuick, mostAsked, orderKinds, orderPay, type Order } from './orders'
 import { buyOffice, declineOrder, farm, fillOrder, gateX, orderAt, orderPlaces, resetFarm, sendOrder, setRandom, tick, used } from './state'
 import { AWAY_SECONDS, loadingSeconds, tractorPose, tripSeconds } from './tractorRoute'
 import { levelOf } from './xp'
@@ -49,6 +49,38 @@ describe('an order', () => {
     expect([...kinds].sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9])
     // one in two brings a surprise
     expect(Math.abs(surprises / 2000 - 0.5)).toBeLessThan(0.04)
+  })
+
+  it('asks for more kinds as the farm’s level grows: three at first, one more every six levels, at most nine; few still likelier', () => {
+    expect([1, 5, 6, 12, 30, 36, 99].map(orderKinds)).toEqual([3, 3, 4, 5, 8, 9, 9])
+    for (const level of [1, 6, 18, 36]) {
+      const random = seeded(level)
+      const seen = new Map<number, number>()
+      for (let k = 0; k < 1000; k++) {
+        const n = makeOrder(KNOWN, random, level).lines.length
+        seen.set(n, (seen.get(n) ?? 0) + 1)
+      }
+      expect(Math.max(...seen.keys()), `level ${level}`).toBe(orderKinds(level))
+      expect(seen.get(1)!, `level ${level}`).toBeGreaterThan(seen.get(orderKinds(level))!)
+    }
+  })
+
+  it('a quick order asks for one or two kinds of what the silo and the barn hold, never more than they hold', () => {
+    const random = seeded(7)
+    const inv = { egg: 3, milk: 1, brick: 9, lettuce: 0 } as Partial<Record<ProduceId, number>>
+    for (let k = 0; k < 200; k++) {
+      const o = makeQuick(inv, random)!
+      expect(o.lines.length).toBeGreaterThanOrEqual(1)
+      expect(o.lines.length).toBeLessThanOrEqual(QUICK_KINDS)
+      for (const l of o.lines) {
+        expect(['egg', 'milk']).toContain(l.good)
+        expect(l.want).toBeLessThanOrEqual(inv[l.good]!)
+      }
+      expect(canGoNow(o, inv)).toBe(true)
+      expect(o.coins).toBe(orderPay(o.lines))
+    }
+    // empty stores (or only building materials): no quick order
+    expect(makeQuick({ brick: 4 }, random)).toBeNull()
   })
 
   it('a farm that makes only a few goods gets orders of only those', () => {
@@ -185,6 +217,30 @@ describe('the order board', () => {
     farm.coins = 1000
     buyOffice('slots')
     expect(farm.coins).toBe(1000 - 120)
+  })
+
+  it('always holds one quick order: one sent while no other could go is followed by one the stores can fill now', () => {
+    for (let k = 0; k < 3; k++) for (const l of orderAt(k)!.lines) farm.inv[l.good] = 0
+    // goods no order on the board asks for (the farm has made only lettuce, carrots, wheat, eggs, milk and flour)
+    farm.inv.tomato = 4
+    farm.inv.cloth = 2
+    expect([0, 1, 2].some((k) => canGoNow(orderAt(k)!, farm.inv))).toBe(false)
+    farm.orders[1] = { wait: 1 }
+    tick(1.5)
+    const quick = orderAt(1)!
+    expect(canGoNow(quick, farm.inv)).toBe(true)
+    expect(quick.lines.every((l) => l.good === 'tomato' || l.good === 'cloth')).toBe(true)
+    // with one on the board that can go, the next is sized by the level as any order is
+    farm.orders[2] = { wait: 1 }
+    tick(1.5)
+    expect(orderAt(2)!.lines.length).toBeLessThanOrEqual(orderKinds(levelOf(farm.xp.points)))
+    // the quick one sent, its place takes an order like any (the next quick one comes as another order goes, or a wait
+    // ends): the board is something to do, never a till that sells the stores
+    farm.inv.tomato = 40
+    farm.inv.cloth = 20
+    fillOrder(1)
+    expect(sendOrder(1)).toBe(true)
+    expect(canGoNow(orderAt(1)!, farm.inv)).toBe(false)
   })
 
   it('never asks for building materials, and its goods are all ones buyers buy', () => {
