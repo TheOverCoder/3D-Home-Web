@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import fs from 'node:fs'
 import path from 'node:path'
-import { test, expect } from './helpers'
+import { test, expect, FARM_START } from './helpers'
 
 test.describe('physics & geometry guards', () => {
   test('jumping repeatedly from the kitchen island never puts the camera above 3.0 m', async ({ game }) => {
@@ -175,11 +175,11 @@ test.describe('physics & geometry guards', () => {
       })
       await page.evaluate(([x, y, z]) => (window as any).__home.teleport(x, y, z), [x, y, z])
       await page.waitForFunction(
-        () => {
+        (start) => {
           const p = (window as any).__home.ecctrl().body.translation()
-          return Math.hypot(p.x + 1.2, p.z - 6.8) < 0.5 && p.y > 0 && p.y < 3
+          return Math.hypot(p.x - start.x, p.z - start.z) < 0.5 && p.y > 0 && p.y < 3
         },
-        null,
+        FARM_START,
         { timeout: 30_000, polling: 250 },
       )
       expect((await body()).y).toBeGreaterThan(0)

@@ -9,6 +9,9 @@ import { useSettings } from '../settings'
 import { busy, useHome } from '../store'
 import { ItemPic } from './ItemPic'
 import { DayChip } from '../farm/DayChip'
+import { lineFor } from '../farm/firstSteps'
+import { farm, stepNow, useFarm } from '../farm/state'
+import { walkTarget } from '../farm/walkTargets'
 import './Compass.css'
 
 // The compass: a frosted strip across the top of the screen that turns as you turn — a fine scale every 15°, the
@@ -23,7 +26,9 @@ import './Compass.css'
 // and if you walk off without it, it comes back. The silo or the barn full while goods wait for room is a mark too,
 // ringed in red: its picture and how many wait. Outdoors, and indoors while something outside is ready; not when the
 // top of the screen is set clear (HudMode). With everything shown outdoors it stands in the dashboard, between its
-// wings (src/farm/TopDash.tsx keeps the hole and the hour under it); alone at the top, it shows the hour itself.
+// wings (src/farm/TopDash.tsx keeps the hole and the hour under it); alone at the top, it shows the hour itself. While
+// a new farm's step runs (src/farm/FirstSteps.tsx), the mark of what it asks for is ringed and the others step back:
+// one next thing at a time.
 
 const SPAN = (75 * Math.PI) / 180 // the strip spans what lies within 75° either side of where you look
 const GAP = 34 // marks closer than this are spread apart
@@ -115,6 +120,13 @@ export function Compass() {
   const more = useRef<Record<'left' | 'right', HTMLButtonElement | null>>({ left: null, right: null })
   const moreTo = useRef<Record<'left' | 'right', { id: string; item: string } | null>>({ left: null, right: null })
   const shown = phase === 'playing' && (outdoors || marks.length > 0) && !occupied && mode !== 'clean'
+  // the step on now (a new farm's), and where its line walks you: its mark ringed, the others quieter
+  useFarm((s) => s.rev)
+  const step = shown ? stepNow() : null
+  const line = step ? lineFor(step, farm) : null
+  const stepAt = line ? walkTarget(line.target) : null
+  const stepGood = line && 'item' in line.pic ? line.pic.item : null
+  const stepMark = (m: { id: string; item: string }) => (!step ? '' : m.id === stepAt || m.item === stepGood ? ' step' : ' dim')
 
   // the scale and the marks follow the view every frame, without React: only transforms change
   useEffect(() => {
@@ -195,7 +207,7 @@ export function Compass() {
           {marks.map((m) => (
             <button
               key={m.item}
-              className={`compass-mark${m.alert ? ' alert' : ''}${going === m.item ? ' going' : ''}`}
+              className={`compass-mark${m.alert ? ' alert' : ''}${going === m.item ? ' going' : ''}${stepMark(m)}`}
               ref={(el) => {
                 if (el) pins.current.set(m.id, el)
                 else pins.current.delete(m.id)

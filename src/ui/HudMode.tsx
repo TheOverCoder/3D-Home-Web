@@ -5,7 +5,7 @@ import { BusyCard, useNextReady, whenReady } from '../farm/Busy'
 import { produceById } from '../farm/data'
 import { iconUrl } from '../farm/icons'
 import { editHere, openEdit } from '../home/decorate'
-import { newsBadge, useFarm } from '../farm/state'
+import { newsBadge, shows, useFarm } from '../farm/state'
 import { useSettings, type Settings } from '../settings'
 import { busy, useHome } from '../store'
 import { art } from './art'
@@ -45,7 +45,8 @@ export function HudMode() {
   const mode = useSettings((s) => s.hudMode)
   // what waits in the farm news (an event not shown yet, the lucky draw not made), and whether today's gift waits
   useFarm((s) => s.rev)
-  const news = newsBadge()
+  // (the news's badge waits for a new farm's first steps to end, and a visit more: src/farm/reveal.ts)
+  const news = shows('news') ? newsBadge() : 0
   const gift = useDailyWaiting()
   // while the farm is busy (src/farm/Busy.tsx): what is ready next, and when
   const next = useNextReady()

@@ -14,7 +14,8 @@ import { SPRING } from '../ui/motion'
 import { TopSlot } from '../ui/TopStack'
 import { levelView } from './levelView'
 import { GARMENTS, type Garment } from './outfit'
-import { farm, opensOn, useFarm, xpEventCount, xpNow } from './state'
+import { farm, opensOn, shows, useFarm, xpEventCount, xpNow } from './state'
+import { arriveDelay } from './reveal'
 import { levelOf } from './xp'
 import { waitingBoxes } from './gifts'
 import { openedBetween, type UnlockId } from './unlocks'
@@ -140,7 +141,8 @@ export function XpChip() {
   const { level, into, need, top, gift: garment } = levelView(shown, farm.xp.paid)
   const k = Math.min(1, into / need)
   // the gift boxes the bar has reached and not opened (a quarter's crystals still in the air have not reached it yet)
-  const gifts = waitingBoxes(farm.gifts, shown).length
+  // (they wait unseen while a new farm's first steps run, src/farm/reveal.ts: nothing is lost, they glow as they end)
+  const gifts = shows('gifts') ? waitingBoxes(farm.gifts, shown).length : 0
   const star = useRef<HTMLSpanElement>(null)
   const fill = useRef<HTMLSpanElement>(null)
   const shine = useRef<HTMLSpanElement>(null)
@@ -191,7 +193,7 @@ export function XpChip() {
           </span>
         </span>
         {gifts > 0 ? (
-          <m.span className="top-road-gifts" initial={{ scale: 0, rotate: -20 }} animate={{ scale: 1, rotate: 0 }} transition={{ ...SPRING.pop, delay: 0.2 }}>
+          <m.span className="top-road-gifts" initial={{ scale: 0, rotate: -20 }} animate={{ scale: 1, rotate: 0 }} transition={{ ...SPRING.pop, delay: 0.2 + arriveDelay('gifts') / 1000 }}>
             <img className="xp-gift" src={art('wrapped-gift')} alt="" />
             {gifts}
           </m.span>

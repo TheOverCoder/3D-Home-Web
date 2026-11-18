@@ -142,6 +142,7 @@ import {
   dailyWaiting,
   quietDaily,
   setDailyClock,
+  shows,
 } from './state'
 import { Market } from './Market'
 import { Estate } from './Estate'
@@ -487,7 +488,8 @@ function Bed({ index }: { index: number }) {
     tag: () => {
       const at = { x: spot.x, y: BED.h + 0.25, z: spot.z }
       const open = () => openPanel({ kind: forSale(index) ? 'build' : 'bed', bed: index })
-      if (!forSale(index)) return { kind: 'gear', label: 'What this bed grows', at, open }
+      // (the gear waits for a new farm's first steps to end: src/farm/reveal.ts)
+      if (!forSale(index)) return shows('gear') ? { kind: 'gear', label: 'What this bed grows', at, open } : null
       // not open yet at the farm's level: the level it opens at instead of its price (the card says so too)
       const lock = plotLock(index)
       return lock !== null ? { kind: 'price', label: priceLabel(index), locked: lock, at, open } : { kind: 'price', label: priceLabel(index), price: priceOf(index), at, open }

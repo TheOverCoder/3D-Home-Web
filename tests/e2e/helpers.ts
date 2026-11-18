@@ -7,8 +7,9 @@ import { unpaidCoins, xpAt } from '../../src/farm/xp'
 const IGNORED = [/THREE\.Clock: This module has been deprecated/, /using deprecated parameters for the initialization function/]
 
 export const SPAWN = { x: -3.5, y: 1.4, z: 1.3 }
-/** Where a new farm starts, on the farm (src/data/maps.ts, FARM_START): on the path among the beds, looking south. */
-export const FARM_START = { x: -1.2, y: 1.4, z: 6.8 }
+/** Where a new farm starts, on the farm (src/data/maps.ts, FARM_START): on the path among the beds, facing the east beds
+ *  and looking down at them. */
+export const FARM_START = { x: -1.2, y: 1.4, z: 7.4, heading: Math.PI + 0.7, pitch: -0.38 }
 
 /** The two maps (src/scene/Maps.tsx): the house on its own plot, and the farm. */
 export type MapId = 'home' | 'farm'
@@ -176,7 +177,8 @@ export async function openGame(browser: Browser, counting = false): Promise<{ ga
           lamps: Object.fromEntries(Object.keys(s.lamps).map((k) => [k, true])),
           doors: Object.fromEntries(Object.keys(s.doors).map((k) => [k, false])),
         })
-        // the house: its living room, where it always started; the farm: where a new farm starts
+        // the house: its living room, where it always started; the farm: on the path among the beds, looking south, where
+        // a farm started before it faced the east beds (FARM_START): every spec's own poses are from there
         const at = map === 'home' ? [-3.5, 1.3] : [-1.2, 6.8]
         h.teleport(at[0], 1.4, at[1])
         if (typeof h.look === 'function') h.look({ yaw: Math.PI, pitch: -0.04 })

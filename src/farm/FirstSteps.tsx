@@ -18,7 +18,7 @@ import { storeOf } from './data'
 import { FarmerFace } from './FarmerFace'
 import { FIRST_STEPS, MOMENT_MOODS, lineFor, moodFor, type Line, type Moment, type Pic, type StepDef } from './firstSteps'
 import { iconUrl } from './icons'
-import { farm, passedWaiting, skipSteps, stepNow, takePassed, useFarm } from './state'
+import { farm, holdReveal, passedWaiting, skipSteps, stepNow, takePassed, useFarm } from './state'
 import { walkTarget } from './walkTargets'
 import './FirstSteps.css'
 
@@ -156,11 +156,16 @@ export function StepHint() {
     // (each change of the farm is a look at what passed; the timers are the hint's own)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rev, active])
-  // the last card stays a while, then the slot is free
+  // the last card stays a while, then the slot is free; what the steps held back at the top (src/farm/reveal.ts) waits
+  // for it to go, then comes in a part at a time
   useEffect(() => {
     if (phase !== 'final') return
+    holdReveal(true)
     const t = window.setTimeout(() => setPhase('show'), FINAL_MS)
-    return () => window.clearTimeout(t)
+    return () => {
+      window.clearTimeout(t)
+      holdReveal(false)
+    }
   }, [phase])
 
   // (a step the farm has just passed is still the one shown until the hint takes it: the bubble ticks, then moves on)
@@ -288,9 +293,10 @@ export function StepHint() {
                           )}
                         </m.span>
                         <AnimatePresence>
-                          {going && (
-                            <m.i key="walk" className="step-walk" variants={POP} initial="hidden" animate="show" exit="out">
-                              <PersonSimpleWalk weight="bold" />
+                          {/* the walker on its corner from the start (a tap walks you there), in sun while you go */}
+                          {!done && (
+                            <m.i key="walk" className="step-walk" style={going ? undefined : { background: 'var(--paper)' }} variants={POP} initial="hidden" animate="show" exit="out">
+                              <PersonSimpleWalk weight={going ? 'fill' : 'bold'} />
                             </m.i>
                           )}
                           {done && (
