@@ -1,10 +1,10 @@
 import { useHome } from '../../store'
 import { levelOf } from '../xp'
 import type { Prize } from '../gifts'
-import { markPlayed as playedOn, type Played } from '../calendar'
-import { claimed, dailyStatus, dailyView, dayNumber, dayStart, rollDay, type DailyView } from '../daily'
+import { dayNumber, dayStart, markPlayed as playedOn, type Played } from '../calendar'
+import { claimed, dailyStatus, dailyView, rollDay, type DailyView } from '../daily'
 import { bump, calendarDay, calendarTime, farm, random, save } from './core'
-import { give, rewarded } from './rewards'
+import { give } from './rewards'
 import { stepsBusy } from './steps'
 
 // The daily gift (src/farm/daily.ts): whether it waits, when it opens by itself, and claiming it. And days played
@@ -88,8 +88,7 @@ export function claimDaily(): Prize[] | null {
   const prizes = rollDay(s.day, levelOf(farm.xp.points), farm.made, random)
   const next = claimed(farm.daily, day, prizes)
   if (!next) return null
-  for (const p of prizes) give(p)
-  rewarded('daily', prizes)
+  give(prizes, 'daily')
   farm.daily = next
   // (its sound and its touch come as it bursts open on its card)
   bump()

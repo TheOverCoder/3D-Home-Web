@@ -64,12 +64,26 @@ import { savedSeason, seasonFresh } from './season'
 
 // The save: a new farm, reading a saved one safely (a hand-edited or old save can never break the game), writing it,
 // the three slots, and a slot as a file to keep or load.
+//
+// No farm is ever wiped by its own save, nor by a second tab (update-v1 mission 08, c7 and c8). Beside each slot:
+// - `:broken`: a save that could not be read, the text as it was stored. The slot itself is kept as it is and never
+//   written over until the player chooses (the saves list: its copy, a file, or a new farm in its place); meanwhile
+//   the game plays a new farm that is not saved.
+// - `:prev`: the save as the last visit to it began (after a good read): the copy a slot that could not be read is
+//   loaded again from.
+// - `:stamp`: which tab wrote or took the farm last, and how many times it has been (the count, never the clock, which
+//   can be moved back). A tab writes only over the stamp it last saw: once another tab has saved or taken the farm,
+//   this one has been left behind and stops saving; looked at again, it loads the newest farm, as switching to it would.
+// A storage that is full (or blocked) is told once a visit, and the saves list offers to free up space.
 
 // Three save slots ("farms"). The first keeps the original key, so saves from before slots load unchanged.
 export const SLOTS = [1, 2, 3] as const
 export type Slot = (typeof SLOTS)[number]
 const SLOT_KEY = '3d-home:slot:v1'
 const keyFor = (slot: number) => (slot === 1 ? '3d-home:farm:v1' : `3d-home:farm:v1:slot${slot}`)
+const brokenKey = (n: number) => `${keyFor(n)}:broken`
+const prevKey = (n: number) => `${keyFor(n)}:prev`
+const stampKey = (n: number) => `${keyFor(n)}:stamp`
 function savedSlot(): Slot {
   try {
     const n = Number(localStorage.getItem(SLOT_KEY))
@@ -81,10 +95,145 @@ function savedSlot(): Slot {
 
 let slot: Slot = 1
 let KEY = keyFor(slot)
-/** The slot this device played last (start(), before the farm loads). */
+/** The slot this device played last (start(), before the farm loads); and this tab's watch on the other tabs. */
 export function startSlot() {
   slot = savedSlot()
   KEY = keyFor(slot)
+  watchTabs()
+}
+
+/** The slot being played could not be read: it is kept as it was and not written, until the player chooses. */
+let held = false
+/** The last write did not go in (the storage full, or blocked). */
+let full = false
+/** What the player has been told this visit (`saveWords`): the slots that could not be read, the storage full. */
+const told = new Set<string>()
+
+/** Which tab wrote or took a farm last (`:stamp`), and how many times one has: a count never moved back by a clock. */
+export interface Stamp {
+  by: string
+  n: number
+  t: number
+}
+/** This tab, among the others open on this device. */
+const me = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+/** The stamp of the slot being played as this tab last saw it: as it opened the slot, or as it last wrote it. */
+let seen: Stamp | null = null
+/** Another tab has saved or taken the farm since this one last did: this one is not saving (until looked at again). */
+let behind = false
+
+/** A stamp as stored, made safe; none when there is none or it is not one. */
+export function savedStamp(text: string | null): Stamp | null {
+  let v: unknown
+  try {
+    v = JSON.parse(text ?? 'null')
+  } catch {
+    return null
+  }
+  if (!isObject(v) || typeof v.by !== 'string' || !Number.isSafeInteger(v.n) || (v.n as number) < 0) return null
+  return { by: v.by, n: v.n as number, t: num(v.t, 0) }
+}
+
+/** The same write of a farm: by the same tab, the same time of its count (no stamp: a farm no tab has stamped yet). */
+export const sameStamp = (a: Stamp | null, b: Stamp | null) => (a?.by ?? '') === (b?.by ?? '') && (a?.n ?? 0) === (b?.n ?? 0)
+
+/** The stamp after `last` (none: the first), written by `by`. */
+export const nextStamp = (last: Stamp | null, by: string, t: number): Stamp => ({ by, n: (last?.n ?? 0) + 1, t })
+
+/** The rule of the tabs: a tab may write a farm only while its stamp is the one this tab last saw, or there is none
+ *  (the storage was cleared: no tab has written since). */
+export const mayWrite = (now: Stamp | null, saw: Stamp | null) => now === null || sameStamp(now, saw)
+
+const readStamp = (n: number) => savedStamp(readRaw(stampKey(n)))
+
+/** Stamps a slot as this tab's newest write (a save, a farm taken, cleared, loaded from a file or its copy). */
+function stamp(n: number) {
+  const s = nextStamp(readStamp(n), me, Date.now())
+  try {
+    localStorage.setItem(stampKey(n), JSON.stringify(s))
+  } catch {
+    return
+  }
+  if (n === slot) seen = s
+}
+
+/** Writes a key for safe keeping, if it can (a full storage keeps the farm first). */
+function keep(key: string, text: string) {
+  try {
+    localStorage.setItem(key, text)
+  } catch {
+    /* storage full or blocked: only a copy is missing */
+  }
+}
+function drop(key: string) {
+  try {
+    localStorage.removeItem(key)
+  } catch {
+    /* storage blocked */
+  }
+}
+
+/** Whether this tab is the one being looked at: shown, and (beside another window) the one in front. */
+const lookedAt = () => typeof document !== 'undefined' && document.visibilityState === 'visible' && document.hasFocus()
+
+/** Once the next frames are drawn: the scene's clock has counted the time the page was hidden on the farm it held. */
+const afterFrames = (f: () => void) => (typeof requestAnimationFrame === 'function' ? requestAnimationFrame(() => requestAnimationFrame(f)) : f())
+
+let reopening = false
+/** This tab is looked at again (shown, or in front): it takes the farm. If another tab saved it meanwhile, it loads that
+ *  newest farm first, as switching to it would — a frame later, once the scene has counted the time it was hidden on
+ *  the farm it held, so that time is not counted twice. */
+export function lookAgain() {
+  if (reopening) return
+  if (mayWrite(readStamp(slot), seen)) {
+    behind = false
+    stamp(slot)
+    return
+  }
+  behind = true
+  reopening = true
+  // (a screen open stops the scene's frames: closed, they come again)
+  if (useHome.getState().screen) useHome.getState().closeScreen()
+  afterFrames(() => {
+    reopening = false
+    behind = false
+    enter(load())
+  })
+}
+
+let watching = false
+/** Listens to the other tabs: a newer stamp on the farm being played leaves this tab behind (looked at, it loads it);
+ *  this tab shown again or brought in front takes the farm. */
+function watchTabs() {
+  if (watching || typeof window === 'undefined') return
+  watching = true
+  window.addEventListener('storage', (e) => {
+    if (e.key !== stampKey(slot) || mayWrite(readStamp(slot), seen)) return
+    behind = true
+    if (lookedAt()) lookAgain()
+  })
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') lookAgain()
+  })
+  window.addEventListener('focus', lookAgain)
+}
+
+/** How the save stands, for the saves list and the tests: the farm being played could not be read (kept, not saved),
+ *  the storage is full, another tab has the farm. */
+export const saveState = () => ({ held, full, behind })
+
+/** What the player is told about the save, each once a visit: the farm being played could not be read (it is kept),
+ *  or the storage is full. Null when there is nothing (more) to tell. */
+export function saveWords(): string | null {
+  if (held && !told.has(`held:${slot}`)) {
+    told.add(`held:${slot}`)
+    return `Farm ${slot} could not be read: it is kept as it was`
+  }
+  if (full && !told.has('full')) {
+    told.add('full')
+    return 'The storage is full: the farm is not being saved'
+  }
+  return null
 }
 
 export const currentSlot = () => slot
@@ -290,12 +439,23 @@ function savedPlace(raw: unknown, wait: number): OrderSlot {
   return { wait: seconds(field(raw, 'wait'), wait) }
 }
 
-/** The saved farm, made safe (a hand-edited or old save can never break the game), plus the time it was saved. */
-export function load(text: string | null = readRaw(KEY)): { data: FarmData; savedAt: number | null; queue: SavedBuyer[] } {
+/** A farm as read from a save: made safe, the time it was saved, the line at the gate; and whether the save could not
+ *  be read at all (a new farm in its place, the save kept: `load`). */
+export interface Loaded {
+  data: FarmData
+  savedAt: number | null
+  queue: SavedBuyer[]
+  broken: boolean
+}
+
+/** The farm a slot's text holds (`load`, the reader): made safe; a text that is not a save at all is `broken`. */
+function read(text: string | null): Loaded {
   const data = fresh()
+  // (a slot with nothing in it is a new farm; anything else that is not a farm could not be read, and is kept)
+  const broken = text !== null && text.trim() !== ''
   try {
     const raw = JSON.parse(text ?? 'null') as Partial<FarmData> & { time?: number; queue?: unknown[] }
-    if (!raw || typeof raw !== 'object') return { data, savedAt: null, queue: [] }
+    if (!raw || typeof raw !== 'object') return { data, savedAt: null, queue: [], broken }
     data.coins = amount(raw.coins, START_COINS)
     for (const id of produceIds) data.inv[id] = amount(field(raw.inv, id), 0)
     // the silo and the barn from level 1 (a farm from before them keeps all it has, even past what they hold)
@@ -362,9 +522,9 @@ export function load(text: string | null = readRaw(KEY)): { data: FarmData; save
       aboard,
       trip: aboard ? seconds(field(raw.dispatch, 'trip'), tripSeconds(aboard, gateX(data.layout))) : -1,
     }
-    // the goals: each on the step it was saved on; a farm from before them starts each where it is (what it did before
-    // is not paid for again)
-    for (const def of GOALS) data.goals[def.id] = isObject(raw.goals) ? int(field(raw.goals, def.id), 0, 0, MOST_STEPS) : startStep(def, data)
+    // the goals: each on the step it was saved on; a farm from before them, or from before a goal (the fruit), starts
+    // each where its count is (what it did before is not paid for again)
+    for (const def of GOALS) data.goals[def.id] = isObject(raw.goals) && Object.hasOwn(raw.goals, def.id) ? int(field(raw.goals, def.id), 0, 0, MOST_STEPS) : startStep(def, data)
     // levels: as saved; a farm from before them starts with XP for what it did (its levels are not paid again). XP
     // saved under an older curve (LEVELS.step 15, before saves marked theirs) is moved onto today's: the same level and
     // the same share of the way to the next, so what was paid, the boxes opened and the clothes worn all stay
@@ -411,10 +571,31 @@ export function load(text: string | null = readRaw(KEY)): { data: FarmData; save
     const queue = list(raw.queue)
       .map(savedBuyer)
       .filter((b): b is SavedBuyer => !!b)
-    return { data, savedAt: num(raw.time, 0) || null, queue: queue.slice(0, queuePlaces(data.queueLevel)) }
+    return { data, savedAt: num(raw.time, 0) || null, queue: queue.slice(0, queuePlaces(data.queueLevel)), broken: false }
   } catch {
-    return { data, savedAt: null, queue: [] }
+    // (a save that is not JSON, cut short, or that a reader could not take: kept, never written over by a new farm)
+    return { data: fresh(), savedAt: null, queue: [], broken }
   }
+}
+
+/**
+ * The saved farm, made safe (a hand-edited or old save can never break the game), plus the time it was saved. With no
+ * text: the slot being played, opened by this tab — a save that cannot be read is kept (`:broken`) and the slot is
+ * held, never written over by the new farm played meanwhile; a good one is kept as the visit began (`:prev`); and the
+ * tab takes the farm (`:stamp`) if it is the one shown.
+ */
+export function load(text?: string | null): Loaded {
+  if (text !== undefined) return read(text)
+  const raw = readRaw(KEY)
+  const l = read(raw)
+  held = l.broken
+  if (l.broken) {
+    if (readRaw(brokenKey(slot)) === null) keep(brokenKey(slot), raw!)
+  } else if (raw !== null) keep(prevKey(slot), raw)
+  seen = readStamp(slot)
+  behind = false
+  if (typeof document === 'undefined' || document.visibilityState !== 'hidden') stamp(slot)
+  return l
 }
 
 function readRaw(key: string): string | null {
@@ -425,8 +606,17 @@ function readRaw(key: string): string | null {
   }
 }
 
-/** Writes the farm into its slot (core's saveNow, through writeWith). */
+/** Writes the farm into its slot (core's saveNow, through writeWith): never over a save that could not be read (held
+ *  until the player chooses), nor once another tab has saved or taken the farm (this one is left behind: looked at, it
+ *  loads the newest instead). A write that does not go in (the storage full or blocked) is told once (`saveWords`). */
 export function writeSlot() {
+  if (held) return
+  if (!mayWrite(readStamp(slot), seen)) {
+    behind = true
+    if (lookedAt()) lookAgain()
+    return
+  }
+  let text: string
   try {
     const { visitors, clock: _c, orders: board, xp, ...rest } = farm
     // the line at the gate is kept too: buyers wait for you while you are away
@@ -435,14 +625,30 @@ export function writeSlot() {
     const orders = board.map((slot) => ('order' in slot ? { lines: slot.order.lines, coins: slot.order.coins, surprise: slot.order.surprise } : slot))
     // the XP with the curve it is counted on (src/farm/xp.ts, savedOnToday: a save made under another is moved onto
     // the curve of the game that loads it)
-    localStorage.setItem(KEY, JSON.stringify({ ...rest, xp: { ...xp, curve: LEVELS.step }, orders, queue, time: Date.now() }))
+    text = JSON.stringify({ ...rest, xp: { ...xp, curve: LEVELS.step }, orders, queue, time: Date.now() })
+  } catch (e) {
+    console.error('[3d-home] the farm could not be written as a save', e)
+    return
+  }
+  try {
+    localStorage.setItem(KEY, text)
   } catch {
-    /* storage full or blocked: the farm still works for this visit */
+    // storage full or blocked: the farm still works for this visit, and the player is told once
+    if (!full) {
+      full = true
+      bump()
+    }
+    return
+  }
+  stamp(slot)
+  if (full) {
+    full = false
+    bump()
   }
 }
 
 // the line at the gate as you left it; then the time the page was closed
-export function resumeFrom(l: ReturnType<typeof load>) {
+export function resumeFrom(l: Loaded) {
   for (const b of l.queue) {
     const v = newVisitor(b.want, b.qty, b.offer, 1, b.gift, b.look, b.name)
     farm.visitors.push(v)
@@ -451,8 +657,10 @@ export function resumeFrom(l: ReturnType<typeof load>) {
   if (l.savedAt) cameBack(Math.max(0, (Date.now() - l.savedAt) / 1000))
 }
 
-/** Starts again from scratch (settings, tests). */
+/** Starts again from scratch (settings, tests): a choice, so a slot held as it could not be read is written again (its
+ *  text stays kept aside, `:broken`). */
 export function resetFarm() {
+  held = false
   const f = fresh()
   Object.assign(farm, f)
   forgetWalkers()
@@ -477,15 +685,32 @@ export interface SlotSummary {
   /** its level (from its saved XP): the save list's star */
   level: number
   savedAt: number | null
+  /** its save could not be read: kept as it was, never written over until the player chooses (missing: it could) */
+  broken?: boolean
+  /** the copy kept as the last visit to it began, when that copy can be read (offered for a farm that cannot): when
+   *  it was saved (null: a save from before saves kept their time) */
+  copy?: { savedAt: number | null } | null
+}
+
+/** The copy of a slot kept as its last visit began, if it can be read. */
+function copyOf(n: Slot): Loaded | null {
+  const text = readRaw(prevKey(n))
+  if (text === null) return null
+  const l = read(text)
+  return l.broken ? null : l
 }
 
 /** What a slot holds, read without loading it (for the save list). */
 export function slotSummary(n: Slot): SlotSummary {
   if (n === slot) saveNow()
   const text = readRaw(keyFor(n))
-  const empty: SlotSummary = { slot: n, exists: false, played: false, coins: START_COINS, earned: 0, sold: 0, growing: 0, animals: 0, level: 1, savedAt: null }
+  const empty: SlotSummary = { slot: n, exists: false, played: false, coins: START_COINS, earned: 0, sold: 0, growing: 0, animals: 0, level: 1, savedAt: null, broken: false, copy: null }
   if (!text) return empty
-  const l = load(text)
+  const l = read(text)
+  if (l.broken) {
+    const copy = copyOf(n)
+    return { ...empty, exists: true, broken: true, copy: copy && { savedAt: copy.savedAt } }
+  }
   return {
     slot: n,
     exists: true,
@@ -497,7 +722,24 @@ export function slotSummary(n: Slot): SlotSummary {
     animals: PRODUCER_IDS.reduce((n, id) => n + l.data.producers[id].animals, 0),
     level: levelOf(l.data.xp.points),
     savedAt: l.savedAt,
+    broken: false,
+    copy: null,
   }
+}
+
+/** The farm a slot opened to, in play: its line at the gate and its time away; nothing of the farm before (a panel open
+ *  on it closes). */
+function enter(l: Loaded) {
+  Object.assign(farm, l.data)
+  farm.visitors = []
+  forgetWalkers()
+  const panel = useHome.getState().panel
+  if (panel) useHome.getState().closePanel()
+  // what happened on the farm left behind is not this one's
+  forgetAway()
+  takePassed()
+  resumeFrom(l)
+  bump()
 }
 
 /** Plays on another slot: the current farm is saved, the other one loaded (it has grown on meanwhile). */
@@ -511,37 +753,55 @@ export function switchSlot(n: Slot) {
   } catch {
     /* storage blocked */
   }
-  const l = load()
-  Object.assign(farm, l.data)
-  farm.visitors = []
-  forgetWalkers()
-  const panel = useHome.getState().panel
-  if (panel) useHome.getState().closePanel()
-  // what happened on the farm left behind is not this one's
-  forgetAway()
-  takePassed()
-  resumeFrom(l)
-  bump()
+  enter(load())
 }
 
-/** Empties a slot (the current one starts again from scratch). */
+/** Empties a slot (the current one starts again from scratch), with the copies kept beside it: the player's choice,
+ *  so a save that could not be read goes too. Another tab on it stops saving over it. */
 export function deleteSlot(n: Slot) {
-  try {
-    localStorage.removeItem(keyFor(n))
-  } catch {
-    /* storage blocked */
-  }
+  for (const key of [keyFor(n), brokenKey(n), prevKey(n)]) drop(key)
+  stamp(n)
   if (n === slot) resetFarm()
+}
+
+/** Loads a slot again from the copy kept as its last visit began (offered for a farm that could not be read: the
+ *  player's choice, so the save that could not be read goes; Save as file keeps it first). */
+export function restoreCopy(n: Slot): { ok: true } | { ok: false; error: string } {
+  const text = readRaw(prevKey(n))
+  if (text === null || read(text).broken) return { ok: false, error: 'There is no copy of this farm to load.' }
+  try {
+    localStorage.setItem(keyFor(n), text)
+  } catch {
+    return { ok: false, error: 'The browser would not store it (storage full or blocked).' }
+  }
+  drop(brokenKey(n))
+  stamp(n)
+  if (n === slot) enter(load())
+  return { ok: true }
+}
+
+/** Makes room in the device's storage for the farm being played: the copies kept as each visit began go (the farms
+ *  stay), then the farm is saved again. Whether it went in. */
+export function freeUpSpace(): boolean {
+  for (const n of SLOTS) drop(prevKey(n))
+  saveNow()
+  return !full
 }
 
 const FILE_KIND = '3d-home-farm-save'
 
-/** A slot as a file to keep on the device (or move to another one). */
+/** A slot as a file to keep on the device (or move to another one). A save that is not JSON (cut short, or garbled) is
+ *  the text as it was stored: nothing of it is lost. */
 export function exportSlot(n: Slot): { name: string; text: string } {
   if (n === slot) saveNow()
   const raw = readRaw(keyFor(n))
-  const save = raw ? (JSON.parse(raw) as unknown) : null
   const date = new Date().toISOString().slice(0, 10)
+  let save: unknown = null
+  try {
+    save = raw ? (JSON.parse(raw) as unknown) : null
+  } catch {
+    return { name: `3d-home-farm-${n}-${date}-as-stored.txt`, text: raw! }
+  }
   return {
     name: `3d-home-farm-${n}-${date}.json`,
     text: JSON.stringify({ kind: FILE_KIND, version: 1, slot: n, exportedAt: new Date().toISOString(), save }, null, 1),
@@ -565,15 +825,9 @@ export function importSlot(n: Slot, text: string): { ok: true } | { ok: false; e
   } catch {
     return { ok: false, error: 'The browser would not store it (storage full or blocked).' }
   }
-  if (n === slot) {
-    const l = load()
-    Object.assign(farm, l.data)
-    farm.visitors = []
-    forgetWalkers()
-    // (the steps passed on the farm before are not this one's to show)
-    takePassed()
-    resumeFrom(l)
-    bump()
-  }
+  // (a farm loaded into a place that could not be read is the player's choice: the old text goes)
+  drop(brokenKey(n))
+  stamp(n)
+  if (n === slot) enter(load())
   return { ok: true }
 }

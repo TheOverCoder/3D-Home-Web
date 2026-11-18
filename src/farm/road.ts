@@ -1,7 +1,8 @@
 // A road of stops (update-v1/CONTRACTS.md §1.10): a count that grows — gifts claimed, XP earned, an album page's tiles,
 // levels — and the stops along it where something comes. One engine for every road the game draws: the daily week, the
 // season road, a goal's rungs, an album page, the story's chapters. It says how many stops a count has reached and how
-// far the next one is, with the last stretch before a stop marked "almost". Pure; not yet used by the game.
+// far the next one is, with the last stretch before a stop marked "almost". Pure; drawn by src/ui/Road.tsx (the daily
+// gift's week), read by the goals (src/farm/goals.ts, nearestGoal).
 
 /** A road: the count each stop is reached at, rising (stop k at road[k − 1]). */
 export type Road = readonly number[]
@@ -45,4 +46,14 @@ export function nearest(road: Road, have: number): Nearest | null {
   const from = k > 0 ? road[k - 1] : 0
   const share = Math.min(1, Math.max(0, (have - from) / (at - from)))
   return { stop: k + 1, at, left: at - Math.max(from, have), share, almost: share >= ALMOST }
+}
+
+/** How far along a road a count has come, in stops: 0 at the first stop (or short of it), k − 1 at stop k, and the
+ *  share of the way on to the next between them; the last stop's at its end. Where the line drawn between the stops'
+ *  middles is filled to. */
+export function along(road: Road, have: number): number {
+  const k = reached(road, have)
+  if (k === 0) return 0
+  const next = nearest(road, have)
+  return next ? k - 1 + next.share : road.length - 1
 }

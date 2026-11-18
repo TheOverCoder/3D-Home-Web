@@ -8,11 +8,13 @@ import { burst } from '../ui/burst'
 import { Check, Clock, X } from '../ui/glyphs'
 import { ItemPic } from '../ui/ItemPic'
 import { CountUp, EASE, ITEM, POP, PRESS, SINK, SPRING } from '../ui/motion'
+import { Road } from '../ui/Road'
 import { SwipeSheet } from '../ui/SwipeSheet'
 import { storeOf } from './data'
 import { countdown, WEEK, type DailyView, type DayView, type Peek } from './daily'
 import { prizeWords, type Prize } from './gifts'
 import { iconUrl } from './icons'
+import { stops } from './road'
 import './DailyCard.css'
 
 // How the daily gift's card looks (the design layer; the design lab's board "daily" shows it with no game round it).
@@ -187,7 +189,7 @@ export function DailyCard({
         </span>
       </m.div>
 
-      <Road v={shown} stamped={moment && settled ? moment.before.day : null} />
+      <WeekRoad v={shown} stamped={moment && settled ? moment.before.day : null} />
 
       <m.div className="dg-act" variants={ITEM}>
         <AnimatePresence mode="popLayout" initial={false}>
@@ -558,34 +560,28 @@ function PeekBadge({ peek }: { peek: Peek }) {
   )
 }
 
-const ROAD: Variants = { show: { transition: { delayChildren: 0.08, staggerChildren: 0.04 } } }
 const STOP: Variants = { hidden: { opacity: 0, y: 10, scale: 0.7 }, show: { opacity: 1, y: 0, scale: 1, transition: SPRING.pop } }
-/** How long a stop's words stay up after a touch (ms). */
-const SAY_MS = 2800
+/** The week as a road of seven stops, one a day's gift claimed (./road.ts). */
+const WEEK_ROAD = stops(WEEK, (k) => k)
 
-/** The week as a road: seven stops on a line that fills up to the last day taken (and runs on to today's once its gift
- *  is home: `stamped`, the day the claim was about). A stop touched says what it holds or gave. */
-function Road({ v, stamped }: { v: DailyView; stamped: number | null }) {
-  const [picked, setPicked] = useState<number | null>(null)
-  useEffect(() => {
-    if (picked === null) return
-    const t = window.setTimeout(() => setPicked(null), SAY_MS)
-    return () => window.clearTimeout(t)
-  }, [picked])
+/** The week as a road (../ui/Road.tsx): seven stops on a line that fills up to the last day taken (and runs on to
+ *  today's once its gift is home: `stamped`, the day the claim was about), striped on to today's. A stop touched says
+ *  what it holds or gave. */
+function WeekRoad({ v, stamped }: { v: DailyView; stamped: number | null }) {
   const past = v.week.filter((d) => d.state === 'past').length
   const now = v.week.find((d) => d.state === 'today')?.day ?? 0
-  // the line from the first stop's middle to the last's: filled to the last day taken; striped on to today's
-  const at = (day: number) => (day <= 1 ? 0 : (day - 1) / (WEEK - 1))
   return (
-    <m.ol className="dg-road" variants={ROAD} aria-label={`This week: day ${v.day} of ${WEEK}`}>
-      <span className="dg-line-track" aria-hidden="true">
-        {now > 1 && <i className="dg-line-next" style={{ width: `${at(now) * 100}%` }} />}
-        <m.i className="dg-line-fill" initial={false} animate={{ scaleX: at(past) }} transition={{ duration: 0.55, ease: EASE.out, delay: 0.12 }} />
-      </span>
-      {v.week.map((d) => (
-        <Stop key={d.day} d={d} now={d.day === stamped && d.state === 'past'} picked={picked === d.day} onPick={() => setPicked((p) => (p === d.day ? null : d.day))} />
-      ))}
-    </m.ol>
+    <Road
+      road={WEEK_ROAD}
+      have={past}
+      toward={now}
+      label={`This week: day ${v.day} of ${WEEK}`}
+      cls="dg"
+      stop={(k, picked, onPick) => {
+        const d = v.week[k - 1]
+        return <Stop key={d.day} d={d} now={d.day === stamped && d.state === 'past'} picked={picked} onPick={onPick} />
+      }}
+    />
   )
 }
 

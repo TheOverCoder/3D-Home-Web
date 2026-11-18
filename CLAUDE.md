@@ -187,6 +187,12 @@ The README has the overview; `tests/README.md` what each test guards.
   gives nothing twice. It opens by itself once a day on a farm that has begun, after whatever is over the game (the
   intro, a film, the drive, the welcome-back card, a panel), and waits in the corner menu until claimed. Specs not about
   it put it out of the way (`quietDaily`: `ready()` and `bootApp` in `helpers.ts`); `35-daily` tests it.
+- Days played (`farm.played`, `src/farm/calendar.ts`): the days the farm has been opened, each counted once, the first
+  frame it runs on a calendar day (`markPlayed`, asked from `tick`). They never fall, and they are the long game's clock
+  (`longDay`). A claim's or a gift's prizes (`src/farm/prize.ts`: coins, goods, a piece of decoration, a garment) go in
+  through one door, `give(prizes, kind, at)` (`src/farm/state/rewards.ts`), which counts the reward once (`rewarded`)
+  and returns its tier; their coins are `sized` from the next level's. A road of stops (`src/farm/road.ts`: the daily week, a goal's counts) is drawn by
+  `src/ui/Road.tsx`.
 - A new farm's first steps are rows of `FIRST_STEPS` (`src/farm/firstSteps.ts`: the words, the farmer's mood (his face
   and move, `FarmerFace.tsx`), the picture, when it is
   done by the farm's own numbers, where a tap walks you (a `Target`, `walkTargets.ts`), the reward, and its turns: what
@@ -241,8 +247,9 @@ The README has the overview; `tests/README.md` what each test guards.
   goods coming back from an order and surprises always go in, past full. A new source of goods follows the same rule.
 - Time away (the page closed or hidden: `cameBack` in `state.ts`) runs the farm on in steps for up to three hours and
   tells what happened (`AwayPanel.tsx`, from what was ready before and after): a new producer or machine is in it by
-  being a row. A goal is a row in `GOALS` (`src/farm/goals.ts`) counting the farm's numbers (`stats`, `got`); a new
-  good the farm makes is counted in `got` where it comes in, as the others are.
+  being a row. A goal is a row in `GOALS` (`src/farm/goals.ts`) whose `count` says what it counts as data
+  (`src/farm/measure.ts`: goods got, a stat, what a machine made…); a new good the farm makes is counted in `got` where
+  it comes in, as the others are.
 - Surprises (a building material) have their odds in `ITEM_ODDS` and roll on the farm's own dice (`setRandom` in
   tests); orders are rows of the board (`farm.orders`), the tractor's trip a timeline (`tractorRoute.ts`), both in the
   save like the line at the gate.

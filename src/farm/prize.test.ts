@@ -3,12 +3,13 @@ import { describe, expect, it } from 'vitest'
 import { ITEMS, SELLABLE, type ProduceId } from './data'
 import { dayCoins } from './daily'
 import { DECOR_KINDS, FRUIT_KINDS, SHOP } from './decor'
-import { boxCoins, savedPrize as savedPrizeToday, type Prize as PrizeToday } from './gifts'
+import { boxCoins, savedPrize as savedGift, type Prize as Gift } from './gifts'
 import { GARMENTS } from './outfit'
 import { isGiftGarment, looksOf, prizeKind, prizeWords, savedPrize, sized, type Prize } from './prize'
 
-// The prize (update-v1/CONTRACTS.md §1.9). Until 02 moves gifts.ts onto it, today's copy there must keep giving the
-// same answers for the two kinds it knows, and today's coins (the daily gift's, the boxes') must come out of `sized`.
+// The prize (update-v1/CONTRACTS.md §1.9): every kind read back safe from a save, in words, and the one size of its
+// coins. A gift's record (src/farm/gifts.ts) reads its prizes through it, keeping only coins and goods; the daily gift's
+// coins and the boxes' come out of `sized`.
 
 const ODD = [0, -1, 1, 0.5, 99, 100, 1e9, 1e9 + 1, NaN, Infinity, '3', null, undefined, [], {}, 'egg', 'brick', 'gold', 'constructor', '__proto__']
 const raw = fc.oneof(
@@ -16,23 +17,43 @@ const raw = fc.oneof(
   fc.record({ item: fc.oneof(fc.constantFrom(...ODD), fc.constantFrom(...SELLABLE, ...ITEMS)), n: fc.oneof(fc.constantFrom(...ODD), fc.integer({ min: -5, max: 120 })) }),
   fc.anything(),
 )
-const known = (v: unknown) => !v || typeof v !== 'object' || !('decor' in v || 'garment' in v)
+const someKind = fc.oneof(raw, fc.record({ decor: fc.constantFrom(...DECOR_KINDS, ...ODD) }), fc.record({ garment: fc.constantFrom(...GARMENTS.map((g) => g.id), ...ODD) }))
 
 describe('a prize as saved', () => {
-  it('reads coins and goods as gifts.ts does today', () => {
+  it('coins from 1 to a billion; a good buyers buy, or a building material, 1 to 99', () => {
+    expect(savedPrize({ coins: 1 })).toEqual({ coins: 1 })
+    expect(savedPrize({ coins: 1e9 })).toEqual({ coins: 1e9 })
+    for (const coins of [0, -1, 0.5, 1e9 + 1, NaN, Infinity, '3', null]) expect(savedPrize({ coins }), String(coins)).toBeNull()
+    expect(savedPrize({ item: 'egg', n: 99 })).toEqual({ item: 'egg', n: 99 })
+    expect(savedPrize({ item: 'brick', n: 1 })).toEqual({ item: 'brick', n: 1 })
+    for (const [item, n] of [
+      ['egg', 0],
+      ['egg', 100],
+      ['egg', 2.5],
+      ['gold', 3],
+      ['constructor', 3],
+      ['__proto__', 3],
+    ] as const)
+      expect(savedPrize({ item, n }), `${item} ${n}`).toBeNull()
+  })
+
+  it('a gift’s (gifts.ts): read as any prize, and only coins or goods', () => {
     fc.assert(
-      fc.property(raw, (v) => {
-        if (known(v)) expect(savedPrize(v)).toEqual(savedPrizeToday(v))
+      fc.property(someKind, (v) => {
+        const p = savedPrize(v)
+        const gift: Gift | null = savedGift(v)
+        expect(gift).toEqual(p && ('coins' in p || 'item' in p) ? p : null)
       }),
       { numRuns: 2000 },
     )
+    expect(savedGift({ decor: 'lamp' })).toBeNull()
   })
 
   it('reads its own back the same', () => {
     const prizes: Prize[] = [{ coins: 12 }, { item: 'egg', n: 3 }, { item: 'brick', n: 99 }, { decor: 'lamp' }, { decor: 'apple-tree' }]
     for (const p of prizes) expect(savedPrize(JSON.parse(JSON.stringify(p)))).toEqual(p)
-    const today: PrizeToday = { coins: 5 }
-    expect(savedPrize(today)).toEqual(today)
+    const gift: Gift = { coins: 5 }
+    expect(savedPrize(gift)).toEqual(gift)
   })
 
   it('takes a piece of any kind of the shop, with only a look its row has', () => {
