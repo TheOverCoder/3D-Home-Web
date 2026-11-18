@@ -97,7 +97,9 @@ The README has the overview; `tests/README.md` what each test guards.
   copy of its shape measured within half a texel of the sun's sharpest map (`sunLodsOf`, `sunEnough`: well inside the
   shadow's bias), chosen by the sun alone, so the map kept between frames holds. A crowd part that casts needs nothing;
   a model loaded from a file casts so through `castFromCopies` (the furniture). `27` bounds what they change
-  (`__home.view.sunLod`).
+  (`__home.view.sunLod`). Something new that stands still casts through one such mesh for all its parts and looks
+  (`castAsOne`: the same triangles from the same sides, one draw), as the farm's merged static meshes do (`batchStatic`'s
+  `sunAsOne`: one a quarter and side; the house keeps its looks apart, as its sun leaves them out room by room).
 - Each good's model has a weight, the triangles it may draw (`src/models/weights.test.ts`): one grown past it fails in
   the unit tests, in seconds; the heaviest good is the one the budget fills the market's shelves with.
 - A big thing is built from pieces a few metres across, never one mesh round the farm: one mesh is always partly in

@@ -1,10 +1,15 @@
-import { Float32BufferAttribute, Matrix4, Mesh, Vector3, type BufferAttribute, type BufferGeometry, type Material, type MeshStandardMaterial, type Object3D } from 'three'
+import { BufferGeometry, Float32BufferAttribute, Matrix4, Mesh, Vector3, type BufferAttribute, type Material, type MeshStandardMaterial, type Object3D } from 'three'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import { createContext } from 'react'
+import { byShape, shadowOnly, shadowSideOf } from './sculpt/sun'
 
 // Draw-call diet. The placeholder rooms are hundreds of small meshes; every one costs CPU time in the colour
 // pass, the sun-shadow pass and the AO pass. Merging the ones that never move, grouped by identical look and by
-// quarter of the house, turns ~700 draws into a few dozen without changing a pixel.
+// quarter of the house, turns ~700 draws into a few dozen without changing a pixel. Where the drawing pass leaves
+// nothing out of the sun's map by room (the farm: src/lib/visibility), what casts is drawn into it merged further
+// (`sunAsOne`): the map keeps depth only, so one mesh for each quarter (and drawing-pass cell) and side drawn, whatever
+// its looks — a shed of a dozen colours is one draw there, not a dozen — drawn only into shadow maps
+// (src/lib/sculpt/sun.ts), with the same triangles, so not a texel changes.
 
 const tmp = new Matrix4()
 const centre = new Vector3()
@@ -52,6 +57,8 @@ interface Bucket {
   cast: boolean
   receive: boolean
   cell: string
+  /** the quarter of the root it lies in */
+  quarter: string
   geometries: BufferGeometry[]
   /** each geometry's part (or '') */
   parts: string[]
@@ -73,8 +80,9 @@ export interface Batch {
  * the see-through dollhouse view). Merged meshes get their own material copies, so anything that animates the
  * originals' materials cannot leak into them.
  * Anything under a group with `userData.noBatch` is left alone (replaceable models, things that move).
+ * `sunAsOne`: what casts is drawn into the sun's map by one mesh a quarter, cell and side (above).
  */
-export function batchStatic(root: Object3D): Batch {
+export function batchStatic(root: Object3D, { sunAsOne = false }: { sunAsOne?: boolean } = {}): Batch {
   root.updateWorldMatrix(true, true)
   const toLocal = root.matrixWorld.clone().invert()
   const buckets = new Map<string, Bucket>()
@@ -110,7 +118,7 @@ export function batchStatic(root: Object3D): Batch {
     const tag = cellUnder(mesh, root)
     const key = `${cell}#${signature(m)}#${mesh.castShadow ? 1 : 0}${mesh.receiveShadow ? 1 : 0}${tag ? `#${tag}` : ''}`
     let bucket = buckets.get(key)
-    if (!bucket) buckets.set(key, (bucket = { material: m, cast: mesh.castShadow, receive: mesh.receiveShadow, cell: tag, geometries: [], parts: [] }))
+    if (!bucket) buckets.set(key, (bucket = { material: m, cast: mesh.castShadow, receive: mesh.receiveShadow, cell: tag, quarter: cell, geometries: [], parts: [] }))
     bucket.geometries.push(g)
     const part = partUnder(mesh, root)
     bucket.parts.push(part)
@@ -123,36 +131,79 @@ export function batchStatic(root: Object3D): Batch {
   })
 
   const made: Mesh[] = []
+  const addRange = (part: string, geometry: BufferGeometry, from: number, to: number) => {
+    const list = ranges.get(part) ?? []
+    list.push({ geometry, from, to })
+    ranges.set(part, list)
+  }
+  // the merged meshes that cast and are drawn into the sun's map by their shape and side alone, by quarter, cell and
+  // the side drawn: each such group is drawn there by one mesh of its own
+  const sunGroups = new Map<string, { material: Material; cell: string; pieces: { geometry: BufferGeometry; parts: { part: string; from: number; to: number }[] }[] }>()
   for (const b of buckets.values()) {
     const merged = mergeGeometries(b.geometries, false)
     // where each part's triangles are in the merged positions (vertices from, to)
     let start = 0
+    const inside: { part: string; from: number; to: number }[] = []
     b.geometries.forEach((g, i) => {
       const count = g.getAttribute('position').count
       const part = b.parts[i]
       if (merged && part) {
-        const list = ranges.get(part) ?? []
-        list.push({ geometry: merged, from: start, to: start + count })
-        ranges.set(part, list)
+        addRange(part, merged, start, start + count)
+        inside.push({ part, from: start, to: start + count })
       }
       start += count
     })
     for (const g of b.geometries) g.dispose()
     if (!merged) continue
-    const mesh = new Mesh(merged, b.material.clone())
-    mesh.castShadow = b.cast
+    const material = b.material.clone()
+    const mesh = new Mesh(merged, material)
+    const sun = sunAsOne && b.cast && byShape(material)
+    mesh.castShadow = b.cast && !sun
+    // (it casts through its quarter's sun mesh)
+    if (sun) mesh.userData.sunAsOne = true
     mesh.receiveShadow = b.receive
     mesh.name = 'static-batch'
     if (b.cell) mesh.userData.cell = b.cell
     mesh.matrixAutoUpdate = false
     root.add(mesh)
     made.push(mesh)
+    if (!sun) continue
+    const key = `${b.quarter}#${b.cell}#${shadowSideOf(material)}`
+    const group = sunGroups.get(key) ?? { material, cell: b.cell, pieces: [] }
+    group.pieces.push({ geometry: merged, parts: inside })
+    sunGroups.set(key, group)
+  }
+  // each group's triangles one after another, exactly as merged (a part's taken out of the sun's mesh with it: `fold`)
+  const suns: Mesh[] = []
+  for (const s of sunGroups.values()) {
+    const total = s.pieces.reduce((n, p) => n + p.geometry.getAttribute('position').count, 0)
+    const positions = new Float32Array(total * 3)
+    const geometry = new BufferGeometry()
+    let offset = 0
+    for (const p of s.pieces) {
+      const pos = p.geometry.getAttribute('position')
+      for (let v = 0; v < pos.count; v++) {
+        positions[(offset + v) * 3] = pos.getX(v)
+        positions[(offset + v) * 3 + 1] = pos.getY(v)
+        positions[(offset + v) * 3 + 2] = pos.getZ(v)
+      }
+      for (const r of p.parts) addRange(r.part, geometry, offset + r.from, offset + r.to)
+      offset += pos.count
+    }
+    geometry.setAttribute('position', new Float32BufferAttribute(positions, 3))
+    const sun = shadowOnly(new Mesh(geometry, s.material))
+    sun.name = 'static-batch-sun'
+    if (s.cell) sun.userData.cell = s.cell
+    sun.matrixAutoUpdate = false
+    root.add(sun)
+    suns.push(sun)
   }
   let showMerged = true
   const excluded = new Set<string>()
   const setMerged = (on: boolean) => {
     showMerged = on
     for (const m of made) m.visible = on
+    for (const m of suns) m.visible = on
     for (const m of hidden) m.visible = !on
     if (on) for (const part of excluded) for (const m of ownMeshes.get(part) ?? []) m.visible = true
   }
@@ -192,6 +243,11 @@ export function batchStatic(root: Object3D): Batch {
         root.remove(m)
         m.geometry.dispose()
         ;(m.material as Material).dispose()
+      }
+      // (their materials are the merged meshes')
+      for (const m of suns) {
+        root.remove(m)
+        m.geometry.dispose()
       }
       for (const m of hidden) m.visible = true
     },
