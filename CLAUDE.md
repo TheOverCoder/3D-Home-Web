@@ -261,6 +261,19 @@ The README has the overview; `tests/README.md` what each test guards.
   settings. Its button shows both on its right-hand corners in that order: the waiting gift on the top one, the news's
   sun badge on the top one alone and on the bottom one beside the gift (the left side is the dashboard's).
 
+## Seasons and weather (src/farm/season.ts, weather.ts, src/farm/state/season.ts)
+
+- The farm's year is four seasons of `SEASON_DAYS` (7) days played each (`farm.played`: it waits through any absence),
+  counted from the day played its first spring began (`farm.season`); every farm starts in spring, the farm as it
+  always looked. They start once the first steps end (`SEASONS_AFTER_STEPS`): while the steps run the first spring
+  waits. The season moves only on a new day played, so a time away runs in the season it was left in. The weather is
+  a function of the farm's clock (`weatherAt`), never saved.
+- Whatever a season or the weather changes asks `seasonNow()` and `weatherNow()`: spring and clear while the steps run,
+  and where the game is tested (under Vitest; on a ?debug page unless `&season=on` or a season's name, `&weather=on`
+  or a weather's name). The clock itself, `seasonDay()`, is never quiet: the daily week counts on it. Specs stand in
+  spring and clear (`ready()`, `bootApp`); one turns them on or sets its own with `__home.season` (`set`,
+  `weather.set`, `quiet(false)`), a unit test with `setSeason`, `setWeather`, `quietSeasons`.
+
 ## The farm's decoration (src/farm/decor.ts, layout.ts, decorScene.tsx, DecorShop.tsx)
 
 - The edit mode's shop (the bag on its card) sells decoration and, on a tab of its own, fruit trees and bushes: a row
