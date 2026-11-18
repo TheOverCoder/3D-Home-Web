@@ -44,7 +44,7 @@ export const SEASONS = {
   summer: {
     name: 'Summer',
     pic: 'sun',
-    crops: ['tomato'],
+    crops: ['tomato', 'sunflower', 'melon'],
     look: { grass: '#f4efd2', foliage: '#3f6b2a', turn: 0.25, cover: 0 },
     light: { sun: 1.05, warm: 0.08, sky: 1 },
     events: { market: { name: 'Summer fair', pic: 'sun' } },
@@ -53,7 +53,7 @@ export const SEASONS = {
   autumn: {
     name: 'Autumn',
     pic: 'fallen-leaf',
-    crops: ['pumpkin', 'corn'],
+    crops: ['pumpkin', 'corn', 'cotton'],
     look: { grass: '#e6d29a', foliage: '#d9822b', turn: 0.7, cover: 0 },
     light: { sun: 0.92, warm: 0.15, sky: 0.95 },
     events: { harvest: { name: 'Harvest fair', pic: 'fallen-leaf' } },
@@ -62,7 +62,7 @@ export const SEASONS = {
   winter: {
     name: 'Winter',
     pic: 'snowflake',
-    crops: ['carrot', 'wheat', 'sugarcane'],
+    crops: ['carrot', 'wheat', 'sugarcane', 'potato'],
     look: { grass: '#f2f5fa', foliage: '#4f5d4c', turn: 0.35, cover: 0.85 },
     light: { sun: 0.85, warm: -0.1, sky: 1.05 },
     events: { market: { name: 'Winter market', pic: 'snowflake' } },
