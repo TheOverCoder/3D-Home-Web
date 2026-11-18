@@ -7,6 +7,11 @@ const files = import.meta.glob('../assets/art/*.webp', { eager: true, query: '?u
 
 export type ArtId =
   | 'automobile'
+  | 'birthday-cake'
+  | 'envelope'
+  | 'love-letter'
+  | 'mailbox'
+  | 'red-heart'
   | 'basket'
   | 'bucket'
   | 'building-construction'

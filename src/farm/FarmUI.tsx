@@ -35,6 +35,8 @@ import { GoodWaysContext } from '../ui/GoodPic'
 import { PanelGuard } from '../ui/PanelGuard'
 import { CardWatcher } from '../ui/useGameFree'
 import { GAME_WAYS } from './goods/ways'
+import { LetterPanel } from './people/LetterPanel'
+import { NeighboursPanel } from './people/NeighboursPanel'
 
 // The farm's interface: the dashboard at the top, the edit modes' cards, and a slot for each panel — each panel a file of
 // its own (the seed packets, a bed's gear, a bed to build and the line at the gate in ./panels). Every slot is inside
@@ -110,6 +112,8 @@ export function FarmUI() {
         {/* the daily gift: out the way it came in, as the level's card */}
         <AnimatePresence>{panel?.kind === 'daily' && <DailyPanel key={`daily-${opening(panel)}`} />}</AnimatePresence>
         {panel?.kind === 'wardrobe' && <WardrobePanel />}
+        <AnimatePresence>{panel?.kind === 'letter' && <LetterPanel key={`letter-${opening(panel)}`} id={panel.id} again={panel.again} />}</AnimatePresence>
+        <AnimatePresence>{panel?.kind === 'neighbours' && <NeighboursPanel key={`neighbours-${opening(panel)}`} />}</AnimatePresence>
       </PanelGuard>
       <PanelGuard name="level-up" layer>
         <LevelUp />

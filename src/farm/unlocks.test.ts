@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
+import { NEIGHBOUR_IDS } from '../data/people'
 import { CROPS, LEVELS, MACHINES, MACHINE_IDS, PRODUCERS, START_COINS, UPGRADES, type ProduceId } from './data'
+import { movesInAt } from './people/chapters'
 import { SHOP } from './decor'
 import { PARCELS, PARCEL_IDS } from './layout'
 import { UNLOCKS, UNLOCK_IDS, lockedAt, machineOpensAt, openedBetween, opensAt, recipeUnlock, unlockLevel, unlockName, type UnlockId } from './unlocks'
@@ -15,6 +17,7 @@ const EVERY: string[] = [
   ...MACHINE_IDS.flatMap((m) => MACHINES[m].recipes.map((r) => `recipe:${m}:${r.id}`)),
   ...Object.keys(SHOP).map((k) => `decor:${k}`),
   ...PARCEL_IDS.map((p) => `parcel:${p}`),
+  ...NEIGHBOUR_IDS.map((who) => `person:${who}`),
 ]
 
 /** The level a good can first be had at: a crop's seeds, what a machine makes (its first recipe that makes it), what a
@@ -53,9 +56,11 @@ describe('what each level opens', () => {
   })
 
   it('every level of the first hour opens something (each one a reward), and each thing at exactly one level', () => {
-    const top = Math.max(...Object.values(UNLOCKS))
+    // (to the top of what a farm buys, plants or puts into a machine: a neighbour moving in comes with their chapter,
+    // spread over the first month, src/farm/people/chapters.ts — not a row of the cadence)
+    const top = Math.max(...UNLOCK_IDS.filter((id) => !id.startsWith('person:')).map((id) => UNLOCKS[id]))
     for (let level = 2; level <= top; level++) expect(opensAt(level).length, `level ${level}`).toBeGreaterThan(0)
-    const all = Array.from({ length: top }, (_, k) => opensAt(k + 1)).flat()
+    const all = Array.from({ length: Math.max(...Object.values(UNLOCKS)) }, (_, k) => opensAt(k + 1)).flat()
     expect(all.length).toBe(UNLOCK_IDS.length)
     expect(new Set(all).size).toBe(UNLOCK_IDS.length)
   })
@@ -75,6 +80,11 @@ describe('what each level opens', () => {
     const last = Math.max(...Object.values(UNLOCKS))
     expect(openedBetween(last, last + 5)).toEqual([])
     expect(openedBetween(1, 6, () => [])).toEqual([])
+  })
+
+  it('a neighbour moves in at the level of the first chapter they write (src/farm/people/chapters.ts)', () => {
+    for (const who of NEIGHBOUR_IDS) expect(UNLOCKS[`person:${who}`], who).toBe(movesInAt(who))
+    expect(unlockName('person:baker')).toBe('Moshe')
   })
 
   it('names each thing in a few words', () => {

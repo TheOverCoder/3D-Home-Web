@@ -18,9 +18,12 @@ export interface OrdersView {
   /** the office's two upgrades */
   office: OfficeRow[]
   coins: number
+  /** a chapter's request (src/farm/people/chapters.ts), pinned above the places: no clock, no ×; none: none */
+  requests?: Order[]
 }
 
-/** What the board's presses do; each says whether it did anything (Put in: how many went in). */
+/** What the board's presses do; each says whether it did anything (Put in: how many went in). `k` is a place of the board,
+ *  or, below 0, a request pinned above them (−1 the first: `requestKey`). */
 export interface OrdersActions {
   put: (k: number) => number
   send: (k: number) => boolean
@@ -74,3 +77,8 @@ export const goingIn = (inv: Partial<Record<ProduceId, number>>, o: Order): [Pro
 
 /** How many goods Put in would move now. */
 export const canPut = (inv: Partial<Record<ProduceId, number>>, o: Order) => goingIn(inv, o).reduce((n, [, k]) => n + k, 0)
+
+/** The key a request pinned above the board goes by in the presses (`OrdersActions`): −1 for the first, −2 the next. */
+export const requestKey = (i: number) => -1 - i
+/** The request a key below 0 names (its place among the requests). */
+export const requestOf = (k: number) => -1 - k

@@ -62,6 +62,7 @@ import {
   eventSpeed,
   farm,
   fillOrder,
+  fillRequest,
   fullWater,
   giftsWaiting,
   harvestBeds,
@@ -92,6 +93,9 @@ import {
   managerPays,
   maxOf,
   sendOrder,
+  sendRequest,
+  lettersWaiting,
+  readLetter,
   skinOwned,
   slotPrice,
   toolOwned,
@@ -160,6 +164,8 @@ function shortCrop(): CropId | null {
   const add = (good: ProduceId, n: number) => n > 0 && asked.set(good, (asked.get(good) ?? 0) + n)
   for (const v of waiting()) add(v.want, v.qty)
   for (let k = 0; k < farm.orders.length; k++) for (const l of orderAt(k)?.lines ?? []) add(l.good, l.want - l.have)
+  // (and a neighbour's request, pinned above the board: src/farm/people)
+  for (const o of farm.requests) for (const l of o.lines) add(l.good, l.want - l.have)
   let best: CropId | null = null
   let most = 0
   for (const c of CROPS) {
@@ -200,7 +206,32 @@ const worthTakingOut = (id: MachineId) => {
 
 /** The recipe to queue next at a machine: the dearest whose ingredients are in store (and open at the farm's level:
  *  canAddJob asks). */
-const nextJob = (id: MachineId) => [...MACHINES[id].recipes].sort((a, b) => produceById(b.makes).price - produceById(a.makes).price).find((r) => canAddJob(id, r))
+const nextJob = (id: MachineId) =>
+  [...MACHINES[id].recipes]
+    .sort((a, b) => Number(lacks(b.makes) > 0) - Number(lacks(a.makes) > 0) || produceById(b.makes).price - produceById(a.makes).price)
+    .find((r) => canAddJob(id, r) && spares(r.needs))
+
+/** What the neighbours' requests still want of a good (src/farm/people: the chapter's, pinned above the board): what
+ *  they ask for, and what goes into what they ask for that the store and the machines do not have yet (a cake's flour
+ *  and sugar). */
+function wanted(good: ProduceId, depth = 0): number {
+  let n = asked(good)
+  if (depth < 2)
+    for (const id of MACHINE_IDS)
+      for (const r of MACHINES[id].recipes) {
+        const per = (r.needs as Partial<Record<ProduceId, number>>)[good]
+        if (per) n += per * Math.max(0, lacks(r.makes, depth + 1) - machineMaking(id, r.makes))
+      }
+  return n
+}
+/** How many the store is short of it for them: a player makes that first, */
+const lacks = (good: ProduceId, depth = 0) => Math.max(0, wanted(good, depth) - farm.inv[good])
+/** (how many of a good a machine has queued or done and not taken out yet) */
+const machineMaking = (id: MachineId, good: ProduceId) => farm.machines[id].jobs.filter((j) => MACHINES[id].recipes.find((r) => r.id === j)?.makes === good).length
+/** What they ask for of a good, still to go in. */
+const asked = (good: ProduceId) => farm.requests.reduce((sum, o) => sum + o.lines.reduce((m, l) => m + (l.good === good ? l.want - l.have : 0), 0), 0)
+/** and a job takes none of what they ask for. */
+const spares = (needs: Partial<Record<ProduceId, number>>) => (Object.entries(needs) as [ProduceId, number][]).every(([good, n]) => farm.inv[good] - n >= asked(good))
 
 /** An order whose every line the silo and the barn can fill now. */
 function orderToSend(): number {
@@ -351,7 +382,34 @@ export const PRIORITIES: { name: string; move: () => Move | null }[] = [
       return id ? { what: `take out of the ${id}`, at: machineAt(id), run: () => collectMachine(id) } : null
     },
   },
-  // selling: an order that can go, then the line at the gate
+  // selling: a neighbour's request that can go (src/farm/people: the chapter's, pinned above the board), an order that
+  // can go, then the line at the gate
+  {
+    name: 'request',
+    move: () => {
+      // all of it in store: in it goes, and off; else a good of it with half its share in store (or what is left of
+      // it) goes in now, set aside for it as a player would, before the line, the board and the oven take it
+      const all = farm.requests.findIndex((o) => o.lines.every((l) => farm.inv[l.good] >= l.want - l.have))
+      if (all >= 0) return { what: "send a neighbour's request", at: OFFICE_STAND, run: () => fillRequest(all) + Number(sendRequest(all)) }
+      const some = farm.requests.findIndex((o) => o.lines.some((l) => l.have < l.want && farm.inv[l.good] >= Math.min(l.want - l.have, Math.ceil(l.want / 2))))
+      return some >= 0 ? { what: "put into a neighbour's request", at: OFFICE_STAND, run: () => fillRequest(some) } : null
+    },
+  },
+  // what a neighbour's request lacks that a machine makes: queued at once, as a player would for a friend
+  {
+    name: 'request job',
+    move: () => {
+      const id = MACHINE_IDS.find((m) => MACHINES[m].recipes.some((r) => lacks(r.makes) > machineMaking(m, r.makes) && canAddJob(m, r) && spares(r.needs)))
+      if (!id) return null
+      return {
+        what: `queue jobs at the ${id} for a request`,
+        at: machineAt(id),
+        run: () => {
+          for (const r of MACHINES[id].recipes) while (lacks(r.makes) > machineMaking(id, r.makes) && canAddJob(id, r) && spares(r.needs) && addJob(id, r.id));
+        },
+      }
+    },
+  },
   {
     name: 'order',
     move: () => {
@@ -365,6 +423,21 @@ export const PRIORITIES: { name: string; move: () => Move | null }[] = [
       const n = sellAllPreview().buyers
       return n ? { what: `sell to ${n} ${n === 1 ? 'buyer' : 'buyers'}`, at: GATE, run: () => sellAll() } : null
     },
+  },
+  // the neighbours' letters in the mailbox by the gate, each read to its end, its gift claimed (src/farm/people)
+  {
+    name: 'mail',
+    move: () =>
+      lettersWaiting().length
+        ? {
+            what: `read ${lettersWaiting().length} letters`,
+            at: GATE,
+            run: () => {
+              for (const l of lettersWaiting()) readLetter(l.id)
+            },
+            taps: () => 4,
+          }
+        : null,
   },
   // keeping the machines busy
   {

@@ -145,6 +145,8 @@ async function plenty(page: Page) {
     f.marketFill('lettuce', { quiet: true })
     f.state.market.till.coins = 40
     for (let k = 0; k < 4; k++) f.spawnVisitor({ queued: true })
+    // a neighbour's letter in the mailbox (src/farm/people): the mailbox offers Read
+    h.neighbours?.post?.('heart:baker:1')
     f.useFarm.setState((s: any) => ({ rev: s.rev + 1 }))
   })
 }

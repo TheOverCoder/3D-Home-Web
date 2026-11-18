@@ -5,7 +5,7 @@ import { BusyCard, useNextReady, whenReady } from '../farm/Busy'
 import { produceById } from '../farm/data'
 import { iconUrl } from '../farm/icons'
 import { editHere, openEdit } from '../home/decorate'
-import { newsBadge, useFarm } from '../farm/state'
+import { metNeighbours, newsBadge, useFarm } from '../farm/state'
 import { useSettings, type Settings } from '../settings'
 import { busy, useHome } from '../store'
 import { art } from './art'
@@ -49,6 +49,8 @@ export function HudMode() {
   const gift = useDailyWaiting()
   // while the farm is busy (src/farm/Busy.tsx): what is ready next, and when
   const next = useNextReady()
+  // the neighbours, once one is met (src/farm/people)
+  const neighbours = metNeighbours().length > 0
   const [open, setOpen] = useState(false)
   const box = useRef<HTMLDivElement>(null)
   const shown = phase === 'playing' && !occupied
@@ -90,7 +92,7 @@ export function HudMode() {
   const ViewIcon = mode === 'all' ? SquaresFour : mode === 'compass' ? CompassRose : EyeSlash
   // the dial's buttons: the daily gift while it waits, the news, edit where there is something to edit, the view, the
   // settings (five: on a phone on its side they go in two columns, see HudMode.css)
-  const buttons = (gift ? 1 : 0) + (next ? 1 : 0) + 1 + (edit ? 1 : 0) + 2
+  const buttons = (gift ? 1 : 0) + (next ? 1 : 0) + 1 + (neighbours ? 1 : 0) + (edit ? 1 : 0) + 2
   return (
     <>
       <BusyCard />
@@ -164,6 +166,18 @@ export function HudMode() {
                     if (!useHome.getState().panel) useHome.getState().openPanel({ kind: 'news' })
                   }}
                 />
+                {neighbours && (
+                  <Dial
+                    className="neighbours-open"
+                    icon={<img className="art" src={art('red-heart')} alt="" />}
+                    word="Neighbours"
+                    label="The neighbours: everyone met, the story and their letters"
+                    onTap={() => {
+                      setOpen(false)
+                      if (!useHome.getState().panel) useHome.getState().openPanel({ kind: 'neighbours' })
+                    }}
+                  />
+                )}
                 {edit && (
                   <Dial
                     className="edit-open"

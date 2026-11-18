@@ -614,7 +614,14 @@ export const OFFICE_SCREEN = { x: -10.25, y: 1.12, z: 6.3 } as const
  *  out of the farm, then backs in again. */
 export const TRACTOR = { z: 7.9, park: -11.95, pallet: { x: -9.45, z: 8.05 }, load: 4, gate: 2.2 } as const
 
-export const NAMES = ['Maya', 'Noa', 'Daniel', 'Yael', 'Omer', 'Tamar', 'Eitan', 'Shira', 'Avi', 'Lior', 'Ruth', 'Yoni', 'Michal', 'Gal']
+/** The strangers' names at the gate: none a neighbour's (src/data/people.ts), and more of them than the line has places,
+ *  so no two in line share one (src/farm/state/buyers.ts). */
+export const NAMES = ['Maya', 'Noa', 'Daniel', 'Yael', 'Omer', 'Tamar', 'Eitan', 'Shira', 'Avi', 'Lior', 'Ruth', 'Yoni', 'Michal', 'Gal', 'Ella', 'Ido']
+
+/** How often a neighbour met comes instead of a stranger (src/farm/people/visits.ts): `visit`, of the buyers who come to
+ *  the gate while one is free (in their hours, not in line already); `order`, of the new orders on the board that ask
+ *  for a good one of them likes (src/farm/state/orders.ts). The line and the board come no faster for it. */
+export const PEOPLE_ODDS = { visit: 0.3, order: 0.35 } as const
 
 // ───────────────────────────── levels: what each thing you do is worth ─────────────────────────────
 
@@ -873,5 +880,15 @@ export const DAY = {
  *  from 0 to 24 (the estate office: 8:00 to 16:00; `to` before `from` runs past midnight). */
 export type Hours = readonly DayPhase[] | { readonly from: number; readonly to: number }
 /** Who keeps hours, and when they are there. */
-export const HOURS = { contractor: ['morning', 'noon', 'evening'], estate: { from: 8, to: 16 } } as const satisfies Record<string, Hours>
+export const HOURS = {
+  contractor: ['morning', 'noon', 'evening'],
+  estate: { from: 8, to: 16 },
+  // the neighbours, when they come by the gate (src/farm/people/visits.ts): the baker after his early bake, the teacher
+  // after school, the knitter in the day, the beekeeper while his bees fly, the child after school until supper
+  baker: ['morning', 'noon'],
+  teacher: { from: 13, to: 19 },
+  knitter: { from: 9, to: 18 },
+  beekeeper: ['morning', 'noon', 'evening'],
+  child: { from: 14, to: 20 },
+} as const satisfies Record<string, Hours>
 export type Keeper = keyof typeof HOURS

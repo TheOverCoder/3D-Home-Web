@@ -12,7 +12,7 @@ import { foundPrizes, rewarded } from './rewards'
 import { gainItems, rollGifts, surpriseWords } from './stores'
 import { knownGoods } from './buyers'
 import { orderShares, sold } from './ledger'
-import { befriend } from './neighbours'
+import { befriend, orderFrom, requestSent } from './neighbours'
 
 // The order board on the office's computer, the office's upgrades, and the tractor that takes the crates away.
 
@@ -63,7 +63,11 @@ export function newOrder(k: number, after?: Order): Order {
   const made = !one && !(after && quick.has(after.id)) ? makeQuick(farm.inv, random) : null
   if (after) quick.delete(after.id)
   if (made) quick.add(made.id)
-  return made ?? makeOrder(knownGoods(), random, levelOf(farm.xp.points))
+  const o = made ?? makeOrder(knownGoods(), random, levelOf(farm.xp.points))
+  // now and then a neighbour met who likes a good it asks for sends it (src/farm/state/neighbours.ts): their portrait
+  // and name at its head
+  const from = orderFrom(o)
+  return from ? { ...o, from } : o
 }
 
 /** How many orders the board holds at a time, and how long a new one takes after one is declined. */
@@ -99,6 +103,62 @@ export function fillOrder(k: number) {
   bump()
   save()
   return n
+}
+
+/** Puts into an order what the silo and the barn have of what it asks for. How many went in. */
+function fill(o: Order) {
+  let n = 0
+  for (const l of o.lines) {
+    const put = Math.min(l.want - l.have, farm.inv[l.good])
+    if (put <= 0) continue
+    farm.inv[l.good] -= put
+    l.have += put
+    n += put
+  }
+  if (!n) return 0
+  bump()
+  save()
+  return n
+}
+
+/** A chapter's request pinned above the board (src/farm/state/neighbours.ts; none: null). */
+export const requestAt = (i: number): Order | null => farm.requests[i] ?? null
+
+/** Puts into a chapter's request what the silo and the barn have of what it asks for, as into an order. How many went
+ *  in. */
+export const fillRequest = (i: number) => {
+  const o = requestAt(i)
+  return o ? fill(o) : 0
+}
+
+/** Sends a chapter's request once all of it is in: paid as an order is (its crates on the pallet), and its writer
+ *  grows fonder; it leaves the board, and their thank-you letter, with the chapter's gift, comes a frame later. */
+export function sendRequest(i: number) {
+  const o = requestAt(i)
+  if (!o || !isComplete(o)) return false
+  requestSent()
+  return ship(o)
+}
+
+/** An order going: paid at once (with its surprise, if it has one), its crates to the pallet for the tractor. */
+function ship(o: Order) {
+  farm.coins += o.coins
+  farm.stats.earned += o.coins
+  farm.stats.sold += o.lines.reduce((n, l) => n + l.want, 0)
+  farm.stats.sent += 1
+  const items = o.surprise ? rollGifts() : []
+  gainItems(items, OFFICE_SCREEN)
+  gainXp('order', 1, OFFICE_SCREEN)
+  gainXp('sale', o.coins, OFFICE_SCREEN)
+  farm.dispatch.waiting = Math.min(MOST_CRATES, farm.dispatch.waiting + cratesFor(o))
+  rewarded('order', [{ coins: o.coins }, ...foundPrizes(items)], OFFICE_SCREEN)
+  for (const l of orderShares(o)) sold('order', l.good, l.units, l.coins)
+  befriend(o)
+  toast(`${o.chapter ? 'Sent' : 'Order sent'} · + ${o.coins} coins${surpriseWords(items)}`, items[0] ?? 'coin')
+  farmSound('coins')
+  bump()
+  save()
+  return true
 }
 
 /** Sends a full order: it is paid at once (and brings its surprise, if it has one), its crates go to the pallet for

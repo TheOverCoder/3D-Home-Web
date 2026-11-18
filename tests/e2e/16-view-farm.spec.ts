@@ -90,6 +90,23 @@ test.describe('the drawing pass leaves out only what cannot be seen: the farm', 
     console.log(log.join('\n'))
   })
 
+  test('the mailbox by the gate, a letter waiting: its flag up, cast into the sun as one mesh', async ({ game }) => {
+    await setUp(game, 'farm')
+    const { page } = game
+    const log: string[] = []
+    // (fillFarm put a letter in it: the flag swings up, then casts as one again)
+    await page.waitForFunction(
+      () => {
+        const m = (window as any).__home.mailbox
+        return !!m && m.flag() === m.up && m.castsAsOne()
+      },
+      null,
+      { timeout: 30_000, polling: 250 },
+    )
+    await compareAt(game, { name: 'lane, the mailbox by the gate', x: 2.6, z: 16, yaw: -0.69, pitch: -0.1, shadow: true }, log)
+    console.log(log.join('\n'))
+  })
+
   test('afterwards: the house as it was, no console errors', async ({ game }) => {
     await game.ready()
     await emptyFarm(game.page)

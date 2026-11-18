@@ -4,6 +4,7 @@ import { useProgress } from '@react-three/drei'
 import { Car } from '../farm/car/Car'
 import { Garden } from '../farm/Garden'
 import { FarmGround } from '../farm/Ground'
+import { Mailbox } from '../farm/Mailbox'
 import { driveTo, farm, type Place } from '../farm/state'
 import { debugSet } from '../lib/debug'
 import { spaceHere } from '../lib/world'
@@ -92,12 +93,13 @@ function HomeMap() {
 }
 
 /** The farm: its ground, and everything it has (the land, the beds, the animals, the machines, the buyers, the lane, the
- *  market, the contractor, the tractor, the woods). All of it outdoors, for the drawing pass. */
+ *  market, the contractor, the tractor, the woods, the mailbox by the gate). All of it outdoors, for the drawing pass. */
 function FarmMap() {
   return (
     <group name="farm-map" userData={{ cell: 'outside' }}>
       <FarmGround />
       <Garden />
+      <Mailbox />
       <Arrived map="farm" />
     </group>
   )

@@ -15,8 +15,11 @@ import { Coins } from '../../ui/Shell'
 import type { OfficeUpgradeId, ProduceId } from '../data'
 import { iconUrl } from '../icons'
 import { cratesFor, isComplete, type Order } from '../orders'
-import { canPut, clock, goingIn, nameOf, type OfficeRow, type OrdersActions, type OrdersView } from './view'
+import { canPut, clock, goingIn, nameOf, requestKey, requestOf, type OfficeRow, type OrdersActions, type OrdersView } from './view'
+import { personById } from '../../data/people'
+import { Portrait } from '../../ui/Portrait'
 import './OrdersBoard.css'
+import './OrdersBoardPeople.css'
 
 // The order board on the office's computer: the design layer — it draws an `OrdersView` and calls `OrdersActions`,
 // nothing of the farm in it (src/farm/OrdersPanel.tsx feeds it the farm's; the design lab, sample data). Chosen in the
@@ -138,9 +141,15 @@ function Board({ v, act, asking, onAsk, onClose }: OrdersBoardProps) {
   // ready as the board shows them (an order whose goods are still flying in is not ready yet)
   const ready = v.slots.filter((x) => 'order' in x && isComplete(held[x.order.id]?.order ?? x.order)).length
 
+  /** A request pinned above the board, by its key below 0 (none: undefined). */
+  const requestSlot = (k: number) => {
+    const o = v.requests?.[requestOf(k)]
+    return o ? { order: o } : undefined
+  }
+
   /** Put in: what there is goes in at once; on the screen the goods fly from the press into their lines first. */
   const put = (k: number, from: HTMLElement) => {
-    const slot = v.slots[k]
+    const slot = k < 0 ? requestSlot(k) : v.slots[k]
     if (!slot || !('order' in slot)) return
     const o = slot.order
     const go = goingIn(v.inv, o)
@@ -174,7 +183,7 @@ function Board({ v, act, asking, onAsk, onClose }: OrdersBoardProps) {
 
   /** Send: paid at once; its coins fly from the press to the coin chip, with one burst. */
   const send = (k: number, el: HTMLElement) => {
-    const slot = v.slots[k]
+    const slot = k < 0 ? requestSlot(k) : v.slots[k]
     if (!slot || !('order' in slot)) return
     const r = el.getBoundingClientRect()
     if (!act.send(k) || still) return
@@ -236,6 +245,24 @@ function Board({ v, act, asking, onAsk, onClose }: OrdersBoardProps) {
           <m.div className="ob-board" ref={board} style={keep} layoutScroll>
             <div className="ob-planks">
               <AnimatePresence mode="popLayout">
+                {/* a chapter's request, pinned above the places: no clock, no × (src/farm/people) */}
+                {(v.requests ?? []).map((o, i) => (
+                  <Plank
+                    key={o.id}
+                    o={held[o.id]?.order ?? o}
+                    soon={held[o.id]?.coming ?? new Map(goingIn(v.inv, o))}
+                    can={held[o.id]?.can ?? canPut(v.inv, o)}
+                    flying={!!held[o.id]}
+                    inv={v.inv}
+                    k={requestKey(i)}
+                    delay={opening ? 0.1 : 0}
+                    pop={pop}
+                    setPop={setPop}
+                    onPut={put}
+                    onSend={send}
+                    onDecline={() => {}}
+                  />
+                ))}
                 {v.slots.map((slot, k) =>
                   'order' in slot ? (
                     <Plank
@@ -343,10 +370,12 @@ function Plank({
   const done = isComplete(o)
   const fills = can > 0 && o.lines.every((l) => l.have + (soon.get(l.good) ?? 0) >= l.want)
   const crates = cratesFor(o)
+  // a chapter's request: pinned, never declined (src/farm/people)
+  const pinned = !!o.chapter
   return (
     <m.article
       ref={ref}
-      className={`${present ? 'farm-order ' : ''}ob-plank${done ? ' done' : ''}`}
+      className={`${present ? 'farm-order ' : ''}ob-plank${done ? ' done' : ''}${pinned ? ' ob-pinned' : ''}`}
       data-plank={o.id}
       layout
       custom={delay}
@@ -354,10 +383,18 @@ function Plank({
       initial="hidden"
       animate="show"
       exit={falling ? { opacity: 0, y: 160, rotate: -16, transition: { duration: 0.4, ease: 'easeIn' } } : { opacity: 0, x: 140, y: 24, rotate: 16, transition: { duration: 0.36, ease: 'easeIn' } }}
-      aria-label={`Order for ${o.coins} coins`}
+      aria-label={`${o.from ? `${personById(o.from).name}'s ${pinned ? 'request' : 'order'}` : 'Order'} for ${o.coins} coins`}
     >
       <i className="ob-nail tl" />
       <i className="ob-nail tr" />
+      {/* who it is for: a neighbour's face and name at its head */}
+      {o.from && (
+        <div className="ob-sender">
+          <Portrait who={o.from} size={36} move={false} />
+          <b>{personById(o.from).name}</b>
+          {pinned && <img className="art ob-pin" src={art('love-letter')} alt="" />}
+        </div>
+      )}
       <div className="ob-pays">
         <AnimatePresence mode="popLayout" initial={false}>
           {done ? (
@@ -383,7 +420,7 @@ function Plank({
             <img key={i} className="art" src={art('package')} alt="" />
           ))}
         </span>
-        {!done && (
+        {!done && !pinned && (
           <m.button
             className="ob-no"
             {...PRESS}

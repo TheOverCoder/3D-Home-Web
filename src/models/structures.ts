@@ -1,6 +1,7 @@
 import { BufferAttribute, DoubleSide, MeshStandardMaterial, type BufferGeometry } from 'three'
 import {
   blob,
+  ellipsoid,
   fbm3,
   lathe,
   loft,
@@ -582,4 +583,67 @@ export function mouthGlowMaterial(intensity = 0): MeshStandardMaterial {
   }
   m.customProgramCacheKey = () => 'oven-glow'
   return m
+}
+
+// ───────────────────────────── the mailbox ─────────────────────────────
+
+const MAIL_BLUE = rgb(0x4f7cac)
+const MAIL_BLUE_DARK = rgb(0x3d6590)
+const FLAG_RED = rgb(0xd2452f)
+
+/** The mailbox's box: its round top's radius (its flat sides as tall below the middle: corners at 45°), its middle's
+ *  height, and its ends along z (the door at +z, to the lane). */
+const MAIL = { r: 0.105, y: 1.095, back: -0.21, front: 0.27 } as const
+/** Where the flag's arm turns (on the box's east side, near its door), and its angle about x: up while a letter waits,
+ *  down along the box's side otherwise. */
+export const MAIL_FLAG = { at: [MAIL.r + 0.012, MAIL.y, 0.15] as V3, up: 0, down: -Math.PI / 2 } as const
+
+/** The box's ring: a half circle over flat sides and a flat bottom (the ring's radius times this at angle a). */
+const mailRing = (a: number) => (Math.sin(a) >= 0 ? 1 : Math.min(1 / Math.abs(Math.cos(a)), 1 / Math.abs(Math.sin(a))))
+
+export type MailboxPart = 'body' | 'flag'
+
+/**
+ * A country mailbox by the gate: a square wooden post, a bracket on it, and a blue tin box with a round top and a door
+ * at its front (to the lane) with a knob; one part, standing still. The flag is a part of its own, built round its
+ * hinge (`MAIL_FLAG.at`): a pin into the box's side, an arm and a red plate, turned up while a letter waits.
+ */
+export function mailboxModel(): Structure<MailboxPart> {
+  const post = slab(0.045, 0.045, 0, MAIL.y - MAIL.r + 0.004, 6, 16).paint(grain(1, 41), 0)
+  const bracket = slab(0.07, 0.16, MAIL.y - MAIL.r - 0.03, MAIL.y - MAIL.r + 0.004, 6, 16).paint(grain(2, 43), 0)
+  const box = loft(
+    [
+      { c: [0, MAIL.y, MAIL.back], rx: MAIL.r, ry: MAIL.r },
+      { c: [0, MAIL.y, MAIL.front], rx: MAIL.r, ry: MAIL.r },
+    ],
+    { seg: 24, steps: 1, shape: mailRing, caps: [true, true] },
+  ).fill(MAIL_BLUE, 0)
+  const door = loft(
+    [
+      { c: [0, MAIL.y - 0.003, MAIL.front - 0.004], rx: MAIL.r + 0.006, ry: MAIL.r + 0.006 },
+      { c: [0, MAIL.y - 0.003, MAIL.front + 0.012], rx: MAIL.r + 0.006, ry: MAIL.r + 0.006 },
+    ],
+    { seg: 24, steps: 1, shape: mailRing, caps: [true, true] },
+  ).fill(MAIL_BLUE_DARK, 0)
+  const knob = ellipsoid(0.014, 0.014, 0.012, 10, 6)
+    .place([0, MAIL.y + 0.05, MAIL.front + 0.018])
+    .fill(rgb(0xd9cbb4), 0)
+  const flag = merge(
+    // the pin, into the box's side, and the arm up from it
+    tube(
+      [
+        [-0.022, 0, 0],
+        [0.008, 0, 0],
+      ],
+      0.009,
+      { seg: 8, caps: [true, true] },
+    ),
+    slab(0.004, 0.011, -0.01, 0.2, 4, 8).place([0.006, 0, 0]),
+    // the plate, at its top, towards the back
+    slab(0.004, 0.045, 0.13, 0.2, 4, 10).place([0.006, 0, -0.05]),
+  ).fill(FLAG_RED, 0)
+  return {
+    body: { shape: merge(post, bracket, box, door, knob), material: { roughness: 0.62 } },
+    flag: { shape: flag, material: { roughness: 0.55 } },
+  }
 }

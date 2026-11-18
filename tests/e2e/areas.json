@@ -173,6 +173,11 @@
     },
     { "name": "buyers at the gate", "specs": ["08-garden", "10-smart-farm", "25-button"], "paths": ["src/farm/Visitors.tsx", "src/data/people.ts"] },
     {
+      "name": "the neighbours: the story, the letters and the mailbox",
+      "specs": ["45-neighbours", "25-button", "17-stores-orders"],
+      "paths": ["src/farm/people/**", "src/farm/Mailbox.tsx", "src/farm/state/neighbours.ts"]
+    },
+    {
       "name": "the animals' tools and skins",
       "specs": ["38-animal-tools"],
       "paths": ["src/farm/{tools,toolView,useTool,skins,skinsView}.ts", "src/farm/{ToolPanel,ToolStands,SkinShop}.{tsx,css}", "src/farm/tool/**"]

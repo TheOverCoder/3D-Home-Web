@@ -1,0 +1,27 @@
+/* The neighbours (NeighboursCard.tsx): everyone in a row of cards, the story's road for the act on now, the letters to
+   read again. A neighbour not met yet, and a chapter still to come, is a silhouette. Every rule under .neighbours-card. */
+.neighbours-card .nb-people { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+.neighbours-card .nb-person { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 8px; border-radius: var(--r-card); background: var(--paper-2); box-shadow: 0 3px 0 var(--edge-soft); text-align: center; }
+.neighbours-card .nb-name { font: 600 19px/1.1 var(--font-display); color: var(--ink); }
+.neighbours-card .people-hearts .art { width: 20px; height: 20px; }
+.neighbours-card .nb-likes { display: flex; gap: 6px; }
+.neighbours-card .nb-likes .item-pic .art { width: 40px; height: 40px; }
+.neighbours-card .nb-birthday { display: inline-flex; align-items: center; gap: 4px; font: 700 15px/1 var(--font-text); color: var(--ink-2); }
+.neighbours-card .nb-birthday .art { width: 24px; height: 24px; }
+.neighbours-card .nb-soon { font: 700 15px/1.2 var(--font-text); color: var(--ink-2); }
+/* not met yet: their shape only */
+.neighbours-card .unmet .portrait-face img, .neighbours-card .nb-stop.next .portrait-face img, .neighbours-card .nb-stop.later .portrait-face img { filter: brightness(0) opacity(0.32); }
+
+.neighbours-card .nb-story, .neighbours-card .nb-letters { margin-top: 14px; }
+.neighbours-card .nb-road { display: flex; flex-direction: column; gap: 6px; margin: 8px 0 0; padding: 0; list-style: none; }
+.neighbours-card .nb-stop { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 4px 12px 4px 6px; border-radius: 999px; background: var(--paper-2); }
+.neighbours-card .nb-stop.on { background: color-mix(in srgb, var(--sun) 40%, var(--paper)); box-shadow: 0 0 0 2px var(--sun-lip); }
+.neighbours-card .nb-stop.later { opacity: 0.7; }
+.neighbours-card .nb-stop-face { position: relative; flex: none; }
+.neighbours-card .nb-done { position: absolute; inset-inline-end: -4px; bottom: -4px; width: 20px; height: 20px; padding: 3px; border-radius: 50%; background: var(--leaf); color: #fff; }
+.neighbours-card .nb-stop-words { display: flex; flex-direction: column; gap: 2px; }
+.neighbours-card .nb-stop-words b { font: 800 16px/1.2 var(--font-text); color: var(--ink); }
+.neighbours-card .nb-stop-words small { font: 700 14px/1.2 var(--font-text); color: var(--ink-2); }
+.neighbours-card .nb-letters ul { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 0; padding: 0; list-style: none; }
+.neighbours-card .nb-letter { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; }
+.neighbours-card .nb-letter .art { width: 26px; height: 26px; }

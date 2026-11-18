@@ -8,7 +8,7 @@ import { readingOf, voiceOfLook, type Voice } from '../film/voice'
 import { playerState } from '../lib/playerState'
 import { useSettings } from '../settings'
 import { useHome } from '../store'
-import { TALK, voiceMood, type TalkMoment } from './lines'
+import { TALK, voiceMood, type Line, type TalkMoment } from './lines'
 import { freshMemory, mayTalk, nextLine, type TalkWorld } from './rules'
 
 // The game's characters talking (./lines.ts) in the device's own speech voices — the Web Speech API's
@@ -138,6 +138,34 @@ export function talk(moment: TalkMoment, who: Talker, at: { x: number; z: number
   s.speak(u)
   heard.push({ moment, who: who.key, text, at: w.now })
   if (heard.length > 50) heard.shift()
+  return true
+}
+
+/** A line of a letter read aloud as it comes up on its card (src/farm/people/LetterCard.tsx), in its speaker's own
+ *  voice and the mood of their face, cutting in over a line being said: only with the game's sound on, an English
+ *  voice there, the page shown and no film or drive up (the words are on the card all the same: half play muted). The
+ *  farmer has no voice: his lines are read, never heard. Whether it was said. */
+export function sayLine(line: Line): boolean {
+  listen()
+  const who = line.who === 'buyer' ? null : talkerOf(line.who)
+  const s = synth()
+  const a = audioStatus()
+  if (!who || !s || !a || !a.enabled || !(a.volume > 0) || document.hidden || useFilm.getState().on || useStory.getState().on) return false
+  const v = voiceOf(who)
+  if (!v) return false
+  const read = readingOf(who.voice, voiceMood(line.mood), 1, who.female)
+  const u = new SpeechSynthesisUtterance(line.say)
+  u.voice = v
+  u.lang = v.lang
+  u.pitch = read.pitch
+  u.rate = read.rate
+  u.volume = Math.min(1, a.volume / 0.7)
+  u.onend = u.onerror = () => {
+    if (ours === u) ours = null
+  }
+  s.cancel()
+  ours = u
+  s.speak(u)
   return true
 }
 

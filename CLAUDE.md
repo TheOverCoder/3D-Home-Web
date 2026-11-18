@@ -217,6 +217,16 @@ The README has the overview; `tests/README.md` what each test guards.
   `kind.ts`). A neighbour's friendship only grows (`src/farm/people/friends.ts`, `farm.friends`): `befriend` is one
   line in each sale and send path, and gives no XP. A big moment may open a film (`src/film/films.ts`: the shop's
   purchase plays its film once, a tap skips it to its end card; the lab's film boards play the same code).
+- The neighbours (`src/farm/people`, the farm's side `src/farm/state/neighbours.ts`): a chapter is a row of `CHAPTERS`
+  (`chapters.ts`: its writer, level, letter, what it asks, thanks and gift), begun a frame after its level, one a visit,
+  never while the first steps run (`story.ts`, `farm.story`); its letter waits in the mailbox by the gate
+  (`src/farm/Mailbox.tsx`, its flag up; `mail.ts`, `farm.mail`: a letter is its id, its words the rows) and its request
+  is pinned above the order board (`farm.requests`), paid as an order; sent, a thank-you letter brings its gift through
+  `give`. A heart reached and a birthday (a week to come) bring a letter too. Who is met is the story's: only they come
+  to the gate (`visits.ts`, in their `HOURS` row, now and then: `PEOPLE_ODDS`) and send an order. Only the very first
+  letter opens by itself (the card queue's `letter`). Quiet under Vitest and on a ?debug page unless `&neighbours=on`
+  (`quietNeighbours`, `__home.neighbours.quiet`); specs keep them quiet (`ready()`, `bootApp`); `45-neighbours` tests
+  them.
 - What keeps hours is a row in `HOURS` (day phases, or hours from and to: the estate office's 8–16); the day's phases and their light are `DAY`. The light changes only the colour
   and strength of the lights there are. Tests stand at noon with the clock stopped (`helpers.ts`, `ready()`).
 

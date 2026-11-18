@@ -156,6 +156,9 @@ const WALK: View[] = [
   // 2 m from them); and inside the office, before the agent's desk, looking at him (its door open behind you)
   { map: 'farm', name: 'lane, the parking lot and the estate office', x: 7.4, z: 14.4, yaw: 1.9, pitch: -0.06 },
   { map: 'farm', name: 'estate office, the agent at his desk', x: AGENT_STAND.x, z: AGENT_STAND.z, yaw: Math.atan2(-(AGENT_SEAT.x - AGENT_STAND.x), -(AGENT_SEAT.z - AGENT_STAND.z)), pitch: -0.12 },
+  // the mailbox by the gate (src/farm/Mailbox.tsx), a letter waiting (its flag up: fillFarm), from the lane by the
+  // parking lot, looking past it at the gate and the line
+  { map: 'farm', name: 'lane, the mailbox by the gate', x: 2.6, z: 16, yaw: -0.69, pitch: -0.1 },
 ]
 
 interface Count {

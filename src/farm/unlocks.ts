@@ -9,6 +9,7 @@
 // silo's and the barn's levels (materials), a machine's queue places (open with the machine), the office's upgrades,
 // the market's and the contractor's ladders, the shop and the house (prices, the rate ladder, the house's own price).
 
+import { personById, type NeighbourId } from '../data/people'
 import { MACHINES, UPGRADES, type CakeId, type CropId, type MachineId, type UpgradeId } from './data'
 import { SHOP, type ShopKind } from './decor'
 import { PARCELS, type ParcelId } from './layout'
@@ -17,8 +18,9 @@ import { PARCELS, type ParcelId } from './layout'
 export type RecipeKey = 'mill:wheat' | 'mill:sugarcane' | 'loom:wool' | `oven:${CakeId}`
 
 /** Everything a level opens: building a staked bed, a crop's seeds, an upgrade of the farm shop (the east and west
- *  fields among them), a recipe, a kind of the edit mode's shop (decoration, fruit trees and bushes), a field. */
-export type UnlockId = 'bed' | `crop:${CropId}` | `upgrade:${UpgradeId}` | `recipe:${RecipeKey}` | `decor:${ShopKind}` | `parcel:${ParcelId}`
+ *  fields among them), a recipe, a kind of the edit mode's shop (decoration, fruit trees and bushes), a field; and a
+ *  neighbour moving in (src/farm/people: the level their first chapter comes at — nothing to buy: met with its letter). */
+export type UnlockId = 'bed' | `crop:${CropId}` | `upgrade:${UpgradeId}` | `recipe:${RecipeKey}` | `decor:${ShopKind}` | `parcel:${ParcelId}` | `person:${NeighbourId}`
 
 /** The level each opens at (1: from the start). By theme, something every level from 2 to 13, and held to the pace a
  *  new farm is held to: the pace simulation plays with these locks on (src/sim/pace.test.ts, `npm run sim`; a number
@@ -95,6 +97,12 @@ export const UNLOCKS = {
   'decor:cherry-tree': 13,
   'decor:well': 13,
   'decor:scarecrow-jingle': 13,
+  // the neighbours, each at their first chapter's level (src/farm/people/chapters.ts; act 1, JOURNEY.md fix 6)
+  'person:baker': 5,
+  'person:teacher': 8,
+  'person:knitter': 13,
+  'person:beekeeper': 17,
+  'person:child': 23,
 } as const satisfies Record<UnlockId, number>
 
 export const UNLOCK_IDS = Object.keys(UNLOCKS) as UnlockId[]
@@ -139,5 +147,6 @@ export function unlockName(id: UnlockId): string {
   if (kind === 'upgrade') return UPGRADES.find((u) => u.id === rest)!.name
   if (kind === 'recipe') return named(MACHINES[rest as MachineId].recipes.find((r) => r.id === more)!.makes)
   if (kind === 'decor') return SHOP[rest as ShopKind].name
+  if (kind === 'person') return personById(rest as NeighbourId).name
   return PARCELS[rest as ParcelId].name
 }

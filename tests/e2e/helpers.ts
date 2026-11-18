@@ -65,6 +65,8 @@ export async function bootApp(page: Page, query = 'debug&quality=low') {
   await quietEvents(page)
   // the season and the weather quiet (src/farm/state/season.ts): every spec stands in spring, in clear weather
   await page.evaluate(() => (window as any).__home?.season?.quiet?.(true))
+  // the neighbours quiet (src/farm/state/neighbours.ts): no story, letter or neighbour comes by itself
+  await page.evaluate(() => (window as any).__home?.neighbours?.quiet?.(true))
 }
 
 /** Puts the shared page on a map (the house yours first): the scene changes behind its curtain, you at that map's start.
@@ -204,6 +206,9 @@ export async function openGame(browser: Browser, counting = false): Promise<{ ga
         // the season and the weather quiet (src/farm/state/season.ts: spring and clear), as a ?debug page starts: a spec
         // that turned them on or set its own leaves them quiet for the next
         h.season?.quiet?.(true)
+        // the neighbours quiet (src/farm/state/neighbours.ts: no story, letter or neighbour comes by itself), as a ?debug
+        // page starts: a spec that turned them on (45-neighbours) leaves them quiet for the next
+        h.neighbours?.quiet?.(true)
       }, map)
     },
   }
@@ -380,6 +385,8 @@ export async function fillFarm(page: Page): Promise<FullFarm> {
     // (the most each bears: PRODUCERS in src/farm/data.ts)
     const most: Record<string, number> = { 'apple-tree': 8, 'orange-tree': 8, 'cherry-tree': 12, 'blueberry-bush': 8, 'raspberry-bush': 8 }
     for (const [k, n] of Object.entries(most)) f.state.producers[k].stock = f.state.producers[k].stock.map(() => n)
+    // a letter in the mailbox by the gate: its flag up (src/farm/Mailbox.tsx)
+    h.neighbours?.post?.('heart:baker:1')
     const animals = Object.fromEntries(['cows', 'sheep', 'hens'].map((k) => [k, f.state.producers[k].animals]))
     h.__fullFarm = { heaviest, rooms, line: f.inLine().length, animals, decor: placed }
     return { ...h.__fullFarm, fresh: true }

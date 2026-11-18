@@ -51,8 +51,12 @@ import { LEDGER_DAYS, soldAt, type Channel } from './ledger'
 import { QUEUE, machineLevel } from './machineView'
 import { garmentById, garmentsAt } from './outfit'
 import { sanitizeLook } from '../models/look'
-import { isNeighbour } from '../data/people'
+import { isNeighbour, NEIGHBOUR_IDS, personById, personLook } from '../data/people'
 import { heartsOf } from './people/friends'
+import { CHAPTER_IDS, chapterById } from './people/chapters'
+import { MAIL_KEPT, MAIL_WAITING, letterOf } from './people/mail'
+import { metOf } from './people/story'
+import { savedPrize } from './prize'
 import { arrivalSeconds, calendarDay, claimDaily, farm, gateX, giftsWaiting, inLine, placesInLine, tick } from './state'
 import { tripSeconds } from './tractorRoute'
 import { OLD_SAVE, OLD_SAVE_2, playedSave, savedNow, seeded, startFrom } from './testSaves'
@@ -98,6 +102,8 @@ const ODD_TEXT = ['', ' ', '0', '-0', '1e999', 'NaN', 'Infinity', 'null', 'undef
 /** Strings that break code which looks a name up: those above, and every name the game has, each wrong in most places. */
 const STRINGS = [...FAST_CHECK_STRINGS, ...ODD_TEXT, ...produceIds, ...PIECE_TYPES, ...MACHINE_IDS, ...MACHINE_IDS.flatMap((id) => MACHINES[id].recipes.map((r) => r.id))]
 STRINGS.push(...PRODUCER_IDS, ...PLACE_IDS, ...PARCEL_IDS, ...NAMES)
+// (the neighbours, the story's chapters, a letter's id)
+STRINGS.push(...NEIGHBOUR_IDS, ...CHAPTER_IDS, 'chapter:bread', 'heart:baker:1')
 /** Numbers that break arithmetic: -0, fractions, past 2^53 (one more is the same number), ±1e308 and beyond. */
 const NUMBERS = [0, -0, 1, -1, 0.5, -0.5, 2.6, 1e-300, Number.MIN_VALUE, 2 ** 31, Number.MAX_SAFE_INTEGER, 2 ** 53, 2 ** 53 + 2, 1e15, 1e16, 1e20, -1e20]
 NUMBERS.push(1e300, 1e308, -1e308, Number.MAX_VALUE, -Number.MAX_VALUE, Infinity, -Infinity, NaN)
@@ -211,6 +217,9 @@ function alsoChanges(part: string): RegExp | null {
   if (part === 'home.shell' || part.startsWith('home.shell.')) return /^home\.(pieces|stored|next)$/
   // the farm's year is read against its days played (src/farm/season.ts, sanitizeSeason)
   if (part === 'played' || part.startsWith('played.')) return /^season$/
+  // who is met is the story's (src/farm/people/story.ts): only they keep a friendship, send an order or stand in line
+  // as themselves; and the chapter on has its request on the board
+  if (part === 'story' || part.startsWith('story.')) return /^(friends|requests|orders|queue)$/
   // you are in the house only while it is yours (src/farm/state.ts, load)
   if (part === 'apartment' || part.startsWith('apartment.')) return /^place$/
   // the ladders decide how many places the shop has and how often shoppers come, and how many pieces the contractor
@@ -325,7 +334,10 @@ function farmProblems(): string[] {
     bad(`buyer ${v.id}`, sellable.includes(v.want) && isCount(v.qty) && v.qty >= 1 && v.qty <= 12 && isCount(v.offer) && v.offer >= 1 && v.offer <= 999 && colours)
     bad(`buyer ${v.id}: name`, typeof v.name === 'string' && v.name.length <= 24)
     bad(`buyer ${v.id}: a surprise or none`, typeof v.gift === 'boolean')
+    // a neighbour met, as themselves (their name), or a stranger
+    bad(`buyer ${v.id}: who`, v.who === undefined || (metOf(farm.story).includes(v.who) && v.name === personById(v.who).name))
   }
+  bad('each neighbour once in line', unique(farm.visitors.flatMap((v) => (v.who ? [v.who] : []))))
   // the silo and the barn: a level each, from 1
   bad('storage: the silo and the barn', sameKeys(farm.storage, STORE_IDS) && Object.values(farm.storage).every((l) => isCount(l) && l >= 1))
   // the order board: as many places as the office has, each an order (one to nine goods buyers buy, each once, no more
@@ -335,7 +347,12 @@ function farmProblems(): string[] {
   farm.orders.forEach((slot, k) => {
     if ('wait' in slot) return bad(`orders.${k}: a wait`, sameKeys(slot, ['wait']) && isWithin(slot.wait, 0, orderWait(farm.office.wait)))
     const o = slot.order
-    bad(`orders.${k}: an order`, sameKeys(slot, ['order']) && sameKeys(o, ['id', 'lines', 'coins', 'surprise']) && isCount(o.coins) && o.coins >= 1 && typeof o.surprise === 'boolean')
+    bad(
+      `orders.${k}: an order`,
+      sameKeys(slot, ['order']) && sameKeys(o, ['id', 'lines', 'coins', 'surprise', ...(o.from ? ['from'] : [])]) && isCount(o.coins) && o.coins >= 1 && typeof o.surprise === 'boolean',
+    )
+    // its sender a neighbour met (src/farm/people), or none; a chapter's request is never on the board
+    bad(`orders.${k}.from`, o.from === undefined || metOf(farm.story).includes(o.from))
     bad(`orders.${k}: one to nine goods, each once`, o.lines.length >= 1 && o.lines.length <= 9 && unique(o.lines.map((l) => l.good)))
     for (const l of o.lines) bad(`orders.${k}.${l.good}`, sellable.includes(l.good) && isCount(l.want) && l.want >= 1 && isCount(l.have, l.want))
   })
@@ -452,12 +469,49 @@ function farmProblems(): string[] {
   bad('events.seen', e.seen.length <= SEEN_KEPT && unique(e.seen) && e.seen.every((k) => typeof k === 'string' && EVENT_IDS.includes(k.split('@')[0] as never) && date(k.split('@')[1])))
   // the first steps: the step it is on, from the first to past the last, and whether they are over
   bad('firstSteps', sameKeys(farm.firstSteps, ['step', 'over']) && isCount(farm.firstSteps.step, FIRST_STEPS.length) && typeof farm.firstSteps.over === 'boolean')
-  // the neighbours' friendships: each a neighbour's (met: the story's, with 03's next part), its points a count, the
-  // hearts whose letter came no more than its points reach
+  // the neighbours' friendships: each a neighbour's met (the story's), its points a count, the hearts whose letter came
+  // no more than its points reach
+  const met = metOf(farm.story)
   bad(
     'friends',
-    Object.entries(farm.friends).every(([id, x]) => isNeighbour(id) && !!x && sameKeys(x, ['points', 'told']) && isCount(x.points) && isCount(x.told, heartsOf(x.points))),
+    Object.entries(farm.friends).every(([id, x]) => isNeighbour(id) && met.includes(id) && !!x && sameKeys(x, ['points', 'told']) && isCount(x.points) && isCount(x.told, heartsOf(x.points))),
   )
+  // the story: the chapters done in the table's order, the one on the next of them, sent only with one on
+  const st = farm.story
+  bad(
+    'story',
+    sameKeys(st, ['done', 'on', 'sent']) &&
+      json(st.done) === json(CHAPTER_IDS.slice(0, st.done.length)) &&
+      (st.on === null || st.on === CHAPTER_IDS[st.done.length]) &&
+      typeof st.sent === 'boolean' &&
+      (st.on !== null || !st.sent),
+  )
+  // the mailbox: letters of the game's, each once across both, from their own writers, with a gift a save holds; the
+  // last read kept
+  const letters = [...farm.mail.waiting, ...farm.mail.read]
+  bad('mail', sameKeys(farm.mail, ['waiting', 'read']) && farm.mail.waiting.length <= MAIL_WAITING && farm.mail.read.length <= MAIL_KEPT && unique(letters.map((l) => l.id)))
+  for (const l of letters)
+    bad(
+      `mail ${l.id}`,
+      (sameKeys(l, ['id', 'from']) || sameKeys(l, ['id', 'from', 'prize'])) && letterOf(l.id)?.from === l.from && (l.prize === undefined || json(savedPrize(l.prize)) === json(l.prize)),
+    )
+  // the chapter's request: one while a chapter is on and not sent, asking what the chapter asks (no more in than it
+  // wants), its writer's, no surprise; none otherwise
+  const asking = st.on && !st.sent ? chapterById(st.on) : null
+  bad('requests', farm.requests.length === (asking ? 1 : 0))
+  for (const o of farm.requests)
+    bad(
+      'requests: the chapter on',
+      !!asking &&
+        sameKeys(o, ['id', 'lines', 'coins', 'surprise', 'from', 'chapter']) &&
+        o.chapter === asking.id &&
+        o.from === asking.who &&
+        o.surprise === false &&
+        isCount(o.coins) &&
+        o.coins >= 1 &&
+        json(o.lines.map((l) => [l.good, l.want])) === json(asking.ask.map((a) => [a.good, a.n])) &&
+        o.lines.every((l) => isCount(l.have, l.want)),
+    )
   // the sales book: its days the oldest first, each once, within the two weeks up to today, none empty; each tally two
   // counts, not both 0, of a good at a place it can be sold (a building material only to the contractor)
   const days = farm.ledger.days.map((d) => d.day)
@@ -587,6 +641,43 @@ function check(name: string, path: Key[], value: unknown) {
   expect(farmProblems(), 'the daily gift claimed').toEqual([])
 }
 
+/** The played farm with its neighbours (src/farm/people): two chapters done and the third on, its request half in;
+ *  three met, with their friendships; letters waiting and read; the baker in line, and an order from the teacher. */
+function neighboursSave(save: Save): Save {
+  const board = save.orders as Save[]
+  const k = board.findIndex((o) => 'lines' in o)
+  const queue = save.queue as Save[]
+  return {
+    ...save,
+    story: { done: ['bread', 'class'], on: 'scarves', sent: false },
+    friends: { baker: { points: 9, told: 2 }, teacher: { points: 3, told: 1 }, knitter: { points: 0, told: 0 } },
+    mail: {
+      waiting: [
+        { id: 'heart:baker:2', from: 'baker', prize: { item: 'log', n: 3 } },
+        { id: 'chapter:scarves', from: 'knitter' },
+      ],
+      read: [
+        { id: 'thanks:class', from: 'teacher', prize: { decor: 'flowers' } },
+        { id: 'chapter:bread', from: 'baker' },
+      ],
+    },
+    requests: [
+      {
+        lines: [
+          { good: 'wool', want: 4, have: 1 },
+          { good: 'cloth', want: 2, have: 0 },
+        ],
+        coins: 40,
+        surprise: false,
+        from: 'knitter',
+        chapter: 'scarves',
+      },
+    ],
+    orders: board.map((o, i) => (i === k ? { ...o, from: 'teacher' } : o)),
+    queue: [{ ...queue[0], who: 'baker', name: 'Moshe', look: personLook('baker') }, ...queue.slice(1)],
+  }
+}
+
 beforeAll(() => {
   vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(NOW)
@@ -594,6 +685,7 @@ beforeAll(() => {
     ['played', playedSave(), false],
     ['old', OLD_SAVE, true],
     ['old 2', OLD_SAVE_2, true],
+    ['neighbours', neighboursSave(playedSave()), false],
   ]
   // saved just now: nothing grows on while away (unless the time is what changed)
   bases = saves.map(([name, save, old]) => ({ name, save: { ...save, time: NOW }, old, parts: new Map() }))

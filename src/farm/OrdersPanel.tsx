@@ -4,8 +4,8 @@ import { playGesture } from '../lib/gestures'
 import { useHome } from '../store'
 import type { OfficeUpgradeId } from './data'
 import { OrdersBoard } from './orderBoard/OrdersBoard'
-import { officeRows, type OrdersActions, type OrdersView } from './orderBoard/view'
-import { buyOffice, declineOrder, farm, fillOrder, orderWaitSeconds, sendOrder, useFarm } from './state'
+import { officeRows, requestOf, type OrdersActions, type OrdersView } from './orderBoard/view'
+import { buyOffice, declineOrder, farm, fillOrder, fillRequest, orderWaitSeconds, sendOrder, sendRequest, useFarm } from './state'
 
 // The order board on the office's computer (the action button at the office opens it): the designed board
 // (./orderBoard/OrdersBoard.tsx, which draws an OrdersView and calls OrdersActions) fed with the farm's, with the game's
@@ -32,12 +32,14 @@ export const ordersView = (): OrdersView => ({
   wait: orderWaitSeconds(),
   office: officeRows(farm.office),
   coins: farm.coins,
+  // a chapter's request, pinned above the places (src/farm/people)
+  requests: farm.requests.map((o) => ({ ...o, lines: o.lines.map((l) => ({ ...l })) })),
 })
 
 /** The farm's order actions, each with its sound when it did something. */
 const actions: OrdersActions = {
   put: (k) => {
-    const n = fillOrder(k)
+    const n = k < 0 ? fillRequest(requestOf(k)) : fillOrder(k)
     if (n) {
       uiClick()
       farmSound('crate')
@@ -45,7 +47,7 @@ const actions: OrdersActions = {
     return n
   },
   send: (k) => {
-    const ok = sendOrder(k)
+    const ok = k < 0 ? sendRequest(requestOf(k)) : sendOrder(k)
     if (ok) playGesture('interact')
     return ok
   },

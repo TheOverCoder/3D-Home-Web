@@ -1,5 +1,5 @@
 import { DoubleSide } from 'three'
-import { checkPieces, checkPose, ellipsoid, lathe, piecesOf, posedPieces, random, type Issue, type Parts } from '../lib/sculpt'
+import { checkPieces, checkPose, ellipsoid, lathe, piecesOf, posedPieces, random, type Issue } from '../lib/sculpt'
 import { PRODUCERS, type CropId } from '../farm/data'
 import { COATS, cowParts, putCow, type CowPose } from './cow'
 import { FACES, putSheep, sheepParts, type SheepPose } from './sheep'
@@ -9,6 +9,8 @@ import { CONTRACTOR_LOOK, MANAGER_LOOK, rollLook } from './look'
 import { cropParts } from './crops'
 import { GROWERS, putEgg, putLemon } from './plants'
 import { coopModel, lemonSpots, lemonTreeModel, ovenModel, structurePieces, troughModel, type Structure } from './structures'
+import { MAIL_FLAG, mailboxModel, partGeometry } from './structures'
+import { Parts } from '../lib/sculpt'
 import { GOODS, type GoodsId } from './goods'
 import { barnModel, crateModel, deskModel, farmGateModel, officeModel, palletModel, siloModel } from './buildings'
 import { DRIVER, putTractor, seatDriver, tractorParts } from './tractor'
@@ -418,6 +420,26 @@ export const MODEL_CHECKS: ModelCheck[] = [
     name: 'The goods (the item pictures)',
     run() {
       return (Object.keys(GOODS) as GoodsId[]).flatMap((id) => checkPieces(id.replace('_', ' '), ...structure(GOODS[id]())))
+    },
+  },
+  {
+    id: 'mailbox',
+    name: 'The mailbox by the gate, its flag up and down (it holds on to the box by its pin either way)',
+    run() {
+      const model = mailboxModel()
+      const parts = new Parts({ body: { geometry: partGeometry(model.body), max: 1 }, flag: { geometry: partGeometry(model.flag), max: 1 } }, 'mailbox', false)
+      return [MAIL_FLAG.up, MAIL_FLAG.down].flatMap((angle) =>
+        checkPose(
+          `mailbox, its flag ${angle === MAIL_FLAG.up ? 'up' : 'down'}`,
+          parts,
+          (pp) => {
+            pp.at(0, 0, 0)
+            pp.put('body', 0, 0, 0)
+            pp.put('flag', MAIL_FLAG.at[0], MAIL_FLAG.at[1], MAIL_FLAG.at[2], angle)
+          },
+          { ground: 0 },
+        ),
+      )
     },
   },
 ]

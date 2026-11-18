@@ -48,8 +48,10 @@ import { sanitizeSteps, stepsFresh } from '../firstSteps'
 import { mostAt, ownsEach, type Steps } from '../tools'
 import { freshSkins, sanitizeSkins } from '../skins'
 import { defaultHome, sanitizeHome } from '../../home/layout'
-import { NEIGHBOUR_IDS } from '../../data/people'
+import { isNeighbour, personById, personLook, type NeighbourId } from '../../data/people'
 import { sanitizeFriends } from '../people/friends'
+import { freshMail, sanitizeMail } from '../people/mail'
+import { freshStory, metOf, sanitizeStory } from '../people/story'
 import { asLook, bump, calendarDay, farm, isSellable, saveNow, type FarmData, type Look, type ProducerState } from './core'
 import { fullWater } from './beds'
 import { stocksFor } from './producers'
@@ -58,6 +60,7 @@ import { newVisitor, standInLine } from './buyers'
 import { firstBoard, gateX, MOST_CRATES, starterOrderIn } from './orders'
 import { dayClock } from './day'
 import { forgetWalkers } from './market'
+import { savedRequests } from './neighbours'
 import { takePassed } from './steps'
 import { cameBack, forgetAway } from './away'
 import { savedSeason, seasonFresh } from './season'
@@ -289,6 +292,9 @@ function fresh(): FarmData {
     firstSteps: stepsFresh(),
     played: freshPlayed(),
     friends: {},
+    mail: freshMail(),
+    story: freshStory(),
+    requests: [],
     ledger: freshLedger(),
     season: seasonFresh(),
   }
@@ -298,7 +304,8 @@ const isProduce = (v: unknown): v is ProduceId => produceIds.includes(v as Produ
 
 const isCrop = (v: unknown): v is CropId => CROPS.some((c) => c.id === v)
 
-/** A buyer in the line, as saved: who they are, what they want, and whether they bring a surprise. */
+/** A buyer in the line, as saved: who they are (`who`: a neighbour met), what they want, and whether they bring a
+ *  surprise. */
 interface SavedBuyer {
   name: string
   look: Look
@@ -306,6 +313,7 @@ interface SavedBuyer {
   qty: number
   offer: number
   gift: boolean
+  who?: NeighbourId
 }
 
 /** Where a save from before the tables in src/farm/data.ts kept what each producer held: a field of its own for the
@@ -399,15 +407,18 @@ function savedMachine(id: MachineId, raw: Record<string, unknown>): MachineState
   }
 }
 
-function savedBuyer(raw: unknown): SavedBuyer | null {
+function savedBuyer(raw: unknown, met: readonly NeighbourId[]): SavedBuyer | null {
   if (!isObject(raw)) return null
   const b = raw as Partial<SavedBuyer>
   // a look as saved, made safe (an older save's look loads as it was); one that is not a look: no buyer
   const look = sanitizeLook(b.look)
   if (!isSellable(b.want) || !look) return null
+  // a neighbour met comes back as themselves, their own name and look (one not met: a stranger)
+  const who = isNeighbour(b.who) && met.includes(b.who) ? b.who : undefined
   return {
-    name: typeof b.name === 'string' && b.name.length <= 24 ? b.name : NAMES[0],
-    look: asLook(look),
+    ...(who ? { who } : {}),
+    name: who ? personById(who).name : typeof b.name === 'string' && b.name.length <= 24 ? b.name : NAMES[0],
+    look: who ? asLook(personLook(who)!) : asLook(look),
     want: b.want,
     qty: int(b.qty, 1, 1, 12),
     offer: int(b.offer, 1, 1, 999),
@@ -420,7 +431,7 @@ const MOST_LEVEL = 1e6
 
 /** An order as saved, made safe: the goods it asks for (each once, none a building material), how many of each have
  *  been put in (never more than it wants), what it pays; an order of nothing is no order (a new one comes). */
-function savedOrder(raw: unknown): Order | null {
+function savedOrder(raw: unknown, met: readonly NeighbourId[]): Order | null {
   const lines = list(field(raw, 'lines'))
   const out: OrderLine[] = []
   for (const l of lines.slice(0, 9)) {
@@ -429,12 +440,15 @@ function savedOrder(raw: unknown): Order | null {
     out.push({ good: l.good, want, have: int(l.have, 0, 0, want) })
   }
   if (!out.length) return null
-  return { id: orderKey(), lines: out, coins: int(field(raw, 'coins'), orderPay(out), 1, 99_999), surprise: field(raw, 'surprise') === true }
+  // its sender, a neighbour met (none: a stranger's); a chapter's request is never on the board (src/farm/state/neighbours.ts)
+  const from = field(raw, 'from')
+  const sender = isNeighbour(from) && met.includes(from) ? { from } : {}
+  return { id: orderKey(), lines: out, coins: int(field(raw, 'coins'), orderPay(out), 1, 99_999), surprise: field(raw, 'surprise') === true, ...sender }
 }
 
 /** A place on the order board as saved: its order, or the seconds until a new one comes (never longer than the wait). */
-function savedPlace(raw: unknown, wait: number): OrderSlot {
-  const order = savedOrder(raw)
+function savedPlace(raw: unknown, wait: number, met: readonly NeighbourId[]): OrderSlot {
+  const order = savedOrder(raw, met)
   if (order) return { order }
   return { wait: seconds(field(raw, 'wait'), wait) }
 }
@@ -457,6 +471,8 @@ function read(text: string | null): Loaded {
     const raw = JSON.parse(text ?? 'null') as Partial<FarmData> & { time?: number; queue?: unknown[] }
     if (!raw || typeof raw !== 'object') return { data, savedAt: null, queue: [], broken }
     data.coins = amount(raw.coins, START_COINS)
+    // the neighbours met (the story's: src/farm/people/story.ts), whom a saved friendship, order or buyer may name
+    const met = metOf(sanitizeStory(raw.story))
     for (const id of produceIds) data.inv[id] = amount(field(raw.inv, id), 0)
     // the silo and the barn from level 1 (a farm from before them keeps all it has, even past what they hold)
     for (const id of STORE_IDS) data.storage[id] = int(field(raw.storage, id), 1, 1, MOST_LEVEL)
@@ -515,7 +531,7 @@ function read(text: string | null): Loaded {
     // new order in each place straight away); the crates sent, and the tractor's trip
     data.office = { slots: int(field(raw.office, 'slots'), 0, 0, SLOT_LEVELS), wait: int(field(raw.office, 'wait'), 0, 0, WAIT_LEVELS) }
     const board = list(raw.orders)
-    data.orders = Array.from({ length: orderSlots(data.office.slots) }, (_, k) => savedPlace(board[k], orderWait(data.office.wait)))
+    data.orders = Array.from({ length: orderSlots(data.office.slots) }, (_, k) => savedPlace(board[k], orderWait(data.office.wait), met))
     const aboard = int(field(raw.dispatch, 'aboard'), 0, 0, TRACTOR.load)
     data.dispatch = {
       waiting: int(field(raw.dispatch, 'waiting'), 0, 0, MOST_CRATES),
@@ -563,14 +579,21 @@ function read(text: string | null): Loaded {
     data.played = sanitizePlayed(raw.played, calendarDay(), { days: amount(field(raw.daily, 'streak'), 0), last: int(field(raw.daily, 'last'), -1, -1, MOST) })
     // the neighbours' friendships, as saved, for each met (a farm from before them has met no one; who is met comes
     // with the story, src/farm/people)
-    data.friends = sanitizeFriends(raw.friends, NEIGHBOUR_IDS)
+    data.friends = sanitizeFriends(raw.friends, met)
+    // the mailbox, the story and the chapter's request on the board (a farm from before them: none; its first chapter
+    // comes on its next frame, the rest one a visit)
+    data.mail = sanitizeMail(raw.mail)
+    data.story = sanitizeStory(raw.story)
+    data.requests = savedRequests(raw.requests, data.story)
     // the sales book: the days of the last two weeks as saved (a farm from before it: an empty book)
     data.ledger = sanitizeLedger(raw.ledger, calendarDay())
     // the farm's year: as saved (a farm from before it begins its first spring today)
     data.season = savedSeason(raw.season, data.played)
     const queue = list(raw.queue)
-      .map(savedBuyer)
+      .map((b) => savedBuyer(b, met))
       .filter((b): b is SavedBuyer => !!b)
+      // each neighbour once in the line (one there twice: only the first)
+      .filter((b, i, all) => !b.who || all.findIndex((x) => x.who === b.who) === i)
     return { data, savedAt: num(raw.time, 0) || null, queue: queue.slice(0, queuePlaces(data.queueLevel)), broken: false }
   } catch {
     // (a save that is not JSON, cut short, or that a reader could not take: kept, never written over by a new farm)
@@ -618,14 +641,16 @@ export function writeSlot() {
   }
   let text: string
   try {
-    const { visitors, clock: _c, orders: board, xp, ...rest } = farm
+    const { visitors, clock: _c, orders: board, requests: asked, xp, ...rest } = farm
     // the line at the gate is kept too: buyers wait for you while you are away
-    const queue: SavedBuyer[] = visitors.filter((v) => v.phase !== 'leaving').map(({ name, look, want, qty, offer, gift }) => ({ name, look, want, qty, offer, gift }))
-    // the orders without their keys (each gets a new one as the farm loads)
-    const orders = board.map((slot) => ('order' in slot ? { lines: slot.order.lines, coins: slot.order.coins, surprise: slot.order.surprise } : slot))
+    const queue: SavedBuyer[] = visitors.filter((v) => v.phase !== 'leaving').map(({ name, look, want, qty, offer, gift, who }) => ({ name, look, want, qty, offer, gift, who }))
+    // the orders without their keys (each gets a new one as the farm loads), with their sender
+    const orders = board.map((slot) => ('order' in slot ? { lines: slot.order.lines, coins: slot.order.coins, surprise: slot.order.surprise, from: slot.order.from } : slot))
     // the XP with the curve it is counted on (src/farm/xp.ts, savedOnToday: a save made under another is moved onto
     // the curve of the game that loads it)
-    text = JSON.stringify({ ...rest, xp: { ...xp, curve: LEVELS.step }, orders, queue, time: Date.now() })
+    // (and the chapter's request, as an order is)
+    const requests = asked.map(({ id: _id, ...o }) => o)
+    text = JSON.stringify({ ...rest, xp: { ...xp, curve: LEVELS.step }, orders, requests, queue, time: Date.now() })
   } catch (e) {
     console.error('[3d-home] the farm could not be written as a save', e)
     return
@@ -650,7 +675,7 @@ export function writeSlot() {
 // the line at the gate as you left it; then the time the page was closed
 export function resumeFrom(l: Loaded) {
   for (const b of l.queue) {
-    const v = newVisitor(b.want, b.qty, b.offer, 1, b.gift, b.look, b.name)
+    const v = newVisitor(b.want, b.qty, b.offer, 1, b.gift, b.look, b.name, b.who)
     farm.visitors.push(v)
     standInLine(v)
   }

@@ -54,6 +54,12 @@ export const CREDITS: Credit[] = [
     url: 'https://github.com/microsoft/fluentui-emoji',
   },
   { what: 'Phosphor Icons (interface glyphs)', by: 'Phosphor Icons', license: 'MIT', url: 'https://phosphoricons.com' },
+  {
+    what: 'Fluent Emoji 3D (the neighbours: the mailbox, the love letter, the envelope, the red heart, the birthday cake)',
+    by: 'Microsoft Corporation',
+    license: 'MIT',
+    url: 'https://github.com/microsoft/fluentui-emoji',
+  },
   { what: 'Fredoka and Nunito typefaces', by: 'The Fredoka Project Authors; The Nunito Project Authors', license: 'SIL OFL 1.1', url: 'https://fonts.google.com/specimen/Fredoka' },
   { what: 'three.js, react-three-fiber, drei, Rapier, ecctrl, three.quarks, meshoptimizer', by: 'their respective authors', license: 'MIT / Apache-2.0' },
 ]

@@ -10,7 +10,7 @@ import { Coins, Shell } from '../ui/Sheet'
 import { Clock, NavigationArrow } from '../ui/glyphs'
 import { STORES, count, produceById } from './data'
 import { iconUrl } from './icons'
-import { awaySummary, clearAwaySummary, makeRoom, makeRoomPreview, room, useFarm, waitingFor } from './state'
+import { awaySummary, clearAwaySummary, lettersWaiting, makeRoom, makeRoomPreview, room, useFarm, waitingFor } from './state'
 
 // Welcome back: after a time away (the page closed, or hidden while you were in another app or the phone was locked),
 // the farm has gone on for it (src/farm/state.ts, cameBack) — and this card says what happened: each good that came to
@@ -109,6 +109,12 @@ export function AwayPanel() {
             <span>
               <Coins n={r.shop.coins} /> in the till
             </span>
+          </div>
+        )}
+        {lettersWaiting().length > 0 && (
+          <div className="farm-basket-item" title={`${lettersWaiting().length} letters in the mailbox`}>
+            <ArtPic id="love-letter" count={lettersWaiting().length} />
+            <span>Letters</span>
           </div>
         )}
         {r.pieces && (
