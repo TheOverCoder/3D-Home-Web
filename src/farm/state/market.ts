@@ -15,6 +15,7 @@ import { ladderMaxed, ladderNextPrice } from './ladders'
 import { toolBought } from './producers'
 import { AT_CONTRACTOR, contractorDay, contractorHere, forgetContractorWalk } from './contractor'
 import { setLastPhase } from './day'
+import { shelfSales, sold } from './ledger'
 
 // The supermarket: selling to the manager, buying his shop, the ladders, your shelves and till, and its people (the
 // shoppers, the manager walking out).
@@ -42,6 +43,7 @@ function sellManager(item: ProduceId): number {
   farm.stats.sold += qty
   farm.stats.earned += coins
   gainXp('sale', coins, AT_MANAGER)
+  sold('manager', item, qty, coins)
   return coins
 }
 
@@ -370,6 +372,7 @@ function shopperBuys(): number {
   r.taken.forEach((n, k) => (m.shelves[k].units -= n))
   m.till.coins = Math.min(Number.MAX_SAFE_INTEGER, m.till.coins + r.coins)
   m.till.goods = Math.min(Number.MAX_SAFE_INTEGER, m.till.goods + r.units)
+  for (const s of shelfSales(m.shelves, r.taken)) sold('shop', s.good, s.units, s.coins)
   return r.units
 }
 

@@ -9,6 +9,7 @@ import { FRUIT, FRUIT_KINDS } from '../decor'
 import { asLook, bump, eventSpeed, farm, isSellable, random, save, toast, type Look, type Visitor } from './core'
 import { gainXp } from './levels'
 import { gainItems, rollGifts, surpriseWords } from './stores'
+import { sold } from './ledger'
 import { arrivalSeconds, placesInLine } from './shop'
 
 // The buyers at the garden gate: who comes and what they ask for, the line, selling and declining, and their walking.
@@ -124,6 +125,7 @@ function sell(v: Visitor): ItemId[] {
   v.gift = false
   gainItems(items, { x: v.x, y: 1.9, z: v.z })
   gainXp('sale', v.offer, { x: v.x, y: 1.9, z: v.z })
+  sold('gate', v.want, v.qty, v.offer)
   leave(v, 'happy')
   return items
 }

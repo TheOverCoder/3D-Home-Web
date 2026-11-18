@@ -1,7 +1,7 @@
 import fc from 'fast-check'
 import { describe, expect, it } from 'vitest'
 import { PRODUCE, type ProduceId } from './data'
-import { CHANNELS, LEDGER_DAYS, bookDays, freshLedger, noteSale, perUnit, sanitizeLedger, soldAt, trimLedger, type Channel, type Ledger } from './ledger'
+import { CHANNELS, LEDGER_DAYS, bookDays, freshLedger, noteSale, perUnit, sanitizeLedger, shareOut, soldAt, trimLedger, type Channel, type Ledger } from './ledger'
 
 // The farm's sales book (src/farm/ledger.ts): a sale goes to its day, the book keeps two weeks up to today, and a book
 // saved broken or by hand loads made safe.
@@ -132,6 +132,34 @@ describe('the book as saved', () => {
         expect(sanitizeLedger(JSON.parse(JSON.stringify(b)), TODAY)).toEqual(b)
       }),
       { numRuns: 300 },
+    )
+  })
+})
+
+describe("coins shared out by weight (an order's pay, good by good)", () => {
+  it('gives each part its share in whole coins, adding up to the whole', () => {
+    expect(shareOut(30, [12, 4])).toEqual([23, 7])
+    expect(shareOut(31, [12, 8, 42])).toEqual([6, 4, 21])
+    expect(shareOut(10, [1, 1, 1])).toEqual([3, 4, 3])
+    expect(shareOut(0, [5, 2])).toEqual([0, 0])
+    expect(shareOut(7, [3])).toEqual([7])
+    // a weight of nothing (or not a number) shares nothing; none above 0, alike
+    expect(shareOut(9, [0, 3, -1, NaN])).toEqual([0, 9, 0, 0])
+    expect(shareOut(9, [0, 0, 0])).toEqual([3, 3, 3])
+  })
+
+  it('never loses or makes a coin, and each part is within a coin of its share (fast-check)', () => {
+    fc.assert(
+      fc.property(fc.integer({ min: 0, max: 99_999 }), fc.array(fc.double({ min: 0.01, max: 1e4, noNaN: true }), { minLength: 1, maxLength: 9 }), (total, weights) => {
+        const parts = shareOut(total, weights)
+        const all = weights.reduce((n, w) => n + w, 0)
+        expect(parts.reduce((n, p) => n + p, 0)).toBe(total)
+        parts.forEach((p, k) => {
+          expect(Number.isInteger(p) && p >= 0).toBe(true)
+          expect(Math.abs(p - (total * weights[k]) / all)).toBeLessThan(1 + 1e-9)
+        })
+      }),
+      { numRuns: 500 },
     )
   })
 })

@@ -3,7 +3,8 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import { endsWithin } from '../lib/endsWithin'
 import { BEDS, DAY, MACHINES, PRODUCERS, PRODUCER_IDS } from './data'
 import { PLACES, type Placement } from './layout'
-import { addJob, buyPiece, collect, farm, freeSpotFor, gateX, inLine, machineStage, placeStored, storePiece, tick } from './state'
+import { addJob, buyPiece, calendarDay, collect, farm, freeSpotFor, gateX, inLine, machineStage, placeStored, storePiece, tick } from './state'
+import { LEDGER_DAYS } from './ledger'
 import { levelOf, seedXp } from './xp'
 import { tripSeconds } from './tractorRoute'
 import { OLD_SAVE, playedSave, savedNow, startFrom } from './testSaves'
@@ -23,7 +24,11 @@ let loaded: Save
 const without = (save: Save, ...keys: string[]) => Object.fromEntries(Object.entries(save).filter(([k]) => !keys.includes(k)))
 
 beforeAll(() => {
+  // played on the day it loads on (the sales book keeps the days up to the day it loads, none after)
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(NOW)
   played = playedSave()
+  vi.useRealTimers()
 })
 beforeEach(() => {
   // the clock stands still: a save made "now" loads with no time away, the same every time
@@ -333,6 +338,31 @@ describe('a save broken or edited by hand', () => {
     }
     startFrom({ ...played, place: 'home' })
     expect(farm.place).toBe('home')
+  })
+
+  it('the sales book loads as saved; a farm from before it gets an empty one, and one saved broken keeps only what a book can hold; everything else as it was', () => {
+    // the played farm's sales, all today: a buyer's lettuces, an order's goods, the manager's pumpkins, the logs
+    const today = calendarDay()
+    expect(farm.ledger.days.map((d) => d.day)).toEqual([today])
+    expect(new Set(Object.values(farm.ledger.days[0].sold).flatMap((places) => Object.keys(places!)))).toEqual(new Set(['gate', 'order', 'manager', 'contractor']))
+    // a farm from before the book, or a book that is not one: an empty book
+    for (const ledger of [undefined, null, 'x', 7, [], { days: 'x' }, { days: [null, 1, 'a', { day: today }] }]) {
+      startFrom(ledger === undefined ? without(played, 'ledger') : { ...played, ledger })
+      expect(farm.ledger, JSON.stringify(ledger)).toEqual({ days: [] })
+      expect(without(savedNow(), 'ledger')).toEqual(without(loaded, 'ledger'))
+    }
+    // a day past the two weeks or after today goes; a good that is none, a material at the gate, a place that is none
+    // and counts of nothing go; counts are whole; a day saved twice adds up
+    const days = [
+      { day: today - LEDGER_DAYS, sold: { egg: { gate: [1, 2] } } },
+      { day: today - 2, sold: { egg: { gate: [2.7, 5] }, brick: { gate: [1, 10], contractor: [1, 10] }, gold: { gate: [1, 1] } } },
+      { day: today - 2, sold: { egg: { gate: [1, 2], post: [1, 1] } } },
+      { day: today, sold: { milk: { order: [-1, 'x'] } } },
+      { day: today + 1, sold: { egg: { gate: [1, 2] } } },
+    ]
+    startFrom({ ...played, ledger: { days } })
+    expect(farm.ledger).toEqual({ days: [{ day: today - 2, sold: { egg: { gate: [3, 7] }, brick: { contractor: [1, 10] } } }] })
+    expect(without(savedNow(), 'ledger')).toEqual(without(loaded, 'ledger'))
   })
 
   it('a buyer in line saved before the people engine (a hat yes or no, three hair styles) loads as they were', () => {

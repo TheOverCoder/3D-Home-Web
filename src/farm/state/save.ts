@@ -34,6 +34,7 @@ import { dailyFresh, sanitizeDaily } from '../daily'
 import { machineLevel, QUEUE } from '../machineView'
 import { freshMachine, jobSeconds, recipeOf, type MachineState } from '../machines'
 import { freshEvents, sanitizeEvents } from '../events'
+import { freshLedger, sanitizeLedger } from '../ledger'
 import { DEFAULT_OUTFIT, sanitizeOutfit } from '../outfit'
 import { clampLevels, freshMarket, sanitizeMarket } from '../market'
 import { offersPerDay, sanitizeContractor } from '../contractor'
@@ -135,6 +136,7 @@ function fresh(): FarmData {
     apartment: { owned: false },
     events: freshEvents(),
     firstSteps: stepsFresh(),
+    ledger: freshLedger(),
   }
 }
 
@@ -390,6 +392,8 @@ export function load(text: string | null = readRaw(KEY)): { data: FarmData; save
     data.place = place === 'home' && data.apartment.owned ? 'home' : 'farm'
     // the week's events: the lucky draw as saved and the events the news has shown (a farm from before them: none)
     data.events = sanitizeEvents(raw.events)
+    // the sales book: the days of the last two weeks as saved (a farm from before it: an empty book)
+    data.ledger = sanitizeLedger(raw.ledger, calendarDay())
     const queue = list(raw.queue)
       .map(savedBuyer)
       .filter((b): b is SavedBuyer => !!b)

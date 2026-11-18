@@ -9,6 +9,7 @@ import { CONTRACTOR_SPOT } from '../../data/market'
 import { agentComes, agentLeaves, contractorComes, contractorLeaves, scriptSeconds, stepScript, walker } from '../script'
 import { bump, farm, putBack, random, save, steadyLook, toast, type At, type Person, type Walking } from './core'
 import { gainXp } from './levels'
+import { sold } from './ledger'
 
 // The contractor behind the market (his hours, his pieces, his walk) and the estate agent in his office (his hours,
 // his walk, the house he sells).
@@ -69,6 +70,7 @@ export function sellToContractor(item: ItemId): number {
   farm.stats.sold += n
   farm.stats.earned += coins
   gainXp('sale', coins, AT_CONTRACTOR)
+  sold('contractor', item, n, coins)
   coinsFx(AT_CONTRACTOR.x, AT_CONTRACTOR.z, coins)
   toast(`+ ${coins} coins · ${count(item, n)}`, item)
   farmSound('coins')

@@ -21,7 +21,7 @@ import {
 } from '../data'
 import { FRUIT, FRUIT_KINDS, type FruitKind } from '../decor'
 import { activeAt, priceFactor, speedAt, type Boost, type EventId } from '../events'
-import { LEDGER_DAYS, perUnit, type Channel, type Ledger } from '../ledger'
+import { LEDGER_DAYS, perUnit, type Channel } from '../ledger'
 import { buyChance, managerPct, placesOpen, shopperEvery, shoppersAtOnce, unitPrice } from '../market'
 import { piecePrice } from '../contractor'
 import { machineLevel } from '../machineView'
@@ -37,10 +37,8 @@ import { levelOf } from '../xp'
 // vegetable index. Worked out from a farm given to it by the game's own rules (src/farm/prices.ts priceAt, the market's,
 // the contractor's, the events'), so it never disagrees with a sale. Pure: the same farm and moment, the same view.
 
-/** The parts of the farm it reads (the farm's save is one), and its sales book once the farm keeps one. */
-export type MarketFarm = Pick<FarmData, 'inv' | 'machines' | 'ladders' | 'market' | 'visitors' | 'orders' | 'events' | 'xp' | 'producers' | 'compost' | 'paceLevel' | 'planted' | 'made'> & {
-  ledger?: Ledger
-}
+/** The parts of the farm it reads (the farm's save is one), its sales book among them. */
+export type MarketFarm = Pick<FarmData, 'inv' | 'machines' | 'ladders' | 'market' | 'visitors' | 'orders' | 'events' | 'xp' | 'producers' | 'compost' | 'paceLevel' | 'planted' | 'made' | 'ledger'>
 
 export interface MarketNow {
   /** the moment the week's events are judged at (eventTime() in src/farm/state.ts); null while they are off */
@@ -135,7 +133,7 @@ export interface GoodMarket {
   /** what it was worth on each of the last seven days (today last; the draw counts on its own day only) and tomorrow,
    *  and where it is heading: tomorrow against now */
   trend: { days: number[]; tomorrow: number; dir: 'up' | 'down' | 'flat'; pct: number }
-  /** what you got for a unit on each of the sales book's days (null: none sold, or no book yet) */
+  /** what you got for a unit on each of the sales book's days (null: none sold) */
   yours: (number | null)[]
 }
 
@@ -329,7 +327,7 @@ export function marketView(f: MarketFarm, now: MarketNow): MarketView {
       asks: { buyer: p.maxAsk, order: material ? 0 : Math.max(1, Math.round(p.maxAsk * 1.5)) },
       buyFor: material ? piecePrice(f.ladders.discount) : null,
       trend: { days, tomorrow, dir: pct > STILL ? 'up' : pct < -STILL ? 'down' : 'flat', pct },
-      yours: f.ledger ? perUnit(f.ledger, id, now.day) : Array.from({ length: LEDGER_DAYS }, () => null),
+      yours: perUnit(f.ledger, id, now.day),
     }
   })
 
