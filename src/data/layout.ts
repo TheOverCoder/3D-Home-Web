@@ -2,6 +2,9 @@
 // Units are metres. +x is east, +z is south, -z is the back (north) wall.
 // When a real `house.glb` is added, tune the coordinates here to match it.
 
+import type { Place } from '../farm/state'
+import { SUN_BOXES, inBox } from './sunBox'
+
 export type RoomId = 'living' | 'office' | 'kitchen' | 'bedroom'
 export type FloorKind = 'wood' | 'tile' | 'carpet' | 'stone' | 'grass'
 export type Vec3 = [number, number, number]
@@ -134,26 +137,17 @@ export function groundAt(x: number, z: number): FloorKind {
 /** Direction of the sun (towards it). Drives both the light and the sky. */
 export const SUN: Vec3 = [12, 9, 10]
 /** The sun's shadow camera (src/scene/Lighting.tsx): it stands at SUN × scale looking at the origin and sees a box
- *  ±half wide and tall, from near to far. Nothing moves it: a surface outside the box is drawn as if nothing shaded
- *  it, so whatever must be shaded (a floor under a roof) has to stand inside (src/data/buildings.test.ts). */
+ *  from near to far — ±half wide and tall in the house, wider towards the lot on the farm (SUN_BOXES in ./sunBox).
+ *  Nothing moves it: a surface outside the box is drawn as if nothing shaded it, so whatever must be shaded (a floor
+ *  under a roof) has to stand inside (src/data/buildings.test.ts). */
 export const SUN_SHADOW = { scale: 1.6, half: 12, near: 1, far: 60 } as const
 
-/** Whether the sun's shadow camera sees the point (x, y, z) at least `margin` metres in from the sides of its box. A
+/** Whether the sun's shadow camera sees the point (x, y, z) at least `margin` metres in from the sides of its box on a
+ *  map (its box: SUN_BOXES in ./sunBox; the farm's unless told, as everything that asks stands outdoors on the farm). A
  *  point and its shadow on the ground fall on the same spot of the sun's map (it looks along the sunlight), so a thing
  *  whose foot and top are both in casts its whole shadow there. */
-export function inSunShadow(x: number, y: number, z: number, margin = 0): boolean {
-  // the shadow camera's axes, as three's lookAt makes them: z towards the sun, x level (up × z), y = z × x
-  const l = Math.hypot(SUN[0], SUN[1], SUN[2])
-  const dx = SUN[0] / l
-  const dy = SUN[1] / l
-  const dz = SUN[2] / l
-  const h = Math.hypot(dx, dz)
-  const ax = dz / h
-  const az = -dx / h
-  const u = x * ax + z * az
-  const v = x * (dy * az) + y * (dz * ax - dx * az) + z * (-dy * ax)
-  const half = SUN_SHADOW.half - margin
-  return Math.abs(u) <= half && Math.abs(v) <= half
+export function inSunShadow(x: number, y: number, z: number, margin = 0, place: Place = 'farm'): boolean {
+  return inBox(x, y, z, SUN_BOXES[place], margin)
 }
 
 export const SPAWN: Vec3 = [-3.5, 1.4, 1.3]

@@ -6,7 +6,7 @@ import { BACK, CABIN, CONTRACTOR_STAND, FRONT_DOOR, HALL, INNER_DOOR, MARKET_PAT
 import { AGENT_STAND, ESTATE_DOOR, ESTATE_PATH, ESTATE_ROOM, PARKING } from './estate'
 import { ARRIVE, CAR_SPOT } from './maps'
 import { CAR_SHAPE, carHalf } from '../models/car'
-import { SUN_BOXES, boxMargin } from './sunBox'
+import { SUN_BOXES, boxMargin, type SunBox } from './sunBox'
 import { SUN_MARGIN, cornerMargins, floorMargins, wallMargins } from './sunCheck'
 
 // Walk-in buildings (src/data/buildings.ts) against the sun's shadow box: outside the box three lights a surface as if
@@ -17,56 +17,76 @@ import { SUN_MARGIN, cornerMargins, floorMargins, wallMargins } from './sunCheck
 /** The farm's sun box (src/data/sunBox.ts): the walk-ins stand on the farm. */
 const BOX = SUN_BOXES.farm
 
-// the sun's shadow camera, made as src/scene/Lighting.tsx makes it: three's directional light shadow camera stands at
-// the light's position and looks at its target (the origin), with three's own up
-const cam = new OrthographicCamera(-SUN_SHADOW.half, SUN_SHADOW.half, SUN_SHADOW.half, -SUN_SHADOW.half, SUN_SHADOW.near, SUN_SHADOW.far)
-cam.position.set(SUN[0] * SUN_SHADOW.scale, SUN[1] * SUN_SHADOW.scale, SUN[2] * SUN_SHADOW.scale)
-cam.lookAt(0, 0, 0)
-cam.updateMatrixWorld(true)
+/** The sun's shadow camera with a map's box, made as src/scene/Lighting.tsx makes it: three's directional light shadow
+ *  camera stands at the light's position and looks at its target (the origin), with three's own up. */
+function sunCamera(box: SunBox) {
+  const cam = new OrthographicCamera(box.left, box.right, box.top, box.bottom, SUN_SHADOW.near, SUN_SHADOW.far)
+  cam.position.set(SUN[0] * SUN_SHADOW.scale, SUN[1] * SUN_SHADOW.scale, SUN[2] * SUN_SHADOW.scale)
+  cam.lookAt(0, 0, 0)
+  cam.updateMatrixWorld(true)
+  return cam
+}
 
-/** How far a world point is inside the shadow box, in metres (below 0: outside), in the light's view. */
-function inside(x: number, y: number, z: number) {
-  const v = new Vector3(x, y, z).applyMatrix4(cam.matrixWorldInverse)
+/** How far a world point is inside a map's shadow box, in metres (below 0: outside), in the light's view. */
+function inside(x: number, y: number, z: number, box: SunBox) {
+  const v = new Vector3(x, y, z).applyMatrix4(sunCamera(box).matrixWorldInverse)
   const depth = -v.z
-  return Math.min(SUN_SHADOW.half - Math.abs(v.x), SUN_SHADOW.half - Math.abs(v.y), depth - SUN_SHADOW.near, SUN_SHADOW.far - depth)
+  return Math.min(v.x - box.left, box.right - v.x, v.y - box.bottom, box.top - v.y, depth - SUN_SHADOW.near, SUN_SHADOW.far - depth)
 }
 
 const along = (a: number, b: number) => [a, (a + b) / 2, b]
 
 describe('the shadow box', () => {
-  it('inSunShadow says what the shadow camera sees, its margin in from the sides', () => {
-    for (let k = 0; k < 400; k++) {
-      const x = -30 + ((k * 37) % 60) + 0.31
-      const z = -30 + ((k * 53) % 60) + 0.17
-      const y = (k % 7) * 0.8
-      const sides = (m: number) => {
-        const v = new Vector3(x, y, z).applyMatrix4(cam.matrixWorldInverse)
-        return Math.max(Math.abs(v.x), Math.abs(v.y)) <= SUN_SHADOW.half - m
+  for (const place of ['farm', 'home'] as const)
+    it(`inSunShadow says what the ${place}'s shadow camera sees, its margin in from the sides`, () => {
+      const box = SUN_BOXES[place]
+      const cam = sunCamera(box)
+      for (let k = 0; k < 400; k++) {
+        const x = -30 + ((k * 37) % 60) + 0.31
+        const z = -30 + ((k * 53) % 60) + 0.17
+        const y = (k % 7) * 0.8
+        const sides = (m: number) => {
+          const v = new Vector3(x, y, z).applyMatrix4(cam.matrixWorldInverse)
+          return v.x >= box.left + m && v.x <= box.right - m && v.y >= box.bottom + m && v.y <= box.top - m
+        }
+        expect(inSunShadow(x, y, z, 0, place), `${x}, ${y}, ${z}`).toBe(sides(0))
+        expect(inSunShadow(x, y, z, 1.5, place), `${x}, ${y}, ${z}`).toBe(sides(1.5))
       }
-      expect(inSunShadow(x, y, z), `${x}, ${y}, ${z}`).toBe(sides(0))
-      expect(inSunShadow(x, y, z, 1.5), `${x}, ${y}, ${z}`).toBe(sides(1.5))
-    }
-  })
+    })
 
-  it('is the one the plan measured: its target inside, its corners on the ground where the diamond has them', () => {
-    expect(inside(0, 0, 0)).toBeGreaterThan(1)
+  it("the house's is the one the plan measured: its target inside, its corners on the ground where the diamond has them", () => {
+    const home = SUN_BOXES.home
+    expect(home).toEqual({ left: -SUN_SHADOW.half, right: SUN_SHADOW.half, bottom: -SUN_SHADOW.half, top: SUN_SHADOW.half })
+    expect(inside(0, 0, 0, home)).toBeGreaterThan(1)
     for (const [x, z] of [
       [10.78, 24.61],
       [26.15, 6.17],
       [-10.78, -24.61],
       [-26.15, -6.17],
     ])
-      expect(Math.abs(inside(x, 0, z)), `${x}, ${z}`).toBeLessThan(0.05)
-    expect(inside(30, 0, 30)).toBeLessThan(0)
+      expect(Math.abs(inside(x, 0, z, home)), `${x}, ${z}`).toBeLessThan(0.05)
+    expect(inside(30, 0, 30, home)).toBeLessThan(0)
+  })
+
+  it("the farm's reaches past the house's to the south-west and the south-east, over the lot, and holds the rest as it was", () => {
+    // the house's diamond on the ground: its north, east and west corners still on the farm's edges (its north-east and
+    // north-west sides did not move), its south corner 4⅛ m inside (both sides that meet there moved out)
+    for (const [x, z] of [
+      [-10.78, -24.61],
+      [26.15, 6.17],
+      [-26.15, -6.17],
+    ])
+      expect(Math.abs(inside(x, 0, z, BOX)), `${x}, ${z}`).toBeLessThan(0.05)
+    expect(inside(10.78, 0, 24.61, BOX)).toBeCloseTo(-SUN_SHADOW.half - BOX.left, 1)
+    for (const place of ['farm', 'home'] as const) expect(inside(30, 0, 30, SUN_BOXES[place]), place).toBeLessThan(0)
   })
 
   it("is the farm's box, and the rule's margin is this camera's (src/data/sunCheck.ts measures with it)", () => {
-    expect(BOX).toEqual({ left: -SUN_SHADOW.half, right: SUN_SHADOW.half, bottom: -SUN_SHADOW.half, top: SUN_SHADOW.half })
     for (let k = 0; k < 200; k++) {
       const x = -20 + ((k * 37) % 45) + 0.31
       const z = -20 + ((k * 53) % 45) + 0.17
       const y = (k % 5) * 0.9
-      expect(boxMargin(x, y, z, BOX), `${x}, ${y}, ${z}`).toBeCloseTo(inside(x, y, z), 9)
+      expect(boxMargin(x, y, z, BOX), `${x}, ${y}, ${z}`).toBeCloseTo(inside(x, y, z, BOX), 9)
     }
   })
 })

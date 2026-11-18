@@ -21,6 +21,7 @@ import type { HomeLayout, HomePiece } from '../home/layout'
 import '../home/actions' // the decorating actions (and their test hook)
 import { shellKey } from '../home/shell'
 import { setHousePortals } from '../lib/visibility/portals'
+import { houseHere } from '../lib/world'
 
 /**
  * Merges the never-moving placeholder geometry into a few draws (see lib/batch). A part inside (`userData.part`) can be
@@ -38,8 +39,9 @@ export function StaticBatch({ children, rev, off = false, exclude }: { children:
     handle.batch?.exclude(exclude)
   }, [exclude, handle])
   useEffect(() => {
-    // `off`: nothing merged
-    const b = group.current && !off ? batchStatic(group.current) : null
+    // `off`: nothing merged; on the farm, what casts drawn into the sun's map as one a quarter and side (the house's
+    // map leaves what casts out of it room by room: there each look keeps its own)
+    const b = group.current && !off ? batchStatic(group.current, { sunAsOne: !houseHere() }) : null
     handle.batch = b
     b?.exclude(handle.exclude)
     return () => {
