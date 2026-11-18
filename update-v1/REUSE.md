@@ -215,20 +215,23 @@ for (const [id, n] of sizes.sort((a, b) => b[1] - a[1]).slice(0, 20)) console.lo
   Node 24 from **v6**. Some mirrors show a v7 that I could not confirm.
 - **Before changing them:** read each release page, then pin each action by its commit SHA with the tag in a comment.
 
-## 4. Scaffold proposal (not written; for your approval)
+## 4. Scaffold (approved and written)
 
-No package is approved, so no wrapper is needed. I propose two guard rails instead, so that the eight agents of
-phases 1 and 2 cannot add upkeep by accident.
+No package is approved, so no wrapper is needed. Two guard rails stand instead, so that the eight agents of phases 1
+and 2 cannot add upkeep by accident. CLAUDE.md's "Before pushing" points to them.
 
 1. **`.npmrc` at the root:** `save-exact=true` and `ignore-scripts=true`.
-   - **It changes nothing today.** No installed package declares an install hook (searched to six levels of
-     `node_modules`), and the CI installs with `npm ci`.
+   - **It changes nothing today.** `npm query` finds no installed package with a `preinstall`, `install` or
+     `postinstall` script, and the CI installs with `npm ci`. The lockfile flags one package for another platform:
+     `fsevents` 2.3.3 (macOS only, optional, Vite's), whose `node-gyp rebuild` is skipped. Its package ships its
+     built binary, so a Mac works without it.
    - **`npm run` still works.** Scripts called by name still run (`npm run check`, `build`, `sim`); only lifecycle
      hooks stop, and the project has none.
    - **What it does:** every future install is pinned and runs no package's code.
-2. **`src/deps.test.ts` (about 15 lines):** it fails when `package.json` gains a dependency that is not in its
-   approved list. The list is today's set, and each name added later carries a link to its row in this file. A new
-   package then becomes a decision you see in review, never a side effect of a mission.
+2. **`src/deps.test.ts`, beside `src/deps.allowed.json`:** it fails, naming the package, when `package.json` gains a
+   dependency that is not on the list, or when the list names one `package.json` no longer has. The list is today's 38
+   names. A name added later gets its row in this file first, so a new package is a decision you see in review, never
+   a side effect of a mission.
 
 If you later approve a package, it gets one module in `src/lib/` that imports it (as `src/ui/motion.tsx` is for
 Motion), and an oxlint `no-restricted-imports` rule in `.oxlintrc.json` keeps every other file from importing it
