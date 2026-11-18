@@ -111,6 +111,26 @@ export function sanitizeLedger(raw: unknown, today: number): Ledger {
   return { days: [...byDay.values()].sort((a, b) => a.day - b.day) }
 }
 
+/**
+ * Whole coins shared out by weight: `total` (a whole number from 0) in parts, one a weight, that add up to it, each
+ * within a coin of its share (the running sum is rounded, so no coin is lost or made). Weights that are not above 0
+ * share nothing; none above 0, every part alike. An order's pay set down good by good, by what each line is worth.
+ */
+export function shareOut(total: number, weights: readonly number[]): number[] {
+  const w = weights.map((x) => (x > 0 && Number.isFinite(x) ? x : 0))
+  const even = !w.some((x) => x > 0)
+  const all = even ? w.length : w.reduce((n, x) => n + x, 0)
+  let sum = 0
+  let given = 0
+  return w.map((x, k) => {
+    sum += even ? 1 : x
+    const upTo = k === w.length - 1 ? total : Math.round((total * sum) / all)
+    const part = upTo - given
+    given = upTo
+    return part
+  })
+}
+
 /** Every day the book keeps on `today`, the oldest first and today last: LEDGER_DAYS of them, those with nothing sold
  *  empty. */
 export function bookDays(book: Ledger, today: number): LedgerDay[] {
