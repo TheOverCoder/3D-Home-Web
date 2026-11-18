@@ -1,10 +1,11 @@
-import { MACHINES, MACHINE_IDS, produceById, type MachineId, type ProduceId } from './data'
+import { BUYER_OFFERS, MACHINES, MACHINE_IDS, produceById, type MachineId, type ProduceId } from './data'
 
 // What a good sells for, decided here for every sale — a buyer's offer at the gate, an order's pay, what the manager
 // pays, a unit on your shop's shelves: its fair price (PRODUCE in ./data), more for what a machine makes once it has
 // worked its way up a level (its level's coins boost, src/farm/machineView.ts: a cake from a level-2 oven is worth a
 // fifth more), and double on the lucky draw's day for the two goods drawn (src/farm/events.ts). Each sale rounds its own
-// total, as it always has.
+// total, as it always has. The price is one sum with named parts (priceAt), the same for a sale and for a view of the
+// prices (src/farm/computer), and so is what a buyer at the gate offers on it (BUYER_OFFERS, offerFactor).
 
 /** The machine that makes each good (the oven the cakes, the mill flour and sugar, the loom cloth). */
 const MAKER = new Map<ProduceId, MachineId>(MACHINE_IDS.flatMap((id) => MACHINES[id].recipes.map((r) => [r.makes, id] as const)))
@@ -39,12 +40,21 @@ export function priceAt(good: ProduceId, more = 0, factor = 1): number {
 }
 
 /** What one of a good is worth: its fair price, a share more for what a machine of a higher level makes, and the
- *  events' factor (the lucky draw's). */
+ *  events' factor (the lucky draw's): priceAt with the farm's own parts. */
 export function priceOf(good: ProduceId): number {
-  const base = produceById(good).price
   const maker = MAKER.get(good)
-  const more = maker ? boost(maker) : 0
-  const price = more > 0 ? base * (1 + more) : base
-  const k = event(good)
-  return k !== 1 ? price * k : price
+  return priceAt(good, maker ? boost(maker) : 0, event(good))
+}
+
+/** The odds of BUYER_OFFERS added up, row by row (the last row takes the rest): a roll under the k-th step draws the
+ *  k-th factor. Each running sum is rounded to a billionth, finer than any odds the table gives, so that it is the
+ *  number the odds say and a roll falls on the same side of it (summed as they are, 0.15 + 0.23 + 0.28 + 0.2 comes to
+ *  0.8600000000000001). */
+const OFFER_STEPS = BUYER_OFFERS.slice(0, -1).reduce<number[]>((steps, o) => [...steps, Math.round(((steps.at(-1) ?? 0) + o.odds) * 1e9) / 1e9], [])
+
+/** The factor a buyer at the gate offers on what the goods are worth, for a roll from 0 to under 1 (Math.random's):
+ *  BUYER_OFFERS's rows by their odds — mostly fair, now and then generous, sometimes cheeky. */
+export function offerFactor(roll: number): number {
+  const k = OFFER_STEPS.findIndex((step) => roll < step)
+  return BUYER_OFFERS[k < 0 ? BUYER_OFFERS.length - 1 : k].factor
 }

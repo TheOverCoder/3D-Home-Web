@@ -1,4 +1,5 @@
 import { Vector3 } from 'three'
+import { personLook } from '../data/people'
 import { Parts, ellipsoid, lathe, loft, merge, rgb, shadowPart, smoothstep, squircle, tube, type PartDef, type Shape, type V3 } from '../lib/sculpt'
 import { crateShape } from './buildings'
 import { PersonRig, type PersonLook } from './person'
@@ -221,8 +222,9 @@ export const carrierSlot = (k: number): V3 => {
   return [cx, carrier.y, cz]
 }
 
-/** The driver: a farmer in a straw hat (no basket: both hands on the wheel). */
-export const DRIVER: PersonLook = { shirt: '#3f6fa3', trousers: '#3d4a5c', skin: '#e0ac87', hair: '#5a3a22', hairStyle: 0, hat: true, height: 1, basket: false, seated: true }
+/** The driver, as the people table has him (src/data/people.ts): a farmer in a straw hat (no basket: both hands on the
+ *  wheel). */
+export const DRIVER: PersonLook = personLook('driver')!
 
 /** Sits a person on the tractor's seat (in the tractor's frame, its root at the tractor's origin): thighs along the
  *  seat, shins down to the footwell, hands on the wheel; `look` turns the head (backing up, they look behind). */
