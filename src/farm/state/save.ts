@@ -35,6 +35,7 @@ import { freshPlayed, sanitizePlayed } from '../calendar'
 import { machineLevel, QUEUE } from '../machineView'
 import { freshMachine, jobSeconds, recipeOf, type MachineState } from '../machines'
 import { freshEvents, sanitizeEvents } from '../events'
+import { freshLedger, sanitizeLedger } from '../ledger'
 import { DEFAULT_OUTFIT, sanitizeOutfit } from '../outfit'
 import { clampLevels, freshMarket, sanitizeMarket } from '../market'
 import { offersPerDay, sanitizeContractor } from '../contractor'
@@ -139,6 +140,7 @@ function fresh(): FarmData {
     firstSteps: stepsFresh(),
     played: freshPlayed(),
     friends: {},
+    ledger: freshLedger(),
     season: seasonFresh(),
   }
 }
@@ -402,6 +404,8 @@ export function load(text: string | null = readRaw(KEY)): { data: FarmData; save
     // the neighbours' friendships, as saved, for each met (a farm from before them has met no one; who is met comes
     // with the story, src/farm/people)
     data.friends = sanitizeFriends(raw.friends, NEIGHBOUR_IDS)
+    // the sales book: the days of the last two weeks as saved (a farm from before it: an empty book)
+    data.ledger = sanitizeLedger(raw.ledger, calendarDay())
     // the farm's year: as saved (a farm from before it begins its first spring today)
     data.season = savedSeason(raw.season, data.played)
     const queue = list(raw.queue)

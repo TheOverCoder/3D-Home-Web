@@ -212,7 +212,7 @@ describe('the week and the mood', () => {
     expect(v.index.tomorrow).toBeCloseTo((100 * (7 * 3 + 1.02)) / 8)
   })
 
-  it("reads what you got a unit from the farm's sales book, once it keeps one", () => {
+  it("reads what you got a unit from the farm's sales book", () => {
     const day = 20_410
     const ledger = noteSale(noteSale(freshLedger(), day - 2, 'order', 'tomato', 4, 15), day, 'gate', 'tomato', 4, 14)
     const yours = good(marketView(farmOf({ ledger }), { at: null, day }), 'tomato').yours

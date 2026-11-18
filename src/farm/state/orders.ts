@@ -10,6 +10,7 @@ import { gainXp } from './levels'
 import { foundPrizes, rewarded } from './rewards'
 import { gainItems, rollGifts, surpriseWords } from './stores'
 import { knownGoods } from './buyers'
+import { orderShares, sold } from './ledger'
 import { befriend } from './neighbours'
 
 // The order board on the office's computer, the office's upgrades, and the tractor that takes the crates away.
@@ -100,6 +101,7 @@ export function sendOrder(k: number) {
   farm.dispatch.waiting = Math.min(MOST_CRATES, farm.dispatch.waiting + cratesFor(o))
   farm.orders[k] = { order: makeOrder(knownGoods(), random) }
   rewarded('order', [{ coins: o.coins }, ...foundPrizes(items)], OFFICE_SCREEN)
+  for (const l of orderShares(o)) sold('order', l.good, l.units, l.coins)
   befriend(o)
   toast(`Order sent · + ${o.coins} coins${surpriseWords(items)}`, items[0] ?? 'coin')
   farmSound('coins')
