@@ -145,8 +145,9 @@ session's. "Append" means new lines only, at the end of the list, table or file,
   one ready first merges, and the earlier fits round it: each adds, neither rewrites. 07c is last.
 
 **The budget's ledger** (CONTRACTS D1, D2; the orchestrator writes the measured numbers here at each drawing merge).
-The farm's sun pass: 233 draws and 126.8k today, against 250 and 150k; claims 11a/11b +2, 01b +3, 02c +1, 03b +1,
-10c +4 = 244, five left. The yard's view about 241k of 250k (01b, 02c, 10b, 10c add); the lane's views +25–48k (11c).
+The farm's sun pass: 233 draws and 126.8k before 11a, against 250 and 150k; claims 11a/11b +2, 01b +3, 02c +1, 03b +1,
+10c +4 = 244, five left. **After 11a (3a09691): 209–216 draws, 131.9k–134.7k** (the bigger box, paid by the farm's static
+batches casting as one sun mesh a quarter: about 34 draws and 15k triangles free). The yard's view about 241k of 250k (01b, 02c, 10b, 10c add); the lane's views +25–48k (11c).
 Whoever's measure crosses a limit pays in how things are drawn, never with a ceiling.
 
 ## 3. The size of each phase

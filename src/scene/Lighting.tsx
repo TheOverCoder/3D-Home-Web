@@ -17,6 +17,7 @@ import {
 import { assets } from '../assets/registry'
 import { useSettings } from '../settings'
 import { SUN, SUN_SHADOW } from '../data/layout'
+import { SUN_BOXES, texelsFor } from '../data/sunBox'
 import { ErrorBoundary } from '../lib/ErrorBoundary'
 import { profile } from '../lib/profile'
 import { setShadowCheck, sunLeftOut, view } from '../lib/visibility/pass'
@@ -346,18 +347,22 @@ export function skySun(sun: number, out: Vector3): Vector3 {
 }
 
 // shadow map resolution per tier comes from the device profile (low: half, and the cheaper filter comes from
-// fewer texels to fetch; phones: 1k below the top tier)
+// fewer texels to fetch; phones: 1k below the top tier), for the house's box; a map's box wider than that (the farm's,
+// over the lot: src/data/sunBox.ts) gets as many more texels, so a texel is the same size on both maps
 
 export function Lighting() {
   const markReady = useHome((s) => s.markReady)
   const haze = useSettings((s) => s.haze)
   const quality = useHome((s) => s.quality)
+  // the map in the scene decides the box (the farm's until one is: a new farm starts there)
+  const box = SUN_BOXES[useHome((s) => s.map) ?? 'farm']
   const gl = useThree((s) => s.gl)
   const sun = useRef<DirectionalLight>(null)
   const hemi = useRef<HemisphereLight>(null)
   const sky = useRef<ComponentRef<typeof Sky>>(null)
-  const size = profile.shadowMap[quality]
-  const applied = useRef(size)
+  // (never past what the graphics card can hold: WebGL 2 promises 2048, nearly every device has 4096 or more)
+  const size = Math.min(texelsFor(box, profile.shadowMap[quality]), gl.capabilities.maxTextureSize)
+  const applied = useRef({ size, box })
   useEffect(() => {
     sunLight.current = sun.current
     return () => {
@@ -366,14 +371,21 @@ export function Lighting() {
   }, [])
   useEffect(() => {
     const light = sun.current
-    if (!light || applied.current === size) return
-    // a new size needs a new render target; three makes one on the next shadow render
-    applied.current = size
+    if (!light || (applied.current.size === size && applied.current.box === box)) return
+    // another map's box, or another size: the shadow camera sees the box, and a new size needs a new render target
+    // (three makes one on the next shadow render)
+    applied.current = { size, box }
+    const cam = light.shadow.camera
+    cam.left = box.left
+    cam.right = box.right
+    cam.bottom = box.bottom
+    cam.top = box.top
+    cam.updateProjectionMatrix()
     light.shadow.mapSize.set(size, size)
     light.shadow.map?.dispose()
     light.shadow.map = null
     gl.shadowMap.needsUpdate = true
-  }, [size, gl])
+  }, [size, box, gl])
   return (
     <>
       <color attach="background" args={[NOON.background]} />
@@ -396,10 +408,10 @@ export function Lighting() {
         color={NOON.sunColor}
         castShadow
         shadow-mapSize={[size, size]}
-        shadow-camera-left={-SUN_SHADOW.half}
-        shadow-camera-right={SUN_SHADOW.half}
-        shadow-camera-top={SUN_SHADOW.half}
-        shadow-camera-bottom={-SUN_SHADOW.half}
+        shadow-camera-left={box.left}
+        shadow-camera-right={box.right}
+        shadow-camera-top={box.top}
+        shadow-camera-bottom={box.bottom}
         shadow-camera-near={SUN_SHADOW.near}
         shadow-camera-far={SUN_SHADOW.far}
         shadow-radius={3}

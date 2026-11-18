@@ -15,7 +15,8 @@ import { test, expect, fillFarm, onMap } from './helpers'
 //
 // Shadow copies: a caster is drawn into the sun's map from a copy that moved no surface by more than half a texel of it
 // (src/lib/sculpt/sun.ts). The same frame is drawn with them and without (`__home.view.sunLod`), the sun's map drawn
-// again each time: in the decorated garden (the decoration and the fruit plants cast), over the yard, and in the house
+// again each time: in the decorated garden (the decoration and the fruit plants cast), over the yard, on the lane before
+// the lot (the walk-ins and the car, in the farm's wider sun box), and in the house
 // in third person and decorating, where the sun reaches every room's furniture: no acne, no gaps — the same bounds as
 // the far copies — and fewer triangles in the sun's pass.
 
@@ -28,11 +29,13 @@ const FAR: View[] = [
   ['the decorated garden, from its path', 0, 2.6, 0, -0.1],
   ['lane, the market, its shoppers', 10, 13.4, Math.PI, 0.02],
 ]
-/** The farm's views for the sun: in the decorated garden, and over the yard. */
+/** The farm's views for the sun: in the decorated garden, over the yard, and over the lot beyond the lane, where the
+ *  farm's sun box reaches past the house's (src/data/sunBox.ts): the estate office, the market and its cabin, the car. */
 const SUN: View[] = [
   ['the decorated garden, from its path', 0, 2.6, 0, -0.1],
   ['the decorated garden, looking back', 0, -4.6, Math.PI, -0.15],
   ['yard, where the house stood', 0, 12.5, 0, 0.02],
+  ['the lane, the estate office and the market', 1, 14.4, -2.5, -0.05],
 ]
 
 const SIZES = [
