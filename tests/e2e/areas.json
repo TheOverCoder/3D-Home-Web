@@ -24,6 +24,9 @@
         "scripts/{fetch-assets,fetch-polyhaven,hdr-to-gainmap,optimize-models,render-farmer-faces,render-furniture-art,render-item-art}.mjs",
         "scripts/assets.manifest.json",
         "scripts/{affected-specs,ci-shards}.{mjs,d.mts}",
+        "scripts/v1-merge.sh",
+        "scripts/v1-scope.{mjs,d.mts}",
+        "update-v1/owners.json",
         "tests/e2e/{areas,times}.json",
         "tests/e2e/fileTimes.ts",
         "src/tools/**",
@@ -48,6 +51,7 @@
       "paths": [".github/**", "playwright.config.ts", "tests/e2e/helpers.ts", "package.json", "package-lock.json", "vite.config.ts", "src/main.tsx", "src/App.tsx", "src/store.ts", "src/lib/debug.ts"]
     },
     { "name": "a spec itself", "self": true, "specs": [], "paths": ["tests/e2e/*.spec.ts"] },
+    { "name": "16's probe, poses and comparisons, shared by its parts", "specs": ["16-view"], "paths": ["tests/e2e/16-view.ts"] },
     { "name": "the drawing-free context", "specs": ["05-budget-and-fallback", "26-counting"], "paths": ["tests/e2e/nullgl.js"] },
     {
       "name": "booting and loading",

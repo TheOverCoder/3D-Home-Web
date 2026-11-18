@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import fs from 'node:fs'
 import path from 'node:path'
-import { test, expect, changeHouse, emptyFarm, fillFarm, marketDoorStill, onMap, openingViews, openingsNow, restoreHouse, type Game, type MapId } from './helpers'
-import { WALK_INS, type Rect, type WalkIn, type WalkInRoom } from '../../src/data/buildings'
-import { GARDEN, GATE } from '../../src/data/layout'
+import { expect, type Game, type MapId, type Pose, fillFarm, inRect, marketDoorStill } from './helpers'
 import { FRONT_DOOR, HALL, ISLAND, SHELF_RUN } from '../../src/data/market'
+import { GARDEN, GATE } from '../../src/data/layout'
+import type { WalkInRoom } from '../../src/data/buildings'
 
 // The drawing pass that leaves out what cannot be seen (src/lib/visibility) changes how a frame is drawn, never what is
 // in it. With the farm at its fullest (every room full, every animal the shop sells, fifteen buyers, a ripe crop in
@@ -22,6 +22,12 @@ import { FRONT_DOOR, HALL, ISLAND, SHELF_RUN } from '../../src/data/market'
 // (the prototype's one pixel at the left edge). Allowed only if hiding exactly the things the pass left out there —
 // plain `visible = false`, no pass — draws the same frame as the pass, and rays through those pixels meet the house's
 // opaque shell before they meet those things (never a thing drawn without the depth test: the shell does not hide it).
+//
+//
+// The spec comes in four parts, each a shard of its own on a push (a part takes 2 to 6 minutes there): 16-view-rooms
+// and 16-view-openings (the house, on its own map), 16-view-farm and 16-view-buildings (the walk-ins and the
+// supermarket). This file is what they share: the probe that draws a frame both ways, the poses, and how a pose is
+// stood at and compared.
 
 /** Runs in the page: window.__viewProbe, the comparisons. */
 function installProbe() {
@@ -418,7 +424,7 @@ function installProbe() {
  * the thing is behind a wall, and today's renderer only lets it through at that pixel. A thing drawn without the depth
  * test is behind nothing: it is drawn over the shell. (three from node_modules, as 04 does.)
  */
-async function behindShell() {
+export async function behindShell() {
   const THREE: any = await import(/* @vite-ignore */ '/__three/three.module.js')
   const w = window as any
   const h = w.__home
@@ -479,27 +485,8 @@ async function behindShell() {
   return out
 }
 
-interface Pose {
-  name: string
-  /** where the player stands (teleported, frames run until the camera is there) */
-  x: number
-  z: number
-  /** the camera, set by hand for the comparison: yaw, pitch, and its height (the player's eyes by default) */
-  yaw: number
-  pitch?: number
-  y?: number
-  /** the kitchen's door */
-  door?: boolean
-  /** also compare the sun's shadow map */
-  shadow?: boolean
-  /** ms to wait once there, for something that moves as you come (the garden's gate swinging open) */
-  wait?: number
-  /** the market's sliding doors as the pose means them, waited for (0 shut, 1 open); still either way otherwise */
-  marketDoor?: 0 | 1
-}
-
-const P = Math.PI
-const ROOMS: Pose[] = [
+export const P = Math.PI
+export const ROOMS: Pose[] = [
   { name: 'living room', x: -3.5, z: 1.3, yaw: P, pitch: -0.04, shadow: true },
   { name: 'living room, towards the studio', x: -3.5, z: 1.3, yaw: 0 },
   { name: 'studio', x: -3.5, z: -2, yaw: 0 },
@@ -521,14 +508,14 @@ const ROOMS: Pose[] = [
 /** The house's own garden round it (the home map: src/data/home.ts), and the countryside past its fence. */
 // (the garden door both ways, the doorways from both sides and standing in them, and each window from its room are made
 // from the house's openings as the save has them: openingViews in helpers.ts)
-const GARDEN_POSES: Pose[] = [
+export const GARDEN_POSES: Pose[] = [
   { name: 'the garden, back at the house', x: 0, z: 12.5, yaw: 0, pitch: 0.02, shadow: true },
   { name: 'the garden, behind the house', x: 0, z: -9, yaw: P, pitch: 0.05 },
   { name: 'the garden, over the fence to the west', x: -9.5, z: 2, yaw: P / 2, pitch: 0.02 },
   { name: 'the driveway, out to the lane', x: -1.2, z: 10.2, yaw: -P / 2, pitch: -0.03 },
 ]
 /** The farm (a map of its own: where the house stood is its lawn). */
-const YARD: Pose[] = [
+export const YARD: Pose[] = [
   { name: 'yard, over the farm', x: -12, z: -10.5, yaw: (-3 * P) / 4, pitch: -0.08, shadow: true },
   { name: 'yard, where the house stood', x: 0, z: 12.5, yaw: 0, pitch: 0.02 },
   { name: 'yard, the pasture', x: 9.5, z: -1, yaw: -P / 2, pitch: -0.05 },
@@ -541,73 +528,19 @@ const YARD: Pose[] = [
   { name: 'yard, the coop and the milk bucket at their fences', x: 4, z: 2, yaw: -P / 2, pitch: -0.05, shadow: true },
 ]
 
-const inRect = (r: Rect, x: number, z: number, margin = 0) => x >= r.x0 - margin && x <= r.x1 + margin && z >= r.z0 - margin && z <= r.z1 + margin
-/** The yaw that looks from (x, z) towards (tx, tz) (yaw 0 looks north, along −z; π/2 west). */
-const yawTo = (x: number, z: number, tx: number, tz: number) => Math.atan2(-(tx - x), -(tz - z))
-
-/**
- * A walk-in building's poses, made from its row alone (nothing here names one: a new row is posed the same way). In
- * first person: outside, 2.5 m out from its outer door and facing it (with the sun's map); standing in each doorway,
- * looking into each room it opens on; each room from just inside its door, looking across to its far corner. In third
- * person: from that spot outside (its walls must hide what is in it) and from that spot inside its first room, facing
- * the door (the camera behind you held in the room).
- */
-function walkInPoses(w: WalkIn) {
-  const first: Pose[] = []
-  let outside: Pose | null = null
-  // each room's way in: the middle of the first door that opens on it, and the way into the room from there
-  const ways = new Map<WalkInRoom, { x: number; z: number; dx: number; dz: number }>()
-  for (const d of w.doors) {
-    const x = (d.x0 + d.x1) / 2
-    const z = (d.z0 + d.z1) / 2
-    // a door in a wall along x is passed through along z, and the other way round
-    const [nx, nz] = d.x1 - d.x0 >= d.z1 - d.z0 ? [0, 1] : [1, 0]
-    const side = (s: number) => w.rooms.find((r) => inRect(r, x + nx * s * 0.5, z + nz * s * 0.5)) ?? null
-    for (const s of [1, -1]) {
-      const room = side(s)
-      if (!room) continue
-      if (!ways.has(room)) ways.set(room, { x, z, dx: nx * s, dz: nz * s })
-      first.push({ name: `${w.id}: in the doorway, into ${room.space}`, x, z, yaw: yawTo(x, z, x + nx * s, z + nz * s), pitch: -0.05 })
-      if (!side(-s) && !outside) {
-        const ox = x - nx * s * 2.5
-        const oz = z - nz * s * 2.5
-        outside = { name: `${w.id}: outside, facing its door`, x: ox, z: oz, yaw: yawTo(ox, oz, x, z), pitch: -0.03, shadow: true }
-      }
-    }
-  }
-  let inside: (Pose & { room: WalkInRoom }) | null = null
-  for (const room of w.rooms) {
-    const way = ways.get(room)
-    if (!way) continue
-    const x = way.x + way.dx * 0.45
-    const z = way.z + way.dz * 0.45
-    const corners = [
-      [room.x0, room.z0],
-      [room.x1, room.z0],
-      [room.x0, room.z1],
-      [room.x1, room.z1],
-    ]
-    const [cx, cz] = corners.sort((a, b) => Math.hypot(b[0] - x, b[1] - z) - Math.hypot(a[0] - x, a[1] - z))[0]
-    first.push({ name: `${w.id}: ${room.space}, from its door across to the far corner`, x, z, yaw: yawTo(x, z, cx, cz), pitch: -0.1 })
-    inside ??= { name: `${w.id}: third person in ${room.space}`, x, z, yaw: yawTo(x, z, way.x, way.z), room }
-  }
-  if (!outside || !inside) throw new Error(`${w.id}: no outer door, or no room with a door`)
-  return { first: [outside, ...first], outside: { ...outside, name: `${w.id}: third person outside` }, inside }
-}
-
 /** The supermarket's own: from the lane before the garden's gate (open: you stand within 1.8 m of it), at the shelves
  *  along the hall's south wall (with the sun's map), along the aisle between the island and those shelves, and from the
  *  lane before its sliding doors, open (you within 2 m of the doorway: the shop seen through them). */
 const GATE_OPEN: Pose = { name: 'market: the gate open, from the lane', x: GATE.x, z: GARDEN.maxZ + 1.3, yaw: 0, pitch: -0.05, wait: 3000 }
-const DOORS_OPEN: Pose = { name: 'market: its doors open, from the lane', x: (FRONT_DOOR.x0 + FRONT_DOOR.x1) / 2, z: FRONT_DOOR.z0 - 1.6, yaw: P, pitch: -0.05, marketDoor: 1 }
-const SHELVES: Pose = { name: 'market: the shelves', x: (SHELF_RUN.x0 + SHELF_RUN.x1) / 2, z: SHELF_RUN.z0 - 1.1, yaw: P, pitch: -0.1, shadow: true }
-const AISLE: Pose = { name: 'market: the south aisle', x: HALL.x1 - 0.6, z: (ISLAND.z1 + HALL.z1) / 2, yaw: P / 2, pitch: -0.05 }
-const MARKET: Pose[] = [GATE_OPEN, DOORS_OPEN, SHELVES, AISLE]
+export const DOORS_OPEN: Pose = { name: 'market: its doors open, from the lane', x: (FRONT_DOOR.x0 + FRONT_DOOR.x1) / 2, z: FRONT_DOOR.z0 - 1.6, yaw: P, pitch: -0.05, marketDoor: 1 }
+export const SHELVES: Pose = { name: 'market: the shelves', x: (SHELF_RUN.x0 + SHELF_RUN.x1) / 2, z: SHELF_RUN.z0 - 1.1, yaw: P, pitch: -0.1, shadow: true }
+export const AISLE: Pose = { name: 'market: the south aisle', x: HALL.x1 - 0.6, z: (ISLAND.z1 + HALL.z1) / 2, yaw: P / 2, pitch: -0.05 }
+export const MARKET: Pose[] = [GATE_OPEN, DOORS_OPEN, SHELVES, AISLE]
 
 /** Third person at a pose: the frame compared (the walls hide things far off along the top of the screen: a few more
  *  pixels of the known edge case, each proven), the rooms and the sun not used, the sun's map the same; `walls`: the
  *  walls must leave something out; `room`: the camera must stay inside that room, under its top. */
-async function thirdAt(game: Game, p: Pose, log: string[], opts: { walls?: boolean; room?: WalkInRoom } = {}) {
+export async function thirdAt(game: Game, p: Pose, log: string[], opts: { walls?: boolean; room?: WalkInRoom } = {}) {
   const { page } = game
   await game.teleport(p.x, 1.4, p.z, p.yaw, 0)
   await page.waitForTimeout(600)
@@ -641,7 +574,7 @@ async function thirdAt(game: Game, p: Pose, log: string[], opts: { walls?: boole
 
 /** Back in first person: in the house, once the camera is home the pass is back (its rooms and portals); on the farm (no
  *  house, no portals), once the edit mode's camera is home and two more frames are drawn. */
-async function firstAgain(game: Game) {
+export async function firstAgain(game: Game) {
   const { page } = game
   await page.waitForFunction(
     () => {
@@ -658,7 +591,7 @@ async function firstAgain(game: Game) {
 }
 
 /** At a pose, the market's interior casters on and off: the same frame, every pixel; and the map did take them in. */
-async function castersAt(game: Game, p: Pose, log: string[]) {
+export async function castersAt(game: Game, p: Pose, log: string[]) {
   const { page } = game
   await standAt(game, p)
   const r = await page.evaluate((pose) => (window as any).__viewProbe.casters(pose), [p.x, p.y ?? EYE, p.z, p.yaw, p.pitch ?? 0])
@@ -670,7 +603,7 @@ async function castersAt(game: Game, p: Pose, log: string[]) {
 }
 
 /** Stands the player at a pose (the kitchen's door as it says), until the camera is there and the door still. */
-async function standAt(game: Game, p: Pose) {
+export async function standAt(game: Game, p: Pose) {
   const { page } = game
   await page.evaluate(
     ([x, z, yaw, door]) => {
@@ -716,7 +649,7 @@ async function standAt(game: Game, p: Pose) {
 }
 
 /** Stands the player at a pose, then compares the frame there. */
-async function compareAt(game: Game, p: Pose, log: string[]) {
+export async function compareAt(game: Game, p: Pose, log: string[]) {
   const { page } = game
   await standAt(game, p)
   const r = await page.evaluate((pose) => (window as any).__viewProbe.camera(pose), [p.x, p.y ?? EYE, p.z, p.yaw, p.pitch ?? 0])
@@ -740,9 +673,9 @@ async function compareAt(game: Game, p: Pose, log: string[]) {
 }
 
 /** Eye height for the poses (the player's, standing on the floor) */
-const EYE = 1.62
+export const EYE = 1.62
 
-function report(log: string[], name: string, r: any) {
+export function report(log: string[], name: string, r: any) {
   log.push(
     `${name} (${r.size.join('×')}): ${r.before.calls} draws / ${r.before.triangles} triangles → ${r.after.calls} / ${r.after.triangles}; ${r.stats.culled} of ${r.stats.tested} things and ${r.stats.modelsCulled} of ${r.stats.models} crowd models left out (behind a wall: ${r.stats.wallCulled} things, ${r.stats.wallModels} models, of ${r.stats.walls} wall pieces); eye in ${r.cells.start.join(', ') || '-'}, seen ${r.cells.seen.join(', ') || '-'}; ${r.differ} pixels differ${r.differ ? ` ${JSON.stringify(r.pixels)} (${r.culprits?.join('; ')}; across the screen's edge: ${r.straddles}; today drawn at ${r.depths?.join(', ')} m; same with them hidden: ${r.sameAsHidden}; rays ${JSON.stringify(r.rays)})` : ''}`,
   )
@@ -751,7 +684,7 @@ function report(log: string[], name: string, r: any) {
 /** No pixel may differ — but for the one known edge case, proven again: a pixel or two at the edge of the screen
  *  where a thing far behind a wall shows through today, and the pass's frame is exactly today's with those things
  *  hidden. */
-function check(name: string, r: any, most = 2) {
+export function check(name: string, r: any, most = 2) {
   if (r.differ === 0) return
   expect(r.crowds, `${name}: no crowd model left out may show`).toBe(false)
   expect(r.differ, `${name}: ${r.differ} pixels differ at ${JSON.stringify(r.pixels)}`).toBeLessThanOrEqual(most)
@@ -768,7 +701,7 @@ function check(name: string, r: any, most = 2) {
 }
 
 const routed = new WeakSet<object>()
-async function setUp(game: Game, map: MapId = 'home') {
+export async function setUp(game: Game, map: MapId = 'home') {
   await game.ready(map)
   // a three.js for the rays (behindShell): the one from node_modules, under a private path
   if (!routed.has(game.page)) {
@@ -783,441 +716,42 @@ async function setUp(game: Game, map: MapId = 'home') {
   for (const room of ['bedroom', 'living', 'office', 'kitchen']) expect(filled.rooms[room].added, room).toBeGreaterThan(0)
 }
 
-test.describe('the drawing pass leaves out only what cannot be seen', () => {
-  test('640×360: every room, its corners and walls, the sun', async ({ game }) => {
-    await setUp(game)
-    const log: string[] = []
-    for (const p of ROOMS) await compareAt(game, p, log)
-    console.log(log.join('\n'))
+/** Third person, decorating or the edit mode at a spot: the frame compared (the known edge case: a few more pixels, each
+ *  proven), the rooms and the sun not used, the sun's map the same. */
+export const off = async (game: Game, log: string[], name: string, mode: 'third' | 'decorate' | 'edit', x: number, z: number) => {
+  const { page } = game
+  await game.teleport(x, 1.4, z, P, 0)
+  await page.waitForTimeout(600)
+  await page.evaluate((mode) => {
+    const s = (window as any).__home.useHome.getState()
+    if (mode === 'third') s.setView('third')
+    if (mode === 'decorate') s.setDecorating(true)
+    if (mode === 'edit') s.setEditing(true)
+  }, mode)
+  // the camera's flight there (about a second)
+  await page.waitForTimeout(2500)
+  const r = await page.evaluate(() => (window as any).__viewProbe.camera(null))
+  // (the known edge case, proven as in first person: rays through the pixels, from the game's camera as it stands;
+  // seen from above, the walls hide many things far off along the top of the screen, so a few more pixels — each
+  // still proven: the frame is today's with those things hidden, and a ray through it meets the wall first)
+  if (r.differ && r.culprits?.length) r.rays = await page.evaluate(behindShell)
+  report(log, name, r)
+  if (r.differ) console.log(log[log.length - 1])
+  check(name, r, 8)
+  expect(r.stats.portals, `${name}: no rooms and portals`).toBe(false)
+  // the house's walls hide what is behind them (src/lib/visibility/walls.ts), in third person from every room
+  const house = (await page.evaluate(() => (window as any).__home.useHome.getState().map)) === 'home'
+  if (house && mode === 'third' && x > -7 && x < 7 && z > -6 && z < 6) expect(r.stats.wallCulled + r.stats.wallModels, `${name}: things behind a wall left out`).toBeGreaterThan(0)
+  const s = await page.evaluate(() => (window as any).__viewProbe.shadow())
+  log.push(`  sun's shadow map: ${s.after.calls} draws, ${s.culled} casters left out, ${s.differ} bytes differ`)
+  expect(s.sun, `${name}: the sun's pass is whole`).toBe(false)
+  expect(s.differ).toBe(0)
+  await page.evaluate(() => {
+    const s = (window as any).__home.useHome.getState()
+    s.setView('first')
+    s.setDecorating(false)
+    s.setEditing(false)
   })
-
-  test('640×360: each doorway from both sides and standing in it, the kitchen’s door shut and open (from the house’s openings)', async ({ game }) => {
-    await setUp(game)
-    const log: string[] = []
-    for (const p of openingViews(await openingsNow(game.page)).filter((v) => v.kind === 'doorway')) await compareAt(game, p, log)
-    console.log(log.join('\n'))
-  })
-
-  test('640×360: each window from its room', async ({ game }) => {
-    await setUp(game)
-    const log: string[] = []
-    for (const p of openingViews(await openingsNow(game.page)).filter((v) => v.kind === 'window')) await compareAt(game, p, log)
-    console.log(log.join('\n'))
-  })
-
-  test('640×360: the garden door both ways, the house’s garden and the countryside past it', async ({ game }) => {
-    await setUp(game)
-    const log: string[] = []
-    for (const p of [...openingViews(await openingsNow(game.page)).filter((v) => v.kind === 'garden'), ...GARDEN_POSES]) await compareAt(game, p, log)
-    console.log(log.join('\n'))
-  })
-
-  // The house changed every way decorating can (changeHouse in helpers.ts: windows and the garden door moved, one round
-  // its room's corner, a doorway closed, the kitchen's door moved with its doorway, every room painted and floored): its
-  // rooms, and its doorways, windows and garden door where they are now, made from its openings.
-  test('640×360: a changed house — its rooms, and each doorway, window and the garden door where they are now', async ({ game }) => {
-    test.setTimeout(900_000)
-    await setUp(game)
-    const log: string[] = []
-    expect(await changeHouse(game.page), 'every change fits').toEqual([])
-    try {
-      // the walls built and merged again, the rooms' portals where the openings are now
-      await game.page.waitForTimeout(3000)
-      const views = [...ROOMS.slice(0, 8), ...openingViews(await openingsNow(game.page))]
-      for (const p of views) await compareAt(game, { ...p, name: `changed: ${p.name}` }, log)
-    } finally {
-      await restoreHouse(game.page)
-    }
-    console.log(log.join('\n'))
-  })
-
-  test('640×360: things carried from room to room, and things left there', async ({ game }) => {
-    await setUp(game)
-    const { page } = game
-    const log: string[] = []
-    // the mug, picked up in the kitchen and carried into the bedroom: in your hand, looking down at it
-    await page.evaluate(() => (window as any).__home.useHome.getState().pickUp('item-mug'))
-    await compareAt(game, { name: 'carrying the mug in the bedroom', x: 3.5, z: 3, yaw: P, pitch: -0.9, shadow: true }, log)
-    // put down in the bedroom, seen from the living room through the doorway
-    await page.evaluate(() => (window as any).__home.useHome.getState().drop([2.5, 0.3, 3.4]))
-    await compareAt(game, { name: 'the mug left in the bedroom, from the living room', x: -1.2, z: 3, yaw: -P / 2 }, log)
-    console.log(log.join('\n'))
-  })
-
-  // The aim marker (src/scene/AimMarker.tsx) on what the button would act on is drawn over everything, walls included.
-  // Left on the kitchen's door as you stand in the studio — the frame after you leave its doorway, before it fades (on a
-  // slow page the frames compared can come then) — it shows through the wall between the two rooms, where the kitchen
-  // is not seen: the pass must draw it all the same.
-  test('640×360: the aim marker, drawn over everything, on the kitchen’s door through the studio’s wall', async ({ game }) => {
-    await setUp(game)
-    const { page } = game
-    const log: string[] = []
-    const openings = await openingsNow(page)
-    const views = openingViews(openings)
-    const hinged = openings.find((o: any) => o.hinged)
-    const view = (tail: string) => views.find((v) => v.name === `doorway ${hinged.sides.join(' ↔ ')}${tail}`)!
-    // in the kitchen's doorway, its door open: the button offers the door, and the marker is on it
-    await standAt(game, view(`, the door open, from the ${hinged.sides[1]}`))
-    await standAt(game, view(', standing in it'))
-    await page.waitForFunction(
-      () => {
-        const h = (window as any).__home
-        h.__aimed = h.useHome.getState().actions.find((a: any) => a.id === 'door-kitchen-bedroom') ?? null
-        return h.__aimed !== null
-      },
-      null,
-      { timeout: 30_000, polling: 250 },
-    )
-    const pose: Pose = { name: 'the aim marker on the kitchen’s door, through the studio’s wall', x: -1.5, z: -1, yaw: -P / 2 }
-    try {
-      await standAt(game, pose)
-      // the marker kept on the door (nothing in reach here takes the button), shown in full
-      await page.evaluate(() => {
-        const h = (window as any).__home
-        h.useHome.setState({ nearby: h.__aimed })
-      })
-      await page.waitForFunction(
-        () => {
-          const g = (window as any).__home.scene.getObjectByName('aim-marker')
-          return g.visible && g.children.every((m: any) => m.material.opacity > 0.19)
-        },
-        null,
-        { timeout: 30_000, polling: 250 },
-      )
-      // the camera looking at it, across the wall between the studio and the kitchen
-      const [mx, my, mz] = await page.evaluate(() => (window as any).__home.scene.getObjectByName('aim-marker').position.toArray())
-      const yaw = yawTo(pose.x, pose.z, mx, mz)
-      const pitch = Math.atan2(my - EYE, Math.hypot(mx - pose.x, mz - pose.z))
-      const r = await page.evaluate((p) => (window as any).__viewProbe.camera(p), [pose.x, EYE, pose.z, yaw, pitch])
-      if (r.differ && r.culprits?.length) r.rays = await page.evaluate(behindShell)
-      report(log, pose.name, r)
-      console.log(log.join('\n'))
-      expect(r.stats.portals, `${pose.name}: the rooms and portals are used`).toBe(true)
-      expect(await page.evaluate(() => (window as any).__home.scene.getObjectByName('aim-marker').visible), `${pose.name}: the marker is drawn`).toBe(true)
-      check(pose.name, r)
-    } finally {
-      // the button back to what is on offer here
-      await page.evaluate(() => {
-        const h = (window as any).__home
-        h.useHome.setState({ nearby: h.useHome.getState().actions[0] ?? null })
-      })
-    }
-  })
-
-  // The sun's map is drawn again only when something in it changed (Lighting.tsx): your body walking, turning or jumping
-  // indoors where no window lets sunlight in is left out of it, so the map is kept. After each thing that happens, the
-  // map as the game left it must be a full redraw's, texel for texel (every caster, and the pass on), and so must the
-  // frame drawn with it; and the check must see a stale map (your body moved outdoors, the map left as it was).
-  test("the sun's map, kept while you move where no sunlight reaches, is always a full redraw's", { tag: '@full' }, async ({ game }) => {
-    // a dozen places and things that happen, each compared three ways: longer than one room's poses
-    test.setTimeout(600_000)
-    await setUp(game)
-    const { page } = game
-    const log: string[] = []
-    let last = { drawn: 0, kept: 0 }
-    const check = async (name: string) => {
-      const r = await page.evaluate(() => (window as any).__viewProbe.kept())
-      log.push(
-        `${name}: map drawn again on ${r.drawn - last.drawn} frames, kept on ${r.kept - last.kept}; ${r.differ} bytes differ from a full redraw (${r.differAll} with every caster), ${r.pixels} pixels (${r.pixelsAll})`,
-      )
-      expect(r.differ, `${name}: the map is a full redraw's`).toBe(0)
-      expect(r.differAll, `${name}: the map is every caster's`).toBe(0)
-      expect(r.pixels, `${name}: the frame drawn with it`).toBe(0)
-      expect(r.pixelsAll, `${name}: the frame drawn with every caster's map`).toBe(0)
-      const since = { drawn: r.drawn - last.drawn, kept: r.kept - last.kept }
-      last = r
-      return since
-    }
-    const at = async (x: number, z: number, yaw: number) => {
-      await game.teleport(x, 1.4, z, yaw, 0)
-      await page.waitForTimeout(2500)
-    }
-    const turn = async (by: number) => {
-      await page.evaluate((by) => ((window as any).__home.look.yaw += by), by)
-      await page.waitForTimeout(1500)
-    }
-    // turning in the living room: the body moves every frame, the map stays
-    await at(-3.5, 1.3, P)
-    await check('living room')
-    let kept = 0
-    for (let i = 0; i < 3; i++) {
-      await turn(0.5)
-      kept += (await check(`living room, turned ${i + 1}`)).kept
-    }
-    expect(kept, 'turning indoors keeps the map').toBeGreaterThan(0)
-    // walking, then a jump, indoors
-    await page.keyboard.down('KeyW')
-    await page.waitForTimeout(1000)
-    await check('walking in the living room')
-    await page.keyboard.up('KeyW')
-    await page.keyboard.down('Space')
-    await page.waitForTimeout(200)
-    await page.keyboard.up('Space')
-    await check('jumping, in the air')
-    await page.waitForTimeout(2000)
-    await check('landed')
-    // into the sunlight from the kitchen's east window, and turning there; the kitchen's door opened and shut
-    await at(3.5, -3, P)
-    await check('kitchen')
-    await at(5.3, -4.0, -P / 2)
-    await check("kitchen, in the east window's sunlight")
-    await turn(0.6)
-    await check('kitchen, in the sunlight, turned')
-    for (const time of ['once', 'twice']) {
-      await page.evaluate(() => (window as any).__home.useHome.getState().toggleDoor('door-kitchen-bedroom'))
-      await page.waitForTimeout(4000)
-      await check(`the kitchen's door moved ${time}`)
-    }
-    // carrying the mug, then out through the garden door (it opens as you come) into the garden, and turning there
-    await page.evaluate(() => (window as any).__home.useHome.getState().pickUp('item-mug'))
-    await at(-1.2, 4.6, P)
-    await check('carrying the mug, at the garden door')
-    await at(-1.2, 8.5, 0)
-    await check('the garden')
-    await turn(0.6)
-    await check('the garden, turned')
-    await page.evaluate(() => (window as any).__home.useHome.getState().drop([-1.0, 0.3, 9.0]))
-    await page.waitForTimeout(2000)
-    await check('the mug dropped in the garden')
-    expect(await page.evaluate(() => (window as any).__viewProbe.bodyMoved(0.3)), 'a stale map is seen: the body moved outdoors').toBeGreaterThan(0)
-    // third person and back
-    await at(-3.5, 1.3, P)
-    await page.evaluate(() => (window as any).__home.useHome.getState().setView('third'))
-    await page.waitForTimeout(3000)
-    await check('third person')
-    await turn(0.5)
-    await check('third person, turned')
-    await page.evaluate(() => (window as any).__home.useHome.getState().setView('first'))
-    await page.waitForFunction(() => (window as any).__home.view.stats.portals === true, null, { timeout: 30_000, polling: 250 })
-    await page.waitForTimeout(1500)
-    await check('first person again')
-    expect(await page.evaluate(() => (window as any).__viewProbe.bodyMoved(0.3)), 'indoors, the moved body changes nothing in the map (with every caster)').toBe(0)
-    console.log(log.join('\n'))
-  })
-
-  /** Third person, decorating or the edit mode at a spot: the frame compared (the known edge case: a few more pixels, each
-   *  proven), the rooms and the sun not used, the sun's map the same. */
-  const off = async (game: Game, log: string[], name: string, mode: 'third' | 'decorate' | 'edit', x: number, z: number) => {
-    const { page } = game
-    await game.teleport(x, 1.4, z, P, 0)
-    await page.waitForTimeout(600)
-    await page.evaluate((mode) => {
-      const s = (window as any).__home.useHome.getState()
-      if (mode === 'third') s.setView('third')
-      if (mode === 'decorate') s.setDecorating(true)
-      if (mode === 'edit') s.setEditing(true)
-    }, mode)
-    // the camera's flight there (about a second)
-    await page.waitForTimeout(2500)
-    const r = await page.evaluate(() => (window as any).__viewProbe.camera(null))
-    // (the known edge case, proven as in first person: rays through the pixels, from the game's camera as it stands;
-    // seen from above, the walls hide many things far off along the top of the screen, so a few more pixels — each
-    // still proven: the frame is today's with those things hidden, and a ray through it meets the wall first)
-    if (r.differ && r.culprits?.length) r.rays = await page.evaluate(behindShell)
-    report(log, name, r)
-    if (r.differ) console.log(log[log.length - 1])
-    check(name, r, 8)
-    expect(r.stats.portals, `${name}: no rooms and portals`).toBe(false)
-    // the house's walls hide what is behind them (src/lib/visibility/walls.ts), in third person from every room
-    const house = (await page.evaluate(() => (window as any).__home.useHome.getState().map)) === 'home'
-    if (house && mode === 'third' && x > -7 && x < 7 && z > -6 && z < 6) expect(r.stats.wallCulled + r.stats.wallModels, `${name}: things behind a wall left out`).toBeGreaterThan(0)
-    const s = await page.evaluate(() => (window as any).__viewProbe.shadow())
-    log.push(`  sun's shadow map: ${s.after.calls} draws, ${s.culled} casters left out, ${s.differ} bytes differ`)
-    expect(s.sun, `${name}: the sun's pass is whole`).toBe(false)
-    expect(s.differ).toBe(0)
-    await page.evaluate(() => {
-      const s = (window as any).__home.useHome.getState()
-      s.setView('first')
-      s.setDecorating(false)
-      s.setEditing(false)
-    })
-    // back in first person: once the camera is home (in the house, the ceilings up again and the pass back)
-    await firstAgain(game)
-  }
-
-  test('third person and decorating in the house: the rooms and the sun are not used, the walls are', async ({ game }) => {
-    await setUp(game)
-    const log: string[] = []
-    await off(game, log, 'third person, the living room', 'third', -3.5, 2.5)
-    await off(game, log, 'third person, the office', 'third', -3.5, -2)
-    await off(game, log, 'third person, the kitchen', 'third', 3.5, -3)
-    await off(game, log, 'third person, the bedroom', 'third', 3.5, 1)
-    await off(game, log, 'third person, the garden', 'third', -6, 9)
-    await off(game, log, 'decorating the living room', 'decorate', -3.5, 2.5)
-    console.log(log.join('\n'))
-  })
-
-  test('640×360: the wardrobe open — you filmed from in front of you, your head and hat drawn (src/home/Wardrobe.tsx)', async ({ game }) => {
-    await setUp(game)
-    const { page } = game
-    const log: string[] = []
-    // before the bedroom's wardrobe, a hat on, the wardrobe opened as its button opens it
-    await game.teleport(5.8, 1.4, 1.75, 0, -0.1)
-    await page.evaluate(() => {
-      const h = (window as any).__home
-      h.farm.wearGarment('straw-brown')
-      h.interactables()
-        .find((d: any) => d.id.startsWith('wardrobe-'))
-        .run()
-    })
-    try {
-      await page.waitForFunction(() => (window as any).__home.dressView.settled === true, null, { timeout: 30_000, polling: 250 })
-      await page.waitForTimeout(600)
-      const name = 'the wardrobe, you filmed'
-      const r = await page.evaluate(() => (window as any).__viewProbe.camera(null))
-      if (r.differ && r.culprits?.length) r.rays = await page.evaluate(behindShell)
-      report(log, name, r)
-      if (r.differ) console.log(log[log.length - 1])
-      check(name, r)
-      const s = await page.evaluate(() => (window as any).__viewProbe.shadow())
-      log.push(`  sun's shadow map: ${s.after.calls} draws, ${s.culled} casters left out, ${s.differ} bytes differ`)
-      expect(s.differ).toBe(0)
-    } finally {
-      await page.evaluate(() => {
-        const h = (window as any).__home
-        h.useHome.getState().closePanel()
-        h.farm.wearGarment('straw-brown')
-      })
-      await page.waitForFunction(() => (window as any).__home.dressView.blend === 0, null, { timeout: 30_000, polling: 250 })
-    }
-    console.log(log.join('\n'))
-  })
-
-  test('640×360: the farm — the yard over it, where the house stood, the pasture, the gate with a full line', async ({ game }) => {
-    await setUp(game, 'farm')
-    const log: string[] = []
-    for (const p of YARD) await compareAt(game, p, log)
-    console.log(log.join('\n'))
-  })
-
-  test('640×360: every walk-in building — outside facing its door, in its doorways, each room; third person outside and in', async ({ game }) => {
-    await setUp(game, 'farm')
-    const log: string[] = []
-    for (const w of WALK_INS) {
-      const poses = walkInPoses(w)
-      for (const p of poses.first) await compareAt(game, p, log)
-      await thirdAt(game, poses.outside, log, { walls: true })
-      await thirdAt(game, poses.inside, log, { room: poses.inside.room })
-    }
-    console.log(log.join('\n'))
-  })
-
-  test("640×360: the supermarket — the gate open from the lane, its shelves, its south aisle; its interior's shadows are never seen", async ({ game }) => {
-    await setUp(game, 'farm')
-    const { page } = game
-    const log: string[] = []
-    for (const p of MARKET) await compareAt(game, p, log)
-    // its fittings and goods cast no shadow: proven unseen, inside, through its open doors and from outside them shut
-    expect(await page.evaluate(() => typeof (window as any).__home.market?.casters), '__home.market.casters').toBe('function')
-    const market = walkInPoses(WALK_INS.find((w) => w.id === 'market')!)
-    for (const p of [SHELVES, AISLE, DOORS_OPEN, ...market.first]) await castersAt(game, p, log)
-    console.log(log.join('\n'))
-  })
-
-  test('third person and the edit mode on the farm: the rooms and the sun are not used', async ({ game }) => {
-    await setUp(game, 'farm')
-    const log: string[] = []
-    await off(game, log, 'third person, the yard', 'third', -6, 9)
-    await off(game, log, 'third person, where the house stood', 'third', 0, 1)
-    await off(game, log, 'the edit mode over the farm', 'edit', 2, 9)
-    console.log(log.join('\n'))
-  })
-
-  test('the hedge and the woods in pieces: the same frame and sun as one mesh each, built again when land is bought', async ({ game }) => {
-    await setUp(game, 'farm')
-    const { page } = game
-    const log: string[] = []
-    /** At a pose (the player there, the camera set by hand): the land drawn both ways, every pixel and texel the same. */
-    const landAt = async (p: Pose) => {
-      await page.evaluate(
-        ([x, z, yaw]) => {
-          const h = (window as any).__home
-          h.teleport(x, 1.4, z)
-          if (typeof h.look === 'function') h.look({ yaw, pitch: 0 })
-          else {
-            h.look.yaw = yaw
-            h.look.pitch = 0
-          }
-        },
-        [p.x, p.z, p.yaw],
-      )
-      await page.waitForFunction(([x, z]) => Math.hypot((window as any).__home.camera.position.x - x, (window as any).__home.camera.position.z - z) < 1.2, [p.x, p.z], {
-        timeout: 60_000,
-        polling: 250,
-      })
-      const r = await page.evaluate((pose) => (window as any).__viewProbe.land(pose), [p.x, p.y ?? EYE, p.z, p.yaw, p.pitch ?? 0])
-      log.push(
-        `${p.name} (${r.size.join('×')}): one mesh each ${r.whole.calls} draws / ${r.whole.triangles} triangles, in pieces ${r.pieces.calls} / ${r.pieces.triangles} (camera and sun); ${r.differ} pixels and ${r.texels} sun texels differ${r.differ ? ` ${JSON.stringify(r.pixels)}` : ''}`,
-      )
-      expect(r.differ, `${p.name}: pixels ${JSON.stringify(r.pixels)}`).toBe(0)
-      expect(r.texels, `${p.name}: the sun's map`).toBe(0)
-      return r
-    }
-    // from the yard over the farm, where the house stood and at the gate
-    const poses = [YARD[0], YARD[1], YARD[4]]
-    for (const p of poses) await landAt(p)
-
-    // buying the north meadow moves the hedge and the woods out round it: the pieces are built again and the old ones let
-    // go of (each geometry disposed)
-    const old = await page.evaluate(() => {
-      const w = window as any
-      const h = w.__home
-      w.__landDisposed = 0
-      const pieces = h.land.pieces()
-      for (const m of pieces) m.geometry.addEventListener('dispose', () => w.__landDisposed++)
-      h.farm.state.coins += 1000
-      return { pieces: pieces.length, bought: h.farm.buyLand('north') }
-    })
-    expect(old.bought).toBe(true)
-    await page.waitForFunction((n) => (window as any).__landDisposed === n, old.pieces, { timeout: 30_000, polling: 250 })
-    const now = await page.evaluate(() =>
-      (window as any).__home.land.pieces().map((m: any) => {
-        m.geometry.computeBoundingBox()
-        const b = m.geometry.boundingBox
-        return { name: m.name, box: [b.min.x, b.min.z, b.max.x, b.max.z] }
-      }),
-    )
-    log.push(`the north meadow bought: ${old.pieces} pieces let go, ${now.length} built`)
-    const hedges = now.filter((p: any) => p.name === 'hedge')
-    // the hedge along the meadow's north edge (z = −25), none left along the garden's (z = −13)
-    expect(hedges.some((p: any) => p.box[3] < -24 && p.box[1] > -25.6)).toBe(true)
-    expect(hedges.some((p: any) => p.box[3] - p.box[1] < 1.5 && Math.abs((p.box[1] + p.box[3]) / 2 + 13) < 0.6)).toBe(false)
-    // no tree stands on the meadow
-    for (const c of now.filter((p: any) => p.name === 'crown')) {
-      const [x, z] = [(c.box[0] + c.box[2]) / 2, (c.box[1] + c.box[3]) / 2]
-      expect(x > -14 && x < 14 && z > -25 && z < -13, `a tree at ${x.toFixed(1)}, ${z.toFixed(1)}`).toBe(false)
-    }
-    // and the new pieces draw the same as one mesh too
-    for (const p of [YARD[0], { name: 'the north meadow, looking north', x: 0, z: -16, yaw: 0, pitch: -0.05 }]) await landAt(p)
-    console.log(log.join('\n'))
-  })
-
-  test('a phone held upright (390×844): rooms, the door, the garden door, the garden; the farm, the gate and the market', { tag: '@full' }, async ({ game }) => {
-    await setUp(game)
-    const { page } = game
-    const log: string[] = []
-    await page.setViewportSize({ width: 390, height: 844 })
-    try {
-      await page.waitForFunction(() => (window as any).__home.gl.domElement.height > (window as any).__home.gl.domElement.width, null, { timeout: 30_000 })
-      await page.waitForTimeout(1500)
-      const made = openingViews(await openingsNow(page))
-      const door = made.filter((v) => v.door !== undefined && v.shadow)
-      const garden = made.filter((v) => v.kind === 'garden')
-      const house = [ROOMS[0], ROOMS[2], ROOMS[4], ROOMS[6], ...door, garden[0], garden[2], GARDEN_POSES[0]]
-      for (const p of house) await compareAt(game, { ...p, name: `phone: ${p.name}`, shadow: p === ROOMS[0] }, log)
-      // and on the farm
-      await onMap(page, 'farm')
-      for (const p of [YARD[0], YARD[1], YARD[4], SHELVES]) await compareAt(game, { ...p, name: `phone: ${p.name}`, shadow: false }, log)
-    } finally {
-      await page.setViewportSize({ width: 640, height: 360 })
-      await page.waitForTimeout(1500)
-    }
-    console.log(log.join('\n'))
-  })
-
-  test('afterwards: the house as it was, no console errors', async ({ game }) => {
-    await game.ready()
-    await emptyFarm(game.page)
-    expect(game.errors).toEqual([])
-  })
-})
+  // back in first person: once the camera is home (in the house, the ceilings up again and the pass back)
+  await firstAgain(game)
+}

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { test as base, expect, type Browser, type Page } from '@playwright/test'
+import type { Rect, WalkIn, WalkInRoom } from '../../src/data/buildings'
 import { unpaidCoins, xpAt } from '../../src/farm/xp'
 
 /** Library warnings that are known and harmless (they are warnings, but we ignore them explicitly anyway). */
@@ -544,5 +545,80 @@ export function openingViews(openings: any[]): OpeningView[] {
 
 /** The house's openings as the game has them now. */
 export const openingsNow = (page: Page) => page.evaluate(() => JSON.parse(JSON.stringify((window as any).__home.home.openings())))
+
+/** A view to compare or measure: where the player stands and where the camera looks. */
+export interface Pose {
+  name: string
+  /** where the player stands (teleported, frames run until the camera is there) */
+  x: number
+  z: number
+  /** the camera, set by hand for the comparison: yaw, pitch, and its height (the player's eyes by default) */
+  yaw: number
+  pitch?: number
+  y?: number
+  /** the kitchen's door */
+  door?: boolean
+  /** also compare the sun's shadow map */
+  shadow?: boolean
+  /** ms to wait once there, for something that moves as you come (the garden's gate swinging open) */
+  wait?: number
+  /** the market's sliding doors as the pose means them, waited for (0 shut, 1 open); still either way otherwise */
+  marketDoor?: 0 | 1
+}
+
+/** Whether (x, z) is inside a rectangle, or within `margin` of it. */
+export const inRect = (r: Rect, x: number, z: number, margin = 0) => x >= r.x0 - margin && x <= r.x1 + margin && z >= r.z0 - margin && z <= r.z1 + margin
+/** The yaw that looks from (x, z) towards (tx, tz) (yaw 0 looks north, along −z; π/2 west). */
+export const yawTo = (x: number, z: number, tx: number, tz: number) => Math.atan2(-(tx - x), -(tz - z))
+
+/**
+ * A walk-in building's poses, made from its row alone (nothing here names one: a new row is posed the same way). In
+ * first person: outside, 2.5 m out from its outer door and facing it (with the sun's map); standing in each doorway,
+ * looking into each room it opens on; each room from just inside its door, looking across to its far corner. In third
+ * person: from that spot outside (its walls must hide what is in it) and from that spot inside its first room, facing
+ * the door (the camera behind you held in the room).
+ */
+export function walkInPoses(w: WalkIn) {
+  const first: Pose[] = []
+  let outside: Pose | null = null
+  // each room's way in: the middle of the first door that opens on it, and the way into the room from there
+  const ways = new Map<WalkInRoom, { x: number; z: number; dx: number; dz: number }>()
+  for (const d of w.doors) {
+    const x = (d.x0 + d.x1) / 2
+    const z = (d.z0 + d.z1) / 2
+    // a door in a wall along x is passed through along z, and the other way round
+    const [nx, nz] = d.x1 - d.x0 >= d.z1 - d.z0 ? [0, 1] : [1, 0]
+    const side = (s: number) => w.rooms.find((r) => inRect(r, x + nx * s * 0.5, z + nz * s * 0.5)) ?? null
+    for (const s of [1, -1]) {
+      const room = side(s)
+      if (!room) continue
+      if (!ways.has(room)) ways.set(room, { x, z, dx: nx * s, dz: nz * s })
+      first.push({ name: `${w.id}: in the doorway, into ${room.space}`, x, z, yaw: yawTo(x, z, x + nx * s, z + nz * s), pitch: -0.05 })
+      if (!side(-s) && !outside) {
+        const ox = x - nx * s * 2.5
+        const oz = z - nz * s * 2.5
+        outside = { name: `${w.id}: outside, facing its door`, x: ox, z: oz, yaw: yawTo(ox, oz, x, z), pitch: -0.03, shadow: true }
+      }
+    }
+  }
+  let inside: (Pose & { room: WalkInRoom }) | null = null
+  for (const room of w.rooms) {
+    const way = ways.get(room)
+    if (!way) continue
+    const x = way.x + way.dx * 0.45
+    const z = way.z + way.dz * 0.45
+    const corners = [
+      [room.x0, room.z0],
+      [room.x1, room.z0],
+      [room.x0, room.z1],
+      [room.x1, room.z1],
+    ]
+    const [cx, cz] = corners.sort((a, b) => Math.hypot(b[0] - x, b[1] - z) - Math.hypot(a[0] - x, a[1] - z))[0]
+    first.push({ name: `${w.id}: ${room.space}, from its door across to the far corner`, x, z, yaw: yawTo(x, z, cx, cz), pitch: -0.1 })
+    inside ??= { name: `${w.id}: third person in ${room.space}`, x, z, yaw: yawTo(x, z, way.x, way.z), room }
+  }
+  if (!outside || !inside) throw new Error(`${w.id}: no outer door, or no room with a door`)
+  return { first: [outside, ...first], outside: { ...outside, name: `${w.id}: third person outside` }, inside }
+}
 
 export { expect }
