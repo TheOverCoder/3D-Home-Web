@@ -15,10 +15,10 @@ test.describe('the top of the screen', () => {
     // outdoors on the path, so the coin chip and the compass show
     await game.teleport(-1.2, 1.4, 9.0, Math.PI / 2, -0.1)
     const hud = () => page.evaluate(() => document.documentElement.dataset.hud)
-    // the menu in the corner opens into its four buttons, each with its name (the farm news first)
+    // the menu in the corner opens into its five buttons, each with its name (the farm news first, the album after it)
     await expect(page.locator('.hud-mode')).toHaveCount(0)
     await page.locator('.top-menu-btn').click()
-    await expect(page.locator('.top-dial-btn')).toHaveCount(4)
+    await expect(page.locator('.top-dial-btn')).toHaveCount(5)
     await expect(page.locator('.top-dial-btn').first()).toContainText('Farm news')
     for (let k = 0; k < 3 && (await hud()) !== 'all'; k++) await page.locator('.hud-mode').click()
     expect(await hud()).toBe('all')
@@ -108,11 +108,18 @@ test.describe('the top of the screen', () => {
       expect(meet(b.gift, d), 'the gift and the dashboard').toBe(false)
       expect(meet(b.news, d), 'the news’s badge and the dashboard').toBe(false)
     }
-    // the menu: the daily gift first, then the news, edit, the view and the settings; the marks on the button go
+    // the menu: the daily gift first, then the news, the album, edit, the view and the settings; the marks on the button go
     await page.locator('.top-menu-btn').click()
     const dial = page.locator('.top-dial-btn')
-    await expect(dial).toHaveCount(5)
-    expect(await dial.evaluateAll((els) => els.map((el) => [...el.classList].find((c) => c !== 'top-dial-btn')))).toEqual(['daily-open', 'news-open', 'edit-open', 'hud-mode', 'settings-open'])
+    await expect(dial).toHaveCount(6)
+    expect(await dial.evaluateAll((els) => els.map((el) => [...el.classList].find((c) => c !== 'top-dial-btn')))).toEqual([
+      'daily-open',
+      'news-open',
+      'album-open',
+      'edit-open',
+      'hud-mode',
+      'settings-open',
+    ])
     await expect(page.locator('.news-open .top-badge')).toHaveText('1')
     await expect(gift).toHaveCount(0)
     await expect(news).toHaveCount(0)
@@ -171,9 +178,10 @@ test.describe('the top of the screen', () => {
     await expect(page.locator('.compass')).toBeVisible()
     await page.waitForTimeout(1000)
     expect(await page.evaluate(() => (window as any).__home.useHome.getState().compass)).toEqual([])
-    // the menu: the farm news (the farm's events reach the house too), the top's view and the settings, nothing to edit
+    // the menu: the farm news (the farm's events reach the house too), the album, the top's view and the settings,
+    // nothing to edit
     await page.locator('.top-menu-btn').click()
-    await expect(page.locator('.top-dial-btn')).toHaveCount(3)
+    await expect(page.locator('.top-dial-btn')).toHaveCount(4)
     await expect(page.locator('.news-open')).toBeVisible()
     await expect(page.locator('.edit-open')).toHaveCount(0)
     await page.locator('.top-menu-btn').click()

@@ -1,19 +1,20 @@
-import { claimed, dailyFresh, dailyStatus, dailyView, dayNumber, rollDay, type Daily } from '../../../src/farm/daily'
+import { cameBackTo, claimed, dailyFresh, dailyView, dayNumber, rollClaim, type Daily, type WeekClock } from '../../../src/farm/daily'
 import { DailyCard } from '../../../src/farm/DailyCard'
 import type { ProduceId } from '../../../src/farm/data'
 import { art } from '../../../src/ui/art'
 import type { Act, Board } from '../../board'
 
-// The daily gift (src/farm/DailyCard.tsx, its rules src/farm/daily.ts): once a day of the device's calendar a gift, a
-// week of seven that grow, the streak a flame in the title. Built straight into the game at the user's request (no
+// The daily gift (src/farm/DailyCard.tsx, its rules src/farm/daily.ts): a gift for each day played, the season's week of
+// seven that grow (it waits through any absence), the days played in the title. Built straight into the game at the user's request (no
 // round of proposals first), so the board shows it as built: "today" only, live. Its states are the game's own records
 // (dailyView of a Daily), made by its pure code (claimed, rollDay); a gift claimed here rolls on dice of the lab's own.
 
-/** A state of the card: the farm's record, the day it is (and the moment of it: the clock to the next gift counts down
- *  from there), its level, the goods it has made. */
+/** A state of the card: the farm's record, the week's clock (the day played today is, the day its seasons began, the
+ *  calendar day) and the moment of it (the clock to the next gift counts down from there), its level, the goods it has
+ *  made. */
 export interface DailyState {
   daily: Daily
-  today: number
+  clock: WeekClock
   now: number
   level: number
   made: ProduceId[]
@@ -30,25 +31,26 @@ const MADE: ProduceId[] = ['lettuce', 'egg', 'flour', 'tomato']
 const NOW = new Date(2026, 10, 16, 16, 42, 30).getTime()
 const DAY = dayNumber(NOW)
 
-/** A record claimed `n` days in a row, the last of them `last`, from a streak of `from` before them. */
-function run(n: number, last: number, level: number, from: Daily = dailyFresh()): Daily {
-  let d = from
-  for (let k = 0; k < n; k++) {
-    const day = last - n + 1 + k
-    const s = dailyStatus(d, day)
-    if (!s.ready) break
-    d = claimed(d, day, rollDay(s.day, level, MADE, dice(day)))!
+/** The week's clock on day played `played` of a farm whose seasons began on its first, `last` that day's calendar day. */
+const on = (played: number, today = DAY): WeekClock => ({ played, from: 1, today })
+
+/** A record claimed on days played 1 to `n` (each a calendar day after the last), the last of them on `today`. */
+function run(n: number, level: number, today = DAY - 1): Daily {
+  let d = dailyFresh()
+  for (let k = 1; k <= n; k++) {
+    const c = on(k, today - n + k)
+    d = claimed(d, c, rollClaim(d, c, level, MADE, dice(k))!)!
   }
   return d
 }
 
-/** What the game's claimDaily does (src/farm/state.ts), on the lab's dice: today's gift rolled and the record moved on. */
+/** What the game's claimDaily does (src/farm/state/daily.ts), on the lab's dice: today's gift rolled and the record
+ *  moved on. */
 const claim = (s: DailyState, act: Act<DailyState>) => () => {
-  const st = dailyStatus(s.daily, s.today)
-  if (!st.ready) return null
-  const prizes = rollDay(st.day, s.level, s.made, dice(s.today))
-  act.set({ ...s, daily: claimed(s.daily, s.today, prizes)! })
-  return prizes
+  const got = rollClaim(s.daily, s.clock, s.level, s.made, dice(s.clock.played))
+  if (!got) return null
+  act.set({ ...s, daily: claimed(s.daily, s.clock, got)! })
+  return [...got.owed.flatMap((o) => o.prizes), ...got.today, ...got.back]
 }
 
 /** The coin of the chip at the top of the still, where the game's coins land (an unseen stand-in where the still draws
@@ -71,7 +73,7 @@ export const dailyBoard: Board<DailyState> = {
   status: 'live',
   round:
     'נבנה ישר לתוך המשחק, כמו שביקשת. ' +
-    'יום שהוחמץ נסלח: הרצף מחכה והשבוע ממשיך מאותו מקום; שני ימים ברצף – שבוע חדש מיום 1 (מה שכבר קיבלת נשאר). ' +
+    'השבוע הוא שבוע העונה, בימי משחק: הוא מחכה כמה שלא תיעדר, ויום 7 – המתנה הגדולה – הוא היום האחרון של העונה. יום ששיחקת בו ולא לקחת – המתנה שלו מצטרפת לבאה; חזרת אחרי יומיים או יותר – מתנת "ברוך שובך" קטנה וקבועה. ' +
     'השבוע: מטבעות, חומר בנייה, יותר מטבעות, סחורה מהחווה, עוד מטבעות, עוד חומרים – וביום 7 המתנה הגדולה: מטבעות, חומר וסחורה יחד. הכמויות לפי הרמה, בקובייה של החווה, בלי XP. ' +
     'נפתחת לבד פעם ביום, רגע אחרי שהחווה מופיעה (בחווה או בבית), בחווה שכבר שתלה משהו (בדקות הראשונות של חווה חדשה – לומדים לשחק). נסגרה בלי לקחת – מחכה בתפריט בפינה: מתנה קטנה על הכפתור ושורה ראשונה "Daily gift". ' +
     'שעון שהוחזר אחורה לא נותן כלום עד שעובר שוב את היום האחרון; יום שמתחלף בזמן משחק – המתנה של היום החדש.',
@@ -100,12 +102,12 @@ export const dailyBoard: Board<DailyState> = {
     },
   ],
   states: [
-    { id: 'mid', name: 'אמצע השבוע: שלושה ימים ברצף, היום יום 4 (סחורה)', data: { daily: run(3, DAY - 1, 6), today: DAY, now: NOW, level: 6, made: MADE } },
-    { id: 'first', name: 'המתנה הראשונה אי פעם: יום 1', data: { daily: dailyFresh(), today: DAY, now: NOW, level: 2, made: [] } },
-    { id: 'kept', name: 'הוחמץ יום אחד: הרצף חיכה, היום יום 5', data: { daily: run(4, DAY - 2, 6), today: DAY, now: NOW, level: 6, made: MADE } },
-    { id: 'big', name: 'יום 7: המתנה הגדולה', data: { daily: run(13, DAY - 1, 12), today: DAY, now: NOW, level: 12, made: MADE } },
-    { id: 'broke', name: 'שבוע חדש: עברו שלושה ימים אחרי רצף של 9', data: { daily: run(9, DAY - 4, 8), today: DAY, now: NOW, level: 8, made: MADE } },
-    { id: 'taken', name: 'כבר נלקחה היום: מחר יום 6', data: { daily: run(5, DAY, 6), today: DAY, now: NOW, level: 6, made: MADE } },
+    { id: 'mid', name: 'אמצע השבוע: שלושה ימי משחק, היום יום 4 (סחורה)', data: { daily: run(3, 6), clock: on(4), now: NOW, level: 6, made: MADE } },
+    { id: 'first', name: 'המתנה הראשונה אי פעם: יום 1', data: { daily: dailyFresh(), clock: on(1), now: NOW, level: 2, made: [] } },
+    { id: 'owed', name: 'שיחקת אתמול ולא לקחת: המתנה של אתמול מחכה עם של היום (יום 5)', data: { daily: run(3, 6, DAY - 2), clock: on(5), now: NOW, level: 6, made: MADE } },
+    { id: 'big', name: 'יום 7: המתנה הגדולה, היום האחרון של העונה', data: { daily: run(6, 12), clock: on(7), now: NOW, level: 12, made: MADE } },
+    { id: 'back', name: 'חזרת אחרי שלושה ימים: השבוע חיכה, ומתנת "ברוך שובך"', data: { daily: cameBackTo(run(4, 8, DAY - 4), 4), clock: on(5), now: NOW, level: 8, made: MADE } },
+    { id: 'taken', name: 'כבר נלקחה היום: ביום המשחק הבא יום 6', data: { daily: run(5, 6, DAY), clock: on(5), now: NOW, level: 6, made: MADE } },
   ],
   variants: [
     {
@@ -124,7 +126,7 @@ export const dailyBoard: Board<DailyState> = {
       render: (s, act) => (
         <>
           <ChipCoin />
-          <DailyCard v={dailyView(s.daily, s.today, s.level, s.now)} onClaim={claim(s, act)} onClose={act.close} />
+          <DailyCard v={dailyView(s.daily, s.clock, s.level, s.made, s.now)} onClaim={claim(s, act)} onClose={act.close} />
         </>
       ),
     },
