@@ -639,11 +639,13 @@ export function sanitizeHome(raw: unknown): HomeLayout {
     if (n) out.next = Math.min(Number.MAX_SAFE_INTEGER, Math.max(out.next, Number(n[1]) + 1))
   }
   const stays = (p: HomePiece) => PIECES[p.type].fitted || PIECES[p.type].keep
-  // a screen stays in its own room, on a wall that has room for it: saved anywhere else, it hangs where it was built
+  // a screen stays in its own room, on a wall that has room for it, clear of what always stands (the kitchen's counter):
+  // saved anywhere else, it hangs where it was built
   out.pieces = out.pieces.map((p) => {
     if (!PIECES[p.type].keep) return p
     const d = base.pieces.find((b) => b.id === p.id)!
-    return pieceRoom(p) !== pieceRoom(d) || shellProblem(shell, p) ? d : p
+    const standing = { ...out, pieces: out.pieces.filter(stays) }
+    return pieceRoom(p) !== pieceRoom(d) || shellProblem(shell, p) || !canPlacePiece(standing, p).ok ? d : p
   })
   // what stands through a wall (saved far off) is put away first: it can never stay, and while the rest are checked it
   // would stand in their way (a desk at the wall before the screen made the sofa block the way to it)
