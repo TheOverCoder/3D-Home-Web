@@ -22,6 +22,8 @@ const almostBusy = (page: Page, all = false) =>
       ['mill', 'wheat'],
       ['loom', 'wool'],
       ['oven', 'lemon_cake'],
+      ['dairy', 'butter'],
+      ['kettle', 'strawberry_jam'],
     ])
       s.machines[id] = { ...s.machines[id], jobs: Array(60).fill(r), done: 0, progress: 0 }
     const owned = s.beds.map((_: any, i: number) => i).filter((i: number) => f.bedStage(i) !== 'unbought')

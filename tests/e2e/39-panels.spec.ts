@@ -55,7 +55,7 @@ const DEBTS: Record<string, Partial<Record<Check, number>>> = {
   goals: { words: 1, target: 1, goodpic: 1 },
   level: { words: 3, target: 1, goodpic: 1 },
   wardrobe: { target: 4 },
-  manager: { target: 10, goodpic: 28 },
+  manager: { target: 10 },
   market: { target: 1 },
   'market-place': { target: 5, goodpic: 2 },
   'market-buy': { target: 1 },

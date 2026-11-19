@@ -3,6 +3,7 @@ import { farmSound, uiClick } from '../audio/sound'
 import { buyShop } from '../film/films'
 import { playGesture } from '../lib/gestures'
 import { useHome } from '../store'
+import { GoodPic } from '../ui/GoodPic'
 import { ItemPic } from '../ui/ItemPic'
 import { Coins, Purse, Shell, useArmed } from '../ui/Sheet'
 import { PanelSheet } from '../ui/PanelSheet'
@@ -41,7 +42,7 @@ function ManagerRow({ id, pct }: { id: ProduceId; pct: number }) {
   const want = ordersWant(id)
   return (
     <div className="farm-buyer">
-      <ItemPic id={id} count={have} className="farm-want" />
+      <GoodPic good={id} count={have} className="farm-want" />
       <div className="farm-buyer-body">
         <strong>{cap(produceById(id).plural)}</strong>
         {want > 0 && (

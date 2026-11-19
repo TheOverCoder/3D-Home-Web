@@ -3,7 +3,8 @@ import type { Page } from '@playwright/test'
 // What can be read and pressed on a phone (update-v1/missions/07-interface.md, F5; DECISIONS.md 17): measured in the
 // page, on what is on the screen now, inside the elements named. Each problem found is a `Finding` of one check:
 //   tiny      text under 13 px (nothing a player sees is smaller)
-//   words     words under 15 px; a chip's or a count's (`.tag`, `.count`, a badge, a ribbon) may be 13 to 14 px
+//   words     words under 15 px; a chip's or a count's (`.tag`, `.count`, the dashboard's chips, a badge, a ribbon) may be
+//             13 to 14 px
 //   target    something to press whose real hit area (what `elementFromPoint` finds on a 44 px box round its middle,
 //             48 px on a touch screen) is smaller
 //   contrast  words on a solid surface under 4.5:1 (3:1 for large text: 24 px, or 18.7 px bold), opacity counted (a
@@ -93,7 +94,7 @@ export function readable(page: Page, m: Measure): Promise<Finding[]> {
       }
 
       // ── text: its size, and its contrast where it stands on one colour ──
-      const CHIP = '.tag, .count, .chip, .ribbon, .lock-tag, .item-pic, [class*="badge"], [class*="count"]'
+      const CHIP = '.tag, .count, .chip, .farm-chip-item, .ribbon, .lock-tag, .item-pic, [class*="badge"], [class*="count"]'
       for (const e of all) {
         const text = Array.from(e.childNodes)
           .filter((n) => n.nodeType === Node.TEXT_NODE)
