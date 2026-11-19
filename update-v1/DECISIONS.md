@@ -125,3 +125,14 @@ The orchestrator runs the plan to the end without asking:
 - **04b's one line in `src/scene/Player.tsx` accepted:** the intro hard-coded the living room's heading, so
   `FARM_START`'s heading and pitch could not reach the first frame otherwise. `PACE.first` and the journey's `pull`
   stay debts: the real-pace player's steps end at level 5, before the new last step, and a sunflower is exactly an hour.
+- **01b broke five core e2e specs; CI on 692123f was red** (it was merged on a green `npm run check` and its own
+  specs only). Fixed in the tests where 01b's new things changed what they stand on (the busy farm fills the dairy and
+  the kettle; the shop sells 25 kinds; 13's pasture and 33's bed clear of the staked North beds and the dairy) and in
+  the game where the check was right: the crock and the bubble trimmed to their families' loudness, the manager's goods
+  are `GoodPic`s (39's goodpic debt for the manager paid, not raised). The dashboard's chips (`.farm-chip-item`) are
+  chips to 39's words check: "Only 11 XP!" is the user-chosen top (D) and a chip's count.
+- **The welcome back is told once it has been on the screen, however it goes** (`AwayWatcher`): closed by the store or
+  replaced by another panel (its *Go there* to the goals), it no longer comes back for the same time away.
+- **The sales book keeps only the two weeks up to the device's today** after every sale (03b found a save from long
+  ago keeping a day outside them through the shop's sales while away).
+- **03b merged by hand** onto 04b's ranked welcome back: the letters are a row (`letters:n`, worth an order each).
