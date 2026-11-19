@@ -115,20 +115,13 @@ async function plenty(page: Page) {
 /** Nothing open, and no panel left on the screen: each closed by its own ✕ as a player would (the welcome back is
  *  told only then, or it opens again), then by the store. */
 async function closeAll(page: Page) {
-  // each by its ✕, the top one first, and its leave played to its end before the next: the store closing a sheet
-  // still leaving cuts its leave short, and the panel's own close (the welcome back telling its report) never runs
-  for (let i = 0; i < 6; i++) {
-    // (clicked in the page, as before: a card over the sheet may cover its ✕, and Playwright's click would wait on it)
-    const n = await page.evaluate(() => {
-      const open = document.querySelectorAll('.farm-panel:not(.ps-leaving)')
-      const x = Array.from(document.querySelectorAll<HTMLElement>('.farm-panel:not(.ps-leaving) [aria-label="Close (Esc)"]')).pop()
-      x?.click()
-      return x ? open.length : 0
-    })
-    if (!n) break
-    await page.waitForFunction((n) => document.querySelectorAll('.farm-panel:not(.ps-leaving)').length < n && !document.querySelector('.ps-leaving'), n, { timeout: 15_000, polling: 100 })
-  }
-  await page.evaluate(() => {
+  await page.evaluate(async () => {
+    for (const x of Array.from(document.querySelectorAll<HTMLElement>('.farm-panel [aria-label="Close (Esc)"]'))) x.click()
+    // a sheet leaving is let finish, so its own close runs (the welcome back tells its report then, or it opens again);
+    // the store closes only what is still open after that
+    const start = performance.now()
+    await new Promise((r) => setTimeout(r, 400))
+    while (document.querySelector('.ps-leaving') && performance.now() - start < 10_000) await new Promise((r) => setTimeout(r, 100))
     const s = (window as any).__home.useHome.getState()
     if (s.panel) s.closePanel()
     if (s.settingsOpen) s.setSettingsOpen(false)
