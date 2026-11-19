@@ -4,7 +4,7 @@ import { FARM_SHRUBS, CORNER_TREES } from '../data/garden'
 import { WALK_INS, bounds } from '../data/buildings'
 import { CABIN, LOT } from '../data/market'
 import { BED, BEDS, MACHINES, MOST_PLANTS, OFFICE, PATH_X, SHED, STAND, TRACTOR } from './data'
-import { FRUIT, SHOP, type ShopKind } from './decor'
+import { FRUIT, SHOP, type BearerKind, type ShopKind } from './decor'
 
 // Where the farm's movable things stand, and the land they may stand on. A "place" is a whole thing moved in one
 // go in the edit mode (the hen run with its coop, the cows' pasture, the sheep fold, the silo, the barn, the lemon
@@ -187,6 +187,8 @@ export const DECOR_FEET: Record<ShopKind, DecorFoot> = {
   'cherry-tree': { hx: 1.2, hz: 1.2 },
   'blueberry-bush': { hx: 0.8, hz: 0.8 },
   'raspberry-bush': { hx: 0.65, hz: 0.6 },
+  // update v1's beehive: its stand and the hive on it
+  beehive: { hx: 0.38, hz: 0.34 },
 }
 
 /** Whether a name is a kind the shop sells (never a name every object has: `constructor`, `__proto__`). */
@@ -205,9 +207,11 @@ export const RENAMED_KINDS: Readonly<Record<string, ShopKind>> = {
 export const kindNow = (v: unknown): unknown => (typeof v === 'string' && Object.prototype.hasOwnProperty.call(RENAMED_KINDS, v) ? RENAMED_KINDS[v] : v)
 /** A fruit tree or bush (a producer of the farm). */
 export const isPlant = (kind: ShopKind) => Object.prototype.hasOwnProperty.call(FRUIT, kind)
+/** A piece that bears, a producer of the farm: a fruit tree or bush, or a piece that gives a good (the beehive). */
+export const bears = (kind: ShopKind): kind is BearerKind => isPlant(kind) || !!SHOP[kind]?.bears
 /** The most of a kind the farm can own (placed and stored): a fruit kind's most plants; decoration, as many as any
  *  farm could pay for. */
-export const mostOf = (kind: ShopKind) => (isPlant(kind) ? MOST_PLANTS : 999)
+export const mostOf = (kind: ShopKind) => (isPlant(kind) ? MOST_PLANTS : (SHOP[kind]?.bears?.most ?? 999))
 
 /** A piece's footprint, in the world (a run's ends included). */
 export const decorRect = (d: { kind: ShopKind; x: number; z: number; rot: number }) => {

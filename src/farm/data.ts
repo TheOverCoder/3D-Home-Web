@@ -4,7 +4,7 @@ import type { FarmSound } from '../audio/sound'
 import type { KeyNote } from '../audio/palette'
 import type { ArtId } from '../ui/art'
 import { GATE, GARDEN, LANE } from '../data/layout'
-import { FRUIT, FRUIT_KINDS, type FruitId, type FruitKind } from './decor'
+import { DECOR, FRUIT, FRUIT_KINDS, type BearerKind, type FruitId, type FruitKind } from './decor'
 import type { ParcelId, PlaceId } from './layout'
 
 export type CropId = 'lettuce' | 'carrot' | 'strawberry' | 'tomato' | 'corn' | 'pumpkin' | 'wheat' | 'sugarcane' | 'sunflower' | 'potato' | 'melon' | 'cotton'
@@ -19,7 +19,7 @@ export type DairyId = 'butter' | 'cheese'
 /** The building materials: what the silo and the barn are made bigger with (STORES, below). Never asked for, and sold
  *  only to the contractor behind the market (CONTRACTOR); they come as surprises (ITEM_ODDS) and are kept in the barn. */
 export type ItemId = 'brick' | 'plank' | 'nail' | 'iron' | 'bolt' | 'log'
-export type ProduceId = CropId | 'lemon' | FruitId | 'egg' | 'milk' | 'wool' | 'sugar' | 'flour' | 'cloth' | CakeId | ItemId | BakeId | 'quilt' | DairyId
+export type ProduceId = CropId | 'lemon' | FruitId | 'egg' | 'milk' | 'wool' | 'sugar' | 'flour' | 'cloth' | CakeId | ItemId | BakeId | 'quilt' | DairyId | 'honey'
 
 export interface CropDef {
   id: CropId
@@ -99,6 +99,9 @@ export const PRODUCE: ProduceDef[] = [
   { id: 'butter', name: 'pat of butter', plural: 'pats of butter', price: 78, maxAsk: 2 },
   { id: 'cheese', name: 'cheese', plural: 'cheeses', price: 159, maxAsk: 1 },
   { id: 'bread', name: 'loaf of bread', plural: 'loaves of bread', price: 235, maxAsk: 1 },
+  // the beehive's (decor.ts, a producing piece of the edit mode's shop): a jar of honey every twenty minutes, kept in the
+  // barn
+  { id: 'honey', name: 'jar of honey', plural: 'jars of honey', price: 32, maxAsk: 3 },
 ]
 export const produceById = (id: ProduceId) => PRODUCE.find((p) => p.id === id)!
 /** The six building materials, in the order the silo and the barn list them. */
@@ -139,7 +142,9 @@ export const upgradeCost = (level: number) => level
 const FRUIT_GOODS: readonly string[] = FRUIT_KINDS.map((k) => FRUIT[k].fruit)
 /** Where a good is kept: the silo for what grows (a crop, a lemon, the fruit of the trees and bushes), the barn for
  *  the rest. */
-export const storeOf = (id: ProduceId): StoreId => (CROPS.some((c) => c.id === id) || id === 'lemon' || FRUIT_GOODS.includes(id) ? 'silo' : 'barn')
+/** What the producing pieces that are no plants give, kept where their row says (the beehive's honey: the barn). */
+const BORN_IN_SILO: readonly string[] = Object.values(DECOR).flatMap((d) => (d.bears?.store === 'silo' ? [d.bears.good] : []))
+export const storeOf = (id: ProduceId): StoreId => (CROPS.some((c) => c.id === id) || id === 'lemon' || FRUIT_GOODS.includes(id) || BORN_IN_SILO.includes(id) ? 'silo' : 'barn')
 
 /** The odds of a surprise, a building material (any of the six alike): a buyer in two comes with one, given as you
  *  sell to them; each egg, bottle of milk and fleece collected; each bed harvested and each picking of the lemon
@@ -406,7 +411,7 @@ export const FOLD = { minX: -4.3, maxX: 4.3, minZ: -1.85, maxZ: 1.85, gateX: 0, 
 
 // ───────────────────────────── what fills up, and is collected ─────────────────────────────
 
-export type ProducerId = 'tree' | 'hens' | 'cows' | 'sheep' | FruitKind
+export type ProducerId = 'tree' | 'hens' | 'cows' | 'sheep' | BearerKind
 
 /** Something that fills up over time and is collected: the lemon tree, the hens' nest, each cow, each sheep, each fruit
  *  tree and bush bought in the edit mode.
@@ -437,7 +442,7 @@ export interface ProducerDef {
   place?: PlaceId
   /** a fruit tree or bush of the edit mode's shop: one for each of its kind placed on the farm (src/farm/layout.ts,
    *  `decor`), each with its own fruit and clock, in the order they stand in the layout */
-  plant?: FruitKind
+  plant?: BearerKind
   /** the button: its id (an animal's own ends in her number: farm-cow-0), its word and its verb's picture */
   action: string
   word: string
@@ -573,10 +578,29 @@ export const PRODUCERS: Record<ProducerId, ProducerDef> = {
     surprise: 'each',
   },
   ...FRUIT_PRODUCERS(),
+  // update v1 (update-v1/missions/01-loop-economy.md c8): each beehive standing fills with honey on its own clock, a jar
+  // every twenty minutes, up to six (two hours to full); collected with the action button from a step in front of it
+  beehive: {
+    good: DECOR.beehive.bears!.good,
+    every: 20 * 60,
+    max: 6,
+    fresh: 0,
+    herd: { start: 0, max: DECOR.beehive.bears!.most },
+    plant: 'beehive',
+    action: 'farm-beehive',
+    word: 'Collect',
+    verb: 'pick',
+    stand: [0, 1.0, 0],
+    aim: [0, 0.7, 0],
+    reach: 1.9,
+    sound: 'pick',
+    sparkle: 1.0,
+    surprise: 'once',
+  },
 }
 export const PRODUCER_IDS = Object.keys(PRODUCERS) as ProducerId[]
-/** The fruit trees and bushes, each kind a producer. */
-export const PLANT_PRODUCERS = PRODUCER_IDS.filter((id) => PRODUCERS[id].plant)
+/** The fruit trees and bushes, each kind a producer (not the beehive: what it gives is no fruit). */
+export const PLANT_PRODUCERS = PRODUCER_IDS.filter((id) => (FRUIT_KINDS as readonly string[]).includes(PRODUCERS[id].plant ?? ''))
 /** The most animals a producer can have (none for the tree). */
 export const mostAnimals = (id: ProducerId) => PRODUCERS[id].herd?.max ?? 0
 /** A producer's herd full, as its tool waits for (src/farm/tools.ts): the animals past it open with the levels. */

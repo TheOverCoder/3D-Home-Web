@@ -30,8 +30,12 @@ export type DecorKind =
   | 'scarecrow-ribbons'
   | 'scarecrow-pinwheel'
   | 'scarecrow-jingle'
+  | 'beehive'
 export type FruitKind = 'apple-tree' | 'orange-tree' | 'cherry-tree' | 'blueberry-bush' | 'raspberry-bush'
 export type ShopKind = DecorKind | FruitKind
+/** The pieces of the shop that give a good as it fills (each a producer of the farm, its "animals" the pieces standing):
+ *  the fruit trees and bushes, and the beehive. */
+export type BearerKind = FruitKind | 'beehive'
 
 /** The fruit the new trees and bushes bear: goods of the farm (kept in the silo, like the lemons). */
 export type FruitId = 'apple' | 'orange' | 'cherry' | 'blueberry' | 'raspberry'
@@ -42,6 +46,9 @@ export interface ShopDef {
   name: string
   /** the first one's price; each next one costs more (`nextPrice`) */
   price: number
+  /** a producing piece that is no plant (the beehive, update v1): the good it gives, the building that good is kept in,
+   *  and the most the farm may own */
+  bears?: { good: 'honey'; store: 'silo' | 'barn'; most: number }
 }
 
 /** Decoration: light, fences and paths, seats, trees, bushes and flowers, and nine scarecrows for the beds in three
@@ -71,6 +78,9 @@ export const DECOR: Record<DecorKind, ShopDef> = {
   'scarecrow-ribbons': { id: 'scarecrow-ribbons', tab: 'decor', name: 'Ribbon scarecrow', price: 200 },
   'scarecrow-pinwheel': { id: 'scarecrow-pinwheel', tab: 'decor', name: 'Pinwheel scarecrow', price: 190 },
   'scarecrow-jingle': { id: 'scarecrow-jingle', tab: 'decor', name: 'Jingle scarecrow', price: 210 },
+  // update v1 (update-v1/missions/01-loop-economy.md c8): a hive of bees, a piece that gives (its honey kept in the
+  // barn); three at most
+  beehive: { id: 'beehive', tab: 'decor', name: 'Beehive', price: 650, bears: { good: 'honey', store: 'barn', most: 3 } },
 }
 
 /** Fruit trees and bushes: each bears its fruit (a producer of the farm, as the lemon tree is). */
@@ -94,6 +104,9 @@ export function nextPrice(base: number, owned: number): number {
   for (let j = 0; j < Math.max(0, Math.floor(owned)); j++) price += 0.2 * base * 2 ** Math.floor(j / 10)
   return Math.round(price)
 }
+
+/** The kinds that bear: the fruit trees and bushes, and every piece that gives a good (the beehive). */
+export const BEARER_KINDS: readonly BearerKind[] = [...FRUIT_KINDS, ...DECOR_KINDS.filter((k): k is 'beehive' => !!DECOR[k].bears)]
 
 /** Whether a good is one of the new fruit. */
 export const isFruit = (id: string): id is FruitId => Object.values(FRUIT).some((f) => f.fruit === id)

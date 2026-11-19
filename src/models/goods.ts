@@ -1509,6 +1509,47 @@ function bread(): Structure<'loaf'> {
   return { loaf: { shape: loaf, material: { roughness: 0.75 } } }
 }
 
+/** A jar of honey: golden glass, a gingham cover tied over its lid with string, a wooden dipper leaning in. */
+function honey(): Structure<'jar' | 'cover' | 'dipper'> {
+  const jar = lathe(
+    [
+      [0, 0],
+      [0.06, 0],
+      [0.068, 0.02],
+      [0.07, 0.1],
+      [0.058, 0.13],
+      [0.05, 0.14],
+      [0, 0.14],
+    ],
+    { seg: 24, steps: 2 },
+  ).paint((_x, y) => mix(rgb(0xd88a12), rgb(0xf6c24a), smoothstep(0.0, 0.12, y)), 0)
+  const cover = lathe(
+    [
+      [0, 0.138],
+      [0.062, 0.136],
+      [0.07, 0.125],
+      [0.072, 0.13],
+      [0.064, 0.152],
+      [0, 0.158],
+    ],
+    { seg: 24, steps: 1, shape: (a) => 1 + 0.05 * Math.max(0, Math.sin(a * 6)) },
+  )
+    .fill(rgb(0xf4ece0), 0)
+    .pattern((x, _y, z) => (Math.sin(x * 140) * Math.sin(z * 140) > 0 ? 1 : 0), rgb(0xd23a3a))
+  const dipper = merge(
+    tube(
+      [
+        [0.02, 0.12, 0],
+        [0.07, 0.22, 0.01],
+      ],
+      0.006,
+      { seg: 6, steps: 1, caps: [true, true] },
+    ),
+    ellipsoid(0.016, 0.022, 0.016, 10, 6).place([0.075, 0.23, 0.01]),
+  ).paint(() => rgb(0xb98a54), 0)
+  return { jar: { shape: jar, material: { roughness: 0.15 } }, cover: { shape: cover, material: { roughness: 0.9 } }, dipper: { shape: dipper, material: { roughness: 0.7 } } }
+}
+
 /** Every good with a model: the farm's produce, and the fruit of the fruit trees and bushes. */
 export type GoodsId = ProduceId | FruitId
 
@@ -1555,4 +1596,5 @@ export const GOODS: Record<GoodsId, () => Structure> = {
   butter,
   cheese,
   bread,
+  honey,
 }

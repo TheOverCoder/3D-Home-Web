@@ -39,7 +39,7 @@ import {
 } from './data'
 import { GOAL_IDS, MOST_STEPS } from './goals'
 import { PARCELS, PARCEL_IDS, PLACE_IDS, bedHome, canPlace, canPlaceBed, canPlaceThing, isShopKind, mostOf } from './layout'
-import { FRUIT_KINDS, SHOP as FARM_SHOP, type ShopKind } from './decor'
+import { BEARER_KINDS, SHOP as FARM_SHOP, type ShopKind } from './decor'
 import { MAX_PLACES, SHOP_LADDERS, placesOpen, shopperEvery } from './market'
 import { mostAt, ownsEach } from './tools'
 import { offersPerDay } from './contractor'
@@ -202,7 +202,7 @@ function alsoChanges(part: string): RegExp | null {
   if (part.startsWith('beds.')) return /^layout$/
   if (part === 'office') return /^orders$/
   // the fruit trees and bushes standing are their producers' plants (one count and clock each)
-  if (part === 'layout') return /^dispatch$|^producers\.[a-z]+-(tree|bush)$/
+  if (part === 'layout') return /^dispatch$|^producers\.([a-z]+-(tree|bush)|beehive)$/
   const herd = /^producers\.(\w+)\.animals$/.exec(part)
   if (herd) return new RegExp(`^producers\\.${herd[1]}\\.(stock|timer)$`)
   if (part === 'queueLevel' || part === 'nextVisitorIn') return /^queue$/
@@ -290,7 +290,7 @@ function farmProblems(): string[] {
     p.timer.forEach((t, i) => bad(`producers.${id}.timer.${i}`, typeof t === 'number' && t >= 0 && t < def.every))
   }
   // a fruit kind's producer has a count and a clock for each of its plants standing on the farm
-  for (const kind of FRUIT_KINDS) bad(`producers.${kind}: one for each plant standing`, farm.producers[kind].animals === farm.layout.decor.filter((d) => d.kind === kind).length)
+  for (const kind of BEARER_KINDS) bad(`producers.${kind}: one for each plant standing`, farm.producers[kind].animals === farm.layout.decor.filter((d) => d.kind === kind).length)
   // the machines: a queue of their own recipes, twelve at most; the done ones first, no more than there are; the one
   // under way no further in than it takes at the machine's level (none: no progress); three to twelve places; the
   // seconds worked from 0

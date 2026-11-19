@@ -59,6 +59,7 @@ const WEIGHT: Record<GoodsId, number> = {
   butter: 392,
   cheese: 300,
   bread: 704,
+  honey: 844,
 }
 
 /** The good the budget measures the market full of (marketFill's default and tests/e2e/05's `fillShelves`). */
@@ -118,6 +119,7 @@ const DECOR_WEIGHT: Record<ShopKind, number> = {
   'cherry-tree': 1188,
   'blueberry-bush': 647,
   'raspberry-bush': 869,
+  beehive: 400,
 }
 
 /** The big trees (src/models/trees.ts): on the farm, the woods' fourteen as a new farm has them and the garden's three

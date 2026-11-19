@@ -109,6 +109,7 @@ const TABLE = {
   'recipe:dairy:butter': 21,
   'recipe:oven:bread': 22,
   'recipe:dairy:cheese': 23,
+  'decor:beehive': 24,
 } as const satisfies Record<UnlockId, number>
 export const UNLOCKS: Readonly<Record<UnlockId, number>> = TABLE
 
