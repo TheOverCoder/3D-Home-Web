@@ -69,6 +69,9 @@ const DEBTS: Record<string, Partial<Record<Check, number>>> = {
   skins: { target: 4 },
   'machine-slot': { words: 1, target: 2 },
   news: { words: 2, target: 1 },
+  // a neighbour's letter and the neighbours' sheet (src/farm/people): PanelSheet's close, as every sheet's (change 10)
+  letter: { target: 1 },
+  neighbours: { target: 1 },
 }
 
 const MEASURE_ONLY = !!process.env.PANELS_MEASURE

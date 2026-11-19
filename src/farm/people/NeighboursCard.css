@@ -16,12 +16,13 @@
 .neighbours-card .nb-road { display: flex; flex-direction: column; gap: 6px; margin: 8px 0 0; padding: 0; list-style: none; }
 .neighbours-card .nb-stop { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 4px 12px 4px 6px; border-radius: 999px; background: var(--paper-2); }
 .neighbours-card .nb-stop.on { background: color-mix(in srgb, var(--sun) 40%, var(--paper)); box-shadow: 0 0 0 2px var(--sun-lip); }
-.neighbours-card .nb-stop.later { opacity: 0.7; }
+/* a chapter further on fades only its face: its words stay as clear as the rest */
+.neighbours-card .nb-stop.later .nb-stop-face { opacity: 0.7; }
 .neighbours-card .nb-stop-face { position: relative; flex: none; }
 .neighbours-card .nb-done { position: absolute; inset-inline-end: -4px; bottom: -4px; width: 20px; height: 20px; padding: 3px; border-radius: 50%; background: var(--leaf); color: #fff; }
 .neighbours-card .nb-stop-words { display: flex; flex-direction: column; gap: 2px; }
 .neighbours-card .nb-stop-words b { font: 800 16px/1.2 var(--font-text); color: var(--ink); }
-.neighbours-card .nb-stop-words small { font: 700 14px/1.2 var(--font-text); color: var(--ink-2); }
+.neighbours-card .nb-stop-words small { font: 700 15px/1.2 var(--font-text); color: var(--ink-2); }
 .neighbours-card .nb-letters ul { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 0; padding: 0; list-style: none; }
 .neighbours-card .nb-letter { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; }
 .neighbours-card .nb-letter .art { width: 26px; height: 26px; }
