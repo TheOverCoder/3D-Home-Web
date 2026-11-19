@@ -2,7 +2,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { expect, type Game, type MapId, type Pose, fillFarm, inRect, marketDoorStill } from './helpers'
-import { FRONT_DOOR, HALL, ISLAND, SHELF_RUN } from '../../src/data/market'
+import { FRONT_DOOR, GONDOLAS, HALL } from '../../src/data/market'
 import { GARDEN, GATE } from '../../src/data/layout'
 import type { WalkInRoom } from '../../src/data/buildings'
 
@@ -528,13 +528,13 @@ export const YARD: Pose[] = [
   { name: 'yard, the coop and the milk bucket at their fences', x: 4, z: 2, yaw: -P / 2, pitch: -0.05, shadow: true },
 ]
 
-/** The supermarket's own: from the lane before the garden's gate (open: you stand within 1.8 m of it), at the shelves
- *  along the hall's south wall (with the sun's map), along the aisle between the island and those shelves, and from the
+/** The supermarket's own: from the lane before the garden's gate (open: you stand within 1.8 m of it), in the aisle
+ *  between its two islands of shelves looking down it (with the sun's map), along the aisle south of them, and from the
  *  lane before its sliding doors, open (you within 2 m of the doorway: the shop seen through them). */
 const GATE_OPEN: Pose = { name: 'market: the gate open, from the lane', x: GATE.x, z: GARDEN.maxZ + 1.3, yaw: 0, pitch: -0.05, wait: 3000 }
 export const DOORS_OPEN: Pose = { name: 'market: its doors open, from the lane', x: (FRONT_DOOR.x0 + FRONT_DOOR.x1) / 2, z: FRONT_DOOR.z0 - 1.6, yaw: P, pitch: -0.05, marketDoor: 1 }
-export const SHELVES: Pose = { name: 'market: the shelves', x: (SHELF_RUN.x0 + SHELF_RUN.x1) / 2, z: SHELF_RUN.z0 - 1.1, yaw: P, pitch: -0.1, shadow: true }
-export const AISLE: Pose = { name: 'market: the south aisle', x: HALL.x1 - 0.6, z: (ISLAND.z1 + HALL.z1) / 2, yaw: P / 2, pitch: -0.05 }
+export const SHELVES: Pose = { name: 'market: the shelves', x: (GONDOLAS[0].x1 + GONDOLAS[1].x0) / 2, z: GONDOLAS[0].z0 - 0.2, yaw: P, pitch: -0.1, shadow: true }
+export const AISLE: Pose = { name: 'market: the south aisle', x: HALL.x1 - 0.6, z: (Math.max(...GONDOLAS.map((g) => g.z1)) + HALL.z1) / 2, yaw: P / 2, pitch: -0.05 }
 export const MARKET: Pose[] = [GATE_OPEN, DOORS_OPEN, SHELVES, AISLE]
 
 /** Third person at a pose: the frame compared (the walls hide things far off along the top of the screen: a few more
