@@ -157,3 +157,24 @@ export function freeze(ms: number | null) {
 export function stopReactions() {
   for (const m of Object.values(live)) m.clear()
 }
+
+// ── ghosts: what has left, drawn until its reaction is over ──
+
+/** A reaction now, as `reaction` gives it. */
+export type Now = ReturnType<typeof reaction>
+
+/** What a bed draws: its crop, or — just harvested (a pluck, with the crop it was) — that crop, plucked away until the
+ *  pluck is over; sown again meanwhile, its new crop. Null: nothing. */
+export function cropShown<C>(crop: C | null, r: Now): C | null {
+  if (crop !== null) return crop
+  return r?.kind === 'pluck' ? (((r.data as { crop?: C } | undefined)?.crop ?? null) as C | null) : null
+}
+
+/** The places a producer's place draws (its lemons, a nest's eggs, up to `most`): the `has` there now at rest, and —
+ *  just picked (a pick from `has` to how many it held) — the ones taken over them, popping off: how many places in
+ *  all, and the stretch of the ones from `has` on (null: none). */
+export function slotsShown(has: number, r: Now, most = Infinity): { n: number; popping: { xz: number; y: number } | null } {
+  const was = r?.kind === 'pick' ? ((r.data as { to?: number } | undefined)?.to ?? 0) : 0
+  const n = Math.min(most, Math.max(has, was))
+  return { n, popping: n > has && r ? { xz: r.xz, y: r.y } : null }
+}

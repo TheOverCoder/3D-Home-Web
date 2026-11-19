@@ -37,7 +37,14 @@ async function quietAgain(game: Game) {
 }
 
 // 16, the drawing pass (16-view.ts says how), on the farm's map: the yard over it, where the house stood, the pasture
-// and the gate with a full line; third person and the edit mode over it; the hedge and the woods in pieces.
+// and the gate with a full line; third person and the edit mode over it; the hedge and the woods in pieces; things
+// reacting (src/fx/react.ts: a stretch of their own scale), held mid-way.
+
+/** Where the reactions held mid-way are seen: the beds and the lemon tree from the path, and the cows' pasture. */
+const HELD: Pose[] = [
+  { name: 'held mid-way: the beds and the lemon tree, from the path', x: -1.2, z: 12.3, yaw: 0.35, pitch: -0.28 },
+  { name: 'held mid-way: the cows, from the pasture’s fence', x: 9.5, z: -1, yaw: -Math.PI / 2, pitch: -0.05 },
+]
 test.describe('the drawing pass leaves out only what cannot be seen: the farm', () => {
   test('640×360: the farm — the yard over it, where the house stood, the pasture, the gate with a full line', async ({ game }) => {
     await setUp(game, 'farm')
@@ -176,6 +183,42 @@ test.describe('the drawing pass leaves out only what cannot be seen: the farm', 
       await off(game, log, 'third person in the rain, the yard', 'third', -6, 9)
     } finally {
       await quietAgain(game)
+    }
+    console.log(log.join('\n'))
+  })
+
+  test('reactions held mid-way (a harvest plucked, a bed watered, one sown, lemons picked, a cow milked): the same frame', async ({ game }) => {
+    await setUp(game, 'farm')
+    const { page } = game
+    const log: string[] = []
+    // (fillFarm planted every bed and ripened it, and filled the tree and the animals)
+    const started = await page.evaluate(() => {
+      const h = (window as any).__home
+      const f = h.farm
+      f.state.coins += 1000
+      const harvested = f.harvest(0)
+      const watered = f.water(1)
+      Object.assign(f.state.beds[2], { crop: null, growth: 0, water: 0 })
+      const sown = f.plant(2, 'lettuce')
+      const picked = f.collect('tree', 0)
+      f.state.producers.cows.stock[0] = Math.max(1, f.state.producers.cows.stock[0])
+      const milked = f.collect('cows', 0)
+      // every reaction held 120 ms into itself, frame after frame
+      h.react.freeze(120)
+      return { harvested, watered, sown, picked, milked, plants: h.react.reacting('plant'), fruit: h.react.reacting('fruit'), animal: h.react.reacting('animal') }
+    })
+    expect(started).toMatchObject({ watered: true, sown: true, plants: true, fruit: true, animal: true })
+    expect(started.harvested).toBeGreaterThan(0)
+    expect(started.picked).toBeGreaterThan(0)
+    expect(started.milked).toBeGreaterThan(0)
+    try {
+      for (const p of HELD) await compareAt(game, p, log)
+    } finally {
+      await page.evaluate(() => {
+        const r = (window as any).__home.react
+        r.freeze(null)
+        r.stopReactions()
+      })
     }
     console.log(log.join('\n'))
   })

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setMotionPref } from '../ui/still'
-import { REACTIONS, freeze, react, reacting, reaction, scaleAt, stopReactions, type Reaction } from './react'
+import { REACTIONS, cropShown, freeze, react, reacting, reaction, scaleAt, slotsShown, stopReactions, type Reaction } from './react'
 
 // Reactions in the world (src/fx/react.ts): each row short, within 30 % of the thing's size, ending at rest or at
 // nothing (a thing that leaves), eased between its moments with no overshoot; a reaction runs by the clock and is over by
@@ -132,5 +132,35 @@ describe('a reaction', () => {
     setMotionPref('less')
     react('thing', 'fence-1', 'settle')
     expect([reaction('thing', 'fence-1'), reacting('thing')]).toEqual([null, false])
+  })
+})
+
+// what has left is drawn until its reaction is over, and never more than the place holds full
+describe('the ghosts', () => {
+  it('a bed harvested draws the crop it had, plucked away, until the pluck is over; sown again, its new crop', () => {
+    expect(cropShown<string>(null, reaction('plant', 0))).toBeNull()
+    react('plant', 0, 'pluck', { crop: 'pumpkin' })
+    expect(cropShown<string>(null, reaction('plant', 0))).toBe('pumpkin')
+    expect(cropShown('corn', reaction('plant', 0))).toBe('corn')
+    // (a watering's perk or a sowing's sprout keeps no ghost)
+    react('plant', 1, 'perk', { crop: 'pumpkin' })
+    expect(cropShown<string>(null, reaction('plant', 1))).toBeNull()
+    clock += REACTIONS.pluck.ms
+    expect(cropShown<string>(null, reaction('plant', 0))).toBeNull()
+  })
+
+  it('a place picked draws what is left at rest and the ones taken popping off, up to all it holds; at rest only what is there', () => {
+    expect(slotsShown(3, reaction('fruit', 'tree:0'), 8)).toEqual({ n: 3, popping: null })
+    react('fruit', 'tree:0', 'pick', { from: 1, to: 5 })
+    clock += 80
+    const r = reaction('fruit', 'tree:0')
+    expect(slotsShown(1, r, 8)).toEqual({ n: 5, popping: { xz: r!.xz, y: r!.y } })
+    expect(r!.xz).toBeGreaterThan(1)
+    // a nest that shows two at most: never more than two
+    expect(slotsShown(0, r, 2)).toMatchObject({ n: 2 })
+    // a new one laid meanwhile is at rest, not popping
+    expect(slotsShown(5, r, 8)).toEqual({ n: 5, popping: null })
+    clock += REACTIONS.pick.ms
+    expect(slotsShown(1, reaction('fruit', 'tree:0'), 8)).toEqual({ n: 1, popping: null })
   })
 })

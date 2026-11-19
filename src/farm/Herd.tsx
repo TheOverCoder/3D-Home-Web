@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { CuboidCollider, RigidBody, type RapierRigidBody } from '@react-three/rapier'
+import { Vector3 } from 'three'
 import { farmSound, placeSound, type FarmSound } from '../audio/sound'
+import { reaction } from '../fx/react'
 import { debugSet } from '../lib/debug'
 import { registerInteractable } from '../lib/interaction'
 import { playerState, type Point3 } from '../lib/playerState'
@@ -54,6 +56,26 @@ export interface HerdKind<A extends HerdAgent> {
   pose: (parts: Parts, a: A, i: number, t: number, dt: number) => void
 }
 
+const stretch = new Vector3()
+
+/** Puts what `put` puts with a reaction's stretch (null: as it is): each model's `at` (where it stands, round its feet)
+ *  scaled by it, across the ground and up. */
+function stretched(parts: Parts, r: { xz: number; y: number } | null, put: () => void) {
+  if (!r) return put()
+  const own = parts.at.bind(parts)
+  parts.at = (x: number, y: number, z: number, heading?: number, scale?: number | Vector3) => {
+    const k = typeof scale === 'object' ? stretch.copy(scale) : stretch.setScalar(scale ?? 1)
+    return own(x, y, z, heading, k.multiply(tmp.set(r.xz, r.y, r.xz)))
+  }
+  try {
+    put()
+  } finally {
+    // (back to the crowd's own: the prototype's)
+    delete (parts as Partial<Parts>).at
+  }
+}
+const tmp = new Vector3()
+
 export function Herd<A extends HerdAgent>({ kind, agents }: { kind: HerdKind<A>; agents: A[] }) {
   const place = PRODUCERS[kind.id].place!
   const count = useFarm(() => farm.producers[kind.id].animals)
@@ -90,7 +112,9 @@ export function Herd<A extends HerdAgent>({ kind, agents }: { kind: HerdKind<A>;
       wander(a, i, agents, kind.wander, pen, dt)
       a.pos.x = a.aim.x = a.x
       a.pos.z = a.aim.z = a.z
-      kind.pose(parts, a, i, t, dt)
+      // her pose, with a happy shiver as she is milked or shorn (src/fx/react.ts): her whole model stretched round her
+      // feet, her soft shadow with her
+      stretched(parts, reaction('animal', `${kind.id}:${i}`), () => kind.pose(parts, a, i, t, dt))
       const body = bodies.current[i]
       if (body) follow(body, a, kind.body.y)
     })
