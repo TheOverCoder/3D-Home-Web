@@ -101,3 +101,9 @@ The orchestrator runs the plan to the end without asking:
   for (`setCalendarStep` in `core.ts`, 09a's request).
 - **The long game runs fast after 01a:** the daily player reaches level 43–45 by day 14 (JOURNEY expected about 29).
   01b tunes the waves' numbers toward JOURNEY's day-14 level, with fruit trees in the sim's `forSale`; P3-play holds it.
+- **08c's six files outside its row accepted:** `pass.ts` (2 lines: the far eye the furniture copies share with the
+  crowds), `IntroPages.tsx` (the lazy tab), `GameLayer.tsx` (`SavesList` back to its panel, 08b's ask), `measure.ts`
+  (11a's ask), `Loading.tsx` and `burst.ts` (what reaches 160 KB). The shell is 160 KB (decision 18), measured 156.7 KB.
+- **Decision 11's fallback taken (10b, measured):** three.quarks' rain took 4.3 ms a frame at a 4× CPU throttle (bound:
+  1 ms) at Medium's 2,000 drops, so rain and snow are fixed seeds moved by their own shader (`weatherFx` in
+  `src/fx/quarks.ts`, about 0 ms a frame). Drops per tier: `profile.weather`.

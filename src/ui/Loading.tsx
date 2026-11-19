@@ -1,7 +1,6 @@
 import { AnimatePresence, m } from 'motion/react'
 import { useLessMotion } from './still'
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { iconUrl } from '../farm/icons'
 import { secondsLeft, useLoader } from '../lib/loader'
 import { useHome } from '../store'
 import { art } from './art'
@@ -9,6 +8,11 @@ import { burst } from './burst'
 import { Check, Clock } from './glyphs'
 import { EASE, SPRING } from './motion'
 import './Loading.css'
+// three goods' pictures for the tips, by their files (src/farm/icons.ts has them all, and the farm's table with them:
+// not part of the page shell)
+import lemon from '../assets/items/lemon.webp?url'
+import silo from '../assets/items/silo.webp?url'
+import strawberryCake from '../assets/items/strawberry_cake.webp?url'
 
 // The loading screen (the design lab's board "loading", B: the road home), from the moment the page opens until the
 // game can take its first press; then the opening menu (./Intro.tsx) takes its place. One sky going from dawn to a warm
@@ -78,11 +82,11 @@ export function useLoadView(ready: boolean, returning: boolean): LoadView {
 
 /** One tip or teaser of the farm while it loads: a picture and one line, each true of the game. */
 const TIPS: { pic: string; text: string }[] = [
-  { pic: iconUrl('lemon'), text: 'Your farm keeps growing while you are away.' },
+  { pic: lemon, text: 'Your farm keeps growing while you are away.' },
   { pic: art('people-queue'), text: 'Buyers wait at the gate with coins in hand.' },
-  { pic: iconUrl('silo'), text: 'Crops go to the silo, eggs and milk to the barn.' },
+  { pic: silo, text: 'Crops go to the silo, eggs and milk to the barn.' },
   { pic: art('wrapped-gift'), text: 'Every fifth level brings something new to wear.' },
-  { pic: iconUrl('strawberry_cake'), text: 'The oven turns your eggs and milk into cakes.' },
+  { pic: strawberryCake, text: 'The oven turns your eggs and milk into cakes.' },
   { pic: art('running-shoe'), text: 'Tap a mark on the compass and you walk to it.' },
 ]
 

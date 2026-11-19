@@ -96,8 +96,9 @@ The README has the overview; `tests/README.md` what each test guards.
 - Shadow copies: what casts is drawn into the sun's map by a mesh no camera draws (`src/lib/sculpt/sun.ts`), from a
   copy of its shape measured within half a texel of the sun's sharpest map (`sunLodsOf`, `sunEnough`: well inside the
   shadow's bias), chosen by the sun alone, so the map kept between frames holds. A crowd part that casts needs nothing;
-  a model loaded from a file casts so through `castFromCopies` (the furniture). `27` bounds what they change
-  (`__home.view.sunLod`). Something new that stands still casts through one such mesh for all its parts and looks
+  a model loaded from a file (the furniture, `GlbProp`) casts as one mesh a piece (`castAsOne`), and is drawn by the
+  game's camera from its far copies by the crowds' rule (`farFromCopies`, the crowds' eye `farEye`, switched with
+  `__home.view.lod`). `27` bounds what they change (`__home.view.sunLod`). Something new that stands still casts through one such mesh for all its parts and looks
   (`castAsOne`: the same triangles from the same sides, one draw), as the farm's merged static meshes do (`batchStatic`'s
   `sunAsOne`: one a quarter and side; the house keeps its looks apart, as its sun leaves them out room by room).
 - The sun's shadow box is the map's (`src/data/sunBox.ts`): the house's ±12 m, the farm's 16⅛ m to the south-west and
@@ -302,6 +303,20 @@ The README has the overview; `tests/README.md` what each test guards.
   or a weather's name). The clock itself, `seasonDay()`, is never quiet: the daily week counts on it. Specs stand in
   spring and clear (`ready()`, `bootApp`); one turns them on or sets its own with `__home.season` (`set`,
   `weather.set`, `quiet(false)`), a unit test with `setSeason`, `setWeather`, `quietSeasons`.
+- What they look like is numbers (`lookOf`, `src/scene/weatherLook.ts`; spring and clear is `IDENTITY`), read each
+  frame by `DayLight` (`src/scene/Lighting.tsx`: the lights' colour and strength, the sky's haze, the fog — no light
+  added) and by the materials' season chunk (`setSculptSeason`, `src/lib/sculpt/material.ts`: uniforms only, no draw or
+  compile). Snow lies on what faces the sky in a kit material with a `surface` (what is built) or `foliage` (leaves:
+  `CROWN_MATERIAL`, turned tree by tree by its place; crowns made where they stand carry it in `leafAt`), and on a plain
+  material given `seasonal()` (the lawns, the hedge, the bushes, the fences, the fields; its copies keep it, so a static
+  batch keeps it too) — never under a roof (`shelters()` in `src/lib/world.ts`: the house, the walk-ins' rooms). What
+  lives and moves and what is swept (beds' soil, paths, lanes) has none. Rain, snow and the rainbow are `weatherFx`
+  (`src/fx/quarks.ts`, fed by `FarmFx.tsx` on both maps; with less motion none): the mission's fallback, since quarks'
+  script cost a phone too much — fixed seeds moved by their own shader from the weather's clock (rain as streaks, snow
+  as points, as many as `profile.weather` gives the tier), a frame's script a few uniforms; the outside for the drawing
+  pass, ending at every roof (the materials' `shelterUniforms`). `__home.weatherFx` runs its clock on by hand (`settle`)
+  and sets the drops (`most`); `__home.fx.time` stops it.
+  `05` walks in winter's rain at a phone's most and times its script at a 4× CPU throttle; `16` and `26` stand in it.
 
 ## The farm's decoration (src/farm/decor.ts, layout.ts, decorScene.tsx, DecorShop.tsx)
 

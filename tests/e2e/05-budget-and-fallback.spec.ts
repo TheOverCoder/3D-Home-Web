@@ -19,6 +19,7 @@ import {
 } from './helpers'
 import { FRONT_DOOR, HALL } from '../../src/data/market'
 import { AGENT_SEAT, AGENT_STAND } from '../../src/data/estate'
+import { makeProfile, PHONE_WEATHER_MOST } from '../../src/lib/profile'
 
 // The budget, measured the way phones meet the game: a walk through the house and its garden (the home map), then over
 // the farm and into the supermarket (the farm's map: src/scene/Maps.tsx), at its fullest (every room filled with the
@@ -40,6 +41,11 @@ import { AGENT_SEAT, AGENT_STAND } from '../../src/data/estate'
 // The page is on the drawing-free WebGL context (nullgl.js, `countingTest`): three.js counts what a frame draws on the
 // CPU, the same with it as with a real context (26-counting holds the two side by side), and frames come at full speed
 // instead of software rendering's few a second — the three walks in about a minute, so all three run on every push.
+//
+// The walk is in the heaviest weather and season (`heaviestWeather`: winter's look, rain at its full with as many drops as
+// a phone draws at most, src/lib/profile.ts `weather`): the rain's one draw and its triangles are in every view that sees
+// the outside. Its script a frame is measured on its own at a 4× CPU throttle (a mid-range phone), on a phone's Medium
+// drops.
 
 /** The sizes: the e2e window, and a phone's drawing buffers held upright and turned sideways. */
 const SIZES = [
@@ -53,8 +59,9 @@ const LIMITS = { camera: { triangles: 250_000, draws: 700 }, shadow: { triangles
 const PAID = 0.05
 
 /** Paid by: what each debt waits for. */
-// (lighter copies for the sun already draw each piece's shadow from a copy within half a texel: src/lib/sculpt/sun.ts)
-const FURNITURE = 'fewer furniture draws: the pieces of one kind in a room drawn together'
+// (each piece of furniture loaded from a file already casts as one mesh, from its copy within half a texel:
+// src/lib/sculpt/sun.ts, castAsOne)
+const BATCHES = "the house's merged looks drawn into the sun's map as one mesh a quarter and side where its ceilings are gone (src/lib/batch.ts, `sunAsOne`, as on the farm)"
 
 interface Debt {
   view: string
@@ -67,7 +74,8 @@ interface Debt {
   pays: string[]
 }
 
-const SHADOWS = 'the ceilings go, so the sun reaches every room: every piece of furniture is drawn into its map (from its copy for the sun)'
+const SHADOWS =
+  "the ceilings go, so the sun reaches every room: the house's merged looks (114 draws, one a look and a quarter), each piece loaded from a file (one each) and the rest are drawn into its map"
 
 /** The views over the budget today (with the drawing pass, the hedge and the woods in pieces), and the most each may draw
  *  until it is paid: the most it measured, and 5 % more. Paid once it measures 5 % under the budget. */
@@ -80,9 +88,13 @@ const SHADOWS = 'the ceilings go, so the sun reaches every room: every piece of 
 // every crowd's far parts, the hanging fruit and the crops among them, drawn from copies under half a pixel, judged worth
 // a draw across the crowd). The furniture is drawn into the sun's map from copies within half a texel (sun.ts): third
 // person and decorating 266k-269k → 178k-180k triangles, the same draws.
+// paid with each piece loaded from a file cast as one mesh from its copy for the sun (sun.ts, castAsOne: where each of
+// its meshes cast from its own) and drawn by the camera from its far copies (farFromCopies): the sun's triangles in third
+// person and decorating 177.5k-180.2k → 139.6k-142.3k (under the budget), its draws 306-313 → 248-255; the camera's
+// triangles decorating 158.7k-230.1k → 119.0k-123.5k, the garden back at the house 115.4k-125.6k → 60.0k-75.9k.
 const DEBTS: Debt[] = SIZES.flatMap((s): Debt[] => [
-  { view: 'third person, the living room', size: s.name, pass: 'shadow', triangles: 189_000, draws: 328, why: SHADOWS, pays: [FURNITURE] },
-  { view: 'decorating the living room', size: s.name, pass: 'shadow', triangles: 186_000, draws: 322, why: SHADOWS, pays: [FURNITURE] },
+  { view: 'third person, the living room', size: s.name, pass: 'shadow', draws: 268, why: SHADOWS, pays: [BATCHES] },
+  { view: 'decorating the living room', size: s.name, pass: 'shadow', draws: 263, why: SHADOWS, pays: [BATCHES] },
 ])
 
 /** `BUDGET_MEASURE=1`: the table without the checks, to measure the debts again (after a change that pays one). */
@@ -239,6 +251,28 @@ function count([pose, asWhole]: [number[] | null, boolean]) {
   }
 }
 
+/** The heaviest weather and season, for the walk (src/farm/state/season.ts: a test's own, standing): winter's look and
+ *  rain at its full, as many drops as a phone draws at most, once the weather's renderer is there (a moment after
+ *  play, as the bursts' engine). The season's look adds no draw; the rain is the most that falls (snow: fewer flakes). */
+async function heaviestWeather(page: Page) {
+  await page.evaluate((most) => {
+    const h = (window as any).__home
+    h.season.set('winter')
+    h.season.weather.set({ kind: 'rain', amount: 1, wind: 0.5, rainbow: 0 })
+    h.weatherFx.most = most
+  }, PHONE_WEATHER_MOST)
+  await page.waitForFunction(() => (window as any).__home.weatherFx?.stats != null, null, { timeout: 60_000, polling: 250 })
+}
+
+/** Spring and clear again, the tier's drops. */
+async function quietWeather(page: Page) {
+  await page.evaluate(() => {
+    const h = (window as any).__home
+    h.season.quiet(true)
+    if (h.weatherFx) h.weatherFx.most = null
+  })
+}
+
 /** Stands the player at a view with the kitchen's door as it says, until the camera is there and the door still. */
 async function standAt(page: Page, v: View) {
   await page.evaluate(
@@ -278,6 +312,8 @@ async function standAt(page: Page, v: View) {
     .toMatchObject({ ready: true })
   // the market's sliding doors still: as the view means them, or else either way (a shopper going by opens them)
   await marketDoorStill(page, v.marketDoor)
+  // what falls round you now (its look and box set at once, whatever frames have run)
+  await page.evaluate(() => (window as any).__home.weatherFx?.settle(2))
 }
 
 /** Counts a view: first person with the camera set by hand; third person and decorating with the game's camera, after
@@ -376,6 +412,7 @@ async function walk(page: Page, farm: string, sizes: typeof SIZES, check: boolea
         await onMap(page, map)
         // the farm at its fullest again on its map (the shelves, quiet), the animals and the buyers in their places
         await fillFarm(page)
+        await heaviestWeather(page)
         await page.waitForTimeout(6000)
         for (const v of views.filter((w) => w.map === map)) {
           const row = await measure(page, v, farm, whole)
@@ -390,6 +427,7 @@ async function walk(page: Page, farm: string, sizes: typeof SIZES, check: boolea
       }
     }
   } finally {
+    await quietWeather(page)
     await resize(page, null)
   }
 }
@@ -495,6 +533,48 @@ test.describe('performance budget', () => {
         await restoreHouse(game.page)
       }
     })
+})
+
+test.describe('the weather on a phone', () => {
+  // The rain's script a frame (src/fx/quarks.ts, `weatherFx`: the drops are moved by their own shader, the script sets a
+  // few uniforms — the mission's fallback, since three.quarks moving each drop took 4.3 ms here), at DevTools' 4× CPU
+  // throttle (a mid-range phone), with a phone's Medium drops at the full: under 1 ms a frame.
+  test('the rain’s script a frame at a 4× CPU throttle, on a phone’s Medium drops: under 1 ms', async ({ game }) => {
+    await game.ready('farm')
+    const { page } = game
+    const medium = makeProfile('phone', false, false).weather.medium
+    const cdp = await page.context().newCDPSession(page)
+    try {
+      await page.evaluate((most) => {
+        const h = (window as any).__home
+        h.season.set('spring')
+        h.season.weather.set({ kind: 'rain', amount: 1, wind: 0.5, rainbow: 0 })
+        h.weatherFx.most = most
+      }, medium)
+      await page.waitForFunction(() => (window as any).__home.weatherFx?.stats != null, null, { timeout: 60_000, polling: 250 })
+      await page.evaluate(() => (window as any).__home.weatherFx.settle(3))
+      /** 150 frames more, then the last 120 frames' script (ms) and what fell */
+      const frames = async () => {
+        const from = await page.evaluate(() => (window as any).__home.weatherFx.stats.frames)
+        await page.waitForFunction((f) => (window as any).__home.weatherFx.stats.frames > f + 150, from, { timeout: 120_000, polling: 500 })
+        return page.evaluate(() => ({ ...(window as any).__home.weatherFx.stats }))
+      }
+      const free = await frames()
+      await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 })
+      const s = await frames()
+      await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 })
+      console.log(
+        `the rain: ${s.rain} drops alive (${medium} at the full); a frame's script at a 4× throttle ${s.median.toFixed(3)} ms (the median; mean ${s.mean.toFixed(3)}, most ${s.most.toFixed(3)}), unthrottled ${free.median.toFixed(3)} (mean ${free.mean.toFixed(3)}), over 120 frames each`,
+      )
+      expect(s.rain, 'the rain falls').toBeGreaterThan(medium * 0.6)
+      // (the median: a frame of the page's own garbage collecting, or another program's on a loaded machine, is not the rain's)
+      expect(s.median, 'the rain’s script a frame, at a 4× throttle').toBeLessThan(1)
+    } finally {
+      await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 }).catch(() => {})
+      await cdp.detach().catch(() => {})
+      await quietWeather(page)
+    }
+  })
 })
 
 test.describe('ten times the farm', () => {

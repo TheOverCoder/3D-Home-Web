@@ -5,7 +5,8 @@ import { GARDEN, GATE } from '../data/layout'
 import { debugSet } from '../lib/debug'
 import { surface } from '../lib/proceduralTextures'
 import { ownSculptMaterial, sculptMaterial } from '../lib/sculpt'
-import { CROWN_MATERIAL } from '../models/trees'
+import { seasonal } from '../lib/sculpt/material'
+import { PLACED_CROWN_MATERIAL } from '../models/trees'
 import { build, buildWhole } from './landGeometry'
 import { lotEdges, type Edge, type FarmLayout, type ParcelId } from './layout'
 import { farm, useFarm } from './state'
@@ -42,13 +43,17 @@ function Boundary({ layout }: { layout: FarmLayout }) {
   const mats = useMemo(() => {
     const leaves = surface('grass', 1, 1)
     const bark = surface('veneer', 1, 1)
+    // the season on each (src/lib/sculpt/material.ts): the hedge's leaves turn and take snow on top, as the crowns do
+    // (tree by tree), and the fence's rails take snow
     const leaf = (color: string) =>
-      new MeshStandardMaterial({ color, map: leaves.map, normalMap: leaves.normalMap, roughnessMap: leaves.roughnessMap, roughness: 1, normalScale: new Vector2(1.4, 1.4) })
+      seasonal(new MeshStandardMaterial({ color, map: leaves.map, normalMap: leaves.normalMap, roughnessMap: leaves.roughnessMap, roughness: 1, normalScale: new Vector2(1.4, 1.4) }), {
+        foliage: true,
+      })
     // in the order the single meshes were drawn: the hedge's sections, then the fence, and the crowns tree by tree (the
     // trunks' materials are the kit's, shared)
     const hedge = built.hedge.map(() => leaf('#5f7a4a'))
-    const fence = new MeshStandardMaterial({ color: '#7a6048', map: bark.map, normalMap: bark.normalMap, roughness: 0.85 })
-    const crowns = built.crowns.map(() => ownSculptMaterial(CROWN_MATERIAL))
+    const fence = seasonal(new MeshStandardMaterial({ color: '#7a6048', map: bark.map, normalMap: bark.normalMap, roughness: 0.85 }))
+    const crowns = built.crowns.map(() => ownSculptMaterial(PLACED_CROWN_MATERIAL))
     return {
       hedge,
       fence,

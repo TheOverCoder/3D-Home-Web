@@ -258,12 +258,13 @@ function openingKeepOut(shell: HomeShell, run: WallRun): { box: [number, number,
 
 /**
  * The most a room's furniture may draw: the sum of its pieces' weights (their triangles, src/home/catalogue.ts).
- * Walls hide nothing from the renderer, so a view also draws the rooms it looks towards: measured with the heaviest
- * piece (the easy chair) filling a room to this, the worst room view (the kitchen's, towards the bedroom) drew 194k
- * triangles, and 204k with all four rooms full: under the 250k a view may draw (tests/e2e/05-budget) with room to
- * spare for the farm outside. Today's house: living room 34.2k, bedroom 12.7k, studio 6.3k, kitchen 2.6k (and what hangs
- * on their walls). A limit for speed only (a debt, CLAUDE.md): `?debug&nocap` lifts it, to measure rooms filled until
- * nothing more fits (05-budget's ten times the farm).
+ * Measured with the heaviest piece (the easy chair) filling every room to this (tests/e2e/05-budget, 2026-11-18, the
+ * pieces from files drawn from their far copies and cast as one mesh each: src/lib/sculpt/sun.ts): the camera's pass
+ * draws at most 124k triangles in any view of the house (decorating), but the sun's pass in third person and
+ * decorating, where the ceilings go and the sun reaches all four rooms, draws 139.6k–142.3k of the 150k it may: one more
+ * easy chair a room (2.8k triangles each in the sun's map) would pass it, so the limit stays. Today's house: living room
+ * 34.2k, bedroom 12.7k, studio 6.3k, kitchen 2.6k (and what hangs on their walls). A limit for speed only (a debt,
+ * CLAUDE.md): `?debug&nocap` lifts it, to measure rooms filled until nothing more fits (05-budget's ten times the farm).
  */
 export const ROOM_WEIGHT = debugFlag('nocap') !== null ? Infinity : 60_000
 
