@@ -1,7 +1,7 @@
 import { machineLevel } from './machineView'
 import { priceBoosts, priceEvents } from './prices'
-import { priceFactor } from './events'
-import { eventTime, farm, saveNow, switchesByPage, writeWith } from './state/core'
+import { farm, saveNow, switchesByPage, writeWith } from './state/core'
+import { dayFactor } from './state/day'
 import { load, resumeFrom, startSlot, writeSlot } from './state/save'
 import { stepsByPage } from './state/steps'
 
@@ -60,8 +60,9 @@ function start() {
       if (document.visibilityState === 'hidden') saveNow()
     })
   }
-  // the lucky draw's goods sell for double on its day, wherever they are sold (every sale prices a good through priceOf)
-  priceEvents((good) => priceFactor(good, farm.events, eventTime()))
+  // the lucky draw's goods sell for double on its day, and every good by the market's mood, wherever they are sold
+  // (every sale prices a good through priceOf; state/day.ts)
+  priceEvents(dayFactor)
   // the line at the gate as you left it; then the time the page was closed
   resumeFrom(loaded)
 }
