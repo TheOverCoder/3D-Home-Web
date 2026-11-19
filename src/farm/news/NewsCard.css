@@ -211,3 +211,10 @@
 .news-card .sr-check svg { width: 10px; height: 10px; }
 .news-card .sr-num { font: 800 13px/1.2 var(--font-text); color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .news-card .next .sr-num { color: var(--ink); }
+/* the season the farm is in, first in the week's news (mission 10 c7) */
+.nw-season { display: flex; align-items: center; gap: 10px; padding: 8px 10px; margin: 0 0 10px; border-radius: 14px; background: var(--paper-2); }
+.nw-season > .art { width: 44px; height: 44px; flex: none; }
+.nw-season-words { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.nw-season-words b { font: 700 16px/1.2 var(--font-display); }
+.nw-season-words small { font-size: 15px; display: flex; flex-wrap: wrap; align-items: center; gap: 3px; }
+.nw-season-crop { width: 24px; height: 24px; }

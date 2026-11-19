@@ -2,6 +2,7 @@ import type { ArtId } from '../../ui/art'
 import type { Chance } from '../daily'
 import type { ProduceId } from '../data'
 import { EVENTS, LUCKY_GOODS, activeAt, canDraw, drawPool, luckyGoods, occurrenceOn, upcoming, type EventId, type EventsRecord, type Occurrence } from '../events'
+import { eventLook, type SeasonId, type SeasonView } from '../season'
 
 // What the farm news shows (./NewsCard.tsx draws it; ../NewsPanel.tsx makes it from the farm, the lab's board from
 // sample records): the date, the events on now with until when and when they come back (kind words: an invitation, never
@@ -58,6 +59,9 @@ export interface NewsView {
   soon: SoonItem[]
   /** the lucky draw, while it is its day */
   lucky: LuckyView | null
+  /** the season the farm is in (mission 10 c7: "Spring · day 3 of 7", its crops, "Next: summer"); none while the
+   *  year is quiet or waits for the first steps */
+  season: SeasonView | null
 }
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
@@ -106,9 +110,12 @@ const dayWords = (now: number, start: number) => {
   return n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : `In ${n} days`
 }
 
-const item = (o: Occurrence): NewsItem => {
+/** An event as the news tells it: under the season's own name and picture while the farm's year plays (mission 10 c7:
+ *  the harvest festival is the Blossom festival in spring), else its own. */
+const itemIn = (o: Occurrence, season: SeasonId | null): NewsItem => {
   const e = EVENTS[o.id]
-  return { id: o.id, key: o.key, name: e.name, say: e.say, chip: e.chip, art: e.art, hours: hoursOf(o.id) }
+  const look = season ? eventLook(o.id, season) : { name: e.name, pic: e.art }
+  return { id: o.id, key: o.key, name: look.name, say: e.say, chip: e.chip, art: look.pic as NewsItem['art'], hours: hoursOf(o.id) }
 }
 
 /** The masthead's date of a moment. */
@@ -121,8 +128,9 @@ export function dateWords(ms: number): string {
  * The news at `ms` (null: the events are off — nothing on, nothing coming) for a farm's record; `pool` the goods a draw
  * picks from, `seenBefore` the events it had shown when it opened (what is new is told as new while it is open).
  */
-export function newsView(ms: number | null, rec: EventsRecord, pool: ProduceId[], seenBefore: readonly string[] = rec.seen): NewsView {
-  if (ms === null) return { on: false, date: dateWords(Date.now()), now: [], soon: [], lucky: null }
+export function newsView(ms: number | null, rec: EventsRecord, pool: ProduceId[], seenBefore: readonly string[] = rec.seen, season: SeasonView | null = null): NewsView {
+  if (ms === null) return { on: false, date: dateWords(Date.now()), now: [], soon: [], lucky: null, season }
+  const item = (o: Occurrence) => itemIn(o, season?.id ?? null)
   const on = activeAt(ms)
   const now = on
     .map((o): NowItem => ({
@@ -139,5 +147,5 @@ export function newsView(ms: number | null, rec: EventsRecord, pool: ProduceId[]
       return { ...item(o), day: dayWords(ms, o.start), weekday: DAYS[d.getDay()].slice(0, 3), date: d.getDate() }
     })
   const lucky = on.some((o) => o.id === 'lucky') ? { goods: canDraw(rec, ms) ? null : luckyGoods(rec, ms), pool, until: hourWords(EVENTS.lucky.to), odds: luckyOdds(pool) } : null
-  return { on: true, date: dateWords(ms), now, soon, lucky }
+  return { on: true, date: dateWords(ms), now, soon, lucky, season }
 }

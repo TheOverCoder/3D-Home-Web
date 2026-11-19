@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { SELLABLE } from '../data'
 import { freshEvents } from '../events'
+import { seasonView } from '../season'
 import { backWords, luckyOdds, newsView } from './view'
 
 // The farm news's words (src/farm/news/view.ts): an event on now says until when and when it comes back — never a
@@ -48,5 +49,19 @@ describe('the lucky draw’s odds', () => {
 
   it('on its day the news carries them', () => {
     expect(newsView(at(21, 10), freshEvents(), ['lettuce', 'egg', 'flour']).lucky?.odds).toEqual(luckyOdds(['lettuce', 'egg', 'flour']))
+  })
+})
+
+describe('the season in the news (mission 10 c7)', () => {
+  it('carries the season the farm is in, and names an event as the season does (the harvest festival is the Harvest fair in autumn)', () => {
+    const autumn = seasonView({ id: 'autumn', day: 3, next: 'winter' })
+    expect(autumn).toMatchObject({ name: 'Autumn', day: 3, days: 7, next: { name: 'Winter' } })
+    for (let date = 1; date <= 14; date++) {
+      const v = newsView(at(date, 12), freshEvents(), [], [], autumn)
+      expect(v.season).toBe(autumn)
+      for (const e of [...v.now, ...v.soon]) if (e.id === 'harvest') expect(e.name).toBe('Harvest fair')
+    }
+    // with no season (quiet): every event its own name
+    for (const e of newsView(at(18, 12), freshEvents(), []).soon) if (e.id === 'harvest') expect(e.name).not.toBe('Harvest fair')
   })
 })

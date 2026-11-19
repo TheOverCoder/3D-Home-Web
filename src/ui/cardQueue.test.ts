@@ -36,7 +36,7 @@ function visit(due: CardId[], stepsEndedThisVisit = false): CardId[] {
 
 describe('the card queue', () => {
   it('comes in one order, with no question about counts (decision 20)', () => {
-    expect(CARD_ORDER).toEqual(['away', 'daily', 'unlocked', 'letter'])
+    expect(CARD_ORDER).toEqual(['away', 'daily', 'season', 'unlocked', 'letter'])
     expect(nextCard(now({ due: ['letter', 'daily', 'away'] }))).toBe('away')
     expect(nextCard(now({ due: ['letter', 'daily'] }))).toBe('daily')
   })

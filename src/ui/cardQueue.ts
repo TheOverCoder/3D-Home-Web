@@ -8,7 +8,7 @@
 /** The cards that open by themselves, in the order they come. A season has no card of its own: its arrival is a line
  *  of the daily gift's [review: update-v1/JOURNEY.md fix 2; 'season' after 'daily' gives it one]. No question about
  *  counts is asked (decision 20: no outside analytics in v1). */
-export const CARD_ORDER = ['away', 'daily', 'unlocked', 'letter'] as const
+export const CARD_ORDER = ['away', 'daily', 'season', 'unlocked', 'letter'] as const
 export type CardId = (typeof CARD_ORDER)[number]
 
 /** [review: JOURNEY.md fix 2] At most this many open by themselves in one visit, the welcome back counted. A visit is a

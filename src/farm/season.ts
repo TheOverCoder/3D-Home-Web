@@ -110,6 +110,23 @@ export function eventLook(id: EventId, season: SeasonId): { name: string; pic: s
   return own ?? { name: EVENTS[id].name, pic: EVENTS[id].art }
 }
 
+/** A season as the news and its arrival card tell it (mission 10 c7): its name and picture, the day of it and how many
+ *  days it has, its crops, and the season after (no countdown: it waits for you). Pure. */
+export interface SeasonView {
+  id: SeasonId
+  name: string
+  pic: string
+  day: number
+  days: number
+  crops: readonly CropId[]
+  next: { name: string; pic: string }
+}
+export function seasonView(at: { id: SeasonId; day: number; next: SeasonId }): SeasonView {
+  const s = SEASONS[at.id]
+  const n = SEASONS[at.next]
+  return { id: at.id, name: s.name, pic: s.pic, day: at.day, days: SEASON_DAYS, crops: s.crops, next: { name: n.name, pic: n.pic } }
+}
+
 /** Every crop of the farm's, in the order of CROPS, with the season it is in. */
 export const cropSeasons = () => CROPS.map((c) => ({ crop: c.id, season: seasonOf(c.id) }))
 

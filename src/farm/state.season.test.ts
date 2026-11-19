@@ -5,6 +5,9 @@ import { SEASON_DAYS, SEASONS_AFTER_STEPS, seasonExtra } from './season'
 import { CLEAR, standing, weatherAt } from './weather'
 import { justSaved, savedNow, startFrom } from './testSaves'
 import {
+  arrivalShown,
+  seasonArrival,
+  seasonNews,
   bedYield,
   cameBack,
   farm,
@@ -299,5 +302,28 @@ describe('crops in season', () => {
     const beds = (save.beds as Record<string, unknown>[]).map((b, i) => (i === 1 ? { ...b, crop: null, inSeason: true } : b))
     startFrom(justSaved({ ...save, beds }))
     expect(farm.beds[1].inSeason).toBe(false)
+  })
+})
+
+// Mission 10 c7: the season in the news and its arrival — told while the year plays, an arrival once a season (never
+// the first spring), nothing while quiet.
+describe('the season told', () => {
+  it('a season that began is due to be shown once; shown, never again; the next season is due in its turn', () => {
+    quietSeasons(false)
+    expect(seasonNews()?.name).toBe('Spring')
+    expect(seasonArrival()).toBe(null)
+    for (let k = 1; k <= SEASON_DAYS; k++) playOn(k)
+    expect(seasonArrival()?.name).toBe('Summer')
+    expect(seasonArrival()).toMatchObject({ day: 1, days: SEASON_DAYS, next: { name: 'Autumn' } })
+    arrivalShown()
+    expect(seasonArrival()).toBe(null)
+    for (let k = SEASON_DAYS + 1; k <= 2 * SEASON_DAYS; k++) playOn(k)
+    expect(seasonArrival()?.name).toBe('Autumn')
+  })
+
+  it('quiet where the game is tested: nothing to tell', () => {
+    quietSeasons(true)
+    for (let k = 1; k <= SEASON_DAYS; k++) playOn(k)
+    expect([seasonNews(), seasonArrival()]).toEqual([null, null])
   })
 })

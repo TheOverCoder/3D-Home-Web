@@ -1,6 +1,7 @@
 import { BuyDecor, DecorShop } from './DecorShop'
 import { GoalsPanel } from './GoalsPanel'
 import { AwayPanel, AwayWatcher } from './AwayPanel'
+import { SeasonPanel, SeasonWatcher } from './SeasonCard'
 import { DailyPanel, DailyWatcher } from './DailyPanel'
 import { StepHint } from './FirstSteps'
 import { LevelUp } from './XpChip'
@@ -91,6 +92,7 @@ export function FarmUI() {
         {/* one element for both: the card that asks for an upgrade opens over the board, never a board again */}
         {(panel?.kind === 'orders' || panel?.kind === 'office-upgrade') && <OrdersPanel asking={panel.kind === 'office-upgrade' ? panel.id : null} />}
         {panel?.kind === 'away' && <AwayPanel />}
+        {panel?.kind === 'season' && <SeasonPanel />}
         {panel?.kind === 'manager' && <ManagerPanel />}
         {panel?.kind === 'market' && <MarketPanel />}
         {panel?.kind === 'market-place' && <MarketPlacePanel place={panel.place} />}
@@ -127,6 +129,7 @@ export function FarmUI() {
           a time, two a visit at most */}
       <PanelGuard name="watchers" layer>
         <AwayWatcher />
+        <SeasonWatcher />
         <NewsWatcher />
         <DailyWatcher />
         <CardWatcher />

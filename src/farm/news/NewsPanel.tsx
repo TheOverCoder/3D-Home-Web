@@ -4,7 +4,7 @@ import { debugSet } from '../../lib/debug'
 import { haptic } from '../../lib/device'
 import { useHome } from '../../store'
 import { EVENTS, speedAt, type Boost } from '../events'
-import { drawLucky, eventTime, eventsNow, farm, luckyPool, newsBadge, roadNow, sawNews, setEventClock, useFarm } from '../state'
+import { drawLucky, eventTime, eventsNow, farm, luckyPool, newsBadge, roadNow, sawNews, seasonNews, setEventClock, useFarm } from '../state'
 import { NewsCard } from './NewsCard'
 import { newsView } from './view'
 
@@ -26,7 +26,7 @@ export function NewsPanel() {
     const t = window.setInterval(again, 30_000)
     return () => window.clearInterval(t)
   }, [])
-  const v = newsView(eventTime(), farm.events, luckyPool(), seenBefore)
+  const v = newsView(eventTime(), farm.events, luckyPool(), seenBefore, seasonNews())
   return (
     <NewsCard
       v={v}

@@ -1,7 +1,7 @@
 import { debugFlag, debugSet } from '../../lib/debug'
 import { onHere } from '../../lib/quiet'
 import { freshPlayed, longDay, markPlayed as playedOn, type Played } from '../calendar'
-import { freshSeason, sanitizeSeason, SEASON_IDS, seasonAt, SEASONS_AFTER_STEPS, type SeasonId, type SeasonRecord } from '../season'
+import { freshSeason, sanitizeSeason, SEASON_IDS, seasonAt, seasonView, SEASONS_AFTER_STEPS, type SeasonId, type SeasonRecord, type SeasonView } from '../season'
 import { CLEAR, standing, weatherAt, type Weather, type WeatherKind } from '../weather'
 import { bump, calendarDay, farm, save } from './core'
 import { stepsBusy } from './steps'
@@ -89,6 +89,26 @@ export function seasonNow(): SeasonId {
 export function seasonPlaying(): SeasonId | null {
   if (seasonFrom !== 'clock') return seasonFrom
   return waiting() ? null : seasonDay().id
+}
+
+/** The season the farm is in, as the news tells it (null while the year is quiet or waits: nothing to tell). */
+export function seasonNews(): SeasonView | null {
+  return seasonPlaying() === null || farm.season.told < 0 ? null : seasonView(seasonDay())
+}
+
+/** A season began that the farm has not shown yet (mission 10 c7): its arrival card is due, once (the queue opens it
+ *  after the welcome back and the day's gift). Never the first spring (begun with nothing to show), never while quiet. */
+export function seasonArrival(): SeasonView | null {
+  const now = seasonNews()
+  return now && seasonDay().ordinal > farm.season.told ? now : null
+}
+
+/** The arrival shown: never again for this season. */
+export function arrivalShown() {
+  if (farm.season.told < 0) return
+  farm.season = { ...farm.season, told: Math.max(farm.season.told, seasonDay().ordinal) }
+  bump()
+  save()
 }
 
 /** The weather on the farm now: its clock's in the season now (src/farm/weather.ts), but clear while a new farm's first

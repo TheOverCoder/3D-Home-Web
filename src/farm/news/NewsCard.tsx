@@ -1,6 +1,6 @@
 import { AnimatePresence, m, type Variants } from 'motion/react'
 import { useState } from 'react'
-import { art } from '../../ui/art'
+import { art, type ArtId } from '../../ui/art'
 import { GarmentPic } from '../../ui/GarmentPic'
 import { Check } from '../../ui/glyphs'
 import { Road } from '../../ui/Road'
@@ -10,6 +10,7 @@ import { Odds } from '../DailyCard'
 import type { ProduceId } from '../data'
 import { iconUrl } from '../icons'
 import type { RoadStopView, SeasonRoadView } from '../seasonRoad'
+import type { SeasonView } from '../season'
 import { LuckyReels } from './LuckyReels'
 import type { NewsView, NowItem, SoonItem } from './view'
 import './NewsCard.css'
@@ -94,6 +95,28 @@ const stopWords = (s: RoadStopView) =>
         : s.garment
           ? `the ${s.garment.name.toLowerCase()} and ${s.coins} coins`
           : `${s.coins} coins`
+
+/** The season the farm is in, first in the week's news (mission 10 c7): its picture, "Spring · day 3 of 7", its crops in
+ *  season (a quarter more), and the season after — no countdown: it waits for you. */
+function SeasonLine({ s }: { s: SeasonView }) {
+  return (
+    <m.section className="nw-season" variants={ITEM} aria-label={`${s.name}, day ${s.day} of ${s.days}`}>
+      <img className="art" src={art(s.pic as ArtId)} alt="" />
+      <span className="nw-season-words">
+        <b>
+          {s.name} · day {s.day} of {s.days}
+        </b>
+        <small>
+          In season:{' '}
+          {s.crops.map((c) => (
+            <img key={c} className="nw-season-crop" src={iconUrl(c)} alt={c} title={c} />
+          ))}{' '}
+          · Next: {s.next.name}
+        </small>
+      </span>
+    </m.section>
+  )
+}
 
 /** The "This season" tab: the season road (src/farm/seasonRoad.ts) — its season, ten stops on a line filled as far as
  *  the XP has come, the one being worked on glowing, the last the season's garment; and one line: how far the next stop
@@ -192,6 +215,7 @@ export function NewsCard({
           </m.div>
         ) : (
           <m.div key="week" className="nw-body" variants={TAB} initial="hidden" animate="show" exit="out">
+            {v.season && <SeasonLine s={v.season} />}
             <m.section className="nw-now" variants={ITEM} aria-label="Active now">
               <h3 className="nw-kicker">
                 {v.now.length > 0 && <i className="nw-live" aria-hidden="true" />}
