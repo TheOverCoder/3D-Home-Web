@@ -77,7 +77,8 @@ test.describe('the drawing pass leaves out only what cannot be seen: the walk-in
         `${p.name}, the lot's shells on their own → through one mesh (${r.size.join('×')}): ${r.whole.calls} draws / ${r.whole.triangles} triangles → ${r.pieces.calls} / ${r.pieces.triangles}; ${r.differ} pixels and ${r.texels} map texels differ`,
       )
       expect(r.one, 'through one mesh again afterwards').toBe(true)
-      expect(r.pieces.calls, `${p.name}: one sun draw fewer`).toBe(r.whole.calls - 1)
+      // (every walk-in's shell is inside the sun's box, so each casts: one draw for them all where each had its own)
+      expect(r.pieces.calls, `${p.name}: one sun draw for the ${WALK_INS.length} shells`).toBe(r.whole.calls - (WALK_INS.length - 1))
       expect(r.differ, `${p.name}: the frame the same`).toBe(0)
       expect(r.texels, `${p.name}: the sun's map the same`).toBe(0)
     }

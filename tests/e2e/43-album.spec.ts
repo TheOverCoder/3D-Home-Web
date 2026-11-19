@@ -57,7 +57,8 @@ test.describe('the farm album', () => {
     await openAlbum(game)
     const card = page.locator(CARD)
     await expect(card.locator('.al-ladder')).toHaveCount(3)
-    await expect(card.locator('.al-row')).toHaveCount(9)
+    // (the year's page, 10c: the seasons' pieces and the seasons lived, the tenth)
+    await expect(card.locator('.al-row')).toHaveCount(10)
     await expect(card.locator('.al-row.done')).toHaveCount(0)
     // a page: its tiles, each a silhouette to earn; one touched says how
     await card.getByRole('button', { name: /^Building materials: 0 of 6$/ }).click()
@@ -67,7 +68,8 @@ test.describe('the farm album', () => {
     await card.locator('.al-tile').first().click()
     await expect(card.locator('.al-line')).toHaveText('Brick: Comes as a surprise.')
     await card.getByRole('button', { name: 'Back' }).click()
-    await expect(card.locator('.al-row')).toHaveCount(9)
+    // (the year's page, 10c: the seasons' pieces and the seasons lived, the tenth)
+    await expect(card.locator('.al-row')).toHaveCount(10)
     await closeAlbum(game)
 
     // every material found (as surprises bring them): the page is done, its garment comes by itself, once, with a toast
