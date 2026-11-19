@@ -1,7 +1,7 @@
-import { APRON, insideHouse, roomAt, type FloorKind, type RoomId } from '../data/layout'
+import { APRON, HOUSE, insideHouse, roomAt, type FloorKind, type RoomId } from '../data/layout'
 import { floorOf } from '../home/shell'
 import { DRIVE, PLOT } from '../data/home'
-import { spaceAt, walkInRoomAt, type WalkIn, type WalkInRoom } from '../data/buildings'
+import { spaceAt, walkInRoomAt, WALK_INS, type WalkIn, type WalkInRoom } from '../data/buildings'
 import { reachRects, type Rect } from '../farm/layout'
 import { farm, type Place } from '../farm/state/core'
 import { useHome } from '../store'
@@ -63,3 +63,29 @@ export function groundBounds(): Rect {
 
 /** A key for the ground of the map in the scene: it changes when the map or the land you own does. */
 export const groundKey = () => (houseHere() ? 'home' : `farm|${farm.layout.land.join(',')}`)
+
+/** A room with a roof over it, on the ground: up to `top` (its roof's top), nothing falls in it and no snow lies there. */
+export interface Shelter {
+  x0: number
+  x1: number
+  z0: number
+  z1: number
+  top: number
+}
+
+/** The house's ceilings' top (src/scene/Ceilings.tsx: slabs 0.3 m thick on the walls). */
+const HOUSE_ROOF = HOUSE.wallHeight + 0.3
+
+const HOME_SHELTERS: readonly Shelter[] = [{ x0: HOUSE.minX, x1: HOUSE.maxX, z0: HOUSE.minZ, z1: HOUSE.maxZ, top: HOUSE_ROOF }]
+const FARM_SHELTERS: readonly Shelter[] = WALK_INS.flatMap((w) => w.rooms.map((r) => ({ x0: r.x0, x1: r.x1, z0: r.z0, z1: r.z1, top: w.roof.y + w.roof.thick })))
+
+/** What has a roof over it on the map in the scene, where the weather never reaches (the rain and snow end at it, and no
+ *  snow lies on a floor, a table or a shelf there: src/fx/quarks.ts, src/lib/sculpt/material.ts): at home the house, on
+ *  the farm each room of each walk-in building, under its roof. */
+export const shelters = (): readonly Shelter[] => (houseHere() ? HOME_SHELTERS : FARM_SHELTERS)
+
+/** Under a roof here (with `margin` metres round its rooms): the weather does not reach the point. */
+export function sheltered(x: number, y: number, z: number, margin = 0): boolean {
+  for (const s of shelters()) if (y < s.top && x > s.x0 - margin && x < s.x1 + margin && z > s.z0 - margin && z < s.z1 + margin) return true
+  return false
+}

@@ -3,7 +3,7 @@ import { DAY } from '../farm/data'
 import { moodAt } from '../farm/day'
 import { SEASON_IDS, SEASONS } from '../farm/season'
 import { CLEAR, type Weather, type WeatherKind } from '../farm/weather'
-import { CLEAR_FOG, CLEAR_SKY, IDENTITY, WEATHER_LOOK, lookOf, moodWith } from './weatherLook'
+import { CLEAR_FOG, CLEAR_SKY, FOLIAGE_FAR, IDENTITY, WEATHER_LOOK, lookOf, moodWith } from './weatherLook'
 
 // What the season and the weather look like (src/scene/weatherLook.ts): spring in clear weather is the farm as it always
 // looked, number for number; every look stays within what the lights and the sky can take, and the day's light under
@@ -51,7 +51,10 @@ describe('the look', () => {
     for (const season of SEASON_IDS) {
       const l = lookOf(season, { kind: 'rain', amount: 1, wind: 0.4, rainbow: 0 })
       expect(l.grass).toBe(SEASONS[season].look.grass)
-      expect(l.foliage).toEqual({ color: SEASONS[season].look.foliage, amount: SEASONS[season].look.turn })
+      expect(l.foliage).toMatchObject({ color: SEASONS[season].look.foliage, amount: SEASONS[season].look.turn })
+      // the furthest turned: autumn's reds, else the season's own colour
+      expect(l.foliage.far).toBe(FOLIAGE_FAR[season] ?? SEASONS[season].look.foliage)
+      expect(l.foliage.far).toMatch(/^#[0-9a-f]{6}$/)
       expect(l.cover > 0).toBe(season === 'winter')
     }
   })

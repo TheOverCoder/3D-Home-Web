@@ -213,6 +213,10 @@ export async function openGame(browser: Browser, counting = false): Promise<{ ga
         h.season?.quiet?.(true)
         // the controls learnt (src/settings.ts): a spec that taught them leaves them learnt for the next
         h.settings?.getState?.().update?.({ learnt: { stick: true, look: true } })
+        // the effects' clock at its own speed and the weather's drops at the device's count (a spec that set them,
+        // 05's walk in the rain, 16's frozen poses, leaves them as they start)
+        if (h.fx?.time) h.fx.time.speed = 1
+        if (h.weatherFx) h.weatherFx.most = null
       }, map)
     },
   }

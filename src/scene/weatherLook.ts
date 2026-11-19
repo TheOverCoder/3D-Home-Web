@@ -3,7 +3,8 @@
 // there are (the day's mood multiplied and shifted: `moodWith`); the sky's haze (drei's Sky: turbidity, rayleigh) and
 // the fog's density; how much rain, snow, wind and rainbow there is; snow on what faces the sky, the crowns' and
 // hedges' colour, the lawn's. Spring in clear weather is IDENTITY: the farm as it always looked. Pure: no three.js, no
-// renderer; not yet read by anything.
+// renderer. Read each frame by the light and the materials (src/scene/Lighting.tsx, DayLight: the lights, the sky, the
+// fog and src/lib/sculpt/material.ts's season) and by what falls (src/fx/quarks.ts, `weatherFx`, fed by FarmFx.tsx).
 
 import { DAY } from '../farm/data'
 import { SEASONS, type SeasonId } from '../farm/season'
@@ -26,8 +27,9 @@ export interface Look {
   rainbow: number
   /** snow on what faces the sky, 0–1 */
   cover: number
-  /** the crowns', hedges' and bushes' colour, and how far they turn to it */
-  foliage: { color: string; amount: number }
+  /** the crowns', hedges' and bushes' colour, the colour the trees that turn furthest go to (`far`: autumn's reds),
+   *  and how far they turn (each tree its own share of it) */
+  foliage: { color: string; far: string; amount: number }
   /** the lawn's colour, multiplying today's */
   grass: string
 }
@@ -49,9 +51,13 @@ export const IDENTITY: Look = {
   wind: 0,
   rainbow: 0,
   cover: 0,
-  foliage: { color: '#ffffff', amount: 0 },
+  foliage: { color: '#ffffff', far: '#ffffff', amount: 0 },
   grass: '#ffffff',
 }
+
+/** The colour the trees that turn furthest go to in each season (the rest between it and the season's own): autumn's
+ *  woods orange to red; in the other seasons every tree turns to the season's own colour. */
+export const FOLIAGE_FAR: Record<SeasonId, string | null> = { spring: null, summer: null, autumn: '#b5401f', winter: null }
 
 /** What each kind of weather does at its full: the sun and the sky light multiplied, the warmth shifted, the sky's haze
  *  and the fog added to. In between, by its amount. */
@@ -84,7 +90,7 @@ export function lookOf(season: SeasonId, weather: Weather): Look {
     wind: clamp01(weather.wind),
     rainbow: clamp01(weather.rainbow),
     cover: s.look.cover,
-    foliage: { color: s.look.foliage, amount: s.look.turn },
+    foliage: { color: s.look.foliage, far: FOLIAGE_FAR[season] ?? s.look.foliage, amount: s.look.turn },
     grass: s.look.grass,
   }
 }

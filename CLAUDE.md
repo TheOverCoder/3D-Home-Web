@@ -297,6 +297,20 @@ The README has the overview; `tests/README.md` what each test guards.
   or a weather's name). The clock itself, `seasonDay()`, is never quiet: the daily week counts on it. Specs stand in
   spring and clear (`ready()`, `bootApp`); one turns them on or sets its own with `__home.season` (`set`,
   `weather.set`, `quiet(false)`), a unit test with `setSeason`, `setWeather`, `quietSeasons`.
+- What they look like is numbers (`lookOf`, `src/scene/weatherLook.ts`; spring and clear is `IDENTITY`), read each
+  frame by `DayLight` (`src/scene/Lighting.tsx`: the lights' colour and strength, the sky's haze, the fog — no light
+  added) and by the materials' season chunk (`setSculptSeason`, `src/lib/sculpt/material.ts`: uniforms only, no draw or
+  compile). Snow lies on what faces the sky in a kit material with a `surface` (what is built) or `foliage` (leaves:
+  `CROWN_MATERIAL`, turned tree by tree by its place; crowns made where they stand carry it in `leafAt`), and on a plain
+  material given `seasonal()` (the lawns, the hedge, the bushes, the fences, the fields; its copies keep it, so a static
+  batch keeps it too) — never under a roof (`shelters()` in `src/lib/world.ts`: the house, the walk-ins' rooms). What
+  lives and moves and what is swept (beds' soil, paths, lanes) has none. Rain, snow and the rainbow are `weatherFx`
+  (`src/fx/quarks.ts`, fed by `FarmFx.tsx` on both maps; with less motion none): the mission's fallback, since quarks'
+  script cost a phone too much — fixed seeds moved by their own shader from the weather's clock (rain as streaks, snow
+  as points, as many as `profile.weather` gives the tier), a frame's script a few uniforms; the outside for the drawing
+  pass, ending at every roof (the materials' `shelterUniforms`). `__home.weatherFx` runs its clock on by hand (`settle`)
+  and sets the drops (`most`); `__home.fx.time` stops it.
+  `05` walks in winter's rain at a phone's most and times its script at a 4× CPU throttle; `16` and `26` stand in it.
 
 ## The farm's decoration (src/farm/decor.ts, layout.ts, decorScene.tsx, DecorShop.tsx)
 
