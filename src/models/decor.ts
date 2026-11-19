@@ -209,7 +209,8 @@ function lamp(): Structure<'iron' | 'glass'> {
     ],
     { seg: 8, steps: 1 },
   )
-  const iron = merge(post, bar, plate, ...rods, roof, knob).paint((_x, y) => mix(IRON, IRON_LIGHT, 0.4 * smoothstep(2.3, 2.5, y)), 0)
+  // (tint 1: a painted lamp's iron wears its paint: src/farm/decor.ts, DECOR_PAINTS)
+  const iron = merge(post, bar, plate, ...rods, roof, knob).paint((_x, y) => mix(IRON, IRON_LIGHT, 0.4 * smoothstep(2.3, 2.5, y)), 1)
   // the glass: four panes wider at the top, warm and pale (its glow at night)
   const glass = loft(
     [
@@ -287,7 +288,7 @@ function fence(): Structure<'paint'> {
   }
   // white paint, a little grubby near the ground (the same at both ends: posts drawn twice match)
   const all = merge(post(-SECTION_HALF), post(SECTION_HALF), ...rails, ...pickets)
-    .paint(() => PAINT, 0)
+    .paint(() => PAINT, 1)
     .shade((_x, y) => 0.8 + 0.2 * smoothstep(0.0, 0.32, y))
   return { paint: { shape: all, material: { roughness: 0.7 } } }
 }
@@ -383,7 +384,7 @@ function steppingStones(): Structure<'stones'> {
 
 function bench(): Structure<'wood' | 'iron'> {
   // three seat slats (front +z) and two back slats leaning back on the sides' back legs
-  const slats = [-0.12, 0.02, 0.16].map((z, k) => beam(-0.72, 0.72, 0.44, z, 0.058, 0.019).paint(grain(0, 11 + k), 0))
+  const slats = [-0.12, 0.02, 0.16].map((z, k) => beam(-0.72, 0.72, 0.44, z, 0.058, 0.019).paint(grain(0, 11 + k), 1))
   const backLeg = (x: number): V3[] => [
     [x, -0.01, -0.14],
     [x, 0.2, -0.16],
@@ -396,7 +397,7 @@ function bench(): Structure<'wood' | 'iron'> {
   const back = [0.62, 0.8].map((y, k) => {
     const z = -0.2 - (y - 0.44) * (0.105 / 0.46) + 0.03
     return beam(-0.72, 0.72, 0, 0, 0.016, 0.055)
-      .paint(grain(0, 21 + k), 0)
+      .paint(grain(0, 21 + k), 1)
       .place([0, 0, 0], [-lean, 0, 0])
       .place([0, y, z])
   })
@@ -621,14 +622,14 @@ function flowers(): Structure<'leaves' | 'petals'> {
 }
 
 function planter(): Structure<'wood' | 'leaves' | 'petals'> {
-  const box = slab(0.45, 0.2, 0.05, 0.4, 8, 16).paint(grain(0, 33), 0)
+  const box = slab(0.45, 0.2, 0.05, 0.4, 8, 16).paint(grain(0, 33), 1)
   const trim = merge(
     slab(0.48, 0.03, 0.39, 0.44, 6, 8).place([0, 0, 0.2]),
     slab(0.48, 0.03, 0.39, 0.44, 6, 8).place([0, 0, -0.2]),
     slab(0.03, 0.2, 0.39, 0.44, 6, 8).place([0.45, 0, 0]),
     slab(0.03, 0.2, 0.39, 0.44, 6, 8).place([-0.45, 0, 0]),
   )
-    .paint(() => mix(WOOD, WOOD_DARK, 0.45), 0)
+    .paint(() => mix(WOOD, WOOD_DARK, 0.45), 1)
     .surface(0)
   const feet = [-1, 1].flatMap((sx) => [-1, 1].map((sz) => slab(0.035, 0.035, 0, 0.07, 6, 8).place([sx * 0.4, 0, sz * 0.15]))).map((f) => f.paint(() => WOOD_DARK, 0).surface(0))
   const soil = slab(0.43, 0.18, 0.38, 0.425, 8, 12)
@@ -705,7 +706,7 @@ function birdbath(): Structure<'stone' | 'water'> {
     ],
     { seg: 16, steps: 1 },
   )
-    .paint((x, y, z) => mix(rgb(0xbab3a6), rgb(0x8f877b), 0.5 * smoothstep(0.35, 0.8, fbm3(x * 5, y * 5, z * 5, 91))), 0)
+    .paint((x, y, z) => mix(rgb(0xbab3a6), rgb(0x8f877b), 0.5 * smoothstep(0.35, 0.8, fbm3(x * 5, y * 5, z * 5, 91))), 1)
     // weathered darker and mossy low down
     .blend(rgb(0x5f6e43), (_x, y) => 0.5 * smoothstep(0.2, 0.0, y))
     .shade((_x, y) => 0.85 + 0.15 * smoothstep(0.1, 0.6, y))
@@ -833,7 +834,7 @@ function well(): Structure<'stone' | 'wood' | 'roof' | 'water'> {
     .paint(() => mix(SHINGLE, rgb(0x2c2e30), 0.6), 0)
     .surface(0)
   const roof = merge(
-    merge(slope(1), slope(-1)).paint(() => SHINGLE, 0),
+    merge(slope(1), slope(-1)).paint(() => SHINGLE, 1),
     cap,
   )
   return {
@@ -1032,6 +1033,59 @@ function snowman(): Structure<'snow' | 'trim'> {
   }
 }
 
+/** The season banner (mission 02 c8): a wooden pole on a round stone foot with an arm at its top, and a pennant hanging
+ *  from the arm in two halves, white under their tint (the season's two colours: src/farm/decor.ts, BANNER_LOOKS, drawn
+ *  as each half's instance colour), the outer half cut to a point. Centred on its footprint. */
+function banner(): Structure<'pole' | 'clothA' | 'clothB'> {
+  const x0 = -0.26
+  const foot = lathe(
+    [
+      [0.14, 0],
+      [0.14, 0.05],
+      [0.1, 0.08],
+      [0, 0.09],
+    ],
+    { seg: 10, steps: 1 },
+  )
+    .place([x0, 0, 0])
+    .paint(() => rgb(0x8d8a82), 0)
+  const wood = rgb(0x8a5a32)
+  const pole = tube(
+    [
+      [x0, 0.06, 0],
+      [x0, 2.0, 0],
+    ],
+    0.024,
+    { seg: 6, caps: [true, true] },
+  ).paint(() => wood, 0)
+  const arm = tube(
+    [
+      [x0, 1.9, 0],
+      [0.3, 1.9, 0],
+    ],
+    0.016,
+    { seg: 5, caps: [false, true] },
+  ).paint(() => wood, 0)
+  const knob = ellipsoid(0.034, 0.04, 0.034, 6, 4)
+    .place([x0, 2.02, 0])
+    .paint(() => rgb(0xd9b25c), 0)
+  // the pennant's two halves, side by side under the arm; white with tint 1, so an instance's colour is the cloth's
+  const cloth = (xa: number, xb: number, point: boolean) =>
+    loft(
+      [
+        { c: [(xa + xb) / 2, 1.893, 0], rx: (xb - xa) / 2, ry: 0.006 },
+        { c: [(xa + xb) / 2, 1.2, 0], rx: (xb - xa) / 2, ry: 0.006 },
+        { c: [point ? xb - 0.02 : (xa + xb) / 2, point ? 1.02 : 1.2, 0], rx: point ? 0.02 : (xb - xa) / 2, ry: 0.006 },
+      ],
+      { seg: 4, steps: 1, up: [0, 0, 1], shape: (a) => squircle(a, 8), caps: [true, true] },
+    ).paint(() => rgb(0xf4f1ea), 1)
+  return {
+    pole: { shape: merge(foot, pole, arm, knob), material: { roughness: 0.75 } },
+    clothA: { shape: cloth(-0.2, 0.04, false), material: { roughness: 0.9 } },
+    clothB: { shape: cloth(0.04, 0.28, true), material: { roughness: 0.9 } },
+  }
+}
+
 // ───────────────────────────── the catalogue's models ─────────────────────────────
 
 const MAKERS: Record<DecorKind, () => Structure> = {
@@ -1064,6 +1118,7 @@ const MAKERS: Record<DecorKind, () => Structure> = {
   parasol,
   'hay-bales': hayBales,
   snowman,
+  banner,
 }
 
 /** One decoration's model (made afresh each call: build it once per kind and share it). */

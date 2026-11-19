@@ -5,7 +5,7 @@ import { WALK_INS, bounds } from '../data/buildings'
 import { LOT } from '../data/lot'
 import { CABIN } from '../data/market'
 import { BED, BEDS, MACHINES, MOST_PLANTS, OFFICE, PATH_X, SHED, STAND, TRACTOR } from './data'
-import { FRUIT, SHOP, type BearerKind, type ShopKind } from './decor'
+import { FRUIT, isLookOf, SHOP, type BearerKind, type ShopKind } from './decor'
 
 // Where the farm's movable things stand, and the land they may stand on. A "place" is a whole thing moved in one
 // go in the edit mode (the hen run with its coop, the cows' pasture, the sheep fold, the silo, the barn, the lemon
@@ -39,6 +39,8 @@ export interface DecorPiece {
   x: number
   z: number
   rot: number
+  /** the look it wears (mission 02 F5: a paint, the banner's season; one of its row's `tints`), none: as it was made */
+  look?: string
 }
 
 export interface FarmLayout {
@@ -52,6 +54,9 @@ export interface FarmLayout {
   decor: DecorPiece[]
   /** bought and put away: how many of each kind wait in the farm's store, to be put down again for nothing */
   stored: Record<ShopKind, number>
+  /** the looks of the pieces put away that wore one, by kind (so putting away loses nothing): never more than its
+   *  kind's count in the store; put down again, a piece takes the first */
+  storedLooks: Partial<Record<ShopKind, string[]>>
   /** the id the next piece put down gets */
   next: number
 }
@@ -137,6 +142,7 @@ export function defaultLayout(): FarmLayout {
     beds: BEDS.map((_, i) => bedHome(i)),
     decor: [],
     stored: emptyStore(),
+    storedLooks: {},
     next: 1,
   }
 }
@@ -197,6 +203,7 @@ export const DECOR_FEET: Record<ShopKind, DecorFoot> = {
   parasol: { hx: 0.3, hz: 0.3 },
   'hay-bales': { hx: 0.5, hz: 0.48 },
   snowman: { hx: 0.36, hz: 0.36 },
+  banner: { hx: 0.3, hz: 0.14 },
 }
 
 /** Whether a name is a kind the shop sells (never a name every object has: `constructor`, `__proto__`). */
@@ -665,7 +672,7 @@ function savedPlacement(v: unknown): Placement | null {
 export function sanitizeLayout(raw: unknown, built: readonly boolean[] = []): FarmLayout {
   const out = defaultLayout()
   if (!isObject(raw)) return out
-  const r = raw as { places?: unknown; land?: unknown; beds?: unknown; decor?: unknown; stored?: unknown; next?: unknown }
+  const r = raw as { places?: unknown; land?: unknown; beds?: unknown; decor?: unknown; stored?: unknown; storedLooks?: unknown; next?: unknown }
   if (Array.isArray(r.land)) for (const id of PARCEL_IDS) if (r.land.includes(id) && !out.land.includes(id)) out.land.push(id)
   // fields bought out of order are dropped
   out.land = out.land.filter((id) => !PARCELS[id].after || PARCELS[id].after!.some((a) => out.land.includes(a)))
@@ -723,15 +730,18 @@ export function sanitizeLayout(raw: unknown, built: readonly boolean[] = []): Fa
   const standing = new Map<ShopKind, number>()
   const keep: DecorPiece[] = []
   const later: DecorPiece[] = []
+  /** the looks of pieces sent into the store (they no longer fit where they were saved) */
+  const moved: [ShopKind, string][] = []
   for (const v of list) {
     const kind = isObject(v) ? kindNow(v.kind) : null
     if (!isObject(v) || !isShopKind(kind)) continue
     const p = savedPlacement(v)
     const id = typeof v.id === 'number' && Number.isSafeInteger(v.id) && v.id >= 1 && v.id <= MOST_ID && !ids.has(v.id) ? v.id : null
-    const d: DecorPiece = { id: id ?? -(later.length + 1), kind, x: p?.x ?? 0, z: p?.z ?? 0, rot: p?.rot ?? 0 }
+    const d: DecorPiece = { id: id ?? -(later.length + 1), kind, x: p?.x ?? 0, z: p?.z ?? 0, rot: p?.rot ?? 0, ...(isLookOf(kind, v.look) ? { look: v.look } : {}) }
     const fit = p && keep.length < MOST_STANDING && (standing.get(kind) ?? 0) < mostOf(kind) && fits(out, decorCover(d), covers).ok
     if (!fit) {
       out.stored[kind] = Math.min(mostOf(kind), out.stored[kind] + 1)
+      if (d.look) moved.push([kind, d.look])
       continue
     }
     if (id === null) later.push(d)
@@ -747,5 +757,12 @@ export function sanitizeLayout(raw: unknown, built: readonly boolean[] = []): Fa
   // a kind owns no more than its most (placed and stored)
   for (const kind of Object.keys(out.stored) as ShopKind[]) out.stored[kind] = Math.max(0, Math.min(out.stored[kind], mostOf(kind) - (standing.get(kind) ?? 0)))
   out.decor = keep
+  // the looks in the store: the kind's own (known looks only), then those of pieces just sent there, no more than it holds
+  const savedLooks = isObject(r.storedLooks) ? r.storedLooks : {}
+  for (const kind of Object.keys(out.stored) as ShopKind[]) {
+    const own = Object.prototype.hasOwnProperty.call(savedLooks, kind) ? savedLooks[kind] : null
+    const looks = [...(Array.isArray(own) ? own.filter((l): l is string => isLookOf(kind, l)) : []), ...moved.filter(([k]) => k === kind).map(([, l]) => l)].slice(0, out.stored[kind])
+    if (looks.length) out.storedLooks[kind] = looks
+  }
   return out
 }

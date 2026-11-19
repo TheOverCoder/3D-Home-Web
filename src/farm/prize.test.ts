@@ -59,10 +59,12 @@ describe('a prize as saved', () => {
   it('takes a piece of any kind of the shop, with only a look its row has', () => {
     for (const kind of [...DECOR_KINDS, ...FRUIT_KINDS]) {
       expect(savedPrize({ decor: kind })).toEqual({ decor: kind })
-      // (no row has looks yet: 02's tints add them)
-      expect(looksOf(kind)).toEqual([])
       expect(savedPrize({ decor: kind, look: 'red' })).toEqual({ decor: kind })
+      // a look its row has (a paint, the banner's season) it keeps
+      for (const look of looksOf(kind)) expect(savedPrize({ decor: kind, look })).toEqual({ decor: kind, look })
     }
+    expect(looksOf('banner')).toEqual(['spring', 'summer', 'autumn', 'winter'])
+    expect(looksOf('bench')).toContain('sky')
     for (const decor of ['gold', 'constructor', '__proto__', 3, null]) expect(savedPrize({ decor })).toBeNull()
   })
 

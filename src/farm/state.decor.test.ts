@@ -12,10 +12,12 @@ import {
   decorPrice,
   farm,
   freezeDay,
+  give,
   machinePoint,
   moveBed,
   moveDecor,
   movePlace,
+  paintDecor,
   placeDecor,
   plant,
   plantOf,
@@ -82,9 +84,14 @@ describe('buying', () => {
     expect(xpNow().points - xp).toBe(XP_FOR.build)
   })
 
-  it('every kind of both tabs is for sale at its first price', () => {
+  it('every kind of both tabs is for sale at its first price (but the season banner, given by the season road)', () => {
     const view = shopView()
-    expect(view.map((v) => v.kind).sort()).toEqual(Object.keys(SHOP).sort())
+    expect(view.map((v) => v.kind).sort()).toEqual(
+      Object.keys(SHOP)
+        .filter((k) => k !== 'banner')
+        .sort(),
+    )
+    expect(buyDecor('banner')).toBe(false)
     for (const v of view) expect(v.price, v.kind).toBe(SHOP[v.kind].price)
     expect(view.filter((v) => v.tab === 'fruit').map((v) => v.fruit)).toEqual(['apple', 'orange', 'cherry', 'blueberry', 'raspberry'])
   })
@@ -262,4 +269,45 @@ describe('the save', () => {
 
 it('the first price of each kind fits the rule', () => {
   for (const kind of Object.keys(SHOP) as (keyof typeof SHOP)[]) expect(nextPrice(SHOP[kind].price, 0)).toBe(SHOP[kind].price)
+})
+
+describe('looks: paint and the season banner (mission 02 F5, c8, c9)', () => {
+  it('a bench painted, free and with no XP; moved and put away and down again, it keeps its paint; taken off again', () => {
+    farm.coins = 1000
+    buyDecor('bench')
+    const put = placeDecor('bench', at(2, 0))
+    const id = put.id!
+    const [coins, xp] = [farm.coins, xpNow()]
+    expect(paintDecor(id, 'sky')).toBe(true)
+    expect(paintDecor(id, 'sky')).toBe(false)
+    expect(paintDecor(id, 'spring')).toBe(false)
+    expect([farm.coins, xpNow()]).toEqual([coins, xp])
+    expect(moveDecor(id, at(3, 0)).ok).toBe(true)
+    expect(farm.layout.decor[0].look).toBe('sky')
+    expect(storeDecor(id).ok).toBe(true)
+    expect(farm.layout.storedLooks).toEqual({ bench: ['sky'] })
+    const again = placeDecor('bench', at(2, 0))
+    expect(farm.layout.decor.find((d) => d.id === again.id)?.look).toBe('sky')
+    expect(farm.layout.storedLooks).toEqual({})
+    expect(paintDecor(again.id!, null)).toBe(true)
+    expect(farm.layout.decor[0].look).toBeUndefined()
+    // a kind with no paint takes none
+    buyDecor('bush')
+    const bush = placeDecor('bush', at(4, 2))
+    expect(paintDecor(bush.id!, 'sky')).toBe(false)
+  })
+
+  it('the banner comes in its season into the store, and stands in it; a reload keeps the looks', () => {
+    give([{ decor: 'banner', look: 'autumn' }], 'stop')
+    expect(farm.layout.stored.banner).toBe(1)
+    expect(farm.layout.storedLooks.banner).toEqual(['autumn'])
+    const put = placeDecor('banner', at(2, 0))
+    expect(put.ok).toBe(true)
+    expect(farm.layout.decor.find((d) => d.id === put.id)?.look).toBe('autumn')
+    give([{ decor: 'banner', look: 'winter' }], 'stop')
+    const saved = savedNow()
+    startFrom(saved)
+    expect(farm.layout.decor.find((d) => d.kind === 'banner')?.look).toBe('autumn')
+    expect(farm.layout.storedLooks.banner).toEqual(['winter'])
+  })
 })

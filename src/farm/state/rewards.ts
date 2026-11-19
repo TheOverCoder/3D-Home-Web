@@ -39,8 +39,13 @@ function into(p: Prize) {
   if ('decor' in p) {
     const { decor, stored } = farm.layout
     const owned = decor.filter((d) => d.kind === p.decor).length + stored[p.decor]
-    // (its look is kept once the store keeps looks: 02's layout.storedLooks)
-    if (owned < mostOf(p.decor)) farm.layout = { ...farm.layout, stored: { ...stored, [p.decor]: stored[p.decor] + 1 } }
+    // (its look waits with it in the store: layout.storedLooks, the first a piece put down takes)
+    if (owned < mostOf(p.decor))
+      farm.layout = {
+        ...farm.layout,
+        stored: { ...stored, [p.decor]: stored[p.decor] + 1 },
+        storedLooks: p.look ? { ...farm.layout.storedLooks, [p.decor]: [p.look, ...(farm.layout.storedLooks[p.decor] ?? [])] } : farm.layout.storedLooks,
+      }
     else into({ coins: worthOf([p]) })
     return
   }

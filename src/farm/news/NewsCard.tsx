@@ -80,7 +80,7 @@ function Soon({ s }: { s: SoonItem }) {
 /** What a stop of the season road gives, as a picture: coins, a building material, goods, the season's garment. */
 function StopPic({ s }: { s: RoadStopView }) {
   if (s.kind === 'garment' && s.garment) return <GarmentPic g={s.garment} />
-  const src = s.kind === 'coins' ? art('coin') : s.kind === 'material' ? iconUrl('plank') : s.kind === 'goods' ? art('basket') : art('wrapped-gift')
+  const src = s.kind === 'coins' ? art('coin') : s.kind === 'material' ? iconUrl('plank') : s.kind === 'goods' ? art('basket') : s.kind === 'banner' ? art('triangular-flag') : art('wrapped-gift')
   return <img className="art" src={src} alt="" />
 }
 
@@ -92,9 +92,11 @@ const stopWords = (s: RoadStopView) =>
       ? 'a building material'
       : s.kind === 'goods'
         ? 'goods from your farm'
-        : s.garment
-          ? `the ${s.garment.name.toLowerCase()} and ${s.coins} coins`
-          : `${s.coins} coins`
+        : s.kind === 'banner'
+          ? 'the season’s banner'
+          : s.garment
+            ? `the ${s.garment.name.toLowerCase()} and ${s.coins} coins`
+            : `${s.coins} coins`
 
 /** The season the farm is in, first in the week's news (mission 10 c7): its picture, "Spring · day 3 of 7", its crops in
  *  season (a quarter more), and the season after — no countdown: it waits for you. */

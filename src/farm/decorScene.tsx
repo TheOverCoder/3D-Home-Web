@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { CuboidCollider, CylinderCollider, RigidBody } from '@react-three/rapier'
-import { AdditiveBlending, BufferAttribute, BufferGeometry, Group, MeshBasicMaterial, Vector3 } from 'three'
+import { AdditiveBlending, BufferAttribute, BufferGeometry, Color, Group, MeshBasicMaterial, Vector3 } from 'three'
 import { inSunShadow } from '../data/layout'
 import { registerInteractable } from '../lib/interaction'
 import { Parts, setSculptGlow, shadowPart, smoothstep, type PartDef } from '../lib/sculpt'
 import { partGeometry, type Structure } from '../models/structures'
 import { DAY, PRODUCERS } from './data'
-import { DECOR_KINDS, FRUIT, FRUIT_KINDS, type BearerKind, type DecorKind, type FruitId, type FruitKind, type ShopKind } from './decor'
+import { DECOR_KINDS, FRUIT, FRUIT_KINDS, lookTints, SHOP, type BearerKind, type DecorKind, type FruitId, type FruitKind, type ShopKind } from './decor'
 import { decorModel, fruitParts, fruitPlantModel, fruitSpots, putFruit } from './decorModels'
 import { moodAt, phaseDef } from './day'
 import { useEdit } from './edit'
@@ -97,6 +97,29 @@ interface Crowd {
   top: number
   /** room for this many pieces (made again, twice the size, when more stand) */
   max: number
+  /** a kind that wears looks (mission 02 F5): the mean colour of its painted part, and each look's colours by part */
+  looks: { base: [number, number, number] | null; byLook: Map<string, Record<string, Color>> } | null
+}
+
+const WHITE = new Color(1, 1, 1)
+
+/** The mean vertex colour of a geometry (a painted part's: what its paint is measured against). */
+function meanColour(g: BufferGeometry): [number, number, number] {
+  const c = g.getAttribute('color')
+  const sum = [0, 0, 0]
+  for (let i = 0; i < c.count; i++) for (let k = 0; k < 3; k++) sum[k] += c.getComponent(i, k)
+  return [sum[0] / c.count, sum[1] / c.count, sum[2] / c.count]
+}
+
+/** The instance colour of a piece's part: its look's on the parts it tints, white (as it was made) elsewhere. */
+function tintOf(c: Crowd, d: DecorPiece, part: string): Color {
+  if (!c.looks || !d.look) return WHITE
+  let by = c.looks.byLook.get(d.look)
+  if (!by) {
+    by = Object.fromEntries(Object.entries(lookTints(d.kind, d.look, c.looks.base)).map(([k, [r, g, b]]) => [k, new Color(r, g, b)]))
+    c.looks.byLook.set(d.look, by)
+  }
+  return by[part] ?? WHITE
 }
 
 /** A kind's crowd with room for `max` pieces: its model's parts (the lamps' glass glows by its own material: `glow`). */
@@ -105,13 +128,16 @@ function makeCrowd(kind: ShopKind, max: number): Crowd {
   const keys = Object.keys(model)
   const defs: Record<string, PartDef> = {}
   let top = 0
+  const tints = SHOP[kind].tints
+  let base: [number, number, number] | null = null
   for (const k of keys) {
     const part = model[k]
     const geometry = partGeometry(part)
     top = Math.max(top, geometry.boundingBox!.max.y)
+    if (k === SHOP[kind].paint) base = meanColour(geometry)
     defs[k] = { geometry, max, material: part.material, castShadow: CASTS.has(kind) && (part.castShadow ?? true), receiveShadow: part.receiveShadow ?? true }
   }
-  return { parts: new Parts(defs, `decor-${kind}`), keys, max, top }
+  return { parts: new Parts(defs, `decor-${kind}`), keys, max, top, looks: tints?.length ? { base, byLook: new Map() } : null }
 }
 
 const KINDS = [...DECOR_KINDS, ...FRUIT_KINDS] as ShopKind[]
@@ -199,7 +225,9 @@ function Crowds() {
         // settles or rustles: src/fx/react.ts)
         const r = stretches.get(d.id)
         c.parts.at(d.x, 0, d.z, turnOf(d), r ? SCALE.set(r.xz, r.y, r.xz) : 1)
-        for (const k of c.keys) c.parts.put(k, 0, 0, 0)
+        // (a kind that wears looks puts each part's colour every time: an instance's slot may have worn another's)
+        if (c.looks) for (const k of c.keys) c.parts.put(k, 0, 0, 0, 0, 0, 0, 1, tintOf(c, d, k))
+        else for (const k of c.keys) c.parts.put(k, 0, 0, 0)
       }
       c.parts.end()
     }
@@ -374,6 +402,8 @@ const SOLID: Partial<Record<ShopKind, Solid>> = {
   parasol: { post: [1.1, 0.08] },
   'hay-bales': { box: [0.47, 0.34, 0.46] },
   snowman: { post: [0.65, 0.33] },
+  // the season banner's pole (mission 02 c8)
+  banner: { box: [0.3, 1.0, 0.06] },
   'scarecrow-ribbons': { box: [0.7, 0.95, 0.2] },
   'scarecrow-pinwheel': { box: [0.7, 0.95, 0.2] },
   'scarecrow-jingle': { box: [0.7, 0.95, 0.26] },

@@ -17,8 +17,9 @@ import { nearest, reached, stops, type Nearest, type Road } from './road'
 import { SEASON_IDS, SEASONS } from './season'
 
 /** What a stop gives: coins (a share of the next level's: src/farm/prize.ts, sized), a few of the building material the
- *  silo or the barn is shortest of, a few of the good the farm makes most, or the season's garment with a big gift. */
-export type StopKind = 'coins' | 'material' | 'goods' | 'garment'
+ *  silo or the barn is shortest of, a few of the good the farm makes most, the season's banner (mission 02 c8: a pennant
+ *  in its two colours, into the farm's store), or the season's garment with a big gift. */
+export type StopKind = 'coins' | 'material' | 'goods' | 'banner' | 'garment'
 
 /** [review] The season road's stops, one table for every season: 10 a season, the last the season's garment. */
 export const SEASON_ROAD: readonly { kind: StopKind; share?: number }[] = [
@@ -27,7 +28,7 @@ export const SEASON_ROAD: readonly { kind: StopKind; share?: number }[] = [
   { kind: 'coins', share: 0.35 },
   { kind: 'goods' },
   { kind: 'coins', share: 0.5 },
-  { kind: 'material' },
+  { kind: 'banner' },
   { kind: 'coins', share: 0.6 },
   { kind: 'goods' },
   { kind: 'coins', share: 0.75 },
@@ -106,6 +107,7 @@ export function stopPrizes(stop: number, on: number, level: number, material: Pr
   if (row.kind === 'coins') return [{ coins: sized(row.share ?? 0.25, level, 5) }]
   if (row.kind === 'material') return [materials]
   if (row.kind === 'goods') return [good ? { item: good, n: Math.min(10, 3 + Math.floor(l / 10)) } : materials]
+  if (row.kind === 'banner') return [{ decor: 'banner', look: SEASON_IDS[Math.max(0, Math.floor(on)) % SEASON_IDS.length] }]
   const g = seasonGarment(on)
   return [...(g ? [{ garment: g.id }] : []), { coins: sized(row.share ?? 1, level, 5) }]
 }

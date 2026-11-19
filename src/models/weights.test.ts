@@ -136,6 +136,8 @@ const DECOR_WEIGHT: Record<ShopKind, number> = {
   parasol: 264,
   'hay-bales': 312,
   snowman: 588,
+  // the season banner (mission 02 c8: under 300)
+  banner: 217,
 }
 
 /** The big trees (src/models/trees.ts): on the farm, the woods' fourteen as a new farm has them and the garden's three

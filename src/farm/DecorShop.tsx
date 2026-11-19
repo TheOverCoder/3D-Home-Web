@@ -4,7 +4,7 @@ import { art, type ArtId } from '../ui/art'
 import { LockCorner, LockTag, opensWords, useNope } from '../ui/LockTag'
 import { Coins, Purse, Shell, useArmed } from '../ui/Sheet'
 import { Check } from '../ui/glyphs'
-import { SHOP, type DecorTab, type ShopItemView, type ShopKind } from './decor'
+import { SHOP, setsOf, type DecorTab, type ShopItemView, type ShopKind } from './decor'
 import { editView, useEdit } from './edit'
 import { iconUrl, shopArtUrl } from './icons'
 import { isShopKind } from './layout'
@@ -17,7 +17,8 @@ import { openFirst } from './unlockArt'
 // first — its picture, what it costs and what you have, Cancel or Buy (armed a moment after it opens) — and once bought
 // it stands at the free spot nearest the middle of the view, picked, so a drag moves it on (with no room it waits in the
 // farm's store, on the edit mode's card). A kind not open yet at the farm's level is shown after the open ones, faded,
-// with the level it opens at across its corner (a tap shakes it); its card has no Buy.
+// with the level it opens at across its corner (a tap shakes it); its card has no Buy. The kinds stand in their sets
+// (src/farm/decor.ts, SETS: "Harvest scarecrows 2/3", how many of the set the farm has), the year's first.
 
 const TABS: { id: DecorTab; name: string }[] = [
   { id: 'decor', name: 'Decoration' },
@@ -128,9 +129,23 @@ export function DecorShop({ tab }: { tab: DecorTab }) {
           </button>
         ))}
       </div>
-      <div className="farm-grid compact decor-grid" role="tabpanel">
-        {items.map((item) => (
-          <ShopCard key={item.kind} item={item} />
+      <div role="tabpanel">
+        {setsOf(items).map((set) => (
+          <section key={set.id} className="deco-shop-group decor-set" aria-label={`${set.name}: ${set.got} of ${set.of}`}>
+            <h3>
+              <img className="decor-set-art" src={art(set.art)} alt="" />
+              {set.name}
+              <span className={`tag decor-set-count${set.got === set.of ? ' ok' : ''}`}>
+                {set.got === set.of && <Check weight="bold" />}
+                {set.got}/{set.of}
+              </span>
+            </h3>
+            <div className="farm-grid compact decor-grid">
+              {set.items.map((item) => (
+                <ShopCard key={item.kind} item={item} />
+              ))}
+            </div>
+          </section>
         ))}
       </div>
     </Shell>

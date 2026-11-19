@@ -117,6 +117,8 @@ const TABLE = {
   'decor:parasol': 10,
   'decor:hay-bales': 11,
   'decor:snowman': 14,
+  // (given by the season road, never sold: open from the start)
+  'decor:banner': 1,
   'recipe:kettle:strawberry_jam': 25,
   'upgrade:meadow': 26,
   'recipe:kettle:cherry_jam': 27,

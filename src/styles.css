@@ -1234,6 +1234,9 @@ button.farm-chip-item:focus-visible { outline: 3px solid var(--sun); outline-off
 .decor-grid .farm-card { gap: 4px; }
 .decor-card .decor-fruit { width: 22px; height: 22px; }
 .decor-pic { flex: none; width: 52px; height: 52px; }
+.decor-set h3 { display: flex; align-items: center; gap: 8px; }
+.decor-set-art { width: 26px; height: 26px; }
+.decor-set-count { margin-inline-start: auto; font: 700 15px/1 var(--font-text); }
 
 /* ── a good's picture with how many: a small see-through round badge on its lower corner (src/ui/ItemPic.tsx) ── */
 .item-pic { position: relative; display: inline-grid; place-items: center; flex: none; }
@@ -1363,6 +1366,10 @@ button.farm-chip-item:focus-visible { outline: 3px solid var(--sun); outline-off
 .deco-swatch { flex: none; width: 44px; height: 44px; padding: 0; border: 3px solid #fff; border-radius: 50%; box-shadow: 0 2px 0 var(--paper-3), 0 0 0 1px var(--edge-soft); cursor: pointer; }
 .deco-swatch[aria-pressed='true'] { box-shadow: 0 0 0 3px var(--leaf), 0 2px 0 var(--paper-3); }
 .deco-swatch:active { transform: translateY(2px); }
+.deco-as-made { display: grid; place-items: center; background: var(--paper-2); }
+.deco-as-made img { width: 30px; height: 30px; }
+.deco-paint img { width: 22px; height: 22px; }
+.deco-undo-paint { margin-top: 4px; }
 .deco-floor { border-radius: 12px; }
 .deco-floor.wood { background-image: repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.12) 0 1px, transparent 1px 9px), linear-gradient(0deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.08)); }
 .deco-floor.tile { background-image: linear-gradient(90deg, rgba(255, 255, 255, 0.55) 0 1px, transparent 1px), linear-gradient(0deg, rgba(255, 255, 255, 0.55) 0 1px, transparent 1px); background-size: 13px 13px; }

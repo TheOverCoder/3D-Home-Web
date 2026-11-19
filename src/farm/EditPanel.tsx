@@ -1,15 +1,15 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { farmSound, uiClick } from '../audio/sound'
 import { coarsePointer } from '../lib/device'
 import { useHome } from '../store'
 import { art } from '../ui/art'
 import { LockTag } from '../ui/LockTag'
-import { SHOP, type ShopKind } from './decor'
+import { DECOR_PAINTS, SHOP, type ShopKind } from './decor'
 import { putDown } from './DecorShop'
 import { turn, useEdit } from './edit'
 import { shopArtUrl } from './icons'
 import { PARCELS, PLACES, bedHome, canBuyParcel, isPlant, samePlacement, type ParcelId, type PlaceId } from './layout'
-import { buyLand, farm, lockOf, plantOf, sendBedHome, sendHome, stockOf, storeDecor, useFarm } from './state'
+import { buyLand, farm, lockOf, paintDecor, plantOf, sendBedHome, sendHome, stockOf, storeDecor, useFarm } from './state'
 
 // The edit mode's controls on the screen (it opens from the top corner's menu, src/ui/HudMode.tsx, or B): while it is open a
 // card along the bottom that says what to do, or about what is picked — turn a place, a bed or a piece of decoration,
@@ -116,11 +116,43 @@ function putAway(id: number) {
   } else useEdit.getState().setNote(fit.reason ?? null)
 }
 
+/** A painted kind's colours (mission 02 c9): as it was made, or one of the paints; free, no XP, and Undo paints back
+ *  the look it had when picked. */
+function Paints({ id, was }: { id: number; was: string | null }) {
+  useFarm((s) => s.rev)
+  const d = farm.layout.decor.find((x) => x.id === id)
+  if (!d) return null
+  const now = d.look ?? null
+  const paint = (look: string | null) => {
+    if (paintDecor(id, look)) uiClick()
+  }
+  return (
+    <>
+      <div className="deco-swatches" role="group" aria-label={`Paint the ${SHOP[d.kind].name.toLowerCase()}`}>
+        <button className="deco-swatch deco-as-made" aria-pressed={now === null} aria-label="As it was made" title="As it was made" onClick={() => paint(null)}>
+          <img src={shopArtUrl(d.kind)} alt="" />
+        </button>
+        {DECOR_PAINTS.map((p) => (
+          <button key={p.id} className="deco-swatch" style={{ background: p.hex }} aria-pressed={now === p.id} aria-label={p.name} title={p.name} onClick={() => paint(p.id)} />
+        ))}
+      </div>
+      {now !== was && (
+        <button className="btn soft small deco-undo-paint" onClick={() => paint(was)}>
+          Undo
+        </button>
+      )}
+    </>
+  )
+}
+
 function DecorCard({ id }: { id: number }) {
   useFarm((s) => s.rev)
   const d = farm.layout.decor.find((x) => x.id === id)
   const status = useFitLine(`decor-${id}`, 'Drag it to a free spot.')
+  // the paint's row, open while the chip is pressed; the look it had when picked (Undo's)
+  const [painting, setPainting] = useState<{ id: number; was: string | null } | null>(null)
   if (!d) return null
+  const open = painting?.id === id ? painting : null
   const plant = plantOf(id)
   const fruit = plant ? stockOf(plant.kind, plant.index) : 0
   return (
@@ -138,7 +170,21 @@ function DecorCard({ id }: { id: number }) {
           Put away{isPlant(d.kind) && fruit > 0 ? ' · picks its fruit' : ''}
           {!coarsePointer && <kbd>Del</kbd>}
         </button>
+        {SHOP[d.kind].paint && (
+          <button
+            className={`btn small deco-paint ${open ? 'leaf' : 'soft'}`}
+            aria-pressed={!!open}
+            onClick={() => {
+              uiClick()
+              setPainting(open ? null : { id, was: d.look ?? null })
+            }}
+          >
+            <img src={art('artist-palette')} alt="" />
+            Paint
+          </button>
+        )}
       </div>
+      {open && <Paints id={id} was={open.was} />}
     </>
   )
 }

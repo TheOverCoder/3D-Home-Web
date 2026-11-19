@@ -372,7 +372,7 @@ export const MODEL_CHECKS: ModelCheck[] = [
     id: 'seasons',
     name: "The seasons' pieces (also among the decoration's)",
     run() {
-      return (['flower-arch', 'parasol', 'hay-bales', 'snowman'] as const).flatMap((kind) => checkPieces(kind, ...structure(decorModel(kind))))
+      return (['flower-arch', 'parasol', 'hay-bales', 'snowman', 'banner'] as const).flatMap((kind) => checkPieces(kind, ...structure(decorModel(kind))))
     },
   },
   {

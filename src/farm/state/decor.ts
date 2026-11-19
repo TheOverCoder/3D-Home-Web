@@ -1,6 +1,6 @@
 import { PRODUCERS, STORES, storeOf } from '../data'
 import { bears, canPlaceNew, canPlaceThing, decorRect, freeSpot, isPlant, joinRun, mostOf, snap, type DecorPiece, type FarmLayout, type Fit, type Placement } from '../layout'
-import { SHOP as FARM_SHOP, BEARER_KINDS, FRUIT, nextPrice, type BearerKind, type FruitKind, type ShopItemView, type ShopKind } from '../decor'
+import { SHOP as FARM_SHOP, BEARER_KINDS, FRUIT, isLookOf, nextPrice, SOLD_KINDS, type BearerKind, type FruitKind, type ShopItemView, type ShopKind } from '../decor'
 import { PIECES, type PieceType } from '../../home/catalogue'
 import { canMoveOpening, canPlacePiece, findFreeSpot, type HomeFit, type HomeLayout, type HomePiece } from '../../home/layout'
 import { floorById, paintById, type OpeningAt } from '../../home/shell'
@@ -20,7 +20,7 @@ export const decorOwned = (kind: ShopKind) => farm.layout.decor.filter((d) => d.
 export const decorPrice = (kind: ShopKind) => nextPrice(FARM_SHOP[kind].price, decorOwned(kind))
 /** Whether one more of a kind can be bought: it is open at the farm's level, and a kind has a most (a fruit kind's
  *  plants). */
-export const decorForSale = (kind: ShopKind) => decorOwned(kind) < mostOf(kind) && isUnlocked(`decor:${kind}`) && inItsSeason(kind)
+export const decorForSale = (kind: ShopKind) => !FARM_SHOP[kind].given && decorOwned(kind) < mostOf(kind) && isUnlocked(`decor:${kind}`) && inItsSeason(kind)
 
 /** A season's piece is sold only in its season (mission 10 c8; bought, it stands all year); every other kind always.
  *  While the farm's year is quiet or waits (src/farm/state/season.ts, seasonPlaying) nothing is held back. */
@@ -33,7 +33,7 @@ export function inItsSeason(kind: ShopKind) {
 /** Every kind of the farm's shop as it shows it: how many the farm has, the next one's price, and the level it opens at
  *  while it is locked. */
 export function shopView(): ShopItemView[] {
-  return (Object.keys(FARM_SHOP) as ShopKind[]).map((kind) => {
+  return SOLD_KINDS.map((kind) => {
     const def = FARM_SHOP[kind]
     const price = decorPrice(kind)
     const fruit = isPlant(kind) ? FRUIT[kind as FruitKind].fruit : undefined
@@ -41,6 +41,7 @@ export function shopView(): ShopItemView[] {
       kind,
       tab: def.tab,
       name: def.name,
+      set: def.set,
       owned: decorOwned(kind),
       price,
       can: decorForSale(kind) && farm.coins >= price,
@@ -113,10 +114,12 @@ export function buyDecor(kind: ShopKind): boolean {
 /** Takes one of a kind out of the store and stands it at a spot, if it fits there: its id, or why not. */
 export function placeDecor(kind: ShopKind, to: Placement): Fit & { id?: number } {
   if (!(farm.layout.stored[kind] > 0)) return { ok: false, reason: 'None in your store' }
-  const d = landing(kind, farm.layout.next, to)
+  // (a piece put away in a look comes out in it: the store's first)
+  const [look, ...rest] = farm.layout.storedLooks[kind] ?? []
+  const d: DecorPiece = { ...landing(kind, farm.layout.next, to), ...(look ? { look } : {}) }
   const fit = canPlaceNew(farm.layout, kind, d)
   if (!fit.ok) return fit
-  farm.layout = { ...farm.layout, stored: { ...farm.layout.stored, [kind]: farm.layout.stored[kind] - 1 } }
+  farm.layout = { ...farm.layout, stored: { ...farm.layout.stored, [kind]: farm.layout.stored[kind] - 1 }, storedLooks: looksWith(kind, rest) }
   standPiece(d)
   bump()
   save()
@@ -130,7 +133,7 @@ export const freeDecorSpot = (kind: ShopKind, x: number, z: number) => freeSpot(
 export function moveDecor(id: number, to: Placement): Fit {
   const d = farm.layout.decor.find((x) => x.id === id)
   if (!d) return { ok: false, reason: 'Not on the farm' }
-  const q = landing(d.kind, id, to)
+  const q: DecorPiece = { ...landing(d.kind, id, to), ...(d.look ? { look: d.look } : {}) }
   const fit = canPlaceThing(farm.layout, { kind: 'decor', id }, q)
   if (!fit.ok) return fit
   farm.layout = { ...farm.layout, decor: farm.layout.decor.map((x) => (x.id === id ? q : x)) }
@@ -167,10 +170,36 @@ export function storeDecor(id: number): Fit {
     p.stock.splice(i, 1)
     p.timer.splice(i, 1)
   }
-  farm.layout = { ...farm.layout, decor: farm.layout.decor.filter((x) => x.id !== id), stored: { ...farm.layout.stored, [d.kind]: farm.layout.stored[d.kind] + 1 } }
+  farm.layout = {
+    ...farm.layout,
+    decor: farm.layout.decor.filter((x) => x.id !== id),
+    stored: { ...farm.layout.stored, [d.kind]: farm.layout.stored[d.kind] + 1 },
+    storedLooks: d.look ? looksWith(d.kind, [d.look, ...(farm.layout.storedLooks[d.kind] ?? [])]) : farm.layout.storedLooks,
+  }
   bump()
   save()
   return { ok: true }
+}
+
+/** The store's looks with a kind's own set to `looks` (none: the kind left out). */
+function looksWith(kind: ShopKind, looks: string[]): FarmLayout['storedLooks'] {
+  const out = { ...farm.layout.storedLooks }
+  if (looks.length) out[kind] = looks
+  else delete out[kind]
+  return out
+}
+
+/** Paints a piece standing on the farm (mission 02 c9), or takes its paint off (null): one of its kind's looks, free,
+ *  no XP (the edit card's undo paints it back). Whether it changed. */
+export function paintDecor(id: number, look: string | null): boolean {
+  const d = farm.layout.decor.find((x) => x.id === id)
+  if (!d || (look !== null && !isLookOf(d.kind, look)) || (d.look ?? null) === look) return false
+  const { look: _was, ...plain } = d
+  const q: DecorPiece = look === null ? plain : { ...plain, look }
+  farm.layout = { ...farm.layout, decor: farm.layout.decor.map((x) => (x.id === id ? q : x)) }
+  bump()
+  save()
+  return true
 }
 
 /** The fruit plant a piece is, with its place among its kind's plants (its producer's animal), or null. */
