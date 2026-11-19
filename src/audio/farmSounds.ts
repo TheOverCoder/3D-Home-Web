@@ -6,6 +6,7 @@ import { haptic, type Haptic } from '../lib/device'
 import { burst, live, rnd, tone, voice, type Engine } from './engine'
 import { WORK_GAP, XP_GAP, climb, keyStep, note, vary, type KeyNote } from './palette'
 import { SOUNDS } from './sounds'
+import { playLanding, playRattle } from './stings'
 
 export type FarmSound =
   | 'plant'
@@ -44,6 +45,8 @@ export type FarmSound =
   | 'nope' // cannot (the store is full, a piece went back): decline's soft fall, shorter and higher
   | 'lift' // decoration or furniture lifted under the finger
   | 'thud' // put down where it fits: a thud by its size
+  | 'rattle' // a gift box shaking before it opens: its lid knocking, faster and faster (./stings.ts)
+  | 'tink' // a coin landing on the coin chip: a quiet glassy tink, a step up the key each (./stings.ts)
 
 /** Crystals landing one close behind another climb the key from A6 (its 4th note), a step each (./palette.ts, climb),
  *  then hold the top. */
@@ -66,6 +69,8 @@ const KEY_CLINKS = [5, 7, 4, 6, 5, 7]
  *  how it was asked for (a ding's note, a thud's size). */
 type Synth = (e: Engine, t: number, v: number, pan: number, o: PlayOpts) => void
 
+/** How long a rattle shakes when no length is asked for (ms): the daily gift's box (src/farm/DailyCard.tsx). */
+const RATTLE_MS = 680
 /** A ding's note when none is asked for: G6, the oven's. */
 const DING: KeyNote = 'G6'
 /** How big a thing put down is, 0..1, from its size across (m): a stool small, a sofa or a shed the biggest. */
@@ -384,14 +389,25 @@ const SYNTHS: Record<FarmSound, Synth> = {
     tone(e, t, { type: 'sine', f0: 150 - 60 * h, f1: 85 - 35 * h, gain: 0.015 + 0.03 * h, attack: 0.004, decay: 0.1 + 0.08 * h })
     burst(e, t + 0.004, { type: 'bandpass', freq: 1300 - 450 * h, q: 1.2, gain: 0.28 + 0.24 * h, attack: 0.002, decay: 0.06 + 0.03 * h })
   },
+  rattle(e, t, _v, _pan, o) {
+    // a box shaking for as long as it is asked to (the daily gift's, by default), its knocks coming faster
+    playRattle(e, o.ms ?? RATTLE_MS, o.delay ?? 0, t)
+  },
+  tink(e, t, _v, _pan, o) {
+    // the coin that lands `step`-th on the chip, a step up the key from the one before
+    playLanding(e, o.step ?? 0, t)
+  },
 }
 
 /** What a sound may be asked for beyond where it is: a ding's note (a machine's own: `MACHINES[].sounds.done`), a
- *  thud's size across (m: what was put down), and how many beds one press did (a snap each, BATCH_MOST at most). */
+ *  thud's size across (m: what was put down), how many beds one press did (a snap each, BATCH_MOST at most), and how
+ *  long a rattle shakes (ms) after how long (ms). */
 export interface SoundMore {
   note?: KeyNote
   size?: number
   times?: number
+  ms?: number
+  delay?: number
 }
 
 /** A press's pip: a soft bell of the key `step` steps up its streak (and its octave for the glass), climbing while the

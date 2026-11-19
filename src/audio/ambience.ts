@@ -1,7 +1,7 @@
 // The sound of where you are: each room's quiet tone (air, the fridge's hum, the studio's fan), the open air
-// outdoors with birds by day and a cricket at night, and the house's quiet indoor tone inside a walk-in building (its
-// walls keep out the wind and the birds), and where a sound is heard from where you stand. It starts with the live
-// engine (./engine.ts) and follows the player.
+// outdoors with birds by the time of day (a chorus in the morning, fewer in the evening, crickets at night: `BIRDS`), and
+// the house's quiet indoor tone inside a walk-in building (its walls keep out the wind and the birds), and where a sound
+// is heard from where you stand. It starts with the live engine (./engine.ts) and follows the player.
 import { insideWalkIn } from '../data/buildings'
 import type { RoomId } from '../data/layout'
 import { playerState } from '../lib/playerState'
@@ -13,7 +13,9 @@ let ambient: { filter: BiquadFilterNode; gain: GainNode; hum: GainNode; fan: Gai
 
 let outdoors = false
 let birdTimer: number | undefined
-let isNight = () => false
+/** The farm's time of day, as its clock tells it (src/farm/day.ts). */
+export type Phase = 'morning' | 'noon' | 'evening' | 'night'
+let phaseNow: () => Phase = () => 'noon'
 /** Outdoors but inside a walk-in building (the market): its walls keep out the wind and the birds. */
 let walledIn = false
 let walledTimer: number | undefined
@@ -46,10 +48,34 @@ function checkWalledIn() {
   setRoomTone(wantedRoom)
 }
 
-/** How the garden's sounds know the farm's time of day (src/farm/DayChip.tsx tells them, so this file never loads the
- *  farm): no birds at night, a few crickets instead. */
+/** How the garden's sounds know whether it is night (src/farm/DayChip.tsx tells them, so this file never loads the
+ *  farm): no birds then, a few crickets instead. The time of day (`hearPhase`) says more, and wins once told. */
+let phaseTold = false
 export function hearNight(night: () => boolean) {
-  isNight = night
+  if (!phaseTold) phaseNow = () => (night() ? 'night' : 'noon')
+}
+
+/** How the garden's sounds know the farm's time of day (./SoundDirector.tsx tells them): its birds follow it. */
+export function hearPhase(phase: () => Phase) {
+  phaseTold = true
+  phaseNow = phase
+}
+
+/** The open air's calls by the time of day: one every `gap` ms (between its two), a bird with the chance `bird` (a dove
+ *  among them with the chance `dove`), else a cricket with the chance `cricket`. The dawn chorus in the morning; by day
+ *  as it always was; fewer in the evening, the doves and a first cricket; at night only the crickets. */
+export const BIRDS: Readonly<Record<Phase, { gap: readonly [number, number]; bird: number; dove: number; cricket: number }>> = {
+  morning: { gap: [600, 2400], bird: 1, dove: 0.12, cricket: 0 },
+  noon: { gap: [900, 3800], bird: 1, dove: 0.18, cricket: 0 },
+  evening: { gap: [1600, 5600], bird: 0.75, dove: 0.3, cricket: 0.5 },
+  night: { gap: [900, 3800], bird: 0, dove: 0, cricket: 0.6 },
+}
+
+/** What calls this time at `phase`, by the dice: a songbird, a dove, a cricket or nothing. */
+export function callOf(phase: Phase, rand: () => number = Math.random): 'song' | 'dove' | 'cricket' | null {
+  const row = BIRDS[phase]
+  if (rand() < row.bird) return rand() < row.dove ? 'dove' : 'song'
+  return rand() < row.cricket ? 'cricket' : null
 }
 
 /** A cricket somewhere in the dark: two or three chirps, each a quick trill of four pulses. */
@@ -62,18 +88,19 @@ function cricket(e: Engine) {
   for (let c = 0; c < chirps; c++) for (let i = 0; i < 4; i++) tone(e, t + c * 0.32 + i * 0.024, { type: 'sine', f0: f, gain: g, attack: 0.003, decay: 0.012, pan })
 }
 
-/** One bird somewhere in the garden: a songbird's quick phrase, now and then a dove. At night a cricket instead, now
- *  and then; inside a walk-in building (the market) neither. */
+/** One call somewhere in the garden by the time of day (`BIRDS`): a songbird's quick phrase, now and then a dove; a
+ *  cricket in the evening and at night; inside a walk-in building (the market) none. */
 function birdCall() {
   checkWalledIn()
   const e = outdoors && !walledIn ? live() : null
-  if (e && isNight()) {
-    if (Math.random() < 0.6) cricket(e)
-  } else if (e) {
+  const phase = phaseNow()
+  const call = e ? callOf(phase) : null
+  if (e && call === 'cricket') cricket(e)
+  else if (e && call) {
     const t = e.ac.currentTime + 0.01
     const pan = rnd(-0.9, 0.9)
     const g = rnd(0.012, 0.03)
-    if (Math.random() < 0.18) {
+    if (call === 'dove') {
       // a laughing dove: soft, low, rising and falling
       for (let i = 0; i < 4; i++) tone(e, t + i * 0.24, { type: 'sine', f0: rnd(430, 470), f1: rnd(380, 410), gain: g * 0.9, attack: 0.04, decay: 0.16, pan })
     } else {
@@ -85,7 +112,8 @@ function birdCall() {
       }
     }
   }
-  birdTimer = window.setTimeout(birdCall, rnd(900, 3800))
+  const [a, b] = BIRDS[phase].gap
+  birdTimer = window.setTimeout(birdCall, rnd(a, b))
 }
 
 /** In the garden: open-air wind instead of a room's tone, and birds (but inside a walk-in building, the house's
