@@ -81,6 +81,9 @@ const SHADOWS =
 
 const YARD = "update v1's farm in view: the dairy, the jam kettle, three beehives, the west meadow's beds and the mailbox by the gate, with the herds at their most"
 const LIGHTER = "update v1's new models drawn lighter where their difference is under half a pixel (far copies, src/lib/sculpt/lod.ts): P3-budget"
+const PARKED =
+  "the car park's cars (src/farm/Park.tsx): the line's buyers who came by car, five in their bays 30 m off, each drawn whole (3976 triangles): the car's first far copy moves its surfaces 5.7 cm, under half a pixel only past 40 m, as its paint's crisp edges (the windows, the arches) keep the simplifier from anything finer"
+const FINER = 'a finer far copy of the car (between whole and 5.7 cm: its windows and arches drawn without the vertex rings that make their edges crisp), so the parked cars are drawn from it at 30 m'
 
 /** The views over the budget today (with the drawing pass, the hedge and the woods in pieces), and the most each may draw
  *  until it is paid: the most it measured, and 5 % more. Paid once it measures 5 % under the budget. */
@@ -102,8 +105,10 @@ const DEBTS: Debt[] = [
     { view: 'third person, the living room', size: s.name, pass: 'shadow', draws: 268, why: SHADOWS, pays: [BATCHES] },
     { view: 'decorating the living room', size: s.name, pass: 'shadow', draws: 263, why: SHADOWS, pays: [BATCHES] },
   ]),
-  // (247.1k–254.3k as what wanders comes in and out of the view; the most, and 5 % more)
-  { view: 'yard, over the farm', size: '1055×487', pass: 'camera', triangles: 267_100, why: YARD, pays: [LIGHTER] },
+  // (with the car park's five cars: 247.7k–253.4k at 640×360 and 275.5k–281.4k sideways as what wanders comes in and out
+  // of the view; the most, and 5 % more. Before it: under the budget at 640×360, 247.1k–254.3k sideways)
+  { view: 'yard, over the farm', size: '640×360', pass: 'camera', triangles: 266_100, why: `${YARD}; ${PARKED}`, pays: [LIGHTER, FINER] },
+  { view: 'yard, over the farm', size: '1055×487', pass: 'camera', triangles: 295_500, why: `${YARD}; ${PARKED}`, pays: [LIGHTER, FINER] },
 ]
 
 /** `BUDGET_MEASURE=1`: the table without the checks, to measure the debts again (after a change that pays one). */

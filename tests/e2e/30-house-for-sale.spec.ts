@@ -2,6 +2,7 @@
 import type { Page } from '@playwright/test'
 import { test, expect, levelPay, type Game } from './helpers'
 import { AGENT_SEAT, AGENT_STAND, ESTATE_DOOR, ESTATE_ROOM, PARKING, SALE_BOARD } from '../../src/data/estate'
+import { PARK_AREA } from '../../src/data/lot'
 import { CAR_SPOT } from '../../src/data/maps'
 import { DAY, ESTATE, XP_FOR } from '../../src/farm/data'
 
@@ -82,7 +83,7 @@ const atCar = (game: Game) => game.teleport(AT_CAR.x, 1.4, AT_CAR.z, yawTo(AT_CA
 const atAgent = (game: Game) => game.teleport(AGENT_STAND.x, 1.4, AGENT_STAND.z, yawTo(AGENT_STAND.x, AGENT_STAND.z, AGENT_SEAT.x, AGENT_SEAT.z), -0.15)
 
 test.describe('the house for sale', () => {
-  test('the parking lot west of the gate is the lane: you walk onto it, the car stands in it, its west end holds you in', async ({ game }) => {
+  test('the parking lot west of the gate is the lane: you walk onto it, the car stands in it, and past its west end the lane goes on to the car park', async ({ game }) => {
     await game.ready('farm')
     const { page } = game
     await reset(game, 12, 0)
@@ -90,14 +91,16 @@ test.describe('the house for sale', () => {
     await game.teleport(5.6, 1.4, 15.1, P / 2, 0)
     await walkUntil(game, 'x', false, 4.0)
     let s = await state(page)
-    // in the lot west of the car, nothing puts you back; its west end holds you in
+    // in the lot west of the car, nothing puts you back; past its west end the lane goes on west to the car park
+    // (src/data/lot.ts: its own west end, 23-market's edges, holds you in there)
     await game.teleport(PARKING.x0 + 1.2, 1.4, 14.2, P / 2, 0)
     await page.waitForTimeout(2500)
     s = await state(page)
     expect(Math.hypot(s.at.x - (PARKING.x0 + 1.2), s.at.z - 14.2), 'still in the lot').toBeLessThan(0.6)
     await game.hold('KeyW', 2500)
     s = await state(page)
-    expect(s.at.x, 'held in at its west end').toBeGreaterThan(PARKING.x0 - 0.1)
+    expect(s.at.x, 'on along the lane past the lot').toBeLessThan(PARKING.x0 - 0.5)
+    expect(s.at.x, 'still on the lane').toBeGreaterThan(PARK_AREA.x0 - 0.1)
     // the car is something you bump into: walking at it from the lane, you stop at its side
     await game.teleport(CAR_SPOT.farm.x, 1.4, 16.0, 0, 0)
     await game.hold('KeyW', 2500)
