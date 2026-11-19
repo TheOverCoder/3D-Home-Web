@@ -287,6 +287,7 @@ on the farm). Each piece of furniture loaded from a file already casts as one me
 |---|---|---|---|---|---|---|
 | Third person, the living room | every size | shadow | 254–255 draws (142.0k–142.3k triangles: under the budget) | 268 draws | The ceilings go, so the sun reaches every room: the house's merged looks (114 draws, one a look and a quarter), each piece from a file (one each) and the rest are drawn into its map (first person: 57k, 83 draws) | batches |
 | Decorating the living room | every size | shadow | 248–250 draws (139.6k) | 263 draws | the same | batches |
+| Yard, over the farm | 1055×487 | camera | 247.1k–254.3k triangles (what wanders moves it) | 267.1k | Update v1's farm in view: the dairy, the jam kettle, three beehives, the west meadow's beds and the mailbox, with the herds at their most | update v1's new models drawn lighter under half a pixel (P3-budget) |
 
 The furniture loaded from files (`src/scene/Furnishings.tsx`: each piece cast as one mesh from its copy for the sun,
 and drawn by the camera from its far copies under half a pixel, `src/lib/sculpt/sun.ts`) paid both debts' triangles and

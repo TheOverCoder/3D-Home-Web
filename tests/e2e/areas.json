@@ -155,7 +155,7 @@
       "specs": ["22-xp"],
       "paths": ["src/farm/{xp,gifts,levelView,prize,road}.ts", "src/farm/{LevelCard,LevelPanel}.{tsx,css}", "src/fx/{xp,coins,fx}.ts", "src/lib/tier.ts"]
     },
-    { "name": "time away", "specs": ["20-away"], "paths": ["src/farm/AwayPanel.tsx"] },
+    { "name": "time away", "specs": ["20-away", "39-panels", "40-safety"], "paths": ["src/farm/AwayPanel.tsx"] },
     { "name": "a new farm's first steps", "specs": ["37-first-steps", "14-hud"], "paths": ["src/farm/firstSteps.ts", "src/farm/{FirstSteps,FarmerFace}.{tsx,css}"] },
     {
       "name": "the silo, the barn and orders",
@@ -192,7 +192,7 @@
     },
     {
       "name": "the farm's rules (after state.ts is split, each module of src/farm/state/ gets the row of its area)",
-      "specs": ["10-smart-farm", "17-stores-orders", "22-xp", "25-button", "37-first-steps"],
+      "specs": ["10-smart-farm", "17-stores-orders", "22-xp", "25-button", "37-first-steps", "42-busy"],
       "paths": ["src/farm/{state,data}.ts", "src/farm/state/**"]
     },
     { "name": "shared engines in every countdown and save", "specs": ["17-stores-orders", "32-machine-queue", "35-daily"], "paths": ["src/lib/{time,saved,quiet}.ts"] },

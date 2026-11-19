@@ -115,9 +115,16 @@ async function plenty(page: Page) {
 /** Nothing open, and no panel left on the screen: each closed by its own ✕ as a player would (the welcome back is
  *  told only then, or it opens again), then by the store. */
 async function closeAll(page: Page) {
-  await page.evaluate(async () => {
-    for (const x of Array.from(document.querySelectorAll<HTMLElement>('.farm-panel [aria-label="Close (Esc)"]'))) x.click()
-    await new Promise((r) => setTimeout(r, 400))
+  // each by its ✕, the top one first, and its leave played to its end before the next: the store closing a sheet
+  // still leaving cuts its leave short, and the panel's own close (the welcome back telling its report) never runs
+  for (let i = 0; i < 6; i++) {
+    const n = await page.locator('.farm-panel:not(.ps-leaving)').count()
+    const close = page.locator('.farm-panel:not(.ps-leaving) [aria-label="Close (Esc)"]')
+    if (!n || !(await close.count())) break
+    await close.last().click()
+    await page.waitForFunction((n) => document.querySelectorAll('.farm-panel:not(.ps-leaving)').length < n && !document.querySelector('.ps-leaving'), n, { timeout: 15_000, polling: 100 })
+  }
+  await page.evaluate(() => {
     const s = (window as any).__home.useHome.getState()
     if (s.panel) s.closePanel()
     if (s.settingsOpen) s.setSettingsOpen(false)

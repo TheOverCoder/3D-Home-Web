@@ -75,9 +75,7 @@ const ArtPic = ({ id, count: n }: { id: ArtId; count: number }) => (
 export const awayText = (seconds: number) => span(Math.max(60, seconds))
 
 /** The welcome back on the card queue (src/ui/cardQueue.ts): due while a time away has something to tell, it is the
- *  first card of the visit its return began, a beat after the game is free. Once on the screen it has been told,
- *  however it goes (its ✕, Esc, another panel opened over it by its Go there): it never comes back for the same time
- *  away. */
+ *  first card of the visit its return began, a beat after the game is free. */
 export function AwayWatcher() {
   useEffect(
     () =>
@@ -85,13 +83,6 @@ export function AwayWatcher() {
         due: () => awaySummary() !== null,
         open: () => useHome.getState().openPanel({ kind: 'away' }),
         showing: () => useHome.getState().panel?.kind === 'away',
-      }),
-    [],
-  )
-  useEffect(
-    () =>
-      useHome.subscribe((s, was) => {
-        if (was.panel?.kind === 'away' && s.panel?.kind !== 'away') clearAwaySummary()
       }),
     [],
   )

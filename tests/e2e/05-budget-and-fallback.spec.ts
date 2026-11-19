@@ -79,6 +79,9 @@ interface Debt {
 const SHADOWS =
   "the ceilings go, so the sun reaches every room: the house's merged looks (114 draws, one a look and a quarter), each piece loaded from a file (one each) and the rest are drawn into its map"
 
+const YARD = "update v1's farm in view: the dairy, the jam kettle, three beehives, the west meadow's beds and the mailbox by the gate, with the herds at their most"
+const LIGHTER = "update v1's new models drawn lighter where their difference is under half a pixel (far copies, src/lib/sculpt/lod.ts): P3-budget"
+
 /** The views over the budget today (with the drawing pass, the hedge and the woods in pieces), and the most each may draw
  *  until it is paid: the most it measured, and 5 % more. Paid once it measures 5 % under the budget. */
 // paid with the two maps (the house and the farm each a map of its own, src/scene/Maps.tsx): the yard over the farm
@@ -94,10 +97,14 @@ const SHADOWS =
 // its meshes cast from its own) and drawn by the camera from its far copies (farFromCopies): the sun's triangles in third
 // person and decorating 177.5k-180.2k → 139.6k-142.3k (under the budget), its draws 306-313 → 248-255; the camera's
 // triangles decorating 158.7k-230.1k → 119.0k-123.5k, the garden back at the house 115.4k-125.6k → 60.0k-75.9k.
-const DEBTS: Debt[] = SIZES.flatMap((s): Debt[] => [
-  { view: 'third person, the living room', size: s.name, pass: 'shadow', draws: 268, why: SHADOWS, pays: [BATCHES] },
-  { view: 'decorating the living room', size: s.name, pass: 'shadow', draws: 263, why: SHADOWS, pays: [BATCHES] },
-])
+const DEBTS: Debt[] = [
+  ...SIZES.flatMap((s): Debt[] => [
+    { view: 'third person, the living room', size: s.name, pass: 'shadow', draws: 268, why: SHADOWS, pays: [BATCHES] },
+    { view: 'decorating the living room', size: s.name, pass: 'shadow', draws: 263, why: SHADOWS, pays: [BATCHES] },
+  ]),
+  // (247.1k–254.3k as what wanders comes in and out of the view; the most, and 5 % more)
+  { view: 'yard, over the farm', size: '1055×487', pass: 'camera', triangles: 267_100, why: YARD, pays: [LIGHTER] },
+]
 
 /** `BUDGET_MEASURE=1`: the table without the checks, to measure the debts again (after a change that pays one). */
 const MEASURE_ONLY = !!process.env.BUDGET_MEASURE
