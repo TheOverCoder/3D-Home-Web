@@ -33,6 +33,9 @@ export interface BedState {
   /** set from the bed's gear: this bed always grows this crop (the action button buys the seeds and plants it);
    *  null: you choose the seeds each time */
   fixed: CropId | null
+  /** sown in its season (mission 10 c6, src/farm/season.ts): its harvest gives a quarter more (`seasonExtra`), kept when
+   *  the season turns before it is picked */
+  inSeason: boolean
 }
 
 /** How someone looks (src/models/look.ts, PersonLook), as it is saved: its colours as text. */

@@ -10,7 +10,8 @@ import { Clock } from '../../ui/glyphs'
 import { readyAt, span } from '../../lib/time'
 import { CROPS, type CropDef, type CropId } from '../data'
 import { iconUrl } from '../icons'
-import { bedSpot, bedsForSeeds, bedsNear, eventSpeed, farm, plantBeds, useFarm } from '../state'
+import { bedSpot, bedsForSeeds, bedsNear, eventSpeed, farm, plantBeds, seasonPlaying, sownInSeason, useFarm, yieldNow } from '../state'
+import { SEASONS } from '../season'
 import { openFirst } from '../unlockArt'
 import { cap, cropLock } from './crops'
 
@@ -42,6 +43,7 @@ const TOMORROW = 'tomorrow '
  *  yet at the farm's level, faded with the level it opens at across its corner (a tap shakes it). */
 function SeedCard({ c, k, perBed, onChoose }: { c: CropDef; k: number | null; perBed: boolean; onChoose: (crop: CropId) => void }) {
   const lock = cropLock(c)
+  const playing = seasonPlaying()
   const [scope, nope] = useNope<HTMLButtonElement>()
   const stock = (
     <span className={`tag farm-stock${farm.inv[c.id] ? '' : ' none'}`} title={`${farm.inv[c.id]} in the silo`} aria-label={`${farm.inv[c.id]} in the silo`}>
@@ -83,6 +85,12 @@ function SeedCard({ c, k, perBed, onChoose }: { c: CropDef; k: number | null; pe
           {c.seedCost}
           {perBed ? '/bed' : ''}
         </span>
+        {playing !== null && sownInSeason(c.id) && (
+          // in its season (mission 10 c6): the season's picture and what a bed sown now gives, a quarter more
+          <span className="tag seed-in-season" title={`In season: ${yieldNow(c.id)} a bed`} aria-label={`In season: ${yieldNow(c.id)} a bed`}>
+            <img src={art(SEASONS[playing].pic)} alt="" />×{yieldNow(c.id)}
+          </span>
+        )}
       </span>
     </button>
   )

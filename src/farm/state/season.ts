@@ -83,6 +83,14 @@ export function seasonNow(): SeasonId {
   return waiting() ? 'spring' : seasonDay().id
 }
 
+/** The season whose rules play now (its crops in season, mission 10 c6): the season now once the farm's year runs, or a
+ *  test's own; none while it is quiet where the game is tested or waits for a new farm's first steps (spring is then
+ *  the farm as it always was, and only its looks). */
+export function seasonPlaying(): SeasonId | null {
+  if (seasonFrom !== 'clock') return seasonFrom
+  return waiting() ? null : seasonDay().id
+}
+
 /** The weather on the farm now: its clock's in the season now (src/farm/weather.ts), but clear while a new farm's first
  *  steps run, or a test's or a page's own (quiet where the game is tested: clear). */
 export function weatherNow(): Weather {

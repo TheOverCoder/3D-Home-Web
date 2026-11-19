@@ -10,7 +10,8 @@ import { runDay } from './day'
 import { runShop, shelvesEmpty } from './market'
 import { stepsOn } from './steps'
 import { markPlayed } from './daily'
-import { seasonOn } from './season'
+import { seasonOn, weatherNow } from './season'
+import { wets } from '../weather'
 import { albumOn } from './album'
 import { seasonRoadOn } from './seasonRoad'
 import { neighboursOn } from './neighbours'
@@ -32,15 +33,18 @@ const stageKey = () =>
     dayOf(farm.day.t),
   ].join('|')
 
-export function grow(dt: number) {
+/** The farm goes on for `dt` seconds: the beds (watered by the rain while it rains), the animals, the machines, the
+ *  orders and the tractor. How many beds the rain filled. */
+export function grow(dt: number): number {
   // the harvest festival's crops and the machine rush's jobs go faster (the week's events)
   const crops = eventSpeed('crops')
   const machines = eventSpeed('machines')
-  growBeds(dt, crops)
+  const rained = growBeds(dt, crops, wets(weatherNow()))
   for (const id of PRODUCER_IDS) growProducer(id, dt)
   for (const id of MACHINE_IDS) growMachine(id, dt * machines)
   growOrders(dt)
   growDispatch(dt)
+  return rained
 }
 
 let gifted = false

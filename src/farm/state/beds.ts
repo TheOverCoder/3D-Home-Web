@@ -5,6 +5,8 @@ import { BED, BED_BOX, BED_REACH, BEDS, count, cropById, ITEM_ODDS, WATER_SHARE,
 import { rollItems } from '../storage'
 import type { Placement } from '../layout'
 import { bump, cropOpen, farm, isUnlocked, random, save, toast } from './core'
+import { inSeason, seasonExtra } from '../season'
+import { seasonPlaying } from './season'
 import { gainXp } from './levels'
 import { foundPrizes, rewarded } from './rewards'
 import { gainItems, room, store, surpriseWords } from './stores'
@@ -59,12 +61,29 @@ const bedAt = (i: number) => ({ x: bedSpot(i).x, y: 0.7, z: bedSpot(i).z })
 
 export const yieldOf = (crop: CropId) => Math.round(cropById(crop).yield * (farm.compost ? 1.5 : 1))
 
+/** A crop sown now is in its season (mission 10 c6): only while the farm's year plays (src/farm/state/season.ts). */
+export const sownInSeason = (crop: CropId) => {
+  const now = seasonPlaying()
+  return now !== null && inSeason(crop, now)
+}
+
+/** What a crop sown now will give: its harvest, a quarter more in its season (the seed packet's and the button's). */
+export const yieldNow = (crop: CropId) => yieldOf(crop) + (sownInSeason(crop) ? seasonExtra(yieldOf(crop)) : 0)
+
+/** What bed i will give when picked: its crop's harvest, a quarter more if it was sown in its season. */
+export function bedYield(i: number) {
+  const b = farm.beds[i]
+  if (!b?.crop) return 0
+  return yieldOf(b.crop) + (b.inSeason ? seasonExtra(yieldOf(b.crop)) : 0)
+}
+
 export function plant(i: number, crop: CropId) {
   const b = farm.beds[i]
   const def = cropById(crop)
   if (!b?.built || b.crop || !cropOpen(crop) || farm.coins < def.seedCost) return false
   farm.coins -= def.seedCost
   b.crop = crop
+  b.inSeason = sownInSeason(crop)
   b.growth = 0
   b.water = fullWater(crop) // seeds go in with a good soak
   farm.started = true
@@ -108,7 +127,7 @@ export function harvest(i: number) {
 export function bedsToHarvest(index: number, x: number, z: number): number[] {
   let left = room('silo')
   return bedsNear(index, 'ripe', x, z).filter((i) => {
-    const n = yieldOf(farm.beds[i].crop!)
+    const n = bedYield(i)
     if (n > left) return false
     left -= n
     return true
@@ -116,7 +135,7 @@ export function bedsToHarvest(index: number, x: number, z: number): number[] {
 }
 
 /** A ripe bed's harvest fits in the silo. */
-export const harvestFits = (i: number) => bedStage(i) === 'ripe' && yieldOf(farm.beds[i].crop!) <= room('silo')
+export const harvestFits = (i: number) => bedStage(i) === 'ripe' && bedYield(i) <= room('silo')
 
 /** Harvests every ripe bed of these (what is within reach, in one go) whose crop the silo has room for: one toast
  *  for all of it. A bed that does not fit stays ripe (the toast says the silo is full). Each bed harvested may turn
@@ -129,7 +148,7 @@ export function harvestBeds(beds: number[]) {
   for (const i of beds) {
     const b = farm.beds[i]
     if (!b?.crop || bedStage(i) !== 'ripe') continue
-    const n = yieldOf(b.crop)
+    const n = bedYield(i)
     if (n > room('silo')) {
       full = true
       continue
@@ -142,6 +161,7 @@ export function harvestBeds(beds: number[]) {
     // it stretches and pops away as its picture leaves (drawn as it was until then: src/farm/Plants.tsx)
     react('plant', i, 'pluck', { crop: b.crop })
     b.crop = null
+    b.inSeason = false
     b.growth = 0
     b.water = 0
     const items = rollItems(1, ITEM_ODDS.harvest, random)
@@ -194,15 +214,23 @@ export function fixBed(i: number, crop: CropId | null) {
 
 /** The beds grow for `dt` seconds, `crops` times as fast (the harvest festival): only while the soil is wet, never past
  *  ripe; the soil dries as they grow, at their pace (a festival's crop dries twice as fast too), so each crop needs
- *  its watering on every day: a bed dries at the same share of its growth (WATER_SHARE) whatever the day. */
-export function growBeds(dt: number, crops: number) {
+ *  its watering on every day: a bed dries at the same share of its growth (WATER_SHARE) whatever the day. While it
+ *  rains (`rain`, src/farm/weather.ts `wets`) every bed still growing fills with water, for nothing and with no XP
+ *  (mission 10 c5): how many it filled. */
+export function growBeds(dt: number, crops: number, rain = false): number {
+  let rained = 0
   for (const b of farm.beds) {
     if (!b.crop) continue
     const def = cropById(b.crop)
     if (b.growth >= def.growSeconds) continue
+    if (rain && b.water < fullWater(b.crop)) {
+      b.water = fullWater(b.crop)
+      rained++
+    }
     // growth stops while the soil is dry; with sprinklers it never is (the water is counted in seconds of growth)
     const wet = farm.sprinkler ? dt : Math.min(dt, b.water / crops)
     b.growth = Math.min(def.growSeconds, b.growth + wet * crops)
     if (!farm.sprinkler) b.water = Math.max(0, b.water - dt * crops)
   }
+  return rained
 }

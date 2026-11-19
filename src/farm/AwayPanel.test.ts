@@ -17,6 +17,7 @@ const report = (o: Partial<AwayReport>): AwayReport => ({
   full: [],
   shop: null,
   pieces: false,
+  rained: false,
   ...o,
 })
 
@@ -54,6 +55,11 @@ describe('the welcome back', () => {
     const rows = awayRows(report({ buyers: 1, thirsty: 2 }), AWAY_ROWS, [], 2)
     expect(rows.map((x) => x.key)).toEqual(['letters:2', 'buyers', 'water'])
     expect(rows[0].worth).toBe(awayRows(report({ orders: 2 }))[0].worth)
+  })
+
+  it('the rain that watered the beds is a row, the farm’s own news (it needs nothing of you)', () => {
+    expect(awayRows(report({ rained: true })).map((x) => x.key)).toEqual(['rained'])
+    expect(awayRows(report({ rained: true, thirsty: 2 })).map((x) => x.key)).toEqual(['rained', 'water'])
   })
 
   it('says how long in the clock’s words, never less than a minute', () => {

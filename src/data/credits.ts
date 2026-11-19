@@ -69,6 +69,12 @@ export const CREDITS: Credit[] = [
     url: 'https://github.com/microsoft/fluentui-emoji',
   },
   {
+    what: "Fluent Emoji 3D (the farm's year: the cherry blossom, the snowflake and the rain cloud; paint's palette; the market's café cup and the car park's P)",
+    by: 'Microsoft Corporation',
+    license: 'MIT',
+    url: 'https://github.com/microsoft/fluentui-emoji',
+  },
+  {
     what: "Fluent Emoji 3D (the house's computer's apps: the rising chart, the light bulb, the ledger, the bar chart)",
     by: 'Microsoft Corporation',
     license: 'MIT',

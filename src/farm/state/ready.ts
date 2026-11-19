@@ -2,7 +2,7 @@ import { MACHINE_IDS, PRODUCER_IDS, PRODUCERS, storeOf, XP_FOR, type CropId, typ
 import { boostOf } from '../machines'
 import { farm } from './core'
 import { roomFor } from './stores'
-import { bedStage, yieldOf } from './beds'
+import { bedStage, bedYield } from './beds'
 import { machineDone } from './machines'
 
 // What is ready on the farm, across the beds, the producers and the machines: what waits for room in a building, and
@@ -12,7 +12,7 @@ import { machineDone } from './machines'
  *  in the machines (the barn). */
 export function waitingFor(id: StoreId) {
   let n = 0
-  if (id === 'silo') farm.beds.forEach((b, i) => (n += bedStage(i) === 'ripe' && b.crop ? yieldOf(b.crop) : 0))
+  if (id === 'silo') farm.beds.forEach((b, i) => (n += bedStage(i) === 'ripe' && b.crop ? bedYield(i) : 0))
   for (const p of PRODUCER_IDS) if (storeOf(PRODUCERS[p].good) === id) n += farm.producers[p].stock.reduce((a, b) => a + b, 0)
   for (const m of MACHINE_IDS) for (const g of machineDone(m)) if (storeOf(g.item) === id) n += g.count
   return n
@@ -29,11 +29,13 @@ export function readyOnFarm(): { id: ProduceId; n: number; xp: number } | null {
   const consider = (id: ProduceId, n: number, xp: number) => {
     if (n > 0 && xp > 0 && roomFor(id) >= n && (!best || xp > best.xp)) best = { id, n, xp }
   }
-  const beds = new Map<CropId, number>()
+  const beds = new Map<CropId, { n: number; k: number }>()
   farm.beds.forEach((b, i) => {
-    if (b.crop && bedStage(i) === 'ripe') beds.set(b.crop, (beds.get(b.crop) ?? 0) + 1)
+    if (!b.crop || bedStage(i) !== 'ripe') return
+    const was = beds.get(b.crop) ?? { n: 0, k: 0 }
+    beds.set(b.crop, { n: was.n + bedYield(i), k: was.k + 1 })
   })
-  for (const [crop, k] of beds) consider(crop, k * yieldOf(crop), k * XP_FOR.harvest)
+  for (const [crop, { n, k }] of beds) consider(crop, n, k * XP_FOR.harvest)
   for (const id of PRODUCER_IDS) {
     const n = farm.producers[id].stock.reduce((a, b) => a + b, 0)
     consider(PRODUCERS[id].good, n, n * XP_FOR.collect)

@@ -21,7 +21,7 @@
       "final": true,
       "specs": [],
       "paths": [
-        "scripts/{fetch-assets,fetch-polyhaven,hdr-to-gainmap,optimize-models,render-farmer-faces,render-furniture-art,render-item-art}.mjs",
+        "scripts/{fetch-art,fetch-assets,fetch-polyhaven,hdr-to-gainmap,optimize-models,render-farmer-faces,render-furniture-art,render-item-art}.mjs",
         "scripts/assets.manifest.json",
         "scripts/{affected-specs,ci-shards,v1-scope}.{mjs,d.mts}",
         "scripts/v1-merge.sh",

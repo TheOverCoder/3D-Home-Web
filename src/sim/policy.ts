@@ -107,7 +107,7 @@ import {
   upgradeStore,
   waiting,
   waterBeds,
-  yieldOf,
+  bedYield,
 } from '../farm/state'
 
 /** A place on the farm, to walk to. */
@@ -165,7 +165,7 @@ const machineAt = (id: MachineId): Spot => machinePoint(id, MACHINES[id].stand)
 
 const stageIn = (beds: number[], stage: ReturnType<typeof bedStage>) => beds.filter((i) => bedStage(i) === stage)
 /** Of each crop, what is in the beds now. */
-const growing = (crop: CropId) => farm.beds.reduce((n, b) => n + (b.crop === crop ? yieldOf(crop) : 0), 0)
+const growing = (crop: CropId) => farm.beds.reduce((n, b, i) => n + (b.crop === crop ? bedYield(i) : 0), 0)
 /** What the line and the orders ask for that the silo and the beds will not cover: the crop most short first. */
 function shortCrop(): CropId | null {
   const asked = new Map<ProduceId, number>()

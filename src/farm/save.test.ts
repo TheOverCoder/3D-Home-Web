@@ -53,7 +53,7 @@ describe('a save broken or edited by hand', () => {
   it('a list that is not one (the beds as a word, a number, an object) costs only the beds: everything saved after them is kept', () => {
     // the bought land's beds are built, nothing grows
     const bought = (played as { expansions: Record<string, boolean> }).expansions
-    const fresh = BEDS.map((b) => ({ built: b.price === 0 && (!b.expansion || bought[b.expansion]), crop: null, growth: 0, water: 0, fixed: null }))
+    const fresh = BEDS.map((b) => ({ built: b.price === 0 && (!b.expansion || bought[b.expansion]), crop: null, growth: 0, water: 0, fixed: null, inSeason: false }))
     // (and a bed that was moved stands where it was staked out again: only a built bed moves)
     const unmoved = (s: Record<string, unknown>) => ({ ...without(s, 'beds'), layout: { ...(s.layout as object), beds: null } })
     for (const beds of ['lettuce', 7, true, { 0: { built: true, crop: 'lettuce', growth: 1, water: 1, fixed: null } }]) {
@@ -153,12 +153,12 @@ describe('a save broken or edited by hand', () => {
     const beds = played.beds as Save[]
     const lettuce = { built: true, crop: 'lettuce', growth: 1e300, water: 1e300, fixed: null }
     startFrom({ ...played, beds: [lettuce, { ...beds[1], growth: -2, water: Infinity }, { built: true, crop: null, growth: 12, water: 3, fixed: 'tomato' }, ...beds.slice(3)] })
-    expect(farm.beds[0]).toEqual({ built: true, crop: 'lettuce', growth: 45, water: 45 * 0.55, fixed: null })
+    expect(farm.beds[0]).toEqual({ built: true, crop: 'lettuce', growth: 45, water: 45 * 0.55, fixed: null, inSeason: false })
     expect(farm.beds[1]).toMatchObject({ crop: 'carrot', growth: 0, water: 0 })
-    expect(farm.beds[2]).toEqual({ built: true, crop: null, growth: 0, water: 0, fixed: 'tomato' })
+    expect(farm.beds[2]).toEqual({ built: true, crop: null, growth: 0, water: 0, fixed: 'tomato', inSeason: false })
     // a staked-out bed not yet built grows nothing
     startFrom({ ...played, beds: beds.map((b, i) => (i === 5 ? { built: false, crop: 'corn', growth: 3, water: 3, fixed: null } : b)) })
-    expect(farm.beds[5]).toEqual({ built: false, crop: null, growth: 0, water: 0, fixed: null })
+    expect(farm.beds[5]).toEqual({ built: false, crop: null, growth: 0, water: 0, fixed: null, inSeason: false })
     expect(without(savedNow(), 'beds')).toEqual(without(loaded, 'beds'))
   })
 

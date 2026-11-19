@@ -2,7 +2,7 @@ import { MACHINE_IDS, PRODUCER_IDS, PRODUCERS, STORE_IDS, storeOf, type MachineI
 import { dayOf, phaseOf } from '../day'
 import { bump, calendarTime, eventSpeed, eventTime, farm, save, setCalendarStep, setStepAt } from './core'
 import { room } from './stores'
-import { bedStage, yieldOf } from './beds'
+import { bedStage, bedYield } from './beds'
 import { machineDone } from './machines'
 import { arrivalSeconds, placesInLine } from './shop'
 import { inLine, spawnVisitor } from './buyers'
@@ -61,14 +61,16 @@ export interface AwayReport {
   shop: { goods: number; coins: number } | null
   /** a new day began: the contractor has new pieces */
   pieces: boolean
+  /** it rained while you were away, and the rain watered the beds (src/farm/weather.ts) */
+  rained: boolean
 }
 
-function awayReport(before: Snapshot, seconds: number, counted: number): AwayReport {
+function awayReport(before: Snapshot, seconds: number, counted: number, rained = false): AwayReport {
   const after = snapshot()
   const goods = new Map<ProduceId, number>()
   const add = (item: ProduceId, n: number) => n > 0 && goods.set(item, (goods.get(item) ?? 0) + n)
   farm.beds.forEach((b, i) => {
-    if (after.ripe[i] && !before.ripe[i] && b.crop) add(b.crop, yieldOf(b.crop))
+    if (after.ripe[i] && !before.ripe[i] && b.crop) add(b.crop, bedYield(i))
   })
   for (const id of PRODUCER_IDS) add(PRODUCERS[id].good, after.stock[id] - before.stock[id])
   // what the machines finished: every job done now that was not done before (none is collected while away)
@@ -90,11 +92,12 @@ function awayReport(before: Snapshot, seconds: number, counted: number): AwayRep
     full: STORE_IDS.filter((id) => room(id) <= 0 && waiting(id)),
     shop: after.till.coins > before.till.coins ? { goods: Math.max(0, after.till.goods - before.till.goods), coins: after.till.coins - before.till.coins } : null,
     pieces: after.day !== before.day,
+    rained,
   }
 }
 
 /** Whether a report has anything to tell. */
-export const awayNews = (r: AwayReport) => r.goods.length > 0 || r.buyers > 0 || r.orders > 0 || r.tractor || r.thirsty > 0 || r.full.length > 0 || r.shop !== null
+export const awayNews = (r: AwayReport) => r.goods.length > 0 || r.buyers > 0 || r.orders > 0 || r.tractor || r.thirsty > 0 || r.full.length > 0 || r.shop !== null || r.rained
 
 /** The farm goes on for a time away, as it would have: in steps of 5 s (a bed ripens, an animal fills, a machine
  *  finishes in the step it would have), buyers joining the line as they come, as many as it has room for; shoppers
@@ -103,10 +106,12 @@ export const awayNews = (r: AwayReport) => r.goods.length > 0 || r.buyers > 0 ||
  *  the time away began, by the events' clock): one that began or ended while you were away, only for its part. Each
  *  step is on its own calendar day too (`day`: when the time away began, by the calendar's clock): a sale in the shop
  *  goes into the ledger on the day it was made. */
-function goOn(seconds: number, from: number | null = null, day: number | null = null) {
+function goOn(seconds: number, from: number | null = null, day: number | null = null): number {
   // the seconds the buyers' countdown ran beyond the time (twice as fast on a market day)
   let more = 0
   let into = 0
+  // the beds the rain watered while you were away
+  let rained = 0
   try {
     for (let left = seconds; left > 0; left -= 5) {
       const dt = Math.min(5, left)
@@ -114,7 +119,7 @@ function goOn(seconds: number, from: number | null = null, day: number | null = 
       if (day !== null) setCalendarStep(day + into * 1000)
       farm.clock += dt
       farm.day.t += dt
-      grow(dt)
+      rained += grow(dt)
       shopAway(dt)
       more += dt * (eventSpeed('buyers') - 1)
       into += dt
@@ -135,6 +140,7 @@ function goOn(seconds: number, from: number | null = null, day: number | null = 
     } else farm.nextVisitorIn -= ran
     for (let i = Math.min(n, placesInLine() - inLine().length); i > 0; i--) spawnVisitor({ queued: true })
   }
+  return rained
 }
 
 /** The last time away, until the game has shown it (Welcome back, src/farm/FarmUI.tsx). */
@@ -158,8 +164,8 @@ export function cameBack(seconds: number): AwayReport | null {
   const before = snapshot()
   // the time away began `seconds` ago, by the events' clock and by the calendar's
   const now = eventTime()
-  goOn(counted, now === null ? null : now - seconds * 1000, calendarTime() - seconds * 1000)
-  const report = awayReport(before, seconds, counted)
+  const rained = goOn(counted, now === null ? null : now - seconds * 1000, calendarTime() - seconds * 1000)
+  const report = awayReport(before, seconds, counted, rained > 0)
   // the morning that came while away is not told as it turns (the contractor's word is for one seen in play)
   setLastPhase(phaseOf(farm.day.t))
   if (seconds >= AWAY_TELLS && awayNews(report)) lastAway = report

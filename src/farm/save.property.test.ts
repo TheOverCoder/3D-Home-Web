@@ -287,7 +287,8 @@ function farmProblems(): string[] {
   farm.beds.forEach((b, i) => {
     const def = BEDS[i]
     const most = isCrop(b.crop) ? cropById(b.crop).growSeconds : 0
-    bad(`beds.${i}: its fields`, sameKeys(b, ['built', 'crop', 'growth', 'water', 'fixed']))
+    bad(`beds.${i}: its fields`, sameKeys(b, ['built', 'crop', 'growth', 'water', 'fixed', 'inSeason']))
+    bad(`beds.${i}.inSeason`, typeof b.inSeason === 'boolean' && (b.crop !== null || !b.inSeason))
     bad(`beds.${i}: built on land bought`, typeof b.built === 'boolean' && (!def.expansion || b.built === farm.expansions[def.expansion]))
     bad(`beds.${i}.crop`, b.crop === null || (isCrop(b.crop) && b.built))
     bad(`beds.${i}.fixed`, b.fixed === null || isCrop(b.fixed))

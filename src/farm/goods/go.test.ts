@@ -10,7 +10,7 @@ import { sourceOf } from './sources'
 // the machine that makes it, or an owned tool of the animals that give it, on either map; else a walk to where it is
 // made, on the farm only; else nothing — and the words themselves (./sources.ts).
 
-const bed = (b: Partial<BedState>): BedState => ({ built: true, crop: null, growth: 0, water: 0, fixed: null, ...b })
+const bed = (b: Partial<BedState>): BedState => ({ built: true, crop: null, growth: 0, water: 0, fixed: null, inSeason: false, ...b })
 const BEDS = [bed({ crop: 'wheat' }), bed({})]
 /** The farm's places registered: two beds, the nest, the cows, the sheep, the machines, the contractor's window. */
 const FARM_IDS = ['farm-bed-0', 'farm-bed-1', 'farm-nest', 'farm-cow-0', 'farm-cow-1', 'farm-sheep-0', 'farm-mill', 'farm-loom', 'farm-oven', CONTRACTOR_PLACE]

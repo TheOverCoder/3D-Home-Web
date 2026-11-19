@@ -55,6 +55,7 @@ export function awayRows(r: AwayReport, most = AWAY_ROWS, full: readonly StoreId
     ...(r.orders > 0 ? [{ key: 'orders', worth: r.orders * ORDER_WORTH }] : []),
     ...(r.shop && r.shop.goods > 0 ? [{ key: 'shop', worth: r.shop.coins }] : []),
     ...(letters > 0 ? [{ key: `letters:${letters}`, worth: letters * ORDER_WORTH }] : []),
+    ...(r.rained ? [{ key: 'rained', worth: BUYER_WORTH }] : []),
     ...(r.thirsty > 0 ? [{ key: 'water', worth: r.thirsty * SMALL }] : []),
     ...(r.pieces ? [{ key: 'pieces', worth: SMALL }] : []),
     ...(r.tractor ? [{ key: 'tractor', worth: SMALL }] : []),
@@ -151,6 +152,14 @@ function Row({ row, r }: { row: AwayRow; r: AwayReport }): ReactNode {
       <div className="farm-basket-item" title={`${id} letters in the mailbox`}>
         <ArtPic id="love-letter" count={Number(id)} />
         <span>Letters</span>
+      </div>
+    )
+  // the rain watered the beds while you were away (src/farm/weather.ts): nothing to do for them
+  if (kind === 'rained')
+    return (
+      <div className="farm-basket-item" title="It rained: the beds were watered">
+        <img className="art" src={art('cloud-with-rain')} alt="" />
+        <span>It rained</span>
       </div>
     )
   // beds gone dry: nothing is lost, they wait for water (in the card's own tone, not as a fault)

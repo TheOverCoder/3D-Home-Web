@@ -79,7 +79,7 @@ import {
   waiting,
   water,
   waterBeds,
-  yieldOf,
+  bedYield,
   type BedStage,
   gainXp,
   xpNow,
@@ -336,7 +336,7 @@ function harvestOf(beds: number[]) {
   const got = new Map<string, number>()
   for (const i of beds) {
     const crop = farm.beds[i].crop
-    if (crop) got.set(crop, (got.get(crop) ?? 0) + yieldOf(crop))
+    if (crop) got.set(crop, (got.get(crop) ?? 0) + bedYield(i))
   }
   const [first, ...rest] = [...got].map(([item, count]) => ({ item, count }))
   return { ...first, ...(rest.length ? { also: rest } : {}) }
@@ -425,7 +425,7 @@ function Bed({ index }: { index: number }) {
       return `beds:${stage}:${beds.join(',')}`
     },
     // ripe, and the silo has room for it (a harvest cannot half stay in its bed: one that does not fit waits)
-    ready: () => (harvestFits(index) ? { item: farm.beds[index].crop!, count: yieldOf(farm.beds[index].crop!) } : null),
+    ready: () => (harvestFits(index) ? { item: farm.beds[index].crop!, count: bedYield(index) } : null),
     label: () => {
       const b = farm.beds[index]
       const stage = bedStage(index)
@@ -438,11 +438,11 @@ function Bed({ index }: { index: number }) {
         return `Plant ${r.crop.plural}${r.beds.length > 1 ? ` in ${r.beds.length} beds` : ''} · ${cost} ${cost === 1 ? 'coin' : 'coins'}`
       }
       const crop = cropById(b.crop!)
-      if (stage === 'ripe' && !harvestFits(index)) return `${room('silo') ? 'No room in the silo' : 'Silo full'} · ${count(crop.id, yieldOf(crop.id))} waiting`
+      if (stage === 'ripe' && !harvestFits(index)) return `${room('silo') ? 'No room in the silo' : 'Silo full'} · ${count(crop.id, bedYield(index))} waiting`
       if (stage === 'thirsty' || stage === 'ripe') {
         const n = bedsInReach(index, stage).length
         if (n > 1) return `${stage === 'ripe' ? 'Harvest' : 'Water'} ${n} beds`
-        return stage === 'ripe' ? `Harvest ${count(crop.id, yieldOf(crop.id))}` : `Water the ${crop.plural}`
+        return stage === 'ripe' ? `Harvest ${count(crop.id, bedYield(index))}` : `Water the ${crop.plural}`
       }
       return `${crop.plural[0].toUpperCase()}${crop.plural.slice(1)} · ${readyWords((crop.growSeconds - b.growth) / eventSpeed('crops'))}`
     },
@@ -456,8 +456,8 @@ function Bed({ index }: { index: number }) {
         return r ? { verb: 'plant', item: r.crop.id, count: r.beds.length, coins: r.crop.seedCost * r.beds.length } : { verb: 'plant' }
       }
       if (stage === 'thirsty') return { verb: 'water', item: crop!, count: bedsInReach(index, 'thirsty').length }
-      if (stage === 'ripe') return harvestFits(index) ? { verb: 'pick', ...harvestOf(bedsInReach(index, 'ripe')) } : { verb: 'wait', item: crop!, count: yieldOf(crop!), full: 'silo' }
-      return { verb: 'wait', item: crop!, count: yieldOf(crop!), seconds: Math.max(0, Math.ceil((cropById(crop!).growSeconds - farm.beds[index].growth) / eventSpeed('crops'))) }
+      if (stage === 'ripe') return harvestFits(index) ? { verb: 'pick', ...harvestOf(bedsInReach(index, 'ripe')) } : { verb: 'wait', item: crop!, count: bedYield(index), full: 'silo' }
+      return { verb: 'wait', item: crop!, count: bedYield(index), seconds: Math.max(0, Math.ceil((cropById(crop!).growSeconds - farm.beds[index].growth) / eventSpeed('crops'))) }
     },
     run: () => {
       const stage = bedStage(index)

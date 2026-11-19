@@ -4,7 +4,7 @@ import type { BedState } from './state'
 
 // "Show me" on the order board: a good to the places it is made (./orderPlace.ts), and of them the one to walk to.
 
-const bed = (b: Partial<BedState>): BedState => ({ built: true, crop: null, growth: 0, water: 0, fixed: null, ...b })
+const bed = (b: Partial<BedState>): BedState => ({ built: true, crop: null, growth: 0, water: 0, fixed: null, inSeason: false, ...b })
 /** Six beds: lettuce growing in two, one set to always grow carrots, two empty, one not built. */
 const BEDS = [bed({ crop: 'lettuce' }), bed({}), bed({ crop: 'lettuce' }), bed({ fixed: 'carrot' }), bed({}), bed({ built: false })]
 /** What is registered on the farm: the beds (all six), the nest, two cows, the sheep, the lemon tree, two apple trees,

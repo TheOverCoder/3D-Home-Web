@@ -259,7 +259,7 @@ function fresh(): FarmData {
     coins: START_COINS,
     inv: emptyInv(),
     storage: { silo: 1, barn: 1 },
-    beds: BEDS.map((b) => ({ built: b.price === 0 && !b.expansion, crop: null, growth: 0, water: 0, fixed: null })),
+    beds: BEDS.map((b) => ({ built: b.price === 0 && !b.expansion, crop: null, growth: 0, water: 0, fixed: null, inSeason: false })),
     producers: Object.fromEntries(PRODUCER_IDS.map((id) => [id, freshProducer(id)])) as Record<ProducerId, ProducerState>,
     machines: Object.fromEntries(MACHINE_IDS.map((id) => [id, freshMachine()])) as Record<MachineId, MachineState>,
     sprinkler: false,
@@ -511,6 +511,8 @@ function read(text: string | null): Loaded {
         growth: crop ? seconds(b.growth, cropById(crop).growSeconds) : 0,
         water: crop ? seconds(b.water, fullWater(crop)) : 0,
         fixed: isCrop(b.fixed) ? b.fixed : null,
+        // sown in its season: only a bed that grows something, and only as saved (a farm from before: none)
+        inSeason: crop !== null && b.inSeason === true,
       }
     })
     BEDS.forEach((def, i) => {
