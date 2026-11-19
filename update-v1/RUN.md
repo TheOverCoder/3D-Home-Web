@@ -37,6 +37,13 @@ no agents.
 
 Each commit: `npm run check` and the unit tests its rules need; nothing heavy in between.
 
+Steps built: 1 (2834931), 2 (2e7bded), 3 10c (b4d47c3, 9e2221a, 0a93a7f, 70dead3), 4 02c (f550241, 8633797), 5 11c (cc1afdc,
+9133083, fbcfa17), 6 07c (f4f90ae, 82d1e50, e4ce5b6), 7 pictures (the five new pieces', the Harvest trousers', the
+seller's, in fbcfa17), 9 play (the sim's 30 days: day 7 level 20, day 14 level 28, day 30 level 43; the bigger
+market's longer walk to the manager put the first week's returns that find a store full at 6 of 18: a listed debt of
+`journey.test.ts`, paid by the economy's tuning after the beta). Left: 8 (the budget at the three sizes with the new
+views) and 10 (the affected specs, the push, CI, the night run).
+
 **Open items, checked in the code on 2026-11-19, each with who takes it**
 
 - *07c* (the interface): the sale paths play `rewardSound(kind, tier)` with the tier `rewarded()` returns (10 plain

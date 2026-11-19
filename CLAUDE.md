@@ -234,6 +234,12 @@ The README has the overview; `tests/README.md` what each test guards.
   the invisible walls round it and the woods' clearing read them; new ground there is a row. The estate office shows the
   house as a model on a table (1:25, from the save's shell) and the farm's map, each meadow for sale on it a price tag
   that opens the edit mode's card for it.
+- Past the lane (`src/data/lot.ts`'s rows): the car park grows in stages with the farm's traffic (`src/farm/park.ts`,
+  `PARK_STAGES`; `Park.tsx`), and the cars of people about who came by car stand in its bays (`parkCars`: one crowd,
+  coming and going only while their bay is out of view; `marketFill` with shoppers parks the most). The car dealer is
+  a walk-in row (`src/data/dealer.ts`, HOURS.dealer) whose seller sells your car's paints (`carPaints.ts`,
+  `farm.car`; `paint:` unlocks), worn on both maps and in the drive's film (an instance colour over the car's red,
+  `paintTint`; the car's material tints only its base: `tintBase`).
 - A new character is a row of `PEOPLE` (`src/data/people.ts`: a name, a look — a roll of the people engine,
   `rollLook` in `src/models/look.ts`, over overrides on dice of their own —, a voice, a portrait drawn from their own
   model by `node scripts/render-item-art.mjs --people`) and a movement script (`src/farm/script.ts`); whatever draws

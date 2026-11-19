@@ -60,8 +60,10 @@ test.describe("the farm's decoration", () => {
     const shop = page.locator('.farm-panel[aria-label="Decoration"]')
     await expect(shop).toBeVisible()
     await expect(shop.locator('[role="tab"]')).toHaveText(['Decoration', 'Fruit trees & bushes'])
-    // every kind of decoration (the beehive among them)
-    await expect(shop.locator('.decor-card')).toHaveCount(25)
+    // every kind of decoration sold (the beehive and the seasons' four among them; the season banner is given, not
+    // sold), in their sets
+    await expect(shop.locator('.decor-card')).toHaveCount(29)
+    await expect(shop.locator('.decor-set')).toHaveCount(8)
     await shop.locator('.decor-card', { hasText: 'Yard lamp' }).click()
     const card = page.locator('.farm-panel[aria-label="Yard lamp"]')
     await expect(card.locator('.farm-buy')).toContainText('200')
