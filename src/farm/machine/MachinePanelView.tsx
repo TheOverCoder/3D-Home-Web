@@ -6,7 +6,8 @@ import { produceById, storeOf, type ProduceId } from '../data'
 import { iconUrl } from '../icons'
 import type { MachineActions, MachineView, QueueSlot, RecipeView } from '../machineView'
 import { art, type ArtId } from '../../ui/art'
-import { burst } from '../../ui/burst'
+import { celebrate } from '../../fx/reward'
+import { rewardKind } from '../../lib/tier'
 import { GoodPic } from '../../ui/GoodPic'
 import { Check, Clock, HandGrabbing, LockSimple, X } from '../../ui/glyphs'
 import { MotionRoot, PRESS, SPRING } from '../../ui/motion'
@@ -360,8 +361,9 @@ function Panel({ v, act, coins, onClose, buying }: MachinePanelProps) {
   const [chip, popChip] = useAnimate()
   useEffect(() => {
     if (v.level.n > was.current) {
-      const el = document.querySelector('.mp-lv-ring, .mp-level')
-      if (el) burst(el, { count: 80, spread: 90, power: 30 })
+      // a level, as big as a level is at least (it pays nothing of its own: dearer goods from now on); its sound is the
+      // collect's that reached it
+      celebrate('level', rewardKind('level').least ?? 'big', document.querySelector('.mp-lv-ring, .mp-level'), { sound: false })
       if (chip.current) void popChip(chip.current, { scale: [1, 1.35, 0.92, 1] }, { duration: 0.6 })
       const b = v.level.boost
       say(

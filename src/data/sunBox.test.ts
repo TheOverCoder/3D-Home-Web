@@ -1,7 +1,7 @@
 import { OrthographicCamera, Vector3 } from 'three'
 import { describe, expect, it } from 'vitest'
 import { SUN, SUN_SHADOW, inSunShadow } from './layout'
-import { FARM_SUN_BOX, FARM_SUN_BOX_PLANNED, SUN_BOXES, TODAY_SUN_BOX, boxMargin, boxSide, inBox, lightView, texelsFor, type SunBox } from './sunBox'
+import { FARM_SUN_BOX, SUN_BOXES, TODAY_SUN_BOX, boxMargin, boxSide, inBox, lightView, texelsFor, type SunBox } from './sunBox'
 import { HOME_LAND, PARCELS } from '../farm/layout'
 import { FINEST_SHADOW_MAP } from '../lib/profile'
 import { SUN_TEXEL } from '../lib/sculpt/lod'
@@ -26,7 +26,6 @@ describe('the sun box', () => {
   it("is the house's as it always was, and the farm's own on the farm", () => {
     expect(SUN_BOXES.home).toBe(TODAY_SUN_BOX)
     expect(SUN_BOXES.farm).toBe(FARM_SUN_BOX)
-    expect(FARM_SUN_BOX_PLANNED).toBe(FARM_SUN_BOX)
     expect(TODAY_SUN_BOX).toEqual({ left: -SUN_SHADOW.half, right: SUN_SHADOW.half, bottom: -SUN_SHADOW.half, top: SUN_SHADOW.half })
   })
 

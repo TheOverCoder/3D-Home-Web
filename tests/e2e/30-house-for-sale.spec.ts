@@ -237,6 +237,57 @@ test.describe('the house for sale', () => {
     expect(game.errors, game.errors.join('\n')).toEqual([])
   })
 
+  // The bigger office (src/data/estate.ts): the house as a model on its table, and the farm's map on its west wall with
+  // the meadows for sale on it, each its price tag — the edit mode's card for it, where Buy buys it (src/farm/EditPanel.tsx).
+  test("the office's map: each meadow for sale carries its price tag, which opens the edit mode on it, where it is bought; the house's model on its table", async ({ game }) => {
+    await game.ready('farm')
+    const { page } = game
+    await reset(game, 12, 1000)
+    // the house's model stands on its table (the house as the save's shell has it)
+    expect(await page.evaluate(() => !!(window as any).__home.scene.getObjectByName('estate-house-house'))).toBe(true)
+    const meadows = await page.evaluate(() => (window as any).__home.estate.meadows as Record<string, { x: number; y: number; z: number }>)
+    const EYE = 1.62
+    const lookAt = (id: string) => {
+      const spot = meadows[id]
+      const at = { x: spot.x + 1, z: spot.z }
+      return game.teleport(at.x, 1.4, at.z, yawTo(at.x, at.z, spot.x, spot.z), Math.atan2(spot.y - EYE, 1))
+    }
+    const tagIs = (id: string | null) => page.waitForFunction((want) => ((window as any).__home.useHome.getState().tag?.id ?? null) === want, id, { timeout: 30_000, polling: 200 })
+    // each meadow on the map is its own tag, the one looked at
+    for (const id of ['north', 'northWest', 'east']) {
+      await lookAt(id)
+      await tagIs(`farm-estate-map-${id}`)
+    }
+    let s = await state(page)
+    expect(s.tag).toMatchObject({ kind: 'price', price: 150 })
+    expect(s.coins).toBe(1000)
+    // G: the edit mode, the east meadow picked, its card with Buy
+    await page.keyboard.press('KeyG')
+    await page.waitForFunction(
+      () => {
+        const h = (window as any).__home
+        return h.useHome.getState().editing && h.farm.edit.useEdit.getState().picked?.id === 'east'
+      },
+      null,
+      { timeout: 30_000, polling: 200 },
+    )
+    expect((await state(page)).coins, 'nothing spent yet').toBe(1000)
+    await expect(page.locator('.edit-card')).toContainText('East meadow')
+    await page.locator('.edit-card .edit-buy').click()
+    await page.waitForFunction(() => (window as any).__home.farm.state.layout.land.includes('east'), null, { timeout: 30_000, polling: 200 })
+    expect((await state(page)).coins).toBe(850)
+    // back in the office: the north-east meadow beside it still for sale; the east one the farm's, no tag on it (each
+    // waited for: a frame after buying land is slow, the hedge and the woods made again round it)
+    await page.evaluate(() => (window as any).__home.useHome.getState().setEditing(false))
+    await page.waitForFunction(() => (window as any).__home.farm.edit.camera.blend < 0.01, null, { timeout: 30_000, polling: 200 })
+    await lookAt('northEast')
+    await tagIs('farm-estate-map-northEast')
+    expect((await state(page)).tag).toMatchObject({ kind: 'price', price: 200 })
+    await lookAt('east')
+    await tagIs(null)
+    expect(game.errors, game.errors.join('\n')).toEqual([])
+  })
+
   test("afterwards: today's farm again", async ({ game }) => {
     await game.ready('farm')
     await game.page.evaluate(() => (window as any).__home.farm.reset())

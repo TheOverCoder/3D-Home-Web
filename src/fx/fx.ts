@@ -33,8 +33,8 @@ export interface FxRequest {
 }
 
 /** What the effects are doing, for the tests (`window.__home.fx`): bursts started, systems alive, coin flights,
- *  surprises shown. */
-export const fxStats = { loaded: false, started: 0, alive: 0, coins: 0, items: 0, xp: 0 }
+ *  surprises shown; rewards shown over where they were paid in the world, and how many of them popped their number. */
+export const fxStats = { loaded: false, started: 0, alive: 0, coins: 0, items: 0, xp: 0, rewards: 0, pops: 0 }
 
 /** Less motion (the game's setting, or the device's: src/ui/still.ts): no particles, no flying coins. */
 export const reducedMotion = lessMotion

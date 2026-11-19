@@ -278,6 +278,13 @@ describe('blocking the way, the doors and windows, and what hangs on the walls',
     const moved = { ...built, pieces: built.pieces.map((p) => (p.id === 'screen-office' ? { ...p, x: 3.5, z: -5.92 } : p.id === 'screen-bedroom' ? { ...p, type: 'picture-wide' } : p)) }
     const back = sanitizeHome(JSON.parse(JSON.stringify(moved)))
     for (const id of ['screen-office', 'screen-bedroom']) expect(back.pieces.find((p) => p.id === id)).toEqual(built.pieces.find((p) => p.id === id))
+    // a screen saved on its own wall but over the kitchen's counter (found by the save's property test) hangs where it
+    // was built too
+    const over = { ...built, pieces: built.pieces.map((p) => (p.id === 'screen-office' ? { ...p, x: -1 } : p)) }
+    const home = sanitizeHome(JSON.parse(JSON.stringify(over)))
+    const screen = home.pieces.find((p) => p.id === 'screen-office')!
+    expect(screen).toEqual(built.pieces.find((p) => p.id === 'screen-office'))
+    expect(canPlacePiece(home, screen).ok).toBe(true)
   })
 
   it('a changed house (windows moved, a doorway closed, the garden door on the west wall, rooms painted) fits, and loads as saved', () => {

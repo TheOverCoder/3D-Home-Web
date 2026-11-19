@@ -695,7 +695,7 @@ export function yieldOf(crop: CropId, bed?: BedState): number   // compost, then
 ### 1.16 The sun box and the car park (owner 11, phase 1; already written, unwired)
 
 ```ts
-// src/data/sunBox.ts (as written): SunBox, SUN_BOXES: Record<Place, SunBox>, FARM_SUN_BOX_PLANNED, lightView, boxMargin, inBox, texelsFor
+// src/data/sunBox.ts (as written): SunBox, SUN_BOXES: Record<Place, SunBox>, FARM_SUN_BOX, lightView, boxMargin, inBox, texelsFor
 // src/data/sunCheck.ts (as written): SUN_MARGIN, roomMargins(room, roof, box), cornerMargins, worst
 // src/data/layout.ts, once the farm's box is planned (11's commit 1):
 export function inSunShadow(x: number, y: number, z: number, margin?: number, place?: Place): boolean   // asks SUN_BOXES[place]
