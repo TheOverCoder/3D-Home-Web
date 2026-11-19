@@ -56,6 +56,7 @@ export function DailyCard({
   v,
   onClaim,
   onClose,
+  onShake,
 }: {
   v: DailyView
   /** claims today's gift: what it gave (null: nothing to claim) */
@@ -63,6 +64,8 @@ export function DailyCard({
   onClose: () => void
   /** (not called: the moment it bursts open, its sting and its touch are its tier's, `celebrate`: src/fx/reward.ts) */
   onReveal?: () => void
+  /** the box starts shaking (for `ms`, `delayMs` from now), to open on a gift of `tier`: its rattle */
+  onShake?: (tier: Tier, ms: number, delayMs?: number) => void
 }) {
   const still = useLessMotion()
   const [moment, setMoment] = useState<Moment | null>(null)
@@ -115,6 +118,7 @@ export function DailyCard({
     }
     setMoment({ got: list, phase: still ? 'open' : 'shake', before: v })
     if (still) celebrate('daily', tier.current, null)
+    else onShake?.(tier.current, SHAKE_MS)
   }
 
   // rattle → open (the burst: as big as the gift) → home

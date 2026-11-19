@@ -4,6 +4,7 @@ import { farm } from '../farm/state'
 import { hingedDoorOf } from '../home/shell'
 import { HOSTED, onHost } from '../home/layout'
 import { debugSet } from '../lib/debug'
+import type { RewardKind, Tier } from '../lib/tier'
 import { useSettings } from '../settings'
 import { useHome } from '../store'
 import {
@@ -36,11 +37,13 @@ export function SoundDirector() {
   useEffect(() => wireMusic(), [])
   useEffect(() => {
     // ?debug: the engine's state (`__home.audio()`), and the phone mix measured offline (./measure.ts, loaded only when
-    // asked): one sound (`render(kind)`), every sound the player causes (`measure()`), and a demo to listen to
+    // asked): one sound (`render(kind)`), a reward's sting (`sting(kind, tier)`), every sound the player causes and
+    // every sting (`measure()`), and a demo to listen to
     debugSet(
       'audio',
       Object.assign(() => audioStatus(), {
         render: (kind: FarmSound, o?: PlayOpts) => import('./measure').then(async (m) => m.measureSamples(await m.renderSound(kind, o))),
+        sting: (kind: RewardKind, tier: Tier) => import('./measure').then(async (m) => m.measureSamples(await m.renderSting(kind, tier))),
         measure: () => import('./measure').then((m) => m.measureSounds()),
         demo: () => import('./measure').then((m) => m.demo()),
       }),

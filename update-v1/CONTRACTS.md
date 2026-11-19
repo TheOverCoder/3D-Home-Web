@@ -538,6 +538,7 @@ export function rewardFeel(kind: RewardKind, tier: Tier): Feel
 // src/audio/sound.ts
 export function rewardSound(kind: RewardKind, tier: Tier): void   // the sting, in C major pentatonic, longer and richer by tier
 export function coinLand(i: number): void                          // a quiet tink a step higher for each coin landing
+export function rattle(tier: Tier, ms: number, delayMs?: number): void   // a box shaking before it opens (the cards' onShake)
 // src/audio/mix.ts
 export function duck(bus: 'sfx' | 'amb' | 'music' | 'all', dB: number, holdMs: number): void
 // src/lib/device.ts: Haptic gains 'sale+' (10·60·14·70·22) in 06's commit 9.

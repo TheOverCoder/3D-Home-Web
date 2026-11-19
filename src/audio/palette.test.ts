@@ -10,7 +10,8 @@ import { TRACKS } from './music'
 // rewards, the coins, the "no"), as the recording fake hears it, lies within a cent of the key; a bell's overtone off
 // the key is a colour under its note, never a note of its own (under a quarter as loud).
 
-const STINGS = (Object.keys(SOUNDS) as FarmSound[]).filter((k) => ['reward', 'cue', 'coins', 'no', 'landing'].includes(SOUNDS[k].family))
+// (the rattle before a box opens is its lid's knocks alone: noise, with no note to clash: ./stings.test.ts)
+const STINGS = (Object.keys(SOUNDS) as FarmSound[]).filter((k) => ['reward', 'cue', 'coins', 'no', 'landing'].includes(SOUNDS[k].family) && k !== 'rattle')
 
 /** What a sting plays, on the fake (its dice fixed: only when it is played may change). */
 function heard(kind: FarmSound): PlayedNote[] {

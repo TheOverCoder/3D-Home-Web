@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { farmSound } from '../audio/sound'
+import { rattle } from '../audio/sound'
 import { useHome } from '../store'
 import { registerCard } from '../ui/cardQueue'
 import { DailyCard } from './DailyCard'
@@ -20,7 +20,7 @@ export function DailyPanel() {
   // (the day followed too: the card's clock running out brings the new day's gift onto it)
   useCalendarDay()
   const close = useHome((s) => s.closePanel)
-  return <DailyCard v={dailyNow()} onClaim={claimDaily} onClose={close} onReveal={() => farmSound('surprise')} />
+  return <DailyCard v={dailyNow()} onClaim={claimDaily} onClose={close} onShake={rattle} />
 }
 
 /** The day's gift on the card queue: due while it waits and has not opened by itself today (`dailyDue`); it opens as

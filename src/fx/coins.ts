@@ -1,3 +1,4 @@
+import { coinLand } from '../audio/sound'
 import { art } from '../ui/art'
 
 // Coins from a buyer to the coin chip at the top of the screen when they pay: a few coin pictures, one after another,
@@ -17,8 +18,10 @@ function chipCoin(): DOMRect | null {
   return r.width > 0 ? r : null
 }
 
-/** Flies `n` coins from the screen point (x, y) to the coin chip; returns how many took off (0: the chip is hidden). */
-export function flyCoins(x: number, y: number, n: number): number {
+/** Flies `n` coins from the screen point (x, y) to the coin chip; returns how many took off (0: the chip is hidden).
+ *  `landed(i)` as the i-th lands: by default its tink, a step up the key each, in time with the count (src/audio). */
+export function flyCoins(x: number, y: number, n: number, o: { landed?: (i: number) => void } = {}): number {
+  const landed = o.landed ?? coinLand
   const to = chipCoin()
   if (!to || typeof document.body.animate !== 'function') return 0
   const dx = to.left + to.width / 2 - x
@@ -44,9 +47,11 @@ export function flyCoins(x: number, y: number, n: number): number {
       ],
       { duration: FLIGHT, delay: i * STAGGER, easing: 'cubic-bezier(0.5, 0, 0.75, 1)', fill: 'both' },
     )
-    const done = () => img.remove()
-    flight.onfinish = done
-    flight.oncancel = done
+    flight.onfinish = () => {
+      img.remove()
+      landed(i)
+    }
+    flight.oncancel = () => img.remove()
   }
   return n
 }

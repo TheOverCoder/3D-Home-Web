@@ -69,12 +69,15 @@ export function LevelCard({
   v,
   onOpen,
   onClose,
+  onShake,
 }: {
   v: LevelView
   onOpen: (boxes: number[]) => Opened[]
   onClose: () => void
   /** (not called: the moment a gift bursts open, its sting and its touch are its tier's, `celebrate`: src/fx/reward.ts) */
   onReveal?: () => void
+  /** the boxes start shaking (for `ms`, `delayMs` from now), to open on gifts of `tier`: their rattle */
+  onShake?: (tier: Tier, ms: number, delayMs?: number) => void
 }) {
   const still = useLessMotion()
   const share = v.top ? 1 : v.into / v.need
@@ -174,7 +177,7 @@ export function LevelCard({
           ) : null}
         </AnimatePresence>
       </div>
-      <AnimatePresence>{opening && <Opening key="opening" got={opening.got} from={opening.from} tier={opening.tier} onDone={() => setOpening(null)} />}</AnimatePresence>
+      <AnimatePresence>{opening && <Opening key="opening" got={opening.got} from={opening.from} tier={opening.tier} onShake={onShake} onDone={() => setOpening(null)} />}</AnimatePresence>
     </PanelSheet>
   )
 }
@@ -384,7 +387,7 @@ function Reached({ level, came }: { level: number; came: NonNullable<LevelView['
  * Opening: in the middle of the card the box (or the boxes) grow from where they stood, shake as the light gathers,
  * burst into their prizes, and wait for a tap: Collect sends them home.
  */
-function Opening({ got, from, tier, onDone }: { got: Opened[]; from: DOMRect | null; tier: Tier; onDone: () => void }) {
+function Opening({ got, from, tier, onShake, onDone }: { got: Opened[]; from: DOMRect | null; tier: Tier; onShake?: (tier: Tier, ms: number, delayMs?: number) => void; onDone: () => void }) {
   const still = useLessMotion()
   const [phase, setPhase] = useState<'shake' | 'open'>(still ? 'open' : 'shake')
   const stage = useRef<HTMLDivElement>(null)
@@ -404,12 +407,14 @@ function Opening({ got, from, tier, onDone }: { got: Opened[]; from: DOMRect | n
       celebrate('box', tier, null)
       return
     }
+    // the boxes rock for 480 ms after their 320 ms flight in (their rotate below), then burst open
+    onShake?.(tier, 480, 320)
     const t = setTimeout(() => {
       setPhase('open')
       celebrate('box', tier, stage.current)
     }, 820)
     return () => clearTimeout(t)
-  }, [still, tier])
+  }, [still, tier, onShake])
   // once: the Collect button's press would reach the stage's too
   const gone = useRef(false)
   const collect = () => {
