@@ -8,7 +8,7 @@ import { random } from '../lib/sculpt'
 import { cropParts } from './crops'
 import { GROWERS, putEgg, putLemon } from './plants'
 import type { CropId } from '../farm/data'
-import { Group, Mesh, MeshStandardMaterial, PlaneGeometry } from 'three'
+import { Color, Group, Mesh, MeshStandardMaterial, PlaneGeometry } from 'three'
 import { coopModel, lemonSpots, lemonTreeModel, mouthGlowMaterial, mouthGlowShape, ovenModel, structureParts, troughModel } from './structures'
 import { MAIL_FLAG, mailboxModel, partGeometry } from './structures'
 import { Parts } from '../lib/sculpt'
@@ -18,7 +18,7 @@ import { DRIVER, putTractor, seatDriver, tractorParts } from './tractor'
 import { MARKET_MIDDLE, MARKET_SCREEN, MARKET_SIGN, marketFittingsParts, marketShellParts } from './market'
 import { putSlidingDoor, slidingDoorParts } from './slidingDoor'
 import { BROWSE_SPOTS, CONTRACTOR_SPOT, MANAGER_SPOT, MARKET_WALKIN, PAY_SPOT } from '../data/market'
-import { carParts, putCar, putRollingCar, rollingCarParts } from './car'
+import { carParts, paintTint, putCar, putRollingCar, rollingCarParts } from './car'
 import { ESTATE_MIDDLE, estateFittingsParts, houseModel, houseModelParts, parkingLotParts } from './estate'
 import { walkInShellParts } from './market'
 import { AGENT_SEAT, ESTATE_DISPLAY, ESTATE_HOURS, ESTATE_MAP, ESTATE_SIGN, ESTATE_WALKIN, ESTATE_WINDOW, SALE_BOARD, SEAT_Y } from '../data/estate'
@@ -30,7 +30,7 @@ import { setSculptGlow } from '../lib/sculpt'
 import { decorModel, PATH_HALF, SECTION_HALF } from './decor'
 import { parkModel } from './park'
 import { PARK_AREA } from '../data/lot'
-import { PARK_STAGES } from '../farm/park'
+import { CAR_COLOURS, PARK_BAYS, PARK_STAGES } from '../farm/park'
 import { FRUIT, FRUIT_KINDS, type DecorKind } from '../farm/decor'
 import { fruitParts, fruitPlantModel, fruitSpots, putFruit } from './fruit'
 import { SCARECROW_KINDS, scarecrowModel } from './scarecrows'
@@ -689,14 +689,24 @@ export const GALLERY: GalleryEntry[] = [
   {
     id: 'park',
     label: 'Car park',
-    name: 'The car park at its fullest stage (mission 11 c7): asphalt, bays, kerbs, the P sign, the trolley shelter and the crossing',
+    name: 'The car park at its fullest stage (mission 11 c7): asphalt, bays, kerbs, the P sign, the trolley shelter and the crossing, three cars in their first bays in three of their paints',
     make() {
       const parts = structureParts(parkModel(PARK_STAGES.length - 1), 'park')
+      // three cars in the first bays, as the game parks them (src/farm/Park.tsx: the first row's bonnets north)
+      const cars = carParts(3, false)
+      cars.begin()
+      PARK_BAYS.slice(0, 3).forEach((b, k) => {
+        const z = (b.z0 + b.z1) / 2
+        putCar(cars, (b.x0 + b.x1) / 2, z, z < 23 ? 0 : Math.PI, new Color(...paintTint(CAR_COLOURS[k + 1])))
+      })
+      cars.end()
       // (it is in world metres: moved to the middle of the stage)
-      parts.group.position.set(-(PARK_AREA.x0 + PARK_AREA.x1) / 2, 0, -(PARK_AREA.z0 + PARK_AREA.z1) / 2 + 7)
       const object = new Group()
-      object.add(parts.group)
-      return { object, width: 34, height: 6, triangles: () => parts.triangles(), update() {} }
+      for (const g of [parts.group, cars.group]) {
+        g.position.set(-(PARK_AREA.x0 + PARK_AREA.x1) / 2, 0, -(PARK_AREA.z0 + PARK_AREA.z1) / 2 + 7)
+        object.add(g)
+      }
+      return { object, width: 34, height: 6, triangles: () => parts.triangles() + cars.triangles(), update() {} }
     },
   },
   {
