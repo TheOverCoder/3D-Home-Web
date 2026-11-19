@@ -6,6 +6,8 @@ import { coinsToFly, reducedMotion } from '../fx/fx'
 import { onXpFlight, xpInFlight } from '../fx/xp'
 import { GarmentPic } from '../ui/GarmentPic'
 import { flyCoins, flyItem } from '../fx/coins'
+import { celebrate } from '../fx/reward'
+import { rewardKind } from '../lib/tier'
 import { storeOf } from './data'
 import { iconUrl } from './icons'
 import { useHome } from '../store'
@@ -16,6 +18,7 @@ import { levelView } from './levelView'
 import { GARMENTS, type Garment } from './outfit'
 import { farm, opensOn, shows, useFarm, xpEventCount, xpNow } from './state'
 import { arriveDelay } from './reveal'
+import { rewardTier } from './worth'
 import { levelOf } from './xp'
 import { waitingBoxes } from './gifts'
 import { openedBetween, type UnlockId } from './unlocks'
@@ -233,6 +236,7 @@ export function LevelUp() {
   // the garments the levels shown brought, still to be shown (one after another)
   const [gifts, setGifts] = useState<Garment[]>([])
   const [gift, setGift] = useState<{ g: Garment; n: number } | null>(null)
+  const giftEl = useRef<HTMLDivElement>(null)
   // what the levels shown opened, still to be shown (a reveal for each level, once nothing is over the game)
   const [opened, setOpened] = useState<{ level: number; opens: UnlockId[] }[]>([])
   const [reveal, setReveal] = useState<{ level: number; opens: UnlockId[]; n: number } | null>(null)
@@ -262,7 +266,6 @@ export function LevelUp() {
       if (brought.length) setGifts((q) => [...q, ...brought])
       const opens = openedBetween(from, landed, opensOn)
       if (opens.length) setOpened((q) => [...q, ...opens])
-      farmSound('level')
     }
   }, [seen, reached, landed])
 
@@ -272,6 +275,8 @@ export function LevelUp() {
     // what each level brought by itself flies off the number once it has landed: its coins to the coin chip, its gift
     // up and on to its building's chip (where they went: the level's card tells what they were)
     const came = farm.gifts.came.filter((c) => c.level > show.from && c.level <= show.level)
+    // its sting, its touch and its confetti, as big as what the levels brought (a level is always big at least)
+    celebrate('level', rewardTier([...came.map((c) => ({ coins: c.coins })), ...came.map((c) => c.prize)], show.level, rewardKind('level').least), showEl.current)
     const fly = window.setTimeout(() => {
       const el = showEl.current
       if (!el || !el.getClientRects().length || reducedMotion()) return
@@ -293,10 +298,11 @@ export function LevelUp() {
     if (show || gift || !gifts.length) return
     setGift((p) => ({ g: gifts[0], n: (p?.n ?? 0) + 1 }))
     setGifts((q) => q.slice(1))
-    farmSound('garment')
   }, [show, gift, gifts])
   useEffect(() => {
     if (!gift) return
+    // its sting, its touch and its confetti (a garment is always big at least)
+    celebrate('garment', rewardTier([{ garment: gift.g.id }], levelOf(farm.xp.points), rewardKind('garment').least), giftEl.current)
     const t = window.setTimeout(() => setGift(null), GIFT_MS)
     return () => window.clearTimeout(t)
   }, [gift])
@@ -322,7 +328,7 @@ export function LevelUp() {
         )}
         {reveal && <Unlocked key={`u${reveal.n}`} level={reveal.level} opens={reveal.opens} onDone={() => setReveal(null)} />}
         {!show && gift && (
-          <div className="garment-show" key={`g${gift.n}`}>
+          <div className="garment-show" key={`g${gift.n}`} ref={giftEl}>
             <span className="garment-show-rays" aria-hidden="true" />
             <GarmentPic g={gift.g} />
             <span className="garment-show-text">

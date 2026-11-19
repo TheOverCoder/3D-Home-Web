@@ -1,0 +1,6 @@
+/* A reward's number where it was paid (src/fx/pop.ts): a paper chip with a coin and "+120", over the scene, under the
+   flying coins; the tier scales it (15 px and more at the smallest). Only for the eye: the toast keeps the words. Hidden
+   with the top of the screen clear (src/ui/HudMode.tsx). */
+.pop-num { position: fixed; z-index: 69; display: inline-flex; align-items: center; gap: 3px; padding: 2px 10px 2px 4px; border-radius: 999px; background: var(--paper); color: var(--ink); font: 800 17px/1.15 var(--font-text); font-variant-numeric: tabular-nums; white-space: nowrap; box-shadow: 0 2px 0 var(--sun-lip), 0 6px 14px rgba(40, 24, 10, 0.32); pointer-events: none; user-select: none; will-change: transform, opacity; }
+.pop-num img { width: 22px; height: 22px; filter: drop-shadow(0 1px 1px rgba(40, 24, 10, 0.3)); }
+:root[data-hud='clean'] .pop-num { display: none; }

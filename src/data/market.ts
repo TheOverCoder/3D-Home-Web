@@ -6,7 +6,6 @@
 // the ground is a diamond with its south tip here (src/data/buildings.ts says why every floor must be inside it).
 
 import type { Box, Rect, WalkIn } from './buildings'
-import { ESTATE_DOOR, PARKING } from './estate'
 
 const H = 3.4 // the walls' tops: a parapet round the flat roof
 const T = 0.15 // the walls' thickness
@@ -127,12 +126,5 @@ export const CONTRACTOR_STAND = { x: 15.95, z: 17.92 } as const
 
 // ───────────────────────────── the lot ─────────────────────────────
 
-/** The ground you can walk on outside the garden: the strip of lane from the parking lot west of the gate (src/data/
- *  estate.ts) past the estate office's front and the market's, the market's forecourt (east of the office, up to its
- *  north wall), and the corner by the cabin. Invisible walls close it where the buildings' walls do not
- *  (src/farm/Land.tsx). The first is the lane in front of the market (its east end: where shoppers stand about). */
-export const LOT: readonly Rect[] = [
-  { x0: PARKING.x0, x1: 16.3, z0: 13, z1: ESTATE_DOOR.z0 },
-  { x0: HALL.x0 - T, x1: 16.3, z0: ESTATE_DOOR.z0, z1: HALL.z0 - T },
-  { x0: HALL.x1 + T, x1: 16.3, z0: HALL.z0 - T, z1: 18.6 },
-]
+/** The ground you can walk on outside the garden: the lot's rows (src/data/lot.ts), the lane first. */
+export { LOT } from './lot'
