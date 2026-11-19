@@ -640,15 +640,17 @@ export const GALLERY: GalleryEntry[] = [
   {
     id: 'machines',
     label: 'Machines',
-    name: "Update v1's machines: the dairy (its churn's dasher up) and the jam kettle (its paddle in)",
+    name: "Update v1's machines: the dairy (its churn's dasher up), the jam kettle (its paddle in) and a beehive",
     make() {
       const dairy = structureParts(dairyWithDasher(), 'dairy')
       const kettle = structureParts(kettleWithPaddle(), 'kettle')
+      const hive = structureParts(decorModel('beehive'), 'beehive')
       dairy.group.position.x = -1.3
       kettle.group.position.x = 1.6
+      hive.group.position.set(1.4, 0, 1.4)
       const object = new Group()
-      object.add(dairy.group, kettle.group)
-      return { object, width: 5.2, height: 2.6, triangles: () => dairy.triangles() + kettle.triangles(), update() {} }
+      object.add(dairy.group, kettle.group, hive.group)
+      return { object, width: 5.2, height: 2.6, triangles: () => dairy.triangles() + kettle.triangles() + hive.triangles(), update() {} }
     },
   },
 ]
