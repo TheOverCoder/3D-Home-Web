@@ -67,6 +67,8 @@ export async function bootApp(page: Page, query = 'debug&quality=low') {
   // the season and the weather quiet (src/farm/state/season.ts): every spec stands in spring, in clear weather
   await page.evaluate(() => (window as any).__home?.season?.quiet?.(true))
   await learntControls(page)
+  // the market's mood quiet (src/farm/mood.ts): every price as fair, whatever the date
+  await page.evaluate(() => (window as any).__home?.mood?.quiet?.(true))
 }
 
 /** The controls marked learnt on this device (src/settings.ts, `learnt`): every spec sees today's controls — the three
@@ -213,6 +215,9 @@ export async function openGame(browser: Browser, counting = false): Promise<{ ga
         h.season?.quiet?.(true)
         // the controls learnt (src/settings.ts): a spec that taught them leaves them learnt for the next
         h.settings?.getState?.().update?.({ learnt: { stick: true, look: true } })
+        // the market's mood quiet (src/farm/mood.ts: every price as fair), as a ?debug page starts: a spec that turned it
+        // on (34-events, 41-computer) leaves it quiet for the next
+        h.mood?.quiet?.(true)
         // the effects' clock at its own speed and the weather's drops at the device's count (a spec that set them,
         // 05's walk in the rain, 16's frozen poses, leaves them as they start)
         if (h.fx?.time) h.fx.time.speed = 1
