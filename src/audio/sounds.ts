@@ -86,8 +86,8 @@ export const SOUNDS: Readonly<Record<FarmSound, SoundRow>> = {
   tink: { family: 'landing', feel: null, vary: 0, twin: 'chip' },
   // update v1's machines (update-v1/missions/01-loop-economy.md c8): each its load and its goods taken out
   churn: { ...pressed('motion'), mix: 1 },
-  crock: work('toast'),
-  bubble: { ...pressed('motion'), mix: 1 },
+  crock: { ...work('toast'), mix: 5 },
+  bubble: { ...pressed('motion'), mix: -3 },
   jar: work('toast'),
 }
 

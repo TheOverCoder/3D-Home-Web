@@ -122,7 +122,8 @@ test.describe("the farm's decoration", () => {
     const spots = await page.evaluate(() => {
       const f = (window as any).__home.farm
       const oven = { x: -4, z: -2, rot: 1 }
-      const bed = { x: 5.5, z: -6, rot: 1 }
+      // (clear of the dairy and its way in, on the pasture's west)
+      const bed = { x: 3.5, z: -5, rot: 1 }
       return { oven: f.movePlace('oven', oven).ok && oven, bed: f.moveBed(0, bed).ok && bed }
     })
     expect(spots.oven && spots.bed).toBeTruthy()
@@ -152,7 +153,7 @@ test.describe("the farm's decoration", () => {
     await page.evaluate(() => {
       ;(window as any).__home.farm.state.coins = 100
     })
-    await game.teleport(5.5 + 1.0, 1.4, -6, Math.PI / 2, -0.5)
+    await game.teleport(3.5 + 1.0, 1.4, -5, Math.PI / 2, -0.5)
     await nearbyIs(game, 'farm-bed-0')
     await page.keyboard.press('Digit1')
     await until(game, () => (window as any).__home.farm.state.beds[0].crop === 'lettuce')
@@ -165,7 +166,7 @@ test.describe("the farm's decoration", () => {
     const after = await layout(game)
     expect(after.decor).toEqual(before.decor)
     expect(after.places.oven).toEqual({ x: -4, z: -2, rot: 1 })
-    expect(after.beds[0]).toEqual({ x: 5.5, z: -6, rot: 1 })
+    expect(after.beds[0]).toEqual({ x: 3.5, z: -5, rot: 1 })
     expect(await page.evaluate(() => (window as any).__home.farm.state.beds[0].crop)).toBe('lettuce')
     expect(await page.evaluate(() => (window as any).__home.farm.state.producers['apple-tree'].animals)).toBe(1)
 

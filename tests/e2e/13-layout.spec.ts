@@ -81,7 +81,8 @@ test.describe('farm layout and the edit mode', () => {
     expect(Math.abs(hens.z - 6.5)).toBeLessThanOrEqual(1)
     expect(await page.evaluate((h) => (window as any).__home.farm.canPlace('hens', h).ok, hens)).toBe(true)
 
-    // the pasture, turned, onto a second meadow (the north one): the herd comes along
+    // the pasture, turned, onto a second meadow (the north one, past where its field of beds is staked out): the herd
+    // comes along
     expect(
       await page.evaluate(() => {
         const f = (window as any).__home.farm
@@ -89,13 +90,13 @@ test.describe('farm layout and the edit mode', () => {
         return f.buyLand('north')
       }),
     ).toBe(true)
-    expect(await page.evaluate(() => (window as any).__home.farm.movePlace('cows', { x: 0, z: -19, rot: 1 }).ok)).toBe(true)
+    expect(await page.evaluate(() => (window as any).__home.farm.movePlace('cows', { x: 0, z: -21, rot: 1 }).ok)).toBe(true)
     await page.waitForTimeout(1500)
     const herd = await page.evaluate(() => (window as any).__home.herd.map((c: any) => [c.x, c.z]))
     expect(herd.length).toBe(2)
     for (const [x, z] of herd) {
       expect(Math.abs(x)).toBeLessThan(6.6)
-      expect(Math.abs(z + 19)).toBeLessThan(2.3)
+      expect(Math.abs(z + 21)).toBeLessThan(2.3)
     }
     // a turn for the lemon tree (R), and the panel says when something cannot turn where it stands
     await page.evaluate(() => (window as any).__home.farm.edit.useEdit.getState().pick({ kind: 'place', id: 'lemon' }))
@@ -117,7 +118,7 @@ test.describe('farm layout and the edit mode', () => {
     await page.evaluate(() => (window as any).__home.farm.saveFarm())
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('3d-home:farm:v1') ?? '{}').layout)
     expect(saved.land).toEqual(['east', 'north'])
-    expect(saved.places.cows).toEqual({ x: 0, z: -19, rot: 1 })
+    expect(saved.places.cows).toEqual({ x: 0, z: -21, rot: 1 })
 
     await page.evaluate(() => (window as any).__home.farm.reset())
     expect(game.errors).toEqual([])
