@@ -113,3 +113,6 @@ The orchestrator runs the plan to the end without asking:
   eight running finish; the next stage runs at most four at once, in dependency order.
 - **07b's two files outside its row accepted:** `PanelSheet.tsx` (`onLeave`, an optional `pic`, `.farm-backdrop` out of
   `above()`) and `ConfirmCard.tsx` (its time through `span()`, P0-split's ask). The 32 flake is fixed in `drag.ts`.
+- **02b's six files outside its row accepted:** the daily and news cards' own CSS (their bodies), the garment line in
+  `state/rewards.ts` (02a's ask), and three tests updated for gift garments, boxes at levels 3 and 7 and the *Album*
+  line. `ONE_AT = 3` (one box a level from level 3) because PACE.income and JOURNEY.full failed below it.

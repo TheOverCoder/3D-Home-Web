@@ -148,6 +148,8 @@
     { "name": "the daily gift", "specs": ["35-daily"], "paths": ["src/farm/{daily,useDaily,calendar}.ts", "src/farm/{DailyCard,DailyPanel}.{tsx,css}"] },
     { "name": "unlocks", "specs": ["36-unlocks"], "paths": ["src/farm/unlocks.ts", "src/farm/Unlocked.{tsx,css}", "src/ui/LockTag.tsx"] },
     { "name": "goals", "specs": ["21-goals"], "paths": ["src/farm/{goals,goalsView}.ts", "src/farm/{GoalsCard,GoalsPanel}.{tsx,css}"] },
+    { "name": "the farm album", "specs": ["43-album", "28-wardrobe"], "paths": ["src/farm/album.ts", "src/farm/state/album.ts", "src/farm/{AlbumCard,AlbumPanel}.{tsx,css}"] },
+    { "name": "the season road", "specs": ["44-season-road", "34-events"], "paths": ["src/farm/seasonRoad.ts", "src/farm/state/seasonRoad.ts"] },
     {
       "name": "levels and their gifts",
       "specs": ["22-xp"],

@@ -49,7 +49,10 @@ import { FIRST_STEPS } from './firstSteps'
 import { seasonAt } from './season'
 import { LEDGER_DAYS, soldAt, type Channel } from './ledger'
 import { QUEUE, machineLevel } from './machineView'
-import { garmentById, garmentsAt } from './outfit'
+import { albumGarment, garmentById, garmentsAt } from './outfit'
+import { isPage, isTile } from './album'
+import { SEASON_ROAD, roadEnd, roadOf } from './seasonRoad'
+import { reached as stopsReached } from './road'
 import { sanitizeLook } from '../models/look'
 import { isNeighbour, NEIGHBOUR_IDS, personById, personLook } from '../data/people'
 import { heartsOf } from './people/friends'
@@ -215,8 +218,10 @@ function alsoChanges(part: string): RegExp | null {
   if (part === 'time') return /^(beds|producers|machines)\.|^nextVisitorIn$|^queue$|^orders$|^dispatch$|^(market|contractor|day|ledger)$/
   if (part === 'home.pieces') return /^home\.(stored|next)$/
   if (part === 'home.shell' || part.startsWith('home.shell.')) return /^home\.(pieces|stored|next)$/
-  // the farm's year is read against its days played (src/farm/season.ts, sanitizeSeason)
-  if (part === 'played' || part.startsWith('played.')) return /^season$/
+  // the farm's year is read against its days played (src/farm/season.ts, sanitizeSeason), and its season road against
+  // the season now (src/farm/seasonRoad.ts)
+  if (part === 'played' || part.startsWith('played.')) return /^season(Road)?$/
+  if (part === 'season' || part.startsWith('season.')) return /^seasonRoad$/
   // who is met is the story's (src/farm/people/story.ts): only they keep a friendship, send an order or stand in line
   // as themselves; and the chapter on has its request on the board
   if (part === 'story' || part.startsWith('story.')) return /^(friends|requests|orders|queue)$/
@@ -231,6 +236,8 @@ function alsoChanges(part: string): RegExp | null {
   // reached on the levels' bars, so which can be open (src/farm/gifts.ts); a level reached and not paid (a farm from
   // when its coins waited for a Claim) is paid as the farm loads (src/farm/state.ts, load)
   if (part === 'xp' || part.startsWith('xp.')) return /^(outfit|gifts|coins)(\.|$)/
+  // a page of the album is done only with its garment in the wardrobe (src/farm/album.ts, sanitizeAlbum)
+  if (part === 'outfit' || part.startsWith('outfit.')) return /^album$/
   return null
 }
 
@@ -245,8 +252,8 @@ function free(base: Base, path: Key[], names: string[]): (name: string) => boole
   if (base.old && /^stats(\.|$)/.test(at)) coupled.push(/^(xp|outfit|gifts)(\.|$)/)
   // and its days played start from its daily gift's streak and the day it last claimed one
   if (base.old && /^daily(\.|$)/.test(at)) coupled.push(/^played$/)
-  // and so its year (src/farm/season.ts: read against its days played)
-  if (base.old && /^daily(\.|$)/.test(at)) coupled.push(/^season$/)
+  // and so its year (src/farm/season.ts: read against its days played), and its season road
+  if (base.old && /^daily(\.|$)/.test(at)) coupled.push(/^season(Road)?$/)
   return (n) => touched.includes(n) || coupled.some((r) => r.test(n))
 }
 
@@ -367,9 +374,11 @@ function farmProblems(): string[] {
   // the clothes: a garment of its slot for each, one the level has (a hat, or none); the new marks never past the level
   const o = farm.outfit
   const level = levelOf(xp.points)
-  const wears = (id: unknown, slot: string) => typeof id === 'string' && garmentById(id)?.slot === slot && garmentById(id)!.level <= level
-  bad('outfit', sameKeys(o, ['shirt', 'trousers', 'hat', 'seen']) && wears(o.shirt, 'shirt') && wears(o.trousers, 'trousers') && (o.hat === null || wears(o.hat, 'hat')))
+  // (a garment the level brought, or one owned from the album or a season road)
+  const wears = (id: unknown, slot: string) => typeof id === 'string' && garmentById(id)?.slot === slot && (garmentById(id)!.level <= level || o.owned.includes(id))
+  bad('outfit', sameKeys(o, ['shirt', 'trousers', 'hat', 'seen', 'owned']) && wears(o.shirt, 'shirt') && wears(o.trousers, 'trousers') && (o.hat === null || wears(o.hat, 'hat')))
   bad('outfit.seen', Number.isInteger(o.seen) && o.seen >= 1 && o.seen <= level)
+  bad('outfit.owned', Array.isArray(o.owned) && unique(o.owned) && o.owned.every((id) => !!garmentById(id)?.from))
   // the level's gifts: no box opened past those the XP reached, those out of turn past the ones in turn (each once, in
   // order); what the level's boxes gave only for its own boxes opened; the levels reached up to this one, each once;
   // what the card told up to this level
@@ -390,13 +399,16 @@ function farmProblems(): string[] {
       unique(g.came.map((e) => e.level)),
   )
   bad('gifts.seen', Number.isInteger(g.seen) && g.seen >= 1 && g.seen <= level)
-  // the daily gift: the last day claimed (or none), a streak only once one was, the day it last opened by itself; the
-  // week's days taken, never more than the streak's place in its week, each what it gave (one prize, or the big one's
-  // three)
+  // the daily gift: the last day claimed (or none), the day it last opened by itself, the day played of the last claim
+  // (0: none, or not known), a welcome-back gift waiting only after a claim; the season's week's days taken (none while
+  // the day played of the last claim is not known), each what it gave (one prize, or the big one's three)
   const dl = farm.daily
   const day = (v: unknown) => Number.isInteger(v) && (v as number) >= -1
-  bad('daily', sameKeys(dl, ['last', 'streak', 'offered', 'week']) && day(dl.last) && day(dl.offered) && isCount(dl.streak) && (dl.last >= 0 || dl.streak === 0))
-  bad('daily.week', dl.week.length <= (dl.streak ? ((dl.streak - 1) % 7) + 1 : 0) && dl.week.every((d) => Array.isArray(d) && d.length <= 3 && d.every(isPrize)))
+  bad(
+    'daily',
+    sameKeys(dl, ['last', 'offered', 'at', 'week', 'back']) && day(dl.last) && day(dl.offered) && isCount(dl.at) && typeof dl.back === 'boolean' && (dl.last >= 0 || (dl.at === 0 && !dl.back)),
+  )
+  bad('daily.week', dl.week.length <= 7 && (dl.at > 0 || dl.week.length === 0) && dl.week.every((d) => Array.isArray(d) && d.length <= 3 && d.every(isPrize)))
   // days played: a count, and the day last played (or none), never past today
   const pl = farm.played
   bad('played', sameKeys(pl, ['days', 'last']) && isCount(pl.days) && Number.isInteger(pl.last) && pl.last >= -1 && pl.last <= calendarDay())
@@ -414,6 +426,16 @@ function farmProblems(): string[] {
       ss.told >= -1 &&
       ss.told <= seasonAt(playedToday, ss.from).ordinal,
   )
+  // the season road: a road no later than the season now, its XP no more than its end, its stops no more than it reaches
+  const sr = farm.seasonRoad
+  const nowOrdinal = seasonAt(playedToday, ss.from).ordinal
+  bad(
+    'seasonRoad',
+    sameKeys(sr, ['on', 'xp', 'paid']) && isCount(sr.on, nowOrdinal) && isCount(sr.xp, roadEnd(sr.on)) && isCount(sr.paid, SEASON_ROAD.length) && sr.paid <= stopsReached(roadOf(sr.on), sr.xp),
+  )
+  // the album: the tiles shown and the pages that gave their garment, known and each once; a page done owns its garment
+  const al = farm.album
+  bad('album', sameKeys(al, ['seen', 'done']) && unique(al.seen) && al.seen.every(isTile) && unique(al.done) && al.done.every(isPage) && al.done.every((id) => o.owned.includes(albumGarment(id)!.id)))
   // the ladders: a step count each, to its top; the shop's own none until the shop is yours; a tool's upgrades none
   // without the tool
   const l = farm.ladders

@@ -54,6 +54,7 @@ export type ArtId =
   | 'musical-notes'
   | 'nest-with-eggs'
   | 'office-worker'
+  | 'open-book'
   | 'package'
   | 'people-queue'
   | 'person-running'
@@ -73,8 +74,10 @@ export type ArtId =
   | 'tear-off-calendar'
   | 'ticket'
   | 'tractor'
+  | 'triangular-flag'
   | 'trophy'
   | 'warning'
+  | 'waving-hand'
   | 'wrapped-gift'
   | 'yarn'
   // the house's computer's apps (src/farm/computer/apps.ts): the Market, the Planner, the Sales book, its week

@@ -37,6 +37,7 @@ import { freshMachine, jobSeconds, recipeOf, type MachineState } from '../machin
 import { freshEvents, sanitizeEvents } from '../events'
 import { freshLedger, sanitizeLedger } from '../ledger'
 import { DEFAULT_OUTFIT, sanitizeOutfit } from '../outfit'
+import { freshAlbum, sanitizeAlbum } from '../album'
 import { clampLevels, freshMarket, sanitizeMarket } from '../market'
 import { offersPerDay, sanitizeContractor } from '../contractor'
 import { sanitizeLook } from '../../models/look'
@@ -64,6 +65,7 @@ import { savedRequests } from './neighbours'
 import { takePassed } from './steps'
 import { cameBack, forgetAway } from './away'
 import { savedSeason, seasonFresh } from './season'
+import { roadFresh, savedSeasonRoad } from './seasonRoad'
 
 // The save: a new farm, reading a saved one safely (a hand-edited or old save can never break the game), writing it,
 // the three slots, and a slot as a file to keep or load.
@@ -297,6 +299,8 @@ function fresh(): FarmData {
     requests: [],
     ledger: freshLedger(),
     season: seasonFresh(),
+    album: freshAlbum(),
+    seasonRoad: roadFresh(),
   }
 }
 
@@ -589,6 +593,11 @@ function read(text: string | null): Loaded {
     data.ledger = sanitizeLedger(raw.ledger, calendarDay())
     // the farm's year: as saved (a farm from before it begins its first spring today)
     data.season = savedSeason(raw.season, data.played)
+    // the album: the tiles shown and the pages that gave their garment (a farm from before it: none; a page done gives
+    // its garment again only if the wardrobe does not have it)
+    data.album = sanitizeAlbum(raw.album, data.outfit.owned)
+    // the season road: as saved, never past the season now (a farm from before it: the season now's road, from its start)
+    data.seasonRoad = savedSeasonRoad(raw.seasonRoad, data.played, data.season)
     const queue = list(raw.queue)
       .map((b) => savedBuyer(b, met))
       .filter((b): b is SavedBuyer => !!b)

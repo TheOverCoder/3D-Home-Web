@@ -4,7 +4,7 @@ import { debugSet } from '../../lib/debug'
 import { haptic } from '../../lib/device'
 import { useHome } from '../../store'
 import { EVENTS, speedAt, type Boost } from '../events'
-import { drawLucky, eventTime, eventsNow, farm, luckyPool, newsBadge, sawNews, setEventClock, useFarm } from '../state'
+import { drawLucky, eventTime, eventsNow, farm, luckyPool, newsBadge, roadNow, sawNews, setEventClock, useFarm } from '../state'
 import { NewsCard } from './NewsCard'
 import { newsView } from './view'
 
@@ -12,7 +12,8 @@ import { newsView } from './view'
 // and draws; how it looks is ./NewsCard.tsx. And the watcher that keeps the news's badge true as events begin and end in
 // play, and says once a visit when one has begun that the news has not shown.
 
-/** The farm news: what is on and coming now, the lucky draw; opened, what is on counts as shown. */
+/** The farm news: what is on and coming now, the lucky draw, and the season road ("This season"); opened, what is on
+ *  counts as shown. */
 export function NewsPanel() {
   useFarm((s) => s.rev)
   const close = useHome((s) => s.closePanel)
@@ -29,6 +30,7 @@ export function NewsPanel() {
   return (
     <NewsCard
       v={v}
+      road={roadNow()}
       onDraw={drawLucky}
       onClose={close}
       onLand={() => {

@@ -11,6 +11,8 @@ import { runShop, shelvesEmpty } from './market'
 import { stepsOn } from './steps'
 import { markPlayed } from './daily'
 import { seasonOn } from './season'
+import { albumOn } from './album'
+import { seasonRoadOn } from './seasonRoad'
 import { neighboursOn } from './neighbours'
 
 // The farm going on, frame by frame: everything grows, the people walk, the shop and the day run.
@@ -77,6 +79,8 @@ export function tick(dt: number) {
   stepsOn()
   markPlayed()
   seasonOn()
+  albumOn()
+  seasonRoadOn()
   neighboursOn()
   if (stageKey() !== before) {
     bump()

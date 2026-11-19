@@ -64,6 +64,10 @@ export const PACE = {
   /** of the rewards paid in the first `within` minutes of play (src/farm/state/rewards.ts, rewardCounts), the share
    *  that is small, and the share that is big or huge (measured by 05a on seeds 1–3: 71–76 % and 6–7 %) */
   rewards: { within: 60, small: [0.65, 0.85], big: [0.03, 0.12] },
+  /** the season road (src/farm/seasonRoad.ts, JOURNEY.md fix 4): a player of `profile` (SESSIONS: ten minutes a day)
+   *  reaches its last stop by the season's day `by` (days played), on each of the first `seasons` seasons; held on the
+   *  session runner by src/farm/seasonRoad.pace.test.ts */
+  road: { profile: 'light', by: 6, seasons: 2 },
   /** the story (src/farm/people; held on the session runner by src/farm/people/story.pace.test.ts, the daily player): the
    *  first neighbour met no sooner than level `met` (the first steps' last); their first heart within `heart` minutes of
    *  play of meeting; each of act 1's first `sent.chapters` chapters sent within `sent.days` days of play of its

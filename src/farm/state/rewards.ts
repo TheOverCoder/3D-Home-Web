@@ -4,6 +4,7 @@ import type { ItemId } from '../data'
 import { mostOf } from '../layout'
 import type { Prize } from '../prize'
 import { rewardTier, worthOf } from '../worth'
+import { own } from '../outfit'
 import { levelOf } from '../xp'
 import { farm, putBack, type At } from './core'
 
@@ -43,8 +44,9 @@ function into(p: Prize) {
     else into({ coins: worthOf([p]) })
     return
   }
-  // a garment into the wardrobe: outfit.owned, with the garments that come from somewhere other than a level (02's
-  // album and season road). None comes yet: every garment comes with its level, so none is a prize (isGiftGarment).
+  // a garment into the wardrobe: outfit.owned, with the garments that come from somewhere other than a level (the
+  // album's pages, the season roads)
+  farm.outfit = own(farm.outfit, p.garment)
 }
 
 /** Every reward paid since the counts began (the page opened, or `resetRewardCounts`): how many of each kind at each

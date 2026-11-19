@@ -26,8 +26,8 @@ const typing = (t: EventTarget | null) => t instanceof HTMLElement && (t.isConte
 /**
  * The menu in the top corner (the design lab's board "top", D): one round button that opens into its buttons, each with
  * its name — the daily gift while today's waits (src/farm/daily.ts: it opens by itself once a day; closed unclaimed, it
- * waits here), the farm news (the week's events and the lucky draw, src/farm/news), edit the farm (or decorate, in the
- * house), what the top of the screen shows (everything: the dashboard and the compass; only the compass; or nothing at
+ * waits here), the farm news (the week's events and the lucky draw, src/farm/news), the farm album (src/farm/album.ts),
+ * edit the farm (or decorate, in the house), what the top of the screen shows (everything: the dashboard and the compass; only the compass; or nothing at
  * all, a clear view of the farm), and the settings. It keeps the corner in every view, so the view can always be changed
  * back; the view's own button cycles it and leaves the menu open, so pressing it again and again goes round the three
  * views. H does the same on a keyboard. The choice is remembered; the stylesheets read it from <html data-hud>. A touch
@@ -90,9 +90,10 @@ export function HudMode() {
       </>
     )
   const ViewIcon = mode === 'all' ? SquaresFour : mode === 'compass' ? CompassRose : EyeSlash
-  // the dial's buttons: the daily gift while it waits, the news, edit where there is something to edit, the view, the
-  // settings (five: on a phone on its side they go in two columns, see HudMode.css)
-  const buttons = (gift ? 1 : 0) + (next ? 1 : 0) + 1 + (neighbours ? 1 : 0) + (edit ? 1 : 0) + 2
+  // the dial's buttons: the daily gift while it waits, the news, the album, the neighbours once one is met, edit where
+  // there is something to edit, the view, the settings (five or more: on a phone on its side they go in two columns,
+  // see HudMode.css)
+  const buttons = (gift ? 1 : 0) + (next ? 1 : 0) + 2 + (neighbours ? 1 : 0) + (edit ? 1 : 0) + 2
   return (
     <>
       <BusyCard />
@@ -103,7 +104,7 @@ export function HudMode() {
             {...PRESS}
             onClick={() => setOpen((o) => !o)}
             aria-expanded={open}
-            aria-label={`Menu: ${gift ? "today's gift waits; " : ''}${next ? `next ready ${whenReady(next.ready)}; ` : ''}the farm news${news ? ` (${news} new)` : ''}, edit, the top's view, settings`}
+            aria-label={`Menu: ${gift ? "today's gift waits; " : ''}${next ? `next ready ${whenReady(next.ready)}; ` : ''}the farm news${news ? ` (${news} new)` : ''}, the album, edit, the top's view, settings`}
             title="Menu"
           >
             {open ? <X weight="bold" /> : <List weight="bold" />}
@@ -164,6 +165,16 @@ export function HudMode() {
                   onTap={() => {
                     setOpen(false)
                     if (!useHome.getState().panel) useHome.getState().openPanel({ kind: 'news' })
+                  }}
+                />
+                <Dial
+                  className="album-open"
+                  icon={<img className="art" src={art('open-book')} alt="" style={{ width: 30, height: 30 }} />}
+                  word="Album"
+                  label="The farm album: what your farm has grown, made and gathered"
+                  onTap={() => {
+                    setOpen(false)
+                    if (!useHome.getState().panel) useHome.getState().openPanel({ kind: 'album' })
                   }}
                 />
                 {neighbours && (
