@@ -1,5 +1,7 @@
 // The level's gifts (the level's card, src/farm/LevelCard.tsx): a box at every quarter of each level's bar — at 25 %,
-// 50 %, 75 % and 100 % of the XP from level L to level L + 1 — each a small prize the player opens with a tap, rolled on
+// 50 %, 75 % and 100 % of the XP from level L to level L + 1 — from level BOXES_FROM on, and one box on the full bar of
+// each level before it, coming with the next level (the first levels come every minute or two: a box at each quarter was
+// always almost there, update-v1/JOURNEY.md fix 10). Each is a small prize the player opens with a tap, rolled on
 // the farm's dice as it opens: coins sized to the level, a building material, or a few of a good the farm makes. A box
 // reached waits until it is opened, from any level (none is ever lost, none is given twice). Apart from them, a level
 // reached by play brings by itself a small gift of its own, a few of a building material (`rollArrival`); its coins
@@ -14,8 +16,13 @@ import { levelOf, levelProgress, xpAt } from './xp'
 
 export { prizeWords } from './prize'
 
-/** The boxes on each level's bar: one at each quarter. */
+/** The places for boxes on each level's bar: one at each quarter. */
 export const PER_LEVEL = 4
+/** [JOURNEY.md fix 10] From this level on, a box at each quarter; before it, one a level, at ONE_AT. */
+export const BOXES_FROM = 5
+/** The quarter of a level before BOXES_FROM that has its one box: its full bar, with the next level (0 is 25 %, 3 is
+ *  100 %; held by the sim's pace: the half bar's leaves the early farm too poor for PACE.income and JOURNEY.full). */
+export const ONE_AT = 3
 /** Every box there is: the last is level LEVELS.max − 1's at 100 %, reached with the top level (whose bar is full). */
 export const BOX_COUNT = (LEVELS.max - 1) * PER_LEVEL
 /** The odds of what a box holds: coins, else a building material, else a few of a good the farm makes (a material
@@ -61,6 +68,11 @@ export const boxOf = (k: number) => ({ level: Math.floor(k / PER_LEVEL) + 1, q: 
 /** The box at level `level`'s quarter `q`. */
 export const boxAt = (level: number, q: number) => (level - 1) * PER_LEVEL + q
 
+/** The quarters of a level's bar that have a box: all four from BOXES_FROM on, ONE_AT's alone before it. */
+export const quartersOf = (level: number): number[] => (level >= BOXES_FROM ? [0, 1, 2, 3] : [ONE_AT])
+/** Whether box k is one (a quarter of a level before BOXES_FROM has none: it counts as opened, and never waits). */
+export const isBox = (k: number) => Number.isInteger(k) && k >= 0 && quartersOf(boxOf(k).level).includes(boxOf(k).q)
+
 /** How many boxes this many XP points have reached (the boxes below it): every box of the levels before, and the
  *  quarters of this one's bar filled; at the top level, all of them. */
 export function boxesReached(points: number): number {
@@ -76,23 +88,24 @@ export function boxXp(k: number): number {
   return xpAt(level) + Math.ceil(((q + 1) * need) / PER_LEVEL)
 }
 
-/** Whether box k has been opened. */
-export const isOpen = (g: Gifts, k: number) => k < g.open || g.also.includes(k)
+/** Whether box k has been opened (a place with no box counts as opened). */
+export const isOpen = (g: Gifts, k: number) => !isBox(k) || k < g.open || g.also.includes(k)
 
 /** The boxes reached and not opened, oldest first (this level's and every level's before). */
 export function waitingBoxes(g: Gifts, points: number): number[] {
   const out: number[] = []
   const reached = boxesReached(points)
-  for (let k = g.open; k < reached; k++) if (!g.also.includes(k)) out.push(k)
+  for (let k = g.open; k < reached; k++) if (isBox(k) && !g.also.includes(k)) out.push(k)
   return out
 }
 
-/** `open` moved past every box opened in turn: the list of those out of turn holds only the ones past a box not open. */
+/** `open` moved past every box opened in turn (and past the places with no box on the way to one opened): the list of
+ *  those out of turn holds only the ones past a box not open. */
 export function settle(open: number, also: readonly number[]): { open: number; also: number[] } {
   const rest = [...new Set(also)].filter((k) => k >= open).sort((a, b) => a - b)
   let at = open
-  while (rest.length && rest[0] === at) {
-    rest.shift()
+  while (rest.length && (rest[0] === at || !isBox(at))) {
+    if (rest[0] === at) rest.shift()
     at++
   }
   return { open: at, also: rest.filter((k) => k > at) }
@@ -148,14 +161,14 @@ export function sanitizeGifts(raw: unknown, points: number): Gifts {
   const first = intIn(raw.open, 0, reached) ? raw.open : reached
   const { open, also } = settle(
     first,
-    list(raw.also).filter((k): k is number => intIn(k, 0, reached - 1)),
+    list(raw.also).filter((k): k is number => intIn(k, 0, reached - 1) && isBox(k)),
   )
   const done = (k: number) => k < open || also.includes(k)
   const gave: Opened[] = []
   for (const e of list(raw.gave)) {
     const prize = savedPrize(field(e, 'prize'))
     const box = field(e, 'box')
-    if (prize && intIn(box, 0, reached - 1) && done(box) && boxOf(box).level === level && !gave.some((x) => x.box === box)) gave.push({ box, prize })
+    if (prize && intIn(box, 0, reached - 1) && isBox(box) && done(box) && boxOf(box).level === level && !gave.some((x) => x.box === box)) gave.push({ box, prize })
   }
   gave.sort((a, b) => a.box - b.box)
   const came: Came[] = []

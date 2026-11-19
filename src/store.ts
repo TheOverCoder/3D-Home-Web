@@ -67,6 +67,7 @@ export type Panel =
   | { kind: 'skins'; tool: ToolKind; buy?: SkinStyle; from?: Panel } // a tool's skins shop (src/farm/SkinShop.tsx): its three skins, put on or bought (buy: the card that asks first; from: as a machine's)
   | { kind: 'machine-slot'; id: MachineId } // the card that asks before a machine's next place is bought
   | { kind: 'news' } // the farm news: the week's events on now and coming, and the lucky draw (src/farm/news)
+  | { kind: 'album' } // the farm album: its pages of tiles earned by deeds, a garment for each page done (src/farm/AlbumPanel.tsx)
   | { kind: 'computer'; piece: string; buy?: true } // the house's computer: its desktop and apps (src/farm/computer; buy: the card that asks before one is bought, from the desk's price tag)
 
 /** Every kind of panel, as one that opens on a farm with plenty of everything (tests/e2e/39-panels opens each, upright
@@ -105,6 +106,7 @@ export const PANEL_KINDS: { readonly [K in Panel['kind']]: Extract<Panel, { kind
   skins: { kind: 'skins', tool: 'hens' },
   'machine-slot': { kind: 'machine-slot', id: 'mill' },
   news: { kind: 'news' },
+  album: { kind: 'album' },
   computer: { kind: 'computer', piece: 'computer' },
 }
 

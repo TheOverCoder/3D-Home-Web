@@ -8,6 +8,7 @@ import { goalById, goalReward, goalTarget, MOST_STEPS, type GoalId } from '../go
 import type { Prize } from '../prize'
 import { bump, farm, random, save, toast, type At } from './core'
 import { give, rewarded } from './rewards'
+import { feedRoad } from './seasonRoad'
 
 // Levels: the XP every action gives, what a level reached brings by itself, the gift boxes on its bar, the goals board
 // and the wardrobe.
@@ -29,6 +30,8 @@ export function gainXp(action: XpAction | 'sale', n = 1, at?: At, more = 0): num
   xpEvents++
   const now = levelOf(farm.xp.points)
   if (now > was) arrive(was, now)
+  // the season road takes the same XP: its stops reached come in by themselves (src/farm/state/seasonRoad.ts)
+  feedRoad(xp)
   // the crystals fly up from where it happened; with no place to name (a panel's sale), from low in the middle
   xpFx(at?.x ?? NaN, at?.y ?? NaN, at?.z ?? NaN, xp)
   bump()
