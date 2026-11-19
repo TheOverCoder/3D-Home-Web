@@ -1,6 +1,8 @@
 import { FIRST_STEPS, STEPS_UNTIL_LEVEL, advance, currentStep, skipped, type StepDef } from '../firstSteps'
+import { reveals, type RevealPart } from '../reveal'
 import { levelOf } from '../xp'
 import { onHere } from '../../lib/quiet'
+import { visitNow } from '../../ui/cardQueue'
 import { bump, farm, save } from './core'
 import { give } from './rewards'
 
@@ -23,6 +25,21 @@ export function quietSteps(on: boolean) {
 export const stepNow = () => (stepsQuiet ? null : currentStep(farm.firstSteps))
 /** They are running: the daily gift waits for them. */
 export const stepsBusy = () => !stepsQuiet && !farm.firstSteps.over
+
+/** The steps' last card ("All set!") is on the screen (src/farm/FirstSteps.tsx): what they held back waits for it to go. */
+let finale = false
+export function holdReveal(on: boolean) {
+  if (finale === on) return
+  finale = on
+  bump()
+}
+/** Whether a part of the top of the screen shows (src/farm/reveal.ts): everything while the steps are quiet or over,
+ *  else the part's row; what waited for the steps comes in as their last card goes. The news waits one visit more: not
+ *  in the visit the steps ended in (update-v1/JOURNEY.md fix 3: their end lands over three visits). */
+export function shows(part: RevealPart): boolean {
+  if (!reveals(part, farm, stepsBusy() || finale)) return false
+  return part !== 'news' || stepsQuiet || !visitNow().stepsEnded
+}
 /** The steps passed and not shown yet (the hint's ✓ takes them). */
 const passedNow: StepDef[] = []
 export const takePassed = () => passedNow.splice(0)

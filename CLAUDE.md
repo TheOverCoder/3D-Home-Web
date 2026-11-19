@@ -218,9 +218,13 @@ The README has the overview; `tests/README.md` what each test guards.
   he says instead while the farm is elsewhere, so no step is a dead end on any day (`lineFor`; `steps.walk.test.ts`
   follows only the hint on every weekday's events); `state.ts` passes and pays them a frame after the
   farm does them, and the farmer's hint under the compass says them (`src/farm/FirstSteps.tsx`, its own top slot,
-  `steps`). They end after the last, skipped, or at level 5, and the daily gift waits for them. A ?debug page keeps
-  them quiet (`&steps=on`, or `__home.farm.steps.quiet(false)`, runs them); specs not about them keep them quiet
-  (`ready()`); `37-first-steps` tests them.
+  `steps`). The last sows the longest crop open, so the first sitting ends with something on its way. They end after
+  the last, skipped, or at level 5, and the daily gift waits for them. While they run, the top holds back what does not
+  matter yet (`REVEAL`, `src/farm/reveal.ts`: the tanks till their first good, the line till the first planting, the
+  rest till their end): something new up there that should wait is a row, asked through `shows(part)`. A ?debug page
+  keeps them quiet (`&steps=on`, or `__home.farm.steps.quiet(false)`, runs them), and with them everything shows;
+  specs not about them keep them quiet (`ready()`); `37-first-steps` tests them. What is next for a farm (the welcome
+  back's *Next*) is `nextUp` (`src/farm/nextUp.ts`): a new kind of next thing is a row of `NEXT_SOURCES`.
 - A building you walk into is a row in `WALK_INS`: its walls, rooms, doors (an `autoDoor` slides open as anyone comes
   near) and lights. The model, the colliders, the hiding pieces, the camera's limits, the action button's spaces
   (`spaceAt`), the walk-to, the footsteps and the woods' clearing all follow from the row; every floor and every inner
@@ -402,7 +406,9 @@ The README has the overview; `tests/README.md` what each test guards.
 - Touch controls (`src/ui/TouchControls.tsx`, `src/lib/stick.ts`): the stick comes to the thumb in the bottom-left
   area, with three buttons over it (look where you walk, walk on, turn round); the action buttons and jump are
   bottom right. Anything new there is placed by `measure`/`place`/`leftSide` in both orientations, clear of the
-  others, and whatever floats over the scene keeps clear of them (`touchLayout`).
+  others, and whatever floats over the scene keeps clear of them (`touchLayout`). The controls are taught where they
+  are, once a device (`learnt` in `src/settings.ts`): a ring round the stick until it has walked, then a hand until a
+  drag has turned the view; the three buttons come in once the stick has walked. `ready()` marks them learnt.
 
 ## The house's furniture (src/home)
 

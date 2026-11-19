@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { PICKUPS, ROOMS } from '../data/layout'
 import { coarsePointer } from '../lib/device'
+import { readyAt } from '../lib/time'
 import { triggerInteraction, type ActionIcon, type Verb } from '../lib/interaction'
-import { useSettings } from '../settings'
+import { learn, useSettings } from '../settings'
 import { busy, useHome, type Nearby } from '../store'
 import { iconUrl } from '../farm/icons'
 import type { ProduceId } from '../farm/data'
@@ -44,37 +45,32 @@ function RoomTitle() {
   ) : null
 }
 
-/** One quiet line the first time you step inside (again whenever `hintShown` is put back to false: the tests do);
- *  everything else lives in the settings panel. Shown for seven seconds, then gone from the page. */
+/** On a computer, one line the first time on this device: how to move and look (on a touch screen the stick and the drag
+ *  are taught where they are, src/ui/TouchControls.tsx). Shown for seven seconds, then learnt (src/settings.ts: never
+ *  again on this device); everything else lives in the settings panel. */
 function FirstHint() {
-  const hintShown = useHome((s) => s.hintShown)
+  const learnt = useSettings((s) => s.learnt.stick && s.learnt.look)
   const [visible, setVisible] = useState(false)
   useEffect(() => {
-    if (hintShown) return
-    useHome.getState().markHintShown()
+    if (coarsePointer || learnt) return
     setVisible(true)
-  }, [hintShown])
-  // its own timer: marking the hint shown must not cancel it (it did: the hint stayed in the page, faded out, for good)
-  useEffect(() => {
-    if (!visible) return
-    const t = window.setTimeout(() => setVisible(false), 7000)
+    const t = window.setTimeout(() => {
+      setVisible(false)
+      learn('stick')
+      learn('look')
+    }, 7000)
     return () => window.clearTimeout(t)
-  }, [visible])
-  if (!visible) return null
-  return coarsePointer ? (
-    <TopSlot name="hint">
-      <div className="first-hint touch" aria-hidden="true">
-        Walk with the stick · drag anywhere to look · the round button does what is near you
-      </div>
-    </TopSlot>
-  ) : (
-    <div className="first-hint" aria-hidden="true">
+  }, [learnt])
+  if (!visible || learnt) return null
+  return (
+    <div className="first-hint" aria-hidden="true" style={{ fontSize: 15 }}>
       Move with <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> · look with the mouse · <kbd>Esc</kbd> for settings
     </div>
   )
 }
 
 const good = (id: string) => iconUrl(id as ProduceId)
+const HOUR = 3600
 
 /** A picture in the prompt, a good's or a piece of art. On a computer the first carries the verb's coloured mark in
  *  its corner: there the prompt is the only button, while on a touch screen the round button under it shows the verb. */
@@ -209,7 +205,8 @@ function statusPictures(status: Nearby): ReactNode {
         </span>
         <span className="prompt-time">
           <Clock weight="bold" />
-          {clockText(icon.seconds)}
+          {/* past an hour, when on the device's clock ("ready 21:40"), not a countdown nobody reads to the end */}
+          {icon.seconds >= HOUR ? `ready ${readyAt(icon.seconds)}` : clockText(icon.seconds)}
         </span>
       </span>
     )

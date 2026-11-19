@@ -15,8 +15,9 @@ import { useHome } from '../store'
 // save that loads on the other map (another farm switched to, a file imported, the farm started again) the same, with
 // you at the map's start.
 
-/** Where each map starts: the house in its living room, where it always started; the farm on the path among the beds
- *  (src/data/maps.ts, FARM_START). A new farm starts on the farm, a save on the map it was left on. */
+/** Where each map starts: the house in its living room, where it always started; the farm on the path among the beds,
+ *  facing the east beds (src/data/maps.ts, FARM_START). A new farm starts on the farm, a save on the map it was left
+ *  on. */
 export const START: Record<Place, Spot> = {
   home: { x: SPAWN[0], z: SPAWN[2], heading: Math.PI },
   farm: FARM_START,
@@ -87,7 +88,7 @@ async function show(to: Place, at: Spot) {
   // the body waits there, whatever ground is under it while the maps change (src/scene/Player.tsx)
   playerState.hold = hold
   look.yaw = at.heading
-  look.pitch = 0
+  look.pitch = at.pitch ?? 0
   const s = useHome.getState()
   s.setActions([])
   s.setCompass([])

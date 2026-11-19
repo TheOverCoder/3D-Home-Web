@@ -5,12 +5,13 @@ import { useEffect, useLayoutEffect, useRef, useSyncExternalStore, type ReactNod
 import { coinsHeld, onCoinsHeld } from '../fx/coins'
 import { useHome } from '../store'
 import { art } from '../ui/art'
-import { EASE, MotionRoot, SPRING } from '../ui/motion'
+import { ARRIVE, EASE, MotionRoot, SPRING } from '../ui/motion'
 import { STORES, STORE_IDS, type StoreId } from './data'
 import { DayChip } from './DayChip'
 import { useGoalsReady } from './GoalsPanel'
 import { iconUrl } from './icons'
-import { capacity, farm, inLine, placesInLine, useFarm, used } from './state'
+import { arriveDelay, type RevealPart } from './reveal'
+import { capacity, farm, inLine, placesInLine, shows, useFarm, used } from './state'
 import { GIFT_FLY_MS, XpChip, useLevelCoinsInAir } from './XpChip'
 import './TopDash.css'
 
@@ -80,19 +81,57 @@ export function TopDash() {
         <div className="top-band">
           <m.div className="top-wing left" initial={{ opacity: 0, x: 26 }} animate={{ opacity: 1, x: 0 }} transition={{ ...SPRING.pop, delay: 0.14 }}>
             {STORE_IDS.map((id) => (
-              <StoreGauge key={id} id={id} />
+              <Held key={id} part={id} slot={<StoreSlot id={id} />}>
+                <StoreGauge id={id} />
+              </Held>
             ))}
           </m.div>
           <span className="top-hole" ref={hole}>
             <DayChip />
           </span>
           <m.div className="top-wing right" initial={{ opacity: 0, x: -26 }} animate={{ opacity: 1, x: 0 }} transition={{ ...SPRING.pop, delay: 0.14 }}>
-            {farm.started ? <LineGauge /> : <span className="top-gauge-slot" />}
-            <GoalsGauge />
+            <Held part="line">
+              <LineGauge />
+            </Held>
+            <Held part="goals">
+              <GoalsGauge />
+            </Held>
           </m.div>
         </div>
       </div>
     </MotionRoot>
+  )
+}
+
+/**
+ * A gauge held back on a new farm while its first steps run (src/farm/reveal.ts): its place kept while it waits, so the
+ * dashboard never moves, and once it shows it pops in — with its first good, or one after another as the steps end.
+ * Shown from the first frame (any farm past its steps), it is simply there.
+ */
+function Held({ part, slot, children }: { part: RevealPart; slot?: ReactNode; children: ReactNode }) {
+  const on = shows(part)
+  const hid = useRef(!on)
+  if (!on) {
+    hid.current = true
+    return slot ?? <span className="top-gauge-slot" aria-hidden="true" />
+  }
+  if (!hid.current) return children
+  return (
+    <m.span style={{ display: 'grid' }} initial={ARRIVE.initial} animate={ARRIVE.animate} transition={{ ...ARRIVE.transition, delay: arriveDelay(part) / 1000 }}>
+      {children}
+    </m.span>
+  )
+}
+
+/** The silo's or the barn's place while its tank waits for its first good: unseen, but where the first goods land (the
+ *  flights aim at the building's picture, src/ui/fly.ts storeChip), so they fly home as the tank pops in. */
+function StoreSlot({ id }: { id: StoreId }) {
+  return (
+    <span className="top-gauge-slot" aria-hidden="true" style={{ display: 'grid', placeItems: 'center', visibility: 'hidden' }}>
+      <span className={`farm-chip-item ${id}`} style={{ padding: 0, border: 0, background: 'none', minHeight: 0 }}>
+        <img src={iconUrl(id)} alt="" />
+      </span>
+    </span>
   )
 }
 

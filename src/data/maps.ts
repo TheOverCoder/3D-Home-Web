@@ -10,6 +10,8 @@ export interface Spot {
   x: number
   z: number
   heading: number
+  /** how far the view looks down (radians, negative down; as the player's pitch): level when left out */
+  pitch?: number
 }
 
 /** The parking lot's east bay on the farm (src/data/estate.ts), where the car stands. */
@@ -30,5 +32,7 @@ export const ARRIVE: Record<Place, Spot> = {
   home: { x: -1.2, z: 10.2, heading: 0 },
 }
 
-/** Where a new farm starts: on the farm, on the path among the beds, looking south to the gate. */
-export const FARM_START: Spot = { x: -1.2, z: 6.8, heading: Math.PI }
+/** Where a new farm starts (decision 14): on the path among the beds, facing the two east beds, which fill the view —
+ *  the first task, the round button already saying Plant — with the market and the estate agent behind them, the long
+ *  goals in sight from the first second. A farm loaded on the farm starts there too, facing beds that are usually ripe. */
+export const FARM_START: Spot = { x: -1.2, z: 7.4, heading: Math.PI + 0.7, pitch: -0.38 }

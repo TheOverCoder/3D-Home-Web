@@ -27,8 +27,8 @@ test.describe('boot', () => {
       { timeout: 120_000, polling: 500 },
     )
     expect((await game.state()).phase).toBe('playing')
-    // a new farm starts on the farm (the house is a map of its own, bought later), on the path among the beds, looking
-    // south to the gate (src/data/maps.ts, FARM_START)
+    // a new farm starts on the farm (the house is a map of its own, bought later), on the path among the beds, facing the
+    // east beds (src/data/maps.ts, FARM_START): the first task in view, the round button already saying Plant
     const start = await page.evaluate(() => {
       const h = (window as any).__home
       const s = h.useHome.getState()
@@ -37,7 +37,12 @@ test.describe('boot', () => {
     })
     expect(start).toMatchObject({ map: 'farm', place: 'farm', owned: false, outdoors: true, room: null })
     expect(Math.hypot(start.x - FARM_START.x, start.z - FARM_START.z)).toBeLessThan(0.5)
-    expect(Math.cos(start.yaw - Math.PI)).toBeGreaterThan(0.95)
+    expect(Math.cos(start.yaw - FARM_START.heading)).toBeGreaterThan(0.95)
+    // an empty built bed in front, and planting it offered from the first frame
+    await page.waitForFunction(() => (window as any).__home.useHome.getState().actions.length > 0, null, { timeout: 30_000, polling: 250 })
+    const offered = await page.evaluate(() => (window as any).__home.useHome.getState().actions.map((a: any) => ({ id: a.id, verb: a.icon?.verb ?? null, label: a.label })))
+    expect(offered[0]?.id ?? '', JSON.stringify(offered)).toMatch(/^farm-bed-/)
+    expect(offered[0]?.label ?? '', JSON.stringify(offered)).toMatch(/plant/i)
     // the farm's own things, and none of the house's: its beds on offer, no room, no lamp, no screen
     const ids: string[] = await page.evaluate(() => (window as any).__home.interactables().map((d: any) => d.id))
     expect(ids.some((id) => id.startsWith('farm-bed-'))).toBe(true)

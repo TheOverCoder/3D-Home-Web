@@ -506,8 +506,10 @@ function CameraRig({ ecctrl, feet }: { ecctrl: RefObject<EcctrlHandle | null>; f
     if (view === 'first' && (before.view === 'third' || before.phase === 'intro')) {
       lastPose.valid = false
       if (before.phase === 'intro') {
-        look.yaw = Math.PI // start facing the living room
-        look.pitch = -0.04
+        // start facing the way the map starts (src/scene/maps.ts, START: the living room; on the farm, the east beds)
+        const start = START[mapNow()]
+        look.yaw = start.heading
+        look.pitch = start.pitch ?? -0.04
       } else {
         camera.getWorldDirection(fwd)
         look.yaw = Math.atan2(-fwd.x, -fwd.z)

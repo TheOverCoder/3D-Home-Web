@@ -221,7 +221,7 @@ test.describe('the silo, the barn, surprises and orders', () => {
     await page.evaluate(() => (window as any).__home.useHome.getState().openPanel({ kind: 'orders' }))
     // its eggs touched: their bubble, and Show me in it
     await press(page.locator('.farm-order').nth(0).locator('[data-good="egg"]'))
-    await press(page.getByRole('button', { name: 'Show me' }))
+    await press(page.getByRole('button', { name: 'Show me', exact: true }))
     await until(game, () => (window as any).__home.useHome.getState().panel === null)
     // walking by yourself to the nest (the eggs' mark), as from the compass: the body moves off towards it
     await until(game, () => (window as any).__home.walk.state().id === 'farm-nest' && (window as any).__home.useHome.getState().guide?.id === 'farm-nest')
@@ -232,6 +232,32 @@ test.describe('the silo, the barn, surprises and orders', () => {
     // a step of your own takes over
     await page.keyboard.press('KeyW')
     await until(game, () => (window as any).__home.walk.state().ended === 'key')
+    expect(game.errors, game.errors.join('\n')).toEqual([])
+  })
+
+  test('an order with nothing in store to put in shows "Show me" at its foot: the board closes and you walk to the cows', async ({ game }) => {
+    await game.ready('farm')
+    const { page } = game
+    await reset(game, { milk: 0, egg: 0 }, 100)
+    await page.evaluate(() => {
+      const f = (window as any).__home.farm
+      f.state.orders[0] = { order: { id: 9002, lines: [{ good: 'milk', want: 2, have: 0 }], coins: 14, surprise: false } }
+      f.useFarm.setState((s: any) => ({ rev: s.rev + 1 }))
+    })
+    await game.teleport(-8.0, 1.4, 6.3, Math.PI / 2, -0.1)
+    await page.evaluate(() => (window as any).__home.useHome.getState().openPanel({ kind: 'orders' }))
+    const plank = page.locator('.farm-order').nth(0)
+    // the milk short in store wears the walker; the foot is the way there, not a press that cannot do anything
+    await expect(plank.locator('[data-good="milk"] .good-way')).toHaveCount(1)
+    await expect(plank.getByRole('button', { name: /None in store/ })).toHaveCount(0)
+    const show = plank.locator('.ob-show-me')
+    await expect(show).toContainText('Show me')
+    await expect(show.locator('.item-pic')).toHaveCount(1)
+    await press(show)
+    await until(game, () => (window as any).__home.useHome.getState().panel === null)
+    await until(game, () => ((window as any).__home.walk.state().id ?? '').startsWith('farm-cow'))
+    // it gets there: the walk ends as arrived, a cow in reach
+    await until(game, () => (window as any).__home.walk.state().ended === 'arrived', 120_000)
     expect(game.errors, game.errors.join('\n')).toEqual([])
   })
 

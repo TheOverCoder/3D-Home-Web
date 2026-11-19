@@ -96,6 +96,9 @@
 :where(:root[data-motion='less']) {
   .compass-mark.going .compass-pin { animation: none; }
 }
+/* while a new farm's step runs: what it asks for ringed sun-yellow (still: one loop at a time up here), the rest quieter */
+.compass-mark.step .compass-pin { box-shadow: 0 0 0 2.5px var(--sun), 0 2px 6px rgba(20, 12, 6, 0.4); }
+.compass-mark.dim { opacity: 0.45; }
 /* two or more behind you at an edge (or more than the strip holds) fold into one: how many, on a small pill; a tap
    walks you to the nearest of them */
 .compass-more .compass-pin { width: auto; min-width: 32px; padding: 0 7px; border-radius: 999px; font: 800 14px/1 var(--font-text); font-variant-numeric: tabular-nums; color: var(--ink); }

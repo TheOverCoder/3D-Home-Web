@@ -54,3 +54,4 @@ export { Crown } from '@phosphor-icons/react/dist/csr/Crown'
 export { Broadcast } from '@phosphor-icons/react/dist/csr/Broadcast'
 // an animal tool's skins (src/farm/tool/ToolPanelView.tsx)
 export { PaintBrush } from '@phosphor-icons/react/dist/csr/PaintBrush'
+export { HandSwipeRight } from '@phosphor-icons/react/dist/csr/HandSwipeRight'

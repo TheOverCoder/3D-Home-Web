@@ -4,7 +4,7 @@ import { Popover } from 'radix-ui'
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { produceById, type ProduceId } from '../farm/data'
 import { sourceOf } from '../farm/goods/sources'
-import { Broadcast, CaretLeft, Crown, NavigationArrow } from './glyphs'
+import { Broadcast, CaretLeft, Crown, NavigationArrow, PersonSimpleWalk } from './glyphs'
 import { ItemPic } from './ItemPic'
 import { PRESS, REVEAL, SHIMMER, SPRING, TIP } from './motion'
 import { sidewaysNow } from './sheetMode'
@@ -38,6 +38,7 @@ export function GoodPic({
   label,
   lines,
   walk = true,
+  way = false,
   open,
   onOpenChange,
   children,
@@ -51,6 +52,8 @@ export function GoodPic({
   lines?: ReactNode
   /** whether "Show me" may walk you there from this panel (the orders board: only while the store is short) */
   walk?: boolean
+  /** the walker on its corner: a tap shows the way there (the orders board: a good the store is short of) */
+  way?: boolean
   /** the bubble open or not, when the panel keeps it (one at a time, Esc) */
   open?: boolean
   onOpenChange?: (open: boolean) => void
@@ -67,12 +70,19 @@ export function GoodPic({
       <Popover.Trigger asChild>
         <m.button className={`good-pic ${className}`} data-good={good} aria-label={label ?? `${cap(name.plural)}: where is it made`} {...TIP}>
           <ItemPic id={good} count={count} />
+          {way && (
+            <i className="good-way" aria-hidden="true">
+              <PersonSimpleWalk weight="bold" />
+            </i>
+          )}
           {children}
         </m.button>
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Content
           className="ob-pop good-pop"
+          // (over the sheet: Esc closes this first, src/ui/PanelSheet.tsx)
+          data-over-sheet=""
           side="top"
           sideOffset={6}
           // sideways, clear of a phone's notch and rounded corners

@@ -117,4 +117,61 @@ test.describe('welcome back', () => {
       await context.close()
     }
   })
+
+  test('what is next: the step while a new farm is on its steps, a goal after them; Go there walks there', async ({ game }) => {
+    const { page } = game
+    await game.ready('farm')
+    const card = page.locator('.farm-panel[aria-label="Welcome back"]')
+    /** Half an hour away with the nests emptied first (so the hens have laid something to tell). */
+    const awayHalfAnHour = () =>
+      page.evaluate(() => {
+        const h = (window as any).__home
+        const s = h.farm.state
+        s.producers.hens.stock = s.producers.hens.stock.map(() => 0)
+        s.producers.hens.timer = s.producers.hens.timer.map(() => 0)
+        h.farm.cameBack(30 * 60)
+      })
+    try {
+      // a new farm on its first step: the Next row says what the farmer says, and Go there walks to an empty bed
+      await page.evaluate(() => {
+        const f = (window as any).__home.farm
+        f.reset()
+        f.steps.quiet(false)
+        f.useFarm.setState((s: any) => ({ rev: s.rev + 1 }))
+      })
+      await awayHalfAnHour()
+      await expect(card).toBeVisible({ timeout: 30_000 })
+      const said = await page.evaluate(() => (window as any).__home.farm.steps.now()?.say ?? null)
+      expect(said).not.toBeNull()
+      await expect(card.locator('.away-next')).toContainText('Next')
+      await expect(card.locator('.away-next')).toContainText(said!)
+      // at most four pictures of what waited, and no sentence beside the Next row
+      expect(await card.locator('.farm-basket-item').count()).toBeLessThanOrEqual(4)
+      await expect(card.locator('.away-line')).toHaveCount(0)
+      // (from the yard's far end, so the walk takes a while)
+      await game.teleport(8, 1.4, 11.5)
+      await card.getByRole('button', { name: /Go there/ }).click()
+      await expect.poll(() => panel(page), { timeout: 10_000 }).toBe(null)
+      await expect.poll(() => page.evaluate(() => (window as any).__home.walk?.state?.()?.id ?? (window as any).__home.useHome.getState().guide?.id ?? null), { timeout: 10_000 }).toMatch(/^farm-bed-/)
+      // the steps over: the Next row names a goal, with how far along it is
+      await page.evaluate(() => {
+        const h = (window as any).__home
+        h.useHome.getState().setGuide(null)
+        h.farm.steps.skip()
+      })
+      await awayHalfAnHour()
+      await expect(card).toBeVisible({ timeout: 30_000 })
+      await expect(card.locator('.away-next')).toContainText('Next')
+      await expect(card.locator('.away-next .tag')).toContainText('/')
+      await card.getByRole('button', { name: 'Close', exact: true }).click()
+      await expect.poll(() => panel(page), { timeout: 10_000 }).toBe(null)
+      expect(game.errors, game.errors.join('\n')).toEqual([])
+    } finally {
+      await page.evaluate(() => {
+        const h = (window as any).__home
+        h.farm.steps.quiet(true)
+        h.useHome.getState().setGuide(null)
+      })
+    }
+  })
 })

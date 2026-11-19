@@ -11,7 +11,9 @@ import {
   advance,
   currentStep,
   fetchTarget,
+  LINE_MOST,
   lineFor,
+  longestOpen,
   moodFor,
   orderToFollow,
   sanitizeSteps,
@@ -45,6 +47,10 @@ const DOING: Record<StepId, (f: FarmData) => void> = {
   shear: (f) => void (f.got.wool = 1),
   weave: (f) => void (f.got.cloth = 1),
   order: (f) => void (f.stats.sent = 1),
+  long: (f) => {
+    const i = f.beds.findIndex((b) => b.built && !b.crop)
+    Object.assign(f.beds[i], { crop: longestOpen(f), growth: 0, water: 99 })
+  },
 }
 
 describe('the first steps', () => {
@@ -77,6 +83,9 @@ describe('the first steps', () => {
     expect(currentStep(rec)?.id).toBe('weave')
     DOING.weave(farm)
     DOING.order(farm)
+    ;({ rec } = advance(rec, farm))
+    expect(currentStep(rec)?.id).toBe('long')
+    DOING.long(farm)
     ;({ rec } = advance(rec, farm))
     expect(rec).toEqual({ step: FIRST_STEPS.length, over: true })
     expect(currentStep(rec)).toBeNull()
@@ -143,6 +152,45 @@ describe('the first steps', () => {
         expect(line.say.length, line.say).toBeLessThanOrEqual(26)
       }
     }
+  })
+
+  it('the last step sows the longest crop the level has open, named where its name fits, for the time away', () => {
+    expect(LINE_MOST).toBe(26)
+    let longest = 0
+    for (let level = 1; level <= 12; level++) {
+      resetFarm()
+      farm.xp.points = xpAt(level)
+      const crop = longestOpen(farm)
+      // the longest of those open (and longer as the levels open more)
+      expect(lockedAt(`crop:${crop}`, level), `level ${level}`).toBeNull()
+      expect(cropById(crop).growSeconds).toBeGreaterThanOrEqual(longest)
+      longest = cropById(crop).growSeconds
+      const line = lineFor(step('long'), farm)
+      expect(line.say.length, line.say).toBeLessThanOrEqual(LINE_MOST)
+      expect(line.pic).toEqual({ item: crop })
+      expect(line.target).toEqual({ good: crop })
+      if (`Sow ${produceById(crop).plural} for later`.length <= LINE_MOST) expect(line.say).toContain(produceById(crop).plural)
+      // every bed taken: one to free first
+      for (const b of farm.beds) if (b.built) Object.assign(b, { crop: 'lettuce', growth: 0, water: 99 })
+      expect(lineFor(step('long'), farm).target).toEqual({ bed: ['ripe', 'thirsty', 'growing'] })
+    }
+    // by the first night's level, something that grows through it
+    farm.xp.points = xpAt(7)
+    expect(cropById(longestOpen(farm)).growSeconds).toBeGreaterThanOrEqual(8 * 3600)
+  })
+
+  it('the last step is done while the longest crop open grows, not once it is ripe', () => {
+    const s = step('long')
+    expect(s.done(farm)).toBe(false)
+    const i = farm.beds.findIndex((b) => b.built)
+    Object.assign(farm.beds[i], { crop: longestOpen(farm), growth: 0, water: 99 })
+    expect(s.done(farm)).toBe(true)
+    farm.beds[i].growth = cropById(longestOpen(farm)).growSeconds
+    expect(s.done(farm)).toBe(false)
+    // a shorter crop is not the long one
+    Object.assign(farm.beds[i], { crop: 'lettuce', growth: 0 })
+    farm.xp.points = xpAt(4)
+    expect(s.done(farm)).toBe(false)
   })
 })
 

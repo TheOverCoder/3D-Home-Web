@@ -7,8 +7,9 @@ import { unpaidCoins, xpAt } from '../../src/farm/xp'
 const IGNORED = [/THREE\.Clock: This module has been deprecated/, /using deprecated parameters for the initialization function/]
 
 export const SPAWN = { x: -3.5, y: 1.4, z: 1.3 }
-/** Where a new farm starts, on the farm (src/data/maps.ts, FARM_START): on the path among the beds, looking south. */
-export const FARM_START = { x: -1.2, y: 1.4, z: 6.8 }
+/** Where a new farm starts, on the farm (src/data/maps.ts, FARM_START): on the path among the beds, facing the east beds
+ *  and looking down at them. */
+export const FARM_START = { x: -1.2, y: 1.4, z: 7.4, heading: Math.PI + 0.7, pitch: -0.38 }
 
 /** The two maps (src/scene/Maps.tsx): the house on its own plot, and the farm. */
 export type MapId = 'home' | 'farm'
@@ -65,11 +66,16 @@ export async function bootApp(page: Page, query = 'debug&quality=low') {
   await quietEvents(page)
   // the season and the weather quiet (src/farm/state/season.ts): every spec stands in spring, in clear weather
   await page.evaluate(() => (window as any).__home?.season?.quiet?.(true))
+  await learntControls(page)
   // the season road not fed (src/farm/state/seasonRoad.ts): no spec's coins or goods come from its stops
   await page.evaluate(() => (window as any).__home?.road?.quiet?.(true))
   // the market's mood quiet (src/farm/mood.ts): every price as fair, whatever the date
   await page.evaluate(() => (window as any).__home?.mood?.quiet?.(true))
 }
+
+/** The controls marked learnt on this device (src/settings.ts, `learnt`): every spec sees today's controls — the three
+ *  buttons over the stick, no ring and no hand teaching them, no keyboard line — but 07-phone's, which teaches them. */
+export const learntControls = (page: Page) => page.evaluate(() => (window as any).__home?.settings?.getState?.().update?.({ learnt: { stick: true, look: true } }))
 
 /** Puts the shared page on a map (the house yours first): the scene changes behind its curtain, you at that map's start.
  *  Nothing happens when you are on it already. */
@@ -180,7 +186,8 @@ export async function openGame(browser: Browser, counting = false): Promise<{ ga
           lamps: Object.fromEntries(Object.keys(s.lamps).map((k) => [k, true])),
           doors: Object.fromEntries(Object.keys(s.doors).map((k) => [k, false])),
         })
-        // the house: its living room, where it always started; the farm: where a new farm starts
+        // the house: its living room, where it always started; the farm: on the path among the beds, looking south, where
+        // a farm started before it faced the east beds (FARM_START): every spec's own poses are from there
         const at = map === 'home' ? [-3.5, 1.3] : [-1.2, 6.8]
         h.teleport(at[0], 1.4, at[1])
         if (typeof h.look === 'function') h.look({ yaw: Math.PI, pitch: -0.04 })
@@ -208,6 +215,8 @@ export async function openGame(browser: Browser, counting = false): Promise<{ ga
         // the season and the weather quiet (src/farm/state/season.ts: spring and clear), as a ?debug page starts: a spec
         // that turned them on or set its own leaves them quiet for the next
         h.season?.quiet?.(true)
+        // the controls learnt (src/settings.ts): a spec that taught them leaves them learnt for the next
+        h.settings?.getState?.().update?.({ learnt: { stick: true, look: true } })
         // the season road not fed (src/farm/state/seasonRoad.ts), as a ?debug page starts: a spec that fed it (44) leaves
         // it quiet for the next
         h.road?.quiet?.(true)

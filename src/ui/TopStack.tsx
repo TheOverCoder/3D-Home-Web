@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 
 // The top middle of the screen as one column (styles.css: .top-stack): under the farm's chips when everything shows,
 // at the very top with only the compass. What stands there — the compass, a new farm's next step
-// (src/farm/FirstSteps.tsx), a toast, the level-up show, the first hint and the busy card (src/farm/Busy.tsx) — each
+// (src/farm/FirstSteps.tsx), a toast, the level-up show and the busy card (src/farm/Busy.tsx) — each
 // goes in its slot, one under another
 // in this order, and the column puts it in its place: never an offset from another element, so no two of them can
 // ever cover each other however many rows the chips take. The step stands right under the compass, above the toast
@@ -12,7 +12,7 @@ import { createPortal } from 'react-dom'
 // stands in the dashboard's hole between its wings (src/farm/TopDash.tsx keeps the hole and says where, Compass.css
 // puts it there), and the column's other slots stand under the whole dashboard.
 
-const ORDER = { compass: 1, steps: 2, toast: 3, level: 4, hint: 5, busy: 6 } as const
+const ORDER = { compass: 1, steps: 2, toast: 3, level: 4, busy: 5 } as const
 export type TopSlotName = keyof typeof ORDER
 
 let column: HTMLElement | null = null
