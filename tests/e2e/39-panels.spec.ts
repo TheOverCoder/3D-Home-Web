@@ -33,8 +33,9 @@ const WHY: Record<Check, string> = {
 
 /** Each place's findings today, the most of either size (a panel by its kind; the top at rest, and with a toast). */
 const DEBTS: Record<string, Partial<Record<Check, number>>> = {
-  'the top at rest': { target: 7, loops: 2 },
-  'the top with a toast': { target: 7 },
+  // (update v1's dairy and jam kettle: one more compass mark of the same 44 px when the farm has plenty)
+  'the top at rest': { target: 8, loops: 2 },
+  'the top with a toast': { target: 8 },
   seeds: { target: 1 },
   build: { target: 1 },
   bed: { target: 1 },
@@ -50,7 +51,8 @@ const DEBTS: Record<string, Partial<Record<Check, number>>> = {
   'buy-piece': { target: 1 },
   'decor-shop': { target: 3 },
   'decor-buy': { target: 1 },
-  away: { words: 3, target: 1 },
+  // (the welcome back's rows at 13 px: its *Next* line beside its three rows)
+  away: { words: 4, target: 1 },
   daily: { words: 1, target: 1 },
   goals: { words: 1, target: 1, goodpic: 1 },
   level: { words: 3, target: 1, goodpic: 1 },
