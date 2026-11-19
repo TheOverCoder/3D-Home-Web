@@ -75,7 +75,7 @@ test.describe('the week’s events', () => {
     await expect(story).toContainText('Harvest festival')
     await expect(story).toContainText('Every crop grows twice as fast.')
     await expect(story.locator('.nw-new')).toBeVisible()
-    await expect(story).toContainText('Until midnight · 11 h left')
+    await expect(story).toContainText('Until midnight · Back next Wednesday')
     // coming soon: every other event's next time, the soonest first, each with its leaf, its day and its hours
     const rows = card.locator('.nw-soon .nw-row')
     await expect(rows).toHaveCount(4)
@@ -122,6 +122,11 @@ test.describe('the week’s events', () => {
     await openNews(game)
     const card = game.page.locator(CARD)
     await expect(card.locator('.nw-lucky')).toContainText('Lucky draw')
+    // its "?": what it can pick and how likely (each good alike), then closed again
+    await card.locator('.nw-odds .odds-btn').click()
+    await expect(card.locator('.nw-odds .odds-sheet')).toContainText('Each good')
+    await card.locator('.nw-odds .odds-btn').click()
+    await expect(card.locator('.nw-odds .odds-sheet')).toHaveCount(0)
     await expect(card.locator('.nw-cell.ask')).toHaveCount(2)
     await card.locator('.nw-draw').click()
     await expect(card.locator('.nw-won')).toBeVisible({ timeout: 15_000 })

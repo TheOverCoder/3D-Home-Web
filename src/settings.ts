@@ -18,7 +18,7 @@ export interface Settings {
   musicVolume: number // 0..1, under the sound volume
   effectsVolume: number // 0..1, under the sound volume: work, coins, the animals, footsteps, the interface (src/audio/mix.ts)
   ambienceVolume: number // 0..1, under the sound volume: the room tone, the open air, birds and crickets
-  musicTrack: number
+  musicTrack: number | 'auto' // the track picked, or Auto: it follows the farm's time of day and the place (src/audio/music.ts)
   vibration: boolean // a touch as an action is done (phones that can: Android; src/lib/device.ts, haptic)
   hudMode: 'all' | 'compass' | 'clean' // the top of the screen: everything, only the compass, or nothing (the button in the corner, or H)
   followMove: boolean // touch: the view turns towards where you walk with the stick (the button beside it)
@@ -53,7 +53,7 @@ export const DEFAULT_SETTINGS: Settings = {
   musicVolume: 0.5,
   effectsVolume: 1,
   ambienceVolume: 1,
-  musicTrack: 0,
+  musicTrack: 'auto',
   vibration: true,
   hudMode: 'all',
   followMove: false,
@@ -69,6 +69,9 @@ const learntOf = (x: unknown): Learnt => {
   return { stick: l.stick === true, look: l.look === true }
 }
 
+/** A music track as kept: Auto, or the number of the track picked (anything else is Auto, as it starts). */
+const trackOf = (x: unknown): number | 'auto' => (typeof x === 'number' && Number.isInteger(x) && x >= 0 ? x : 'auto')
+
 /** A motion choice as kept: one of the three (anything else is the device's, as it starts). */
 const motionOf = (x: unknown): MotionPref => (x === 'less' || x === 'full' ? x : 'device')
 
@@ -77,7 +80,7 @@ function load(): Settings {
     const raw = localStorage.getItem(KEY)
     if (!raw) return DEFAULT_SETTINGS
     const s = { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<Settings>) }
-    return { ...s, motion: motionOf(s.motion), learnt: learntOf(s.learnt) }
+    return { ...s, motion: motionOf(s.motion), musicTrack: trackOf(s.musicTrack), learnt: learntOf(s.learnt) }
   } catch {
     return DEFAULT_SETTINGS
   }
@@ -114,7 +117,7 @@ const pick = (s: Settings): Settings => ({
   musicVolume: s.musicVolume,
   effectsVolume: level(s.effectsVolume),
   ambienceVolume: level(s.ambienceVolume),
-  musicTrack: s.musicTrack,
+  musicTrack: trackOf(s.musicTrack),
   vibration: s.vibration,
   hudMode: s.hudMode === 'compass' || s.hudMode === 'clean' ? s.hudMode : 'all',
   followMove: s.followMove === true,

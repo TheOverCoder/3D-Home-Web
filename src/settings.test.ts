@@ -123,3 +123,29 @@ describe('what the player has learnt of the controls', () => {
     expect(s.useSettings.getState().learnt).toEqual({ stick: false, look: false })
   })
 })
+
+describe('the music’s track', () => {
+  it('starts on Auto (it follows the farm’s time of day and the place), and keeps a track picked across a reload', async () => {
+    let { DEFAULT_SETTINGS, useSettings } = await loaded()
+    expect(DEFAULT_SETTINGS.musicTrack).toBe('auto')
+    expect(useSettings.getState().musicTrack).toBe('auto')
+    useSettings.getState().update({ musicTrack: 2 })
+    const stored = JSON.parse(localStorage.getItem(KEY)!)
+    expect(stored.musicTrack).toBe(2)
+    ;({ useSettings } = await loaded(stored))
+    expect(useSettings.getState().musicTrack).toBe(2)
+    useSettings.getState().update({ musicTrack: 'auto' })
+    expect(JSON.parse(localStorage.getItem(KEY)!).musicTrack).toBe('auto')
+  })
+
+  it('loads an older stored track as picked, and anything garbled as Auto', async () => {
+    let { useSettings } = await loaded({ sound: true, musicTrack: 3 })
+    expect(useSettings.getState().musicTrack).toBe(3)
+    ;({ useSettings } = await loaded({ sound: true }))
+    expect(useSettings.getState().musicTrack).toBe('auto')
+    for (const bad of ['loud', -1, 1.5, null]) {
+      ;({ useSettings } = await loaded({ musicTrack: bad }))
+      expect(useSettings.getState().musicTrack, String(bad)).toBe('auto')
+    }
+  })
+})

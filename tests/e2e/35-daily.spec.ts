@@ -1,15 +1,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { expect, test, type Page } from '@playwright/test'
 import { ITEMS } from '../../src/farm/data'
-import { dayCoins, dayMaterials } from '../../src/farm/daily'
+import { backCoins, dayCoins, dayMaterials } from '../../src/farm/daily'
 import { levelOf } from '../../src/farm/xp'
 import { BASE, levelPay, watchErrors } from './helpers'
 
-// The daily gift (src/farm/daily.ts, DailyCard.tsx, DailyPanel.tsx): once a day of the device's calendar, the first time
-// the farm is in view that day, its card opens by itself — after the welcome-back card, never over it — and Claim pays
-// the day's gift once (coins counted into the chip as they land); the same day again nothing opens and nothing waits;
-// the next day (the day changing while the game is open) goes on with the streak; a missed day is forgiven, two start a
-// new week; closed unclaimed it waits in the corner menu; the clock moved back gives nothing. A page of its own, a
+// The daily gift (src/farm/daily.ts, DailyCard.tsx, DailyPanel.tsx): once a day played, the first time the farm is in
+// view that day, its card opens by itself — after the welcome-back card, never over it — its "?" says what it holds and
+// how likely, and Claim pays the day's gift once (coins counted into the chip as they land); the same day again nothing
+// opens and nothing waits; the next day (the day changing while the game is open) is the next day of the season's week;
+// a calendar day not played moves nothing (the week waits); a day played and not claimed joins the next claim, and a
+// return after days away brings the welcome-back gift with it; closed unclaimed it waits in the corner menu; the clock
+// moved back gives nothing. A page of its own, a
 // phone upright: the other specs put the gift out of the way (`quietDaily` in helpers.ts), this one never does. The
 // day's clock is the game's own hook (`__home.farm.daily.clock`: a moment of the page's time), the dice `setRandom`.
 
@@ -62,7 +64,7 @@ async function claim(page: Page, roll: number) {
 }
 
 test.describe('the daily gift', { tag: '@boot' }, () => {
-  test('first open of a day (after the welcome-back card): claimed once, nothing again that day; the next day the streak goes on; a missed day waits, two start a new week; the menu keeps it; the clock back gives nothing', async ({
+  test('first open of a day (after the welcome-back card): its odds, claimed once, nothing again that day; the week waits for days played; a day not claimed joins the next, with the welcome back after days away; the menu keeps it; the clock back gives nothing', async ({
     browser,
   }) => {
     test.setTimeout(1_500_000)
@@ -93,7 +95,7 @@ test.describe('the daily gift', { tag: '@boot' }, () => {
         save.time = Date.now() - 3600_000
         return [k, JSON.stringify(save)]
       })
-      expect(JSON.parse(saved).daily).toEqual({ last: -1, streak: 0, offered: -1, week: [] })
+      expect(JSON.parse(saved).daily).toEqual({ last: -1, offered: -1, at: 0, week: [], back: false })
       // put back as the page starts again (the page going away saves the farm as it is then); once only
       await page.addInitScript(
         ([k, v]) => {
@@ -118,13 +120,19 @@ test.describe('the daily gift', { tag: '@boot' }, () => {
       // opened by itself today: kept in the save (not again today)
       expect((await read(page)).daily.offered).toBe((await read(page)).today)
 
+      // the "?" says what today's box holds and how likely (the odds on screen); touched again, it closes
+      await card(page).locator('.dg-odds .odds-btn').tap()
+      await expect(card(page).locator('.odds-sheet')).toContainText('Always')
+      await card(page).locator('.dg-odds .odds-btn').tap()
+      await expect(card(page).locator('.odds-sheet')).toHaveCount(0)
+
       // Claim: day 1's coins, once, no XP; the coin chip counts them in as they land
       const first = await claim(page, 0)
       expect(first.after.coins - levelPay(first.before.paid, first.after.paid)).toBe(first.before.coins + dayCoins(1, first.before.level))
-      expect(first.after.daily).toMatchObject({ last: first.before.today, streak: 1, week: [[{ coins: dayCoins(1, first.before.level) }]] })
+      expect(first.after.daily).toMatchObject({ last: first.before.today, week: [[{ coins: dayCoins(1, first.before.level) }]] })
       await expect(card(page).locator('.dg-prize-name')).toHaveText(`${dayCoins(1, first.before.level)} coins`)
-      // once it is home: the streak counted up, and the stage turns to tomorrow with its clock to the next gift
-      await expect(card(page).locator('.dg-streak')).toHaveAttribute('aria-label', 'Streak: 1 day in a row')
+      // the days played in the title (they never fall); once it is home the stage turns to tomorrow with its clock
+      await expect(card(page).locator('.dg-streak')).toHaveAttribute('aria-label', /^Day \d+ on the farm$/)
       await expect(card(page).getByRole('timer')).toHaveAttribute('aria-label', /^Opens in (\d+ hours?( \d+ minutes?)?|\d+ minutes?|less than a minute)$/)
       await expect(card(page).locator('.dg-clock-face')).toHaveText(/^\d\d:\d\d:\d\d$/)
       await expect
@@ -144,45 +152,49 @@ test.describe('the daily gift', { tag: '@boot' }, () => {
       expect(await page.evaluate(() => (window as any).__home.farm.daily.waiting())).toBe(false)
       await expect(page.locator('.top-menu-gift')).toHaveCount(0)
       const again = await read(page)
-      expect(again.daily).toMatchObject({ last: again.today, streak: 1 })
+      expect(again.daily).toMatchObject({ last: again.today })
       expect(again.coins).toBe(first.after.coins)
 
-      // the next day comes while the game is open: its gift opens by itself, day 2 (a building material), the streak on
+      // the next day comes while the game is open: its gift opens by itself, day 2 (a building material)
       await dayClock(page, 1)
       await expect(card(page)).toBeVisible({ timeout: 30_000 })
       await expect(card(page).locator('.dg-ribbon')).toHaveText('Day 2')
-      await expect(card(page).locator('.dg-streak')).toHaveAttribute('aria-label', 'Streak: 1 day in a row')
       const second = await claim(page, 0.99)
       const log = ITEMS[5]
       expect(second.after.inv[log] - second.before.inv[log]).toBe(dayMaterials(2, second.before.level))
       expect(second.after.coins).toBe(second.before.coins + levelPay(second.before.paid, second.after.paid))
-      expect(second.after.daily.streak).toBe(2)
-      // closed with its ✕ while the gift is still on its stage (the road and the streak move on once it is home): it
-      // flies home as the card goes, nothing lost
+      // closed with its ✕ while the gift is still on its stage (the road moves on once it is home): it flies home as the
+      // card goes, nothing lost
       await card(page).getByRole('button', { name: 'Close (Esc)' }).tap()
       await expect.poll(() => panel(page), { timeout: 10_000 }).toBe(null)
 
-      // a missed day (day +2 not played): the streak waited, day 3
+      // a calendar day not played: the week waited (it counts days played), day 3
       await dayClock(page, 3)
       await expect(card(page)).toBeVisible({ timeout: 30_000 })
       await expect(card(page).locator('.dg-ribbon')).toHaveText('Day 3')
-      await expect(card(page).locator('.dg-line')).toHaveText('You missed a day: your streak waited.')
+      await expect(card(page).locator('.dg-line')).toHaveText('4 more days to the big gift.')
       const third = await claim(page, 0)
       expect(third.after.coins - levelPay(third.before.paid, third.after.paid)).toBe(third.before.coins + dayCoins(3, third.before.level))
-      expect(third.after.daily.streak).toBe(3)
       await card(page).getByRole('button', { name: 'Done' }).tap()
       await expect.poll(() => panel(page), { timeout: 10_000 }).toBe(null)
 
-      // two missed days: a new week from day 1 (no streak shown until it is claimed); closed unclaimed, it waits in the
-      // corner menu — the gift on its button, "Daily gift" first in it — and opens from there
-      await dayClock(page, 6)
+      // day 4 played and its gift left unclaimed (closed with its ✕)
+      await dayClock(page, 4)
       await expect(card(page)).toBeVisible({ timeout: 30_000 })
-      await expect(card(page).locator('.dg-ribbon')).toHaveText('Day 1')
-      await expect(card(page).locator('.dg-line')).toHaveText('A new week begins.')
-      await expect(card(page).locator('.dg-streak')).toHaveCount(0)
+      await expect(card(page).locator('.dg-ribbon')).toHaveText('Day 4')
       await card(page).getByRole('button', { name: 'Close (Esc)' }).tap()
       await expect.poll(() => panel(page), { timeout: 10_000 }).toBe(null)
-      expect((await read(page)).daily.streak).toBe(3)
+
+      // back four calendar days later: day 5, with day 4's gift waiting beside it and the welcome-back gift; closed
+      // unclaimed, it waits in the corner menu — the gift on its button, "Daily gift" first in it — and opens from there
+      await dayClock(page, 8)
+      await expect(card(page)).toBeVisible({ timeout: 30_000 })
+      await expect(card(page).locator('.dg-ribbon')).toHaveText('Day 5')
+      await expect(card(page).locator('.dg-line')).toHaveText('Welcome back! Your week waited.')
+      await expect(card(page).locator('.dg-back')).toBeVisible()
+      await expect(card(page).locator('.dg-stop.owed')).toHaveCount(1)
+      await card(page).getByRole('button', { name: 'Close (Esc)' }).tap()
+      await expect.poll(() => panel(page), { timeout: 10_000 }).toBe(null)
       await page.waitForTimeout(3000)
       expect(await panel(page), 'opened by itself once a day').toBe(null)
       await expect(page.locator('.top-menu-gift')).toBeVisible()
@@ -192,8 +204,13 @@ test.describe('the daily gift', { tag: '@boot' }, () => {
       await expect(page.locator('.top-dial-btn').first()).toHaveClass(/daily-open/)
       await entry.tap()
       await expect(card(page)).toBeVisible({ timeout: 10_000 })
-      const fourth = await claim(page, 0)
-      expect(fourth.after.daily).toMatchObject({ streak: 1, week: [[{ coins: dayCoins(1, fourth.before.level) }]] })
+      const fifth = await claim(page, 0)
+      // day 5's coins and the welcome-back gift's (day 4's gift a material or goods, in its place on the road)
+      expect(fifth.after.coins - levelPay(fifth.before.paid, fifth.after.paid)).toBe(fifth.before.coins + dayCoins(5, fifth.before.level) + backCoins(fifth.before.level))
+      expect(fifth.after.daily.week).toHaveLength(5)
+      expect(fifth.after.daily.week[3]).toHaveLength(1)
+      expect(fifth.after.daily.week[4]).toEqual([{ coins: dayCoins(5, fifth.before.level) }])
+      expect(fifth.after.daily.back).toBe(false)
       await card(page).getByRole('button', { name: 'Done' }).tap()
       await expect.poll(() => panel(page), { timeout: 10_000 }).toBe(null)
       await expect(page.locator('.top-menu-gift')).toHaveCount(0)

@@ -67,6 +67,8 @@ export async function bootApp(page: Page, query = 'debug&quality=low') {
   // the season and the weather quiet (src/farm/state/season.ts): every spec stands in spring, in clear weather
   await page.evaluate(() => (window as any).__home?.season?.quiet?.(true))
   await learntControls(page)
+  // the season road not fed (src/farm/state/seasonRoad.ts): no spec's coins or goods come from its stops
+  await page.evaluate(() => (window as any).__home?.road?.quiet?.(true))
   // the market's mood quiet (src/farm/mood.ts): every price as fair, whatever the date
   await page.evaluate(() => (window as any).__home?.mood?.quiet?.(true))
 }
@@ -215,6 +217,9 @@ export async function openGame(browser: Browser, counting = false): Promise<{ ga
         h.season?.quiet?.(true)
         // the controls learnt (src/settings.ts): a spec that taught them leaves them learnt for the next
         h.settings?.getState?.().update?.({ learnt: { stick: true, look: true } })
+        // the season road not fed (src/farm/state/seasonRoad.ts), as a ?debug page starts: a spec that fed it (44) leaves
+        // it quiet for the next
+        h.road?.quiet?.(true)
         // the market's mood quiet (src/farm/mood.ts: every price as fair), as a ?debug page starts: a spec that turned it
         // on (34-events, 41-computer) leaves it quiet for the next
         h.mood?.quiet?.(true)

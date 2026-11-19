@@ -14,7 +14,7 @@ import { CountUp, EASE, ITEM, POP, SINK, SPRING } from '../ui/motion'
 import { Road } from '../ui/Road'
 import { PanelSheet } from '../ui/PanelSheet'
 import { storeOf } from './data'
-import { countdown, WEEK, type DailyView, type DayView, type Peek } from './daily'
+import { chanceWords, countdown, merged, WEEK, type Chance, type DailyView, type DayView, type Peek } from './daily'
 import { prizeWords, type Prize } from './gifts'
 import { iconUrl } from './icons'
 import { stops } from './road'
@@ -27,15 +27,17 @@ import './DailyCard.css'
 // hops now and then, its lid lifting as it lands so the light inside peeks out, a tag on its lid with what is inside
 // today (the coins, a building material, goods from the farm; the big one's three), its day on a ribbon. Under it the
 // week as a road of seven stops — the days taken checked with what they gave, today's glowing, the days to come
-// peeking, the seventh bigger with a crown, the big one; a stop touched says what it holds. The streak is a flame in
-// the title. One press: Claim.
+// peeking, the seventh bigger with a crown, the big one; a stop touched says what it holds. The week is the season's,
+// on days played: a day played whose gift was not claimed glows beside today's (it comes with it), and a return after
+// days away brings a welcome-back gift with it. The days played ("Day 23 on the farm", never falling) are in the title,
+// and a "?" on the stage says what today's box can hold and how likely. One press: Claim.
 //
 // Claiming tells the gift's story one step at a time. The box rattles, its lid jumping, the light gathering; it bursts
 // open (a flash, confetti, its sound and a roll of the phone): the lid flies off with its tag, a beam of light comes
 // up out of the box and the gift rises out of it, big, with its name, as the empty box sinks away. A moment later it
 // flies to where it lives (coins to the coin chip, which counts them in as they land; goods to their building's chip),
-// and only then does the road take it: today's stop is stamped with what it gave, the line runs on to it and the flame
-// counts the streak up. The stage turns to tomorrow: its box, what it will bring and a digital clock counting down to
+// and only then does the road take it: today's stop is stamped with what it gave and the line runs on to it. The stage
+// turns to tomorrow: its box, what it will bring and a digital clock counting down to
 // the moment it opens (the device's midnight), so the visit ends looking forward. Done closes it. If the clock runs
 // out with the card open, the new day's box drops in. What the gift gives is the farm's at the press (onClaim):
 // closing the card at any moment loses nothing (what is still on the stage flies as it goes).
@@ -56,6 +58,7 @@ export function DailyCard({
   v,
   onClaim,
   onClose,
+  onShake,
 }: {
   v: DailyView
   /** claims today's gift: what it gave (null: nothing to claim) */
@@ -63,6 +66,8 @@ export function DailyCard({
   onClose: () => void
   /** (not called: the moment it bursts open, its sting and its touch are its tier's, `celebrate`: src/fx/reward.ts) */
   onReveal?: () => void
+  /** the box starts shaking (for `ms`, `delayMs` from now), to open on a gift of `tier`: its rattle */
+  onShake?: (tier: Tier, ms: number, delayMs?: number) => void
 }) {
   const still = useLessMotion()
   const [moment, setMoment] = useState<Moment | null>(null)
@@ -115,6 +120,7 @@ export function DailyCard({
     }
     setMoment({ got: list, phase: still ? 'open' : 'shake', before: v })
     if (still) celebrate('daily', tier.current, null)
+    else onShake?.(tier.current, SHAKE_MS)
   }
 
   // rattle → open (the burst: as big as the gift) → home
@@ -152,7 +158,6 @@ export function DailyCard({
     onClose()
   }
   const big = shown.ready && shown.day === WEEK
-  const streak = shown.ready ? shown.was : shown.streak
   const done = !!moment && phase !== 'shake'
   const box: Box = phase === 'shake' ? 'shake' : phase === 'open' ? 'open' : still ? 'rest' : 'idle'
   const showBox = (!moment && shown.ready) || phase === 'shake' || (phase === 'open' && !still)
@@ -161,8 +166,10 @@ export function DailyCard({
   return (
     // the sheet's head: the calendar, "Daily gift" and the streak's flame (src/ui/PanelSheet.tsx); its ✕, the shade, a
     // swipe or Esc send what is still on the stage home as it goes
-    <PanelSheet label="Daily gift" title="Daily gift" pic={art('tear-off-calendar')} sub={<Streak n={streak} />} className="daily-card" onLeave={fly} onClose={onClose}>
+    <PanelSheet label="Daily gift" title="Daily gift" pic={art('tear-off-calendar')} sub={<DaysPlayed n={shown.days} />} className="daily-card" onLeave={fly} onClose={onClose}>
       <div className="dg-body">
+        {/* (over the stage's corner, outside it: its sheet is not cut off by the stage) */}
+        {!moment && shown.ready && <Odds rows={shown.odds} label="What today’s gift can hold" className="dg-odds" />}
         <m.div className={`dg-stage${big ? ' big' : ''}${phase ? ` ${phase}` : ''}`} variants={ITEM} ref={stage}>
           <m.span
             className="dg-rays"
@@ -173,12 +180,13 @@ export function DailyCard({
           />
           <AnimatePresence>
             {showBox && <GiftBox key={`box-${shown.day}`} day={shown.day} big={big} peek={shown.week[shown.day - 1]?.peek} state={box} />}
-            {phase === 'open' && <Prizes key="prizes" got={got.current} still={still} />}
+            {phase === 'open' && <Prizes key="prizes" got={merged(got.current)} still={still} />}
             {showTomorrow && <Tomorrow key="tomorrow" v={v} />}
           </AnimatePresence>
           {phase === 'open' && !still && (
             <m.i className="dg-flash" aria-hidden="true" initial={{ opacity: 0.9, scale: 0.3 }} animate={{ opacity: 0, scale: 1.7 }} transition={{ duration: 0.5, ease: EASE.out }} />
           )}
+          {!moment && shown.ready && shown.back !== null && <BackGift coins={shown.back} />}
           <span className="dg-say" role="status">
             {done ? `You got ${got.current.map(prizeWords).join(', ')}` : ''}
           </span>
@@ -233,16 +241,16 @@ export function DailyCard({
   )
 }
 
-/** The one line under the button: what this day means (a streak that waited, a new week, how far the big gift is),
- *  or, once claimed, what tomorrow brings. */
+/** The one line under the button, in kind words (nothing is ever lost or missed): what this day means (a return the
+ *  week waited for, gifts that waited, how far the big gift is), or, once claimed, what the next day played brings. */
 function lineOf(v: DailyView, done: boolean): string {
-  if (done || !v.ready) return v.tomorrow === 1 ? 'A new week starts tomorrow.' : v.tomorrow === WEEK ? 'Tomorrow: the big gift!' : `Come back tomorrow for day ${v.tomorrow}.`
-  if (v.kept) return 'You missed a day: your streak waited.'
-  if (v.broke) return 'A new week begins.'
-  if (v.first) return 'A gift every day. Day 7 is a big one!'
+  if (done || !v.ready)
+    return v.tomorrow === 1 ? 'A new week starts on your next day here.' : v.tomorrow === WEEK ? 'The big gift waits for your next day here!' : `Day ${v.tomorrow} waits for your next day here.`
+  if (v.back !== null) return 'Welcome back! Your week waited.'
+  if (v.owed > 0) return v.owed === 1 ? 'Your last day’s gift waited for you too.' : `Your last ${v.owed} days’ gifts waited for you too.`
+  if (v.first) return 'A gift every day you play. Day 7 is a big one!'
   if (v.day === WEEK) return 'The big gift of the week!'
-  const left = WEEK - v.day
-  return left === 1 ? '1 more day to the big gift.' : `${left} more days to the big gift.`
+  return v.left === 1 ? '1 more day to the big gift.' : `${v.left} more days to the big gift.`
 }
 
 /** What a day holds, in words: its coins, or its kind. */
@@ -253,8 +261,9 @@ function peekWords(p: Peek): string {
   return `${p.coins.toLocaleString('en-US')} coins, a material and goods`
 }
 
-/** The streak: a flame (it flickers) and the days in a row. It counts up as the gift comes home; a new streak pops in. */
-function Streak({ n }: { n: number }) {
+/** The days played: a flame (it flickers) and the farm's day ("Day 23 on the farm"). It never falls; a new day counts
+ *  up. */
+function DaysPlayed({ n }: { n: number }) {
   // the number it counts from: the one before the last change (kept across the card's other changes)
   const seen = useRef({ n, from: n })
   if (seen.current.n !== n) seen.current = { n, from: seen.current.n }
@@ -262,7 +271,7 @@ function Streak({ n }: { n: number }) {
   return (
     <AnimatePresence initial={false}>
       {n > 0 && (
-        <m.span key="streak" className="dg-streak" aria-label={`Streak: ${n} day${n === 1 ? '' : 's'} in a row`} title="Days in a row" variants={POP} initial="hidden" animate="show" exit="out">
+        <m.span key="days" className="dg-streak dg-day-count" aria-label={`Day ${n} on the farm`} title="Days on the farm" variants={POP} initial="hidden" animate="show" exit="out">
           <m.img
             key={n}
             className="art"
@@ -272,8 +281,8 @@ function Streak({ n }: { n: number }) {
             animate={{ scale: 1, rotate: 0 }}
             transition={{ ...SPRING.pop, delay: 0.12 }}
           />
+          <small>Day</small>
           <b>{from < n ? <CountUp from={from} to={n} duration={0.6} /> : n}</b>
-          <small>{n === 1 ? 'day' : 'days'}</small>
         </m.span>
       )}
     </AnimatePresence>
@@ -410,6 +419,68 @@ function Tag({ peek }: { peek: Peek }) {
       {(peek.kind === 'goods' || peek.kind === 'big') && <img src={art('basket')} alt="" />}
       {peek.kind === 'coins' && <b>{peek.coins.toLocaleString('en-US')}</b>}
     </span>
+  )
+}
+
+/** The odds of a gift on screen (update-v1/missions/02-meta-collections.md, change 2): a "?" that opens what it can hold
+ *  and how likely, a line each ("Coins · 55 %"; "Which material: each of 6 alike · 1 in 6"); touched again, or
+ *  anywhere else, it closes. Nothing here is a bet: the odds are the farm's own, the same for everyone. The level's
+ *  boxes and the lucky draw show theirs with it too. */
+export function Odds({ rows, label, className }: { rows: readonly Chance[]; label: string; className?: string }) {
+  const [open, setOpen] = useState(false)
+  const box = useRef<HTMLSpanElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const away = (e: PointerEvent) => {
+      if (!box.current?.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('pointerdown', away, true)
+    return () => document.removeEventListener('pointerdown', away, true)
+  }, [open])
+  return (
+    <span className={`odds${className ? ` ${className}` : ''}`} ref={box}>
+      <button type="button" className="odds-btn" aria-expanded={open} aria-label={label} title={label} onClick={() => setOpen((o) => !o)}>
+        <span aria-hidden="true">?</span>
+      </button>
+      <AnimatePresence>
+        {open && (
+          <m.span
+            className="odds-sheet"
+            role="note"
+            initial={{ opacity: 0, y: -6, scale: 0.94 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, transition: { duration: 0.12 } }}
+            transition={SPRING.pop}
+          >
+            <b className="odds-title">{label}</b>
+            {rows.map((r) => (
+              <span key={r.what} className="odds-row">
+                <span>{r.what}</span>
+                <b>{chanceWords(r.share)}</b>
+              </span>
+            ))}
+          </m.span>
+        )}
+      </AnimatePresence>
+    </span>
+  )
+}
+
+/** The welcome-back gift, waiting on the stage beside today's box: a wave and its coins (they come with today's). */
+function BackGift({ coins }: { coins: number }) {
+  return (
+    <m.span
+      className="dg-back"
+      role="img"
+      aria-label={`Welcome back: ${coins} coins come with today’s gift`}
+      initial={{ opacity: 0, scale: 0.6, rotate: -12 }}
+      animate={{ opacity: 1, scale: 1, rotate: 0 }}
+      transition={{ ...SPRING.pop, delay: 0.5 }}
+    >
+      <img className="art" src={art('waving-hand')} alt="" />
+      <img src={art('coin')} alt="" />
+      <b>+{coins.toLocaleString('en-US')}</b>
+    </m.span>
   )
 }
 
@@ -561,8 +632,8 @@ const STOP: Variants = { hidden: { opacity: 0, y: 10, scale: 0.7 }, show: { opac
 const WEEK_ROAD = stops(WEEK, (k) => k)
 
 /** The week as a road (../ui/Road.tsx): seven stops on a line that fills up to the last day taken (and runs on to
- *  today's once its gift is home: `stamped`, the day the claim was about), striped on to today's. A stop touched says
- *  what it holds or gave. */
+ *  today's once its gift is home: `stamped`, the day the claim was about), striped on to today's past the days whose
+ *  gifts waited for it. A stop touched says what it holds or gave. */
 function WeekRoad({ v, stamped }: { v: DailyView; stamped: number | null }) {
   const past = v.week.filter((d) => d.state === 'past').length
   const now = v.week.find((d) => d.state === 'today')?.day ?? 0
@@ -581,14 +652,15 @@ function WeekRoad({ v, stamped }: { v: DailyView; stamped: number | null }) {
   )
 }
 
-/** A stop's words: its day, and what it gave (taken) or holds (today's, to come). */
+/** A stop's words: its day, and what it gave (taken) or holds (today's, one that waited for it, to come). */
 function stopWords(d: DayView): [string, string] {
   if (d.state === 'past') return [`Day ${d.day}`, d.got ? d.got.map(prizeWords).join(', ') : 'Taken']
+  if (d.state === 'owed') return [`Day ${d.day}`, `${peekWords(d.peek)}, waiting with today’s`]
   return [d.state === 'today' ? 'Today' : `Day ${d.day}`, peekWords(d.peek)]
 }
 
-/** A stop of the road: a day taken (what it gave, with a ✓), today's (glowing), or one to come (its peek); touched, its
- *  words in a bubble over it. */
+/** A stop of the road: a day taken (what it gave, with a ✓), today's (glowing), one that waited for it (glowing too:
+ *  it comes with today's), or one to come (its peek); touched, its words in a bubble over it. */
 function Stop({ d, now, picked, onPick }: { d: DayView; now: boolean; picked: boolean; onPick: () => void }) {
   const big = d.day === WEEK
   const pic = d.got?.[0]

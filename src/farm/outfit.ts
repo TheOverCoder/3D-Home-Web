@@ -2,7 +2,9 @@
 // — its shirt, its trousers, the straw hat, the cap and the beanie) in a table of garments, each with the level it
 // comes with. Level 1 has two of each; then one more every GARMENT_EVERY levels, up to the top level (LEVELS.max), so
 // every fifth level brings one. The clothes the buyers wear come first, in the order of their table; after them the
-// same clothes in more colours. Pure: what is worn is in the farm's save (`outfit`), changed by state.ts.
+// same clothes in more colours. And garments that come from somewhere else (`from`): a page of the farm's album
+// finished (./album.ts), a season road's last stop (./seasonRoad.ts); those the farm has are `outfit.owned`, in the
+// order they came. Pure: what is worn is in the farm's save (`outfit`), changed by state.ts.
 
 import type { HatKind } from '../models/person'
 import { isObject } from '../lib/saved'
@@ -19,9 +21,15 @@ export interface Garment {
   colour: string
   /** a hat's kind */
   hat?: HatKind
-  /** the level it comes with (1: in the wardrobe from the start) */
+  /** the level it comes with (1: in the wardrobe from the start; Infinity: none, it comes from `from`) */
   level: number
+  /** where a garment that does not come with a level comes from: an album page finished, a season road completed */
+  from?: GarmentFrom
 }
+
+/** Where a garment not of a level comes from: a page of the album (its id), or the road of a season (its ordinal: 0 is
+ *  the first spring, 4 the second). */
+export type GarmentFrom = { kind: 'album'; page: string } | { kind: 'season'; ordinal: number }
 
 /** A new garment every this many levels. */
 export const GARMENT_EVERY = 5
@@ -187,58 +195,120 @@ function build(): Garment[] {
   return out
 }
 
-/** Every garment, in the order they come (the six of level 1 first). */
-export const GARMENTS: readonly Garment[] = build()
+/** A garment that comes from somewhere else, as a row: its slot, its kind of hat, its name and colour, where from. */
+type GiftRow = [slot: GarmentSlot, hat: HatKind | null, name: string, colour: string, from: GarmentFrom]
+
+/** The garments only the album and the season roads give, each once (outfit.owned): one for each album page (the
+ *  rows of ./album.ts name theirs), and one for each season's road of the first two years, so the second year's are
+ *  new too (./seasonRoad.ts). Colours none of the levels' garments of their kind wear. */
+const GIFTS: GiftRow[] = [
+  ['hat', 'straw', 'Sunflower', '#e9b824', { kind: 'album', page: 'grown' }],
+  ['shirt', null, 'Barn red', '#a5523a', { kind: 'album', page: 'barn' }],
+  ['hat', 'beanie', 'Woolly', '#d8cbb3', { kind: 'album', page: 'herd' }],
+  ['hat', 'cap', 'Timber', '#c7782a', { kind: 'album', page: 'materials' }],
+  ['shirt', null, 'Rosebud', '#d46a8a', { kind: 'album', page: 'garden' }],
+  ['hat', 'straw', 'Patchwork', '#6d8f3a', { kind: 'album', page: 'scarecrows' }],
+  ['shirt', null, 'Orchard', '#88a83c', { kind: 'album', page: 'orchard' }],
+  ['trousers', null, 'Overall', '#3b5f8a', { kind: 'album', page: 'skins' }],
+  ['hat', 'beanie', 'Four-season', '#4a7fb5', { kind: 'album', page: 'seasons' }],
+  ['shirt', null, 'Blossom', '#f2a7bd', { kind: 'season', ordinal: 0 }],
+  ['hat', 'straw', 'Sunny', '#f5d142', { kind: 'season', ordinal: 1 }],
+  ['hat', 'beanie', 'Maple', '#c4532d', { kind: 'season', ordinal: 2 }],
+  ['hat', 'beanie', 'Frost', '#9fc4de', { kind: 'season', ordinal: 3 }],
+  ['hat', 'cap', 'Meadow', '#7cc576', { kind: 'season', ordinal: 4 }],
+  ['shirt', null, 'Lagoon', '#2aa7a0', { kind: 'season', ordinal: 5 }],
+  ['trousers', null, 'Corduroy', '#7a5230', { kind: 'season', ordinal: 6 }],
+  ['shirt', null, 'Snowfall', '#e8eef5', { kind: 'season', ordinal: 7 }],
+]
+
+function gift([slot, kind, name, colour, from]: GiftRow): Garment {
+  const g = slot === 'hat' && kind ? hat([kind, name, colour], Infinity) : cloth(slot as 'shirt' | 'trousers', [name, colour], Infinity)
+  return { ...g, from }
+}
+
+/** Every garment, in the order they come (the six of level 1 first), then those not of a level. */
+export const GARMENTS: readonly Garment[] = [...build(), ...GIFTS.map(gift)]
 
 const BY_ID = new Map(GARMENTS.map((g) => [g.id, g]))
-const BY_LEVEL = new Map(GARMENTS.filter((g) => g.level > 1).map((g) => [g.level, g]))
+const BY_LEVEL = new Map(GARMENTS.filter((g) => g.level > 1 && Number.isFinite(g.level)).map((g) => [g.level, g]))
+
+/** The garments not of a level, as given (their `from`). */
+export const GIFT_GARMENTS: readonly Garment[] = GARMENTS.filter((g) => !!g.from)
+/** A garment not of a level (one a prize may be: src/farm/prize.ts). */
+export const isGift = (id: string): boolean => !!BY_ID.get(id)?.from
+/** The garment an album page gives (none: a page with no garment of its own). */
+export const albumGarment = (page: string): Garment | undefined => GIFT_GARMENTS.find((g) => g.from?.kind === 'album' && g.from.page === page)
+/** The garment a season's road gives at its last stop (none past the first two years). */
+export const seasonGarment = (ordinal: number): Garment | undefined => GIFT_GARMENTS.find((g) => g.from?.kind === 'season' && g.from.ordinal === ordinal)
 
 export const garmentById = (id: string | null | undefined): Garment | undefined => (id ? BY_ID.get(id) : undefined)
 
 /** The garment that comes with reaching exactly this level (none on most levels). */
 export const garmentAt = (level: number): Garment | undefined => BY_LEVEL.get(level)
 
-/** The first garment still to come after `level` (none at the top). */
-export const nextGarment = (level: number): Garment | undefined => GARMENTS.find((g) => g.level > level)
+/** The first garment still to come with a level after `level` (none at the top). */
+export const nextGarment = (level: number): Garment | undefined => GARMENTS.find((g) => g.level > level && Number.isFinite(g.level))
 
-/** What is in the wardrobe at this level: every garment that came with it or before. */
-export const garmentsAt = (level: number): Garment[] => GARMENTS.filter((g) => g.level <= level)
+/** What is in the wardrobe at this level: every garment that came with it or before, and those owned that came from
+ *  elsewhere (the album, the season roads), in the order they came. */
+export const garmentsAt = (level: number, owned: readonly string[] = []): Garment[] => [
+  ...GARMENTS.filter((g) => g.level <= level),
+  ...owned.map((id) => BY_ID.get(id)).filter((g): g is Garment => !!g?.from),
+]
 
-/** What the player wears (as saved): a garment for each slot, a hat or none, and the level up to which the wardrobe has
- *  shown its garments (one that came after is marked new there). */
+/** What the player wears (as saved): a garment for each slot, a hat or none, the level up to which the wardrobe has
+ *  shown its garments (one that came after is marked new there), and the garments owned that do not come with a level
+ *  (the album's, the season roads'), in the order they came. */
 export interface Outfit {
   shirt: string
   trousers: string
   hat: string | null
   seen: number
+  owned: string[]
 }
 
 /** The clothes the player always wore: the blue shirt, the charcoal trousers, no hat. */
-export const DEFAULT_OUTFIT: Outfit = { shirt: 'shirt-blue', trousers: 'trousers-charcoal', hat: null, seen: 1 }
+export const DEFAULT_OUTFIT: Outfit = { shirt: 'shirt-blue', trousers: 'trousers-charcoal', hat: null, seen: 1, owned: [] }
 
-const worn = (id: unknown, slot: GarmentSlot, level: number) => {
+/** Whether the wardrobe has a garment: it came with the level, or it is owned. */
+export const has = (g: Garment, level: number, owned: readonly string[]) => g.level <= level || (!!g.from && owned.includes(g.id))
+
+const worn = (id: unknown, slot: GarmentSlot, level: number, owned: readonly string[]) => {
   const g = typeof id === 'string' ? BY_ID.get(id) : undefined
-  return g && g.slot === slot && g.level <= level ? g.id : null
+  return g && g.slot === slot && has(g, level, owned) ? g.id : null
+}
+
+/** The garments owned as saved: known garments not of a level, each once, in the order they came. */
+export function sanitizeOwned(raw: unknown): string[] {
+  const out: string[] = []
+  for (const id of Array.isArray(raw) ? raw : []) if (typeof id === 'string' && isGift(id) && !out.includes(id)) out.push(id)
+  return out
 }
 
 /** A saved outfit read back at the farm's level: each garment one the wardrobe has (a farm from before the wardrobe, or
- *  anything else: the clothes it always wore); the new marks from the level saved. */
+ *  anything else: the clothes it always wore); the new marks from the level saved; the garments owned (a farm from
+ *  before them: none). */
 export function sanitizeOutfit(raw: unknown, level: number): Outfit {
   const r = isObject(raw) ? raw : {}
   const seen = typeof r.seen === 'number' && Number.isFinite(r.seen) ? Math.min(level, Math.max(1, Math.floor(r.seen))) : 1
+  const owned = sanitizeOwned(r.owned)
   return {
-    shirt: worn(r.shirt, 'shirt', level) ?? DEFAULT_OUTFIT.shirt,
-    trousers: worn(r.trousers, 'trousers', level) ?? DEFAULT_OUTFIT.trousers,
-    hat: worn(r.hat, 'hat', level),
+    shirt: worn(r.shirt, 'shirt', level, owned) ?? DEFAULT_OUTFIT.shirt,
+    trousers: worn(r.trousers, 'trousers', level, owned) ?? DEFAULT_OUTFIT.trousers,
+    hat: worn(r.hat, 'hat', level, owned),
     seen,
+    owned,
   }
 }
 
-/** The outfit with a garment put on (one of the wardrobe's at this level; anything else changes nothing). A hat
- *  already worn comes off when chosen again. */
+/** The outfit with a garment owned (one not of a level, once; anything else changes nothing). */
+export const own = (outfit: Outfit, id: string): Outfit => (isGift(id) && !outfit.owned.includes(id) ? { ...outfit, owned: [...outfit.owned, id] } : outfit)
+
+/** The outfit with a garment put on (one of the wardrobe's at this level, or owned; anything else changes nothing). A
+ *  hat already worn comes off when chosen again. */
 export function putOn(outfit: Outfit, id: string, level: number): Outfit {
   const g = BY_ID.get(id)
-  if (!g || g.level > level) return outfit
+  if (!g || !has(g, level, outfit.owned)) return outfit
   if (g.slot === 'hat') return { ...outfit, hat: outfit.hat === id ? null : id }
   return { ...outfit, [g.slot]: id }
 }

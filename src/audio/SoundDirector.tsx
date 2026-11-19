@@ -1,9 +1,12 @@
 import { useEffect } from 'react'
+import { insideWalkIn } from '../data/buildings'
 import { DOOR, LAMPS } from '../data/layout'
-import { farm } from '../farm/state'
+import { dayNow, eventsNow, farm } from '../farm/state'
 import { hingedDoorOf } from '../home/shell'
 import { HOSTED, onHost } from '../home/layout'
 import { debugSet } from '../lib/debug'
+import { playerState } from '../lib/playerState'
+import type { RewardKind, Tier } from '../lib/tier'
 import { useSettings } from '../settings'
 import { useHome } from '../store'
 import {
@@ -11,6 +14,7 @@ import {
   doorSound,
   dropSound,
   duckAmbient,
+  hearPhase,
   hearWalkIns,
   lampSwitch,
   pickupSound,
@@ -25,7 +29,24 @@ import {
   type FarmSound,
   type PlayOpts,
 } from './sound'
-import { wireMusic } from './music'
+import { setMusicMood, wireMusic, type MusicMood } from './music'
+
+/** How often where the music is heard is looked at (ms): the time of day, a walk-in walked into, a market day. */
+const MOOD_EVERY = 500
+
+/** Where the music is heard now: the farm's time of day; indoors (in the house, or in a walk-in building on the farm);
+ *  with a panel or a screen open (not the settings: its volume is set there, as it sounds); at the market (inside it,
+ *  or on a market day). */
+function moodNow(s: ReturnType<typeof useHome.getState>): MusicMood {
+  const at = playerState.position
+  const walkIn = s.map !== 'home' && s.outdoors ? insideWalkIn(at.x, at.z) : null
+  return {
+    phase: dayNow().phase,
+    indoors: !s.outdoors || walkIn !== null,
+    panel: !!(s.panel || s.screen),
+    market: walkIn?.id === 'market' || eventsNow().some((o) => o.id === 'market'),
+  }
+}
 
 /**
  * Wires the procedural sound to the app: unlocks audio on the first gesture, follows the Sound settings,
@@ -34,13 +55,29 @@ import { wireMusic } from './music'
  */
 export function SoundDirector() {
   useEffect(() => wireMusic(), [])
+  // the music and the birds follow the farm: its time of day, indoors or out, a panel open, the market (mission 06 c10)
+  useEffect(() => {
+    hearPhase(() => dayNow().phase)
+    const follow = () => setMusicMood(moodNow(useHome.getState()))
+    follow()
+    const t = window.setInterval(follow, MOOD_EVERY)
+    const unsub = useHome.subscribe((s, p) => {
+      if (s.panel !== p.panel || s.screen !== p.screen || s.outdoors !== p.outdoors || s.map !== p.map) follow()
+    })
+    return () => {
+      window.clearInterval(t)
+      unsub()
+    }
+  }, [])
   useEffect(() => {
     // ?debug: the engine's state (`__home.audio()`), and the phone mix measured offline (./measure.ts, loaded only when
-    // asked): one sound (`render(kind)`), every sound the player causes (`measure()`), and a demo to listen to
+    // asked): one sound (`render(kind)`), a reward's sting (`sting(kind, tier)`), every sound the player causes and
+    // every sting (`measure()`), and a demo to listen to
     debugSet(
       'audio',
       Object.assign(() => audioStatus(), {
         render: (kind: FarmSound, o?: PlayOpts) => import('./measure').then(async (m) => m.measureSamples(await m.renderSound(kind, o))),
+        sting: (kind: RewardKind, tier: Tier) => import('./measure').then(async (m) => m.measureSamples(await m.renderSting(kind, tier))),
         measure: () => import('./measure').then((m) => m.measureSounds()),
         demo: () => import('./measure').then((m) => m.demo()),
       }),

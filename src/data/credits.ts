@@ -57,6 +57,12 @@ export const CREDITS: Credit[] = [
   { what: 'Fredoka and Nunito typefaces', by: 'The Fredoka Project Authors; The Nunito Project Authors', license: 'SIL OFL 1.1', url: 'https://fonts.google.com/specimen/Fredoka' },
   { what: 'three.js, react-three-fiber, drei, Rapier, ecctrl, three.quarks, meshoptimizer', by: 'their respective authors', license: 'MIT / Apache-2.0' },
   {
+    what: 'Fluent Emoji 3D (the farm album’s open book, the season road’s flag, the daily gift’s welcome-back wave)',
+    by: 'Microsoft Corporation',
+    license: 'MIT',
+    url: 'https://github.com/microsoft/fluentui-emoji',
+  },
+  {
     what: "Fluent Emoji 3D (the house's computer's apps: the rising chart, the light bulb, the ledger, the bar chart)",
     by: 'Microsoft Corporation',
     license: 'MIT',

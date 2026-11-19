@@ -2,12 +2,16 @@
 // must have its weight where it does: each is rendered offline at full size (an OfflineAudioContext, the same synth as
 // the game plays: ./farmSounds.ts, play) and measured: how much of its energy lies in 0.5–4 kHz (a spectrum), its peak
 // (it must never lean on the limiter), and its loudness against its family's (LUFS's K-weighting over its loudest fifth
-// of a second). `?debug`'s `window.__home.audio.measure()` gives the table; `03-settings` holds every row to it, and
-// `SOUND_MEASURE=1` prints it without the checks (as BUDGET_MEASURE does for the drawing budget).
+// of a second). The rewards' stings are measured too, each family at each tier (./stings.ts). `?debug`'s
+// `window.__home.audio.measure()` gives the table; `03-settings` holds every row to it, and `SOUND_MEASURE=1` prints it
+// without the checks (as BUDGET_MEASURE does for the drawing budget).
+import { TIERS, type RewardKind, type Tier } from '../lib/tier'
 import { makeEngine } from './engine'
 import { farmSound, play, type FarmSound, type PlayOpts } from './farmSounds'
 import { WORK_GAP } from './palette'
+import { coinLand, rattle, rewardSound } from './rewardSound'
 import { PLAYER_SOUNDS, SOUNDS, type SoundFamily } from './sounds'
+import { STING_TIERS, playSting } from './stings'
 
 /** Where a phone's speaker carries (Hz). */
 export const PHONE_BAND = [500, 4000] as const
@@ -31,7 +35,8 @@ const SOUNDING = -40
 const LOUDNESS_WINDOW = 0.2
 
 export interface SoundMeasure {
-  kind: FarmSound
+  /** the sound's name, or a sting's: its family's kind and its tier ('sting daily huge') */
+  kind: string
   family: SoundFamily
   /** dBFS */
   peak: number
@@ -175,15 +180,34 @@ export async function renderSound(kind: FarmSound, o: PlayOpts = {}): Promise<Fl
   return buf.getChannelData(0)
 }
 
-/** Each sound measured (every sound the player causes, by default), with what is wrong with it. */
-export async function measureSounds(kinds: readonly FarmSound[] = PLAYER_SOUNDS): Promise<SoundMeasure[]> {
+/** A reward's sting rendered offline at full size (./stings.ts), as it rings: its samples, mono, 48 kHz. */
+export async function renderSting(kind: RewardKind, tier: Tier): Promise<Float32Array> {
+  const ac = new OfflineAudioContext(1, Math.round(RENDER_SECONDS * RATE), RATE)
+  playSting(makeEngine(ac), kind, tier, 0.01)
+  const buf = await ac.startRendering()
+  return buf.getChannelData(0)
+}
+
+/** The kinds the stings are measured by: one of each family that rings (coins in, a gift, a level, a garment, the
+ *  keys), and the till's (its drawer before its coins). */
+export const STING_KINDS: readonly RewardKind[] = ['sale', 'till', 'daily', 'level', 'garment', 'keys']
+
+/** Each sound measured (every sound the player causes, by default), and each family's sting at each tier (a reward's
+ *  family's loudness), with what is wrong with each. */
+export async function measureSounds(kinds: readonly FarmSound[] = PLAYER_SOUNDS, stings: readonly RewardKind[] = STING_KINDS): Promise<SoundMeasure[]> {
   const out: SoundMeasure[] = []
   const r = (v: number, d = 1) => Math.round(v * 10 ** d) / 10 ** d
-  for (const kind of kinds) {
-    const family = SOUNDS[kind].family
-    const m = measureSamples(await renderSound(kind))
-    out.push({ kind, family, peak: r(m.peak), loud: r(m.loud), band: r(m.band, 2), seconds: r(m.seconds, 2), faults: mixFaults(family, m) })
-  }
+  const row = (kind: string, family: SoundFamily, m: ReturnType<typeof measureSamples>): SoundMeasure => ({
+    kind,
+    family,
+    peak: r(m.peak),
+    loud: r(m.loud),
+    band: r(m.band, 2),
+    seconds: r(m.seconds, 2),
+    faults: mixFaults(family, m),
+  })
+  for (const kind of kinds) out.push(row(kind, SOUNDS[kind].family, measureSamples(await renderSound(kind))))
+  for (const kind of stings) for (const tier of TIERS) out.push(row(`sting ${kind} ${tier}`, 'reward', measureSamples(await renderSting(kind, tier))))
   return out
 }
 
@@ -191,14 +215,27 @@ export async function measureSounds(kinds: readonly FarmSound[] = PLAYER_SOUNDS)
 const DEMO_ORDER: readonly SoundFamily[] = ['work', 'world', 'coins', 'no', 'ui', 'landing', 'reward', 'cue']
 
 /** For an ear on a phone (`?debug`'s `window.__home.audio.demo()`, after a tap has unlocked the sound): every sound the
- *  player causes, family by family, each with its touch, then a streak of work climbing and one press over six beds.
+ *  player causes, family by family, each with its touch, then a streak of work climbing and one press over six beds;
+ *  then each family's sting at each tier, smallest first; a gift box rattling open on each tier; and five coins landing.
  *  How long it lasts (s). */
 export function demo(): number {
-  const kinds = DEMO_ORDER.flatMap((f) => PLAYER_SOUNDS.filter((k) => SOUNDS[k].family === f))
+  const kinds = DEMO_ORDER.flatMap((f) => PLAYER_SOUNDS.filter((k) => SOUNDS[k].family === f && k !== 'rattle'))
   const steps: [number, () => void][] = kinds.map((k, i) => [i * 1200, () => farmSound(k)])
   let at = kinds.length * 1200 + 600
   for (let i = 0; i < 10; i++, at += 400) steps.push([at, () => farmSound('harvest')])
   steps.push([at + WORK_GAP + 600, () => farmSound('water', 0, 1, undefined, { times: 6 })])
+  at += WORK_GAP + 2600
+  for (const kind of STING_KINDS)
+    for (const tier of TIERS) {
+      steps.push([at, () => rewardSound(kind, tier)])
+      at += STING_TIERS[tier].seconds * 1000 + 700
+    }
+  for (const tier of TIERS) {
+    steps.push([at, () => rattle(tier, 680)], [at + 680, () => rewardSound('daily', tier)])
+    at += 680 + STING_TIERS[tier].seconds * 1000 + 900
+  }
+  for (let i = 0; i < 5; i++) steps.push([at + 700 + i * 70, () => coinLand(i)])
+  at += 1500
   for (const [ms, f] of steps) setTimeout(f, ms)
-  return (at + WORK_GAP + 2000) / 1000
+  return (at + 500) / 1000
 }

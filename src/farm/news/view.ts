@@ -1,11 +1,12 @@
 import type { ArtId } from '../../ui/art'
+import type { Chance } from '../daily'
 import type { ProduceId } from '../data'
-import { EVENTS, activeAt, canDraw, luckyGoods, upcoming, type EventId, type EventsRecord, type Occurrence } from '../events'
+import { EVENTS, LUCKY_GOODS, activeAt, canDraw, drawPool, luckyGoods, occurrenceOn, upcoming, type EventId, type EventsRecord, type Occurrence } from '../events'
 
 // What the farm news shows (./NewsCard.tsx draws it; ../NewsPanel.tsx makes it from the farm, the lab's board from
-// sample records): the date, the events on now with how long they have left, the lucky draw (to draw, or its two
-// goods), and the next time of every other event with its day and hours. Pure: the same moment and record, the same
-// words.
+// sample records): the date, the events on now with until when and when they come back (kind words: an invitation, never
+// a ticking loss), the lucky draw (to draw, or its two goods, and its odds), and the next time of every other event with
+// its day and hours. Pure: the same moment and record, the same words.
 
 export interface NewsItem {
   id: EventId
@@ -21,10 +22,8 @@ export interface NewsItem {
 export interface NowItem extends NewsItem {
   /** when it ends: "Until midnight", "Until 20:00" */
   until: string
-  /** how long it has left: "5 h 12 min left" */
-  left: string
-  /** the share of its time still to come (1 as it begins) */
-  share: number
+  /** when it comes again: "Back next Wednesday", "Back on Sunday", "Back tomorrow" */
+  back: string
   /** not shown in the news before it opened */
   fresh: boolean
 }
@@ -44,6 +43,8 @@ export interface LuckyView {
   pool: ProduceId[]
   /** "midnight" */
   until: string
+  /** what it can draw and how likely (the "?"): two of the goods, each alike */
+  odds: Chance[]
 }
 
 export interface NewsView {
@@ -70,12 +71,26 @@ export const hoursOf = (id: EventId) => {
   return e.from === 0 && e.to === 24 ? 'All day' : `${hourWords(e.from)} – ${hourWords(e.to)}`
 }
 
-/** The time left, to the minute: "5 h 12 min", "40 min", "1 min". */
-export function leftWords(ms: number): string {
-  const minutes = Math.max(1, Math.ceil(ms / 60_000))
-  const h = Math.floor(minutes / 60)
-  const m = minutes % 60
-  return h ? (m ? `${h} h ${m} min` : `${h} h`) : `${m} min`
+/** When an event on now comes again, from the day of `ms`: "Back tomorrow", "Back on Sunday", "Back next Wednesday" (a
+ *  week on). */
+export function backWords(id: EventId, ms: number): string {
+  for (let k = 1; k <= 7; k++) {
+    const o = occurrenceOn(id, ms, k)
+    if (!o) continue
+    const day = DAYS[new Date(o.start).getDay()]
+    return k === 1 ? 'Back tomorrow' : k === 7 ? `Back next ${day}` : `Back on ${day}`
+  }
+  return ''
+}
+
+/** What a lucky draw can give and how likely: two of the goods a buyer asks for (those the farm knows), each alike. */
+export function luckyOdds(pool: readonly ProduceId[]): Chance[] {
+  const n = drawPool(pool).length
+  if (!n) return []
+  return [
+    { what: `${Math.min(LUCKY_GOODS, n)} of the ${n} goods a buyer asks for`, share: 1 },
+    { what: 'Each good', share: Math.min(1, LUCKY_GOODS / n) },
+  ]
 }
 
 /** Whole local days from the day of `a` to the day of `b`. */
@@ -113,8 +128,7 @@ export function newsView(ms: number | null, rec: EventsRecord, pool: ProduceId[]
     .map((o): NowItem => ({
       ...item(o),
       until: `Until ${hourWords(EVENTS[o.id].to)}`,
-      left: `${leftWords(o.end - ms)} left`,
-      share: Math.min(1, Math.max(0, (o.end - ms) / (o.end - o.start))),
+      back: backWords(o.id, ms),
       fresh: !seenBefore.includes(o.key),
     }))
     .sort((a, b) => (a.id === 'lucky' ? -1 : b.id === 'lucky' ? 1 : 0))
@@ -124,6 +138,6 @@ export function newsView(ms: number | null, rec: EventsRecord, pool: ProduceId[]
       const d = new Date(o.start)
       return { ...item(o), day: dayWords(ms, o.start), weekday: DAYS[d.getDay()].slice(0, 3), date: d.getDate() }
     })
-  const lucky = on.some((o) => o.id === 'lucky') ? { goods: canDraw(rec, ms) ? null : luckyGoods(rec, ms), pool, until: hourWords(EVENTS.lucky.to) } : null
+  const lucky = on.some((o) => o.id === 'lucky') ? { goods: canDraw(rec, ms) ? null : luckyGoods(rec, ms), pool, until: hourWords(EVENTS.lucky.to), odds: luckyOdds(pool) } : null
   return { on: true, date: dateWords(ms), now, soon, lucky }
 }

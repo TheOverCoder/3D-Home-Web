@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { ITEMS, LEVELS, isItem, type ProduceId } from './data'
 import {
+  BOXES_FROM,
+  ONE_AT,
   BOX_COUNT,
   CAME_KEPT,
   GIFT_ODDS,
@@ -11,7 +13,9 @@ import {
   boxXp,
   boxesReached,
   giftsFor,
+  isBox,
   isOpen,
+  quartersOf,
   rollArrival,
   rollBox,
   sanitizeGifts,
@@ -58,18 +62,38 @@ describe('the boxes on a level’s bar', () => {
   })
 
   it('those waiting: every box reached and not opened, oldest first, this level’s and the levels’ before', () => {
-    const g: Gifts = { open: 2, also: [5], gave: [], came: [], seen: 1 }
-    const points = boxXp(boxAt(2, 2)) // level 2, its third box: boxes 0 to 6 reached
-    expect(waitingBoxes(g, points)).toEqual([2, 3, 4, 6])
-    expect([0, 1, 5].every((k) => isOpen(g, k))).toBe(true)
-    expect([2, 6, 7].some((k) => isOpen(g, k))).toBe(false)
+    const b = (level: number, q: number) => boxAt(level, q)
+    const g: Gifts = { open: b(5, 2), also: [b(6, 1)], gave: [], came: [], seen: 5 }
+    const points = boxXp(b(6, 2)) // level 6, its third box: boxes to b(6, 2) reached
+    expect(waitingBoxes(g, points)).toEqual([b(5, 2), b(5, 3), b(6, 0), b(6, 2)])
+    expect([b(5, 0), b(5, 1), b(6, 1)].every((k) => isOpen(g, k))).toBe(true)
+    expect([b(5, 2), b(6, 2), b(6, 3)].some((k) => isOpen(g, k))).toBe(false)
   })
 
-  it('settled: the boxes opened in turn move the count on, those out of turn stay in order, each once', () => {
-    expect(settle(2, [3, 2, 5, 5, 1])).toEqual({ open: 4, also: [5] })
-    expect(settle(0, [])).toEqual({ open: 0, also: [] })
-    expect(settle(0, [0, 1, 2])).toEqual({ open: 3, also: [] })
-    expect(settle(4, [9, 7])).toEqual({ open: 4, also: [7, 9] })
+  it(`one box a level before level ${BOXES_FROM}, on its full bar; four from it on`, () => {
+    expect(quartersOf(1)).toEqual([ONE_AT])
+    expect(ONE_AT).toBe(3)
+    expect(quartersOf(BOXES_FROM - 1)).toEqual([3])
+    expect(quartersOf(BOXES_FROM)).toEqual([0, 1, 2, 3])
+    expect(Array.from({ length: boxAt(BOXES_FROM, 0) }, (_, k) => k).filter(isBox)).toEqual([3, 7, 11, 15])
+    expect([-1, 0.5, NaN].some(isBox)).toBe(false)
+    // a place with no box counts as opened, and never waits
+    const g: Gifts = { open: 0, also: [], gave: [], came: [], seen: 3 }
+    expect([0, 1, 2, 4].every((k) => isOpen(g, k))).toBe(true)
+    expect(waitingBoxes(g, xpAt(3))).toEqual([3, 7])
+  })
+
+  it('settled: the boxes opened in turn move the count on (past the places with no box on the way), those out of turn stay in order, each once', () => {
+    const b = (level: number, q: number) => boxAt(level, q)
+    expect(settle(b(5, 2), [b(5, 3), b(5, 2), b(6, 1), b(6, 1), b(5, 1)])).toEqual({ open: b(6, 0), also: [b(6, 1)] })
+    expect(settle(b(5, 0), [])).toEqual({ open: b(5, 0), also: [] })
+    expect(settle(b(5, 0), [b(5, 0), b(5, 1), b(5, 2)])).toEqual({ open: b(5, 3), also: [] })
+    expect(settle(b(6, 0), [b(7, 1), b(6, 3)])).toEqual({ open: b(6, 0), also: [b(6, 3), b(7, 1)] })
+    // the first levels: from nothing opened to the first box, and on past the places with no box to the next opened
+    expect(settle(0, [3])).toEqual({ open: 4, also: [] })
+    expect(settle(0, [7])).toEqual({ open: 3, also: [7] })
+    expect(settle(4, [7])).toEqual({ open: 8, also: [] })
+    expect(settle(4, [])).toEqual({ open: 4, also: [] })
   })
 })
 
