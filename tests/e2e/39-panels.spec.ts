@@ -39,11 +39,13 @@ const DEBTS: Record<string, Partial<Record<Check, number>>> = {
   build: { target: 1 },
   bed: { target: 1 },
   queue: { tiny: 5, target: 9 },
-  shop: { words: 2, target: 6 },
+  // shop, store and manager: one more row of the same 44 px buttons on screen upright, the sheet standing to 92dvh
+  // (PanelSheet's --sheet-max-up) where Shell's stood to 86: no new kind of target (07b)
+  shop: { words: 2, target: 7 },
   // (01a's four long crops are four more of the same rows: the debt is the same, its count grew with the goods)
-  store: { words: 18, target: 5 },
+  store: { words: 18, target: 6 },
   'store-upgrade': { target: 4 },
-  orders: { target: 14 },
+  orders: { target: 13 },
   furniture: { target: 1 },
   'buy-piece': { target: 1 },
   'decor-shop': { target: 3 },
@@ -53,7 +55,7 @@ const DEBTS: Record<string, Partial<Record<Check, number>>> = {
   goals: { words: 1, target: 1, goodpic: 1 },
   level: { words: 3, target: 1, goodpic: 1 },
   wardrobe: { target: 4 },
-  manager: { target: 9, goodpic: 28 },
+  manager: { target: 10, goodpic: 28 },
   market: { target: 1 },
   'market-place': { target: 5, goodpic: 2 },
   'market-buy': { target: 1 },

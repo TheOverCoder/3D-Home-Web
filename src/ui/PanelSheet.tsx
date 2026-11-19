@@ -17,9 +17,9 @@ import { useSheetMode } from './sheetMode'
 // "the panel sheet"), and it is a `.farm-panel` (what the game and its tests know a panel by).
 
 /** Whatever is open over a sheet takes Esc before the sheet does: it says so with `data-over-sheet` (a card on this
- *  sheet says so too, so a card asked over a panel goes first; its own mark is not over itself). The good's bubble and
- *  a Shell card are named here until they carry the attribute themselves. */
-const above = (self: Element | null) => Array.from(document.querySelectorAll('[data-over-sheet], .good-pop, .farm-backdrop')).some((e) => e !== self)
+ *  sheet says so too, so a card asked over a panel goes first; its own mark is not over itself). The good's bubble is
+ *  named here until it carries the attribute itself. */
+const above = (self: Element | null) => Array.from(document.querySelectorAll('[data-over-sheet], .good-pop')).some((e) => e !== self)
 
 /** A button at the sheet's foot: its words, and the price on it (a coin and how many) where coins change hands. */
 export interface FootButton {
@@ -66,7 +66,7 @@ export function PanelSheet({
   /** what a screen reader calls the sheet */
   label: string
   title: string
-  /** the picture at its top: an image's URL, or something drawn (the level's star with its number) */
+  /** the picture at its top: an image's URL, or something drawn (the level's star with its number), or none */
   pic: string | ReactNode
   /** under the title: the row of chips, or tabs (the order board) */
   sub?: ReactNode
@@ -128,7 +128,7 @@ export function PanelSheet({
     else void animate(pull, 0, SPRING.pop)
   }
   const picture =
-    typeof pic === 'string' ? (
+    pic === undefined || pic === null || pic === '' ? null : typeof pic === 'string' ? (
       <m.img key="pic" className="art mp-head-art" src={pic} alt="" {...ARRIVE} exit={{ scale: 0.4, opacity: 0 }} />
     ) : (
       <m.span key="pic" className="mp-head-art ps-head-pic" {...ARRIVE} exit={{ scale: 0.4, opacity: 0 }}>

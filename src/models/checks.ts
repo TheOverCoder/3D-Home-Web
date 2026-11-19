@@ -14,7 +14,8 @@ import { barnModel, crateModel, deskModel, farmGateModel, officeModel, palletMod
 import { DRIVER, putTractor, seatDriver, tractorParts } from './tractor'
 import { marketFittingsParts, putMarketFittings, walkInShellModel } from './market'
 import { carParts, putCar, putRollingCar, rollingCarParts } from './car'
-import { estateFittingsParts, parkingLotModel, putEstateFittings } from './estate'
+import { estateFittingsParts, houseModel, parkingLotModel, putEstateFittings } from './estate'
+import { OPENINGS, PAINTS, defaultShell, openingRange, runById, withOpening, type HomeShell } from '../home/shell'
 import { AGENT_SEAT, ESTATE_WALKIN, SEAT_Y } from '../data/estate'
 import { ESTATE_LOOK } from './look'
 import { sitAtDesk } from './person'
@@ -293,7 +294,7 @@ export const MODEL_CHECKS: ModelCheck[] = [
   },
   {
     id: 'estate',
-    name: 'The estate agent at his desk, and the parking lot',
+    name: "The estate agent at his desk, the parking lot, and the house's model as built and changed",
     run() {
       // the agent sitting on his chair at his desk, his forearms on it, as one model with the office and its fittings:
       // he holds on to his chair
@@ -315,7 +316,18 @@ export const MODEL_CHECKS: ModelCheck[] = [
         ]
         return checkPieces(`the agent at his desk, looking ${look}`, pieces, { ground: 0, open: openParts(people) })
       })
-      return [...sitting, ...checkPieces('the parking lot', ...structure(parkingLotModel()))]
+      // the house's model from the save's shell: as built, and changed the ways decorating changes it (a window moved
+      // round its room's corner, another closed, a doorway closed, every room painted)
+      const built = defaultShell()
+      let changed: HomeShell = { ...built, paint: { living: PAINTS[0].id, office: PAINTS[1].id, kitchen: PAINTS[2].id, bedroom: PAINTS[3].id } }
+      const corner = OPENINGS.find((o) => o.kind === 'window' && o.runs.length > 1)!
+      const round = corner.runs.find((r) => r !== corner.run)!
+      const [lo, hi] = openingRange(corner.id, runById(round)!)
+      changed = withOpening(changed, corner.id, { run: round, centre: (lo + hi) / 2, closed: false })
+      for (const o of [OPENINGS.find((q) => q.kind === 'window' && q !== corner)!, OPENINGS.find((q) => q.kind === 'doorway' && !q.hinged)!])
+        changed = withOpening(changed, o.id, { run: o.run, centre: o.centre, closed: true })
+      const models = [...checkPieces("the house's model, as built", ...structure(houseModel(built))), ...checkPieces("the house's model, changed", ...structure(houseModel(changed)))]
+      return [...sitting, ...checkPieces('the parking lot', ...structure(parkingLotModel())), ...models]
     },
   },
   {

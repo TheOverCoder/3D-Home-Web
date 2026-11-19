@@ -38,7 +38,7 @@ export function RecipeCard({
   carried: boolean
   /** grows by one each time it is tapped without being able to go in: it shakes and shows what is short */
   shake: number
-  press: (e: ReactPointerEvent<HTMLElement>, p: Payload, o: { src: string; axis: Axis; pic?: HTMLElement | null }) => void
+  press: (e: ReactPointerEvent<HTMLElement>, p: Payload, o: { src: string; axis: Axis; pic?: HTMLElement | null; tap?: () => void }) => void
   wasDrag: () => boolean
   onTap: (r: RecipeView, pic: HTMLElement | null) => void
   index: number
@@ -66,7 +66,8 @@ export function RecipeCard({
       animate={{ opacity: 1, y: 0, transition: { ...SPRING.pop, delay: opening ? 0.16 + index * 0.05 : 0 } }}
       // pressed, a card that can go in rises a little (picked up as the finger holds it); one that cannot just sinks
       whileTap={r.can ? { scale: 1.035, y: -2, transition: { duration: HOLD / 1000, ease: EASE.out } } : { scale: 0.98 }}
-      onPointerDown={(e) => r.can && press(e, { kind: 'recipe', recipe: r.id }, { src: iconUrl(r.makes), axis, pic: pic.current })}
+      // a tap goes in as the finger is let go (./drag.ts), even if the card rose into place under it as the panel came in
+      onPointerDown={(e) => r.can && press(e, { kind: 'recipe', recipe: r.id }, { src: iconUrl(r.makes), axis, pic: pic.current, tap: () => onTap(r, pic.current) })}
       onClick={() => !wasDrag() && onTap(r, pic.current)}
       onContextMenu={(e) => e.preventDefault()}
     >

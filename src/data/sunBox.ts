@@ -28,12 +28,9 @@ export interface SunBox {
 export const TODAY_SUN_BOX: SunBox = { left: -12, right: 12, bottom: -12, top: 12 }
 
 /** The farm's box: 4⅛ m more to the south-west (left) and the south-east (bottom), the house's on the other two sides.
- *  28⅛ m a side: 2400 texels of today's 11.7 mm (24 m at 2048) exactly. */
+ *  28⅛ m a side: 2400 texels of today's 11.7 mm (24 m at 2048) exactly. The lot's rows and the planned ones are checked
+ *  against it (src/data/buildings.test.ts, lotPlan.test.ts; src/farm/park.test.ts). */
 export const FARM_SUN_BOX: SunBox = { left: -16.125, right: 12, bottom: -16.125, top: 12 }
-
-/** The farm's box as mission 11 planned it, now the farm's own (src/data/lotPlan.ts and src/farm/park.ts are checked
- *  against it). */
-export const FARM_SUN_BOX_PLANNED = FARM_SUN_BOX
 
 /** The box each map draws its sun's shadows in. */
 export const SUN_BOXES: Record<Place, SunBox> = { farm: FARM_SUN_BOX, home: TODAY_SUN_BOX }
