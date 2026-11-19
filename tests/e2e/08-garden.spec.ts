@@ -140,15 +140,6 @@ test.describe('garden', () => {
       const h = (window as any).__home
       h.farm.reset()
       h.settings.getState().update({ hudMode: 'all' })
-      // the pictures' flights at a quarter of their speed, so the software renderer's few frames a second see them fly
-      // eslint-disable-next-line @typescript-eslint/unbound-method -- called with the element as `this` below
-      const animate = Element.prototype.animate
-      ;(window as any).__goodsFull = animate
-      Element.prototype.animate = function (this: Element, ...args: Parameters<Element['animate']>) {
-        const a = animate.apply(this, args)
-        if (this.classList.contains('goods-pop')) a.playbackRate = 0.25
-        return a
-      }
     })
     await game.teleport(-1.2, 1.4, 9.0, Math.PI / 2, -0.6)
     /** Beds 0 and 1 ripe with lettuces and harvested in the same frame: how many went into the silo. */
@@ -163,6 +154,24 @@ test.describe('garden', () => {
       const at = await page.evaluate(() => (window as any).__home.view.stats.renders)
       await page.waitForFunction((f) => (window as any).__home.view.stats.renders > f, at + n, { timeout: 30_000, polling: 100 })
     }
+    // what the test before sent (its harvest's pictures, asked within the software renderer's last slow frame) has
+    // flown and landed: nothing held and nothing in the air
+    await frames()
+    await page.waitForFunction(() => (window as any).__home.fx.held('silo') === 0 && (window as any).__home.fx.held('barn') === 0 && !document.querySelector('.goods-pop'), null, {
+      timeout: 30_000,
+      polling: 100,
+    })
+    await page.evaluate(() => {
+      // the pictures' flights at a quarter of their speed, so the software renderer's few frames a second see them fly
+      // eslint-disable-next-line @typescript-eslint/unbound-method -- called with the element as `this` below
+      const animate = Element.prototype.animate
+      ;(window as any).__goodsFull = animate
+      Element.prototype.animate = function (this: Element, ...args: Parameters<Element['animate']>) {
+        const a = animate.apply(this, args)
+        if (this.classList.contains('goods-pop')) a.playbackRate = 0.25
+        return a
+      }
+    })
     const s0 = await fx(game)
     expect(await harvest()).toBe(8)
     // one picture a bed, with how many in its badge, up from the beds and on to the silo's chip
@@ -173,8 +182,11 @@ test.describe('garden', () => {
       const h = (window as any).__home
       return { held: h.fx.held('silo') as number, landed: h.fx.stats.landed as number, label: document.querySelector('.top-gauge.silo')?.getAttribute('aria-label') ?? '' }
     })
-    expect(flying.held).toBe(8 - 4 * (flying.landed - s0.landed))
+    // (4 for each picture still in the air: one may be let go a moment before its landing is told, under the software
+    // renderer's long frames)
     expect(flying.held).toBeGreaterThan(0)
+    expect(flying.held).toBeLessThanOrEqual(8 - 4 * (flying.landed - s0.landed))
+    expect(flying.held % 4).toBe(0)
     expect(flying.label).toMatch(/^Silo: 8 of /)
     // and as the last lands, it holds all of it
     await page.waitForFunction((l) => (window as any).__home.fx.stats.landed >= l + 2 && (window as any).__home.fx.held('silo') === 0, s0.landed, { timeout: 30_000, polling: 100 })
