@@ -35,6 +35,7 @@ import { GoodWaysContext } from '../ui/GoodPic'
 import { PanelGuard } from '../ui/PanelGuard'
 import { CardWatcher } from '../ui/useGameFree'
 import { GAME_WAYS } from './goods/ways'
+import { ComputerPanel } from './computer/ComputerPanel'
 import { LetterPanel } from './people/LetterPanel'
 import { NeighboursPanel } from './people/NeighboursPanel'
 
@@ -112,6 +113,7 @@ export function FarmUI() {
         {/* the daily gift: out the way it came in, as the level's card */}
         <AnimatePresence>{panel?.kind === 'daily' && <DailyPanel key={`daily-${opening(panel)}`} />}</AnimatePresence>
         {panel?.kind === 'wardrobe' && <WardrobePanel />}
+        {panel?.kind === 'computer' && <ComputerPanel key={panel.buy ? 'buy' : panel.piece} piece={panel.piece} buy={panel.buy} />}
         <AnimatePresence>{panel?.kind === 'letter' && <LetterPanel key={`letter-${opening(panel)}`} id={panel.id} again={panel.again} />}</AnimatePresence>
         <AnimatePresence>{panel?.kind === 'neighbours' && <NeighboursPanel key={`neighbours-${opening(panel)}`} />}</AnimatePresence>
       </PanelGuard>

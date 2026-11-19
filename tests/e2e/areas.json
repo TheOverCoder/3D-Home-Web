@@ -195,6 +195,11 @@
     },
     { "name": "shared engines in every countdown and save", "specs": ["17-stores-orders", "32-machine-queue", "35-daily"], "paths": ["src/lib/{time,saved,quiet}.ts"] },
     {
+      "name": "the house's computer and the market's mood",
+      "specs": ["41-computer", "34-events", "25-button", "15-decorate", "39-panels"],
+      "paths": ["src/farm/computer/**", "src/home/Computer.tsx", "src/farm/mood.ts"]
+    },
+    {
       "name": "engines not yet wired (check only, until their mission wires them)",
       "specs": [],
       "paths": ["src/farm/computer/**", "src/farm/{season,weather,ledger}.ts"]

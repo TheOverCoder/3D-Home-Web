@@ -19,6 +19,7 @@ Keep this file and `src/data/credits.ts` (shown in the app's intro) in sync. Any
 | Phosphor Icons (interface glyphs) | Phosphor Icons | MIT | https://phosphoricons.com |
 | Fluent Emoji 3D (the neighbours: the mailbox, the love letter, the envelope, the red heart, the birthday cake) | Microsoft Corporation | MIT | https://github.com/microsoft/fluentui-emoji |
 | Fredoka and Nunito typefaces | The Fredoka Project Authors; The Nunito Project Authors | SIL OFL 1.1 | https://fonts.google.com/specimen/Fredoka |
+| Fluent Emoji 3D (the house's computer's apps: the rising chart, the light bulb, the ledger, the bar chart) | Microsoft Corporation | MIT | https://github.com/microsoft/fluentui-emoji |
 
 The models were compressed (meshopt + WebP textures, small props capped at 512–1024 px; the pouf and teacup meshes simplified with meshoptimizer) with `npm run assets:optimize`; nothing else was changed.
 

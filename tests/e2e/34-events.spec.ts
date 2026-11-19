@@ -195,3 +195,49 @@ test.describe('the week’s events', () => {
     expect(await send(18)).toEqual({ sent: true, gifts: 1 })
   })
 })
+
+test.describe('the market’s mood', () => {
+  test('on, every good is worth its mood of the events’ day (the drawn ones double it), a material never moved; quiet again (as for every other spec), fair', async ({ game }) => {
+    await game.ready('farm')
+    await fresh(game)
+    // (a price asked for makes the mood's hook: src/farm/mood.ts)
+    await game.page.evaluate(() => (window as any).__home.farm.spawnVisitor({ want: 'tomato', qty: 1, queued: true }))
+    await game.page.waitForFunction(() => !!(window as any).__home.mood, null, { timeout: 10_000 })
+    const r = await game.page.evaluate(
+      ([items]) => {
+        const h = (window as any).__home
+        const f = h.farm
+        f.setRandom(() => 0.3)
+        h.events.set(new Date(2026, 10, 21, 10).getTime())
+        const drawn: string[] = h.events.draw() ?? []
+        const day = Math.round(Date.UTC(2026, 10, 21) / 86_400_000)
+        const goods = Object.keys(f.state.inv)
+        const quiet = Object.fromEntries(goods.map((g) => [g, h.mood.price(g)]))
+        h.mood.on(true)
+        const wrong: string[] = []
+        let moved = 0
+        for (const g of goods) {
+          const got = h.mood.price(g)
+          const want = quiet[g] * h.mood.of(g, day)
+          if (Math.abs(got - want) > 1e-9) wrong.push(`${g}: ${got}, not ${want}`)
+          if (items.includes(g) && got !== quiet[g]) wrong.push(`${g} (a material) moved`)
+          if (got !== quiet[g]) moved++
+        }
+        // the day after, the next day's mood (and no draw)
+        h.events.set(new Date(2026, 10, 22, 10).getTime())
+        const sunday = h.mood.price('pumpkin') / (quiet.pumpkin / (drawn.includes('pumpkin') ? 2 : 1))
+        h.mood.quiet(true)
+        h.events.set(null)
+        const after = goods.filter((g) => h.mood.price(g) !== quiet[g] / (drawn.includes(g) ? 2 : 1))
+        return { drawn, wrong, moved, sellable: goods.length - items.length, sunday, sundayMood: h.mood.of('pumpkin', day + 1), after, on: h.mood.now() }
+      },
+      [ITEMS] as const,
+    )
+    expect(r.drawn.length).toBe(2)
+    expect(r.wrong).toEqual([])
+    expect(r.moved).toBe(r.sellable)
+    expect(r.sunday).toBeCloseTo(r.sundayMood, 9)
+    expect(r.after).toEqual([])
+    expect(r.on).toBe(false)
+  })
+})
