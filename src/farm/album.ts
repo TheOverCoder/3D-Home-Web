@@ -85,7 +85,8 @@ export const ALBUM: readonly PageDef[] = [
       ...PLANT_PRODUCERS.map((id) => good('grown', PRODUCERS[id].good, `Pick it from its ${FRUIT[id as keyof typeof FRUIT]?.name.toLowerCase() ?? 'tree'}`)),
     ],
   },
-  { id: 'barn', name: 'From the barn', art: 'nest-with-eggs', tiles: [...animalGoods, ...machineGoods] },
+  // (update v1's beehive gives the barn its honey: 01b)
+  { id: 'barn', name: 'From the barn', art: 'nest-with-eggs', tiles: [...animalGoods, good('barn', PRODUCERS.beehive.good, 'Collect it from a beehive'), ...machineGoods] },
   { id: 'herd', name: 'The herd', art: 'cow', tiles: [...herd('hens'), ...herd('cows'), ...herd('sheep')] },
   { id: 'materials', name: 'Building materials', art: 'building-construction', tiles: ITEMS.map((id) => good('materials', id, 'Comes as a surprise')) },
   { id: 'garden', name: 'The garden', art: 'house-with-garden', tiles: DECOR_KINDS.filter((k) => !k.startsWith('scarecrow')).map((k) => piece('garden', k, 'Buy it in the edit shop')) },
