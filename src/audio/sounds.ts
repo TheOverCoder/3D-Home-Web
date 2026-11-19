@@ -9,7 +9,7 @@ import { rewardKind, tierRank, type RewardKind, type Tier } from '../lib/tier'
 import type { FarmSound } from './farmSounds'
 
 /** work done; coins in; a reward; a "no"; the farm's own (animals, machines); a cue that tells news; the interface; the
- *  quiet tinks of a count landing on its chip, many in a row after the press's own sound (the crystals). */
+ *  quiet tinks of a count landing on its chip, many in a row after the press's own sound (the crystals, the coins). */
 export type SoundFamily = 'work' | 'coins' | 'reward' | 'no' | 'world' | 'cue' | 'ui' | 'landing'
 /** What tells the same news for a player with the sound off: a toast, the compass's mark, a chip, a count, a move on
  *  screen; none only for ambience. */
@@ -80,6 +80,10 @@ export const SOUNDS: Readonly<Record<FarmSound, SoundRow>> = {
   nope: { family: 'no', feel: null, vary: 0, twin: 'motion' },
   lift: ui('lift'),
   thud: ui('drop'),
+  // a reward's moment (mission 06 c7): the box rattling before it opens (the shake on screen tells it), and each coin
+  // landing on its chip (the count going up as they land)
+  rattle: { family: 'reward', feel: null, vary: 0, twin: 'motion' },
+  tink: { family: 'landing', feel: null, vary: 0, twin: 'chip' },
   // update v1's machines (update-v1/missions/01-loop-economy.md c8): each its load and its goods taken out
   churn: { ...pressed('motion'), mix: 1 },
   crock: work('toast'),
@@ -88,12 +92,12 @@ export const SOUNDS: Readonly<Record<FarmSound, SoundRow>> = {
 }
 
 /** Every sound the player causes: a press, a sale, a reward, a "no", the interface, and the farm's own when pressed (a
- *  touch with it, a streak, a reward's or a no's family). The phone mix holds each to its band, its peak and its
- *  family's loudness (./measure.ts). Not the farm's news (the gate's bell, a machine's ding, the chime) nor what it
+ *  touch with it, a streak, a reward's, a no's or a landing's family). The phone mix holds each to its band, its peak and
+ *  its family's loudness (./measure.ts). Not the farm's news (the gate's bell, a machine's ding, the chime) nor what it
  *  does by itself (the cows, the sheep, the cock, the tractor). */
 export const PLAYER_SOUNDS: readonly FarmSound[] = (Object.keys(SOUNDS) as FarmSound[]).filter((k) => {
   const r = SOUNDS[k]
-  return r.feel !== null || r.climb !== undefined || r.family === 'reward' || r.family === 'no'
+  return r.feel !== null || r.climb !== undefined || r.family === 'reward' || r.family === 'no' || r.family === 'landing'
 })
 
 /** A reward's touch: its family picks the pattern (coins in a double, a gift a roll, a level the strongest, goods

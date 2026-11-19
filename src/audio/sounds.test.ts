@@ -40,8 +40,8 @@ const FEEL_TODAY: Record<string, string> = {
 }
 
 describe('the table of sounds', () => {
-  it('has a row for each of the farm’s 40 sounds', () => {
-    expect(Object.keys(SOUNDS)).toHaveLength(40)
+  it('has a row for each of the farm’s 42 sounds', () => {
+    expect(Object.keys(SOUNDS)).toHaveLength(42)
   })
 
   it('gives each the touch it has today', () => {
