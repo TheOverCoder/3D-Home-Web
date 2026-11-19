@@ -33,44 +33,26 @@ const WHY: Record<Check, string> = {
 
 /** Each place's findings today, the most of either size (a panel by its kind; the top at rest, and with a toast). */
 const DEBTS: Record<string, Partial<Record<Check, number>>> = {
-  // (update v1's dairy and jam kettle: one more compass mark of the same 44 px when the farm has plenty)
-  'the top at rest': { target: 8, loops: 2 },
+  // (the sheet's ✕ and the plain rows' faded words were paid in v1's last step: a 48 px hit area on every round button of
+  // the sheet, an owned row's picture faded and not its words, the baskets' names at 15 px)
+  'the top at rest': { target: 8 },
   'the top with a toast': { target: 8 },
-  seeds: { target: 1 },
-  build: { target: 1 },
-  bed: { target: 1 },
-  queue: { tiny: 5, target: 9 },
-  // shop, store and manager: one more row of the same 44 px buttons on screen upright, the sheet standing to 92dvh
-  // (PanelSheet's --sheet-max-up) where Shell's stood to 86: no new kind of target (07b)
-  shop: { words: 2, target: 7 },
-  // (01a's four long crops are four more of the same rows: the debt is the same, its count grew with the goods)
-  store: { words: 18, target: 6 },
-  'store-upgrade': { target: 4 },
-  orders: { target: 13 },
-  furniture: { target: 1 },
-  'buy-piece': { target: 1 },
-  'decor-shop': { target: 3 },
-  'decor-buy': { target: 1 },
-  // (the welcome back's rows at 13 px: its *Next* line beside its three rows)
-  away: { words: 4, target: 1 },
-  daily: { words: 1, target: 1 },
-  goals: { words: 1, target: 1, goodpic: 1 },
-  level: { words: 3, target: 1, goodpic: 1 },
+  queue: { tiny: 5 },
+  shop: { words: 2, target: 2 },
+  'store-upgrade': { target: 3 },
+  orders: { target: 12 },
+  'decor-shop': { target: 2 },
+  away: { words: 1 },
+  daily: { words: 1 },
+  goals: { words: 1, goodpic: 1 },
+  level: { words: 3, goodpic: 1 },
   wardrobe: { target: 4 },
-  manager: { target: 10 },
-  market: { target: 1 },
-  'market-place': { target: 5, goodpic: 2 },
-  'market-buy': { target: 1 },
-  contractor: { target: 6, goodpic: 6 },
-  car: { target: 3, contrast: 1 },
-  estate: { target: 2 },
-  'house-buy': { target: 1 },
-  ladder: { target: 1 },
-  machine: { words: 1, target: 2 },
-  tool: { words: 9, target: 3, goodpic: 1 },
-  skins: { target: 4 },
-  'machine-slot': { words: 1, target: 2 },
-  news: { words: 2, target: 1 },
+  'market-place': { goodpic: 2 },
+  contractor: { goodpic: 6 },
+  machine: { words: 1, target: 1 },
+  tool: { words: 9, target: 1, goodpic: 1 },
+  'machine-slot': { words: 1, target: 1 },
+  news: { words: 2 },
 }
 
 const MEASURE_ONLY = !!process.env.PANELS_MEASURE
@@ -170,12 +152,25 @@ async function measurePanel(page: Page, kind: Panel['kind'], size: string): Prom
     const h = (window as any).__home
     // the welcome back tells an hour away
     if (p.kind === 'away' && !h.farm.awaySummary()) h.farm.cameBack(3600)
+    // a season's arrival: the year playing (a season of the test's own) and a season begun since the last one shown
+    // (src/farm/state/season.ts: `seasonArrival`), put back as it was once measured
+    if (p.kind === 'season') {
+      h.__season39 = h.farm.state.season
+      h.season.set('summer')
+      h.farm.state.season = { from: -27, told: 0 }
+    }
     h.useHome.getState().openPanel(p)
   }, PANEL_KINDS[kind] as Panel)
   await page.waitForFunction(() => Array.from(document.querySelectorAll('.farm-panel')).some((e) => e.getClientRects().length > 0), null, { timeout: 30_000, polling: 100 })
   await settle(page, '.farm-panel')
   const found = await readable(page, { roots: ['.farm-panel'], inside: '.farm-panel', goods: GOODS })
   if (SHOTS) await page.screenshot({ path: `test-results/panels/${size}-${kind}.png` })
+  if (kind === 'season')
+    await page.evaluate(() => {
+      const h = (window as any).__home
+      h.farm.state.season = h.__season39
+      h.season.quiet(true)
+    })
   return { place: kind, size, found }
 }
 

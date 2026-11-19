@@ -4,7 +4,7 @@ import { useHome } from '../store'
 import { registerCard } from '../ui/cardQueue'
 import { Shell } from '../ui/Sheet'
 import { art, type ArtId } from '../ui/art'
-import { iconUrl } from './icons'
+import { GoodPic } from '../ui/GoodPic'
 import { cap } from './panels/crops'
 import { cropById } from './data'
 import type { SeasonView } from './season'
@@ -22,7 +22,7 @@ export function SeasonArrival({ v, onClose }: { v: SeasonView; onClose: () => vo
       <div className="farm-basket">
         {v.crops.map((c) => (
           <div key={c} className="farm-basket-item">
-            <img className="art" src={iconUrl(c)} alt="" />
+            <GoodPic good={c} />
             <span>{cap(cropById(c).plural)}</span>
           </div>
         ))}

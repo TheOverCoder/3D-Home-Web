@@ -149,9 +149,11 @@ button:focus-visible { outline: 3px solid var(--sun); outline-offset: 2px; }
 /* 44 px to the eye, a 48 px hit area under a finger: grown round it, so nothing on the screen moves */
 @media (pointer: coarse) {
   .btn.small,
-  .deco-swatch { position: relative; }
+  .deco-swatch,
+  .mp-round { position: relative; }
   .btn.small::after,
-  .deco-swatch::after { content: ''; position: absolute; inset: -2px; border-radius: inherit; }
+  .deco-swatch::after,
+  .mp-round::after { content: ''; position: absolute; inset: -2px; border-radius: inherit; }
 }
 .btn.round { width: 44px; min-height: 44px; padding: 0; }
 .btn svg { width: 22px; height: 22px; flex: none; }
@@ -999,11 +1001,11 @@ button.farm-chip-item:focus-visible { outline: 3px solid var(--sun); outline-off
 .farm-tag.low { background: #fde1da; color: #9a2c1c; }
 
 /* the basket: each thing big, with how many */
-.farm-basket { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.farm-basket { display: grid; grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 8px; }
 .farm-basket-item { display: flex; flex-direction: column; align-items: center; gap: 0; padding: 10px 6px 8px; border-radius: var(--r-card); background: var(--paper-2); text-align: center; }
 .farm-basket-item { gap: 4px; }
 .farm-basket-item .art { width: 52px; height: 52px; }
-.farm-basket-item > span { color: var(--ink-2); font-size: 13px; }
+.farm-basket-item > span { color: var(--ink-2); font-size: 15px; }
 /* welcome back: what needs you (beds gone dry, a building too full) in the short tag's colours */
 .farm-basket-item.needs { background: #fde1da; }
 .farm-basket-item.needs > span { color: #9a2c1c; }
@@ -1028,7 +1030,8 @@ button.farm-chip-item:focus-visible { outline: 3px solid var(--sun); outline-off
 /* the shop: a picture, the name and one line, its price on the button */
 .farm-shop { display: grid; gap: 8px; }
 .farm-shop-item { display: flex; align-items: center; gap: 12px; padding: 8px 10px 8px 8px; border-radius: var(--r-card); background: var(--paper-2); }
-.farm-shop-item.owned { opacity: 0.7; }
+/* what is yours already: its picture faded, its words as readable as ever */
+.farm-shop-item.owned > :first-child { opacity: 0.7; }
 .farm-shop-item .art { width: 56px; height: 56px; }
 .farm-shop-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .farm-shop-text strong { font: 600 17px/1.15 var(--font-display); }
