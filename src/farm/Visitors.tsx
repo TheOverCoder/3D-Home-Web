@@ -5,7 +5,7 @@ import { debugFlag } from '../lib/debug'
 import { useInteractable } from '../lib/interaction'
 import type { Parts } from '../lib/sculpt'
 import { PersonRig, personParts } from '../models/person'
-import { art } from '../ui/art'
+import { art, type ArtId } from '../ui/art'
 import { useHome } from '../store'
 import { GATE_SPOT, count } from './data'
 import { iconImages } from './icons'
@@ -13,7 +13,8 @@ import { farm, lineShort, sellAllPreview, waiting, type Visitor } from './state'
 
 // People from the lane who queue at the garden gate to buy something. Built like the player's own body, in their
 // own clothes, they walk up, wave when they get to their place, move up the line as it shortens, hop when you sell
-// to them and shake their head when you say no. A speech bubble over each head shows what they want and offer.
+// to them and, when you say no, take it kindly: a nod and a wave goodbye (never a sad face). A speech bubble over each
+// head shows what they want and offer; a neighbour's (src/farm/people) has a small heart on it.
 // Up to fifteen can stand in line, so they are drawn together: each person is a sculpted model
 // (src/models/person.ts) on a rig of joints that is posed, then copied into one instanced draw per part for the
 // whole crowd; and one bubble each. A buyer in two brings a surprise: a gift on their bubble, given as you sell to them.
@@ -21,6 +22,9 @@ import { farm, lineShort, sellAllPreview, waiting, type Visitor } from './state'
 
 /** How wide a bubble is: room for a gift at its end when the buyer brings a surprise. */
 const bubbleWidth = (v: Visitor) => (v.gift ? 392 : 320)
+
+/** The heart a neighbour's bubble carries in its corner (the farm's friendship with them: src/farm/people). */
+const heartPic = (v: Visitor) => (v.who ? artImage('red-heart') : Promise.resolve(undefined))
 
 /** The bubble over a buyer: the good's picture and how many, the coin and the offer, and a gift when they bring a
  *  surprise. It is drawn at once and again when the pictures and the type have loaded (on the first bubbles of a
@@ -34,7 +38,7 @@ function bubbleTexture(v: Visitor): CanvasTexture {
   const c = canvas.getContext('2d')!
   const t = new CanvasTexture(canvas)
   t.colorSpace = SRGBColorSpace
-  const draw = (want?: HTMLImageElement, coin?: HTMLImageElement, gift?: HTMLImageElement) => {
+  const draw = (want?: HTMLImageElement, coin?: HTMLImageElement, gift?: HTMLImageElement, heart?: HTMLImageElement) => {
     const r = 34
     c.clearRect(0, 0, W, H)
     c.fillStyle = 'rgba(255, 247, 232, 0.97)'
@@ -52,6 +56,7 @@ function bubbleTexture(v: Visitor): CanvasTexture {
     if (want) c.drawImage(want, 16, 14, 84, 84)
     if (coin) c.drawImage(coin, 186, 30, 54, 54)
     if (gift) c.drawImage(gift, 322, 22, 62, 62)
+    if (heart) c.drawImage(heart, 0, 0, 38, 38)
     c.fillStyle = '#3b2a1e'
     c.font = '800 44px "Nunito Variable", Nunito, system-ui, sans-serif'
     c.textBaseline = 'middle'
@@ -60,22 +65,26 @@ function bubbleTexture(v: Visitor): CanvasTexture {
     t.needsUpdate = true
   }
   draw()
-  Promise.all([iconImages([v.want, 'coin']), v.gift ? giftImage() : Promise.resolve(undefined), document.fonts?.load('800 44px "Nunito Variable"')])
-    .then(([[want, coin], gift]) => draw(want, coin, gift))
+  Promise.all([iconImages([v.want, 'coin']), v.gift ? giftImage() : Promise.resolve(undefined), heartPic(v), document.fonts?.load('800 44px "Nunito Variable"')])
+    .then(([[want, coin], gift, heart]) => draw(want, coin, gift, heart))
     .catch(() => {})
   return t
 }
 
-let gift: Promise<HTMLImageElement> | null = null
-/** The surprise's picture (a gift), loaded once. */
-function giftImage() {
-  if (!gift) {
+/** A picture of the interface's art, loaded once each. */
+const arts = new Map<ArtId, Promise<HTMLImageElement>>()
+function artImage(id: ArtId) {
+  let p = arts.get(id)
+  if (!p) {
     const img = new Image()
-    img.src = art('wrapped-gift')
-    gift = img.decode().then(() => img)
+    img.src = art(id)
+    p = img.decode().then(() => img)
+    arts.set(id, p)
   }
-  return gift
+  return p
 }
+/** The surprise's picture (a gift). */
+const giftImage = () => artImage('wrapped-gift')
 
 // fifteen in line, room for those walking off after "sell to everyone" (`?debug&people=N`: N buyers, to measure), and
 // the guests: the tractor's driver, the market's manager, its shoppers, the contractor and the estate agent
@@ -196,7 +205,8 @@ export function Visitors() {
       const since = farm.clock - v.moodAt
       const waving = v.phase === 'queued' && v.mood === 'neutral' && since < 2.4
       const happy = v.mood === 'happy' && since < 1.8
-      const sad = v.mood === 'sad' && since < 1.8
+      // turned away ('sad' is the mood a no leaves them in): they take it kindly, a nod and a wave goodbye
+      const bye = v.mood === 'sad' && since < 1.8
       const damp = (o: Group, axis: 'x' | 'y' | 'z', to: number, k = 12) => {
         o.rotation[axis] = MathUtils.damp(o.rotation[axis], to, k, dt)
       }
@@ -207,15 +217,15 @@ export function Visitors() {
       damp(body.armL, 'x', happy ? -2.6 : Math.sin(f) * amp * 0.7)
       damp(body.armL, 'z', happy ? 0.25 : 0.06)
       damp(body.elbowL, 'x', happy ? -0.3 : -0.12)
-      damp(body.armR, 'x', waving || happy ? -2.7 : -Math.sin(f) * amp * 0.7)
-      damp(body.armR, 'z', waving ? -0.35 + Math.sin(t * 9) * 0.25 : happy ? -0.25 : -0.06)
-      damp(body.elbowR, 'x', waving ? -0.5 : -0.15)
+      damp(body.armR, 'x', waving || happy || bye ? -2.7 : -Math.sin(f) * amp * 0.7)
+      damp(body.armR, 'z', waving || bye ? -0.35 + Math.sin(t * 9) * 0.25 : happy ? -0.25 : -0.06)
+      damp(body.elbowR, 'x', waving || bye ? -0.5 : -0.15)
       const bob = walking ? Math.abs(Math.cos(f)) * 0.025 : 0
       const hop = happy ? Math.abs(Math.sin(t * 10)) * 0.07 : 0
       const breathe = walking ? 0 : Math.sin(t * 1.6 + v.id) * 0.004
       body.hips.position.y = 0.885 * H + bob + hop + breathe
-      damp(body.head, 'y', sad ? Math.sin(t * 13) * 0.4 : 0, 18)
-      damp(body.head, 'x', sad ? 0.25 : 0)
+      damp(body.head, 'y', 0, 18)
+      damp(body.head, 'x', bye ? Math.max(0, Math.sin(t * 7)) * 0.18 : 0)
       body.write(parts)
       const b = rig.bubble
       if (rig.offer !== v.offer) {

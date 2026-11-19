@@ -1,4 +1,6 @@
 import { art, type ArtId } from '../ui/art'
+import { pictureOf } from '../ui/Portrait'
+import type { NeighbourId } from '../data/people'
 import { MACHINES, UPGRADES, type CropId, type MachineId, type UpgradeId } from './data'
 import { SHOP, type ShopKind } from './decor'
 import { iconUrl, shopArtUrl } from './icons'
@@ -38,6 +40,8 @@ export function unlockPic(id: UnlockId): string {
   if (kind === 'recipe') return iconUrl(MACHINES[rest as MachineId].recipes.find((r) => r.id === more)!.makes)
   if (kind === 'upgrade') return art(UPGRADE_ART[rest as UpgradeId])
   if (kind === 'decor') return shopArtUrl(rest as ShopKind)
+  // a neighbour moving in: their portrait (the face at the gate)
+  if (kind === 'person') return pictureOf(rest as NeighbourId)
   if (kind === 'herd') return art(UPGRADE_ART[UPGRADES.find((u) => u.herd === rest)!.id])
   return art('four-leaf-clover')
 }
@@ -51,6 +55,7 @@ export function whereOf(id: UnlockId): string {
   if (kind === 'recipe') return MACHINES[rest as MachineId].name
   if (kind === 'upgrade' || kind === 'herd') return 'Shop'
   if (kind === 'decor') return SHOP[rest as ShopKind].tab === 'fruit' ? 'Fruit trees' : 'Decor'
+  if (kind === 'person') return 'Neighbours'
   return 'Edit'
 }
 

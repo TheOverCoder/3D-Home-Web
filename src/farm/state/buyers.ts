@@ -12,9 +12,20 @@ import { foundPrizes, rewarded } from './rewards'
 import { gainItems, rollGifts, surpriseWords } from './stores'
 import { sold } from './ledger'
 import { arrivalSeconds, placesInLine } from './shop'
-import { befriend } from './neighbours'
+import { befriend, neighbourComes } from './neighbours'
+import { personById, personLook, type NeighbourId } from '../../data/people'
+import { kindFactor, neighbourAsk } from '../people/visits'
 
 // The buyers at the garden gate: who comes and what they ask for, the line, selling and declining, and their walking.
+// Now and then a neighbour met comes instead of a stranger (src/farm/people/visits.ts): themselves every time, asking
+// for a good they like at a fair or a generous price.
+
+declare module './core' {
+  interface Visitor {
+    /** a neighbour (src/data/people.ts): their own look and name, a heart on their bubble; none: a stranger */
+    who?: NeighbourId
+  }
+}
 
 const pick = <T>(list: readonly T[]) => list[Math.floor(Math.random() * list.length)]
 const rand = (a: number, b: number) => a + Math.random() * (b - a)
@@ -52,13 +63,22 @@ export const inLine = () => farm.visitors.filter((v) => v.phase !== 'leaving')
 /** Everyone standing in line, the front first. */
 export const waiting = () => farm.visitors.filter((v) => v.phase === 'queued')
 
-export function newVisitor(want: ProduceId, qty: number, offer: number, from: -1 | 1, gift: boolean, look?: Look, name?: string): Visitor {
+/** A stranger's name no one on the lane has now (none free: any). */
+function freeName() {
+  const taken = new Set(farm.visitors.map((v) => v.name))
+  const free = NAMES.filter((n) => !taken.has(n))
+  return pick(free.length ? free : NAMES)
+}
+
+export function newVisitor(want: ProduceId, qty: number, offer: number, from: -1 | 1, gift: boolean, look?: Look, name?: string, who?: NeighbourId): Visitor {
   const startX = LANE_ENDS[from < 0 ? 0 : 1]
   return {
     id: ++visitorSeq,
-    name: name ?? pick(NAMES),
+    // a neighbour is themselves: their name and look (src/data/people.ts)
+    ...(who ? { who } : {}),
+    name: who ? personById(who).name : (name ?? freeName()),
     // a whole person from the table of traits, on the farm's dice (src/models/look.ts)
-    look: look ?? asLook(rollLook(random)),
+    look: who ? asLook(personLook(who)!) : (look ?? asLook(rollLook(random))),
     want,
     qty,
     offer,
@@ -86,11 +106,14 @@ export function standInLine(v: Visitor) {
   v.moving = false
 }
 
-/** A new buyer walks up the lane (`queued`: is already standing in line). */
-export function spawnVisitor(opts: Partial<Pick<Visitor, 'want' | 'qty' | 'offer' | 'gift'>> & { from?: -1 | 1; queued?: boolean } = {}) {
+/** A new buyer walks up the lane (`queued`: is already standing in line). A stranger, or now and then a neighbour met
+ *  in their hours (`who`: that neighbour), who asks for a good they like at a fair or a generous price. */
+export function spawnVisitor(opts: Partial<Pick<Visitor, 'want' | 'qty' | 'offer' | 'gift' | 'who'>> & { from?: -1 | 1; queued?: boolean } = {}) {
   const from = opts.from ?? (Math.random() < 0.5 ? -1 : 1)
-  const request = opts.want ? { want: opts.want, qty: opts.qty ?? 2 } : chooseRequest()
-  const v = newVisitor(request.want, request.qty, opts.offer ?? priceFor(request.want, request.qty), from, opts.gift ?? bringsSurprise(random))
+  const who = opts.who ?? (opts.want ? null : neighbourComes())
+  const request = opts.want ? { want: opts.want, qty: opts.qty ?? 2 } : who ? neighbourAsk(who, knownGoods(), farm.inv, Math.random) : chooseRequest()
+  const offer = opts.offer ?? (who ? Math.max(1, Math.round(priceOf(request.want) * request.qty * kindFactor(Math.random()))) : priceFor(request.want, request.qty))
+  const v = newVisitor(request.want, request.qty, offer, from, opts.gift ?? bringsSurprise(random), undefined, undefined, who ?? undefined)
   farm.visitors.push(v)
   if (opts.queued) standInLine(v)
   bump()
@@ -188,7 +211,8 @@ export function sellAll() {
   return buyers
 }
 
-/** "Sorry, none today": they go, and someone else comes along soon to take their place. */
+/** "Sorry, none today": they take it kindly — a wave goodbye and a "No problem!" (the mood `sad` is the turned-away
+ *  one: src/farm/Visitors.tsx shows it as a wave, never a sad face) — and someone else comes along soon. */
 export function declineOffer(id: number) {
   const v = visitorById(id)
   if (!v || v.phase !== 'queued') return false

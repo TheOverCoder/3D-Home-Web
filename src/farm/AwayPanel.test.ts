@@ -49,6 +49,13 @@ describe('the welcome back', () => {
     expect(rows.length).toBe(AWAY_ROWS)
   })
 
+  it('letters waiting in the mailbox are a picture with how many, worth as much as an order each', () => {
+    expect(awayRows(report({ buyers: 1 })).map((x) => x.key)).toEqual(['buyers'])
+    const rows = awayRows(report({ buyers: 1, thirsty: 2 }), AWAY_ROWS, [], 2)
+    expect(rows.map((x) => x.key)).toEqual(['letters:2', 'buyers', 'water'])
+    expect(rows[0].worth).toBe(awayRows(report({ orders: 2 }))[0].worth)
+  })
+
   it('says how long in the clock’s words, never less than a minute', () => {
     expect(awayText(130)).toBe('3 min')
     expect(awayText(20)).toBe('1 min')

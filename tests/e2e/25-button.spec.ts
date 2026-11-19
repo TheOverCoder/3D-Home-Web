@@ -147,6 +147,8 @@ async function plenty(page: Page) {
     for (let k = 0; k < 4; k++) f.spawnVisitor({ queued: true })
     // a computer in the house's studio (src/home/Computer.tsx), used with the button there
     if (!h.home.layout.pieces.some((p: any) => p.type === 'computer') && h.home.buy('computer')) h.home.placeStored('computer', h.home.freeSpot('computer', 'office') ?? { x: -5, z: -5.25, rot: 0 })
+    // a neighbour's letter in the mailbox (src/farm/people): the mailbox offers Read
+    h.neighbours?.post?.('heart:baker:1')
     f.useFarm.setState((s: any) => ({ rev: s.rev + 1 }))
   })
 }

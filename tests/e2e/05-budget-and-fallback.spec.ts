@@ -178,6 +178,9 @@ const WALK: View[] = [
   { map: 'farm', name: 'the meadows, their beds', x: -13, z: 1.5, yaw: (3 * P) / 4, pitch: -0.06 },
   { map: 'farm', name: 'the jam kettle and the kitchen', x: 4.5, z: 7, yaw: (-3 * P) / 4, pitch: -0.06 },
   { map: 'farm', name: 'the dairy and the pasture', x: 3.5, z: -4, yaw: -P / 2 - 0.4, pitch: -0.05 },
+  // the mailbox by the gate (src/farm/Mailbox.tsx), a letter waiting (its flag up: fillFarm), from the lane by the
+  // parking lot, looking past it at the gate and the line
+  { map: 'farm', name: 'lane, the mailbox by the gate', x: 2.6, z: 16, yaw: -0.69, pitch: -0.1 },
 ]
 
 interface Count {

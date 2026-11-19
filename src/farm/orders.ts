@@ -1,4 +1,6 @@
+import type { NeighbourId } from '../data/people'
 import { ITEM_ODDS, ORDERS, SELLABLE, produceById, type ProduceId } from './data'
+import type { ChapterId } from './people/chapters'
 import { priceOf } from './prices'
 
 // The orders that come in on the office's computer, as data: what one asks for, what it pays, and how many crates it
@@ -21,6 +23,12 @@ export interface Order {
   coins: number
   /** it brings a surprise (a building material) as it is sent */
   surprise: boolean
+  /** a neighbour's (src/data/people.ts): their portrait and name at its head, and their friendship grows as it is sent;
+   *  none: a stranger's */
+  from?: NeighbourId
+  /** a chapter's request (src/farm/people/chapters.ts): pinned above the board's places, with no clock and no ×; never
+   *  in a place of the board */
+  chapter?: ChapterId
 }
 
 /** A place on the board: an order, or the seconds until a new one comes (after one was declined). */
@@ -86,3 +94,10 @@ export const orderUnits = (o: Order) => ({ want: o.lines.reduce((n, l) => n + l.
 
 /** How many crates an order fills on the tractor: one for every dozen goods, one to three. */
 export const cratesFor = (o: Order) => Math.min(3, Math.max(1, Math.ceil(orderUnits(o).want / 12)))
+
+/** A chapter's request (src/farm/people/chapters.ts): what its writer asks, as an order pinned above the board, paid as
+ *  any order is (a quarter over the goods' fair price), with no surprise. */
+export function makeRequest(c: { id: ChapterId; who: NeighbourId; ask: readonly { good: ProduceId; n: number }[] }): Order {
+  const lines = c.ask.map((a) => ({ good: a.good, want: a.n, have: 0 }))
+  return { id: orderKey(), lines, coins: orderPay(lines), surprise: false, from: c.who, chapter: c.id }
+}

@@ -1,0 +1,42 @@
+/* A neighbour's letter (LetterCard.tsx): the writer's portrait, name and hearts in the sheet's head (PanelSheet's), a
+   sheet of letter paper with one line at a time on it, the gift under it on the last page. Every rule under
+   .letter-card. */
+/* the sheet's round close keeps its 44 px look and takes a finger's 48 px: a ring of 2 px round it (as the album's) */
+.letter-card .mp-round { position: relative; }
+.letter-card .mp-round::after { content: ''; position: absolute; inset: -2px; border-radius: 50%; }
+.letter-card .lc-hearts { display: inline-flex; align-items: center; height: 34px; padding: 0 10px; border-radius: 999px; background: var(--paper-2); box-shadow: inset 0 0 0 2px var(--edge-soft); }
+.letter-card .lc-hearts .art { width: 22px; height: 22px; }
+.letter-card .lc-cake { width: 38px; height: 38px; }
+
+/* the paper: ruled, a stamp in its corner; the whole of it is a press for the next line */
+.letter-card .lc-paper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 100%;
+  min-height: 150px;
+  padding: 22px 20px 30px;
+  border: 0;
+  border-radius: var(--r-card);
+  background: repeating-linear-gradient(to bottom, #fffdf6 0 33px, color-mix(in srgb, var(--edge-soft) 70%, #fff) 33px 34px), #fffdf6;
+  box-shadow: 0 3px 0 var(--edge-soft), inset 0 0 0 2px color-mix(in srgb, var(--edge-soft) 60%, #fff);
+  color: var(--ink);
+  text-align: start;
+  cursor: pointer;
+}
+.letter-card .lc-stamp { position: absolute; top: 8px; inset-inline-end: 10px; width: 40px; height: 40px; transform: rotate(8deg); opacity: 0.9; }
+.letter-card .lc-line { display: flex; align-items: center; gap: 12px; margin: 0; padding-inline-end: 34px; font: 700 19px/1.4 var(--font-text); }
+.letter-card .lc-line.other { font-style: italic; color: var(--ink-2); }
+/* the words still to type keep their room (the line never jumps as it types) */
+.letter-card .lc-rest { visibility: hidden; font-style: inherit; }
+/* the whole line for a screen reader, at once */
+.letter-card .lc-say { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.letter-card .lc-pages { position: absolute; bottom: 10px; inset-inline: 0; display: flex; justify-content: center; gap: 6px; }
+.letter-card .lc-pages i { width: 8px; height: 8px; border-radius: 50%; background: var(--edge-soft); }
+.letter-card .lc-pages i.was { background: var(--edge); }
+.letter-card .lc-pages i.on { background: var(--berry); transform: scale(1.25); }
+
+/* the gift, on the last page */
+.letter-card .lc-gift { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 12px; font: 800 17px/1.2 var(--font-text); color: var(--ink); }
+.letter-card .lc-gift .item-pic .art, .letter-card .lc-gift > .art { width: 64px; height: 64px; }

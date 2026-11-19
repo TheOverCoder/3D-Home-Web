@@ -68,6 +68,12 @@ export const PACE = {
    *  reaches its last stop by the season's day `by` (days played), on each of the first `seasons` seasons; held on the
    *  session runner by src/farm/seasonRoad.pace.test.ts */
   road: { profile: 'light', by: 6, seasons: 2 },
+  /** the story (src/farm/people; held on the session runner by src/farm/people/story.pace.test.ts, the daily player): the
+   *  first neighbour met no sooner than level `met` (the first steps' last); their first heart within `heart` minutes of
+   *  play of meeting (a liked good sold to them at the gate, or their chapter sent at the latest: 8 to 31 minutes on
+   *  seeds 1 to 6); each of act 1's first `sent.chapters` chapters sent within `sent.days` days of play of its
+   *  beginning */
+  story: { met: 5, heart: 35, sent: { chapters: 2, days: 2 } },
 } as const
 
 /** One visit of a player's day: the hour it begins (18.9 is 18:54) and how long it lasts. */

@@ -13,7 +13,7 @@ import { STORES, STORE_IDS, count, produceById, type StoreId } from './data'
 import { returnWorth } from './economy'
 import { iconUrl } from './icons'
 import { pickNext, type NextItem } from './nextUp'
-import { awaySummary, clearAwaySummary, farm, makeRoom, makeRoomPreview, room, stepNow, useFarm, waitingFor, type AwayReport } from './state'
+import { awaySummary, clearAwaySummary, farm, lettersWaiting, makeRoom, makeRoomPreview, room, stepNow, useFarm, waitingFor, type AwayReport } from './state'
 import { walkTarget } from './walkTargets'
 
 // Welcome back: after a time away (the page closed, or hidden while you were in another app or the phone was locked),
@@ -45,14 +45,16 @@ export interface AwayRow {
 }
 
 /** The rows a report has, the most worth first (those that need you first of all), at most AWAY_ROWS. `full`: the
- *  buildings too full for what waits (the report's, and any that cannot take all of it now). Pure. */
-export function awayRows(r: AwayReport, most = AWAY_ROWS, full: readonly StoreId[] = r.full): AwayRow[] {
+ *  buildings too full for what waits (the report's, and any that cannot take all of it now); `letters`: the letters
+ *  waiting in the mailbox by the gate (src/farm/people). Pure. */
+export function awayRows(r: AwayReport, most = AWAY_ROWS, full: readonly StoreId[] = r.full, letters = 0): AwayRow[] {
   const rows: AwayRow[] = [
     ...full.map((id) => ({ key: `full:${id}`, worth: Infinity, needs: true })),
     ...r.goods.map((g) => ({ key: `good:${g.item}`, worth: returnWorth([g]) })),
     ...(r.buyers > 0 ? [{ key: 'buyers', worth: r.buyers * BUYER_WORTH }] : []),
     ...(r.orders > 0 ? [{ key: 'orders', worth: r.orders * ORDER_WORTH }] : []),
     ...(r.shop && r.shop.goods > 0 ? [{ key: 'shop', worth: r.shop.coins }] : []),
+    ...(letters > 0 ? [{ key: `letters:${letters}`, worth: letters * ORDER_WORTH }] : []),
     ...(r.thirsty > 0 ? [{ key: 'water', worth: r.thirsty * SMALL }] : []),
     ...(r.pieces ? [{ key: 'pieces', worth: SMALL }] : []),
     ...(r.tractor ? [{ key: 'tractor', worth: SMALL }] : []),
@@ -142,6 +144,13 @@ function Row({ row, r }: { row: AwayRow; r: AwayReport }): ReactNode {
         <span>
           <Coins n={r.shop!.coins} /> in the till
         </span>
+      </div>
+    )
+  if (kind === 'letters')
+    return (
+      <div className="farm-basket-item" title={`${id} letters in the mailbox`}>
+        <ArtPic id="love-letter" count={Number(id)} />
+        <span>Letters</span>
       </div>
     )
   // beds gone dry: nothing is lost, they wait for water (in the card's own tone, not as a fault)
@@ -236,7 +245,7 @@ export function AwayPanel() {
       onClose={close}
     >
       <div className="farm-basket farm-away">
-        {awayRows(r, AWAY_ROWS, full).map((row) => (
+        {awayRows(r, AWAY_ROWS, full, lettersWaiting().length).map((row) => (
           <Row key={row.key} row={row} r={r} />
         ))}
       </div>

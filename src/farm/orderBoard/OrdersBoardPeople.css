@@ -1,0 +1,7 @@
+/* The neighbours on the order board (OrdersBoard.tsx's content, src/farm/people): a neighbour's face and name carved at
+   the head of their order's plank, and a chapter's request pinned above the places — ringed in the sun's gold, a letter
+   for its pin, no ×. The board's frame is OrdersBoard.css. */
+.ob-root .ob-sender { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 2px 8px 0 14px; }
+.ob-root .ob-sender b { font: 600 18px/1.1 var(--font-display); color: var(--carve); text-shadow: 0 1px 0 rgba(255, 244, 220, 0.75), 0 -1px 0 rgba(60, 30, 10, 0.3); }
+.ob-root .ob-pin { width: 30px; height: 30px; margin-inline-start: auto; transform: rotate(10deg); }
+.ob-root .ob-plank.ob-pinned { box-shadow: 0 3px 0 var(--plank-lip), 0 7px 12px rgba(0, 0, 0, 0.3), 0 0 0 3px var(--sun); }

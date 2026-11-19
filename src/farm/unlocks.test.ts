@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
+import { NEIGHBOUR_IDS } from '../data/people'
 import { CROPS, LEVELS, MACHINES, MACHINE_IDS, PRODUCERS, PRODUCER_IDS, START_COINS, UPGRADES, fullHerd, type ProduceId } from './data'
+import { movesInAt } from './people/chapters'
 import { SHOP } from './decor'
 import { PARCELS, PARCEL_IDS } from './layout'
 import { UNLOCKS, UNLOCK_IDS, herdSteps, herdUnlock, lockedAt, machineOpensAt, openedBetween, opensAt, recipeUnlock, unlockLevel, unlockName, type UnlockId } from './unlocks'
@@ -15,6 +17,7 @@ const EVERY: string[] = [
   ...MACHINE_IDS.flatMap((m) => MACHINES[m].recipes.map((r) => `recipe:${m}:${r.id}`)),
   ...Object.keys(SHOP).map((k) => `decor:${k}`),
   ...PARCEL_IDS.map((p) => `parcel:${p}`),
+  ...NEIGHBOUR_IDS.map((who) => `person:${who}`),
   ...PRODUCER_IDS.flatMap((p) => herdSteps(p).map((n) => herdUnlock(p, n))),
 ]
 
@@ -94,6 +97,11 @@ describe('what each level opens', () => {
     const last = Math.max(...Object.values(UNLOCKS))
     expect(openedBetween(last, last + 5)).toEqual([])
     expect(openedBetween(1, 6, () => [])).toEqual([])
+  })
+
+  it('a neighbour moves in at the level of the first chapter they write (src/farm/people/chapters.ts)', () => {
+    for (const who of NEIGHBOUR_IDS) expect(UNLOCKS[`person:${who}`], who).toBe(movesInAt(who))
+    expect(unlockName('person:baker')).toBe('Moshe')
   })
 
   it('names each thing in a few words', () => {

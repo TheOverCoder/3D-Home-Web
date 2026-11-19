@@ -416,19 +416,99 @@ describe('a save broken or edited by hand', () => {
     expect(without(savedNow(), 'ledger')).toEqual(without(loaded, 'ledger'))
   })
 
-  it("the neighbours' friendships: kept as saved; a farm from before them has met no one; broken, made safe and the rest as it was", () => {
+  it("the neighbours' friendships: kept as saved for those met; a farm from before them has met no one; broken, made safe and the rest as it was", () => {
     expect(farm.friends).toEqual({})
     startFrom(without(played, 'friends'))
     expect(farm.friends).toEqual({})
     expect(without(savedNow(), 'friends')).toEqual(without(loaded, 'friends'))
+    // the act's five chapters done: all five met (src/farm/people/story.ts)
+    const story = { done: ['bread', 'class', 'scarves', 'honey', 'picnic'], on: null, sent: false }
     const friends = { baker: { points: 9, told: 1 }, child: { points: 3, told: 0 } }
-    startFrom({ ...played, friends })
+    startFrom({ ...played, story, friends })
     expect(farm.friends).toEqual(friends)
     expect(savedNow().friends).toEqual(friends)
     // points below nothing, more hearts told than reached, someone not a neighbour, a friendship that is a word
-    startFrom({ ...played, friends: { baker: { points: -2, told: 4 }, manager: { points: 5, told: 0 }, teacher: 'yes', knitter: { points: Infinity, told: 9 } } })
+    startFrom({ ...played, story, friends: { baker: { points: -2, told: 4 }, manager: { points: 5, told: 0 }, teacher: 'yes', knitter: { points: Infinity, told: 9 } } })
     expect(farm.friends).toEqual({ baker: { points: 0, told: 0 }, knitter: { points: 0, told: 0 } })
-    expect(without(savedNow(), 'friends')).toEqual(without(loaded, 'friends'))
+    expect(without(savedNow(), 'friends', 'story')).toEqual(without(loaded, 'friends', 'story'))
+    // only those met: with the first chapter on, the baker alone
+    startFrom({ ...played, story: { done: [], on: 'bread', sent: false }, friends })
+    expect(farm.friends).toEqual({ baker: friends.baker })
+    // with no story (a farm from before it, or one met by a save edited by hand), no one
+    startFrom({ ...played, friends })
+    expect(farm.friends).toEqual({})
+  })
+
+  it('the mailbox, the story and its request load as saved; a farm from before them has none; broken, made safe and the rest as it was', () => {
+    expect([farm.mail, farm.story, farm.requests]).toEqual([{ waiting: [], read: [] }, { done: [], on: null, sent: false }, []])
+    const story = { done: ['bread'], on: 'class', sent: false }
+    const mail = { waiting: [{ id: 'thanks:bread', from: 'baker', prize: { decor: 'bench' } }], read: [{ id: 'chapter:bread', from: 'baker' }] }
+    const requests = [
+      {
+        lines: [
+          { good: 'lemon', want: 6, have: 2 },
+          { good: 'strawberry', want: 10, have: 0 },
+        ],
+        coins: 30,
+        surprise: false,
+        from: 'teacher',
+        chapter: 'class',
+      },
+    ]
+    startFrom({ ...played, story, mail, requests })
+    expect([farm.story, farm.mail]).toEqual([story, mail])
+    expect(farm.requests.map(({ id: _id, ...o }) => o)).toEqual(requests)
+    const again = savedNow()
+    expect([again.story, again.mail, again.requests]).toEqual([story, mail, requests])
+    expect(without(again, 'story', 'mail', 'requests')).toEqual(without(loaded, 'story', 'mail', 'requests'))
+    // broken: chapters out of order, a letter that is no letter, one twice, a gift no save holds, a request for another
+    // chapter asking more than it wants
+    startFrom({
+      ...played,
+      story: { done: ['class', 'bread'], on: 'scarves', sent: 'yes' },
+      mail: { waiting: [{ id: 'heart:baker:9' }, { id: 'heart:baker:1', from: 'child', prize: { coins: -5 } }, { id: 'heart:baker:1' }], read: 'none' },
+      requests: [{ lines: [{ good: 'wool', want: 99, have: 50 }], coins: 1e9, chapter: 'honey' }],
+    })
+    expect(farm.story).toEqual({ done: [], on: null, sent: false })
+    expect(farm.mail).toEqual({ waiting: [{ id: 'heart:baker:1', from: 'baker' }], read: [] })
+    expect(farm.requests).toEqual([])
+    // a chapter on with its request lost: asked again, nothing in yet
+    startFrom({ ...played, story: { done: ['bread'], on: 'class', sent: false } })
+    expect(farm.requests.map((o) => [o.chapter, o.from, o.lines.map((l) => [l.good, l.want, l.have])])).toEqual([
+      [
+        'class',
+        'teacher',
+        [
+          ['lemon', 6, 0],
+          ['strawberry', 10, 0],
+        ],
+      ],
+    ])
+    // its request sent: none on the board (the thank-you letter comes next)
+    startFrom({ ...played, story: { done: ['bread'], on: 'class', sent: true }, requests })
+    expect(farm.requests).toEqual([])
+  })
+
+  it("a neighbour's order on the board and a neighbour in the line come back as theirs, only for those met", () => {
+    const board = played.orders as Save[]
+    const k = board.findIndex((o) => 'lines' in o)
+    const queue = played.queue as Save[]
+    const orders = board.map((o, i) => (i === k ? { ...o, from: 'baker' } : o))
+    const line = [{ ...queue[0], who: 'baker', name: 'Someone', look: queue[1].look }, { ...queue[1], who: 'baker' }, { ...queue[2], who: 'teacher' }, ...queue.slice(3)]
+    startFrom({ ...played, story: { done: [], on: 'bread', sent: false }, orders, queue: line })
+    expect((farm.orders[k] as { order: { from?: string } }).order.from).toBe('baker')
+    // the baker is themselves (their name and look), once; the teacher is not met: a stranger
+    const baker = inLine().filter((v) => v.who === 'baker')
+    expect(baker.map((v) => v.name)).toEqual(['Moshe'])
+    expect(inLine().some((v) => v.who === 'teacher')).toBe(false)
+    expect(inLine().length).toBe(queue.length - 1)
+    const saved = savedNow()
+    expect((saved.queue as Save[]).filter((b) => b.who).map((b) => b.who)).toEqual(['baker'])
+    expect((saved.orders as Save[])[k].from).toBe('baker')
+    // nobody met: the order is a stranger's, and everyone in line too
+    startFrom({ ...played, orders, queue: line })
+    expect((farm.orders[k] as { order: { from?: string } }).order.from).toBeUndefined()
+    expect(inLine().some((v) => v.who)).toBe(false)
   })
 
   it('a buyer in line saved before the people engine (a hat yes or no, three hair styles) loads as they were', () => {

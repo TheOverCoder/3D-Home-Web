@@ -71,6 +71,8 @@ export async function bootApp(page: Page, query = 'debug&quality=low') {
   await page.evaluate(() => (window as any).__home?.road?.quiet?.(true))
   // the market's mood quiet (src/farm/mood.ts): every price as fair, whatever the date
   await page.evaluate(() => (window as any).__home?.mood?.quiet?.(true))
+  // the neighbours quiet (src/farm/state/neighbours.ts): no story, letter or neighbour comes by itself
+  await page.evaluate(() => (window as any).__home?.neighbours?.quiet?.(true))
 }
 
 /** The controls marked learnt on this device (src/settings.ts, `learnt`): every spec sees today's controls — the three
@@ -227,6 +229,9 @@ export async function openGame(browser: Browser, counting = false): Promise<{ ga
         // 05's walk in the rain, 16's frozen poses, leaves them as they start)
         if (h.fx?.time) h.fx.time.speed = 1
         if (h.weatherFx) h.weatherFx.most = null
+        // the neighbours quiet (src/farm/state/neighbours.ts: no story, letter or neighbour comes by itself), as a ?debug
+        // page starts: a spec that turned them on (45-neighbours) leaves them quiet for the next
+        h.neighbours?.quiet?.(true)
       }, map)
     },
   }
@@ -410,6 +415,8 @@ export async function fillFarm(page: Page): Promise<FullFarm> {
     // (the most each bears: PRODUCERS in src/farm/data.ts)
     const most: Record<string, number> = { 'apple-tree': 8, 'orange-tree': 8, 'cherry-tree': 12, 'blueberry-bush': 8, 'raspberry-bush': 8 }
     for (const [k, n] of Object.entries(most)) f.state.producers[k].stock = f.state.producers[k].stock.map(() => n)
+    // a letter in the mailbox by the gate: its flag up (src/farm/Mailbox.tsx)
+    h.neighbours?.post?.('heart:baker:1')
     const animals = Object.fromEntries(['cows', 'sheep', 'hens'].map((k) => [k, f.state.producers[k].animals]))
     h.__fullFarm = { heaviest, rooms, line: f.inLine().length, animals, decor: placed }
     return { ...h.__fullFarm, fresh: true }

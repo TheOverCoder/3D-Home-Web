@@ -1,0 +1,3 @@
+/* The line at the gate (src/farm/panels/Queue.tsx): a row never wider than the sheet, so on a phone upright a long name
+   ends in "…" and the chips wrap, rather than the row running past the screen's edge. */
+.farm-queue { grid-template-columns: minmax(0, 1fr); }
