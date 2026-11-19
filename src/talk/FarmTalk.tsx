@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import { isNeighbour, talkerOf, type NeighbourId } from '../data/people'
 import { TRACTOR } from '../farm/data'
 import { heartsOf } from '../farm/people/friends'
-import { farm, gateX, type Visitor } from '../farm/state'
+import { farm, gateX, weatherNow, type Visitor } from '../farm/state'
 import { tractorPose, type TractorPhase } from '../farm/tractorRoute'
 import { debugSet } from '../lib/debug'
 import type { TalkMoment } from './lines'
@@ -19,10 +19,17 @@ import { buyerTalker, DRIVER, heard, talk, talkNow, wireTalk } from './speech'
 /** The neighbour a buyer in line is (none: a stranger). */
 const neighbourOf = (v: Visitor): NeighbourId | null => ('who' in v && isNeighbour(v.who) ? v.who : null)
 
+/** A stranger's greeting in the rain or the snow, every other time (the rest: their usual hello). */
+function skyWord(): 'buyer-rain' | 'buyer-snow' | null {
+  const w = weatherNow()
+  if (w.amount < 0.5 || Math.random() < 0.5) return null
+  return w.kind === 'rain' ? 'buyer-rain' : w.kind === 'snow' ? 'buyer-snow' : null
+}
+
 /** A buyer's moment as they come to their place or go: a neighbour's own words, else a stranger's. */
 function say(v: Visitor, moment: 'arrive' | 'thanks' | 'no') {
   const who = neighbourOf(v)
-  if (!who) return talk(`buyer-${moment}`, buyerTalker(v), v)
+  if (!who) return talk(moment === 'arrive' ? (skyWord() ?? 'buyer-arrive') : `buyer-${moment}`, buyerTalker(v), v)
   // (a neighbour turned away says nothing: no is yours to say)
   if (moment !== 'no') talk(`${who}-${moment}`, talkerOf(who)!, v, heartsOf(farm.friends[who]?.points ?? 0))
 }

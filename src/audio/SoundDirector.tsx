@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { insideWalkIn } from '../data/buildings'
 import { DOOR, LAMPS } from '../data/layout'
-import { dayNow, eventsNow, farm } from '../farm/state'
+import { dayNow, eventsNow, farm, seasonNow, weatherNow } from '../farm/state'
 import { hingedDoorOf } from '../home/shell'
 import { HOSTED, onHost } from '../home/layout'
 import { debugSet } from '../lib/debug'
@@ -14,7 +14,9 @@ import {
   doorSound,
   dropSound,
   duckAmbient,
+  followSky,
   hearPhase,
+  hearSky,
   hearWalkIns,
   lampSwitch,
   pickupSound,
@@ -58,7 +60,15 @@ export function SoundDirector() {
   // the music and the birds follow the farm: its time of day, indoors or out, a panel open, the market (mission 06 c10)
   useEffect(() => {
     hearPhase(() => dayNow().phase)
-    const follow = () => setMusicMood(moodNow(useHome.getState()))
+    // the rain and the wind in the open air, softer under a roof, and fewer birds in winter and in the rain (mission 10 c9)
+    hearSky(() => {
+      const w = weatherNow()
+      return { rain: w.kind === 'rain' ? w.amount : 0, wind: w.wind, winter: seasonNow() === 'winter' }
+    })
+    const follow = () => {
+      setMusicMood(moodNow(useHome.getState()))
+      followSky()
+    }
     follow()
     const t = window.setInterval(follow, MOOD_EVERY)
     const unsub = useHome.subscribe((s, p) => {

@@ -11,7 +11,7 @@ import { engineStatus, openEngine } from './engine'
 export { audioGraph, live, makeEngine, setSoundPrefs, suspendForHidden, type Engine } from './engine'
 export { farmSound, play, type FarmSound, type PlayOpts } from './farmSounds'
 export { doorSound, dropSound, footstep, impactSound, jumpSound, lampSwitch, land, pickupSound, screenSound, uiClick } from './house'
-export { duckAmbient, hearNight, hearPhase, hearWalkIns, placeSound, setOutdoors, setRoomTone } from './ambience'
+export { duckAmbient, followSky, hearNight, hearPhase, hearSky, hearWalkIns, placeSound, setOutdoors, setRoomTone } from './ambience'
 export { coinLand, rattle, rewardSound } from './rewardSound'
 
 /** Call from a user gesture: creates or resumes the audio context, and starts the room tone. Safe to call often. */

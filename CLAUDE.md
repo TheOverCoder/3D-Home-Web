@@ -325,6 +325,12 @@ The README has the overview; `tests/README.md` what each test guards.
   always looked. They start once the first steps end (`SEASONS_AFTER_STEPS`): while the steps run the first spring
   waits. The season moves only on a new day played, so a time away runs in the season it was left in. The weather is
   a function of the farm's clock (`weatherAt`), never saved.
+- What a season or the weather changes in play asks `seasonPlaying()` (null while quiet or while the first steps run)
+  and only ever helps: rain waters the beds still growing (`wets`, in play and away; the welcome back says it rained),
+  a crop sown in its season gives more (`bedYield`, its bed keeps `inSeason` when the season turns), and a season's
+  piece of decoration (`season` on its `DECOR` row) is sold only in its season and stands all year (the album's
+  *The year*). The sounds follow the sky (`hearSky`: rain, softer under a roof; wind; fewer birds in winter and rain),
+  and a buyer's greeting is now and then about it.
 - Whatever a season or the weather changes asks `seasonNow()` and `weatherNow()`: spring and clear while the steps run,
   and where the game is tested (under Vitest; on a ?debug page unless `&season=on` or a season's name, `&weather=on`
   or a weather's name). The clock itself, `seasonDay()`, is never quiet: the daily week counts on it. Specs stand in

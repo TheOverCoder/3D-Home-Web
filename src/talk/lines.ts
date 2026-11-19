@@ -83,6 +83,10 @@ export const TALK = {
   'buyer-arrive': { who: 'buyer', chance: 0.35, again: 30, near: 12, lines: says('buyer', 'curious', ['Hello!', 'Hi there!', 'Hello, farmer!', 'Hi! Anything fresh today?']) },
   'buyer-thanks': { who: 'buyer', chance: 0.5, again: 12, near: 10, lines: says('buyer', 'cheerful', ['Thank you!', 'Thanks a lot!', 'Lovely, thank you!', 'Perfect, thanks!']) },
   'buyer-no': { who: 'buyer', chance: 0.6, again: 12, near: 10, lines: says('buyer', 'cheerful', ['No problem!', 'Another time, then!', 'All right. Have a lovely day!']) },
+  // in the rain or the snow a buyer's greeting is now and then about the weather instead (mission 10 c9: as rare as
+  // any greeting, and never more than once in a long while)
+  'buyer-rain': { who: 'buyer', chance: 0.35, again: 120, near: 12, lines: says('buyer', 'cheerful', ['Good rain for the garden!', 'Your beds will love this rain.', 'A little rain never hurt!']) },
+  'buyer-snow': { who: 'buyer', chance: 0.35, again: 120, near: 12, lines: says('buyer', 'cheerful', ['Look at the snow!', 'What a pretty white farm!', 'Snow at last!']) },
   // the man on the tractor (src/farm/OrderYard.tsx): a few words as he works, a short sentence now and then
   'driver-load': { who: 'driver', chance: 0.6, again: 45, near: 14, lines: says('driver', 'encouraging', ['Up you go.', 'One more crate.', 'Load it up.']) },
   'driver-go': { who: 'driver', chance: 0.5, again: 45, near: 16, lines: says('driver', 'encouraging', ['Off we go!', 'To town!']) },

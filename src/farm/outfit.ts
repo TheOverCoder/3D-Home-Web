@@ -211,6 +211,7 @@ const GIFTS: GiftRow[] = [
   ['shirt', null, 'Orchard', '#88a83c', { kind: 'album', page: 'orchard' }],
   ['trousers', null, 'Overall', '#3b5f8a', { kind: 'album', page: 'skins' }],
   ['hat', 'beanie', 'Four-season', '#4a7fb5', { kind: 'album', page: 'seasons' }],
+  ['trousers', null, 'Harvest', '#b7893a', { kind: 'album', page: 'year' }],
   ['shirt', null, 'Blossom', '#f2a7bd', { kind: 'season', ordinal: 0 }],
   ['hat', 'straw', 'Sunny', '#f5d142', { kind: 'season', ordinal: 1 }],
   ['hat', 'beanie', 'Maple', '#c4532d', { kind: 'season', ordinal: 2 }],

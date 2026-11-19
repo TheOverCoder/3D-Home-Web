@@ -89,7 +89,12 @@ export const ALBUM: readonly PageDef[] = [
   { id: 'barn', name: 'From the barn', art: 'nest-with-eggs', tiles: [...animalGoods, good('barn', PRODUCERS.beehive.good, 'Collect it from a beehive'), ...machineGoods] },
   { id: 'herd', name: 'The herd', art: 'cow', tiles: [...herd('hens'), ...herd('cows'), ...herd('sheep')] },
   { id: 'materials', name: 'Building materials', art: 'building-construction', tiles: ITEMS.map((id) => good('materials', id, 'Comes as a surprise')) },
-  { id: 'garden', name: 'The garden', art: 'house-with-garden', tiles: DECOR_KINDS.filter((k) => !k.startsWith('scarecrow')).map((k) => piece('garden', k, 'Buy it in the edit shop')) },
+  {
+    id: 'garden',
+    name: 'The garden',
+    art: 'house-with-garden',
+    tiles: DECOR_KINDS.filter((k) => !k.startsWith('scarecrow') && !SHOP[k].season).map((k) => piece('garden', k, 'Buy it in the edit shop')),
+  },
   { id: 'scarecrows', name: 'Scarecrows', art: 'sheaf-of-rice', tiles: DECOR_KINDS.filter((k) => k.startsWith('scarecrow')).map((k) => piece('scarecrows', k, 'Buy it in the edit shop')) },
   { id: 'orchard', name: 'The orchard', art: 'basket', tiles: FRUIT_KINDS.map((k) => piece('orchard', k, 'Buy it in the shop’s trees')) },
   {
@@ -119,6 +124,13 @@ export const ALBUM: readonly PageDef[] = [
       need: 1,
       how: k ? `Play on into ${SEASONS[id].name.toLowerCase()}` : 'Comes as your year begins',
     })),
+  },
+  // (mission 10 c9) each season's own piece, sold only in its season: the page takes a whole year
+  {
+    id: 'year',
+    name: 'The year',
+    art: 'cherry-blossom',
+    tiles: DECOR_KINDS.filter((k) => SHOP[k].season).map((k) => piece('year', k, `Buy it in ${SEASONS[SHOP[k].season!].name.toLowerCase()}`)),
   },
 ]
 

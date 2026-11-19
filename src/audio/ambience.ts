@@ -1,7 +1,9 @@
 // The sound of where you are: each room's quiet tone (air, the fridge's hum, the studio's fan), the open air
 // outdoors with birds by the time of day (a chorus in the morning, fewer in the evening, crickets at night: `BIRDS`), and
-// the house's quiet indoor tone inside a walk-in building (its walls keep out the wind and the birds), and where a sound
-// is heard from where you stand. It starts with the live engine (./engine.ts) and follows the player.
+// the house's quiet indoor tone inside a walk-in building (its walls keep out the wind and the birds), the weather (rain
+// on the leaves outdoors and on the roof, muffled, under one; the wind in the open air; fewer birds in winter and in the
+// rain: `toneOf`, `callOf`), and where a sound is heard from where you stand. It starts with the live engine
+// (./engine.ts) and follows the player.
 import { insideWalkIn } from '../data/buildings'
 import type { RoomId } from '../data/layout'
 import { playerState } from '../lib/playerState'
@@ -9,7 +11,7 @@ import { engineNow, live, rnd, tone, type Engine } from './engine'
 import { SCREEN_DUCK, hold } from './mix'
 
 let wantedRoom: RoomId | null = null
-let ambient: { filter: BiquadFilterNode; gain: GainNode; hum: GainNode; fan: GainNode; fanFilter: BiquadFilterNode } | null = null
+let ambient: { filter: BiquadFilterNode; gain: GainNode; hum: GainNode; fan: GainNode; fanFilter: BiquadFilterNode; rain: GainNode; rainFilter: BiquadFilterNode } | null = null
 
 let outdoors = false
 let birdTimer: number | undefined
@@ -61,6 +63,23 @@ export function hearPhase(phase: () => Phase) {
   phaseNow = phase
 }
 
+/** The sky as the farm tells it (./SoundDirector.tsx, so this file never loads the farm): how hard it rains (0–1),
+ *  the wind (0–1), and whether it is winter. */
+export interface Sky {
+  rain: number
+  wind: number
+  winter: boolean
+}
+export const CALM: Sky = { rain: 0, wind: 0, winter: false }
+let skyNow: () => Sky = () => CALM
+export function hearSky(sky: () => Sky) {
+  skyNow = sky
+}
+
+/** How much of the open air's calls a sky leaves (`callOf`): in winter fewer birds and no crickets; in the rain
+ *  (from `wet` on) fewer still and no crickets. */
+export const QUIETER = { winter: 0.35, rain: 0.2, wet: 0.3 } as const
+
 /** The open air's calls by the time of day: one every `gap` ms (between its two), a bird with the chance `bird` (a dove
  *  among them with the chance `dove`), else a cricket with the chance `cricket`. The dawn chorus in the morning; by day
  *  as it always was; fewer in the evening, the doves and a first cricket; at night only the crickets. */
@@ -71,11 +90,13 @@ export const BIRDS: Readonly<Record<Phase, { gap: readonly [number, number]; bir
   night: { gap: [900, 3800], bird: 0, dove: 0, cricket: 0.6 },
 }
 
-/** What calls this time at `phase`, by the dice: a songbird, a dove, a cricket or nothing. */
-export function callOf(phase: Phase, rand: () => number = Math.random): 'song' | 'dove' | 'cricket' | null {
+/** What calls this time at `phase` under `sky`, by the dice: a songbird, a dove, a cricket or nothing. */
+export function callOf(phase: Phase, rand: () => number = Math.random, sky: Sky = CALM): 'song' | 'dove' | 'cricket' | null {
   const row = BIRDS[phase]
-  if (rand() < row.bird) return rand() < row.dove ? 'dove' : 'song'
-  return rand() < row.cricket ? 'cricket' : null
+  const wet = sky.rain >= QUIETER.wet
+  const bird = row.bird * (sky.winter ? QUIETER.winter : 1) * (wet ? QUIETER.rain : 1)
+  if (rand() < bird) return rand() < row.dove ? 'dove' : 'song'
+  return !sky.winter && !wet && rand() < row.cricket ? 'cricket' : null
 }
 
 /** A cricket somewhere in the dark: two or three chirps, each a quick trill of four pulses. */
@@ -94,7 +115,7 @@ function birdCall() {
   checkWalledIn()
   const e = outdoors && !walledIn ? live() : null
   const phase = phaseNow()
-  const call = e ? callOf(phase) : null
+  const call = e ? callOf(phase, Math.random, skyNow()) : null
   if (e && call === 'cricket') cricket(e)
   else if (e && call) {
     const t = e.ac.currentTime + 0.01
@@ -142,6 +163,29 @@ const ROOM_TONE: Record<RoomId, { cutoff: number; level: number; hum: number; fa
   bedroom: { cutoff: 300, level: 0.035, hum: 0, fan: 0 },
 }
 
+/** Where you hear the weather from: the open air, or under a roof (a room of the house, between them, a walk-in). */
+export type Heard = 'open' | 'roof'
+/** The open air's own tone, and the house's between its rooms (and a walk-in's). */
+const OPEN = { cutoff: 1100, level: 0.05, hum: 0, fan: 0 }
+const INSIDE = { cutoff: 350, level: 0.04, hum: 0, fan: 0 }
+/** The weather's share of the tone: rain as noise, bright on the leaves in the open air (`open`), low and soft on the
+ *  roof under one (`roof`); the wind lifts the open air's level and brightens it, and is not heard indoors. */
+export const SKY_TONE = { open: { rain: 0.07, cutoff: 5200 }, roof: { rain: 0.022, cutoff: 900 }, wind: { level: 0.06, cutoff: 900 } } as const
+
+/** The tone of where you are under `sky`: the room's own (null: the open air or between rooms), and the rain's layer. */
+export function toneOf(heard: Heard, room: RoomId | null, sky: Sky) {
+  const base = heard === 'open' ? OPEN : room ? ROOM_TONE[room] : INSIDE
+  const wind = heard === 'open' ? sky.wind : 0
+  const rain = SKY_TONE[heard]
+  return {
+    ...base,
+    cutoff: base.cutoff + SKY_TONE.wind.cutoff * wind,
+    level: base.level + SKY_TONE.wind.level * wind,
+    rain: rain.rain * sky.rain,
+    rainCutoff: rain.cutoff,
+  }
+}
+
 /** The room tone's sources, started once with the live engine (it fades in). */
 export function startAmbient() {
   const engine = engineNow()
@@ -185,7 +229,19 @@ export function startAmbient() {
   fan.gain.value = 0
   fanSrc.connect(fanFilter).connect(fan).connect(amb)
   fanSrc.start()
-  ambient = { filter, gain, hum, fan, fanFilter }
+  // rain: white noise, low-passed by where you hear it from
+  const rainSrc = ac.createBufferSource()
+  rainSrc.buffer = white
+  rainSrc.loop = true
+  const rainFilter = ac.createBiquadFilter()
+  rainFilter.type = 'lowpass'
+  rainFilter.frequency.value = SKY_TONE.open.cutoff
+  rainFilter.Q.value = 0.3
+  const rain = ac.createGain()
+  rain.gain.value = 0
+  rainSrc.connect(rainFilter).connect(rain).connect(amb)
+  rainSrc.start()
+  ambient = { filter, gain, hum, fan, fanFilter, rain, rainFilter }
   amb.gain.setTargetAtTime(1, ac.currentTime, 1.2)
   setRoomTone(wantedRoom)
 }
@@ -197,12 +253,17 @@ export function setRoomTone(room: RoomId | null) {
   if (!engine || !ambient) return
   const now = engine.ac.currentTime
   // the open air outdoors; a room's own tone; else the house's quiet indoor tone (between its rooms, or in a walk-in)
-  const tone = outdoors && !walledIn ? { cutoff: 1100, level: 0.05, hum: 0, fan: 0 } : room ? ROOM_TONE[room] : { cutoff: 350, level: 0.04, hum: 0, fan: 0 }
+  const tone = toneOf(outdoors && !walledIn ? 'open' : 'roof', outdoors && !walledIn ? null : room, skyNow())
   ambient.filter.frequency.setTargetAtTime(tone.cutoff, now, 0.8)
   ambient.gain.gain.setTargetAtTime(tone.level, now, 0.8)
   ambient.hum.gain.setTargetAtTime(tone.hum, now, 1.0)
   ambient.fan.gain.setTargetAtTime(tone.fan, now, 1.0)
+  ambient.rain.gain.setTargetAtTime(tone.rain, now, 1.5)
+  ambient.rainFilter.frequency.setTargetAtTime(tone.rainCutoff, now, 0.8)
 }
+
+/** The sky changes slowly: its tone is looked at again now and then (./SoundDirector.tsx, with the music's mood). */
+export const followSky = () => setRoomTone(wantedRoom)
 
 /** The room tone steps back while something has your attention: a screen or the settings (`who` 'screen'), a film
  *  ('film'). Each holds its own step back (./mix.ts, hold), so one ending never brings the tone back under another. */

@@ -37,7 +37,7 @@ describe('the pages and their tiles', () => {
     expect(got('materials')).toEqual(ITEMS)
     const barn = PRODUCE.filter((p) => !p.material && !got('grown').includes(p.id)).map((p) => p.id)
     expect(got('barn').sort()).toEqual(barn.sort())
-    expect([...got('garden'), ...got('scarecrows')].sort()).toEqual([...DECOR_KINDS].sort())
+    expect([...got('garden'), ...got('scarecrows'), ...got('year')].sort()).toEqual([...DECOR_KINDS].sort())
     expect(got('orchard')).toEqual(FRUIT_KINDS)
   })
 
