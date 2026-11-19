@@ -97,7 +97,10 @@ describe('update-v1/owners.json', () => {
   const real = JSON.parse(readFileSync('update-v1/owners.json', 'utf8')) as Owners
   // the agents of RUN.md §1's tables ("| **02a** · L |"), and phase 3's two
   const run = readFileSync('update-v1/RUN.md', 'utf8')
-  const listed = [...run.matchAll(/^\| \*\*([\w-]+)\*\* ·/gm)].map((m) => m[1])
+  // the agents still to run have their row; the merged ones are named on the phase's "Done:" line
+  const rows = [...run.matchAll(/^\| \*\*([\w-]+)\*\* ·/gm)].map((m) => m[1])
+  const done = [...run.matchAll(/^Done: ([^(\n]+)/gm)].flatMap((m) => m[1].split(',').map((id) => id.trim().replace(/\.$/, '')))
+  const listed = [...rows, ...done]
 
   it('has a row for every agent in RUN.md, and none it does not name', () => {
     expect(listed.length).toBeGreaterThan(25)
