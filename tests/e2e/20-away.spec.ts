@@ -46,7 +46,7 @@ test.describe('welcome back', () => {
       const card = page.locator('.farm-panel[aria-label="Welcome back"]')
       await expect(card).toBeVisible()
       await expect(card.locator('.farm-basket-item', { hasText: 'Eggs' }).locator('.qty')).toHaveText(String(eggs))
-      await expect(card.locator('.farm-sub .tag')).toContainText('min away')
+      await expect(card.locator('.mp-sub .tag')).toContainText('min away')
       // go there: the card closes, and the nest is marked, as the compass marks it
       await card.getByRole('button', { name: /Go there/ }).click()
       await expect.poll(() => panel(page), { timeout: 10_000 }).toBe(null)
@@ -110,7 +110,7 @@ test.describe('welcome back', () => {
       const r = await away(page)
       expect(Math.round(r.seconds / 60)).toBeGreaterThanOrEqual(59)
       expect(r.goods.some((g: any) => g.item === 'lettuce')).toBe(true)
-      await expect(card.locator('.farm-sub .tag')).toContainText('1 h')
+      await expect(card.locator('.mp-sub .tag')).toContainText('1 h')
       await expect(card.locator('.farm-basket-item', { hasText: 'Lettuces' })).toBeVisible()
       expect(errors, errors.join('\n')).toEqual([])
     } finally {

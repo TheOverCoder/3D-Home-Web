@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { Page } from '@playwright/test'
-import { test, expect, bootApp, watchErrors, BASE, type Game } from './helpers'
+import { test, expect, bootApp, closePanel, watchErrors, BASE, type Game } from './helpers'
 import { XP_FOR } from '../../src/farm/data'
 import { levelOf, levelReward, seedXp, xpAt } from '../../src/farm/xp'
 import { boxAt, boxCoins, boxXp } from '../../src/farm/gifts'
@@ -273,7 +273,7 @@ test.describe('levels', () => {
     await expect(card.locator('.level-next')).toContainText(`+${levelReward(3)}`)
     await expect(card.getByRole('button', { name: /^Claim/ })).toHaveCount(0)
     // its Close pays nothing more
-    await card.getByRole('button', { name: 'Close (Esc)' }).click()
+    await closePanel(page)
     await expect(card).toHaveCount(0)
     expect(await coins(page)).toBe(before.coins + levelReward(2))
     expect(await page.evaluate(() => (window as any).__home.farm.state.xp.paid)).toBe(2)
@@ -336,44 +336,50 @@ test.describe('levels', () => {
     const { page } = game
     await fresh(game)
     await game.teleport(-1.2, 1.4, 8.5, 0, 0)
-    // level 3 with its first two boxes reached, its coins paid; level 2's last box never opened
-    const points = boxXp(boxAt(3, 1))
+    // level 7 with its first two boxes reached, its coins paid; level 6's last box never opened (the first levels have
+    // one box each, on the full bar: from level 5, one at each quarter)
+    const points = boxXp(boxAt(7, 1))
     await page.evaluate(
       ({ points, open }) => {
         const h = (window as any).__home
         h.farm.setRandom(() => 0) // every box: coins
         h.farm.state.xp.points = points
-        h.farm.state.xp.paid = 3
-        h.farm.state.gifts = { open, also: [], gave: [], came: [], seen: 3 }
+        h.farm.state.xp.paid = 7
+        h.farm.state.gifts = { open, also: [], gave: [], came: [], seen: 7 }
         h.farm.useFarm.setState((s: any) => ({ rev: s.rev + 1 }))
       },
-      { points, open: boxAt(2, 3) },
+      { points, open: boxAt(6, 3) },
     )
     const start = await page.evaluate(() => ({ coins: (window as any).__home.farm.state.coins as number, xp: (window as any).__home.farm.xpNow().points as number }))
     // the level's road at the top glows with the three boxes waiting, their count at its end
     const chip = page.locator('.farm-chip-item.level')
-    await expect(chip).toHaveAttribute('aria-label', 'Level 3: 3 gifts to open')
+    await expect(chip).toHaveAttribute('aria-label', 'Level 7: 3 gifts to open')
     await expect(chip).toHaveClass(/\bready\b/)
     await expect(chip.locator('.top-road-gifts')).toHaveText('3')
     await chip.click()
-    const card = page.locator('.farm-panel[aria-label="Level 3"]')
+    const card = page.locator('.farm-panel[aria-label="Level 7"]')
     await expect(card).toBeVisible()
     // two boxes ready on the bar, two locked (the next one says how far); one button for all three waiting
     await expect(card.locator('.lf-box.ready')).toHaveCount(2)
     await expect(card.locator('.lf-box.locked')).toHaveCount(2)
-    await expect(card.locator('.lf-box-xp')).toHaveText(`${boxXp(boxAt(3, 2)) - points} XP`)
+    await expect(card.locator('.lf-box-xp')).toHaveText(`${boxXp(boxAt(7, 2)) - points} XP`)
+    // its "?": what a box can hold and how likely, then closed again
+    await card.locator('.lf-odds .odds-btn').click()
+    await expect(card.locator('.lf-odds .odds-sheet')).toContainText('Coins55 %')
+    await card.locator('.lf-odds .odds-btn').click()
+    await expect(card.locator('.lf-odds .odds-sheet')).toHaveCount(0)
     const all = card.getByRole('button', { name: 'Open 3 gifts' })
     await expect(all).toContainText('1 from earlier levels')
     // one tap: the box opens in the middle of the card, its coins given at once; Collect sends them home
     await card.getByRole('button', { name: 'Open gift 1' }).click()
     const gift = page.getByRole('dialog', { name: 'Your gift' })
     await expect(gift).toBeVisible()
-    await expect(gift).toContainText(`${boxCoins(3, 0)} coins`)
-    expect(await page.evaluate(() => (window as any).__home.farm.state.coins)).toBe(start.coins + boxCoins(3, 0))
+    await expect(gift).toContainText(`${boxCoins(7, 0)} coins`)
+    expect(await page.evaluate(() => (window as any).__home.farm.state.coins)).toBe(start.coins + boxCoins(7, 0))
     await gift.getByRole('button', { name: 'Collect' }).click()
     await expect(gift).toHaveCount(0)
     // on the bar: what it gave, taken; two still waiting
-    await expect(card.locator('.lf-box.open')).toHaveAttribute('aria-label', `Gift 1: ${boxCoins(3, 0)} coins, taken`)
+    await expect(card.locator('.lf-box.open')).toHaveAttribute('aria-label', `Gift 1: ${boxCoins(7, 0)} coins, taken`)
     await card.getByRole('button', { name: 'Open 2 gifts' }).click()
     const both = page.getByRole('dialog', { name: '2 gifts' })
     await both.getByRole('button', { name: 'Collect all' }).click()
@@ -383,17 +389,17 @@ test.describe('levels', () => {
       xp: (window as any).__home.farm.xpNow().points as number,
       waiting: (window as any).__home.farm.giftsWaiting() as number[],
     }))
-    expect(end.coins).toBe(start.coins + boxCoins(3, 0) + boxCoins(3, 1) + boxCoins(2, 3))
+    expect(end.coins).toBe(start.coins + boxCoins(7, 0) + boxCoins(7, 1) + boxCoins(6, 3))
     expect(end.waiting).toEqual([])
     expect(end.xp, 'a gift is not XP').toBe(start.xp)
     // nothing waits: no button, the next gift and how far it is instead; and nothing is given twice
     await expect(card.getByRole('button', { name: /^Open \d+ gifts?$|^Open your gift$/ })).toHaveCount(0)
     await expect(card.locator('.lf-hint')).toContainText('Next gift: 75%')
-    expect(await page.evaluate((boxes) => (window as any).__home.farm.openGifts(boxes), [boxAt(2, 3), boxAt(3, 0), boxAt(3, 1), boxAt(3, 2)])).toEqual([])
-    await card.getByRole('button', { name: 'Close (Esc)' }).click()
+    expect(await page.evaluate((boxes) => (window as any).__home.farm.openGifts(boxes), [boxAt(6, 3), boxAt(7, 0), boxAt(7, 1), boxAt(7, 2)])).toEqual([])
+    await closePanel(page)
     await expect(card).toHaveCount(0)
     // none left: the road no longer glows, and its end shows the next level's prize again
-    await expect(chip).toHaveAttribute('aria-label', 'Level 3: what the next level brings')
+    await expect(chip).toHaveAttribute('aria-label', 'Level 7: what the next level brings')
     await expect(chip).not.toHaveClass(/\bready\b/)
     await expect(chip.locator('.top-road-gifts')).toHaveCount(0)
     await expect(chip.locator('.top-road-prize')).toBeVisible()

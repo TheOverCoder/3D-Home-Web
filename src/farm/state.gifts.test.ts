@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { takeFx } from '../fx/fx'
 import { BEDS, ITEMS, XP_FOR, cropById } from './data'
-import { boxAt, boxCoins, boxXp, boxesReached, rollArrival, type Prize } from './gifts'
+import { BOXES_FROM, boxAt, boxCoins, boxXp, boxesReached, isBox, rollArrival, type Prize } from './gifts'
 import { levelView } from './levelView'
 import { claimLevel, farm, gainXp, giftsWaiting, openGifts, readyOnFarm, resetFarm, sawLevel, setRandom, switchSlot, xpEventCount, xpNow } from './state'
 import { OLD_SAVE, justSaved, savedNow, startFrom } from './testSaves'
@@ -39,59 +39,75 @@ afterEach(() => setRandom(null))
 describe('the boxes on the level’s bar', () => {
   it('a new farm has none waiting; a box reached waits, and one tap opens it once — its prize given at once, rolled on the farm’s dice', () => {
     expect(giftsWaiting()).toEqual([])
-    at(boxXp(boxAt(1, 0)))
-    expect(giftsWaiting()).toEqual([0])
+    // the first levels have one box, on the full bar: none at a quarter of level 1's
+    at(boxXp(boxAt(1, 2)))
+    expect(giftsWaiting()).toEqual([])
+    const first = boxAt(1, 3)
+    at(boxXp(first))
+    expect(giftsWaiting()).toEqual([first])
     const before = purse()
-    const got = openGifts([0])
-    expect(got).toEqual([{ box: 0, prize: { coins: boxCoins(1, 0) } }])
+    const got = openGifts([first])
+    expect(got).toEqual([{ box: first, prize: { coins: boxCoins(1, 3) } }])
     expect(purse()).toEqual(plus(before, got[0].prize))
     expect(giftsWaiting()).toEqual([])
+    expect(farm.gifts).toMatchObject({ open: first + 1, also: [] })
     // again, or a box not reached, or not a box: nothing
-    expect(openGifts([0])).toEqual([])
-    expect(openGifts([1, 2, -1, 0.5, NaN])).toEqual([])
+    expect(openGifts([first])).toEqual([])
+    expect(openGifts([0, 1, 2, 5, -1, 0.5, NaN])).toEqual([])
     expect(openGifts()).toEqual([])
     expect(purse()).toEqual(plus(before, got[0].prize))
   })
 
+  it(`one box a level before level ${BOXES_FROM}, four from it on: the first levels’ boxes are four, not sixteen`, () => {
+    at(xpAt(BOXES_FROM))
+    expect(giftsWaiting()).toEqual([boxAt(1, 3), boxAt(2, 3), boxAt(3, 3), boxAt(4, 3)])
+    at(boxXp(boxAt(BOXES_FROM, 2)))
+    expect(giftsWaiting().filter((k) => k >= boxAt(BOXES_FROM, 0))).toEqual([0, 1, 2].map((q) => boxAt(BOXES_FROM, q)))
+  })
+
   it('Open all: every box waiting, this level’s and the levels’ before, each given once; afterwards none wait', () => {
-    at(boxXp(boxAt(3, 1)) + 1) // level 3, half way: ten boxes reached
-    expect(giftsWaiting()).toHaveLength(10)
+    at(boxXp(boxAt(7, 1)) + 1) // level 7, half way: the four of levels 1–4, eight of 5 and 6, two of 7
+    const all = Array.from({ length: boxAt(7, 2) }, (_, k) => k).filter(isBox)
+    expect(all).toHaveLength(14)
+    expect(giftsWaiting()).toEqual(all)
     const coins = farm.coins
     const got = openGifts()
-    expect(got.map((o) => o.box)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+    expect(got.map((o) => o.box)).toEqual(all)
     expect(farm.coins - coins).toBe(got.reduce((n, o) => n + ('coins' in o.prize ? o.prize.coins : 0), 0))
     expect(giftsWaiting()).toEqual([])
-    expect(farm.gifts).toMatchObject({ open: 10, also: [] })
+    expect(farm.gifts).toMatchObject({ open: boxAt(7, 2), also: [] })
     expect(openGifts()).toEqual([])
     expect(farm.coins - coins).toBe(got.reduce((n, o) => n + ('coins' in o.prize ? o.prize.coins : 0), 0))
   })
 
   it('out of turn: this level’s box tapped while older ones wait; what it gave stays on its bar; the older ones open later, once', () => {
-    at(boxXp(boxAt(2, 2))) // level 2's third box: seven reached
-    const mine = boxAt(2, 2)
+    at(boxXp(boxAt(6, 2))) // level 6's third box
+    const mine = boxAt(6, 2)
+    const older = Array.from({ length: mine }, (_, k) => k).filter(isBox)
     expect(openGifts([mine])).toHaveLength(1)
-    expect(farm.gifts).toMatchObject({ open: 0, also: [mine], gave: [{ box: mine, prize: { coins: boxCoins(2, 2) } }] })
-    expect(giftsWaiting()).toEqual([0, 1, 2, 3, 4, 5])
-    // the card: its box open with what it gave, the two before it ready, the last locked; six waiting, four earlier
+    // (the places with no box before the first one count as opened)
+    expect(farm.gifts).toMatchObject({ open: boxAt(1, 3), also: [mine], gave: [{ box: mine, prize: { coins: boxCoins(6, 2) } }] })
+    expect(giftsWaiting()).toEqual(older)
+    // the card: its box open with what it gave, the two before it ready, the last locked; ten waiting, eight earlier
     const v = levelView(farm.xp.points, farm.xp.paid, farm.gifts)
     expect(v.boxes.map((b) => b.state)).toEqual(['ready', 'ready', 'open', 'locked'])
-    expect(v.boxes[2].prize).toEqual({ coins: boxCoins(2, 2) })
-    expect(v.boxes[3].xp).toBe(xpAt(3) - farm.xp.points)
-    expect([v.waiting.length, v.earlier]).toEqual([6, 4])
-    expect(openGifts().map((o) => o.box)).toEqual([0, 1, 2, 3, 4, 5])
-    expect(farm.gifts).toMatchObject({ open: 7, also: [] })
-    expect(farm.gifts.gave.map((o) => o.box)).toEqual([boxAt(2, 0), boxAt(2, 1), mine])
+    expect(v.boxes[2].prize).toEqual({ coins: boxCoins(6, 2) })
+    expect(v.boxes[3].xp).toBe(xpAt(7) - farm.xp.points)
+    expect([v.waiting.length, v.earlier]).toEqual([10, 8])
+    expect(openGifts().map((o) => o.box)).toEqual(older)
+    expect(farm.gifts).toMatchObject({ open: mine + 1, also: [] })
+    expect(farm.gifts.gave.map((o) => o.box)).toEqual([boxAt(6, 0), boxAt(6, 1), mine])
   })
 
   it('goods go in even past full (as surprises do: refused, they would be lost); a material when the farm makes nothing yet', () => {
     farm.made.push('egg')
     farm.inv.egg = 50 // the barn full
-    at(boxXp(boxAt(1, 1)))
+    at(boxXp(boxAt(5, 1)))
     setRandom(always(0.99)) // a few of a good the farm makes: eggs
-    expect(openGifts([1])).toEqual([{ box: 1, prize: { item: 'egg', n: 3 } }])
+    expect(openGifts([boxAt(5, 1)])).toEqual([{ box: boxAt(5, 1), prize: { item: 'egg', n: 3 } }])
     expect(farm.inv.egg).toBe(53)
     farm.made.length = 0
-    expect(openGifts([0])).toEqual([{ box: 0, prize: { item: ITEMS[5], n: 1 } }])
+    expect(openGifts([boxAt(5, 0)])).toEqual([{ box: boxAt(5, 0), prize: { item: ITEMS[5], n: 1 } }])
     expect(farm.inv[ITEMS[5]]).toBe(1)
   })
 
@@ -153,15 +169,15 @@ describe('a level reached', () => {
 
 describe('the save', () => {
   it('kept: what was opened stays opened after a load — nothing given twice — and what waits still waits', () => {
-    at(boxXp(boxAt(2, 1)))
-    openGifts([boxAt(2, 1)])
+    at(boxXp(boxAt(6, 1)))
+    openGifts([boxAt(6, 1)])
     const saved = savedNow()
     expect(saved.gifts).toEqual(farm.gifts)
     resetFarm()
     startFrom(justSaved(saved))
     expect(farm.gifts).toEqual(saved.gifts)
-    expect(openGifts([boxAt(2, 1)])).toEqual([])
-    expect(giftsWaiting()).toEqual([0, 1, 2, 3, 4])
+    expect(openGifts([boxAt(6, 1)])).toEqual([])
+    expect(giftsWaiting()).toEqual(Array.from({ length: boxAt(6, 1) }, (_, k) => k).filter(isBox))
   })
 
   it('a farm from before the gifts: the boxes its level reached so far wait for it, the levels before are not given again', () => {
@@ -170,7 +186,7 @@ describe('the save', () => {
       const points = seedXp(farm.stats)
       expect(farm.xp.points).toBe(points)
       const level = levelOf(points)
-      expect(giftsWaiting()).toEqual(Array.from({ length: boxesReached(points) - boxAt(level, 0) }, (_, k) => boxAt(level, 0) + k))
+      expect(giftsWaiting()).toEqual(Array.from({ length: boxesReached(points) - boxAt(level, 0) }, (_, k) => boxAt(level, 0) + k).filter(isBox))
       expect(farm.gifts).toMatchObject({ open: boxAt(level, 0), came: [], seen: level })
     } finally {
       switchSlot(1)

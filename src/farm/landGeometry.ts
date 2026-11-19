@@ -3,6 +3,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import { WALK_INS, bounds } from '../data/buildings'
 import { SHRUB_SPOTS } from '../data/garden'
 import { GARDEN, GATE, LANE } from '../data/layout'
+import { LOT } from '../data/lot'
 import { CABIN } from '../data/market'
 import type { SculptMaterialOptions } from '../lib/sculpt'
 import { placeBigTree, trunksByBark, type PlacedTree } from '../models/trees'
@@ -50,18 +51,19 @@ export interface Built {
 
 const flat = (gs: BufferGeometry[]) => gs.map((g) => (g.index ? g.toNonIndexed() : g))
 
-/** How far the woods stand clear of the land the farm owns and of the buildings beyond it, metres. */
+/** How far the woods stand clear of the land the farm owns, and of the lot beyond the lane and the buildings on it,
+ *  metres. */
 export const WOODS_CLEAR = 3.5
 
-/** Where the woods' trees stand: a loose ring round the farm. One standing on land the farm owns, or by a walk-in
- *  building (src/data/buildings.ts) or the contractor's cabin, has stepped back (outwards, away from the house) until it
- *  stands clear of it. */
+/** Where the woods' trees stand: a loose ring round the farm. One standing on land the farm owns, or by the lot (its
+ *  rows: src/data/lot.ts), a walk-in building on it (src/data/buildings.ts) or the contractor's cabin, has stepped back
+ *  (outwards, away from the house) until it stands clear of them. */
 export function treeSpots(layout: FarmLayout): { x: number; z: number; height: number; seed: number }[] {
   const r = mulberry(9)
   // the same seed once laid out the shrubs: skip what it gave them, so the woods stand where they always have
   for (let i = 0; i < SHRUB_SPOTS.length; i++) r()
   const owned = ownedRects(layout)
-  const built = [...WALK_INS.map(bounds), CABIN].map((b) => ({ minX: b.x0, maxX: b.x1, minZ: b.z0, maxZ: b.z1 }))
+  const built = [...WALK_INS.map(bounds), CABIN, ...LOT].map((b) => ({ minX: b.x0, maxX: b.x1, minZ: b.z0, maxZ: b.z1 }))
   const C = WOODS_CLEAR
   const near = (rects: Rect[]) => (x: number, z: number) => rects.some((o) => x > o.minX - C && x < o.maxX + C && z > o.minZ - C && z < o.maxZ + C)
   const onLand = near(owned)
@@ -78,7 +80,7 @@ export function treeSpots(layout: FarmLayout): { x: number; z: number; height: n
     // lane outside the farm gate: those trees step back from them
     if (x < -8 && Math.abs(z - TRACTOR.z) < 5) z = TRACTOR.z + (z >= TRACTOR.z ? 1 : -1) * (5.5 + (i % 3))
     if (Math.abs(z - LANE.z) < 3.2) z = LANE.z + 5.5 + (i % 3)
-    // and from the buildings beyond the lane, the same way: outwards, away from the house
+    // and from the lot beyond the lane and its buildings, the same way: outwards, away from the house
     if (byBuilding(x, z)) {
       const a = Math.atan2(z, x)
       let d = Math.hypot(x, z)

@@ -72,7 +72,8 @@ The README has the overview; `tests/README.md` what each test guards.
   the house the walls still judge what is outdoors (what the portals let in through a window). The rooms, portals and
   the sun's culling are the house's map's; on the farm only the walk-ins' walls hide things. A walk-in building adds
   its walls as another source, and while its doors are shut it hides everything wholly inside its rooms from an eye
-  outside (its `enclosure`).
+  outside (its `enclosure`). The walk-ins' shells cast into the sun's map through one mesh (`castAsOne`, `LotShells` in
+  `src/scene/WalkIn.tsx`): a new walk-in joins it by being a row.
 - The house's shell (walls, floors, ceilings, doors) is drawn always: it is under `userData.cell = 'always'`
   (`House.tsx`), as is your own body for the camera (the sun judges it like anything in a room: `userData.sun =
   'room'`). What is outdoors is under `cell: 'outside'` (the farm on its map; the house's own garden and
@@ -183,11 +184,24 @@ The README has the overview; `tests/README.md` what each test guards.
 - An upgrade bought a step at a time is a row in `LADDERS` (one buy, `buyLadder`; one card, `LadderCard`; its level in
   `farm.ladders`), with `say(k)` for what step k gives.
 - The daily gift (`src/farm/daily.ts`, `farm.daily`; its card `DailyCard.tsx`, its watcher `DailyPanel.tsx`): once a
-  day of the device's calendar, a week of seven gifts that grow (the seventh the big one), rolled on the farm's dice as
-  it is claimed, goods past full, no XP; one missed day is forgiven, two start a new week, and the clock moved back
-  gives nothing twice. It opens by itself once a day on a farm that has begun, after whatever is over the game (the
+  day played, the season's week of seven gifts that grow (`dailyDay`: day N is the season's day N in days played, so it
+  waits through any absence; the seventh the big one), rolled on the farm's dice as it is claimed, goods past full, no
+  XP. A day played whose gift was not claimed joins the next claim (`OWED_MOST`), a return after two whole days away
+  brings a fixed welcome-back gift with it (`BACK_GIFT`), its "?" shows the odds, its words never say lost or missed,
+  and the clock moved back gives nothing twice. It opens by itself once a day on a farm that has begun, after whatever is over the game (the
   intro, a film, the drive, the welcome-back card, a panel), and waits in the corner menu until claimed. Specs not about
   it put it out of the way (`quietDaily`: `ready()` and `bootApp` in `helpers.ts`); `35-daily` tests it.
+- The farm album (`src/farm/album.ts`, `farm.album`; `AlbumCard.tsx`, `AlbumPanel.tsx`; the corner menu's *Album*):
+  pages of tiles, each earned by a deed and nothing else (`ALBUM` rows counting what `measure.ts` counts, or the seasons
+  lived: never random, never by the calendar); one not earned is a silhouette that says how. A page done gives its own
+  garment by itself, once, a frame later (`albumOn`, `outfit.owned`), with a toast: no badge, no claim, no coins, no
+  XP. A new good, kind or animal is a row; `43-album` tests it.
+- The season road (`src/farm/seasonRoad.ts`, `farm.seasonRoad`; the farm news's *This season* tab): `SEASON_ROAD`'s
+  ten stops a season, fed by the XP gained (`feedRoad`, one line in `gainXp`) once the farm's year has begun, each
+  coming in by itself through `give` with a toast, the last the season's garment. It runs on days played and is never
+  reset by the calendar: a road not finished carries on into the next season. `ROAD_XP` is held by `PACE.road` (the
+  ten-minute player done by the season's day 6). Quiet where the game is tested (`&road=on`; `__home.road.quiet`,
+  turned off in `ready()` and `bootApp`); `44-season-road` tests it.
 - Days played (`farm.played`, `src/farm/calendar.ts`): the days the farm has been opened, each counted once, the first
   frame it runs on a calendar day (`markPlayed`, asked from `tick`). They never fall, and they are the long game's clock
   (`longDay`). A claim's or a gift's prizes (`src/farm/prize.ts`: coins, goods, a piece of decoration, a garment) go in
@@ -207,7 +221,11 @@ The README has the overview; `tests/README.md` what each test guards.
   near) and lights. The model, the colliders, the hiding pieces, the camera's limits, the action button's spaces
   (`spaceAt`), the walk-to, the footsteps and the woods' clearing all follow from the row; every floor and every inner
   face that looks at the sun must be inside the sun's shadow box (`buildings.test.ts` fails otherwise), and `16-view`
-  makes its poses from the row.
+  makes its poses from the row (05's walk too). The ground outside the garden you can walk on is the lot's rows
+  (`src/data/lot.ts`: the lane, the market's forecourt, the contractor's corner): the action button's lane, the reach,
+  the invisible walls round it and the woods' clearing read them; new ground there is a row. The estate office shows the
+  house as a model on a table (1:25, from the save's shell) and the farm's map, each meadow for sale on it a price tag
+  that opens the edit mode's card for it.
 - A new character is a row of `PEOPLE` (`src/data/people.ts`: a name, a look — a roll of the people engine,
   `rollLook` in `src/models/look.ts`, over overrides on dice of their own —, a voice, a portrait drawn from their own
   model by `node scripts/render-item-art.mjs --people`) and a movement script (`src/farm/script.ts`); whatever draws
@@ -225,12 +243,13 @@ The README has the overview; `tests/README.md` what each test guards.
 
 - 500 levels (`LEVELS.max`), each taking longer than the one before. Each brings coins and a small gift (a building
   material), both coming in by themselves as it is reached (`arrive()`, paid exactly once: `xp.paid`); every fifth
-  one a garment. Each level also has four gift boxes, one at every 25% of its bar (`src/farm/gifts.ts`,
-  `farm.gifts`): opened with a tap in the level's card (the level chip opens it), rolled on the farm's dice, never
+  one a garment. Each level from `BOXES_FROM` (5) has four gift boxes, one at every 25% of its bar, and each before it
+  one, on its full bar (`src/farm/gifts.ts`, `farm.gifts`; JOURNEY.md fix 10): opened with a tap in the level's card (the level chip opens it), rolled on the farm's dice, never
   given twice, never XP; one not opened waits (the chip glows with how many), and "Open N gifts" opens them all.
 - The player's clothes are the people engine's (its shirt, trousers, straw hat, cap, beanie) in a table of garments,
   each with the level it comes with (`GARMENTS`: two of each at level 1, then one every `GARMENT_EVERY` levels); what
-  is worn is `farm.outfit` in the save. A new garment is a row there, and its picture is drawn from its model by
+  is worn is `farm.outfit` in the save. Garments not of a level (`from`: an album page, a season road) are owned once
+  given (`outfit.owned`, through `give`), with a toast, never the level's show. A new garment is a row there, and its picture is drawn from its model by
   `node scripts/render-item-art.mjs` (`src/assets/garments`). A level reached by play shows its garment after the
   level's show, and the wardrobe marks it new until it has been open.
 - Every wardrobe in the house opens with the action button: you turn round and the camera films you from in front,
@@ -356,9 +375,11 @@ The README has the overview; `tests/README.md` what each test guards.
 - Build a panel on the base: motion presets in `src/ui/motion.tsx` (`PRESS`, `SINK`, `SQUISH`, `TIP`, `POP`, `DID`,
   `NOPE`, `ARRIVE`, `REVEAL`, `DEAL`, `FLIP`, `SHIMMER`, `SHEET`), surfaces and tokens in `src/styles.css` ("the base":
   `.wood`, `.velvet` and its premium tokens, `.ribbon`, `.chip`, `.count`, `.stars`, `.shine`, `.sheet-heading`), and the
-  shared pieces: `PanelSheet` (a sheet from the edge; `size: 'card'` for a question, `foot` its two buttons, `back`
-  for pages; what opens over it carries `data-over-sheet`), `GoodPic` (a good's picture that says where it is made:
-  use it where a good's picture stands outside a button), `flyGoods` (`src/ui/fly.ts`), `Shell` for a centred card. A
+  shared pieces: `PanelSheet` (the one sheet every panel is drawn on, from the edge; `size: 'card'` for a question,
+  `foot` its two buttons, `back` for pages, `onLeave` as it starts out; what opens over it carries `data-over-sheet`;
+  a panel's CSS is only what is on it), `GoodPic` (a good's picture that says where it is made: use it where a good's
+  picture stands outside a button), `flyGoods` (`src/ui/fly.ts`), `Shell` (a card of that sheet, its own flow inside;
+  `closePanel()` in `tests/e2e/helpers.ts` closes one as a player does and waits for it to go). A
   new panel's kind is one line in `PANEL_KINDS` (`src/store.ts`): `39-panels` opens it on a phone and measures what
   can be read and pressed (`tests/e2e/readable.ts`). What may move at the top to call asks `useCalling(id)`
   (`src/ui/calls.ts`): one at a time.

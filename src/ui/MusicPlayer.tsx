@@ -1,11 +1,13 @@
-import { TRACKS, nextTrack, pauseMusic, playMusic, useMusic } from '../audio/music'
+import { TRACKS, autoMusic, nextTrack, pauseMusic, playMusic, useMusic } from '../audio/music'
 import { useSettings } from '../settings'
-import { Pause, Play, SkipBack, SkipForward } from './glyphs'
+import { Clock, Pause, Play, SkipBack, SkipForward } from './glyphs'
 
-/** The music player: what is playing, play / pause, the track before or after, and its volume. */
+/** The music player: what is playing, with Auto beside it (the track follows the farm's time of day and the place: the
+ *  default), play / pause, the track before or after (picked, it stays), and its volume. */
 export function MusicPlayer({ compact = false }: { compact?: boolean }) {
   const { playing, track } = useMusic()
   const volume = useSettings((s) => s.musicVolume)
+  const auto = useSettings((s) => s.musicTrack === 'auto')
   const update = useSettings((s) => s.update)
   const def = TRACKS[track]
   return (
@@ -18,8 +20,19 @@ export function MusicPlayer({ compact = false }: { compact?: boolean }) {
         </span>
         <div className="music-title">
           <strong>{def.name}</strong>
-          <span>{playing ? def.mood : 'paused'}</span>
+          <span>{playing ? (auto ? `${def.mood} · follows the day` : def.mood) : 'paused'}</span>
         </div>
+        <button
+          className={`btn small ${auto ? 'leaf' : 'soft'}`}
+          style={{ marginLeft: 'auto', flex: 'none' }}
+          onClick={autoMusic}
+          aria-pressed={auto}
+          aria-label="Auto: the track follows the time of day"
+          title="The track follows the time of day and the place"
+        >
+          <Clock weight="bold" />
+          Auto
+        </button>
       </div>
       <div className="music-controls">
         <button className="music-btn" onClick={() => nextTrack(-1)} aria-label="Previous track">

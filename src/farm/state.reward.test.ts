@@ -186,11 +186,11 @@ describe('claims: each one reward', () => {
 
   it('gift boxes: one for each open, however many it opens; opened already: none', () => {
     let prizes: Prize[] = []
-    expect(counted(() => (prizes = openGifts([0, 1]).map((o) => o.prize)))).toEqual(one('box', prizes))
+    expect(counted(() => (prizes = openGifts([3, 7]).map((o) => o.prize)))).toEqual(one('box', prizes))
     expect(prizes.length).toBe(2)
     expect(counted(() => (prizes = openGifts().map((o) => o.prize)))).toEqual(one('box', prizes))
     expect(prizes.length).toBeGreaterThan(2)
-    expect(counted(() => openGifts([0]))).toEqual([])
+    expect(counted(() => openGifts([3]))).toEqual([])
   })
 
   it('a goal: one, its coins and its material; not reached: none', () => {

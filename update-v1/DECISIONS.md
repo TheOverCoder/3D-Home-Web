@@ -107,3 +107,12 @@ The orchestrator runs the plan to the end without asking:
 - **Decision 11's fallback taken (10b, measured):** three.quarks' rain took 4.3 ms a frame at a 4× CPU throttle (bound:
   1 ms) at Medium's 2,000 drops, so rain and snow are fixed seeds moved by their own shader (`weatherFx` in
   `src/fx/quarks.ts`, about 0 ms a frame). Drops per tier: `profile.weather`.
+- **11b's five files outside its row accepted:** `sunBox.ts`, `lotPlan.ts` and three tests, for the
+  `FARM_SUN_BOX_PLANNED` alias 11a asked it to drop and the planned office now being the built row.
+- **The run's pace changed (the user, 2026-11-19):** too many agents at once only waited for the two test slots. The
+  eight running finish; the next stage runs at most four at once, in dependency order.
+- **07b's two files outside its row accepted:** `PanelSheet.tsx` (`onLeave`, an optional `pic`, `.farm-backdrop` out of
+  `above()`) and `ConfirmCard.tsx` (its time through `span()`, P0-split's ask). The 32 flake is fixed in `drag.ts`.
+- **02b's six files outside its row accepted:** the daily and news cards' own CSS (their bodies), the garment line in
+  `state/rewards.ts` (02a's ask), and three tests updated for gift garments, boxes at levels 3 and 7 and the *Album*
+  line. `ONE_AT = 3` (one box a level from level 3) because PACE.income and JOURNEY.full failed below it.

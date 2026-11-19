@@ -11,8 +11,10 @@ import { haptic } from '../../lib/device'
 // A finger and a scrolling list must not fight: where nothing scrolls (`axis: 'none'`, the queue's places) the drag
 // starts as the finger moves; in a list that scrolls along one way (`'x'` or `'y'`) a move along it scrolls, a move
 // across it starts the drag at once, and a finger held still a moment (HOLD) lifts the thing too (the phones' own
-// "hold to pick up"). A mouse starts a drag after a few pixels. A press that never became a drag is a tap (the
-// element's own click: the same as Enter or Space for a keyboard).
+// "hold to pick up"). A mouse starts a drag after a few pixels. A press that never became a drag is a tap: the
+// element's own click (the same as Enter or Space for a keyboard), or, for a press that says what its tap does (`tap`),
+// the press let go — so a tap counts even when what was pressed moved under the finger before it was let go (a sheet
+// still coming in, its cards rising into place: the click would then land on what is under the finger now).
 
 /** How the list a draggable is in scrolls: not at all, or along x or y. */
 export type Axis = 'none' | 'x' | 'y'
@@ -44,6 +46,8 @@ interface Pending<P> {
   pic: HTMLElement
   timer: number
   live: boolean
+  /** what its tap does, done as it is let go (its click then does nothing) */
+  tap?: () => void
 }
 
 export function useDragDrop<P>({
@@ -70,7 +74,7 @@ export function useDragDrop<P>({
   const opacity = useMotionValue(1)
   const st = useRef<Pending<P> | null>(null)
   const from = useRef({ x: 0, y: 0 })
-  /** a drag happened since the last press: its click is not a tap */
+  /** a drag happened since the last press, or its tap was done as it was let go: its click is not a tap */
   const dragged = useRef(false)
   const cb = useRef({ onLift, onOver, onDrop })
   cb.current = { onLift, onOver, onDrop }
@@ -113,7 +117,14 @@ export function useDragDrop<P>({
     if (!s) return
     window.clearTimeout(s.timer)
     st.current = null
-    if (!s.live) return
+    if (!s.live) {
+      // let go where it was pressed: a tap, now (its click, if one comes, is not another)
+      if (dropped && s.tap) {
+        dragged.current = true
+        s.tap()
+      }
+      return
+    }
     const find = dropped ? cb.current.onDrop(s.payload) : null
     // the offset folded into the point, so the ghost flies from exactly where it is (the lift's springs stopped first,
     // or they would carry on pulling it above the finger)
@@ -210,12 +221,13 @@ export function useDragDrop<P>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  /** On a draggable's pointerdown: what it carries, the picture it shows, and how its list scrolls. */
-  const press = (e: ReactPointerEvent<HTMLElement>, payload: P, o: { src: string; axis: Axis; pic?: HTMLElement | null }) => {
+  /** On a draggable's pointerdown: what it carries, the picture it shows, how its list scrolls, and what its tap does
+   *  (done as it is let go, wherever the finger is then; without it, the element's click is its tap). */
+  const press = (e: ReactPointerEvent<HTMLElement>, payload: P, o: { src: string; axis: Axis; pic?: HTMLElement | null; tap?: () => void }) => {
     dragged.current = false
     if (st.current || (e.pointerType === 'mouse' && e.button !== 0)) return
     const touch = e.pointerType !== 'mouse'
-    const s: Pending<P> = { id: e.pointerId, x0: e.clientX, y0: e.clientY, touch, axis: o.axis, payload, src: o.src, pic: o.pic ?? e.currentTarget, timer: 0, live: false }
+    const s: Pending<P> = { id: e.pointerId, x0: e.clientX, y0: e.clientY, touch, axis: o.axis, payload, src: o.src, pic: o.pic ?? e.currentTarget, timer: 0, live: false, tap: o.tap }
     // a finger held still lifts it (where the list scrolls, the one way to drag along it)
     if (touch) s.timer = window.setTimeout(() => st.current === s && !s.live && lift(s, s.x0, s.y0), HOLD)
     st.current = s
@@ -224,7 +236,7 @@ export function useDragDrop<P>({
   return {
     lifted,
     press,
-    /** true once, after a press that became a drag: its click is not a tap */
+    /** true once, after a press that became a drag or whose tap was done as it was let go: its click is not a tap */
     wasDrag: () => {
       const d = dragged.current
       dragged.current = false

@@ -1,10 +1,12 @@
 import type { ArtId } from '../ui/art'
 import type { ProduceId } from './data'
-import { boardGoals, GOALS, goalReward, goalsReady, goalTarget, type GoalId } from './goals'
+import { boardGoals, GOALS, goalNear, goalReward, goalsReady, goalTarget, type GoalId } from './goals'
 import type { FarmData } from './state'
 
 // What the goals board shows (./GoalsCard.tsx draws it), from the farm's numbers alone: pure, so the design lab (lab/)
-// makes its states from a few numbers, as the game does from the farm (./GoalsPanel.tsx).
+// makes its states from a few numbers, as the game does from the farm (./GoalsPanel.tsx). How far a goal has come is
+// said kindly — what is done while under half the way, then what is left ("8 to go"), never "only" — and its last
+// stretch (src/farm/road.ts, ALMOST: the last 15 % from the count before) has an "almost there" look.
 
 /** A goal as the board shows it: its picture, its words, the step it is on, how far, and what reaching it gives. */
 export interface GoalView {
@@ -21,6 +23,10 @@ export interface GoalView {
   done: boolean
   /** how far, 0..1, of the whole count (have / target) */
   part: number
+  /** how many are left to its count (0 once reached) */
+  left: number
+  /** in the last stretch of its step, from the count before (not reached yet): the "almost there" look */
+  almost: boolean
   reward: { coins: number; item: ProduceId; count: number }
 }
 
@@ -49,6 +55,8 @@ export function goalsView(f: FarmData): GoalsView {
       have,
       done: g.done,
       part: Math.min(1, have / g.target),
+      left: Math.max(0, g.target - have),
+      almost: !g.done && !!goalNear(g)?.almost,
       reward: goalReward(g.def, g.step, f),
     }
   })
@@ -62,4 +70,11 @@ export function onBoard(goals: GoalView[], keep?: GoalId | null): GoalView[] {
   if (!keep || top.some((g) => g.id === keep)) return top
   const held = goals.find((g) => g.id === keep)
   return held ? [...top.slice(0, ON_BOARD - 1), held] : top
+}
+
+/** How far a goal has come, in kind words (the small-area rule): what is done while under half the way, then what is
+ *  left — "4 of 10", "8 to go", "Reached!". */
+export function howFar(g: Pick<GoalView, 'done' | 'have' | 'target' | 'part' | 'left'>): string {
+  if (g.done) return 'Reached!'
+  return g.part >= 0.5 ? `${g.left} to go` : `${g.have} of ${g.target}`
 }

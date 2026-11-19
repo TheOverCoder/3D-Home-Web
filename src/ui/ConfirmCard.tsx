@@ -1,9 +1,8 @@
 import { coarsePointer } from '../lib/device'
+import { span } from '../lib/time'
 import { busy, useHome } from '../store'
 import { Check, Clock, X } from './glyphs'
 import { ItemPic } from './ItemPic'
-
-const time = (s: number) => (s < 60 ? `${s} s` : `${Math.round((s / 60) * 10) / 10} min`)
 
 /**
  * A machine asking before it takes its ingredients — the oven a cake's, the mill a load of wheat, the loom the
@@ -28,7 +27,7 @@ export function ConfirmCard() {
           <strong>{confirm.title}</strong>
           <span className="tag">
             <Clock weight="bold" />
-            {time(confirm.seconds)}
+            {span(confirm.seconds)}
           </span>
         </div>
       </div>

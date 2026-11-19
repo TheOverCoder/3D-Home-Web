@@ -65,6 +65,8 @@ export async function bootApp(page: Page, query = 'debug&quality=low') {
   await quietEvents(page)
   // the season and the weather quiet (src/farm/state/season.ts): every spec stands in spring, in clear weather
   await page.evaluate(() => (window as any).__home?.season?.quiet?.(true))
+  // the season road not fed (src/farm/state/seasonRoad.ts): no spec's coins or goods come from its stops
+  await page.evaluate(() => (window as any).__home?.road?.quiet?.(true))
   // the market's mood quiet (src/farm/mood.ts): every price as fair, whatever the date
   await page.evaluate(() => (window as any).__home?.mood?.quiet?.(true))
 }
@@ -206,6 +208,9 @@ export async function openGame(browser: Browser, counting = false): Promise<{ ga
         // the season and the weather quiet (src/farm/state/season.ts: spring and clear), as a ?debug page starts: a spec
         // that turned them on or set its own leaves them quiet for the next
         h.season?.quiet?.(true)
+        // the season road not fed (src/farm/state/seasonRoad.ts), as a ?debug page starts: a spec that fed it (44) leaves
+        // it quiet for the next
+        h.road?.quiet?.(true)
         // the market's mood quiet (src/farm/mood.ts: every price as fair), as a ?debug page starts: a spec that turned it
         // on (34-events, 41-computer) leaves it quiet for the next
         h.mood?.quiet?.(true)
@@ -657,3 +662,20 @@ export async function press(target: Locator, tries = 2) {
 }
 
 export { expect }
+
+/**
+ * Closes the panel on top as a player does, with its ✕, and waits until it has gone: every panel is a sheet of
+ * src/ui/PanelSheet.tsx, which goes out the way it came (about 0.2 s) before it closes (a card over a panel: the card
+ * goes, the panel stays). On its way out it takes no touch, so the next press goes to what is under it.
+ */
+export async function closePanel(page: Page) {
+  const sheets = page.locator('.farm-panel[role="dialog"]')
+  const n = await sheets.count()
+  expect(n, 'a panel open to close').toBeGreaterThan(0)
+  await sheets
+    .nth(n - 1)
+    .getByRole('button', { name: 'Close (Esc)' })
+    .click()
+  await expect(sheets).toHaveCount(n - 1, { timeout: 15_000 })
+  await expect(page.locator('.ps-leaving')).toHaveCount(0, { timeout: 15_000 })
+}

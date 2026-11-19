@@ -45,6 +45,9 @@
      sideways, its head's picture, and its title upright and sideways */
   --sheet-max-up: 92dvh;
   --sheet-w-side: min(610px, max(76vw, 520px));
+  /* a card's width (a Shell: a question, or a short list), on a computer and sideways */
+  --card-w: min(560px, 100%);
+  --card-w-side: min(500px, 64vw);
   --head-art: 56px;
   --title: 25px;
   --title-side: 21px;
@@ -904,17 +907,9 @@ button.farm-chip-item:focus-visible { outline: 3px solid var(--sun); outline-off
 /* chosen (a card, a segment): a little pop as it becomes the one */
 @keyframes chosen { 40% { transform: scale(1.05); } }
 
-/* the panels: a sheet of paper — its picture, a title of a few words, chips, what it is for */
-.farm-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 42;
-  display: grid;
-  place-items: center;
-  padding: 16px;
-  background: rgba(40, 24, 10, 0.4);
-  animation: fade 0.16s ease-out;
-}
+/* the panels: every one is a sheet of PanelSheet (.mp-sheet.farm-panel, "the panel sheet" below), a Shell a card of
+   it. These are the frame the wardrobe still builds its own sheet on (src/home/Wardrobe.css: a paper sheet, its head's
+   picture, title, chip and ✕), until it takes the sheet's tokens (07's change 6) */
 .farm-panel {
   width: min(560px, 100%);
   max-height: calc(100dvh - 32px);
@@ -1072,28 +1067,15 @@ button.farm-chip-item:focus-visible { outline: 3px solid var(--sun); outline-off
 .tag.velvet .crown { width: 16px; height: 16px; }
 
 @media (max-width: 520px) {
-  .farm-backdrop { place-items: end center; padding: 0; }
-  .farm-panel { width: 100%; border-radius: var(--r-sheet) var(--r-sheet) 0 0; border-bottom: 0; max-height: 86dvh; padding-bottom: calc(18px + env(safe-area-inset-bottom)); }
   .farm-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .farm-grid.compact { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .farm-confirm > * { flex: 1; }
   .farm-shop-blurb { display: none; }
 }
-/* a phone on its side: panels slide in from the right as a sheet, so the yard stays in view on the left */
+/* a phone on its side: the panels are on the right, so the yard stays in view on the left */
 @media (orientation: landscape) and (max-height: 560px) {
-  .farm-backdrop { place-items: stretch end; padding: 0; }
-  .farm-panel {
-    width: min(500px, 64vw);
-    height: 100dvh;
-    max-height: none;
-    border-radius: var(--r-sheet) 0 0 var(--r-sheet);
-    border-inline-end: 0;
-    padding: calc(10px + env(safe-area-inset-top)) calc(14px + env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) 14px;
-    animation: sheet-in 0.3s var(--ease-sheet);
-  }
   .farm-panel header { margin-bottom: 8px; }
   .farm-panel h2 { font-size: 21px; }
-  .farm-head-art { width: 46px; height: 46px; }
   .farm-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
   .farm-grid.compact { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .farm-card { padding: 8px 6px; }
@@ -1102,9 +1084,10 @@ button.farm-chip-item:focus-visible { outline: 3px solid var(--sun); outline-off
 }
 @keyframes sheet-in { from { transform: translateX(36px); opacity: 0; } }
 
-/* ── the panel sheet (src/ui/PanelSheet.tsx; first the machine panel's, now every sheet's that comes from its edge:
-   the machine panel, the animals' tools): a paper sheet from the bottom upright, on the right sideways, in the middle
-   on a computer; its head the picture, a title of a few words, a row of chips and ✕, swiped away by its top ── */
+/* ── the panel sheet (src/ui/PanelSheet.tsx; first the machine panel's, now every panel's: the cards, the boards, the
+   machines, the animals' tools, and every Shell as a card): a paper sheet from the bottom upright, on the right
+   sideways, in the middle on a computer; its head the picture, a title of a few words, a row of chips and ✕, swiped
+   away by its top ── */
 .mp-root { position: fixed; inset: 0; z-index: 42; display: grid; overflow: hidden; }
 .mp-shade { position: absolute; inset: 0; background: rgba(40, 24, 10, 0.4); }
 .mp-sheet { position: relative; z-index: 1; display: flex; flex-direction: column; min-height: 0; color: var(--ink); background: var(--paper); border: 3px solid #fff; box-shadow: var(--shadow-sheet); overflow: hidden; outline: none; }
@@ -1161,11 +1144,11 @@ button.farm-chip-item:focus-visible { outline: 3px solid var(--sun); outline-off
 .ps-has-foot .ps-body { padding-bottom: 4px; }
 .mp-bottom .ps-foot > *, .mp-right .ps-foot > * { flex: 1; }
 .mp-right .ps-foot { padding: 8px calc(12px + env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) 22px; }
-/* a card asks one thing: as tall as what it asks, narrower on a computer; sideways at the bottom on the right, where
-   the thumb is */
-.ps-card.mp-middle .mp-sheet { width: min(460px, 100%); }
+/* a card asks one thing (a Shell: a question, or a short list): as tall as what it asks, narrower on a computer and
+   sideways; sideways at the bottom on the right, where the thumb is */
+.ps-card.mp-middle .mp-sheet { width: var(--card-w); }
 .ps-card.mp-right { place-items: end end; }
-.ps-card.mp-right .mp-sheet { height: auto; max-height: 100dvh; border-radius: var(--r-sheet) 0 0 0; border-bottom: 0; }
+.ps-card.mp-right .mp-sheet { width: var(--card-w-side); height: auto; max-height: 100dvh; border-radius: var(--r-sheet) 0 0 0; border-bottom: 0; }
 /* goods flying on the page (src/ui/fly.ts) */
 .goods-fly { position: fixed; z-index: 81; pointer-events: none; object-fit: contain; filter: drop-shadow(0 4px 3px rgba(60, 35, 10, 0.3)); will-change: transform, opacity; }
 @media (pointer: coarse) {

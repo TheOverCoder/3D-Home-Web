@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { farmSound } from '../audio/sound'
+import { rattle } from '../audio/sound'
 import { useHome } from '../store'
 import { LevelCard } from './LevelCard'
 import { levelView } from './levelView'
@@ -27,5 +27,5 @@ export function LevelPanel() {
   }, [])
   const opens = opensOn(levelOf(farm.xp.points) + 1)
   const v = { ...levelView(farm.xp.points, farm.xp.paid, farm.gifts, { gain: opened.gain, ready: readyOnFarm(), opens }), arrived: opened.arrived }
-  return <LevelCard v={v} onOpen={openGifts} onClose={close} onReveal={() => farmSound('surprise')} />
+  return <LevelCard v={v} onOpen={openGifts} onClose={close} onShake={rattle} />
 }
