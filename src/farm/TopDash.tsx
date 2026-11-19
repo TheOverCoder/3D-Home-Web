@@ -3,6 +3,7 @@ import { useLessMotion } from '../ui/still'
 import { Popover } from 'radix-ui'
 import { useEffect, useLayoutEffect, useRef, useSyncExternalStore, type ReactNode } from 'react'
 import { coinsHeld, onCoinsHeld } from '../fx/coins'
+import { goodsHeld, onGoodsHeld } from '../ui/fly'
 import { useHome } from '../store'
 import { art } from '../ui/art'
 import { ARRIVE, EASE, MotionRoot, SPRING } from '../ui/motion'
@@ -264,23 +265,26 @@ function Gauge({
   )
 }
 
-/** How full the silo or the barn is: its tank, red and "Full" when full; its bubble opens its panel. */
+/** How full the silo or the barn is: its tank, red and "Full" when full; its bubble opens its panel. Goods still in the
+ *  air to it (a harvest's pictures: src/ui/fly.ts, popInto) are left out of the tank and the flag until each lands, so
+ *  it steps up as they arrive; its words and its bubble say what it holds. */
 function StoreGauge({ id }: { id: StoreId }) {
   const n = used(id)
   const cap = capacity(id)
-  const full = n >= cap
+  const held = useSyncExternalStore(onGoodsHeld, () => goodsHeld(id))
+  const shown = Math.max(0, n - held)
   const name = STORES[id].name
   return (
     <Gauge
       className={`store ${id}`}
       pic={<img src={iconUrl(id)} alt="" />}
       name={name}
-      label={`${name}: ${n} of ${cap}${full ? ', full' : ''} — open it`}
+      label={`${name}: ${n} of ${cap}${n >= cap ? ', full' : ''} — open it`}
       title={`${name}: ${n} of ${cap}`}
       n={n}
       of={cap}
-      k={n / cap}
-      full={full}
+      k={shown / cap}
+      full={shown >= cap}
       onOpen={() => !useHome.getState().panel && useHome.getState().openPanel({ kind: 'store', store: id })}
     />
   )

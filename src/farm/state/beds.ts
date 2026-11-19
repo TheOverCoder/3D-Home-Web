@@ -1,5 +1,7 @@
+import { farmFx } from '../../fx/fx'
+import { react } from '../../fx/react'
 import { groundDistance } from '../../lib/interaction'
-import { BED_BOX, BED_REACH, BEDS, count, cropById, ITEM_ODDS, WATER_SHARE, type CropId, type ItemId } from '../data'
+import { BED, BED_BOX, BED_REACH, BEDS, count, cropById, ITEM_ODDS, WATER_SHARE, type CropId, type ItemId } from '../data'
 import { rollItems } from '../storage'
 import type { Placement } from '../layout'
 import { bump, cropOpen, farm, isUnlocked, random, save, toast } from './core'
@@ -68,6 +70,9 @@ export function plant(i: number, crop: CropId) {
   farm.started = true
   if (!farm.planted.includes(crop)) farm.planted.push(crop)
   gainXp('plant', 1, bedAt(i))
+  // it comes up small and settles, with a puff of soil the size of the bed (what a seedling's stretch cannot show)
+  react('plant', i, 'sprout')
+  farmFx('dust', bedAt(i).x, BED.h - 0.04, bedAt(i).z, { half: { x: BED.w / 2 - 0.1, z: BED.d / 2 - 0.1 } })
   bump()
   save()
   return true
@@ -88,6 +93,7 @@ export function water(i: number) {
   if (b.water < fullWater(b.crop) / 2) gainXp('water', 1, bedAt(i))
   b.water = fullWater(b.crop)
   farm.stats.watered++
+  react('plant', i, 'perk')
   bump()
   save()
   return true
@@ -128,11 +134,13 @@ export function harvestBeds(beds: number[]) {
       full = true
       continue
     }
-    store(b.crop, n)
+    store(b.crop, n, bedAt(i))
     farm.stats.harvested += n
     farm.got[b.crop] += n
     got.set(b.crop, (got.get(b.crop) ?? 0) + n)
     total += n
+    // it stretches and pops away as its picture leaves (drawn as it was until then: src/farm/Plants.tsx)
+    react('plant', i, 'pluck', { crop: b.crop })
     b.crop = null
     b.growth = 0
     b.water = 0

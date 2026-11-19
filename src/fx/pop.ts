@@ -35,15 +35,17 @@ export function popNumber(x: number, y: number, text: string, o: { scale?: numbe
   const total = RISE + hold + FADE
   const at = (ms: number) => ms / total
   const move = (up: number, s: number) => `translate(-50%, -50%) translateY(${-up}px) scale(${s})`
+  // (each step its own easing, the whole at an even pace: an easing over the whole would bring the fade on early and cut
+  // the tier's hold short)
   const run = el.animate(
     [
-      { transform: move(0, 0.5 * scale), opacity: 0 },
-      { transform: move(UP + 4, 1.12 * scale), opacity: 1, offset: at(RISE * 0.65) },
-      { transform: move(UP, scale), opacity: 1, offset: at(RISE) },
-      { transform: move(UP + 2, scale), opacity: 1, offset: at(RISE + hold) },
+      { transform: move(0, 0.5 * scale), opacity: 0, easing: 'cubic-bezier(0.2, 0.8, 0.3, 1)' },
+      { transform: move(UP + 4, 1.12 * scale), opacity: 1, offset: at(RISE * 0.65), easing: 'ease-out' },
+      { transform: move(UP, scale), opacity: 1, offset: at(RISE), easing: 'linear' },
+      { transform: move(UP + 2, scale), opacity: 1, offset: at(RISE + hold), easing: 'cubic-bezier(0.4, 0, 0.7, 1)' },
       { transform: move(UP + ON, 0.96 * scale), opacity: 0 },
     ],
-    { duration: total, easing: 'cubic-bezier(0.3, 0.7, 0.4, 1)', fill: 'both' },
+    { duration: total, easing: 'linear', fill: 'both' },
   )
   const done = () => el.remove()
   run.onfinish = done

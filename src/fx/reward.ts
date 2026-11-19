@@ -1,6 +1,7 @@
-import { farmSound, type FarmSound } from '../audio/sound'
+import { rewardSound } from '../audio/sound'
 import { rewardFeel } from '../audio/sounds'
-import { TIERS, rewardKind, tierRank, type Family, type RewardKind, type Tier } from '../lib/tier'
+import { haptic } from '../lib/device'
+import { TIERS, rewardKind, tierRank, type RewardKind, type Tier } from '../lib/tier'
 import { art } from '../ui/art'
 import { burst } from '../ui/burst'
 import { lessMotion } from '../ui/still'
@@ -88,14 +89,13 @@ export function resetConfetti() {
   lastConfetti = -Infinity
 }
 
-/** Each family's sting: today's sounds (src/audio/farmSounds.ts) until 06's stings by tier. Goods collected have none
+/** A reward's touch and its sting, as big as it is (06's: the touch's family picks the pattern and its tier how strong,
+ *  src/audio/sounds.ts; the sting longer and richer by tier, src/audio/rewardSound.ts). Goods collected have neither
  *  here: the press made its work's sound, with its touch. */
-const STING: Readonly<Record<Family, FarmSound | null>> = { coins: 'coins', gift: 'surprise', level: 'level', garment: 'garment', keys: 'keys', work: null }
-
-/** A reward's sting, and its touch (06's map: its family picks the pattern, its tier how strong; src/audio/sounds.ts). */
 function sting(kind: RewardKind, tier: Tier) {
-  const sound = kind === 'till' ? 'till' : STING[rewardKind(kind).family]
-  if (sound) farmSound(sound, 0, 1, rewardFeel(kind, tier))
+  if (rewardKind(kind).family === 'work') return
+  haptic(rewardFeel(kind, tier))
+  rewardSound(kind, tier)
 }
 
 /** A point on the screen: an element's middle (null while it is not laid out), or the point itself. */

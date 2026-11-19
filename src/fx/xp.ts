@@ -53,8 +53,9 @@ function barEnd(): { x: number; y: number } | null {
   return { x: fill && fill.width > 0 ? Math.min(r.right, fill.right) : r.left + r.height, y: r.top + r.height / 2 }
 }
 
-/** XP crystals from (x, y) on the screen to the level chip's bar; whether any flew. */
-export function flyXp(x: number, y: number, xp: number): boolean {
+/** XP crystals from (x, y) on the screen to the level chip's bar, the first `after` ms from now (after the goods of the
+ *  same press: two results read as two); whether any flew. */
+export function flyXp(x: number, y: number, xp: number, after = 0): boolean {
   const total = Number.isFinite(xp) ? Math.round(xp) : 0
   if (typeof document === 'undefined' || total <= 0 || reducedMotion()) return false
   const n = Math.min(crystalsFor(total), MAX_AIR - air)
@@ -92,7 +93,7 @@ export function flyXp(x: number, y: number, xp: number): boolean {
         { transform: `translate(${bx + (dx - bx) * 0.5}px, ${by + (dy - by) * 0.3 - 26}px) scale(0.85) rotate(${spin * 0.7}deg)`, opacity: 1, offset: 0.7, easing: 'cubic-bezier(0.5, 0, 0.9, 0.6)' },
         { transform: `translate(${dx}px, ${dy}px) scale(0.45) rotate(${spin}deg)`, opacity: 1 },
       ],
-      { duration: FLIGHT, delay: i * STAGGER, fill: 'both' },
+      { duration: FLIGHT, delay: after + i * STAGGER, fill: 'both' },
     )
     air++
     carried += share[i]

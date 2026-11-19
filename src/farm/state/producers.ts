@@ -1,3 +1,4 @@
+import { react } from '../../fx/react'
 import { count, isToolKind, ITEM_ODDS, LADDERS, PRODUCERS, storeOf, STORES, toolLadder, TOOLS, type ItemId, type ProducerId, type ToolKind } from '../data'
 import { rollItems } from '../storage'
 import { fullest, mostAt, ownsEach, perTapOf, spreadNest, toolOf, type Steps } from '../tools'
@@ -49,10 +50,15 @@ function takeFrom(id: ProducerId, i: number, most: number, at?: At): { n: number
   const def = PRODUCERS[id]
   const p = farm.producers[id]
   const has = p.stock[i] ?? 0
-  const n = store(def.good, Math.min(has, Math.max(0, Math.floor(most))))
+  const n = store(def.good, Math.min(has, Math.max(0, Math.floor(most))), at)
   if (!n) return { n: 0, items: [] }
   p.stock[i] = has - n
   if (!def.keepsClock && !p.stock[i]) p.timer[i] = 0
+  // a cow or a sheep gives a happy shiver; what hangs or lies (lemons, eggs, fruit) pops off, the ones taken drawn
+  // until then (src/farm/Plants.tsx, decorScene.tsx), and a fruit plant's leaves rustle
+  if (def.herd && !def.herd.shared) react('animal', `${id}:${i}`, 'wiggle')
+  else react('fruit', `${id}:${i}`, 'pick', { from: has - n, to: has })
+  if (def.plant) react('plant', `${id}:${i}`, 'rustle')
   farm.stats.harvested += n
   farm.got[def.good] += n
   const items = rollItems(def.surprise === 'each' ? n : 1, def.surprise === 'each' ? ITEM_ODDS.unit : ITEM_ODDS.harvest, random)

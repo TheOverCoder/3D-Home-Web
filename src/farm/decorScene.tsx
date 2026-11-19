@@ -11,6 +11,7 @@ import { DECOR_KINDS, FRUIT, FRUIT_KINDS, type BearerKind, type DecorKind, type 
 import { decorModel, fruitParts, fruitPlantModel, fruitSpots, putFruit } from './decorModels'
 import { moodAt, phaseDef } from './day'
 import { useEdit } from './edit'
+import { reacting, reaction, slotsShown } from '../fx/react'
 import { DECOR_FEET, bears, isPlant, toWorld, turnOf, type DecorPiece } from './layout'
 import { dayIsFrozen, farm, stockOf, useFarm } from './state'
 import { producerOffer } from './useProducer'
@@ -146,6 +147,8 @@ function Crowds() {
     return (extras.current = { shadows, pools, max })
   }
   const seen = useRef<{ list: DecorPiece[] | null; drag: unknown }>({ list: null, drag: null })
+  /** a piece reacted at the last put */
+  const stirred = useRef(false)
   useEffect(() => {
     const own = crowds.current
     return () => {
@@ -165,9 +168,13 @@ function Crowds() {
     if (extras.current) extras.current.pools.group.visible = level > 0.001
     const drag = useEdit.getState().drag
     const list = farm.layout.decor
-    if (list === seen.current.list && drag === seen.current.drag) return
+    // (put again every frame while a piece settles or a fruit plant rustles, and once more as the last ends, at rest)
+    const now = reacting('thing') || reacting('plant')
+    if (list === seen.current.list && drag === seen.current.drag && !now && !stirred.current) return
+    stirred.current = now
     seen.current = { list, drag }
     const shown = shownPieces()
+    const stretches = stretchesOf(shown)
     const counts = new Map<ShopKind, number>()
     for (const d of shown) counts.set(d.kind, (counts.get(d.kind) ?? 0) + 1)
     for (const kind of KINDS) {
@@ -188,8 +195,10 @@ function Crowds() {
       c.parts.begin()
       for (const d of shown) {
         if (d.kind !== kind) continue
-        // each piece a model of its own: the drawing pass draws the ones in view
-        c.parts.at(d.x, 0, d.z, turnOf(d))
+        // each piece a model of its own: the drawing pass draws the ones in view (stretched round its foot while it
+        // settles or rustles: src/fx/react.ts)
+        const r = stretches.get(d.id)
+        c.parts.at(d.x, 0, d.z, turnOf(d), r ? SCALE.set(r.xz, r.y, r.xz) : 1)
         for (const k of c.keys) c.parts.put(k, 0, 0, 0)
       }
       c.parts.end()
@@ -202,8 +211,10 @@ function Crowds() {
       const soft = softShadow(d, crowds.current.get(d.kind)?.top ?? 0)
       const f = DECOR_FEET[d.kind]
       if (soft) {
+        // (squashed along with it, across the ground)
+        const across = soft * (stretches.get(d.id)?.xz ?? 1)
         extra.shadows.at(d.x, 0, d.z, turnOf(d))
-        extra.shadows.put('shadow', 0, 0.012, 0, 0, 0, 0, SCALE.set(f.hx * soft, 1, f.hz * soft))
+        extra.shadows.put('shadow', 0, 0.012, 0, 0, 0, 0, SCALE.set(f.hx * across, 1, f.hz * across))
       }
       const reach = POOL[d.kind]
       if (reach) {
@@ -218,6 +229,21 @@ function Crowds() {
   return <primitive object={root} />
 }
 const SCALE = new Vector3()
+const FRUIT_SCALE = new Vector3()
+
+/** Each piece's stretch now, by its id (none at rest): a piece put down settling (`decor-<id>`, src/farm/edit.ts), a
+ *  fruit plant picked rustling (its kind's `<kind>:<i>`, the i-th standing in the layout's order: the producers'). */
+function stretchesOf(shown: readonly DecorPiece[]): Map<number, { xz: number; y: number }> {
+  const out = new Map<number, { xz: number; y: number }>()
+  const index = new Map<ShopKind, number>()
+  for (const d of shown) {
+    const i = index.get(d.kind) ?? 0
+    index.set(d.kind, i + 1)
+    const r = reaction('thing', `decor-${d.id}`) ?? (isPlant(d.kind) ? reaction('plant', `${d.kind}:${i}`) : null)
+    if (r) out.set(d.id, { xz: r.xz, y: r.y })
+  }
+  return out
+}
 
 // ───────────────────────────── the fruit ─────────────────────────────
 
@@ -238,12 +264,17 @@ function Fruit() {
   )
   const last = useRef(-1)
   const seen = useRef<{ list: unknown; drag: unknown }>({ list: null, drag: null })
+  /** something reacted at the last put */
+  const stirred = useRef(false)
   useFrame((state) => {
     const t = state.clock.elapsedTime
     const drag = useEdit.getState().drag
     const list = farm.layout.decor
     const moved = list !== seen.current.list || drag !== seen.current.drag
-    if (!moved && Math.abs(t - last.current) < 0.25) return
+    // (every frame while fruit is picked or its plant settles or rustles, and once more as the last ends)
+    const now = reacting('fruit') || reacting('plant') || reacting('thing')
+    if (!moved && Math.abs(t - last.current) < 0.25 && !now && !stirred.current) return
+    stirred.current = now
     last.current = t
     seen.current = { list, drag }
     // the most of any one fruit that could hang now: its plants, each full
@@ -263,18 +294,25 @@ function Fruit() {
     const parts = crowd.current.parts
     parts.begin()
     const index = new Map<FruitKind, number>()
-    for (const d of shownPieces()) {
+    const shown = shownPieces()
+    const stretches = stretchesOf(shown)
+    for (const d of shown) {
       if (!isPlant(d.kind)) continue
       const kind = d.kind as FruitKind
       const i = index.get(kind) ?? 0
       index.set(kind, i + 1)
-      const n = stockOf(kind, i)
-      // each fruit a model of its own (the view draws those it sees), hanging from its spot where the plant stands
+      // each fruit a model of its own (the view draws those it sees), hanging from its spot where the plant stands — its
+      // spot moving with the plant as it settles or rustles, and the ones just picked popping off where they hung
+      const plant = stretches.get(d.id)
+      const across = plant?.xz ?? 1
+      const up = plant?.y ?? 1
+      const { n, popping } = slotsShown(stockOf(kind, i), reaction('fruit', `${kind}:${i}`), SPOTS[kind].length)
+      const has = stockOf(kind, i)
       for (let k = 0; k < n; k++) {
         const [lx, y, lz] = SPOTS[kind][k]
-        const [x, z] = toWorld(d, lx, lz)
-        parts.at(0, 0, 0)
-        putFruit(parts, FRUIT[kind].fruit, x, y, z, k)
+        const [x, z] = toWorld(d, lx * across, lz * across)
+        parts.at(x, y * up, z, 0, k < has || !popping ? 1 : FRUIT_SCALE.set(popping.xz, popping.y, popping.xz))
+        putFruit(parts, FRUIT[kind].fruit, 0, 0, 0, k)
       }
     }
     parts.end()

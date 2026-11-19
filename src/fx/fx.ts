@@ -13,12 +13,14 @@ export type FxKind = 'water' | 'harvest' | 'dust'
 
 /** One effect asked for: where, and what it is about. */
 export interface FxRequest {
-  kind: FxKind | 'coins' | 'item' | 'xp'
+  kind: FxKind | 'coins' | 'item' | 'xp' | 'goods'
   x: number
   y: number
   z: number
-  /** sparkles: the good harvested (they take its colour) */
+  /** sparkles: the good harvested (they take its colour); goods: the good collected */
   good?: string
+  /** goods: how many went into their store */
+  count?: number
   /** dust: half the size of what was built or put down, each way (the puff rises from its edge) */
   half?: { x: number; z: number }
   /** coins: how many changed hands */
@@ -33,8 +35,9 @@ export interface FxRequest {
 }
 
 /** What the effects are doing, for the tests (`window.__home.fx`): bursts started, systems alive, coin flights,
- *  surprises shown; rewards shown over where they were paid in the world, and how many of them popped their number. */
-export const fxStats = { loaded: false, started: 0, alive: 0, coins: 0, items: 0, xp: 0, rewards: 0, pops: 0 }
+ *  surprises shown; rewards shown over where they were paid in the world, and how many of them popped their number;
+ *  goods' pictures flown from the world to their store, and how many of them landed. */
+export const fxStats = { loaded: false, started: 0, alive: 0, coins: 0, items: 0, xp: 0, rewards: 0, pops: 0, goods: 0, landed: 0 }
 
 /** Less motion (the game's setting, or the device's: src/ui/still.ts): no particles, no flying coins. */
 export const reducedMotion = lessMotion
@@ -75,6 +78,15 @@ export function itemFx(x: number, y: number, z: number, item: string, order = 0)
 export function xpFx(x: number, y: number, z: number, xp: number) {
   if (reducedMotion()) return
   queue.push({ kind: 'xp', x, y, z, xp, at: performance.now() })
+  if (queue.length > MAX_QUEUE) queue.shift()
+}
+
+/** Goods collected at (x, y, z) into their store — a bed's harvest, a cow's milk, the eggs: one picture with how many
+ *  pops up there, holds, and flies to the store's chip, which counts them in as it lands (src/ui/fly.ts, popInto). Not
+ *  when the player asked for less motion (the count changes at once). */
+export function goodsFx(x: number, y: number, z: number, good: string, count: number) {
+  if (reducedMotion() || !(count > 0)) return
+  queue.push({ kind: 'goods', x, y, z, good, count, at: performance.now() })
   if (queue.length > MAX_QUEUE) queue.shift()
 }
 
