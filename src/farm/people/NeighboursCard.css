@@ -1,5 +1,8 @@
 /* The neighbours (NeighboursCard.tsx): everyone in a row of cards, the story's road for the act on now, the letters to
    read again. A neighbour not met yet, and a chapter still to come, is a silhouette. Every rule under .neighbours-card. */
+/* the sheet's round close keeps its 44 px look and takes a finger's 48 px: a ring of 2 px round it (as the album's) */
+.neighbours-card .mp-round { position: relative; }
+.neighbours-card .mp-round::after { content: ''; position: absolute; inset: -2px; border-radius: 50%; }
 .neighbours-card .nb-people { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
 .neighbours-card .nb-person { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 8px; border-radius: var(--r-card); background: var(--paper-2); box-shadow: 0 3px 0 var(--edge-soft); text-align: center; }
 .neighbours-card .nb-name { font: 600 19px/1.1 var(--font-display); color: var(--ink); }
