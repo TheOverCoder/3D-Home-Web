@@ -1,6 +1,6 @@
 import type { ArtId } from '../../ui/art'
 import { BEDS, LADDERS, PACE_LEVELS, QUEUE_LEVELS, TOOLS, TOOL_KINDS, UPGRADES, arrivalEvery, mostAnimals, queuePlaces, toolLadder, type LadderId, type ToolKind, type UpgradeId } from '../data'
-import type { Expansion } from '../data'
+import { fullHerd, type Expansion } from '../data'
 import { ladderPrice } from '../market'
 import { animals, arrivalSeconds, clockText, farm, ladderMaxed, ladderOpen, lockOf, owned, placesInLine, upgradeLevel, upgradeLock, upgradePrice } from '../state'
 import { openFirst, UPGRADE_ART } from '../unlockArt'
@@ -128,7 +128,8 @@ export function upgradesView(): UpgradesView {
           pic: t.art,
           state: onceState(id),
           price: ladderPrice(id, 0),
-          why: `${n}/${most} ${TITLE[kind].toLowerCase()}`,
+          // (what the tool waits for: the herd full, the animals past it opening with the levels)
+          why: `${Math.min(n, fullHerd(kind))}/${fullHerd(kind)} ${TITLE[kind].toLowerCase()}`,
           says: `${LADDERS[toolLadder(kind, 'hold')].say(0)} · ${LADDERS[toolLadder(kind, 'tap')].say(0)}`,
         },
       }
