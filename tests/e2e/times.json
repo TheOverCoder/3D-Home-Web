@@ -45,6 +45,7 @@
     "38-animal-tools.spec.ts": 121,
     "39-panels.spec.ts": 540,
     "40-safety.spec.ts": 60,
+    "41-computer.spec.ts": 120,
     "42-busy.spec.ts": 60
   }
 }
