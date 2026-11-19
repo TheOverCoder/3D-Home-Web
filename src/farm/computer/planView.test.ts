@@ -39,8 +39,13 @@ describe('a new farm, the events off', () => {
       ['oven:carrot_cake', 36],
       ['mill:wheat', 30],
       ['oven:pumpkin_pie', 28.5],
+      // update v1's long jobs (src/farm/data.ts, wave 1): for while you are away, less a minute
+      ['oven:apple_pie', 4.6],
+      ['oven:blueberry_muffins', 4.6],
+      ['oven:cherry_tart', 3.6],
+      ['loom:quilt', 1.58],
     ])
-    expect(rounded(v.jobs, 'perPress').map(([, n]) => n)).toEqual([10, 3, 21, 23, 21, 2, 19])
+    expect(rounded(v.jobs, 'perPress').map(([, n]) => n)).toEqual([10, 3, 21, 23, 21, 2, 19, 92, 92, 108, 189])
     expect(v.jobs.every((r) => r.can === 0)).toBe(true)
   })
 

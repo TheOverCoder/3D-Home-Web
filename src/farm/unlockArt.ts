@@ -1,5 +1,5 @@
 import { art, type ArtId } from '../ui/art'
-import { MACHINES, type CropId, type MachineId, type UpgradeId } from './data'
+import { MACHINES, UPGRADES, type CropId, type MachineId, type UpgradeId } from './data'
 import { SHOP, type ShopKind } from './decor'
 import { iconUrl, shopArtUrl } from './icons'
 import type { UnlockId } from './unlocks'
@@ -12,6 +12,7 @@ import type { UnlockId } from './unlocks'
 export const UPGRADE_ART: Record<UpgradeId, ArtId> = {
   east: 'seedling',
   west: 'sheaf-of-rice',
+  north: 'ear-of-corn',
   queue: 'people-queue',
   pace: 'person-running',
   cow: 'cow',
@@ -35,6 +36,7 @@ export function unlockPic(id: UnlockId): string {
   if (kind === 'recipe') return iconUrl(MACHINES[rest as MachineId].recipes.find((r) => r.id === more)!.makes)
   if (kind === 'upgrade') return art(UPGRADE_ART[rest as UpgradeId])
   if (kind === 'decor') return shopArtUrl(rest as ShopKind)
+  if (kind === 'herd') return art(UPGRADE_ART[UPGRADES.find((u) => u.herd === rest)!.id])
   return art('four-leaf-clover')
 }
 
@@ -45,7 +47,7 @@ export function whereOf(id: UnlockId): string {
   if (kind === 'bed') return 'Build'
   if (kind === 'crop') return 'Seeds'
   if (kind === 'recipe') return MACHINES[rest as MachineId].name
-  if (kind === 'upgrade') return 'Shop'
+  if (kind === 'upgrade' || kind === 'herd') return 'Shop'
   if (kind === 'decor') return SHOP[rest as ShopKind].tab === 'fruit' ? 'Fruit trees' : 'Decor'
   return 'Edit'
 }

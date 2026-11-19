@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { CROPS, LEVELS, MACHINES, MACHINE_IDS, PRODUCERS, START_COINS, UPGRADES, type ProduceId } from './data'
+import { CROPS, LEVELS, MACHINES, MACHINE_IDS, PRODUCERS, PRODUCER_IDS, START_COINS, UPGRADES, fullHerd, type ProduceId } from './data'
 import { SHOP } from './decor'
 import { PARCELS, PARCEL_IDS } from './layout'
-import { UNLOCKS, UNLOCK_IDS, lockedAt, machineOpensAt, openedBetween, opensAt, recipeUnlock, unlockLevel, unlockName, type UnlockId } from './unlocks'
+import { UNLOCKS, UNLOCK_IDS, herdSteps, herdUnlock, lockedAt, machineOpensAt, openedBetween, opensAt, recipeUnlock, unlockLevel, unlockName, type UnlockId } from './unlocks'
 
 // What each level opens (src/farm/unlocks.ts): one row for every thing a farm buys, plants or puts into a machine,
 // nothing open before what it needs, and the first hour opening something at every level.
@@ -15,6 +15,7 @@ const EVERY: string[] = [
   ...MACHINE_IDS.flatMap((m) => MACHINES[m].recipes.map((r) => `recipe:${m}:${r.id}`)),
   ...Object.keys(SHOP).map((k) => `decor:${k}`),
   ...PARCEL_IDS.map((p) => `parcel:${p}`),
+  ...PRODUCER_IDS.flatMap((p) => herdSteps(p).map((n) => herdUnlock(p, n))),
 ]
 
 /** The level a good can first be had at: a crop's seeds, what a machine makes (its first recipe that makes it), what a
@@ -24,6 +25,9 @@ function goodOpensAt(good: ProduceId): number {
   const made = MACHINE_IDS.flatMap((m) => MACHINES[m].recipes.filter((r) => r.makes === good).map((r) => unlockLevel(recipeUnlock(m, r.id))))
   if (made.length) return Math.min(...made)
   if (Object.values(PRODUCERS).some((p) => p.good === good && !p.plant)) return 1
+  // a fruit tree's or bush's (or the hive's): as its kind opens in the edit mode's shop
+  const plants = Object.values(PRODUCERS).filter((p) => p.good === good && p.plant)
+  if (plants.length) return Math.min(...plants.map((p) => unlockLevel(`decor:${p.plant!}`)))
   throw new Error(`${good}: nowhere to get it`)
 }
 
@@ -43,6 +47,16 @@ describe('what each level opens', () => {
     }
     // the west field comes after the east beds (the shop lists them so)
     expect(unlockLevel('upgrade:east')).toBeLessThanOrEqual(unlockLevel('upgrade:west'))
+    // an animal past the herd full after the one before it, and after its herd's upgrade
+    for (const p of PRODUCER_IDS) {
+      const up = UPGRADES.find((u) => u.herd === p)
+      let before = up ? unlockLevel(`upgrade:${up.id}`) : 1
+      for (const n of herdSteps(p)) {
+        expect(unlockLevel(herdUnlock(p, n)), `${p}'s ${n}`).toBeGreaterThan(before)
+        before = unlockLevel(herdUnlock(p, n))
+      }
+      expect(herdSteps(p).length, p).toBe(PRODUCERS[p].herd ? PRODUCERS[p].herd!.max - fullHerd(p) : 0)
+    }
   })
 
   it('a new farm can start: seeds it can pay for and a bed to build open at level 1', () => {
@@ -85,5 +99,7 @@ describe('what each level opens', () => {
     expect(unlockName('upgrade:cow')).toBe('Another cow')
     expect(unlockName('decor:path')).toBe('Stone path')
     expect(unlockName('parcel:north')).toBe('North meadow')
+    expect(unlockName('herd:cows:4')).toBe('Another cow')
+    expect(unlockName('upgrade:north')).toBe('North beds')
   })
 })

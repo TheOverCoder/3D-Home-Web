@@ -7,6 +7,7 @@ import {
   BEDS,
   CROPS,
   ESTATE,
+  EXPANSION_IDS,
   GATE_SPOT,
   LADDERS,
   LADDER_IDS,
@@ -83,6 +84,8 @@ import {
   openGifts,
   orderAt,
   owned,
+  landFirst,
+  upgradeLock,
   placesInLine,
   plantBeds,
   room,
@@ -137,8 +140,8 @@ const GATE: Spot = { x: GATE_SPOT.x, z: GATE_SPOT.z - 1.5 }
 const SHOP: Spot = { x: SHED.x + 1.15, z: SHED.z }
 const MARKET: Spot = { x: MANAGER_SPOT.x, z: MANAGER_SPOT.z }
 
-/** The beds in patches a press reaches together: the first six, the east beds, the west field. */
-const PATCHES = (['main', 'east', 'west'] as const).map((name) => ({ name, beds: BEDS.filter((b) => (b.expansion ?? 'main') === name).map((b) => b.index) }))
+/** The beds in patches a press reaches together: the first six, and each field of beds (EXPANSIONS). */
+const PATCHES = (['main', ...EXPANSION_IDS] as const).map((name) => ({ name, beds: BEDS.filter((b) => (b.expansion ?? 'main') === name).map((b) => b.index) }))
 const middleOf = (beds: number[]): Spot => ({ x: beds.reduce((s, i) => s + bedSpot(i).x, 0) / beds.length, z: beds.reduce((s, i) => s + bedSpot(i).z, 0) / beds.length })
 const producerAt = (id: (typeof PRODUCER_IDS)[number]): Spot => farm.layout.places[PRODUCERS[id].place!]
 /** Where an animal's tool is used: its place at the fence, where its pen stands now. */
@@ -229,7 +232,7 @@ function forSale(): Purchase[] {
   BEDS.forEach((b, i) => {
     if (b.price > 0 && !b.expansion && !farm.beds[i].built && isUnlocked('bed')) out.push({ what: `build bed ${i}`, at: bedSpot(i), price: b.price, buy: () => buildBed(i) })
   })
-  for (const u of UPGRADES) if (!owned(u.id) && isUnlocked(`upgrade:${u.id}`)) out.push({ what: u.name.toLowerCase(), at: SHOP, price: upgradePrice(u.id), buy: () => buy(u.id) })
+  for (const u of UPGRADES) if (!owned(u.id) && upgradeLock(u.id) === null && !landFirst(u.id)) out.push({ what: u.name.toLowerCase(), at: SHOP, price: upgradePrice(u.id), buy: () => buy(u.id) })
   for (const id of ['slots', 'wait'] as const) if (!officeMaxed(id)) out.push({ what: `office: ${id}`, at: OFFICE_STAND, price: officePrice(id), buy: () => buyOffice(id) })
   for (const id of MACHINE_IDS) {
     const price = slotPrice(id)

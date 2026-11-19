@@ -667,9 +667,11 @@ export function sanitizeLayout(raw: unknown, built: readonly boolean[] = []): Fa
   })
   // each place and bed must still fit (a bad save, or a farm from before a change): otherwise it goes home; and should
   // one sent home now clash with another, the whole farm goes back to how it started
+  // (a bed not built stands where it was staked out, whatever is round it: a plot of a field of beds may lie on a meadow
+  // not bought yet, off the land; what stands is checked against it all the same)
   const things: { thing: Thing; home: Placement }[] = [
     ...PLACE_IDS.map((id) => ({ thing: { kind: 'place', id } as Thing, home: PLACES[id].home })),
-    ...BEDS.map((_, i) => ({ thing: { kind: 'bed', index: i } as Thing, home: bedHome(i) })),
+    ...BEDS.flatMap((_, i) => (built[i] === true ? [{ thing: { kind: 'bed', index: i } as Thing, home: bedHome(i) }] : [])),
   ]
   const at = (t: Thing) => placementOf(out, t)!
   const put = (t: Thing, p: Placement) => {

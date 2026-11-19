@@ -1256,6 +1256,179 @@ function cottonBoll(): Structure<'fluff' | 'husk'> {
   return grounded({ fluff: { shape: merge(...locks), material: { roughness: 1 } }, husk: { shape: merge(...husk), material: { roughness: 0.85 } } })
 }
 
+// ───────────────────────────── update v1's waves (update-v1/missions/01-loop-economy.md c7, c8) ─────────────────────────────
+
+const CHERRY = rgb(0xb8122c)
+const CHERRY_DARK = rgb(0x6e0a1c)
+const BLUEBERRY = rgb(0x3b4f8f)
+const PASTRY = rgb(0xe3b16a)
+const PASTRY_DARK = rgb(0xb47634)
+const CERAMIC = rgb(0xc8553d)
+
+/** A fruit pie's dish, a rim of crimped crust round its top, `R` its top's radius. */
+function pieDish(R: number, dish: V3): Shape {
+  return lathe(
+    [
+      [0, 0],
+      [R - 0.02, 0.002],
+      [R + 0.01, 0.045],
+      [R + 0.02, 0.05],
+      [R - 0.01, 0.042],
+      [0, 0.01],
+    ],
+    { seg: 40, steps: 1 },
+  ).fill(dish, 0)
+}
+
+/** An apple pie in a terracotta dish: a domed golden lid, crimped round its edge, three steam slits and a sugared
+ *  shine. */
+function applePie(): Structure<'dish' | 'pie'> {
+  const R = 0.13
+  const crust = (x: number, y: number, z: number) => mix(PASTRY, PASTRY_DARK, 0.25 + 0.6 * smoothstep(0.45, 0.85, fbm3(x * 28, y * 28, z * 28, 6)))
+  // the lid, domed over the apples, its edge pressed into a crimped rim
+  const lid = lathe(
+    [
+      [0, 0.03],
+      [R - 0.026, 0.034],
+      [R + 0.006, 0.05],
+      [R + 0.008, 0.06],
+      [R - 0.012, 0.07],
+      [R - 0.04, 0.084],
+      [0.06, 0.098],
+      [0.0, 0.104],
+    ],
+    { seg: 48, steps: 2, shape: (a) => 1 + 0.025 * Math.sin(a * 22) },
+  )
+    .paint(crust, 0)
+    // three slits for the steam, dark against the crust
+    .pattern((x, y, z) => {
+      if (y < 0.08) return 0
+      const a = Math.atan2(z, x)
+      const k = Math.round((a / (Math.PI * 2)) * 3)
+      const along = a - (k / 3) * Math.PI * 2
+      const r = Math.hypot(x, z)
+      return Math.abs(along) < 0.06 && r > 0.022 && r < 0.06 ? 1 : 0
+    }, rgb(0x7a4a1c))
+  return { dish: { shape: pieDish(R, CERAMIC), material: { roughness: 0.3 } }, pie: { shape: lid, material: { roughness: 0.55 } } }
+}
+
+/** A cherry tart: a fluted golden shell, a glossy dark-red filling, cherries heaped on top, two with their stalks. */
+function cherryTart(): Structure<'shell' | 'cherries'> {
+  const R = 0.125
+  const shell = lathe(
+    [
+      [0, 0],
+      [R - 0.01, 0.0],
+      [R, 0.01],
+      [R + 0.004, 0.045],
+      [R - 0.008, 0.05],
+      [R - 0.014, 0.024],
+      [0, 0.022],
+    ],
+    { seg: 56, steps: 1, shape: (a) => 1 + 0.035 * Math.abs(Math.sin(a * 14)) },
+  ).paint((x, y, z) => mix(PASTRY, PASTRY_DARK, 0.2 + 0.55 * smoothstep(0.5, 0.85, fbm3(x * 30, y * 30, z * 30, 8))), 0)
+  const jam = lathe(
+    [
+      [0, 0.02],
+      [R - 0.012, 0.022],
+      [R - 0.014, 0.04],
+      [0, 0.043],
+    ],
+    { seg: 40, steps: 1 },
+  ).fill(CHERRY_DARK, 0)
+  // the cherries, a ring and a few in the middle, each sunk a little into the filling
+  const spots: [number, number, number][] = [
+    ...Array.from({ length: 9 }, (_, k): [number, number, number] => [Math.cos((k / 9) * Math.PI * 2) * 0.082, 0.052, Math.sin((k / 9) * Math.PI * 2) * 0.082]),
+    ...Array.from({ length: 4 }, (_, k): [number, number, number] => [Math.cos((k / 4) * Math.PI * 2 + 0.4) * 0.036, 0.056, Math.sin((k / 4) * Math.PI * 2 + 0.4) * 0.036]),
+    [0, 0.06, 0],
+  ]
+  const cherries = spots.map(([x, y, z], k) =>
+    ellipsoid(0.019, 0.017, 0.019, 10, 5)
+      .place([x, y, z])
+      .paint((px, py, pz) => mix(CHERRY, mix(CHERRY, rgb(0xff8a8a), 0.6), smoothstep(0.01, 0.02, py - y + (px - x) * 0.3 + (pz - z) * 0.2) * (k % 3 === 0 ? 1 : 0.7)), 0),
+  )
+  const stalks = [0, 5].map((k) => {
+    const [x, y, z] = spots[k]
+    return tube(
+      [
+        [x, y + 0.012, z],
+        [x + 0.008, y + 0.04, z - 0.004],
+        [x + 0.02, y + 0.058, z - 0.01],
+      ],
+      [0.0035, 0.003, 0.0025],
+      { seg: 5, steps: 2, round: [0, 0.0025] },
+    ).fill(STEM_BROWN, 0)
+  })
+  return { shell: { shape: merge(shell, jam), material: { roughness: 0.55 } }, cherries: { shape: merge(...cherries, ...stalks), material: { roughness: 0.22 } } }
+}
+
+/** Two blueberry muffins side by side in pleated paper cases, their golden tops domed over the case and dotted with
+ *  blueberries. */
+function blueberryMuffins(): Structure<'cases' | 'tops'> {
+  const one = (at: V3, turn: number) => {
+    const paper = lathe(
+      [
+        [0, 0],
+        [0.048, 0],
+        [0.062, 0.062],
+        [0.0, 0.062],
+      ],
+      { seg: 36, steps: 1, shape: (a) => 1 + 0.045 * Math.abs(Math.sin(a * 12)) },
+    )
+      .fill(rgb(0xe9e4f2), 0)
+      .pattern((x, _y, z) => (Math.abs(Math.sin(Math.atan2(z, x) * 12)) < 0.25 ? 1 : 0), rgb(0x9fb0d8))
+      .place(at, [0, turn, 0])
+    const top = lathe(
+      [
+        [0.0, 0.05],
+        [0.068, 0.054],
+        [0.074, 0.066],
+        [0.066, 0.084],
+        [0.044, 0.1],
+        [0.0, 0.108],
+      ],
+      { seg: 36, steps: 2 },
+    )
+      .paint((x, y, z) => mix(rgb(0xd99a52), rgb(0xa8662a), 0.3 + 0.5 * smoothstep(0.45, 0.85, fbm3(x * 34, y * 34, z * 34, 9))), 0)
+      .pattern((x, y, z) => (y > 0.062 && noise3(x * 90, y * 90, z * 90, 5) > 0.72 ? 1 : 0), BLUEBERRY)
+      .place(at, [0, turn, 0])
+    return { paper, top }
+  }
+  const a = one([-0.058, 0, 0], 0)
+  const b = one([0.058, 0, 0.012], 1.3)
+  return { cases: { shape: merge(a.paper, b.paper), material: { roughness: 0.85 } }, tops: { shape: merge(a.top, b.top), material: { roughness: 0.7 } } }
+}
+
+/** A quilt folded in a soft stack of three: squares of blue, red, cream and green, stitched in white round each square,
+ *  a binding round its folds. */
+function quilt(): Structure<'quilt'> {
+  const W = 0.16
+  const D = 0.12
+  const layer = (y: number, h: number, inset: number) =>
+    loft(
+      [
+        { c: [0, y, -D + inset], rx: W - inset, ry: h },
+        { c: [0, y, D - inset], rx: W - inset, ry: h },
+      ],
+      { seg: 20, steps: 1, up: [0, 1, 0], shape: (a) => squircle(a, 5), caps: [true, true], round: [h * 0.8, h * 0.8] },
+    )
+  const patches = [rgb(0x3f6fb8), rgb(0xc9573f), rgb(0xf1e6cc), rgb(0x5c8a4a)]
+  const square = 0.055
+  const all = merge(layer(0.022, 0.022, 0), layer(0.064, 0.021, 0.006), layer(0.104, 0.02, 0.012))
+    .paint((x, _y, z) => {
+      const i = Math.floor((x + 1) / square)
+      const j = Math.floor((z + 1) / square)
+      return patches[(i + 2 * j) % patches.length]
+    }, 0)
+    // white stitching along the squares' edges
+    .pattern((x, _y, z) => {
+      const u = ((x + 1) / square) % 1
+      const v = ((z + 1) / square) % 1
+      return Math.min(u, 1 - u, v, 1 - v) < 0.06 ? 1 : 0
+    }, rgb(0xfbf7ef))
+  return grounded({ quilt: { shape: all, material: { roughness: 0.92, detail: { scale: 300, bump: 0.002, shade: 0.12 } } } })
+}
+
 /** Every good with a model: the farm's produce, and the fruit of the fruit trees and bushes. */
 export type GoodsId = ProduceId | FruitId
 
@@ -1295,4 +1468,8 @@ export const GOODS: Record<GoodsId, () => Structure> = {
   potato,
   melon,
   cotton: cottonBoll,
+  apple_pie: applePie,
+  blueberry_muffins: blueberryMuffins,
+  cherry_tart: cherryTart,
+  quilt,
 }

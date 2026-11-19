@@ -52,6 +52,10 @@ const WEIGHT: Record<GoodsId, number> = {
   potato: 1024,
   melon: 1204,
   cotton: 2330,
+  apple_pie: 1568,
+  blueberry_muffins: 1584,
+  cherry_tart: 1970,
+  quilt: 1680,
 }
 
 /** The good the budget measures the market full of (marketFill's default and tests/e2e/05's `fillShelves`). */

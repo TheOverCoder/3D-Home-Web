@@ -4,7 +4,7 @@ import { CanvasTexture, DoubleSide, SRGBColorSpace, type Group, type Mesh, type 
 import { loadSolids, solidsReady } from '../lib/sculpt'
 import { mouthGlowMaterial, mouthGlowShape, ovenModel, structureParts } from '../models/structures'
 import { B } from '../scene/Furnishings'
-import { type CakeId, type MachineId } from './data'
+import { type MachineId, type OvenId } from './data'
 import { Body, Placed, type Box } from './Places'
 import { farm, machineDone, machineProgress, machineStage, useFarm } from './state'
 import { useMachine } from './useMachine'
@@ -60,15 +60,20 @@ function signTexture(text: string, bg = '#2f3a2c', fg = '#f3ead8') {
   return t
 }
 
-const CAKE_LOOK: Record<CakeId, { top: string; dots: string; pie?: boolean }> = {
+const CAKE_LOOK: Record<OvenId, { top: string; dots: string; pie?: boolean }> = {
   lemon_cake: { top: '#f6e7a1', dots: '#f2d43a' },
   strawberry_cake: { top: '#f4c6cf', dots: '#d8213a' },
   carrot_cake: { top: '#f3ede0', dots: '#e8792a' },
   pumpkin_pie: { top: '#d9782a', dots: '#f3e6cf', pie: true },
+  // update v1's bakes (the oven's recipes in src/farm/data.ts): the apple pie's golden lid, the muffins' tops dotted
+  // with blueberries, the tart's cherries
+  apple_pie: { top: '#e3b16a', dots: '#b47634', pie: true },
+  blueberry_muffins: { top: '#d99a52', dots: '#3b4f8f' },
+  cherry_tart: { top: '#6e0a1c', dots: '#b8122c', pie: true },
 }
 
 /** A cake (or pie) on a plate, decorated for its recipe. */
-export function Cake({ id }: { id: CakeId }) {
+export function Cake({ id }: { id: OvenId }) {
   const look = CAKE_LOOK[id]
   return (
     <group>
@@ -141,7 +146,7 @@ function Oven() {
     },
     [glowShape, glow],
   )
-  const ready = done('oven') as CakeId | null
+  const ready = done('oven') as OvenId | null
 
   useFrame((state) => {
     const s = machineStage('oven')

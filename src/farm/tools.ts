@@ -1,4 +1,4 @@
-import { LADDERS, PRODUCERS, TOOL, isToolKind, mostAnimals, toolLadder, type Ladder, type LadderId, type ProducerId, type ToolKind } from './data'
+import { LADDERS, PRODUCERS, TOOL, fullHerd, isToolKind, toolLadder, type Ladder, type LadderId, type ProducerId, type ToolKind } from './data'
 
 // The animals' tools (plans/animal-tools.md; TOOL, TOOLS and their LADDERS in ./data): the rules that need nothing but
 // the numbers they are given. The farm keeps what is owned in `farm.ladders` (no other field) and runs the rest
@@ -20,7 +20,7 @@ const atTop = (ladders: Steps, id: LadderId) => (ladders[id] ?? 0) >= LADDERS[id
  *  one of `anyOf` at its top. Nothing to wait for: always. */
 export function needsMet(needs: Ladder['needs'], f: ToolFarm): boolean {
   if (!needs) return true
-  if (needs.herd && f.producers[needs.herd].animals < mostAnimals(needs.herd)) return false
+  if (needs.herd && f.producers[needs.herd].animals < fullHerd(needs.herd)) return false
   if (needs.ladder && !atTop(f.ladders, needs.ladder)) return false
   if (needs.anyOf && !needs.anyOf.some((id) => atTop(f.ladders, id))) return false
   return true

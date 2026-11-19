@@ -8,6 +8,7 @@ import { ROOMS, type RoomId } from '../data/layout'
 import { endsWithin } from '../lib/endsWithin'
 import {
   BEDS,
+  EXPANSION_IDS,
   CROPS,
   ITEMS,
   LADDERS,
@@ -306,7 +307,7 @@ function farmProblems(): string[] {
     bad(`machines.${id}.progress`, r ? isWithin(m.progress, 0, r.seconds * (1 - machineLevel(m.worked).boost.speed)) : m.progress === 0)
   }
   for (const k of ['sprinkler', 'compost', 'started'] as const) bad(k, typeof farm[k] === 'boolean')
-  bad('expansions', sameKeys(farm.expansions, ['east', 'west']) && Object.values(farm.expansions).every((v) => typeof v === 'boolean'))
+  bad('expansions', sameKeys(farm.expansions, EXPANSION_IDS) && Object.values(farm.expansions).every((v) => typeof v === 'boolean'))
   bad('queueLevel', isCount(farm.queueLevel, QUEUE_LEVELS))
   bad('paceLevel', isCount(farm.paceLevel, PACE_LEVELS))
   bad('nextVisitorIn', isWithin(farm.nextVisitorIn, 0, arrivalSeconds()))
@@ -486,10 +487,11 @@ function placeProblems(): string[] {
   const { places, land, beds, decor } = farm.layout
   bad('layout: every place', sameKeys(places, PLACE_IDS))
   for (const id of PLACE_IDS) bad(`layout.places.${id} fits`, [0, 1, 2, 3].includes(places[id].rot) && canPlace(farm.layout, id, places[id]).ok)
-  // every bed where it fits; one not built where it was staked out
+  // every built bed where it fits; one not built where it was staked out (a field's plot on a meadow not bought yet lies
+  // off the land)
   bad('layout.beds: one for each bed', beds.length === BEDS.length)
   beds.forEach((p, i) => {
-    bad(`layout.beds.${i} fits`, [0, 1, 2, 3].includes(p.rot) && canPlaceBed(farm.layout, i, p).ok)
+    if (farm.beds[i].built) bad(`layout.beds.${i} fits`, [0, 1, 2, 3].includes(p.rot) && canPlaceBed(farm.layout, i, p).ok)
     if (!farm.beds[i].built) bad(`layout.beds.${i}: not built, where it was staked out`, json(p) === json(bedHome(i)))
   })
   // each piece of decoration a kind of the shop's, with an id of its own, where it fits; the store a count of each kind,
