@@ -630,24 +630,29 @@ export const GALLERY: GalleryEntry[] = [
   {
     id: 'mailbox',
     label: 'Mailbox',
-    name: 'The mailbox by the gate (src/farm/Mailbox.tsx): its flag swinging up while a letter waits, and down again',
+    name: 'The mailbox by the gate (src/farm/Mailbox.tsx), twice: its flag up while a letter waits, and swinging up and down',
     make() {
       const model = mailboxModel()
       const parts = new Parts({
-        body: { geometry: partGeometry(model.body), max: 1, material: model.body.material, castShadow: true },
-        flag: { geometry: partGeometry(model.flag), max: 1, material: model.flag.material, castShadow: true },
+        body: { geometry: partGeometry(model.body), max: 2, material: model.body.material, castShadow: true },
+        flag: { geometry: partGeometry(model.flag), max: 2, material: model.flag.material, castShadow: true },
       })
       const pose = (t: number) => {
-        // up for two seconds, down for two
+        // the second: up for two seconds, down for two
         const k = Math.min(1, Math.max(0, Math.sin(t * 1.6) * 2 + 0.5))
         parts.begin()
-        parts.at(0, 0, 0, -0.6)
-        parts.put('body', 0, 0, 0)
-        parts.put('flag', MAIL_FLAG.at[0], MAIL_FLAG.at[1], MAIL_FLAG.at[2], MAIL_FLAG.down + (MAIL_FLAG.up - MAIL_FLAG.down) * k)
+        for (const [x, up] of [
+          [-0.35, 1],
+          [0.35, k],
+        ]) {
+          parts.at(x, 0, 0, -0.6)
+          parts.put('body', 0, 0, 0)
+          parts.put('flag', MAIL_FLAG.at[0], MAIL_FLAG.at[1], MAIL_FLAG.at[2], MAIL_FLAG.down + (MAIL_FLAG.up - MAIL_FLAG.down) * up)
+        }
         parts.end()
       }
       pose(0)
-      return { object: parts.group, width: 0.8, height: 1.3, triangles: () => parts.triangles(), update: pose }
+      return { object: parts.group, width: 1.5, height: 1.3, triangles: () => parts.triangles(), update: pose }
     },
   },
 ]

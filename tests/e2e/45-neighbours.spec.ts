@@ -204,13 +204,15 @@ test.describe('the neighbours', () => {
         ] as const) {
           await page.evaluate((p) => (window as any).__home.useHome.getState().openPanel(p), panel)
           await expect(page.locator(sel)).toBeVisible({ timeout: 10_000 })
-          await page.waitForTimeout(900)
           // (the letter's sheet whole; on the board the pinned plank, in the line the baker's row: their sheets scroll)
-          const b = (await boxOf(page, panel.kind === 'letter' ? '.farm-panel' : sel))!
-          expect(b.left, `${where}: ${sel}`).toBeGreaterThanOrEqual(-1)
-          expect(b.right, `${where}: ${sel}`).toBeLessThanOrEqual(size.width + 1)
-          expect(b.top, `${where}: ${sel}`).toBeGreaterThanOrEqual(-1)
-          if (panel.kind !== 'neighbours') expect(b.bottom, `${where}: ${sel}`).toBeLessThanOrEqual(size.height + 1)
+          // where it comes to rest (the sheet slides in on its spring, slowly on a page drawn in software): on the screen
+          const measured = panel.kind === 'letter' ? '.farm-panel' : sel
+          const off = async () => {
+            const b = (await boxOf(page, measured))!
+            const out = [b.left < -1 && 'left', b.right > size.width + 1 && 'right', b.top < -1 && 'top', panel.kind !== 'neighbours' && b.bottom > size.height + 1 && 'bottom']
+            return out.filter(Boolean).join(' ')
+          }
+          await expect.poll(off, { message: `${where}: ${sel} off the screen`, timeout: 20_000, intervals: [400] }).toBe('')
           await still(page, `${panel.kind}-${where}`)
           await page.evaluate(() => (window as any).__home.useHome.getState().closePanel())
           await expect(page.locator('.farm-panel')).toHaveCount(0, { timeout: 10_000 })
