@@ -68,6 +68,7 @@ export type Panel =
   | { kind: 'machine-slot'; id: 'mill' | 'loom' | 'oven' } // the card that asks before a machine's next place is bought
   | { kind: 'news' } // the farm news: the week's events on now and coming, and the lucky draw (src/farm/news)
   | { kind: 'album' } // the farm album: its pages of tiles earned by deeds, a garment for each page done (src/farm/AlbumPanel.tsx)
+  | { kind: 'computer'; piece: string; buy?: true } // the house's computer: its desktop and apps (src/farm/computer; buy: the card that asks before one is bought, from the desk's price tag)
 
 /** Every kind of panel, as one that opens on a farm with plenty of everything (tests/e2e/39-panels opens each, upright
  *  and sideways, and measures what can be read and pressed). The type holds every kind of `Panel` once: a new panel
@@ -106,6 +107,7 @@ export const PANEL_KINDS: { readonly [K in Panel['kind']]: Extract<Panel, { kind
   'machine-slot': { kind: 'machine-slot', id: 'mill' },
   news: { kind: 'news' },
   album: { kind: 'album' },
+  computer: { kind: 'computer', piece: 'computer' },
 }
 
 /** The thing you look at carries a tag (src/ui/ThingTag.tsx): a gear for what can be set about it, or a price tag for

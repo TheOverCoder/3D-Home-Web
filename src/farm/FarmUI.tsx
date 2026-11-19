@@ -36,6 +36,7 @@ import { GoodWaysContext } from '../ui/GoodPic'
 import { PanelGuard } from '../ui/PanelGuard'
 import { CardWatcher } from '../ui/useGameFree'
 import { GAME_WAYS } from './goods/ways'
+import { ComputerPanel } from './computer/ComputerPanel'
 
 // The farm's interface: the dashboard at the top, the edit modes' cards, and a slot for each panel — each panel a file of
 // its own (the seed packets, a bed's gear, a bed to build and the line at the gate in ./panels). Every slot is inside
@@ -113,6 +114,7 @@ export function FarmUI() {
         {/* the farm album (the corner menu's): out the way it came in, as the level's card */}
         <AnimatePresence>{panel?.kind === 'album' && <AlbumPanel key={`album-${opening(panel)}`} />}</AnimatePresence>
         {panel?.kind === 'wardrobe' && <WardrobePanel />}
+        {panel?.kind === 'computer' && <ComputerPanel key={panel.buy ? 'buy' : panel.piece} piece={panel.piece} buy={panel.buy} />}
       </PanelGuard>
       <PanelGuard name="level-up" layer>
         <LevelUp />

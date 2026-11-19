@@ -24,6 +24,7 @@ import { Maps } from './Maps'
 import { ThingTag } from '../ui/ThingTag'
 import { DecorateMode } from '../home/DecorateMode'
 import { Wardrobes } from '../home/Wardrobe'
+import { Computers } from '../home/Computer'
 import { RenderPause } from './RenderPause'
 import { Player } from './Player'
 import { ViewPass } from './ViewPass'
@@ -194,6 +195,8 @@ export default function Experience() {
           <DecorateMode />
           {/* the house's wardrobes, and the camera that films you while one is open (after the player's own too) */}
           {map === 'home' && <Wardrobes />}
+          {/* the house's computers, and the desk's price tag while it has none (src/home/Computer.tsx) */}
+          {map === 'home' && <Computers />}
           <Ready />
         </Physics>
         {/* the farm's small effects: water, sparkles and dust (three.quarks, loaded once playing) and flying coins */}

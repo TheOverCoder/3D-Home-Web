@@ -417,6 +417,31 @@ The README has the overview; `tests/README.md` what each test guards.
   with a word (`warn`, amber), never a refusal; what stands or hangs must still not go through a wall or another piece,
   nor where the kitchen's door shuts and swings. Decorating ends with `keepPlayerClear` (never inside a wall or a piece).
 
+## The house's computer (src/home/Computer.tsx, src/farm/computer, mood.ts, ledger.ts, prices.ts)
+
+- A piece of furniture (`computer` in `catalogue.ts`: 500 coins, Tables; its model `ComputerDesk` in `Furnishings.tsx`,
+  its screen the vegetable index, drawn as the farm changes, at most once a second, only in its room), used with the
+  action button (*Use the computer*): its desktop opens (`ComputerPanel` reads the farm, `ComputerDesk` draws its
+  `DeskView`), the Today widget and the apps, a row each of `APPS` (`apps.ts`: Market, Planner, Sales book; a new app
+  is a row). While the house has none, the studio's desk carries its price tag: a card, then it stands at the free spot
+  nearest the desk (`place.ts`). An app's window is over the sheet (`data-over-sheet`): Esc closes its page, the window,
+  then the computer. It gives no XP and asks nothing: everything it shows is the game's own numbers.
+- Every price is one sum with named parts: `priceOf` is `priceAt` with the farm's parts (its machine's level, the
+  day's factor), and the views call `priceAt` with a farm's own (`marketView`, `planView`, at `computerNow()`), so the
+  computer never disagrees with a sale. `BUYER_OFFERS` (`data.ts`) is the gate's table of offers and their odds: a
+  buyer's offer is drawn from it, and the Market shows it.
+- The day's factor is the one `priceEvents` setter, `dayFactor` (`state/day.ts`): the lucky draw's ×2 times the town's
+  market mood (`mood.ts`: ±10 %, half a shared wave of 13 days and half each good's own of 7 to 11, by the date alone,
+  the same on every farm, never because you sold; never a building material), judged on the events' day (a time away's
+  step on its own). Quiet where the game is tested (under Vitest; on a ?debug page unless `&mood=on`; `ready()` and
+  `bootApp` quiet it): a test turns it on with `setMood`, a page with `__home.mood.on(true)`. The vegetable index is
+  100 × the crops' mean mood. A change to its numbers is checked against `npm run sim` with it on.
+- Every sale calls `sold(channel, good, units, coins)` once, where it pays (`state/ledger.ts`: the gate, an order split
+  by each line's share, the manager, your shop, the contractor); a decline writes nothing. `ledgerNow()` gives the book
+  (`farm.ledger`: `LEDGER_DAYS` of the device's calendar), `bookView` draws it. A new place to sell is a `Channel`
+  (`ledger.ts`) and a row of the views (`marketView`'s channels, `CHANNEL_WORDS`). `MarketFarm` needs `ledger` (pass
+  `farm`). `41-computer` buys it both ways and opens every app and tab upright and sideways.
+
 ## Making models (src/lib/sculpt, examples in src/models)
 
 - Build from the kit's shapes; close every end that is not buried in another piece (radius 0 at tips, `round`,

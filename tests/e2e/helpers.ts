@@ -67,6 +67,8 @@ export async function bootApp(page: Page, query = 'debug&quality=low') {
   await page.evaluate(() => (window as any).__home?.season?.quiet?.(true))
   // the season road not fed (src/farm/state/seasonRoad.ts): no spec's coins or goods come from its stops
   await page.evaluate(() => (window as any).__home?.road?.quiet?.(true))
+  // the market's mood quiet (src/farm/mood.ts): every price as fair, whatever the date
+  await page.evaluate(() => (window as any).__home?.mood?.quiet?.(true))
 }
 
 /** Puts the shared page on a map (the house yours first): the scene changes behind its curtain, you at that map's start.
@@ -209,6 +211,9 @@ export async function openGame(browser: Browser, counting = false): Promise<{ ga
         // the season road not fed (src/farm/state/seasonRoad.ts), as a ?debug page starts: a spec that fed it (44) leaves
         // it quiet for the next
         h.road?.quiet?.(true)
+        // the market's mood quiet (src/farm/mood.ts: every price as fair), as a ?debug page starts: a spec that turned it
+        // on (34-events, 41-computer) leaves it quiet for the next
+        h.mood?.quiet?.(true)
         // the effects' clock at its own speed and the weather's drops at the device's count (a spec that set them,
         // 05's walk in the rain, 16's frozen poses, leaves them as they start)
         if (h.fx?.time) h.fx.time.speed = 1
