@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import { CanvasTexture, DoubleSide, SRGBColorSpace, type Group, type Mesh, type Sprite } from 'three'
 import { loadSolids, solidsReady } from '../lib/sculpt'
 import { castAsOne } from '../lib/sculpt/sun'
-import { DAIRY_CHURN, dairyDasher, dairyModel } from '../models/buildings'
+import { DAIRY_CHURN, KETTLE, dairyDasher, dairyModel, kettleEmbers, kettleModel, kettlePaddle } from '../models/buildings'
 import { mouthGlowMaterial, mouthGlowShape, ovenModel, structureParts } from '../models/structures'
 import { B } from '../scene/Furnishings'
 import { type MachineId, type OvenId } from './data'
@@ -485,7 +485,77 @@ const DAIRY_BODY = [
   { half: [0.2, 0.45, 0.2], at: [DAIRY_CHURN.x, 0.45, DAIRY_CHURN.z] },
 ] satisfies Box[]
 
-/** The oven, the mill and the loom; and update v1's dairy. */
+/** The jam kettle (update v1): its hearth, tripod, kettle and table of jars drawn with the kit and cast as one; while it
+ *  works the paddle stirs round the kettle, the embers glow and steam rises (drawn on their own, casting nothing). */
+function Kettle() {
+  useFarm((s) => s.rev)
+  const work = useMachine('kettle', 1.5)
+  const model = useStill(kettleModel, 'kettle')
+  const paddle = useMemo(() => structureParts({ paddle: { shape: kettlePaddle(), material: { roughness: 0.8 }, castShadow: false } }, 'kettle-paddle'), [])
+  const glow = useMemo(() => mouthGlowMaterial(0), [])
+  const embers = useMemo(() => kettleEmbers().geometry(), [])
+  const steam = useRef<(Sprite | null)[]>([])
+  const tex = useMemo(() => smokeTexture(), [])
+  useEffect(
+    () => () => {
+      paddle.dispose()
+      glow.dispose()
+      embers.dispose()
+    },
+    [paddle, glow, embers],
+  )
+  const turn = useRef(0)
+
+  useFrame((state, rawDt) => {
+    const dt = Math.min(rawDt, 0.1)
+    const k = work.current
+    const t = state.clock.elapsedTime
+    // the paddle goes round the kettle, a turn every few seconds, as hard as it works
+    turn.current += dt * 1.4 * k
+    paddle.group.rotation.y = turn.current
+    glow.emissiveIntensity = 2.2 * k * (0.8 + Math.sin(t * 11) * 0.1 + Math.sin(t * 23) * 0.08)
+    steam.current.forEach((sp, i) => {
+      if (!sp) return
+      sp.visible = k > 0.05
+      if (!sp.visible) return
+      const life = (t * 0.3 + i / steam.current.length) % 1
+      sp.position.set(Math.sin(t * 0.6 + i * 2) * 0.12 * life, KETTLE.rim + 0.05 + life * 0.9, Math.cos(t * 0.5 + i) * 0.12 * life)
+      const size = 0.2 + life * 0.4
+      sp.scale.set(size, size, 1)
+      sp.material.opacity = (1 - life) * 0.4 * k
+    })
+  })
+
+  return (
+    <>
+      <Placed id="kettle">
+        <primitive object={model.group} />
+        <primitive object={paddle.group} />
+        <mesh geometry={embers} material={glow} />
+        {Array.from({ length: 4 }, (_, i) => (
+          <sprite
+            key={i}
+            ref={(s) => {
+              steam.current[i] = s
+            }}
+            visible={false}
+          >
+            <spriteMaterial map={tex} transparent depthWrite={false} opacity={0.3} />
+          </sprite>
+        ))}
+      </Placed>
+      <Body id="kettle" boxes={KETTLE_BODY} />
+    </>
+  )
+}
+
+/** The hearth and the kettle over it, and the table of jars. */
+const KETTLE_BODY = [
+  { half: [0.62, 0.45, 0.62], at: [0, 0.45, 0] },
+  { half: [0.38, 0.4, 0.24], at: [KETTLE.table.x, 0.4, KETTLE.table.z] },
+] satisfies Box[]
+
+/** The oven, the mill and the loom; and update v1's dairy and jam kettle. */
 export function Workshop() {
   return (
     <group name="farm-workshop">
@@ -493,6 +563,7 @@ export function Workshop() {
       <Mill />
       <Loom />
       <Dairy />
+      <Kettle />
     </group>
   )
 }

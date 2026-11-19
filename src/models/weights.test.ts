@@ -60,6 +60,7 @@ const WEIGHT: Record<GoodsId, number> = {
   cheese: 300,
   bread: 704,
   honey: 844,
+  strawberry_jam: 720,
 }
 
 /** The good the budget measures the market full of (marketFill's default and tests/e2e/05's `fillShelves`). */

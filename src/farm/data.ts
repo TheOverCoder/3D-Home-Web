@@ -16,10 +16,12 @@ export type BakeId = 'apple_pie' | 'blueberry_muffins' | 'cherry_tart' | 'bread'
 export type OvenId = CakeId | BakeId
 /** What the dairy makes from the cows' milk (update v1, wave 2). */
 export type DairyId = 'butter' | 'cheese'
+/** What the jam kettle cooks from the fruit (update v1, wave 2): a jar each. */
+export type JamId = 'strawberry_jam'
 /** The building materials: what the silo and the barn are made bigger with (STORES, below). Never asked for, and sold
  *  only to the contractor behind the market (CONTRACTOR); they come as surprises (ITEM_ODDS) and are kept in the barn. */
 export type ItemId = 'brick' | 'plank' | 'nail' | 'iron' | 'bolt' | 'log'
-export type ProduceId = CropId | 'lemon' | FruitId | 'egg' | 'milk' | 'wool' | 'sugar' | 'flour' | 'cloth' | CakeId | ItemId | BakeId | 'quilt' | DairyId | 'honey'
+export type ProduceId = CropId | 'lemon' | FruitId | 'egg' | 'milk' | 'wool' | 'sugar' | 'flour' | 'cloth' | CakeId | ItemId | BakeId | 'quilt' | DairyId | 'honey' | JamId
 
 export interface CropDef {
   id: CropId
@@ -102,6 +104,7 @@ export const PRODUCE: ProduceDef[] = [
   // the beehive's (decor.ts, a producing piece of the edit mode's shop): a jar of honey every twenty minutes, kept in the
   // barn
   { id: 'honey', name: 'jar of honey', plural: 'jars of honey', price: 32, maxAsk: 3 },
+  { id: 'strawberry_jam', name: 'strawberry jam', plural: 'strawberry jams', price: 125, maxAsk: 1 },
 ]
 export const produceById = (id: ProduceId) => PRODUCE.find((p) => p.id === id)!
 /** The six building materials, in the order the silo and the barn list them. */
@@ -182,7 +185,7 @@ export const RECIPES: Recipe[] = [
 /** What a recipe takes, when it takes one good (the mill's wheat, the loom's fleece). */
 export const inputOf = (r: Recipe) => Object.keys(r.needs)[0] as ProduceId
 
-export type MachineId = 'mill' | 'loom' | 'oven' | 'dairy'
+export type MachineId = 'mill' | 'loom' | 'oven' | 'dairy' | 'kettle'
 
 /** What a machine's button says, about `n` jobs of a recipe (`left`: the time to go, as 1:05). */
 export interface MachineWords {
@@ -317,6 +320,26 @@ export const MACHINES: Record<MachineId, MachineDef> = {
       idle: (nearest) => `Dairy · a ${produceById(nearest.makes).name} needs`,
     },
     sounds: { load: 'churn', done: 'C7', collect: 'crock', work: { sound: 'churn', every: 2.2, spread: 1.2 } },
+  },
+  // the jam kettle, by the farm's kitchen between the east beds and the oven: fruit and sugar cooked into jam over a
+  // fire, a jar a job (half an hour and more: for while you are away); you stand on its west side, the table of jars to
+  // the north
+  kettle: {
+    name: 'Jam kettle',
+    x: 7.0,
+    z: 9.6,
+    stand: [-1.25, 1.0, 0],
+    aim: [0, 0.85, 0],
+    sparkle: [0, 1.1, 0],
+    reach: 2.4,
+    recipes: [{ id: 'strawberry_jam', needs: { strawberry: 6, sugar: 1 }, makes: 'strawberry_jam', seconds: 30 * 60 }],
+    words: {
+      word: 'Cook',
+      working: (r, n, left) => `Cooking ${n === 1 ? `a ${produceById(r.makes).name}` : count(r.makes, n)} · ready in ${left}`,
+      done: (r, n) => `Take ${n === 1 ? `the ${produceById(r.makes).name}` : count(r.makes, n)} off the fire`,
+      idle: (nearest) => `Jam kettle · a ${produceById(nearest.makes).name} needs`,
+    },
+    sounds: { load: 'bubble', done: 'D7', collect: 'jar', work: { sound: 'bubble', every: 2.6, spread: 1.4 } },
   },
 }
 export const MACHINE_IDS = Object.keys(MACHINES) as MachineId[]

@@ -1550,6 +1550,41 @@ function honey(): Structure<'jar' | 'cover' | 'dipper'> {
   return { jar: { shape: jar, material: { roughness: 0.15 } }, cover: { shape: cover, material: { roughness: 0.9 } }, dipper: { shape: dipper, material: { roughness: 0.7 } } }
 }
 
+/** A jar of jam: one jar, the jam's colour through its glass, a cloth cover (its colour, or a checked one) tied over its
+ *  lid, a paper label round its middle. The kettle's every jam is this jar in its own colours. */
+function jamJar(jam: V3, cloth: V3, check: boolean): () => Structure<'jar' | 'cover'> {
+  return () => {
+    const jar = lathe(
+      [
+        [0, 0],
+        [0.055, 0],
+        [0.062, 0.015],
+        [0.064, 0.1],
+        [0.056, 0.12],
+        [0.05, 0.125],
+        [0, 0.125],
+      ],
+      { seg: 24, steps: 2 },
+    )
+      .paint((_x, y) => mix(jam, mix(jam, rgb(0xffffff), 0.25), smoothstep(0.0, 0.11, y)), 0)
+      .pattern((_x, y) => (y > 0.045 && y < 0.085 ? 1 : 0), rgb(0xf5edd8))
+    const cover = lathe(
+      [
+        [0, 0.123],
+        [0.056, 0.121],
+        [0.066, 0.108],
+        [0.068, 0.114],
+        [0.06, 0.138],
+        [0, 0.143],
+      ],
+      { seg: 24, steps: 1, shape: (a) => 1 + 0.05 * Math.max(0, Math.sin(a * 6)) },
+    )
+      .fill(cloth, 0)
+      .pattern((x, _y, z) => (check && Math.sin(x * 140) * Math.sin(z * 140) > 0 ? 1 : 0), rgb(0xf4ece0))
+    return { jar: { shape: jar, material: { roughness: 0.15 } }, cover: { shape: cover, material: { roughness: 0.9 } } }
+  }
+}
+
 /** Every good with a model: the farm's produce, and the fruit of the fruit trees and bushes. */
 export type GoodsId = ProduceId | FruitId
 
@@ -1597,4 +1632,5 @@ export const GOODS: Record<GoodsId, () => Structure> = {
   cheese,
   bread,
   honey,
+  strawberry_jam: jamJar(rgb(0xb3172e), rgb(0xd23a3a), true),
 }

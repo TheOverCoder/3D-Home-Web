@@ -29,6 +29,7 @@ const MACHINE: Partial<Record<MachineId, { pic: ArtId; verb: string }>> = {
   loom: { pic: 'yarn', verb: 'Woven at' },
   oven: { pic: 'shortcake', verb: 'Baked in' },
   dairy: { pic: 'cheese-wedge', verb: 'Made at' },
+  kettle: { pic: 'pot-of-food', verb: 'Cooked in' },
 }
 
 /** Where a good comes from, by the game's tables. */

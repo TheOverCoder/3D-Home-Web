@@ -10,7 +10,7 @@ import { cropParts } from './crops'
 import { GROWERS, putEgg, putLemon } from './plants'
 import { coopModel, lemonSpots, lemonTreeModel, ovenModel, structurePieces, troughModel, type Structure } from './structures'
 import { GOODS, type GoodsId } from './goods'
-import { barnModel, crateModel, dairyWithDasher, deskModel, farmGateModel, officeModel, palletModel, siloModel } from './buildings'
+import { barnModel, crateModel, dairyWithDasher, kettleWithPaddle, deskModel, farmGateModel, officeModel, palletModel, siloModel } from './buildings'
 import { DRIVER, putTractor, seatDriver, tractorParts } from './tractor'
 import { marketFittingsParts, putMarketFittings, walkInShellModel } from './market'
 import { carParts, putCar, putRollingCar, rollingCarParts } from './car'
@@ -415,9 +415,9 @@ export const MODEL_CHECKS: ModelCheck[] = [
   },
   {
     id: 'machines',
-    name: "Update v1's machines: the dairy",
+    name: "Update v1's machines: the dairy and the jam kettle",
     run() {
-      return checkPieces('dairy with its dasher', ...structure(dairyWithDasher()))
+      return [...checkPieces('dairy with its dasher', ...structure(dairyWithDasher())), ...checkPieces('jam kettle with its paddle', ...structure(kettleWithPaddle()))]
     },
   },
   {

@@ -31,6 +31,7 @@ const FEEL_TODAY: Record<string, string> = {
   bolt: 'tick',
   tray: 'tick',
   crock: 'tick',
+  jar: 'tick',
   crate: 'tick',
   shelf: 'tick',
   pay: 'buy',
@@ -39,8 +40,8 @@ const FEEL_TODAY: Record<string, string> = {
 }
 
 describe('the table of sounds', () => {
-  it('has a row for each of the farm’s 38 sounds', () => {
-    expect(Object.keys(SOUNDS)).toHaveLength(38)
+  it('has a row for each of the farm’s 40 sounds', () => {
+    expect(Object.keys(SOUNDS)).toHaveLength(40)
   })
 
   it('gives each the touch it has today', () => {

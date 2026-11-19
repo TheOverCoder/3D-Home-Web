@@ -1,4 +1,4 @@
-import { Shape, fbm3, lathe, loft, merge, noise3, rgb, smoothstep, squircle, tube, type SculptSurface, type V3 } from '../lib/sculpt'
+import { Shape, ellipsoid, fbm3, lathe, loft, merge, noise3, rgb, smoothstep, spin, squircle, tube, type SculptSurface, type V3 } from '../lib/sculpt'
 import { grain, mix, slab, type Structure } from './structures'
 
 // The farm's newer buildings, sculpted like the coop and the oven (src/models/structures.ts): built once in their own
@@ -18,6 +18,8 @@ import { grain, mix, slab, type Structure } from './structures'
 //   dairy    a whitewashed lean-to of boards under a shingled roof, open at the front: a counter with a cheese and a
 //            crock of butter, a shelf, a barrel churn by the front post (its dasher, drawn on its own, plunges while it
 //            works) and two milk cans (update v1: the dairy turns the cows' milk into butter, cheese and ice cream)
+//   kettle   a copper jam kettle hung from an iron tripod over a stone hearth, a table of jars beside it (the paddle and
+//            the embers' glow are drawn on their own: the paddle stirs and the fire glows while it works)
 
 const STEEL = rgb(0xb7c0c6)
 const STEEL_DARK = rgb(0x7f8a92)
@@ -615,4 +617,151 @@ export function dairyDasher(): Shape {
 /** The dairy with its dasher in place (for the gallery and the checks). */
 export function dairyWithDasher(): Structure<DairyPart | 'dasher'> {
   return { ...dairyModel(), dasher: { shape: dairyDasher(), material: { roughness: 0.8 } } }
+}
+
+// ───────────────────────────── the jam kettle (update v1) ─────────────────────────────
+
+const COPPER = rgb(0xc4703f)
+const COPPER_DARK = rgb(0x8e4526)
+const JAM = rgb(0x8c1426)
+const IRON = rgb(0x3a3d40)
+const HEARTH = rgb(0x8f877c)
+
+/** The jam kettle's parts in its frame: the hearth, the kettle's middle and its rim, the tripod's top, and the table's
+ *  middle beside it (where you stand: -x). */
+export const KETTLE = { hearth: 0.17, bottom: 0.42, rim: 0.84, jam: 0.78, r: 0.42, apex: 1.42, table: { x: 0.15, z: -0.95, top: 0.74 } } as const
+
+export type KettlePart = 'hearth' | 'iron' | 'copper' | 'wood' | 'jars'
+
+/** The jam kettle: a stone hearth 1.2 m across, a copper kettle hung over it from an iron tripod, and a little table of
+ *  jars on its north side. */
+export function kettleModel(): Structure<KettlePart> {
+  const { hearth: hy, bottom, rim, jam, r, apex, table } = KETTLE
+  const hearth = lathe(
+    [
+      [0, 0],
+      [0.6, 0],
+      [0.62, 0.08],
+      [0.58, hy - 0.01],
+      [0.44, hy],
+      [0.4, hy - 0.04],
+      [0, hy - 0.05],
+    ],
+    { seg: 28, steps: 1 },
+  ).paint((x, y, z) => mix(HEARTH, rgb(0x5c5650), 0.2 + 0.6 * smoothstep(0.35, 0.8, fbm3(x * 9, y * 9, z * 9, 71)) + 0.35 * smoothstep(0.42, 0.3, Math.hypot(x, z)) * smoothstep(0.1, 0.17, y)), 0)
+  // the tripod: three legs from the hearth's rim up to where they cross, a chain down to the kettle's bail
+  const legs = [0, 1, 2].map((k) => {
+    const a = (k / 3) * Math.PI * 2 + Math.PI / 6
+    return beam([Math.cos(a) * 0.66, 0, Math.sin(a) * 0.66], [Math.cos(a) * 0.02, apex + 0.04, Math.sin(a) * 0.02], 0.024, 0.024, [0, 0, 1], 6)
+  })
+  const chain = tube(
+    [
+      [0, apex + 0.02, 0],
+      [0, rim + 0.24, 0],
+    ],
+    0.011,
+    { seg: 6, steps: 1, caps: [true, true] },
+  )
+  // the bail: an arc over the kettle from rim to rim
+  const bail = tube(
+    Array.from({ length: 9 }, (_, k): V3 => {
+      const a = (k / 8) * Math.PI
+      return [Math.cos(a) * (r - 0.01), rim - 0.02 + Math.sin(a) * 0.27, 0]
+    }),
+    0.009,
+    { seg: 6, steps: 2, caps: [true, true] },
+  )
+  const iron = merge(...legs, chain, bail).paint(() => IRON, 0)
+  // the kettle: a round copper pan, its lip rolled out, the jam inside
+  const copper = spin(
+    [
+      [0, bottom],
+      [0.22, bottom + 0.01],
+      [0.34, bottom + 0.1],
+      [r - 0.01, bottom + 0.28],
+      [r, rim - 0.02],
+      [r + 0.03, rim],
+      [r - 0.02, rim + 0.005],
+      [r - 0.03, jam],
+      [0, jam],
+    ],
+    32,
+    { paint: (i, a) => (i >= 7 ? JAM : mix(COPPER, COPPER_DARK, 0.25 + 0.3 * Math.sin(a * 3 + i) ** 2 + (i < 2 ? 0.3 : 0))) },
+  )
+  // the table: a top on four legs, two crates under it
+  const legsT = [-1, 1].flatMap((sx) => [-1, 1].map((sz) => box(table.x + sx * 0.3, table.top / 2, table.z + sz * 0.17, 0.025, table.top / 2, 0.025, 6, 8)))
+  const top = box(table.x, table.top + 0.02, table.z, 0.36, 0.02, 0.22, 8, 12)
+  const wood = merge(...legsT.map((l) => l.paint(grain(1, 72), 0)), top.paint(grain(0, 73), 0))
+  // three jars on it, filled and lidded
+  const jar = (x: number, z: number, fill: V3) =>
+    merge(
+      lathe(
+        [
+          [0, table.top + 0.04],
+          [0.045, table.top + 0.04],
+          [0.05, table.top + 0.1],
+          [0.04, table.top + 0.14],
+          [0, table.top + 0.14],
+        ],
+        { seg: 14, steps: 1 },
+      ).paint((_x, y) => (y < table.top + 0.125 ? fill : rgb(0xeee6d6)), 0),
+      lathe(
+        [
+          [0, table.top + 0.135],
+          [0.046, table.top + 0.135],
+          [0.05, table.top + 0.15],
+          [0, table.top + 0.155],
+        ],
+        { seg: 14, steps: 1 },
+      )
+        .pattern((x, _y, z) => (Math.sin(x * 160) * Math.sin(z * 160) > 0 ? 1 : 0), rgb(0xd23a3a))
+        .fill(rgb(0xf4ece0), 0.5),
+    ).place([x, 0, z])
+  const jars = merge(jar(table.x - 0.2, table.z + 0.02, JAM), jar(table.x, table.z - 0.04, rgb(0x3a2a6a)), jar(table.x + 0.2, table.z + 0.03, rgb(0xe08a1e)))
+  return {
+    hearth: { shape: hearth, material: { roughness: 0.95, surface: { kind: 'stone', size: 0.5, joint: rgb(0x6f685f), tone: 0.45 } } },
+    iron: { shape: iron, material: { roughness: 0.55, metalness: 0.6 } },
+    copper: { shape: copper, material: { roughness: 0.3, metalness: 0.7 } },
+    wood: { shape: wood, material: { roughness: 0.8 } },
+    jars: { shape: jars, material: { roughness: 0.2 } },
+  }
+}
+
+/** The kettle's paddle, in its frame: a long wooden spoon from the jam up past the rim, turned round the kettle's middle by
+ *  the scene while it works (src/farm/Workshop.tsx). */
+export function kettlePaddle(): Shape {
+  const { jam } = KETTLE
+  return merge(
+    tube(
+      [
+        [0.12, jam - 0.08, 0],
+        [0.2, jam + 0.2, 0],
+        [0.3, jam + 0.62, 0],
+      ],
+      [0.016, 0.014, 0.014],
+      { seg: 8, steps: 2, caps: [true, true] },
+    ),
+    ellipsoid(0.05, 0.075, 0.016, 10, 6).place([0.11, jam - 0.1, 0], [0, 0, 0.25]),
+  ).paint(grain(1, 74), 0)
+}
+
+/** The jam kettle with its paddle in (for the gallery and the checks). */
+export function kettleWithPaddle(): Structure<KettlePart | 'paddle'> {
+  return { ...kettleModel(), paddle: { shape: kettlePaddle(), material: { roughness: 0.8 } } }
+}
+
+/** The embers under the kettle, as a disc on the hearth: drawn glowing by the scene while it works. */
+export function kettleEmbers(): Shape {
+  return lathe(
+    [
+      [0, KETTLE.hearth - 0.035],
+      [0.36, KETTLE.hearth - 0.035],
+      [0.36, KETTLE.hearth - 0.025],
+      [0, KETTLE.hearth - 0.02],
+    ],
+    { seg: 20, steps: 1 },
+  ).paint((x, _y, z) => {
+    const r = Math.hypot(x, z) / 0.36
+    return mix([1, 0.42, 0.1], [0.2, 0.03, 0.008], smoothstep(0.2, 1, r) + 0.3 * noise3(x * 30, 0, z * 30, 75))
+  }, 0)
 }

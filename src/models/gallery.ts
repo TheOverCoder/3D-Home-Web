@@ -11,7 +11,7 @@ import type { CropId } from '../farm/data'
 import { Group, Mesh, MeshStandardMaterial, PlaneGeometry } from 'three'
 import { coopModel, lemonSpots, lemonTreeModel, mouthGlowMaterial, mouthGlowShape, ovenModel, structureParts, troughModel } from './structures'
 import { GOODS, type GoodsId } from './goods'
-import { DESK_SCREEN, OFFICE_FLOOR, barnModel, crateModel, dairyWithDasher, deskModel, farmGateModel, officeModel, palletModel, siloModel } from './buildings'
+import { DESK_SCREEN, OFFICE_FLOOR, barnModel, crateModel, dairyWithDasher, kettleWithPaddle, deskModel, farmGateModel, officeModel, palletModel, siloModel } from './buildings'
 import { DRIVER, putTractor, seatDriver, tractorParts } from './tractor'
 import { MARKET_MIDDLE, MARKET_SCREEN, MARKET_SIGN, marketFittingsParts, marketShellParts } from './market'
 import { putSlidingDoor, slidingDoorParts } from './slidingDoor'
@@ -628,12 +628,15 @@ export const GALLERY: GalleryEntry[] = [
   {
     id: 'machines',
     label: 'Machines',
-    name: "Update v1's machines: the dairy (its churn's dasher up)",
+    name: "Update v1's machines: the dairy (its churn's dasher up) and the jam kettle (its paddle in)",
     make() {
       const dairy = structureParts(dairyWithDasher(), 'dairy')
+      const kettle = structureParts(kettleWithPaddle(), 'kettle')
+      dairy.group.position.x = -1.3
+      kettle.group.position.x = 1.6
       const object = new Group()
-      object.add(dairy.group)
-      return { object, width: 3.2, height: 2.6, triangles: () => dairy.triangles(), update() {} }
+      object.add(dairy.group, kettle.group)
+      return { object, width: 5.2, height: 2.6, triangles: () => dairy.triangles() + kettle.triangles(), update() {} }
     },
   },
 ]

@@ -46,6 +46,8 @@ export type FarmSound =
   | 'thud' // put down where it fits: a thud by its size
   | 'churn' // milk into the dairy's churn, and its dasher at work: a slosh and a wooden plunge
   | 'crock' // butter or cheese taken out of the dairy: a stoneware crock set down, a soft clink
+  | 'bubble' // fruit and sugar into the jam kettle, and its jam at the boil: a few thick bubbles popping
+  | 'jar' // a jar of jam taken off the fire: glass set down, its lid twisted on
 
 /** Crystals landing one close behind another climb the key from A6 (its 4th note), a step each (./palette.ts, climb),
  *  then hold the top. */
@@ -351,6 +353,26 @@ const SYNTHS: Record<FarmSound, Synth> = {
     burst(e, t, { type: 'bandpass', freq: 1100, q: 2.4, gain: 0.36 * v, attack: 0.002, decay: 0.06, pan })
     burst(e, t, { type: 'lowpass', freq: 500, q: 0.8, gain: 0.22 * v, attack: 0.003, decay: 0.07, pan })
     tone(e, t + 0.005, { type: 'triangle', f0: note(4, 6), gain: 0.026 * v, attack: 0.002, decay: 0.22, pan, key: true })
+  },
+  bubble(e, t, v, pan) {
+    // the jam at the boil: thick bubbles, each a little rising blip with a wet pop, a soft hiss under them
+    burst(e, t, { type: 'bandpass', freq: 3200, q: 0.6, gain: 0.05 * v, attack: 0.08, decay: 0.5, pan })
+    for (const [at, f] of [
+      [0.02, 380],
+      [0.17, 520],
+      [0.29, 440],
+      [0.43, 600],
+    ]) {
+      tone(e, t + at, { type: 'sine', f0: f, f1: f * 2.2, gain: 0.06 * v, attack: 0.003, decay: 0.06, pan })
+      burst(e, t + at + 0.04, { type: 'bandpass', freq: 1400, q: 2.5, gain: 0.16 * v, attack: 0.002, decay: 0.03, pan })
+    }
+  },
+  jar(e, t, v, pan) {
+    // a jar set down on the table: glass on wood, its ring (E7), then the lid twisted on in two short scrapes
+    burst(e, t, { type: 'bandpass', freq: 2000, q: 2, gain: 0.3 * v, attack: 0.002, decay: 0.04, pan })
+    tone(e, t + 0.003, { type: 'sine', f0: note(2, 7), gain: 0.028 * v, attack: 0.002, decay: 0.28, pan, key: true })
+    burst(e, t + 0.18, { type: 'bandpass', freq: 3600, sweepTo: 2600, q: 3, gain: 0.12 * v, attack: 0.01, decay: 0.06, pan })
+    burst(e, t + 0.27, { type: 'bandpass', freq: 3400, sweepTo: 2400, q: 3, gain: 0.12 * v, attack: 0.01, decay: 0.06, pan })
   },
   tray(e, t, v, pan) {
     // the oven's tray slides out over its runners and is set down on the stone with a little ring of tin (E7)
