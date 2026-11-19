@@ -105,6 +105,10 @@ const TABLE = {
   'recipe:oven:cherry_tart': 18,
   'recipe:loom:quilt': 19,
   'herd:sheep:5': 20,
+  // the second wave (c8): the dairy and what it makes, the butter into bread
+  'recipe:dairy:butter': 21,
+  'recipe:oven:bread': 22,
+  'recipe:dairy:cheese': 23,
 } as const satisfies Record<UnlockId, number>
 export const UNLOCKS: Readonly<Record<UnlockId, number>> = TABLE
 

@@ -11,7 +11,7 @@ import type { CropId } from '../farm/data'
 import { Group, Mesh, MeshStandardMaterial, PlaneGeometry } from 'three'
 import { coopModel, lemonSpots, lemonTreeModel, mouthGlowMaterial, mouthGlowShape, ovenModel, structureParts, troughModel } from './structures'
 import { GOODS, type GoodsId } from './goods'
-import { DESK_SCREEN, OFFICE_FLOOR, barnModel, crateModel, deskModel, farmGateModel, officeModel, palletModel, siloModel } from './buildings'
+import { DESK_SCREEN, OFFICE_FLOOR, barnModel, crateModel, dairyWithDasher, deskModel, farmGateModel, officeModel, palletModel, siloModel } from './buildings'
 import { DRIVER, putTractor, seatDriver, tractorParts } from './tractor'
 import { MARKET_MIDDLE, MARKET_SCREEN, MARKET_SIGN, marketFittingsParts, marketShellParts } from './market'
 import { putSlidingDoor, slidingDoorParts } from './slidingDoor'
@@ -623,6 +623,17 @@ export const GALLERY: GalleryEntry[] = [
       eggs.end()
       object.add(eggs.group)
       return { object, width: 12.6, height: 1.5, triangles: () => all.reduce((n, p) => n + p.triangles(), 0) + eggs.triangles(), update() {} }
+    },
+  },
+  {
+    id: 'machines',
+    label: 'Machines',
+    name: "Update v1's machines: the dairy (its churn's dasher up)",
+    make() {
+      const dairy = structureParts(dairyWithDasher(), 'dairy')
+      const object = new Group()
+      object.add(dairy.group)
+      return { object, width: 3.2, height: 2.6, triangles: () => dairy.triangles(), update() {} }
     },
   },
 ]

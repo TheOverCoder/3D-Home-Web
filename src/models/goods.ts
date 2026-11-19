@@ -1429,6 +1429,86 @@ function quilt(): Structure<'quilt'> {
   return grounded({ quilt: { shape: all, material: { roughness: 0.92, detail: { scale: 300, bump: 0.002, shade: 0.12 } } } })
 }
 
+/** A pat of butter on a little wooden board: a soft-edged block, its top swirled where the knife smoothed it. */
+function butter(): Structure<'board' | 'butter'> {
+  const board = loft(
+    [
+      { c: [0, 0, 0], rx: 0.12, ry: 0.085 },
+      { c: [0, 0.018, 0], rx: 0.12, ry: 0.085 },
+    ],
+    { seg: 28, steps: 1, up: [0, 0, 1], shape: (a) => squircle(a, 6), caps: [true, true] },
+  ).paint((x, y, z) => mix(rgb(0xc89a62), rgb(0x9a6a3a), 0.3 + 0.5 * noise3(x * 60, y * 6, z * 8, 31)), 0)
+  const pat = loft(
+    [
+      { c: [0, 0.012, 0], rx: 0.075, ry: 0.05 },
+      { c: [0, 0.06, 0], rx: 0.073, ry: 0.048 },
+      { c: [0, 0.068, 0], rx: 0.062, ry: 0.04 },
+    ],
+    { seg: 28, steps: 2, up: [0, 0, 1], shape: (a) => squircle(a, 5), caps: [true, true] },
+  )
+    .paint((x, _y, z) => mix(rgb(0xf9e389), rgb(0xf3cf5a), 0.5 + 0.5 * Math.sin(Math.hypot(x, z) * 160)), 0)
+    .place([0.008, 0, 0], [0, 0.25, 0])
+  return { board: { shape: board, material: { roughness: 0.75 } }, butter: { shape: pat, material: { roughness: 0.35 } } }
+}
+
+/** A round of cheese and a wedge cut from it, lying against it: a golden rind, the cut faces pale, a few holes. */
+function cheese(): Structure<'cheese'> {
+  const R = 0.11
+  const H = 0.075
+  const rind = rgb(0xe6b043)
+  const inside = rgb(0xf6dd86)
+  const round = lathe(
+    [
+      [0, 0],
+      [R - 0.006, 0],
+      [R, 0.008],
+      [R, H - 0.008],
+      [R - 0.006, H],
+      [0, H],
+    ],
+    { seg: 36, steps: 1 },
+  )
+    .paint(() => rind, 0)
+    .pattern((x, y, z) => (y > H - 0.002 && noise3(x * 70, y * 70, z * 70, 41) > 0.8 ? 1 : 0), rgb(0xd9a53a))
+  // the wedge: a three-sided prism, its sharp edge in, its rind on the outside, lying against the round
+  const wedge = lathe(
+    [
+      [0, 0],
+      [0.07, 0],
+      [0.07, 0.06],
+      [0, 0.06],
+    ],
+    { seg: 3, steps: 1 },
+  )
+    .place([0, 0, 0], [0, 0, 0], [1, 1, 0.75])
+    .paint((x) => (x < -0.02 ? rind : inside), 0)
+    .pattern((x, y, z) => (x > -0.02 && noise3(x * 90, y * 90, z * 90, 43) > 0.78 ? 1 : 0), rgb(0xd9b55a))
+    .place([R + 0.035, 0, 0.02], [0, 0.3, 0])
+  return grounded({ cheese: { shape: merge(round, wedge), material: { roughness: 0.55 } } })
+}
+
+/** A round loaf of bread: a golden domed crust, three slashes across its top, a dusting of flour. */
+function bread(): Structure<'loaf'> {
+  const loaf = lathe(
+    [
+      [0, 0],
+      [0.1, 0.002],
+      [0.135, 0.03],
+      [0.14, 0.06],
+      [0.12, 0.1],
+      [0.07, 0.128],
+      [0, 0.135],
+    ],
+    { seg: 32, steps: 2 },
+  )
+    .place([0, 0, 0], [0, 0, 0], [1.25, 1, 0.9])
+    .paint((x, y, z) => mix(rgb(0xd29148), rgb(0x9c5a24), 0.25 + 0.5 * smoothstep(0.08, 0.13, y) * fbm3(x * 20, y * 20, z * 20, 51)), 0)
+    // three slashes across the top, paler where the crust opened
+    .pattern((x, y) => (y > 0.09 && Math.abs(((x + 0.3) % 0.07) - 0.035) < 0.008 ? 1 : 0), rgb(0xf0d39a))
+    .pattern((x, y, z) => (y > 0.11 && noise3(x * 120, y * 120, z * 120, 52) > 0.8 ? 1 : 0), rgb(0xfaf4e6))
+  return { loaf: { shape: loaf, material: { roughness: 0.75 } } }
+}
+
 /** Every good with a model: the farm's produce, and the fruit of the fruit trees and bushes. */
 export type GoodsId = ProduceId | FruitId
 
@@ -1472,4 +1552,7 @@ export const GOODS: Record<GoodsId, () => Structure> = {
   blueberry_muffins: blueberryMuffins,
   cherry_tart: cherryTart,
   quilt,
+  butter,
+  cheese,
+  bread,
 }

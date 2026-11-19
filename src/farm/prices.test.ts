@@ -33,7 +33,7 @@ describe('a price with its parts given', () => {
   })
 
   it('is what priceOf gives for every good, whatever the farm says of its machines and its day', () => {
-    const boost: Record<MachineId, number> = { mill: 0.2, loom: 0, oven: 0.6 }
+    const boost: Record<MachineId, number> = { mill: 0.2, loom: 0, oven: 0.6, dairy: 0.3 }
     const factor = (good: ProduceId) => (good === 'tomato' || good === 'cloth' ? 2 : good === 'carrot' ? 0.93 : 1)
     priceBoosts((m) => boost[m])
     priceEvents(factor)

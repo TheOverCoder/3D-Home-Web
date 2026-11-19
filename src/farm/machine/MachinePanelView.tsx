@@ -49,7 +49,7 @@ export function MachinePanelView(p: MachinePanelProps) {
 }
 
 /** The picture at the top of each machine's panel. */
-const PICTURE: Record<string, ArtId> = { oven: 'shortcake', mill: 'sheaf-of-rice', loom: 'yarn' }
+const PICTURE: Record<string, ArtId> = { oven: 'shortcake', mill: 'sheaf-of-rice', loom: 'yarn', dairy: 'cheese-wedge' }
 const cap = (t: string) => t[0].toUpperCase() + t.slice(1)
 
 /** Each job's key, following the changes the panel asks for (./queue.ts, nextKeys). */

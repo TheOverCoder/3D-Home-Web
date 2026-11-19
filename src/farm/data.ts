@@ -11,13 +11,15 @@ export type CropId = 'lettuce' | 'carrot' | 'strawberry' | 'tomato' | 'corn' | '
 export type CakeId = 'lemon_cake' | 'strawberry_cake' | 'carrot_cake' | 'pumpkin_pie'
 /** What the oven bakes from the fruit trees and bushes, and more (update-v1/missions/01-loop-economy.md c7, c8): longer
  *  jobs, worth more a press and less a minute (src/farm/economy.ts, jobWorth). */
-export type BakeId = 'apple_pie' | 'blueberry_muffins' | 'cherry_tart'
+export type BakeId = 'apple_pie' | 'blueberry_muffins' | 'cherry_tart' | 'bread'
 /** Whatever comes out of the oven, a cake or a bake. */
 export type OvenId = CakeId | BakeId
+/** What the dairy makes from the cows' milk (update v1, wave 2). */
+export type DairyId = 'butter' | 'cheese'
 /** The building materials: what the silo and the barn are made bigger with (STORES, below). Never asked for, and sold
  *  only to the contractor behind the market (CONTRACTOR); they come as surprises (ITEM_ODDS) and are kept in the barn. */
 export type ItemId = 'brick' | 'plank' | 'nail' | 'iron' | 'bolt' | 'log'
-export type ProduceId = CropId | 'lemon' | FruitId | 'egg' | 'milk' | 'wool' | 'sugar' | 'flour' | 'cloth' | CakeId | ItemId | BakeId | 'quilt'
+export type ProduceId = CropId | 'lemon' | FruitId | 'egg' | 'milk' | 'wool' | 'sugar' | 'flour' | 'cloth' | CakeId | ItemId | BakeId | 'quilt' | DairyId
 
 export interface CropDef {
   id: CropId
@@ -94,6 +96,9 @@ export const PRODUCE: ProduceDef[] = [
   { id: 'blueberry_muffins', name: 'tray of muffins', plural: 'trays of muffins', price: 121, maxAsk: 1 },
   { id: 'cherry_tart', name: 'cherry tart', plural: 'cherry tarts', price: 137, maxAsk: 1 },
   { id: 'quilt', name: 'quilt', plural: 'quilts', price: 369, maxAsk: 1 },
+  { id: 'butter', name: 'pat of butter', plural: 'pats of butter', price: 78, maxAsk: 2 },
+  { id: 'cheese', name: 'cheese', plural: 'cheeses', price: 159, maxAsk: 1 },
+  { id: 'bread', name: 'loaf of bread', plural: 'loaves of bread', price: 235, maxAsk: 1 },
 ]
 export const produceById = (id: ProduceId) => PRODUCE.find((p) => p.id === id)!
 /** The six building materials, in the order the silo and the barn list them. */
@@ -166,11 +171,13 @@ export const RECIPES: Recipe[] = [
   { id: 'apple_pie', needs: { apple: 4, flour: 1, sugar: 1, egg: 1 }, makes: 'apple_pie', seconds: 20 * 60 },
   { id: 'blueberry_muffins', needs: { blueberry: 6, flour: 1, sugar: 1, egg: 1 }, makes: 'blueberry_muffins', seconds: 20 * 60 },
   { id: 'cherry_tart', needs: { cherry: 6, flour: 1, sugar: 1, egg: 1 }, makes: 'cherry_tart', seconds: 30 * 60 },
+  // the dairy's butter into the oven (update v1, wave 2): an hour
+  { id: 'bread', needs: { flour: 3, butter: 1, egg: 1 }, makes: 'bread', seconds: 3600 },
 ]
 /** What a recipe takes, when it takes one good (the mill's wheat, the loom's fleece). */
 export const inputOf = (r: Recipe) => Object.keys(r.needs)[0] as ProduceId
 
-export type MachineId = 'mill' | 'loom' | 'oven'
+export type MachineId = 'mill' | 'loom' | 'oven' | 'dairy'
 
 /** What a machine's button says, about `n` jobs of a recipe (`left`: the time to go, as 1:05). */
 export interface MachineWords {
@@ -282,6 +289,29 @@ export const MACHINES: Record<MachineId, MachineDef> = {
     },
     sounds: { load: 'oven', done: 'G6', collect: 'tray' },
     counts: 'baked',
+  },
+  // update v1 (update-v1/missions/01-loop-economy.md c8): the dairy, a lean-to west of the cows' pasture, its open front
+  // facing west into the yard; the churn by its front post, where you stand. The cows' milk into butter and cheese:
+  // longer jobs, for while you are away
+  dairy: {
+    name: 'Dairy',
+    x: 6.5,
+    z: -6.6,
+    stand: [-1.55, 1.0, 0.3],
+    aim: [-0.42, 0.95, 0.42],
+    sparkle: [-0.42, 1.2, 0.42],
+    reach: 2.4,
+    recipes: [
+      { id: 'butter', needs: { milk: 2 }, makes: 'butter', seconds: 10 * 60 },
+      { id: 'cheese', needs: { milk: 4 }, makes: 'cheese', seconds: 3600 },
+    ],
+    words: {
+      word: 'Churn',
+      working: (r, n, left) => `Making ${n === 1 ? `a ${produceById(r.makes).name}` : count(r.makes, n)} · ready in ${left}`,
+      done: (r, n) => `Take out ${n === 1 ? `the ${produceById(r.makes).name}` : count(r.makes, n)}`,
+      idle: (nearest) => `Dairy · a ${produceById(nearest.makes).name} needs`,
+    },
+    sounds: { load: 'churn', done: 'C7', collect: 'crock', work: { sound: 'churn', every: 2.2, spread: 1.2 } },
   },
 }
 export const MACHINE_IDS = Object.keys(MACHINES) as MachineId[]

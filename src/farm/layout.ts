@@ -14,7 +14,7 @@ import { FRUIT, SHOP, type ShopKind } from './decor'
 // land and clear of the paths, the shed, the other things and their ways in. Everything here is plain data and
 // arithmetic (no scene, no state), so the scene, the farm's save and the tests share it.
 
-export type PlaceId = 'hens' | 'cows' | 'sheep' | 'silo' | 'barn' | 'lemon' | 'tree0' | 'tree1' | 'tree2' | 'mill' | 'loom' | 'oven'
+export type PlaceId = 'hens' | 'cows' | 'sheep' | 'silo' | 'barn' | 'lemon' | 'tree0' | 'tree1' | 'tree2' | 'mill' | 'loom' | 'oven' | 'dairy'
 export type ParcelId = 'north' | 'east' | 'west' | 'northEast' | 'northWest'
 
 export interface Rect {
@@ -94,6 +94,9 @@ export const PLACES: Record<PlaceId, PlaceDef> = {
   mill: { id: 'mill', name: 'Mill', local: rect(-0.85, 0.9, -0.75, 0.9), door: rect(-1.55, -0.85, -0.75, -0.3), home: { x: MACHINES.mill.x, z: MACHINES.mill.z, rot: 0 } },
   loom: { id: 'loom', name: 'Loom', local: rect(-1.0, 1.3, -0.6, 1.15), door: rect(-0.6, 0.6, 1.15, 1.8), home: { x: MACHINES.loom.x, z: MACHINES.loom.z, rot: 0 } },
   oven: { id: 'oven', name: 'Oven', local: rect(-0.75, 1.2, -1.4, 0.7), door: rect(-1.5, -0.75, -0.5, 0.5), home: { x: MACHINES.oven.x, z: MACHINES.oven.z, rot: 0 } },
+  // update v1's machines (MACHINES in data.ts): the dairy west of the cows' pasture, open to the west, where you stand by
+  // its churn
+  dairy: { id: 'dairy', name: 'Dairy', local: rect(-1.1, 1.1, -0.95, 0.95), door: rect(-1.9, -1.1, -0.4, 0.9), home: { x: MACHINES.dairy.x, z: MACHINES.dairy.z, rot: 0 } },
 }
 
 export const PLACE_IDS = Object.keys(PLACES) as PlaceId[]

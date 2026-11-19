@@ -15,6 +15,9 @@ import { grain, mix, slab, type Structure } from './structures'
 //   crate    a slatted crate: an order on its way, on the pallet or on the tractor
 //   pallet   the pallet the crates wait on in the tractor's yard
 //   gate     the farm gate in the hedge the tractor goes out through: two posts and a leaf (drawn twice, swinging)
+//   dairy    a whitewashed lean-to of boards under a shingled roof, open at the front: a counter with a cheese and a
+//            crock of butter, a shelf, a barrel churn by the front post (its dasher, drawn on its own, plunges while it
+//            works) and two milk cans (update v1: the dairy turns the cows' milk into butter, cheese and ice cream)
 
 const STEEL = rgb(0xb7c0c6)
 const STEEL_DARK = rgb(0x7f8a92)
@@ -464,4 +467,152 @@ export function farmGateModel(): Structure<GatePart> {
     posts: { shape: gatePostsShape(), material: { roughness: 0.85 } },
     leaf: { shape: merge(gateLeafShape().place([0, 0, -half]), gateLeafShape().place([0, 0, 0], [0, Math.PI, 0]).place([0, 0, half])), material: { roughness: 0.85 } },
   }
+}
+
+// ───────────────────────────── the dairy (update v1) ─────────────────────────────
+
+const WHITEWASH = rgb(0xf1ece0)
+const CHEESE = rgb(0xf2c75a)
+const BUTTER = rgb(0xf7e08a)
+const CROCK = rgb(0x8a5a3c)
+const CAN = rgb(0xc9d0d4)
+
+export type DairyPart = 'base' | 'walls' | 'roof' | 'wood' | 'metal' | 'food'
+
+/** The dairy's churn: where it stands in the dairy's frame, how tall its barrel is, and how far its dasher plunges. */
+export const DAIRY_CHURN = { x: -0.42, z: 0.42, top: 0.86, plunge: 0.12 } as const
+
+/** The dairy: 2.0 × 1.7 m, open at the front (-x, where you stand to use it), its back wall against +x, a lean-to roof
+ *  from 1.98 m at the front to 2.32 m at the back. */
+export function dairyModel(): Structure<DairyPart> {
+  const W = 1.0
+  const D = 0.85
+  const T = 0.035 // half a wall's thickness
+  const front = 1.98
+  const back = 2.32
+  const floorTop = 0.1
+  const base = slab(W + 0.04, D + 0.04, 0, floorTop, 6, 24).paint((x, y, z) => mix(CONCRETE, rgb(0x8a8378), 0.45 * smoothstep(0.35, 0.75, fbm3(x * 4, y * 4, z * 4, 9))), 0)
+  // the walls: the back, and the two sides rising with the roof from the front post to the back
+  const height = (x: number) => front + ((x + W) / (2 * W)) * (back - front)
+  const side = (sz: number) =>
+    slab(W - 0.32, T, floorTop - 0.02, 2, 10, 12)
+      .place([0.32, 0, sz * (D - T)])
+      .warp((x, y, z) => (y > 1.5 ? [x, height(x) - 0.04, z] : [x, y, z]))
+  const walls = merge(slab(T, D, floorTop - 0.02, back - 0.04, 10, 12).place([W - T, 0, 0]), side(-1), side(1)).paint(() => WHITEWASH, 0)
+  // the roof: one slope of shingles, from the front post up to the back wall, past both
+  const roof = slope([W + 0.14, front - 0.06], [-W - 0.1, back + 0.02], D + 0.16, 0.035)
+    .place([0, 0, 0], [0, -Math.PI / 2, 0])
+    .paint(() => SHINGLE, 0)
+  // the timber: two posts at the front holding the roof, the counter along the back wall, a shelf over it, the churn
+  const posts = [-1, 1].map((sz) => beam([-W + 0.08, floorTop - 0.02, sz * (D - 0.06)], [-W + 0.08, height(-W + 0.08) - 0.02, sz * (D - 0.06)], 0.045, 0.045))
+  const counter = slab(0.24, D - 0.1, floorTop - 0.02, 0.86, 8, 16).place([W - 0.3, 0, 0])
+  const top = slab(0.28, D - 0.08, 0.86, 0.9, 8, 16).place([W - 0.31, 0, 0])
+  const shelf = slab(0.11, D - 0.12, 1.5, 1.53, 8, 12).place([W - 0.14, 0, 0])
+  const churn = lathe(
+    [
+      [0, floorTop - 0.01],
+      [0.15, floorTop - 0.01],
+      [0.17, 0.36],
+      [0.155, DAIRY_CHURN.top - 0.04],
+      [0.13, DAIRY_CHURN.top],
+      [0, DAIRY_CHURN.top],
+    ],
+    { seg: 20, steps: 2, shape: (a) => 1 + 0.012 * Math.cos(a * 18) },
+  ).place([DAIRY_CHURN.x, 0, DAIRY_CHURN.z])
+  const wood = merge(...posts, counter.paint(grain(1, 61), 0), top.paint(grain(0, 62), 0), shelf.paint(grain(0, 63), 0), churn.paint(grain(1, 64), 0)).paint(
+    (x, y, z) => mix(WOOD, WOOD_DARK, 0.3 + 0.4 * noise3(x * 9, y * 9, z * 9, 65)),
+    0,
+  )
+  // iron hoops round the churn, and two milk cans by the front post
+  const hoop = (y: number, r: number) =>
+    lathe(
+      [
+        [r - 0.01, y - 0.02],
+        [r + 0.012, y - 0.02],
+        [r + 0.012, y + 0.02],
+        [r - 0.01, y + 0.02],
+      ],
+      { seg: 20, steps: 1, caps: [true, true] },
+    ).place([DAIRY_CHURN.x, 0, DAIRY_CHURN.z])
+  const can = (x: number, z: number) =>
+    lathe(
+      [
+        [0, floorTop - 0.01],
+        [0.13, floorTop - 0.01],
+        [0.14, 0.12],
+        [0.14, 0.46],
+        [0.08, 0.56],
+        [0.07, 0.64],
+        [0.09, 0.66],
+        [0.09, 0.69],
+        [0, 0.7],
+      ],
+      { seg: 18, steps: 1 },
+    ).place([x, 0, z])
+  const metal = merge(hoop(0.2, 0.162), hoop(DAIRY_CHURN.top - 0.12, 0.152), can(-0.72, -0.5), can(-0.42, -0.62)).paint(() => CAN, 0)
+  // on the counter: a wheel of cheese, a wedge cut from it, and a crock of butter
+  const wheel = lathe(
+    [
+      [0, 0.9],
+      [0.15, 0.9],
+      [0.16, 0.95],
+      [0.15, 1.0],
+      [0, 1.0],
+    ],
+    { seg: 24, steps: 1 },
+  )
+    .place([W - 0.3, 0, -0.35])
+    .paint(() => CHEESE, 0)
+  const crock = lathe(
+    [
+      [0, 0.9],
+      [0.08, 0.9],
+      [0.095, 0.96],
+      [0.085, 1.02],
+      [0.07, 1.03],
+      [0, 1.04],
+    ],
+    { seg: 16, steps: 1 },
+  )
+    .place([W - 0.3, 0, 0.3])
+    .paint((_x, y) => (y > 1.025 ? BUTTER : CROCK), 0)
+  const food = merge(wheel, crock)
+  return {
+    base: { shape: base, material: { roughness: 0.95 } },
+    walls: { shape: walls, material: { roughness: 0.85, surface: { kind: 'boards', size: 0.5, turn: true, tone: 0.25 } } },
+    roof: { shape: roof, material: { roughness: 0.7, surface: { kind: 'shingle', size: 0.6, tone: 0.55 } } },
+    wood: { shape: wood, material: { roughness: 0.8 } },
+    metal: { shape: metal, material: { roughness: 0.35, metalness: 0.5 } },
+    food: { shape: food, material: { roughness: 0.6 } },
+  }
+}
+
+/** The churn's dasher: a handle that plunges into the churn while the dairy works, its foot at the barrel's lid, in the
+ *  dairy's frame (moved up and down by the scene: src/farm/Workshop.tsx). */
+export function dairyDasher(): Shape {
+  const { x, z, top } = DAIRY_CHURN
+  return merge(
+    tube(
+      [
+        [x, top - 0.08, z],
+        [x, top + 0.42, z],
+      ],
+      0.018,
+      { seg: 8, steps: 1, caps: [true, true] },
+    ),
+    lathe(
+      [
+        [0, top + 0.4],
+        [0.035, top + 0.41],
+        [0.04, top + 0.45],
+        [0, top + 0.47],
+      ],
+      { seg: 10, steps: 1 },
+    ).place([x, 0, z]),
+  ).paint(grain(1, 66), 0)
+}
+
+/** The dairy with its dasher in place (for the gallery and the checks). */
+export function dairyWithDasher(): Structure<DairyPart | 'dasher'> {
+  return { ...dairyModel(), dasher: { shape: dairyDasher(), material: { roughness: 0.8 } } }
 }

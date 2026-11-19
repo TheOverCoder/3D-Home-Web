@@ -44,6 +44,8 @@ export type FarmSound =
   | 'nope' // cannot (the store is full, a piece went back): decline's soft fall, shorter and higher
   | 'lift' // decoration or furniture lifted under the finger
   | 'thud' // put down where it fits: a thud by its size
+  | 'churn' // milk into the dairy's churn, and its dasher at work: a slosh and a wooden plunge
+  | 'crock' // butter or cheese taken out of the dairy: a stoneware crock set down, a soft clink
 
 /** Crystals landing one close behind another climb the key from A6 (its 4th note), a step each (./palette.ts, climb),
  *  then hold the top. */
@@ -336,6 +338,19 @@ const SYNTHS: Record<FarmSound, Synth> = {
     burst(e, t + 0.12, { type: 'bandpass', freq: 2000, sweepTo: 1000, q: 0.8, gain: 0.15 * v, attack: 0.03, decay: 0.14, pan })
     burst(e, t + 0.28, { type: 'lowpass', freq: 520, q: 0.7, gain: 0.4 * v, attack: 0.006, decay: 0.1, pan })
     burst(e, t + 0.28, { type: 'bandpass', freq: 800, q: 1.3, gain: 0.25 * v, attack: 0.004, decay: 0.07, pan })
+  },
+  churn(e, t, v, pan) {
+    // milk sloshing in the churn as the dasher plunges: a wet swirl sweeping down, and the wood's dull knock under it
+    burst(e, t, { type: 'bandpass', freq: 1700, sweepTo: 700, q: 1.6, gain: 0.2 * v, attack: 0.02, decay: 0.24, pan })
+    burst(e, t + 0.16, { type: 'bandpass', freq: 900, sweepTo: 1600, q: 1.4, gain: 0.14 * v, attack: 0.02, decay: 0.2, pan })
+    burst(e, t + 0.3, { type: 'lowpass', freq: 380, q: 0.9, gain: 0.3 * v, attack: 0.004, decay: 0.08, pan })
+    tone(e, t + 0.3, { type: 'sine', f0: 210, f1: 140, gain: 0.04 * v, attack: 0.004, decay: 0.09, pan })
+  },
+  crock(e, t, v, pan) {
+    // a stoneware crock set down on the dairy's counter: a dull clay knock and a short glazed ring (A6)
+    burst(e, t, { type: 'bandpass', freq: 1100, q: 2.4, gain: 0.36 * v, attack: 0.002, decay: 0.06, pan })
+    burst(e, t, { type: 'lowpass', freq: 500, q: 0.8, gain: 0.22 * v, attack: 0.003, decay: 0.07, pan })
+    tone(e, t + 0.005, { type: 'triangle', f0: note(4, 6), gain: 0.026 * v, attack: 0.002, decay: 0.22, pan, key: true })
   },
   tray(e, t, v, pan) {
     // the oven's tray slides out over its runners and is set down on the stone with a little ring of tin (E7)

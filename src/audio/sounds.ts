@@ -80,6 +80,9 @@ export const SOUNDS: Readonly<Record<FarmSound, SoundRow>> = {
   nope: { family: 'no', feel: null, vary: 0, twin: 'motion' },
   lift: ui('lift'),
   thud: ui('drop'),
+  // update v1's machines (update-v1/missions/01-loop-economy.md c8): each its load and its goods taken out
+  churn: { ...pressed('motion'), mix: 1 },
+  crock: work('toast'),
 }
 
 /** Every sound the player causes: a press, a sale, a reward, a "no", the interface, and the farm's own when pressed (a
