@@ -60,7 +60,8 @@
 /* (the stripes run by a transform, not by the background's position: no repaint each frame) */
 .top-road-clip::before { content: ''; position: absolute; top: 0; bottom: 0; left: -24px; right: 0; background: repeating-linear-gradient(-55deg, rgba(255, 255, 255, 0.2) 0 5px, transparent 5px 10px); background-size: 24px 100%; }
 :where(:root:not([data-motion='less'])) {
-  .top-road-clip::before { animation: top-road-run 1.1s linear infinite; }
+  /* (only while XP comes in: at rest the top keeps at most one loop, src/ui/calls.ts) */
+  .top-road.gaining .top-road-clip::before { animation: top-road-run 1.1s linear infinite; }
 }
 @keyframes top-road-run { to { transform: translateX(24px); } }
 .top-road-head { position: absolute; right: -6px; top: 50%; width: 12px; height: 12px; margin-top: -6px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 2px var(--xp), 0 0 10px 2px var(--xp-glow); }

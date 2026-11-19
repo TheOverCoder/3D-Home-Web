@@ -10,7 +10,7 @@ import { tierRank, type Tier } from '../lib/tier'
 import { useHome } from '../store'
 import { art } from '../ui/art'
 import { Check, PersonSimpleWalk, X } from '../ui/glyphs'
-import { POP, SPRING, nope } from '../ui/motion'
+import { nope, POP, SINK, SPRING } from '../ui/motion'
 import { Reveal } from '../ui/Reveal'
 import { TopSlot } from '../ui/TopStack'
 import { useGameFree } from '../ui/useGameFree'
@@ -272,8 +272,7 @@ export function StepHint() {
                           if (el) bubble.current = el
                         }}
                         className={`step-bubble${going ? ' going' : ''}${done ? ' done' : ''}`}
-                        whileTap={{ scale: 0.96 }}
-                        transition={SPRING.pop}
+                        {...SINK}
                         onClick={walk}
                         aria-label={`${line?.say ?? def.say} — walk there`}
                         aria-pressed={going}

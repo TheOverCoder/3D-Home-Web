@@ -6,6 +6,7 @@ import { burst } from '../../ui/burst'
 import { SINK, SPRING } from '../../ui/motion'
 import { produceById, type ProduceId } from '../data'
 import { iconUrl } from '../icons'
+import { GoodPic } from '../../ui/GoodPic'
 
 // The lucky draw's machine (the farm news, ./NewsCard.tsx): two reels, one for each good it gives. At rest each shows a
 // "?" card with goods of the pool peeking above and below it; one tap on Draw and the farm draws (the goods are decided
@@ -114,7 +115,8 @@ function Reel({
             </span>
           ) : (
             <span key={i} className={`nw-cell${i === 1 && landed ? ' won' : ''}`}>
-              <img className="art" src={iconUrl(c)} alt="" draggable={false} />
+              {/* once the reels stop, the good drawn says where it is made (a tap: src/ui/GoodPic.tsx) */}
+              {i === 1 && landed ? <GoodPic good={c as ProduceId} /> : <img className="art" src={iconUrl(c)} alt="" draggable={false} />}
             </span>
           ),
         )}

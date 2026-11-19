@@ -309,7 +309,7 @@ function Stepper({ label, less, more, onLess, onMore, children }: { label: strin
 
 /** One place's card: an empty place takes a good from the silo or the barn (1 to SHOP.units of it); one with goods on
  *  it can be emptied (they go back); its price is set with − and + (it shows a unit's coins and a shopper's chance),
- *  at once, like a bed's gear. Not now, then Fill (or Empty). Not now and Fill go back to the computer when the card
+ *  at once, like a bed's gear. Cancel, then Fill (or Empty). Cancel and Fill go back to the computer when the card
  *  was opened there, and close it when it was opened at the shelf. */
 export function MarketPlacePanel({ place }: { place: number }) {
   useFarm((s) => s.rev)
@@ -388,7 +388,7 @@ export function MarketPlacePanel({ place }: { place: number }) {
       </Stepper>
       <div className="farm-confirm">
         <button className="btn soft" onClick={back}>
-          Not now
+          Cancel
         </button>
         {held ? (
           <button className="btn farm-buy" onClick={empty}>
@@ -404,7 +404,7 @@ export function MarketPlacePanel({ place }: { place: number }) {
   )
 }
 
-/** The card that asks before the shop is bought: what you get, Not now, and Buy with its price (it arms after a
+/** The card that asks before the shop is bought: what you get, Cancel, and Buy with its price (it arms after a
  *  moment). Bought, the panel closes and the shop's film plays; the manager waves and walks off, and the computer is
  *  yours. */
 export function MarketBuyPanel() {
@@ -425,7 +425,7 @@ export function MarketBuyPanel() {
       <p className="farm-line">Its shelves and its till become yours.</p>
       <div className="farm-confirm">
         <button className="btn soft" onClick={close}>
-          Not now
+          Cancel
         </button>
         <button className={`btn farm-buy${armed ? '' : ' arming'}`} disabled={!afford} aria-disabled={!armed} onClick={confirm}>
           {afford || !ready ? (

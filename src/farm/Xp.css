@@ -22,7 +22,7 @@
 /* its glow breathes (an opacity on a layer of its own: nothing is painted again while it waits) */
 .farm-chip-item.level.ready::before { content: ''; position: absolute; inset: -2px; border-radius: inherit; box-shadow: 0 0 22px 5px color-mix(in srgb, var(--sun) 70%, transparent); opacity: 0; pointer-events: none; }
 :where(:root:not([data-motion='less'])) {
-  .farm-chip-item.level.ready::before { animation: xp-ready 1.6s ease-in-out infinite; }
+  .farm-chip-item.level.ready.calling::before { animation: xp-ready 1.6s ease-in-out infinite; }
 }
 @keyframes xp-ready { 50% { opacity: 1; } }
 

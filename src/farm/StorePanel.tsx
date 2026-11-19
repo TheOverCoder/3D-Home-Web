@@ -156,7 +156,7 @@ export function StoreUpgradePanel({ store }: { store: StoreId }) {
       <Needs store={store} />
       <div className="farm-confirm">
         <button className="btn soft" onClick={back}>
-          Not now
+          Cancel
         </button>
         <button className={`btn farm-buy${armed ? '' : ' arming'}`} disabled={!ok} aria-disabled={!armed} onClick={confirm}>
           <Check weight="bold" />

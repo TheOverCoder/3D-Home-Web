@@ -225,5 +225,5 @@
 .nw-charm-words { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .nw-charm-words b { font: 700 16px/1.2 var(--font-display); }
 .nw-charm-words small { font-size: 15px; }
-.nw-charm-stars { color: var(--sun-lip); letter-spacing: 1px; }
+.nw-charm-stars { color: var(--amber-ink); letter-spacing: 1px; }
 .nw-charm-dim { color: var(--paper-3); letter-spacing: 1px; }

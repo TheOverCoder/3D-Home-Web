@@ -60,7 +60,7 @@
   gap: 10px;
   margin: 0;
   color: #aab4c6;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -107,7 +107,7 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-.sm-stats dt { margin-top: 2px; color: #8f9aae; font-size: 12px; line-height: 1.35; }
+.sm-stats dt { margin-top: 2px; color: #8f9aae; font-size: 13px; line-height: 1.35; }
 .sm-panel .sm-stats-inline {
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 10px;
@@ -128,7 +128,7 @@
 .sm-panel .sm-meter-title {
   margin: 0;
   color: #7c879b;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -251,12 +251,12 @@
 .sm-panel .sm-card-body p { margin: 0; color: #aeb7c6; font-size: 13.5px; line-height: 1.45; }
 .sm-panel .sm-card-body .sm-kicker {
   color: var(--accent);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
-.sm-panel .sm-card-body .sm-meta { margin-top: 4px; color: #7c879b; font-size: 12px; }
+.sm-panel .sm-card-body .sm-meta { margin-top: 4px; color: #7c879b; font-size: 13px; }
 
 .sm-steps { display: grid; gap: 0; margin: 22px 0 0; padding: 0; list-style: none; }
 .sm-steps li {

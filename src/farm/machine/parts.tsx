@@ -1,6 +1,7 @@
 import { animate, m, useMotionValue, useTransform, type MotionValue } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import { clock } from './queue'
+import { SPRING } from '../../ui/motion'
 
 // Small parts of the machine panel: a clock that runs down on its own between the
 // views the game gives, and the progress of a job as a motion value (the ring round its place, its time left).
@@ -74,7 +75,7 @@ export function Bump({ n }: { n: number }) {
     shown.current = true
   }, [])
   return (
-    <m.b key={n} initial={shown.current ? { scale: 1.6, y: -3 } : false} animate={{ scale: 1, y: 0 }} transition={{ type: 'spring', stiffness: 620, damping: 22 }}>
+    <m.b key={n} initial={shown.current ? { scale: 1.6, y: -3 } : false} animate={{ scale: 1, y: 0 }} transition={SPRING.pop}>
       {n}
     </m.b>
   )

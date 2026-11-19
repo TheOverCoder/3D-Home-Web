@@ -184,7 +184,7 @@ test.describe('the house for sale', () => {
     await page.keyboard.press('KeyG')
     await panelIs(game, 'house-buy')
     expect((await state(page)).coins).toBe(ESTATE.price + 300)
-    await page.locator('.farm-panel').getByRole('button', { name: 'Not now' }).click()
+    await page.locator('.farm-panel').getByRole('button', { name: 'Cancel' }).click()
     await panelIs(game, null)
     // the agent: E opens his panel, the house's price there opens the card; its Buy arms after a moment
     await atAgent(game)

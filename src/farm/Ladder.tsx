@@ -80,7 +80,7 @@ export function LadderRow({ id }: { id: LadderId }) {
   )
 }
 
-/** The card that asks before a ladder's step is bought: its picture, now → after, Not now, and Buy with the price.
+/** The card that asks before a ladder's step is bought: its picture, now → after, Cancel, and Buy with the price.
  *  Opened from a panel (its `from`), it goes back there; opened from the world (a price tag), it closes; over a panel
  *  that keeps it (a tool's upgrades: `onBack`), it goes away and leaves the panel be. A premium ladder (a remote) is
  *  in night velvet, a crown on its chip and its Buy. */
@@ -127,7 +127,7 @@ export function LadderCard({ id, onBack }: { id: LadderId; onBack?: () => void }
       <p className="farm-line">{def.blurb}</p>
       <div className="farm-confirm">
         <button className="btn soft" onClick={back}>
-          Not now
+          Cancel
         </button>
         <button className={`btn farm-buy${premium ? ' velvet' : ''}${armed ? '' : ' arming'}`} disabled={!afford} aria-disabled={!armed} onClick={confirm}>
           {max ? (

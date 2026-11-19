@@ -98,7 +98,7 @@
 .tool-panel .tp-animal-text { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
 .tool-panel .tp-animal-name { font: 700 15px/1 var(--font-text); }
 .tool-panel .tp-animal .tp-when { color: var(--ink-2); }
-.tool-panel .tp-animal .tp-when.full { color: var(--sun-lip); }
+.tool-panel .tp-animal .tp-when.full { color: var(--amber-ink); }
 
 /* the two upgrades: a chip each — its words, now → next, the price, a peg a step */
 .tool-panel .tp-ups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; perspective: 600px; }

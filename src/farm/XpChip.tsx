@@ -1,4 +1,5 @@
 import { m } from 'motion/react'
+import { useCalling } from '../ui/calls'
 import { useLessMotion } from '../ui/still'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { farmSound } from '../audio/sound'
@@ -146,6 +147,8 @@ export function XpChip() {
   // the gift boxes the bar has reached and not opened (a quarter's crystals still in the air have not reached it yet)
   // (they wait unseen while a new farm's first steps run, src/farm/reveal.ts: nothing is lost, they glow as they end)
   const gifts = shows('gifts') ? waitingBoxes(farm.gifts, shown).length : 0
+  // (its glow moves only while it is the top's one call: src/ui/calls.ts)
+  const boxesCall = useCalling('boxes', gifts > 0)
   const star = useRef<HTMLSpanElement>(null)
   const fill = useRef<HTMLSpanElement>(null)
   const shine = useRef<HTMLSpanElement>(null)
@@ -171,7 +174,7 @@ export function XpChip() {
   return (
     <m.span className="xp-line" initial={{ opacity: 0, y: -14 }} animate={{ opacity: 1, y: 0 }} transition={{ ...SPRING.pop, delay: 0.1 }}>
       <button
-        className={`farm-chip-item level top-road${gifts ? ' ready' : ''}${near ? ' near' : ''}`}
+        className={`farm-chip-item level top-road${gifts ? ' ready' : ''}${boxesCall ? ' calling' : ''}${seen.flying > 0 ? ' gaining' : ''}${near ? ' near' : ''}`}
         onClick={open}
         title={gifts ? `Level ${level}: ${boxes}` : `Level ${level}: ${into} of ${need} XP to level ${level + 1}`}
         aria-label={gifts ? `Level ${level}: ${boxes}` : `Level ${level}: what the next level brings`}

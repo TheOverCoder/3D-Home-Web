@@ -8,7 +8,7 @@ import { span } from '../lib/time'
 import { art } from './art'
 import { ArrowRight, DownloadSimple, UploadSimple } from './glyphs'
 import { ItemPic } from './ItemPic'
-import { EASE, PRESS, SPRING } from './motion'
+import { EASE, PRESS, SINK, SPRING } from './motion'
 import { useLessMotion } from './still'
 import './SavesPanel.css'
 
@@ -195,12 +195,12 @@ export function SavesPanel({ onPlay }: { onPlay: () => void }) {
         </AnimatePresence>
         <div className="saves-acts">
           {f.broken ? (
-            <m.button className="btn primary saves-go" whileTap={{ scale: 0.96, y: 3 }} transition={SPRING.pop} onClick={f.copy ? loadCopy : saveFile}>
+            <m.button className="btn primary saves-go" {...SINK} onClick={f.copy ? loadCopy : saveFile}>
               {f.copy ? 'Load the copy' : 'Save as file'}
               {f.copy ? <ArrowRight weight="bold" /> : <DownloadSimple weight="bold" />}
             </m.button>
           ) : (
-            <m.button className="btn primary saves-go" whileTap={{ scale: 0.96, y: 3 }} transition={SPRING.pop} onClick={play}>
+            <m.button className="btn primary saves-go" {...SINK} onClick={play}>
               {f.exists ? (here ? 'Keep playing' : `Play Farm ${f.slot}`) : 'Start this farm'}
               <ArrowRight weight="bold" />
             </m.button>
@@ -387,8 +387,7 @@ export function NewFarm({ onStart, onLoad }: { onStart: () => void; onLoad: () =
             switchSlot(empty)
             onStart()
           }}
-          whileTap={{ scale: 0.95, y: 3 }}
-          transition={SPRING.pop}
+          {...SINK}
         >
           Start a new farm <ArrowRight weight="bold" />
         </m.button>

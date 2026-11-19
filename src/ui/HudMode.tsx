@@ -1,3 +1,4 @@
+import { useCalling } from './calls'
 import { AnimatePresence, m } from 'motion/react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useDailyWaiting } from '../farm/useDaily'
@@ -53,6 +54,8 @@ export function HudMode() {
   // the neighbours, once one is met (src/farm/people)
   const neighbours = metNeighbours().length > 0
   const [open, setOpen] = useState(false)
+  // (the gift hops only while it is the top's one call: src/ui/calls.ts)
+  const giftCalls = useCalling('daily', !!gift && !open)
   const box = useRef<HTMLDivElement>(null)
   const shown = phase === 'playing' && !occupied
 
@@ -113,7 +116,7 @@ export function HudMode() {
               {gift && !open && (
                 <m.span
                   key="gift"
-                  className="top-menu-gift"
+                  className={`top-menu-gift${giftCalls ? ' calling' : ''}`}
                   aria-hidden="true"
                   initial={{ scale: 0, rotate: -30 }}
                   animate={{ scale: 1, rotate: 0 }}

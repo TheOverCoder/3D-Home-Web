@@ -13,7 +13,7 @@ import { agentHere, buyApartment, estateOpen, farm, useFarm } from './state'
 
 // The estate office's panels (src/farm/Estate.tsx opens them): the agent's — the house for sale, its picture and its
 // price, whose price opens the card; once it is yours, that it is, and the way to the car — and the card that asks
-// before the house is bought (Not now, and Buy with its price, armed after a moment).
+// before the house is bought (Cancel, and Buy with its price, armed after a moment).
 
 /** The car on the farm's interactable (src/farm/car/Car.tsx): where "Go to the car" walks you. */
 const CAR_ID = 'car-farm'
@@ -91,7 +91,7 @@ export function EstatePanel() {
   )
 }
 
-/** The card that asks before the house is bought: what you get, Not now, and Buy with its price (it arms after a
+/** The card that asks before the house is bought: what you get, Cancel, and Buy with its price (it arms after a
  *  moment). Bought, the card closes: the keys are yours, and the car drives you there. Out of the agent's hours it
  *  says when he is back. */
 export function HouseBuyPanel() {
@@ -114,7 +114,7 @@ export function HouseBuyPanel() {
       <p className="farm-line">Its keys are yours, and the car drives you there.</p>
       <div className="farm-confirm">
         <button className="btn soft" onClick={close}>
-          Not now
+          Cancel
         </button>
         <button className={`btn farm-buy${armed ? '' : ' arming'}`} disabled={owned || !here || !afford} aria-disabled={!armed} onClick={confirm}>
           {owned ? (

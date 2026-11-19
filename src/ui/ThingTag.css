@@ -26,11 +26,13 @@
   .thing-tag:hover { scale: 1.08; }
 }
 .thing-tag:active { scale: 0.88; transition-duration: var(--t-press); }
-.thing-gear img { width: 30px; height: 30px; animation: thing-gear-spin 7s linear infinite; }
+.thing-gear img { width: 30px; height: 30px; }
+.thing-gear.calling img { animation: thing-gear-spin 7s linear infinite; }
 /* a price tag: the coin and what it costs (Nunito), the coin rocking a little (the tag itself holds still, a steady
    target); a price the coins do not reach yet shows in red */
 .thing-price { padding: 0 14px 0 7px; background: color-mix(in srgb, var(--paper) 94%, transparent); animation: thing-price-in 0.4s var(--ease-pop) backwards; }
-.thing-price img { width: 28px; height: 28px; filter: drop-shadow(0 1px 1px rgba(60, 35, 5, 0.3)); animation: thing-coin-rock 3.2s 0.4s ease-in-out infinite; }
+.thing-price img { width: 28px; height: 28px; filter: drop-shadow(0 1px 1px rgba(60, 35, 5, 0.3)); }
+.thing-price.calling img { animation: thing-coin-rock 3.2s 0.4s ease-in-out infinite; }
 .thing-price b { font: 800 19px/1 var(--font-text); font-variant-numeric: tabular-nums; }
 .thing-price.short b { color: var(--berry); }
 .thing-tag kbd {

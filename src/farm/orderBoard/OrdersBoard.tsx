@@ -10,7 +10,7 @@ import { celebrate } from '../../fx/reward'
 import { ArrowRight, Check, NavigationArrow, X } from '../../ui/glyphs'
 import { GoodPic, GoodWaysContext, OpenButton } from '../../ui/GoodPic'
 import { ItemPic } from '../../ui/ItemPic'
-import { EASE, MotionRoot, PRESS, SPRING } from '../../ui/motion'
+import { EASE, MotionRoot, PRESS, SINK, SPRING } from '../../ui/motion'
 import { PanelSheet } from '../../ui/PanelSheet'
 import { useSheetMode } from '../../ui/sheetMode'
 import { Coins } from '../../ui/Shell'
@@ -335,7 +335,7 @@ function Board({ v, act, asking, onAsk, onClose }: OrdersBoardProps) {
 
 const PLANK: Variants = {
   hidden: { opacity: 0, y: -30, rotate: -3 },
-  show: (delay: number) => ({ opacity: 1, y: 0, rotate: 0, transition: { type: 'spring', stiffness: 520, damping: 22, delay } }),
+  show: (delay: number) => ({ opacity: 1, y: 0, rotate: 0, transition: { ...SPRING.pop, delay } }),
 }
 const PEG: Variants = { hidden: { scale: 0.2, opacity: 0 }, show: { scale: 1, opacity: 1, transition: SPRING.pop } }
 
@@ -462,7 +462,7 @@ function Plank({
               initial={{ opacity: 0, scale: 0.7, y: 8 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               transition={{ ...SPRING.soft, delay: 0.3 }}
-              whileTap={{ scale: 0.95, y: 3 }}
+              whileTap={SINK.whileTap}
               onClick={(e) => onSend(k, e.currentTarget)}
               aria-label={`Send this order for ${o.coins} coins`}
             >

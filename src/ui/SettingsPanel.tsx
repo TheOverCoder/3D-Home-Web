@@ -288,7 +288,7 @@ export function SettingsPanel() {
                 Reset to defaults
               </button>
               <button className="primary small" onClick={() => setOpen(false)}>
-                Back to the house
+                Done
               </button>
             </footer>
           </aside>

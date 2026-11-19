@@ -414,8 +414,10 @@ The README has the overview; `tests/README.md` what each test guards.
   new panel's kind is one line in `PANEL_KINDS` (`src/store.ts`): `39-panels` opens it on a phone and measures what
   can be read and pressed (`tests/e2e/readable.ts`). What may move at the top to call asks `useCalling(id)`
   (`src/ui/calls.ts`): one at a time.
-- A panel: picture, a few-word title, chips, at most one line of text, at most two buttons (Cancel first, the
-  action last with its price). 44 px targets, text ≥ 15 px (never < 13). A good's picture where goods change hands
+- A panel: picture, a few-word title, chips, at most one line of text, at most two buttons (*Cancel* first — one
+  word, on every card that asks —, the action last with its price). 44 px targets (48 px hit areas on touch, grown
+  round them), text ≥ 15 px (never < 13); words in amber use `--amber-ink`, a thing not open yet fades only its
+  picture (`.locked`, `.off`). At the top, what loops asks `useCalling` (`src/ui/calls.ts`): one moves at a time. A good's picture where goods change hands
   or go into a machine is an `ItemPic` with its count (the round badge, 1 included), never the picture repeated.
 - The top of the screen has three views (`HudMode`: everything / only the compass / clear, `<html data-hud>`):
   anything new up there must hide in the views it does not belong to (see `src/ui/Compass.css`). The dashboard

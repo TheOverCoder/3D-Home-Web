@@ -6,7 +6,7 @@ import { coinsHeld, onCoinsHeld } from '../fx/coins'
 import { goodsHeld, onGoodsHeld } from '../ui/fly'
 import { useHome } from '../store'
 import { art } from '../ui/art'
-import { ARRIVE, EASE, MotionRoot, SPRING } from '../ui/motion'
+import { ARRIVE, EASE, MotionRoot, SPRING, SQUISH } from '../ui/motion'
 import { STORES, STORE_IDS, type StoreId } from './data'
 import { DayChip } from './DayChip'
 import { useGoalsReady } from './GoalsPanel'
@@ -229,7 +229,7 @@ function Gauge({
           className={`farm-chip-item top-gauge ${className}${tone}${quiet ? ' quiet' : ''}`}
           aria-label={label}
           title={title}
-          whileTap={{ scale: 0.9 }}
+          whileTap={SQUISH.whileTap}
           animate={full ? { x: [0, -4, 4, -3, 3, 0] } : undefined}
           transition={full ? { delay: 0.75, duration: 0.45 } : SPRING.pop}
         >

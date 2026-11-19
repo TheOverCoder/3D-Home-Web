@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useSettings } from '../settings'
 import { busy, useHome } from '../store'
 import { Camera } from './glyphs'
-import { EASE, MotionRoot, SPRING } from './motion'
+import { EASE, MotionRoot, TIP } from './motion'
 import './PhotoButton.css'
 
 // A photo of the farm, in the clear view of the top of the screen only (HudMode "clear", <html data-hud="clean">): the
@@ -104,8 +104,7 @@ export function PhotoButton() {
         title="Photo"
         initial={{ opacity: 0, scale: 0.6 }}
         animate={{ opacity: 1, scale: 1 }}
-        whileTap={{ scale: 0.86, rotate: -8 }}
-        transition={SPRING.pop}
+        {...TIP}
       >
         <Camera weight="fill" />
       </m.button>

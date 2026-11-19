@@ -74,7 +74,7 @@ export function QueuePanel() {
       <button className="primary farm-sell-all" disabled={!all.buyers} onClick={() => sellAll()}>
         {all.buyers ? (
           <>
-            Sell to all · <Coins n={all.coins} />
+            Sell to {all.buyers} · <Coins n={all.coins} />
           </>
         ) : (
           'Nothing to sell yet'

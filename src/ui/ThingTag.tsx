@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { useCalling } from './calls'
 import { Html } from '@react-three/drei'
 import { Vector3, type Camera, type Object3D } from 'three'
 import { uiClick } from '../audio/sound'
@@ -70,6 +71,8 @@ export function ThingTag() {
   }, [])
 
   const live = tag && playing && !occupied ? tagOf(tag.id) : null
+  // (its coin rocks and its gear turns only while it is the top's one call: src/ui/calls.ts)
+  const tagCalls = useCalling('tag', !!live)
   if (!tag || !live) return null
   const price = live.kind === 'price'
   const short = price && farm.coins < (live.price ?? 0)
@@ -97,7 +100,7 @@ export function ThingTag() {
     <Html key={`${tag.id}|${live.kind}`} position={[live.at.x, live.at.y, live.at.z]} center calculatePosition={placeTag(button)} zIndexRange={[12, 11]} wrapperClass="thing-tag-anchor">
       <button
         ref={button}
-        className={`thing-tag ${price ? 'thing-price' : 'thing-gear'}${short ? ' short' : ''}`}
+        className={`thing-tag ${price ? 'thing-price' : 'thing-gear'}${short ? ' short' : ''}${tagCalls ? ' calling' : ''}`}
         onClick={() => {
           uiClick()
           live.open()

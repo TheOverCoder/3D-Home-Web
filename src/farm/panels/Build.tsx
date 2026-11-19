@@ -43,7 +43,7 @@ export function BuildPanel({ bed }: { bed: number }) {
       <p className="farm-line">{blurb}</p>
       <div className="farm-confirm">
         <button className="btn soft" onClick={close}>
-          Not now
+          Cancel
         </button>
         {lock !== null ? (
           <span role="note" className="farm-lock">

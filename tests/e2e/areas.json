@@ -79,7 +79,7 @@
       "name": "the panels' base",
       "specs": ["17-stores-orders", "21-goals", "22-xp", "25-button", "32-machine-queue", "38-animal-tools", "39-panels"],
       "paths": [
-        "src/ui/{PanelSheet,Shell,Sheet,SwipeSheet,ScreenModal,ConfirmCard,ItemPic,GoodPic,GarmentPic,motion,motionFeatures,burst,fly,art,glyphs,still,calls,sheetMode,useGameFree}.{ts,tsx,css}",
+        "src/ui/{PanelSheet,Shell,Sheet,SwipeSheet,ScreenModal,ItemPic,GoodPic,GarmentPic,motion,motionFeatures,burst,fly,art,glyphs,still,calls,sheetMode,useGameFree}.{ts,tsx,css}",
         "src/ui/screens/**",
         "src/styles.css",
         "src/farm/FarmUI.tsx",

@@ -151,13 +151,15 @@ test.describe('the supermarket', () => {
     // and back in
     await game.teleport(5.6, 1.4, 14.4, 0, 0)
     await walkUntil(game, 'z', false, 12.2)
-    // the lot's edges, where no wall of the market or the estate office stands: west (the parking lot's end), east,
-    // south of the lane west of the office, and round the contractor's corner
-    const [lane, , corner] = LOT
+    // the lot's edges, where no wall of the market, the estate office or the dealer stands: west (the car park's end),
+    // east (past the dealer's forecourt), south of the lane between the car park and the office, the car park's south,
+    // and round the contractor's corner
+    const [lane, , corner, park] = LOT
     for (const [name, x, z, yaw, ok] of [
       ['west', lane.x0 + 0.7, 15, P / 2, (p: any) => p.x > lane.x0 - 0.05],
       ['east', lane.x1 - 0.7, 15, -P / 2, (p: any) => p.x < lane.x1 + 0.05],
-      ['south, west of the estate office', lane.x0 + 0.9, lane.z1 - 0.8, P, (p: any) => p.z < lane.z1 + 0.05],
+      ['south, between the car park and the estate office', park.x1 + 1.6, lane.z1 - 0.8, P, (p: any) => p.z < lane.z1 + 0.05],
+      ["the car park's south", (park.x0 + park.x1) / 2, park.z1 - 0.8, P, (p: any) => p.z < park.z1 + 0.05],
       ["the corner's south", AT_WINDOW.x, corner.z0 + 0.5, P, (p: any) => p.z < corner.z1 + 0.05],
       ["the corner's east", AT_WINDOW.x, AT_WINDOW.z, -P / 2, (p: any) => p.x < corner.x1 + 0.05],
     ] as const) {
@@ -169,7 +171,7 @@ test.describe('the supermarket', () => {
     // anywhere inside either room, the corner and the lane, the safety net leaves you where you are
     for (const [name, x, z] of [
       ['the hall', 10.0, 18.8],
-      ['the back room', 11.6, 21.4],
+      ['the back room', 12.6, 24.4],
       ["the contractor's corner", AT_WINDOW.x, AT_WINDOW.z],
       ['the lane', 10.0, 15.0],
     ] as const) {

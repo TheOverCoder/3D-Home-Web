@@ -15,6 +15,8 @@
   --edge-soft: #e6d2b0;
   --sun: #ffc93c;
   --sun-lip: #d39a1c;
+  /* amber for words: 5.6:1 on paper (the sun's lip is for edges and pictures, 2.3:1) */
+  --amber-ink: #8a5a00;
   --leaf: #2c8540;
   --leaf-lip: #1c5c2b;
   --berry: #d2452f;
@@ -144,6 +146,13 @@ button:focus-visible { outline: 3px solid var(--sun); outline-offset: 2px; }
 .btn.berry:disabled { --b: #e4d8c4; --b-ink: #8d7b66; --b-lip: #cdbea6; cursor: default; }
 .btn:disabled img { opacity: 0.6; }
 .btn.small { min-height: 44px; padding: 0 16px; font-size: 16px; }
+/* 44 px to the eye, a 48 px hit area under a finger: grown round it, so nothing on the screen moves */
+@media (pointer: coarse) {
+  .btn.small,
+  .deco-swatch { position: relative; }
+  .btn.small::after,
+  .deco-swatch::after { content: ''; position: absolute; inset: -2px; border-radius: inherit; }
+}
 .btn.round { width: 44px; min-height: 44px; padding: 0; }
 .btn svg { width: 22px; height: 22px; flex: none; }
 .btn img { width: 26px; height: 26px; }
@@ -180,7 +189,10 @@ button:focus-visible { outline: 3px solid var(--sun); outline-offset: 2px; }
 .tag.short { background: #fde1da; color: #9a2c1c; }
 /* a thing not open yet (src/ui/LockTag.tsx): its picture faded and grey, and the level it opens at on the level card's
    berry ribbon, notched at both ends, where its price would be — across a card's top corner, or the tag itself */
-.locked .art { filter: grayscale(1) brightness(1.15); opacity: 0.5; }
+.locked .art,
+.off .art { filter: grayscale(1) brightness(1.15); opacity: 0.5; }
+/* (a thing not open yet keeps its words readable: only its picture fades) */
+.off { color: var(--ink-2); }
 .lock-tag { display: inline-block; padding: 3px 14px 4px; font: 600 14px/1.15 var(--font-display); white-space: nowrap; }
 .lock-tag.big { padding: 14px 22px 15px; font-size: 17px; }
 .lock-corner { position: absolute; top: 0; left: 0; z-index: 1; width: 78px; height: 78px; overflow: hidden; border-top-left-radius: var(--r-card); pointer-events: none; }
@@ -224,7 +236,6 @@ button:focus-visible { outline: 3px solid var(--sun); outline-offset: 2px; }
 .sheet-heading { display: flex; align-items: center; gap: 6px; margin: 6px 2px -2px; font: 600 18px/1 var(--font-display); color: var(--ink); }
 .sheet-heading svg { width: 18px; height: 18px; }
 
-.eyebrow { margin: 0 0 6px; font: 600 12px/1.4 var(--font-display); letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); }
 
 /* ───────── the way in: the loading screen (src/ui/Loading.css) and the opening menu (src/ui/Intro.css) over the farm ───────── */
 .intro { position: fixed; inset: 0; z-index: 30; }
@@ -242,7 +253,7 @@ a:focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; border-rad
 .failure-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .failure-tip { margin: 8px 0 0 !important; font-size: 13px; }
 .failure-detail { margin-top: 8px; font-size: 13px; }
-.failure-detail code { display: block; margin-top: 4px; white-space: pre-wrap; word-break: break-word; font-size: 12px; opacity: 0.85; }
+.failure-detail code { display: block; margin-top: 4px; white-space: pre-wrap; word-break: break-word; font-size: 13px; opacity: 0.85; }
 
 
 /* the music player */
@@ -693,7 +704,7 @@ a:focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; border-rad
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
   pointer-events: none;
 }
-.act-btn:not(.main) .act-word { font-size: 11px; padding: 1px 8px 2px; bottom: -8px; }
+.act-btn:not(.main) .act-word { font-size: 13px; padding: 1px 8px 2px; bottom: -9px; }
 .act-face.small { width: 32px; height: 32px; margin: -4px 4px -4px -4px; color: var(--accent); }
 .act-face.small .act-face-mark { width: 46%; height: 46%; left: -8%; top: -8%; border-width: 1.5px; padding: 8%; }
 .act-face.small .act-face-item { width: 74%; height: 74%; }
@@ -982,7 +993,7 @@ button.farm-chip-item:focus-visible { outline: 3px solid var(--sun); outline-off
 .farm-card > .art { width: 64px; height: 64px; }
 .farm-card-name { font: 600 17px/1.15 var(--font-display); }
 .farm-card-tags { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
-.farm-key { position: absolute; top: 8px; inset-inline-start: 8px; font-size: 11px; opacity: 0.55; }
+.farm-key { position: absolute; top: 8px; inset-inline-start: 8px; font-size: 13px; opacity: 0.6; }
 /* how many of a crop are in the silo: a small chip in the card's right corner */
 .farm-stock { position: absolute; top: 6px; inset-inline-end: 6px; gap: 2px; padding: 1px 7px 1px 3px; font-size: 13px; box-shadow: 0 1px 0 var(--paper-3); }
 .farm-stock img { width: 16px; height: 16px; }
@@ -1172,7 +1183,7 @@ button.farm-chip-item:focus-visible { outline: 3px solid var(--sun); outline-off
   border-radius: 999px;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
 }
-.edit-done kbd { font-size: 11px; opacity: 0.7; }
+.edit-done kbd { font-size: 13px; opacity: 0.7; }
 .edit-card {
   position: fixed;
   left: 50%;
@@ -1194,7 +1205,7 @@ button.farm-chip-item:focus-visible { outline: 3px solid var(--sun); outline-off
 .edit-card .fit-ok { color: var(--leaf); }
 .edit-card .fit-bad { color: var(--berry); }
 .edit-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
-.edit-actions .btn kbd { font-size: 11px; opacity: 0.6; }
+.edit-actions .btn kbd { font-size: 13px; opacity: 0.65; }
 .edit-coin { width: 24px; height: 24px; }
 .edit-short { font-size: 14px; color: var(--berry); }
 .edit-sale {
@@ -1206,7 +1217,7 @@ button.farm-chip-item:focus-visible { outline: 3px solid var(--sun); outline-off
   border-radius: 12px;
   background: rgba(30, 24, 8, 0.82);
   color: #f6dc8c;
-  font-size: 12px;
+  font-size: 13px;
   white-space: nowrap;
   cursor: pointer;
   pointer-events: auto;
@@ -1292,38 +1303,6 @@ button.farm-chip-item:focus-visible { outline: 3px solid var(--sun); outline-off
 }
 @keyframes remote-cast { 0% { opacity: 1; } 40% { opacity: 0.35; } 100% { opacity: 1; } }
 
-/* ── a machine asking before it takes its ingredients: a small card over the action button (src/ui/ConfirmCard.tsx) ── */
-.confirm-card {
-  position: fixed;
-  z-index: 12;
-  width: min(300px, calc(100vw - 28px));
-  padding: 12px 14px 14px;
-  border-radius: var(--r-card);
-  /* on a computer, over the prompt in the middle at the bottom */
-  left: 0;
-  right: 0;
-  margin-inline: auto;
-  bottom: calc(max(72px, env(safe-area-inset-bottom)) + 62px);
-  animation: sheet-up 0.22s var(--ease-pop);
-}
-/* on a touch screen, right over the action button, under the thumb */
-.confirm-card.touch {
-  left: auto;
-  right: calc(var(--touch-pad, 14px) + env(safe-area-inset-right));
-  margin: 0;
-  bottom: calc(var(--touch-pad, 14px) + var(--touch-main, 84px) + 14px + env(safe-area-inset-bottom));
-}
-.confirm-head { display: flex; align-items: center; gap: 12px; }
-.confirm-head .item-pic .art { width: 52px; height: 52px; }
-.confirm-title { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; }
-.confirm-title strong { font: 600 19px/1.15 var(--font-display); color: var(--ink); }
-.confirm-inputs { display: flex; flex-wrap: wrap; gap: 10px 14px; margin: 12px 0 4px; padding: 8px 10px 10px; border-radius: 14px; background: var(--paper-2); }
-.confirm-inputs .item-pic .art { width: 30px; height: 30px; }
-.confirm-inputs .item-pic .qty { min-width: 19px; height: 19px; font-size: 12px; inset-inline-end: -8px; bottom: -6px; }
-.confirm-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 12px; }
-.confirm-actions .btn.leaf { flex: 1; }
-.confirm-actions kbd { margin-inline-start: 6px; padding: 1px 6px; border-radius: 6px; background: rgba(255, 255, 255, 0.22); font: 700 12px/1.4 var(--font-text); }
-
 /* a status line's missing things (the oven: what a cake still needs), as pictures with how many, then → the cake */
 .status-needs { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
 .prompt.status:has(.status-needs) { max-width: min(92vw, 440px); }
@@ -1356,7 +1335,7 @@ button.farm-chip-item:focus-visible { outline: 3px solid var(--sun); outline-off
 .deco-tabs { flex: 1; flex-wrap: nowrap; gap: 6px; margin-top: 0; }
 .deco-tabs .btn { flex: 1 1 0; min-width: 0; min-height: 44px; padding-inline: 6px; gap: 5px; }
 .deco-hint { margin-top: 10px !important; }
-.edit-card .fit-warn { color: var(--sun-lip); }
+.edit-card .fit-warn { color: var(--amber-ink); }
 .deco-where { font-size: 15px !important; }
 .deco-glyph { flex: none; width: 56px; height: 56px; display: grid; place-items: center; border-radius: 16px; background: var(--paper-2); box-shadow: 0 3px 0 var(--paper-3); color: var(--edge); }
 .deco-glyph svg { width: 34px; height: 34px; }

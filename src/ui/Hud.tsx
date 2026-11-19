@@ -12,7 +12,6 @@ import { ActionFace, TurnHint, VerbMark } from './ActionGlyph'
 import { art, type ArtId } from './art'
 import { Compass } from './Compass'
 import { TopSlot } from './TopStack'
-import { ConfirmCard } from './ConfirmCard'
 import { ArrowRight, Clock } from './glyphs'
 import { ItemPic } from './ItemPic'
 import { LockTag } from './LockTag'
@@ -268,7 +267,6 @@ export function Hud() {
       </div>
 
       <Compass />
-      <ConfirmCard />
 
       {toast && (
         <TopSlot name="toast">

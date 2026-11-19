@@ -41,7 +41,7 @@
 .mp-place.empty { display: grid; place-items: center; color: color-mix(in srgb, var(--ink-2) 35%, transparent); }
 .mp-place.empty svg { width: 34%; height: 34%; }
 .mp-place.empty::after { content: ''; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 2.5px var(--sun-lip); opacity: 0; transition: opacity 0.15s; pointer-events: none; }
-.mp-places.inviting .mp-place.empty { color: var(--sun-lip); }
+.mp-places.inviting .mp-place.empty { color: var(--amber-ink); }
 .mp-places.inviting .mp-place.empty::after { opacity: 0.6; }
 
 /* waiting: its picture and its time, a step back from the one at work; tapped, it is ringed red with its ✕ */
@@ -182,7 +182,7 @@
 .mp-lv-n b { font: 600 46px/1 var(--font-display); color: var(--ink); }
 .mp-lv-words { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
 .mp-lv-big { font: 600 19px/1.15 var(--font-display); color: var(--ink); }
-.mp-lv-big strong { font-weight: 700; color: var(--sun-lip); }
+.mp-lv-big strong { font-weight: 700; color: var(--amber-ink); }
 .mp-lv-line { font-size: 15px; color: var(--ink-2); }
 .mp-lv-facts { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
 .mp-lv-ghost { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--ink-2); }
