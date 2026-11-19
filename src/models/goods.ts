@@ -1401,7 +1401,13 @@ function blueberryMuffins(): Structure<'cases' | 'tops'> {
 
 /** A quilt folded in a soft stack of three: squares of blue, red, cream and green, stitched in white round each square,
  *  a binding round its folds. */
-function quilt(): Structure<'quilt'> {
+const quilt = () => folded([rgb(0x3f6fb8), rgb(0xc9573f), rgb(0xf1e6cc), rgb(0x5c8a4a)], rgb(0xfbf7ef))
+
+/** A woollen blanket folded the same way: squares of cream, oatmeal and heather, stitched in brown. */
+const blanket = () => folded([rgb(0xeee3cc), rgb(0xc9b38c), rgb(0x9a7f9e), rgb(0xd8c7a4)], rgb(0x6a4a32))
+
+/** Cloth folded in a soft stack of three, in squares of `patches`, stitched in `stitch` round each square. */
+function folded(patches: V3[], stitch: V3): Structure<'quilt'> {
   const W = 0.16
   const D = 0.12
   const layer = (y: number, h: number, inset: number) =>
@@ -1412,7 +1418,6 @@ function quilt(): Structure<'quilt'> {
       ],
       { seg: 20, steps: 1, up: [0, 1, 0], shape: (a) => squircle(a, 5), caps: [true, true], round: [h * 0.8, h * 0.8] },
     )
-  const patches = [rgb(0x3f6fb8), rgb(0xc9573f), rgb(0xf1e6cc), rgb(0x5c8a4a)]
   const square = 0.055
   const all = merge(layer(0.022, 0.022, 0), layer(0.064, 0.021, 0.006), layer(0.104, 0.02, 0.012))
     .paint((x, _y, z) => {
@@ -1425,7 +1430,7 @@ function quilt(): Structure<'quilt'> {
       const u = ((x + 1) / square) % 1
       const v = ((z + 1) / square) % 1
       return Math.min(u, 1 - u, v, 1 - v) < 0.06 ? 1 : 0
-    }, rgb(0xfbf7ef))
+    }, stitch)
   return grounded({ quilt: { shape: all, material: { roughness: 0.92, detail: { scale: 300, bump: 0.002, shade: 0.12 } } } })
 }
 
@@ -1585,6 +1590,41 @@ function jamJar(jam: V3, cloth: V3, check: boolean): () => Structure<'jar' | 'co
   }
 }
 
+/** A paper cup of ice cream: two scoops, vanilla and strawberry, a wafer stuck in the top. */
+function iceCream(): Structure<'cup' | 'scoops'> {
+  const cup = lathe(
+    [
+      [0, 0],
+      [0.045, 0],
+      [0.062, 0.07],
+      [0.058, 0.074],
+      [0, 0.07],
+    ],
+    { seg: 24, steps: 1, shape: (a) => 1 + 0.03 * Math.abs(Math.sin(a * 10)) },
+  )
+    .fill(rgb(0xf6f1e6), 0)
+    .pattern((x, _y, z) => (Math.abs(Math.sin(Math.atan2(z, x) * 5)) < 0.3 ? 1 : 0), rgb(0x6fb6d8))
+  const scoop = (at: V3, r: number, colour: V3) =>
+    blob(r, 2, (x, y, z) => 0.08 * Math.max(0, Math.sin(Math.atan2(z, x) * 7)) * smoothstep(0.3, -0.4, y))
+      .place(at)
+      .fill(colour, 0)
+  const wafer = loft(
+    [
+      { c: [0.02, 0.14, 0.0], rx: 0.012, ry: 0.004 },
+      { c: [0.04, 0.2, 0.0], rx: 0.012, ry: 0.004 },
+    ],
+    { seg: 8, steps: 1, up: [0, 0, 1], shape: (a) => squircle(a, 6), caps: [true, true] },
+  ).fill(rgb(0xd9a35e), 0)
+  return {
+    cup: { shape: cup, material: { roughness: 0.8 } },
+    scoops: { shape: merge(scoop([0.0, 0.085, 0.0], 0.05, rgb(0xfbf1d2)), scoop([0.008, 0.135, 0.004], 0.042, rgb(0xf4a6b8)), wafer), material: { roughness: 0.6 } },
+  }
+}
+
+/** A honey cake: a golden sponge iced with honey, three drops of it on top. */
+const honeyCake = () =>
+  cake(rgb(0xe3a24a), rgb(0xf3c14d), merge(...[0, 2.1, 4.2].map((a) => ellipsoid(0.018, 0.012, 0.018, 10, 5).place([Math.cos(a) * 0.05, 0.126, Math.sin(a) * 0.05]))).fill(rgb(0xd88a12), 0))
+
 /** Every good with a model: the farm's produce, and the fruit of the fruit trees and bushes. */
 export type GoodsId = ProduceId | FruitId
 
@@ -1633,4 +1673,13 @@ export const GOODS: Record<GoodsId, () => Structure> = {
   bread,
   honey,
   strawberry_jam: jamJar(rgb(0xb3172e), rgb(0xd23a3a), true),
+  cherry_jam: jamJar(rgb(0x6e0a1c), rgb(0x8c1426), false),
+  honey_cake: honeyCake,
+  blueberry_jam: jamJar(rgb(0x2e2a5e), rgb(0x3b6fb8), true),
+  ice_cream: iceCream,
+  marmalade: jamJar(rgb(0xe07a12), rgb(0xf2a33a), false),
+  yogurt: jamJar(rgb(0xf6f2ea), rgb(0x5b97d6), false),
+  blanket,
+  apple_butter: jamJar(rgb(0x7a4220), rgb(0x5c8a4a), true),
+  raspberry_jam: jamJar(rgb(0xb0204e), rgb(0xd8578a), false),
 }

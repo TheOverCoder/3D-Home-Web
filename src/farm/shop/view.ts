@@ -109,6 +109,8 @@ function farmRow(id: UpgradeId): FarmRow {
     case 'east':
     case 'west':
     case 'north':
+    case 'meadow':
+    case 'far':
       return { ...base, level: base.owned ? 1 : 0, levels: 1, icon: 'seedling', now: `+${bedsIn(id)} beds`, next: null }
     case 'sprinkler':
       return { ...base, level: base.owned ? 1 : 0, levels: 1, icon: 'droplet', now: 'Waters every bed', next: null }

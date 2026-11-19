@@ -66,9 +66,14 @@ describe('what each level opens', () => {
     expect(lockedAt('bed', 1)).toBeNull()
   })
 
-  it('every level of the first hour opens something (each one a reward), and each thing at exactly one level', () => {
+  // the cadence (update-v1/missions/01-loop-economy.md, Foundation 6; JOURNEY.md fix 8): something new at every level
+  // from 2 to 30, then at least every second level up to 45, and past it no gap over three levels
+  it('every level from 2 to 30 opens something, then every second level at least to 45, then every third; each thing at exactly one level', () => {
     const top = Math.max(...Object.values(UNLOCKS))
-    for (let level = 2; level <= top; level++) expect(opensAt(level).length, `level ${level}`).toBeGreaterThan(0)
+    expect(top, 'the rows reach 45').toBeGreaterThanOrEqual(45)
+    for (let level = 2; level <= 30; level++) expect(opensAt(level).length, `level ${level}`).toBeGreaterThan(0)
+    const rows = Array.from({ length: top - 29 }, (_, k) => 30 + k).filter((level) => opensAt(level).length > 0)
+    for (let k = 1; k < rows.length; k++) expect(rows[k] - rows[k - 1], `from level ${rows[k - 1]} to ${rows[k]}`).toBeLessThanOrEqual(rows[k] <= 45 ? 2 : 3)
     const all = Array.from({ length: top }, (_, k) => opensAt(k + 1)).flat()
     expect(all.length).toBe(UNLOCK_IDS.length)
     expect(new Set(all).size).toBe(UNLOCK_IDS.length)

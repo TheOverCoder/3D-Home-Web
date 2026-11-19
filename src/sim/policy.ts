@@ -143,7 +143,12 @@ const MARKET: Spot = { x: MANAGER_SPOT.x, z: MANAGER_SPOT.z }
 /** The beds in patches a press reaches together: the first six, and each field of beds (EXPANSIONS). */
 const PATCHES = (['main', ...EXPANSION_IDS] as const).map((name) => ({ name, beds: BEDS.filter((b) => (b.expansion ?? 'main') === name).map((b) => b.index) }))
 const middleOf = (beds: number[]): Spot => ({ x: beds.reduce((s, i) => s + bedSpot(i).x, 0) / beds.length, z: beds.reduce((s, i) => s + bedSpot(i).z, 0) / beds.length })
-const producerAt = (id: (typeof PRODUCER_IDS)[number]): Spot => farm.layout.places[PRODUCERS[id].place!]
+/** Where a producer is collected from: its place, or a fruit plant's (a hive's) the first of its kind standing. */
+const producerAt = (id: (typeof PRODUCER_IDS)[number]): Spot => {
+  const plant = PRODUCERS[id].plant
+  return plant ? (farm.layout.decor.find((d) => d.kind === plant) ?? farm.layout.places.lemon) : farm.layout.places[PRODUCERS[id].place!]
+}
+
 /** Where an animal's tool is used: its place at the fence, where its pen stands now. */
 function toolAt(id: ProducerId): Spot {
   const [x, , z] = TOOLS[toolOwned(id)!].stand

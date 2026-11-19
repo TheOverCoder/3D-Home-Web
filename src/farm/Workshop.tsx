@@ -73,6 +73,7 @@ const CAKE_LOOK: Record<OvenId, { top: string; dots: string; pie?: boolean }> = 
   blueberry_muffins: { top: '#d99a52', dots: '#3b4f8f' },
   cherry_tart: { top: '#6e0a1c', dots: '#b8122c', pie: true },
   bread: { top: '#c98a43', dots: '#e9c890' },
+  honey_cake: { top: '#f0c35a', dots: '#d58a1c' },
 }
 
 /** A cake (or pie) on a plate, decorated for its recipe. */

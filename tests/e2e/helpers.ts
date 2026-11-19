@@ -297,6 +297,13 @@ export async function fillFarm(page: Page): Promise<FullFarm> {
     for (const kind of ['hens', 'cows', 'sheep']) for (const part of ['tool', 'hold', 'tap']) while (f.ladderOpen(`${kind}-${part}`) && f.buyLadder(`${kind}-${part}`));
     for (const kind of ['hens', 'cows', 'sheep']) f.state.producers[kind].stock = f.state.producers[kind].stock.map((n: number) => Math.max(2, n))
     for (let i = 0; i < 12; i++) f.buy('queue')
+    // update v1's fields of beds on the meadows (01b): the west and north-west meadows, then their beds, planted with the rest below; and three beehives (the north meadow is 16-view-farm's to buy)
+    for (const [land, field, hive] of [
+      ['west', 'meadow', [-6, -3.5]],
+      ['northWest', 'far', [-6, -2]],
+      ['', '', [-6.5, -0.5]],
+    ] as const)
+      if ((land === '' || (f.buyLand(land) && f.buy(field))) && f.buyDecor('beehive')) f.placeDecor('beehive', f.freeDecorSpot('beehive', hive[0], hive[1]))
     for (let i = f.inLine().length; i < f.placesInLine(); i++) f.spawnVisitor({ queued: true })
     f.state.beds.forEach((b: any) => (b.built = true))
     const crops = ['lettuce', 'carrot', 'strawberry', 'tomato', 'corn', 'pumpkin', 'wheat', 'sugarcane']

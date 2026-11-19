@@ -111,6 +111,20 @@ const TABLE = {
   'recipe:dairy:cheese': 23,
   'decor:beehive': 24,
   'recipe:kettle:strawberry_jam': 25,
+  'upgrade:meadow': 26,
+  'recipe:kettle:cherry_jam': 27,
+  'recipe:oven:honey_cake': 28,
+  'recipe:kettle:blueberry_jam': 29,
+  'herd:cows:5': 30,
+  // past 30, a row every two levels to 45 (update-v1/JOURNEY.md fix 8; the neighbours' and the sets' rows come between)
+  'recipe:dairy:ice_cream': 31,
+  'recipe:kettle:marmalade': 33,
+  'recipe:dairy:yogurt': 35,
+  'upgrade:far': 37,
+  'herd:sheep:6': 39,
+  'recipe:loom:blanket': 41,
+  'recipe:kettle:apple_butter': 43,
+  'recipe:kettle:raspberry_jam': 45,
 } as const satisfies Record<UnlockId, number>
 export const UNLOCKS: Readonly<Record<UnlockId, number>> = TABLE
 
