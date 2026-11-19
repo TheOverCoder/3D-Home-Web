@@ -1,14 +1,14 @@
 import { AnimatePresence, m } from 'motion/react'
 import { useLessMotion } from '../ui/still'
 import { useEffect, useRef, useState } from 'react'
-import { farmSound, uiClick } from '../audio/sound'
+import { uiClick } from '../audio/sound'
 import { flyCoins, flyItem } from '../fx/coins'
 import { coinsToFly } from '../fx/fx'
-import { haptic } from '../lib/device'
+import { celebrate } from '../fx/reward'
 import { useWalk, walkTo } from '../lib/route/walking'
+import { tierRank, type Tier } from '../lib/tier'
 import { useHome } from '../store'
 import { art } from '../ui/art'
-import { burst } from '../ui/burst'
 import { Check, PersonSimpleWalk, X } from '../ui/glyphs'
 import { POP, SPRING, nope } from '../ui/motion'
 import { Reveal } from '../ui/Reveal'
@@ -18,8 +18,11 @@ import { storeOf } from './data'
 import { FarmerFace } from './FarmerFace'
 import { FIRST_STEPS, MOMENT_MOODS, lineFor, moodFor, type Line, type Moment, type Pic, type StepDef } from './firstSteps'
 import { iconUrl } from './icons'
+import type { Prize } from './prize'
 import { farm, passedWaiting, skipSteps, stepNow, takePassed, useFarm } from './state'
 import { walkTarget } from './walkTargets'
+import { rewardTier } from './worth'
+import { levelOf } from './xp'
 import './FirstSteps.css'
 
 // A new farm's first steps (./firstSteps.ts; the design lab's board "first-steps", C, the user's choice): the farm's
@@ -43,6 +46,10 @@ const NOWHERE_MS = 1400
 export const picOf = (s: { pic: Pic }) => ('item' in s.pic ? iconUrl(s.pic.item) : art(s.pic.art))
 /** Every step's coins together (the last card's sum). */
 const ALL_COINS = FIRST_STEPS.reduce((n, s) => n + ('coins' in s.reward ? s.reward.coins : 0), 0)
+/** How big rewards are at the farm's level now (src/farm/worth.ts): the biggest of `each` (steps done together, each
+ *  counted as it passed), its show's tier. */
+const tierOf = (each: readonly (readonly Prize[])[]): Tier =>
+  each.map((p) => rewardTier(p, farm.xp ? levelOf(farm.xp.points) : 1)).reduce((a, b) => (tierRank(b) > tierRank(a) ? b : a), 'small' as Tier)
 
 /** The words typed in a letter at a time (all at once for whoever prefers less motion, and the whole line at once
  *  when it is done: the tick stamps a line that can be read); the rest of the line is kept, unseen, so the bubble is
@@ -69,7 +76,8 @@ function Typed({ text, whole }: { text: string; whole?: boolean }) {
 function Finale() {
   const at = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    const t = window.setTimeout(() => at.current && burst(at.current, { count: 70, spread: 80 }), 260)
+    // (as big as every coin they gave, together; no sound of its own: each step's played as it was done)
+    const t = window.setTimeout(() => celebrate('step', tierOf([FIRST_STEPS.map((s) => s.reward)]), at.current, { sound: false }), 260)
     return () => window.clearTimeout(t)
   }, [])
   return (
@@ -135,8 +143,8 @@ export function StepHint() {
     setNowhere(false)
     setShown((s) => (s && passed.includes(s) ? s : passed[passed.length - 1]))
     setPhase('done')
-    haptic('sale')
-    farmSound('coins')
+    // its sting and its touch, as big as the reward (no confetti here: the bubble's tick is the moment)
+    celebrate('step', tierOf(passed.map((s) => [s.reward])), null)
     const coins = passed.reduce((n, s) => n + ('coins' in s.reward ? s.reward.coins : 0), 0)
     const goods = passed.flatMap((s) => ('item' in s.reward ? [s.reward.item] : []))
     // the coins take off a beat after the tick has popped
