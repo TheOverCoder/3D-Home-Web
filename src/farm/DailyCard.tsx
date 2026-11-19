@@ -64,8 +64,6 @@ export function DailyCard({
   /** claims today's gift: what it gave (null: nothing to claim) */
   onClaim: () => Prize[] | null
   onClose: () => void
-  /** (not called: the moment it bursts open, its sting and its touch are its tier's, `celebrate`: src/fx/reward.ts) */
-  onReveal?: () => void
   /** the box starts shaking (for `ms`, `delayMs` from now), to open on a gift of `tier`: its rattle */
   onShake?: (tier: Tier, ms: number, delayMs?: number) => void
 }) {

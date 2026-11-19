@@ -48,7 +48,7 @@ import { walkTarget } from './walkTargets'
 // (plants a bed — the seeds the line pictures, else the first open —, waters, harvests, collects, takes out or queues
 // at a machine, sells to the line, fills or sends the order the last step follows); with nothing to press there, the
 // player waits. Played on seeds 1–20 with no event and on each day of the week (the event clock set to it: the market,
-// the harvest festival, gift day, the machine rush, the lucky draw), it passes all eight steps, within six minutes of
+// the harvest festival, gift day, the machine rush, the lucky draw), it passes all of the steps, within six minutes of
 // play by the sim's walk (src/sim/play.ts, WALK), and no frame leaves the hint with nowhere to go. The places stand
 // where they do on a new farm, registered as the scene would (as in walkTargets.test.ts).
 
@@ -218,7 +218,7 @@ afterEach(() => {
 
 describe('the first steps, followed by a player who does only what the farmer says', () => {
   for (const [day, clock] of DAYS)
-    it(`pass all eight within six minutes of play, never with nowhere to go: ${day}`, () => {
+    it(`pass all ${FIRST_STEPS.length} within six minutes of play, never with nowhere to go: ${day}`, () => {
       const slow: string[] = []
       for (const seed of SEEDS) {
         const run = follow(seed, clock)

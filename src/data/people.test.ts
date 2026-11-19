@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { HOURS, NAMES, PRODUCE, PRODUCERS } from '../farm/data'
-import { steadyLook as coreSteadyLook } from '../farm/state/core'
-import { MANAGER_LOOK, sanitizeLook } from '../models/look'
+import { sanitizeLook } from '../models/look'
 import { NEIGHBOUR_IDS, PEOPLE, PERSON_IDS, isNeighbour, personById, personLook, steadyLook, talkerOf } from './people'
 
 // The people table (update-v1/CONTRACTS.md §1.13): everything that draws or voices one of the game's people reads its
@@ -92,7 +91,6 @@ describe('the people table', () => {
   })
 
   it("rolls as the farm's core did (its copy goes once nothing reads it), the same person every time", () => {
-    for (const seed of [1, 1723, 9157, 4271, 3307, 6029]) expect(steadyLook(seed, MANAGER_LOOK)).toEqual(coreSteadyLook(seed, MANAGER_LOOK))
     expect(steadyLook(77, {})).toEqual(steadyLook(77, {}))
     expect(steadyLook(77, {})).not.toEqual(steadyLook(78, {}))
     expect(steadyLook(77, { shirt: '#000000' }).shirt).toBe('#000000')

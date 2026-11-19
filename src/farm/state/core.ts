@@ -10,7 +10,6 @@ import type { Outfit } from '../outfit'
 import type { Market } from '../market'
 import type { Contractor } from '../contractor'
 import type { PersonLook } from '../../models/person'
-import { rollLook } from '../../models/look'
 import type { Pose, Walker } from '../script'
 import type { OrderSlot } from '../orders'
 import type { GoalId } from '../goals'
@@ -205,16 +204,6 @@ export const isSellable = (v: unknown): v is ProduceId => SELLABLE.includes(v as
  *  (refused, they would be lost). */
 export function putBack(id: ProduceId, n: number) {
   farm.inv[id] += n
-}
-
-/** The same person every time: their traits rolled on dice of their own (not the farm's). */
-export function steadyLook(seed: number, overrides: Partial<PersonLook>) {
-  let a = seed
-  const dice = () => {
-    a = (a * 16807) % 2147483647
-    return a / 2147483647
-  }
-  return rollLook(dice, overrides)
 }
 
 /** The device's clock for the daily gift (src/farm/daily.ts): its calendar day is the gift's day. Tests set their own

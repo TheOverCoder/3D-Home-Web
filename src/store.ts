@@ -157,7 +157,6 @@ interface HomeState {
   attempt: number // bumped to start the 3D scene again (after the graphics were lost, or in light mode)
   view: 'first' | 'third'
   settingsOpen: boolean
-  hintShown: boolean
   room: RoomId | null
   outdoors: boolean // in the garden
   /** the map in the scene, the farm or the house (src/scene/Maps.tsx: it follows the save's `place`); null until the
@@ -192,7 +191,6 @@ interface HomeState {
   setFailure: (failure: Failure | null) => void
   setView: (view: 'first' | 'third') => void
   setSettingsOpen: (open: boolean) => void
-  markHintShown: () => void
   setRoom: (room: RoomId | null) => void
   setOutdoors: (outdoors: boolean) => void
   setActions: (actions: Nearby[], status?: Nearby | null) => void
@@ -227,7 +225,6 @@ export const useHome = create<HomeState>()((set, get) => ({
   attempt: 0,
   view: 'first',
   settingsOpen: false,
-  hintShown: false,
   room: null,
   outdoors: false,
   map: null,
@@ -257,7 +254,6 @@ export const useHome = create<HomeState>()((set, get) => ({
   setFailure: (failure) => set({ failure }),
   setView: (view) => set({ view }),
   setSettingsOpen: (settingsOpen) => set(settingsOpen ? { settingsOpen, nearby: null, actions: [], status: null, confirm: null } : { settingsOpen }),
-  markHintShown: () => set({ hintShown: true }),
   setRoom: (room) => set({ room }),
   setOutdoors: (outdoors) => set({ outdoors }),
   setActions: (actions, status = null) => set({ actions, nearby: actions[0] ?? null, status }),

@@ -45,11 +45,11 @@ Each commit: `npm run check` and the unit tests its rules need; nothing heavy in
   silo's and the barn's full row in `StorePanel`; `PanelSheet` stops naming `.good-pop` (GoodPic's bubble carries
   `data-over-sheet` now); the mailbox's picture in `icons.ts` (its compass mark waits on it); the intro's music page
   has *Auto* (`autoMusic()`, as `MusicPlayer` does) — check it is the same page first.
-- *A clean-up commit before P3* (the orchestrator, one commit, `npm run check` and the specs it reaches): dead code
-  `steadyLook`, `hintShown`/`markHintShown`, the `onReveal` props nothing passes; `farm.ledger`'s `declare module`
-  into `FarmData` (`core.ts`); a buyer sent away never turns `'sad'` (`state/buyers.ts`, mission 03) and `core.ts`'s
-  mood `'sad'` becomes `'kind'`; `steps.walk.test.ts` says nine steps; the README's shell size (156.7 KB, not about
-  120 KB); `quietNeighbours(false)` in the sim's `play.ts`, so `npm run sim` counts the neighbours.
+- *The clean-up* (done 2026-11-19): `core.ts`'s copy of `steadyLook`, `hintShown`/`markHintShown`, the `onReveal`
+  props nothing passed; `steps.walk.test.ts` counts the steps; the README's shell size. Kept, on a closer look: the
+  `declare module './core'` of seven state modules is the pattern each module adds its field by, and a buyer sent
+  away already nods and waves kindly (`Visitors.tsx`; `'sad'` is only the mood's name in the save). The sim counting
+  the neighbours goes with the pace (step 2).
 - *P3-budget*: 05's yard debt (above); the house's sun draws in third person and decorating (268 and 263 of 250) by
   `sunAsOne` on the house's static batches.
 - *P3-play*: the long game's pace (decision 1); `PACE.first` and JOURNEY's `pull` debts; a farm's first night grows

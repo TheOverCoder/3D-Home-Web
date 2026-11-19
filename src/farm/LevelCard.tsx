@@ -79,8 +79,6 @@ export function LevelCard({
   v: LevelView
   onOpen: (boxes: number[]) => Opened[]
   onClose: () => void
-  /** (not called: the moment a gift bursts open, its sting and its touch are its tier's, `celebrate`: src/fx/reward.ts) */
-  onReveal?: () => void
   /** the boxes start shaking (for `ms`, `delayMs` from now), to open on gifts of `tier`: their rattle */
   onShake?: (tier: Tier, ms: number, delayMs?: number) => void
 }) {
