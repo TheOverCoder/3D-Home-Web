@@ -5,8 +5,9 @@
 // It plays the pace simulation's good player (./policy.ts) through a player's visits (SESSIONS in ./targets.ts): within
 // a visit, the farm's own `tick` and the game's own functions for every press, with the time each walk and press takes
 // (as ./play.ts does); between visits, the game's own `cameBack`, as when the page comes back. The daily gift's
-// calendar moves with the visits. Events are off, as under Vitest. Run it under happy-dom (the farm keeps its save).
-// Nothing in the game imports it.
+// calendar moves with the visits. The first day is a Monday unless told another weekday; the week's events are off, as
+// under Vitest, unless told on (then judged by the visits' own clock, as the device's: src/farm/events.ts). Run it
+// under happy-dom (the farm keeps its save). Nothing in the game imports it.
 
 import { cameBack, quietSteps, resetFarm, setDailyClock, setEventClock, setRandom, tick, unlockAll, type AwayReport } from '../farm/state'
 import { STEP, WALK, seeded } from './play'
@@ -38,9 +39,12 @@ export interface VisitEvents {
   end?(visit: Visit, played: number): void
 }
 
-/** The day of play the first visit is on: a Monday, at local midnight (each visit's hour counts from its day's). */
+/** The day of play the first visit is on: a Monday, at local midnight (each visit's hour counts from its day's), unless a
+ *  run starts on another weekday. */
 const FIRST_DAY = new Date(2026, 0, 5).getTime()
 const HOUR = 3_600_000
+/** The weekdays a run may start on: 1 Monday … 7 Sunday. */
+export type Weekday = 1 | 2 | 3 | 4 | 5 | 6 | 7
 /** Where each visit begins: the farm's start, on the path among the first beds (as ./play.ts begins). */
 const START: Spot = { x: -1.2, z: 8 }
 
@@ -55,20 +59,27 @@ export function visitsOf(profile: ProfileId, days: number): Visit[] {
   return out
 }
 
-/** When a visit begins (ms). */
-export const visitStart = (v: Visit) => FIRST_DAY + ((v.day - 1) * 24 + v.hour) * HOUR
+/** When a visit begins (ms), the first day being `weekday` (a Monday unless told). */
+export const visitStart = (v: Visit, weekday: Weekday = 1) => FIRST_DAY + ((weekday - 1 + v.day - 1) * 24 + v.hour) * HOUR
 
 /**
  * Plays a new farm through a profile's first `days` days of visits, at a pace (a real player's, unless told), on a
- * seed (the farm's dice and the buyers'), telling the observer each visit's beginning, moves and end. The farm's
- * levels are locked as in play and its first steps run. Every clock and switch it sets is put back as the tests have
- * them, however it ends.
+ * seed (the farm's dice and the buyers'), from a weekday (a Monday unless told), with the week's events or without (as
+ * the tests have them, unless told), telling the observer each visit's beginning, moves and end. The farm's levels are
+ * locked as in play and its first steps run. Every clock and switch it sets is put back as the tests have them,
+ * however it ends.
  */
-export function playVisits(opts: { profile: ProfileId; days: number; pace?: PaceId; seed?: number }, on: VisitEvents = {}): void {
+export function playVisits(opts: { profile: ProfileId; days: number; pace?: PaceId; seed?: number; weekday?: Weekday; events?: boolean }, on: VisitEvents = {}): void {
   const walk = PACES[opts.pace ?? 'real']
   const seed = opts.seed ?? 1
+  const weekday = opts.weekday ?? 1
   const random = Math.random
   let wall = FIRST_DAY
+  /** the wall clock moves: the events (when they are on) are judged at it */
+  const clock = (t: number) => {
+    wall = t
+    if (opts.events) setEventClock(t)
+  }
   setRandom(seeded(seed))
   Math.random = seeded(seed * 7919 + 13)
   setEventClock(null)
@@ -81,8 +92,8 @@ export function playVisits(opts: { profile: ProfileId; days: number; pace?: Pace
     /** when the last visit ended (ms; null before the first) */
     let left: number | null = null
     for (const visit of visitsOf(opts.profile, opts.days)) {
-      const start = visitStart(visit)
-      wall = start
+      const start = visitStart(visit, weekday)
+      clock(start)
       const back = left === null ? null : cameBack((start - left) / 1000)
       on.begin?.(visit, back)
       let at = START
@@ -90,7 +101,7 @@ export function playVisits(opts: { profile: ProfileId; days: number; pace?: Pace
       const pass = (seconds: number) => {
         for (let rest = seconds; rest > 1e-9; rest -= STEP) tick(Math.min(STEP, rest))
         t += seconds
-        wall = start + t * 1000
+        clock(start + t * 1000)
       }
       while (t < visit.minutes * 60) {
         const move = nextMove()
@@ -112,6 +123,7 @@ export function playVisits(opts: { profile: ProfileId; days: number; pace?: Pace
     Math.random = random
     setRandom(null)
     setDailyClock(null)
+    setEventClock(null)
     // (everything open again, the steps quiet, the tools for sale: the tests' default)
     unlockAll(true)
     quietSteps(true)

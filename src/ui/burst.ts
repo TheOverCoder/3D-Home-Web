@@ -1,9 +1,11 @@
-import confetti from 'canvas-confetti'
 import { lessMotion } from './still'
 
 // A burst of confetti in the game's colours (canvas-confetti): for a moment worth celebrating — a level reached, a goal
 // done — once per screen, never for every press. From a point on the screen or from the middle of an element. Nothing
-// for whoever prefers less motion.
+// for whoever prefers less motion. The confetti's code is fetched with the game's files, not with the page shell
+// (update-v1 decision 18): the first burst waits for it, a moment.
+
+let confetti: Promise<typeof import('canvas-confetti')> | null = null
 
 const TOKENS = ['--sun', '--xp', '--leaf', '--berry', '--paper']
 
@@ -12,19 +14,22 @@ export function burst(at: Element | { x: number; y: number }, o: { count?: numbe
   const p = at instanceof Element ? middle(at) : at
   const css = getComputedStyle(document.documentElement)
   const colors = TOKENS.map((t) => css.getPropertyValue(t).trim()).filter(Boolean)
-  void confetti({
-    origin: { x: p.x / innerWidth, y: p.y / innerHeight },
-    particleCount: o.count ?? 60,
-    spread: o.spread ?? 70,
-    startVelocity: o.power ?? 32,
-    angle: o.up === false ? 270 : 90,
-    gravity: 1.1,
-    ticks: 150,
-    scalar: 0.9,
-    colors,
-    zIndex: 1000,
-    disableForReducedMotion: true,
-  })
+  confetti ??= import('canvas-confetti').then((m) => m.default)
+  void confetti.then((fire) =>
+    fire({
+      origin: { x: p.x / innerWidth, y: p.y / innerHeight },
+      particleCount: o.count ?? 60,
+      spread: o.spread ?? 70,
+      startVelocity: o.power ?? 32,
+      angle: o.up === false ? 270 : 90,
+      gravity: 1.1,
+      ticks: 150,
+      scalar: 0.9,
+      colors,
+      zIndex: 1000,
+      disableForReducedMotion: true,
+    }),
+  )
 }
 
 function middle(el: Element) {

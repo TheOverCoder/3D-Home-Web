@@ -330,7 +330,8 @@ test.describe('the silo, the barn, surprises and orders', () => {
     const { page } = game
     await reset(game, { lettuce: 7, tomato: 2 })
     await page.evaluate(() => (window as any).__home.useHome.getState().openPanel({ kind: 'seeds', bed: 0 }))
-    await expect(page.locator('.farm-card .farm-stock')).toHaveText(['7', '0', '0', '2', '0', '0', '0', '0'])
+    // every crop's packet, the long crops' four too (src/farm/data.ts, CROPS)
+    await expect(page.locator('.farm-card .farm-stock')).toHaveText(['7', '0', '0', '2', '0', '0', '0', '0', '0', '0', '0', '0'])
     await page.evaluate(() => (window as any).__home.useHome.getState().closePanel())
     expect(game.errors).toEqual([])
   })

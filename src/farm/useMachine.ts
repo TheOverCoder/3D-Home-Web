@@ -138,7 +138,7 @@ export function useMachine(id: MachineId, ease = 0) {
     // a ding for each job done (as many done as before, or fewer: some were collected)
     if (m.done > done.current) {
       const { pan, near } = placeSound(middle(id).x, middle(id).z)
-      farmSound('ding', pan, Math.max(0.6, near))
+      farmSound('ding', pan, Math.max(0.6, near), null, { note: def.sounds.done })
     }
     done.current = m.done
     const was = working.current

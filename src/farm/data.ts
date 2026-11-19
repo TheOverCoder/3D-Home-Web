@@ -1,12 +1,13 @@
 // The farm around the house: what grows, what it makes, what it sells for, and where everything stands.
 // Units are metres and seconds (real time: crops keep growing while you are inside or away).
 import type { FarmSound } from '../audio/sound'
+import type { KeyNote } from '../audio/palette'
 import type { ArtId } from '../ui/art'
 import { GATE, GARDEN, LANE } from '../data/layout'
 import { FRUIT, FRUIT_KINDS, type FruitId, type FruitKind } from './decor'
 import type { PlaceId } from './layout'
 
-export type CropId = 'lettuce' | 'carrot' | 'strawberry' | 'tomato' | 'corn' | 'pumpkin' | 'wheat' | 'sugarcane'
+export type CropId = 'lettuce' | 'carrot' | 'strawberry' | 'tomato' | 'corn' | 'pumpkin' | 'wheat' | 'sugarcane' | 'sunflower' | 'potato' | 'melon' | 'cotton'
 export type CakeId = 'lemon_cake' | 'strawberry_cake' | 'carrot_cake' | 'pumpkin_pie'
 /** The building materials: what the silo and the barn are made bigger with (STORES, below). Never asked for, and sold
  *  only to the contractor behind the market (CONTRACTOR); they come as surprises (ITEM_ODDS) and are kept in the barn. */
@@ -21,6 +22,8 @@ export interface CropDef {
   growSeconds: number
   yield: number // produce per harvest
   price: number // a fair price per piece; buyers offer around it
+  /** the share of its growing time one watering lasts (WATER_SHARE unless given): a long crop's soak lasts it all */
+  water?: number
 }
 
 export const CROPS: CropDef[] = [
@@ -32,6 +35,13 @@ export const CROPS: CropDef[] = [
   { id: 'pumpkin', name: 'pumpkin', plural: 'pumpkins', seedCost: 8, growSeconds: 200, yield: 2, price: 16 },
   { id: 'wheat', name: 'sheaf of wheat', plural: 'sheaves of wheat', seedCost: 2, growSeconds: 80, yield: 5, price: 2 },
   { id: 'sugarcane', name: 'sugar cane', plural: 'sugar canes', seedCost: 4, growSeconds: 140, yield: 6, price: 2 },
+  // the long crops (update-v1/missions/01-loop-economy.md): for while you are away, more a press and less a minute (their
+  // law: src/farm/economy.ts, cropWorth); paid in price, not count, so a night's harvest fits the silo (JOURNEY.md fix
+  // 5); one soak of their seeds lasts their whole growing
+  { id: 'sunflower', name: 'sunflower', plural: 'sunflowers', seedCost: 10, growSeconds: 3600, yield: 2, price: 34, water: 1 },
+  { id: 'potato', name: 'potato', plural: 'potatoes', seedCost: 5, growSeconds: 1200, yield: 3, price: 14, water: 1 },
+  { id: 'melon', name: 'melon', plural: 'melons', seedCost: 15, growSeconds: 4 * 3600, yield: 2, price: 58, water: 1 },
+  { id: 'cotton', name: 'cotton boll', plural: 'cotton bolls', seedCost: 16, growSeconds: 8 * 3600, yield: 2, price: 75, water: 1 },
 ]
 export const cropById = (id: CropId) => CROPS.find((c) => c.id === id)!
 
@@ -120,7 +130,8 @@ export const storeOf = (id: ProduceId): StoreId => (CROPS.some((c) => c.id === i
  *  tree; an order in two at the office. */
 export const ITEM_ODDS = { buyer: 0.5, unit: 0.05, harvest: 0.05, order: 0.5 } as const
 
-/** Water lasts this share of a crop's growing time: plant (and water) once, water once more halfway. */
+/** Water lasts this share of a crop's growing time: plant (and water) once, water once more halfway (a crop of its own
+ *  `water` share: as long as that). */
 export const WATER_SHARE = 0.55
 
 // ───────────────────────────── the kitchen of the farm ─────────────────────────────
@@ -181,10 +192,11 @@ export interface MachineDef {
   /** with nothing to load, its status shows this good and what it makes from what (the mill: flour from wheat, sugar
    *  from cane); without one, the recipe nearest to ready and what it still needs (the oven) */
   picture?: ProduceId
-  /** as a job goes into its queue, and now and then while it works (every `every` seconds and up to `spread` more, the
-   *  first one that long after it starts) if you are near. Every machine dings as each job is done, and rustles as you
-   *  take out what it made. */
-  sounds: { load: FarmSound; work?: { sound: FarmSound; every: number; spread: number } }
+  /** as a job goes into its queue (`load`), and now and then while it works (every `every` seconds and up to `spread`
+   *  more, the first one that long after it starts) if you are near; the ding as each job is done, at its own note of
+   *  the key (`done`), and what it sounds like as you take out what it made (`collect`). Every row has both
+   *  (src/audio/sounds.test.ts). */
+  sounds: { load: FarmSound; done: KeyNote; collect: FarmSound; work?: { sound: FarmSound; every: number; spread: number } }
   /** what the farm's stats count of it, one for each job taken out (the cakes baked) */
   counts?: 'baked'
 }
@@ -212,7 +224,7 @@ export const MACHINES: Record<MachineId, MachineDef> = {
       done: (r, n) => `Collect ${count(r.makes, n)}`,
       idle: () => 'Mill · bring wheat for flour or sugar cane for sugar',
     },
-    sounds: { load: 'creak', work: { sound: 'creak', every: 1.1, spread: 0.6 } },
+    sounds: { load: 'creak', done: 'E6', collect: 'sack', work: { sound: 'creak', every: 1.1, spread: 0.6 } },
   },
   // the loom stands beside the sheep fold, facing the house: fleeces go in, cloth comes out
   loom: {
@@ -231,7 +243,7 @@ export const MACHINES: Record<MachineId, MachineDef> = {
       done: (r, n) => `Take ${count(r.makes, n)} off the loom`,
       idle: () => 'Loom · shear the sheep for fleeces to weave',
     },
-    sounds: { load: 'loom', work: { sound: 'loom', every: 1.4, spread: 0.5 } },
+    sounds: { load: 'loom', done: 'A6', collect: 'bolt', work: { sound: 'loom', every: 1.4, spread: 0.5 } },
   },
   // beside the mill, the clay oven bakes one cake at a time from the farm's flour, sugar, eggs, milk and fruit
   oven: {
@@ -249,7 +261,7 @@ export const MACHINES: Record<MachineId, MachineDef> = {
       done: (r, n) => `Take out ${n === 1 ? `the ${produceById(r.makes).name}` : count(r.makes, n)}`,
       idle: (nearest) => `Oven · a ${produceById(nearest.makes).name} needs`,
     },
-    sounds: { load: 'oven' },
+    sounds: { load: 'oven', done: 'G6', collect: 'tray' },
     counts: 'baked',
   },
 }
@@ -405,7 +417,7 @@ function FRUIT_PRODUCERS(): Record<FruitKind, ProducerDef> {
           stand: [0, 1.0, 0],
           aim: b.tree ? [0, 1.7, 0] : [0, 0.55, 0],
           reach: b.tree ? 2.6 : 1.9,
-          sound: 'harvest',
+          sound: 'pick',
           sparkle: b.tree ? 1.7 : 0.7,
           surprise: 'once',
         },
@@ -428,7 +440,7 @@ export const PRODUCERS: Record<ProducerId, ProducerDef> = {
     stand: [0, 1.0, 0],
     aim: [0, 1.6, 0],
     reach: 2.6,
-    sound: 'harvest',
+    sound: 'pick',
     sparkle: 1.6,
     surprise: 'once',
   },

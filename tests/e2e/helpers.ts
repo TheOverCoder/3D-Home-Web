@@ -204,6 +204,10 @@ export async function openGame(browser: Browser, counting = false): Promise<{ ga
         // the season and the weather quiet (src/farm/state/season.ts: spring and clear), as a ?debug page starts: a spec
         // that turned them on or set its own leaves them quiet for the next
         h.season?.quiet?.(true)
+        // the effects' clock at its own speed and the weather's drops at the device's count (a spec that set them,
+        // 05's walk in the rain, 16's frozen poses, leaves them as they start)
+        if (h.fx?.time) h.fx.time.speed = 1
+        if (h.weatherFx) h.weatherFx.most = null
       }, map)
     },
   }

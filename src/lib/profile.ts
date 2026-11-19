@@ -35,6 +35,9 @@ export interface Profile {
   hdri: boolean
   /** the farm's particle effects (src/fx): the share of each burst's particles drawn (1 all of them, 0 none) */
   particles: number
+  /** the weather (src/fx/quarks.ts, `weatherFx`): raindrops falling round you at the full (snow: four fifths as many
+   *  flakes), each two triangles in one draw */
+  weather: PerTier<number>
   powerPreference: WebGLPowerPreference
 }
 
@@ -98,6 +101,7 @@ const DESKTOP: Omit<Profile, 'device' | 'lowMemory' | 'light' | 'startQuality'> 
   maxTexture: 2048,
   hdri: true,
   particles: 1,
+  weather: { high: 3000, medium: 2000, low: 1000 },
   powerPreference: 'high-performance',
 }
 
@@ -116,12 +120,16 @@ const MOBILE: typeof DESKTOP = {
   maxTexture: 1024,
   hdri: true,
   particles: 1,
+  weather: { high: 2000, medium: 2000, low: 1000 },
   powerPreference: 'default',
 }
 
 /** The sun's shadow map at its sharpest, on any device and tier (texels per side): what the sun's lighter copies of
  *  casters are made for (src/lib/sculpt/lod.ts). */
 export const FINEST_SHADOW_MAP = Math.max(...Object.values(DESKTOP.shadowMap), ...Object.values(MOBILE.shadowMap))
+
+/** The most raindrops a phone draws, on any tier: what the budget measures the heaviest weather with (tests/e2e/05). */
+export const PHONE_WEATHER_MOST = Math.max(...Object.values(MOBILE.weather))
 
 export function makeProfile(device: DeviceClass, lowMemory: boolean, light: boolean): Profile {
   const base = device === 'desktop' ? DESKTOP : MOBILE
@@ -140,6 +148,7 @@ export function makeProfile(device: DeviceClass, lowMemory: boolean, light: bool
     p.maxTexture = 512
     p.hdri = false
     p.particles = 0.5
+    p.weather = { high: 600, medium: 600, low: 600 }
     p.powerPreference = 'default'
   }
   return p

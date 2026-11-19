@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { makeEngine } from './engine'
 import { FakeContext, notesOf, type PlayedNote } from './fakeAudio'
 import { play, type FarmSound } from './farmSounds'
-import { KEY, hz, note, offKey } from './palette'
+import { CLIMB_STEPS, KEY, climb, hz, note, offKey } from './palette'
 import { SOUNDS } from './sounds'
 import { TRACKS } from './music'
 
@@ -10,7 +10,7 @@ import { TRACKS } from './music'
 // rewards, the coins, the "no"), as the recording fake hears it, lies within a cent of the key; a bell's overtone off
 // the key is a colour under its note, never a note of its own (under a quarter as loud).
 
-const STINGS = (Object.keys(SOUNDS) as FarmSound[]).filter((k) => ['reward', 'cue', 'coins', 'no'].includes(SOUNDS[k].family))
+const STINGS = (Object.keys(SOUNDS) as FarmSound[]).filter((k) => ['reward', 'cue', 'coins', 'no', 'landing'].includes(SOUNDS[k].family))
 
 /** What a sting plays, on the fake (its dice fixed: only when it is played may change). */
 function heard(kind: FarmSound): PlayedNote[] {
@@ -75,5 +75,28 @@ describe('every sting in the key', () => {
     // a pause: from the bottom again
     clock += 1000
     expect(heard('xp')[0].f).toBeCloseTo(note(4, 6), 6)
+  })
+})
+
+describe('a streak', () => {
+  it('climbs a step each press within its gap, holds at the top, and starts again after a pause', () => {
+    const steps: number[] = []
+    for (let i = 0; i < CLIMB_STEPS + 3; i++) steps.push(climb('test-a', 1000, 5000 + i * 999))
+    expect(CLIMB_STEPS).toBe(8)
+    expect(steps).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 7, 7, 7])
+    // a gap of its own length or more: from the bottom
+    expect(climb('test-a', 1000, 5000 + 10 * 999 + 1000)).toBe(0)
+    expect(climb('test-a', 1000, 5000 + 10 * 999 + 1500)).toBe(1)
+  })
+
+  it('climbs each streak on its own', () => {
+    expect(climb('test-b', 450, 0)).toBe(0)
+    expect(climb('test-c', 450, 10)).toBe(0)
+    expect(climb('test-b', 450, 200)).toBe(1)
+    expect(climb('test-b', 450, 400)).toBe(2)
+    expect(climb('test-c', 450, 420)).toBe(1)
+    // one streak's pause leaves the other where it is
+    expect(climb('test-b', 450, 2000)).toBe(0)
+    expect(climb('test-c', 450, 600)).toBe(2)
   })
 })

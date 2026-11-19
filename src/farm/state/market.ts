@@ -106,7 +106,7 @@ export function buyMarket(): boolean {
   leaving = { ...managerStanding(), ...walker(MANAGER_SPOT.x, MANAGER_SPOT.z, MANAGER_SPOT.heading, managerLeaves()), id: MANAGER_ID }
   gainXp('shop', 1, AT_SCREEN)
   toast('The shop is yours', 'convenience-store')
-  farmSound('coins')
+  farmSound('pay')
   bump()
   save()
   return true

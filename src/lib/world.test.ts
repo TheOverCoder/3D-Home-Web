@@ -6,7 +6,9 @@ import { HOUSE, ROOMS } from '../data/layout'
 import { reachRects } from '../farm/layout'
 import { farm } from '../farm/state'
 import { useHome } from '../store'
-import { floorHere, groundBounds, groundKey, groundRects, houseHere, inHouse, mapNow, roomHere, spaceHere, walkInHere } from './world'
+import { WALK_INS } from '../data/buildings'
+import { MOST_SHELTERS } from './sculpt/material'
+import { floorHere, groundBounds, groundKey, groundRects, houseHere, inHouse, mapNow, roomHere, sheltered, shelters, spaceHere, walkInHere } from './world'
 
 // The two maps' own rules (src/lib/world.ts): the house, its rooms and its plot are the home map's; the walk-in
 // buildings, the lane and the land you own the farm's. Each map has the other's ground as nothing at all.
@@ -96,6 +98,45 @@ describe('on the farm', () => {
       expect(groundKey()).not.toBe(before)
     } finally {
       farm.layout.land = land
+    }
+  })
+})
+
+describe('what has a roof over it (the weather never reaches in)', () => {
+  it('at home the house, up to its ceilings’ top: every room under it, the garden not', () => {
+    on('home')
+    expect(shelters()).toHaveLength(1)
+    for (const room of Object.values(ROOMS)) {
+      const [x, z] = mid(room.bounds)
+      expect(sheltered(x, 0, z), room.id).toBe(true)
+      expect(sheltered(x, HOUSE.wallHeight + 0.2, z), `${room.id}, in its ceiling`).toBe(true)
+      expect(sheltered(x, HOUSE.wallHeight + 0.4, z), `${room.id}, over its roof`).toBe(false)
+    }
+    expect(sheltered(-1.2, 0, 9)).toBe(false)
+    // no walk-in here
+    expect(sheltered((HALL.x0 + HALL.x1) / 2, 1, (HALL.z0 + HALL.z1) / 2)).toBe(false)
+  })
+
+  it('on the farm each room of each walk-in building, under its roof; no house; the lane and the yard open to the sky', () => {
+    on('farm')
+    const rooms = WALK_INS.flatMap((w) => w.rooms.map((r) => ({ w, r })))
+    expect(shelters()).toHaveLength(rooms.length)
+    for (const { w, r } of rooms) {
+      const x = (r.x0 + r.x1) / 2
+      const z = (r.z0 + r.z1) / 2
+      expect(sheltered(x, 0, z), r.space).toBe(true)
+      expect(sheltered(x, w.roof.y + w.roof.thick + 0.05, z), `${r.space}, over its roof`).toBe(false)
+    }
+    for (const room of Object.values(ROOMS)) expect(sheltered(mid(room.bounds)[0], 1, mid(room.bounds)[1]), room.id).toBe(false)
+    expect(sheltered(7, 1, 15)).toBe(false)
+    expect(sheltered(-6, 1, -9)).toBe(false)
+  })
+
+  it('every map’s shelters fit the shader (src/lib/sculpt/material.ts: MOST_SHELTERS)', () => {
+    for (const map of ['farm', 'home'] as const) {
+      on(map)
+      expect(shelters().length, map).toBeLessThanOrEqual(MOST_SHELTERS)
+      for (const s of shelters()) expect(s.x0 < s.x1 && s.z0 < s.z1 && s.top > 2, map).toBe(true)
     }
   })
 })

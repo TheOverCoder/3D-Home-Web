@@ -7,11 +7,13 @@
 // tools and the remotes for sale (the farm before them, plans/animal-tools.md), to compare. SIM_JOURNEY=daily or light
 // prints the journey instead (./journey.ts, update-v1/JOURNEY.md): that player's visits for SIM_DAYS days (30), at a
 // real player's pace (SIM_PACE=good: the good player's), with what each brought and the bounds of JOURNEY it breaks.
+// Last, the game's health (./health.ts): the daily player's first 30 days, as a table.
 import { it } from 'vitest'
+import { health, healthReport } from './health'
 import { journey, journeyReport } from './journey'
 import { simulate } from './play'
 import { paceReport, report } from './report'
-import { PACES, type PaceId, type ProfileId } from './sessions'
+import { PACES, type PaceId, type ProfileId, type Weekday } from './sessions'
 import { PACE, SESSIONS } from './targets'
 
 /** The seeds PACE is held on, and the days of each seed's journey the report plays. */
@@ -39,4 +41,15 @@ it('plays a new farm for three hours', () => {
   const runs = SEEDS.map(play)
   const journeys = SEEDS.map((s) => ({ seed: s, news: journey({ profile: 'daily', days: PACE_DAYS, seed: s }) }))
   console.log(`${paceReport(runs, journeys)}\n`)
+  // the game's health over a player's first days (./health.ts): SIM_HEALTH names the player (daily, light; off for none),
+  // SIM_HEALTH_DAYS the days (30), SIM_WEEKDAY the weekday of the first (1 Monday … 7 Sunday), SIM_EVENTS=on with the
+  // week's events
+  const who = process.env.SIM_HEALTH ?? 'daily'
+  if (who === 'off') return
+  if (!(who in SESSIONS)) throw new Error(`SIM_HEALTH: one of ${Object.keys(SESSIONS).join(', ')}, or off`)
+  const weekday = Number(process.env.SIM_WEEKDAY ?? 1)
+  if (!(weekday >= 1 && weekday <= 7 && Number.isInteger(weekday))) throw new Error('SIM_WEEKDAY: 1 (Monday) to 7 (Sunday)')
+  const t0 = performance.now()
+  const h = health({ profile: who as ProfileId, days: Number(process.env.SIM_HEALTH_DAYS ?? 30), seed, weekday: weekday as Weekday, events: process.env.SIM_EVENTS === 'on' })
+  console.log(`${healthReport(h)}\n(played in ${((performance.now() - t0) / 1000).toFixed(1)} s)\n`)
 })
