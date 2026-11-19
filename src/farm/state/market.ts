@@ -1,4 +1,5 @@
 import { farmSound } from '../../audio/sound'
+import { rewardSound } from '../../audio/rewardSound'
 import { coinsFx } from '../../fx/fx'
 import { count, LADDERS, MANAGER, SELLABLE, SHED, SHOP, VISITOR, WALK_Z, type LadderId, type ProduceId } from '../data'
 import { priceOf } from '../prices'
@@ -55,10 +56,10 @@ export function sellToManager(item: ProduceId): number {
   const qty = farm.inv[item] ?? 0
   const coins = sellManager(item)
   if (!coins) return 0
-  rewarded('sale', [{ coins }], AT_MANAGER)
+  const tier = rewarded('sale', [{ coins }], AT_MANAGER)
   coinsFx(AT_MANAGER.x, AT_MANAGER.z, coins)
   toast(`+ ${coins} coins · ${count(item, qty)}`, item)
-  farmSound('coins')
+  rewardSound('sale', tier)
   bump()
   save()
   return coins
@@ -75,10 +76,10 @@ export function sellAllToManager(): number {
     coins += c
   }
   if (!coins) return 0
-  rewarded('sale', [{ coins }], AT_MANAGER)
+  const tier = rewarded('sale', [{ coins }], AT_MANAGER)
   coinsFx(AT_MANAGER.x, AT_MANAGER.z, coins)
   toast(`+ ${coins} coins · ${goods} ${goods === 1 ? 'good' : 'goods'} to the manager`, 'coin')
-  farmSound('coins')
+  rewardSound('sale', tier)
   bump()
   save()
   return coins

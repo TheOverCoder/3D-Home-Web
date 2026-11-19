@@ -1,4 +1,5 @@
 import { farmSound } from '../../audio/sound'
+import { rewardSound } from '../../audio/rewardSound'
 import { goodsFx, itemFx } from '../../fx/fx'
 import { count, isItem, storeCapacity, storeOf, STORES, type ItemId, type ProduceId, type StoreId } from '../data'
 import { priceOf } from '../prices'
@@ -123,10 +124,10 @@ export function makeRoom(id: StoreId, at?: At): number {
   farm.stats.sold += units
   farm.stats.earned += coins
   gainXp('sale', coins, at)
-  rewarded('sale', [{ coins }], at)
+  const tier = rewarded('sale', [{ coins }], at)
   for (const g of goods) sold('manager', g.item, g.count, g.count * priceOf(g.item))
   toast(`${STORES[id].name}: room made · + ${coins} coins`, goods[0].item)
-  farmSound('coins')
+  rewardSound('sale', tier)
   bump()
   save()
   return coins

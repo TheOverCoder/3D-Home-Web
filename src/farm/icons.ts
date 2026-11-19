@@ -18,7 +18,9 @@ export type PictureId = ProduceId | 'silo' | 'barn'
 
 /** The picture of a good, a farm building (or of coins), as an image URL. (One whose picture is not drawn yet shows the
  *  basket rather than a broken image.) */
-export function iconUrl(id: PictureId | 'coin'): string {
+export function iconUrl(id: PictureId | 'coin' | 'mailbox'): string {
+  // (the mailbox's mark on the compass: the interface's own picture of a mailbox)
+  if (id === 'mailbox') return art('mailbox')
   return id === 'coin' ? art('coin') : (files[`../assets/items/${id}.webp`] ?? art('basket'))
 }
 

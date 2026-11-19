@@ -1,4 +1,5 @@
 import { farmSound, placeSound } from '../../audio/sound'
+import { rewardSound } from '../../audio/rewardSound'
 import { coinsFx } from '../../fx/fx'
 import { dampAngle } from '../../lib/damp'
 import { GATE_SPOT, LANE_ENDS, NAMES, produceById, queueSpot, SELLABLE, VISITOR, WALK_Z, type ItemId, type ProduceId } from '../data'
@@ -160,9 +161,9 @@ export function acceptOffer(id: number) {
   const v = visitorById(id)
   if (!v || v.phase !== 'queued' || !canSell(v)) return false
   const items = sell(v)
-  rewarded('sale', [{ coins: v.offer }, ...foundPrizes(items)], { x: v.x, y: 1.9, z: v.z })
+  const tier = rewarded('sale', [{ coins: v.offer }, ...foundPrizes(items)], { x: v.x, y: 1.9, z: v.z })
   toast(`+ ${v.offer} coins · ${v.name}${surpriseWords(items)}`, items[0] ?? 'coin')
-  farmSound('coins')
+  rewardSound('sale', tier)
   save()
   return true
 }
@@ -204,9 +205,9 @@ export function sellAll() {
     coins += v.offer
   }
   if (!buyers) return 0
-  rewarded('sale', [{ coins }, ...foundPrizes(items)], { x: GATE_SPOT.x, y: 1.9, z: GATE_SPOT.z })
+  const tier = rewarded('sale', [{ coins }, ...foundPrizes(items)], { x: GATE_SPOT.x, y: 1.9, z: GATE_SPOT.z })
   toast(`+ ${coins} coins · ${buyers} ${buyers === 1 ? 'buyer' : 'buyers'}${surpriseWords(items)}`, items[0] ?? 'coin')
-  farmSound('coins')
+  rewardSound('sale', tier)
   save()
   return buyers
 }

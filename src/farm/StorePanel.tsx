@@ -1,16 +1,16 @@
-import { farmSound, placeSound } from '../audio/sound'
+import { farmSound, placeSound, uiClick } from '../audio/sound'
 import { farmFx } from '../fx/fx'
 import { playGesture } from '../lib/gestures'
 import { useHome } from '../store'
 import { GoodPic } from '../ui/GoodPic'
-import { Shell, useArmed } from '../ui/Sheet'
+import { Coins, Shell, useArmed } from '../ui/Sheet'
 import { ArrowRight, Check } from '../ui/glyphs'
 import { STORES, count, produceById, type StoreId } from './data'
 import { iconUrl } from './icons'
 import { footprint } from './layout'
 import { STORE_GOODS } from './storage'
 import { ContractorLink } from './ContractorPanel'
-import { canUpgradeStore, capacity, farm, nextStoreLevel, storeLevel, upgradeStore, useFarm, used } from './state'
+import { canUpgradeStore, capacity, farm, makeRoom, makeRoomPreview, nextStoreLevel, storeLevel, upgradeStore, useFarm, used } from './state'
 
 // The silo and the barn, tapped (their chip at the top, or the button at their door): what is inside, each good with
 // how many (a tap on one says where it is made: src/ui/GoodPic.tsx); how full it is and its level; and what its next level takes — its three building materials, each with how
@@ -81,6 +81,28 @@ export function StorePanel({ store }: { store: StoreId }) {
       }
       onClose={close}
     >
+      {/* too full for what waits (on the animals, in the beds, in the machines): one press sells, at fair price, just
+          enough of what no buyer or order wants (src/farm/state/stores.ts, makeRoom) */}
+      {makeRoomPreview(store).goods.length > 0 && (
+        <div className="farm-shop-item store-make-room">
+          <img className="art" src={iconUrl(store)} alt="" />
+          <div className="farm-shop-text">
+            <strong>{def.name} full</strong>
+            <div className="farm-shop-tags">
+              <span className="tag short">Things wait for room</span>
+            </div>
+          </div>
+          <button
+            className="btn small leaf make-room"
+            onClick={() => {
+              if (makeRoom(store)) uiClick()
+            }}
+            aria-label={`Make room in the ${def.name.toLowerCase()}: sell what nobody wants for ${makeRoomPreview(store).coins} coins`}
+          >
+            Make room · <Coins n={makeRoomPreview(store).coins} />
+          </button>
+        </div>
+      )}
       {goods.length ? (
         <div className="farm-basket">
           {goods.map((id) => (

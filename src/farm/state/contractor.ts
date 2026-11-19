@@ -1,4 +1,5 @@
 import { farmSound } from '../../audio/sound'
+import { rewardSound } from '../../audio/rewardSound'
 import { coinsFx, itemFx } from '../../fx/fx'
 import { CONTRACTOR, count, DAY, ESTATE, HOURS, isItem, LANE_ENDS, VISITOR, WALK_Z, type ItemId } from '../data'
 import { dailyOffers, offersPerDay, piecePrice, type Contractor } from '../contractor'
@@ -71,11 +72,11 @@ export function sellToContractor(item: ItemId): number {
   farm.stats.sold += n
   farm.stats.earned += coins
   gainXp('sale', coins, AT_CONTRACTOR)
-  rewarded('sale', [{ coins }], AT_CONTRACTOR)
+  const tier = rewarded('sale', [{ coins }], AT_CONTRACTOR)
   sold('contractor', item, n, coins)
   coinsFx(AT_CONTRACTOR.x, AT_CONTRACTOR.z, coins)
   toast(`+ ${coins} coins · ${count(item, n)}`, item)
-  farmSound('coins')
+  rewardSound('sale', tier)
   bump()
   save()
   return coins

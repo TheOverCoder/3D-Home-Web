@@ -1,4 +1,5 @@
 import { farmSound } from '../../audio/sound'
+import { rewardSound } from '../../audio/rewardSound'
 import { xpFx } from '../../fx/fx'
 import { count, XP_FOR, type XpAction } from '../data'
 import { levelOf, levelReward, unpaidCoins, xpAt, xpForSale } from '../xp'
@@ -114,10 +115,10 @@ export function claimLevel(upTo?: number): number {
   if (!(level > farm.xp.paid)) return 0
   const coins = unpaidCoins({ points: xpAt(level), paid: farm.xp.paid })
   if (!(coins > 0)) return 0
-  give([{ coins }], 'level')
+  const tier = give([{ coins }], 'level')
   farm.xp.paid = level
   toast(`Level ${level} · + ${coins} coins`, 'coin')
-  farmSound('coins')
+  rewardSound('level', tier)
   bump()
   save()
   return coins
@@ -131,10 +132,10 @@ export function claimGoal(id: GoalId) {
   if (!def || step >= MOST_STEPS || def.measure(farm) < goalTarget(def, step)) return null
   const reward = goalReward(def, step, farm)
   farm.goals[id] = step + 1
-  give([{ coins: reward.coins }, { item: reward.item, n: reward.count }], 'goal')
+  const tier = give([{ coins: reward.coins }, { item: reward.item, n: reward.count }], 'goal')
   gainXp('goal')
   toast(`${def.say(goalTarget(def, step))} · + ${reward.coins} coins, + ${count(reward.item, reward.count)}`, reward.item)
-  farmSound('coins')
+  rewardSound('goal', tier)
   bump()
   save()
   return reward

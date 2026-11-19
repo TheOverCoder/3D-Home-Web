@@ -28,9 +28,9 @@ const SWING = 7
 /** Under this far from where it goes, the flag stands still (radians). */
 const STILL = 0.002
 
-/** The compass draws a good's picture (src/farm/icons.ts): it takes the mailbox's mark once it has the mailbox's
- *  picture, until then the flag and the word at the top say a letter came. */
-const MARKED = iconUrl('mailbox' as never) !== art('basket')
+/** The compass draws a good's picture (src/farm/icons.ts): it takes the mailbox's mark now that there is the mailbox's
+ *  picture (the flag and the word at the top say a letter came, too). */
+const MARKED = iconUrl('mailbox') !== art('basket')
 
 /** Who wrote the oldest letter waiting, for the button's words. */
 function readLabel() {

@@ -19,7 +19,7 @@ import { useSheetMode } from './sheetMode'
 /** Whatever is open over a sheet takes Esc before the sheet does: it says so with `data-over-sheet` (a card on this
  *  sheet says so too, so a card asked over a panel goes first; its own mark is not over itself). The good's bubble is
  *  named here until it carries the attribute itself. */
-const above = (self: Element | null) => Array.from(document.querySelectorAll('[data-over-sheet], .good-pop')).some((e) => e !== self)
+const above = (self: Element | null) => Array.from(document.querySelectorAll('[data-over-sheet]')).some((e) => e !== self)
 
 /** A button at the sheet's foot: its words, and the price on it (a coin and how many) where coins change hands. */
 export interface FootButton {

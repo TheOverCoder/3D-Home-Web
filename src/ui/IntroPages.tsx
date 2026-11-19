@@ -1,7 +1,7 @@
 import { AnimatePresence, m } from 'motion/react'
 import { Slider, Switch, Tabs, ToggleGroup } from 'radix-ui'
 import { useEffect, useState, type ReactNode } from 'react'
-import { TRACKS, nextTrack, pauseMusic, playMusic, useMusic } from '../audio/music'
+import { TRACKS, autoMusic, nextTrack, pauseMusic, playMusic, useMusic } from '../audio/music'
 import { CREDITS } from '../data/credits'
 import { appleTouch, canVibrate, coarsePointer } from '../lib/device'
 import { mb } from '../lib/loader'
@@ -11,7 +11,7 @@ import { clearGameFiles, persistStorage, storageInfo, type StorageInfo } from '.
 import { DEFAULT_SETTINGS, useSettings, type Settings } from '../settings'
 import { useHome } from '../store'
 import { art } from './art'
-import { Pause, Play, SkipBack, SkipForward } from './glyphs'
+import { Clock, Pause, Play, SkipBack, SkipForward } from './glyphs'
 import { PRESS, SPRING } from './motion'
 
 // Three of the opening menu's pages (./Intro.tsx): Settings, in three tabs, Music and Credits. Not part of the page
@@ -226,11 +226,13 @@ export function SettingsPage() {
   )
 }
 
-/** The music: the tracks the game composes as it plays (src/audio/music.ts), play and pause, the one before and after,
- *  its volume; the tile on the menu dances while it plays. */
+/** The music: the tracks the game composes as it plays (src/audio/music.ts), Auto (the track follows the time of day
+ *  and the place: the default, as the in-game player has it), play and pause, the one before and after, its volume; the
+ *  tile on the menu dances while it plays. */
 export function MusicPage() {
   const { playing, track } = useMusic()
   const volume = useSettings((s) => s.musicVolume)
+  const auto = useSettings((s) => s.musicTrack === 'auto')
   const update = useSettings((s) => s.update)
   const t = TRACKS[track]
   const to = (i: number) => {
@@ -253,11 +255,15 @@ export function MusicPage() {
             transition={SPRING.pop}
           >
             <strong>{t.name}</strong>
-            <small>{playing ? t.mood : 'paused'}</small>
+            <small>{playing ? (auto ? `${t.mood} · follows the day` : t.mood) : 'paused'}</small>
           </m.span>
         </AnimatePresence>
       </div>
       <div className="intro-controls">
+        <m.button className={`btn small ${auto ? 'leaf' : 'soft'} intro-auto`} onClick={autoMusic} aria-pressed={auto} aria-label="Auto: the track follows the time of day" {...PRESS}>
+          <Clock weight="bold" />
+          Auto
+        </m.button>
         <m.button className="intro-round music-btn" onClick={() => nextTrack(-1)} aria-label="Previous track" {...PRESS}>
           <SkipBack weight="fill" />
         </m.button>

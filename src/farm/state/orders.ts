@@ -1,4 +1,5 @@
 import { farmSound } from '../../audio/sound'
+import { rewardSound } from '../../audio/rewardSound'
 import { clock } from '../../lib/time'
 import { OFFICE_SCREEN, OFFICE_UPGRADES, ORDERS, orderSlots, orderWait, TRACTOR, type OfficeUpgradeId } from '../data'
 import { isFirstOrder } from '../firstSteps'
@@ -151,11 +152,11 @@ function ship(o: Order) {
   gainXp('order', 1, OFFICE_SCREEN)
   gainXp('sale', o.coins, OFFICE_SCREEN)
   farm.dispatch.waiting = Math.min(MOST_CRATES, farm.dispatch.waiting + cratesFor(o))
-  rewarded('order', [{ coins: o.coins }, ...foundPrizes(items)], OFFICE_SCREEN)
+  const tier = rewarded('order', [{ coins: o.coins }, ...foundPrizes(items)], OFFICE_SCREEN)
   for (const l of orderShares(o)) sold('order', l.good, l.units, l.coins)
   befriend(o)
   toast(`${o.chapter ? 'Sent' : 'Order sent'} · + ${o.coins} coins${surpriseWords(items)}`, items[0] ?? 'coin')
-  farmSound('coins')
+  rewardSound('order', tier)
   bump()
   save()
   return true
@@ -176,11 +177,11 @@ export function sendOrder(k: number) {
   gainXp('sale', o.coins, OFFICE_SCREEN)
   farm.dispatch.waiting = Math.min(MOST_CRATES, farm.dispatch.waiting + cratesFor(o))
   farm.orders[k] = { order: newOrder(k, o) }
-  rewarded('order', [{ coins: o.coins }, ...foundPrizes(items)], OFFICE_SCREEN)
+  const tier = rewarded('order', [{ coins: o.coins }, ...foundPrizes(items)], OFFICE_SCREEN)
   for (const l of orderShares(o)) sold('order', l.good, l.units, l.coins)
   befriend(o)
   toast(`Order sent · + ${o.coins} coins${surpriseWords(items)}`, items[0] ?? 'coin')
-  farmSound('coins')
+  rewardSound('order', tier)
   bump()
   save()
   return true
