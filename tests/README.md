@@ -298,10 +298,10 @@ empties the list and makes the checks hard. `PANELS_MEASURE=1` prints the table 
 | Check | Found | Where | Paid by |
 |---|---|---|---|
 | Text under 13 px | 5 | the buyers' moods in the line (`.farm-tag`, 12.5 px) | 07 change 10 |
-| Words under 15 px | 37 | the silo's goods (13 px) 14, the coop's *Full* 9, the welcome back's rows 3, the level's lines 3, the shop 2, the news 2, the daily gift, the goals, the machine | 07 change 10 |
+| Words under 15 px | 41 | the silo's goods (13 px) 18 (four more with 01a's long crops), the coop's *Full* 9, the welcome back's rows 3, the level's lines 3, the shop 2, the news 2, the daily gift, the goals, the machine | 07 change 10 |
 | Hit area under 48 px (touch) | 110 | every Shell's ✕ (44 px), the top's chips (44 px), the order board's tabs (44 px tall), *Sell* in the line, the machine's level chip (34 px), the coop's good (32 px) | 07 change 10 (an `::after` to 48 px, the look kept at 44) |
 | Contrast under 4.5:1 | 1 | the car's *You are here* (`.tag.ok`, 3.26:1) | 07 change 11 |
-| A good's picture not a `GoodPic` | 35 | the market manager's 24 and the contractor's 6 (`ItemPic` outside a button), the place's head, the goals' and the level's prizes, the coop's line | 07 change 7 |
+| A good's picture not a `GoodPic` | 39 | the market manager's 28 (four more with 01a's long crops) and the contractor's 6 (`ItemPic` outside a button), the place's head, the goals' and the level's prizes, the coop's line | 07 change 7 |
 | More than one loop at the top at rest | 2 | `xp-ready` and `top-road-run` | 07 change 9 (`src/ui/calls.ts`) |
 
 ### When the layout changes
