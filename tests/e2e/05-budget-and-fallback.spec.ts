@@ -168,6 +168,11 @@ const WALK: View[] = [
   // 2 m from them); and inside the office, before the agent's desk, looking at him (its door open behind you)
   { map: 'farm', name: 'lane, the parking lot and the estate office', x: 7.4, z: 14.4, yaw: 1.9, pitch: -0.06 },
   { map: 'farm', name: 'estate office, the agent at his desk', x: AGENT_STAND.x, z: AGENT_STAND.z, yaw: Math.atan2(-(AGENT_SEAT.x - AGENT_STAND.x), -(AGENT_SEAT.z - AGENT_STAND.z)), pitch: -0.12 },
+  // update v1's fields and buildings (01b): the west and north-west meadows' beds full (fillFarm buys them), looking out
+  // over them from the home garden's edge; the jam kettle and the kitchen's corner; the dairy by the pasture
+  { map: 'farm', name: 'the meadows, their beds', x: -13.2, z: -4, yaw: P / 4, pitch: -0.06 },
+  { map: 'farm', name: 'the jam kettle and the kitchen', x: 4.5, z: 7, yaw: (-3 * P) / 4, pitch: -0.06 },
+  { map: 'farm', name: 'the dairy and the pasture', x: 3.5, z: -4, yaw: -P / 2 - 0.4, pitch: -0.05 },
 ]
 
 interface Count {

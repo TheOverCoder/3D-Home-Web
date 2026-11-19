@@ -180,6 +180,21 @@ test.describe('the drawing pass leaves out only what cannot be seen: the farm', 
     console.log(log.join('\n'))
   })
 
+  // update v1's buildings and fields (01b): the dairy by the pasture, the jam kettle by the kitchen, the beehives, and the
+  // beds on the west meadow (fillFarm buys it), each with its shadow
+  test("update v1's dairy, jam kettle, beehives and meadow beds", async ({ game }) => {
+    await setUp(game, 'farm')
+    const log: string[] = []
+    for (const p of [
+      { name: 'the dairy, from its open side', x: 4.2, z: -6.3, yaw: -P / 2, pitch: -0.05, shadow: true },
+      { name: 'the jam kettle, the oven beyond', x: 4.6, z: 9.4, yaw: -P / 2, pitch: -0.05, shadow: true },
+      { name: 'the beehives', x: -3.2, z: -2.4, yaw: P / 2, pitch: -0.08, shadow: true },
+      { name: 'the beds on the west meadow', x: -13.5, z: 0.2, yaw: P / 2, pitch: -0.08, shadow: true },
+    ] satisfies Pose[])
+      await compareAt(game, p, log)
+    console.log(log.join('\n'))
+  })
+
   test('afterwards: the house as it was, no console errors', async ({ game }) => {
     await game.ready()
     await emptyFarm(game.page)

@@ -1,21 +1,6 @@
 import type { ArtId } from '../../ui/art'
-import {
-  BEDS,
-  LADDERS,
-  type Expansion,
-  PACE_LEVELS,
-  QUEUE_LEVELS,
-  TOOLS,
-  TOOL_KINDS,
-  UPGRADES,
-  arrivalEvery,
-  mostAnimals,
-  queuePlaces,
-  toolLadder,
-  type LadderId,
-  type ToolKind,
-  type UpgradeId,
-} from '../data'
+import { BEDS, LADDERS, PACE_LEVELS, QUEUE_LEVELS, TOOLS, TOOL_KINDS, UPGRADES, arrivalEvery, mostAnimals, queuePlaces, toolLadder, type LadderId, type ToolKind, type UpgradeId } from '../data'
+import type { Expansion } from '../data'
 import { ladderPrice } from '../market'
 import { animals, arrivalSeconds, clockText, farm, ladderMaxed, ladderOpen, lockOf, owned, placesInLine, upgradeLevel, upgradeLock, upgradePrice } from '../state'
 import { openFirst, UPGRADE_ART } from '../unlockArt'

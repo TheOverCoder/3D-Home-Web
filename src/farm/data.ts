@@ -679,8 +679,8 @@ export const LANE_ENDS = [-34, 34] as const
 export const VISITOR = { firstAfter: 20, speed: 1.25 } as const
 
 /** What a buyer at the gate offers against what the goods are worth (priceOf, src/farm/prices.ts): mostly fair, now
- *  and then generous, sometimes cheeky. Each factor with its odds; the odds sum to 1. `priceFor` in src/farm/state.ts
- *  rolls these same five, in this order: a change here must be made there too until it reads this table. */
+ *  and then generous, sometimes cheeky. Each factor with its odds; the odds sum to 1. `priceFor` in
+ *  src/farm/state/buyers.ts draws from this table (`offerFactor`), and the house computer's Market shows it. */
 export const BUYER_OFFERS = [
   { factor: 0.6, odds: 0.15 },
   { factor: 0.85, odds: 0.23 },
