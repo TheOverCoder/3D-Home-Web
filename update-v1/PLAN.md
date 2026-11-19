@@ -1,5 +1,8 @@
 # Update v1: the beta
 
+**Where it stands (2026-11-19):** 23 of 27 agents merged. What is left, in order, with who takes each open item and
+what the user decides first: `RUN.md`, *Now: what is left*.
+
 > **בעברית, בקצרה: איך המשחק ירגיש אחרי, ומה יהיה אחרת**
 >
 > **מהשנייה הראשונה.** נכנסים ועומדים מול ערוגה, וכבר כתוב "לשתול" על הכפתור. המסך רגוע: 10 דברים במקום 15, והשאר
