@@ -5,6 +5,7 @@ import {
   BEDS,
   cropById,
   CROPS,
+  EXPANSIONS,
   EXPANSION_IDS,
   LEVELS,
   MACHINE_IDS,
@@ -46,7 +47,7 @@ import { sanitizeLook } from '../../models/look'
 import { orderKey, orderPay, type Order, type OrderLine, type OrderSlot } from '../orders'
 import { GOAL_IDS, GOALS, MOST_STEPS, startStep, type GoalId } from '../goals'
 import { tripSeconds } from '../tractorRoute'
-import { defaultLayout, sanitizeLayout } from '../layout'
+import { PARCELS, PARCEL_IDS, defaultLayout, sanitizeLayout } from '../layout'
 import { sanitizeSteps, stepsFresh } from '../firstSteps'
 import { mostAt, ownsEach, type Steps } from '../tools'
 import { freshSkins, sanitizeSkins } from '../skins'
@@ -466,7 +467,19 @@ function read(text: string | null): Loaded {
     for (const id of produceIds) data.inv[id] = amount(field(raw.inv, id), 0)
     // the silo and the barn from level 1 (a farm from before them keeps all it has, even past what they hold)
     for (const id of STORE_IDS) data.storage[id] = int(field(raw.storage, id), 1, 1, MOST_LEVEL)
-    data.expansions = Object.fromEntries(EXPANSION_IDS.map((e) => [e, !!field(raw.expansions, e)])) as Record<Expansion, boolean>
+    // a meadow's beds count as bought only with their meadow, which is bought first (src/farm/state/shop.ts): a save that
+    // says otherwise, or keeps anything but true for them, has them still for sale (a bed on land not the farm's fits
+    // nowhere). The meadows read as the layout reads them: each once, in order.
+    const saved = list(field(raw.layout, 'land'))
+    const land = PARCEL_IDS.filter((id) => saved.includes(id))
+    const owned = land.filter((id) => !PARCELS[id].after || PARCELS[id].after!.some((a) => land.includes(a)))
+    data.expansions = Object.fromEntries(
+      EXPANSION_IDS.map((e) => {
+        const v = field(raw.expansions, e)
+        const on = EXPANSIONS[e].land
+        return [e, on ? v === true && owned.includes(on) : !!v]
+      }),
+    ) as Record<Expansion, boolean>
     // the beds, read only from a list: on anything else a list method threw half-way, and everything read after the
     // beds came back as on a new farm (and was saved over the farm)
     const beds = list(raw.beds)

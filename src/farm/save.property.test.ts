@@ -632,6 +632,12 @@ afterAll(() => {
 const TIME = 10_000 + RUNS * 60
 
 describe('a save with one value turned into anything (fast-check)', () => {
+  it("the values it once found: a meadow's beds saved as bought without their meadow; days played lost to a bad value", () => {
+    check('played', ['expansions', 'far'], -1e308)
+    check('played', ['expansions', 'far'], true)
+    check('played', ['played', 'days'], [])
+  })
+
   it('as saved, each loads as it is and keeps every rule', () => {
     for (const b of bases) {
       loadedParts(toJson(b.save))

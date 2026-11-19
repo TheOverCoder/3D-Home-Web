@@ -59,7 +59,11 @@ export function markPlayed(p: Played, today: number): { played: Played; away: nu
  *  before them): `before`, read the same way (its old daily streak and last claim), else none yet. */
 export function sanitizePlayed(raw: unknown, today: number, before?: Played): Played {
   const day = Number.isFinite(today) ? Math.floor(today) : -1
-  const read = (v: unknown): Played => ({ days: int(field(v, 'days'), 0, 0, MOST), last: int(field(v, 'last'), -1, -1, Math.max(-1, day)) })
+  // a last day played means at least one day played (a count lost to a bad value is never below it)
+  const read = (v: unknown): Played => {
+    const last = int(field(v, 'last'), -1, -1, Math.max(-1, day))
+    return { days: Math.max(int(field(v, 'days'), 0, 0, MOST), last >= 0 ? 1 : 0), last }
+  }
   if (isRecord(raw)) return read(raw)
   return before ? read(before) : freshPlayed()
 }

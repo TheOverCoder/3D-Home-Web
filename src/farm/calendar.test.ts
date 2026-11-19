@@ -56,7 +56,9 @@ describe('days played', () => {
 
   it('as saved: a count, and a last day no later than today', () => {
     expect(sanitizePlayed({ days: 12, last: DAY - 1 }, DAY)).toEqual({ days: 12, last: DAY - 1 })
-    expect(sanitizePlayed({ days: -4, last: DAY + 9 }, DAY)).toEqual({ days: 0, last: DAY })
+    // (a last day played means at least one day played)
+    expect(sanitizePlayed({ days: -4, last: DAY + 9 }, DAY)).toEqual({ days: 1, last: DAY })
+    expect(sanitizePlayed({ days: [], last: DAY - 3 }, DAY)).toEqual({ days: 1, last: DAY - 3 })
     expect(sanitizePlayed({ days: 2.6, last: 'x' }, DAY)).toEqual({ days: 3, last: -1 })
     expect(sanitizePlayed({ days: Infinity, last: -50 }, DAY)).toEqual({ days: 0, last: -1 })
   })
