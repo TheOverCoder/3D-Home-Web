@@ -1256,6 +1256,378 @@ function cottonBoll(): Structure<'fluff' | 'husk'> {
   return grounded({ fluff: { shape: merge(...locks), material: { roughness: 1 } }, husk: { shape: merge(...husk), material: { roughness: 0.85 } } })
 }
 
+// ───────────────────────────── update v1's waves (update-v1/missions/01-loop-economy.md c7, c8) ─────────────────────────────
+
+const CHERRY = rgb(0xb8122c)
+const CHERRY_DARK = rgb(0x6e0a1c)
+const BLUEBERRY = rgb(0x3b4f8f)
+const PASTRY = rgb(0xe3b16a)
+const PASTRY_DARK = rgb(0xb47634)
+const CERAMIC = rgb(0xc8553d)
+
+/** A fruit pie's dish, a rim of crimped crust round its top, `R` its top's radius. */
+function pieDish(R: number, dish: V3): Shape {
+  return lathe(
+    [
+      [0, 0],
+      [R - 0.02, 0.002],
+      [R + 0.01, 0.045],
+      [R + 0.02, 0.05],
+      [R - 0.01, 0.042],
+      [0, 0.01],
+    ],
+    { seg: 40, steps: 1 },
+  ).fill(dish, 0)
+}
+
+/** An apple pie in a terracotta dish: a domed golden lid, crimped round its edge, three steam slits and a sugared
+ *  shine. */
+function applePie(): Structure<'dish' | 'pie'> {
+  const R = 0.13
+  const crust = (x: number, y: number, z: number) => mix(PASTRY, PASTRY_DARK, 0.25 + 0.6 * smoothstep(0.45, 0.85, fbm3(x * 28, y * 28, z * 28, 6)))
+  // the lid, domed over the apples, its edge pressed into a crimped rim
+  const lid = lathe(
+    [
+      [0, 0.03],
+      [R - 0.026, 0.034],
+      [R + 0.006, 0.05],
+      [R + 0.008, 0.06],
+      [R - 0.012, 0.07],
+      [R - 0.04, 0.084],
+      [0.06, 0.098],
+      [0.0, 0.104],
+    ],
+    { seg: 48, steps: 2, shape: (a) => 1 + 0.025 * Math.sin(a * 22) },
+  )
+    .paint(crust, 0)
+    // three slits for the steam, dark against the crust
+    .pattern((x, y, z) => {
+      if (y < 0.08) return 0
+      const a = Math.atan2(z, x)
+      const k = Math.round((a / (Math.PI * 2)) * 3)
+      const along = a - (k / 3) * Math.PI * 2
+      const r = Math.hypot(x, z)
+      return Math.abs(along) < 0.06 && r > 0.022 && r < 0.06 ? 1 : 0
+    }, rgb(0x7a4a1c))
+  return { dish: { shape: pieDish(R, CERAMIC), material: { roughness: 0.3 } }, pie: { shape: lid, material: { roughness: 0.55 } } }
+}
+
+/** A cherry tart: a fluted golden shell, a glossy dark-red filling, cherries heaped on top, two with their stalks. */
+function cherryTart(): Structure<'shell' | 'cherries'> {
+  const R = 0.125
+  const shell = lathe(
+    [
+      [0, 0],
+      [R - 0.01, 0.0],
+      [R, 0.01],
+      [R + 0.004, 0.045],
+      [R - 0.008, 0.05],
+      [R - 0.014, 0.024],
+      [0, 0.022],
+    ],
+    { seg: 56, steps: 1, shape: (a) => 1 + 0.035 * Math.abs(Math.sin(a * 14)) },
+  ).paint((x, y, z) => mix(PASTRY, PASTRY_DARK, 0.2 + 0.55 * smoothstep(0.5, 0.85, fbm3(x * 30, y * 30, z * 30, 8))), 0)
+  const jam = lathe(
+    [
+      [0, 0.02],
+      [R - 0.012, 0.022],
+      [R - 0.014, 0.04],
+      [0, 0.043],
+    ],
+    { seg: 40, steps: 1 },
+  ).fill(CHERRY_DARK, 0)
+  // the cherries, a ring and a few in the middle, each sunk a little into the filling
+  const spots: [number, number, number][] = [
+    ...Array.from({ length: 9 }, (_, k): [number, number, number] => [Math.cos((k / 9) * Math.PI * 2) * 0.082, 0.052, Math.sin((k / 9) * Math.PI * 2) * 0.082]),
+    ...Array.from({ length: 4 }, (_, k): [number, number, number] => [Math.cos((k / 4) * Math.PI * 2 + 0.4) * 0.036, 0.056, Math.sin((k / 4) * Math.PI * 2 + 0.4) * 0.036]),
+    [0, 0.06, 0],
+  ]
+  const cherries = spots.map(([x, y, z], k) =>
+    ellipsoid(0.019, 0.017, 0.019, 10, 5)
+      .place([x, y, z])
+      .paint((px, py, pz) => mix(CHERRY, mix(CHERRY, rgb(0xff8a8a), 0.6), smoothstep(0.01, 0.02, py - y + (px - x) * 0.3 + (pz - z) * 0.2) * (k % 3 === 0 ? 1 : 0.7)), 0),
+  )
+  const stalks = [0, 5].map((k) => {
+    const [x, y, z] = spots[k]
+    return tube(
+      [
+        [x, y + 0.012, z],
+        [x + 0.008, y + 0.04, z - 0.004],
+        [x + 0.02, y + 0.058, z - 0.01],
+      ],
+      [0.0035, 0.003, 0.0025],
+      { seg: 5, steps: 2, round: [0, 0.0025] },
+    ).fill(STEM_BROWN, 0)
+  })
+  return { shell: { shape: merge(shell, jam), material: { roughness: 0.55 } }, cherries: { shape: merge(...cherries, ...stalks), material: { roughness: 0.22 } } }
+}
+
+/** Two blueberry muffins side by side in pleated paper cases, their golden tops domed over the case and dotted with
+ *  blueberries. */
+function blueberryMuffins(): Structure<'cases' | 'tops'> {
+  const one = (at: V3, turn: number) => {
+    const paper = lathe(
+      [
+        [0, 0],
+        [0.048, 0],
+        [0.062, 0.062],
+        [0.0, 0.062],
+      ],
+      { seg: 36, steps: 1, shape: (a) => 1 + 0.045 * Math.abs(Math.sin(a * 12)) },
+    )
+      .fill(rgb(0xe9e4f2), 0)
+      .pattern((x, _y, z) => (Math.abs(Math.sin(Math.atan2(z, x) * 12)) < 0.25 ? 1 : 0), rgb(0x9fb0d8))
+      .place(at, [0, turn, 0])
+    const top = lathe(
+      [
+        [0.0, 0.05],
+        [0.068, 0.054],
+        [0.074, 0.066],
+        [0.066, 0.084],
+        [0.044, 0.1],
+        [0.0, 0.108],
+      ],
+      { seg: 36, steps: 2 },
+    )
+      .paint((x, y, z) => mix(rgb(0xd99a52), rgb(0xa8662a), 0.3 + 0.5 * smoothstep(0.45, 0.85, fbm3(x * 34, y * 34, z * 34, 9))), 0)
+      .pattern((x, y, z) => (y > 0.062 && noise3(x * 90, y * 90, z * 90, 5) > 0.72 ? 1 : 0), BLUEBERRY)
+      .place(at, [0, turn, 0])
+    return { paper, top }
+  }
+  const a = one([-0.058, 0, 0], 0)
+  const b = one([0.058, 0, 0.012], 1.3)
+  return { cases: { shape: merge(a.paper, b.paper), material: { roughness: 0.85 } }, tops: { shape: merge(a.top, b.top), material: { roughness: 0.7 } } }
+}
+
+/** A quilt folded in a soft stack of three: squares of blue, red, cream and green, stitched in white round each square,
+ *  a binding round its folds. */
+const quilt = () => folded([rgb(0x3f6fb8), rgb(0xc9573f), rgb(0xf1e6cc), rgb(0x5c8a4a)], rgb(0xfbf7ef))
+
+/** A woollen blanket folded the same way: squares of cream, oatmeal and heather, stitched in brown. */
+const blanket = () => folded([rgb(0xeee3cc), rgb(0xc9b38c), rgb(0x9a7f9e), rgb(0xd8c7a4)], rgb(0x6a4a32))
+
+/** Cloth folded in a soft stack of three, in squares of `patches`, stitched in `stitch` round each square. */
+function folded(patches: V3[], stitch: V3): Structure<'quilt'> {
+  const W = 0.16
+  const D = 0.12
+  const layer = (y: number, h: number, inset: number) =>
+    loft(
+      [
+        { c: [0, y, -D + inset], rx: W - inset, ry: h },
+        { c: [0, y, D - inset], rx: W - inset, ry: h },
+      ],
+      { seg: 20, steps: 1, up: [0, 1, 0], shape: (a) => squircle(a, 5), caps: [true, true], round: [h * 0.8, h * 0.8] },
+    )
+  const square = 0.055
+  const all = merge(layer(0.022, 0.022, 0), layer(0.064, 0.021, 0.006), layer(0.104, 0.02, 0.012))
+    .paint((x, _y, z) => {
+      const i = Math.floor((x + 1) / square)
+      const j = Math.floor((z + 1) / square)
+      return patches[(i + 2 * j) % patches.length]
+    }, 0)
+    // white stitching along the squares' edges
+    .pattern((x, _y, z) => {
+      const u = ((x + 1) / square) % 1
+      const v = ((z + 1) / square) % 1
+      return Math.min(u, 1 - u, v, 1 - v) < 0.06 ? 1 : 0
+    }, stitch)
+  return grounded({ quilt: { shape: all, material: { roughness: 0.92, detail: { scale: 300, bump: 0.002, shade: 0.12 } } } })
+}
+
+/** A pat of butter on a little wooden board: a soft-edged block, its top swirled where the knife smoothed it. */
+function butter(): Structure<'board' | 'butter'> {
+  const board = loft(
+    [
+      { c: [0, 0, 0], rx: 0.12, ry: 0.085 },
+      { c: [0, 0.018, 0], rx: 0.12, ry: 0.085 },
+    ],
+    { seg: 28, steps: 1, up: [0, 0, 1], shape: (a) => squircle(a, 6), caps: [true, true] },
+  ).paint((x, y, z) => mix(rgb(0xc89a62), rgb(0x9a6a3a), 0.3 + 0.5 * noise3(x * 60, y * 6, z * 8, 31)), 0)
+  const pat = loft(
+    [
+      { c: [0, 0.012, 0], rx: 0.075, ry: 0.05 },
+      { c: [0, 0.06, 0], rx: 0.073, ry: 0.048 },
+      { c: [0, 0.068, 0], rx: 0.062, ry: 0.04 },
+    ],
+    { seg: 28, steps: 2, up: [0, 0, 1], shape: (a) => squircle(a, 5), caps: [true, true] },
+  )
+    .paint((x, _y, z) => mix(rgb(0xf9e389), rgb(0xf3cf5a), 0.5 + 0.5 * Math.sin(Math.hypot(x, z) * 160)), 0)
+    .place([0.008, 0, 0], [0, 0.25, 0])
+  return { board: { shape: board, material: { roughness: 0.75 } }, butter: { shape: pat, material: { roughness: 0.35 } } }
+}
+
+/** A round of cheese and a wedge cut from it, lying against it: a golden rind, the cut faces pale, a few holes. */
+function cheese(): Structure<'cheese'> {
+  const R = 0.11
+  const H = 0.075
+  const rind = rgb(0xe6b043)
+  const inside = rgb(0xf6dd86)
+  const round = lathe(
+    [
+      [0, 0],
+      [R - 0.006, 0],
+      [R, 0.008],
+      [R, H - 0.008],
+      [R - 0.006, H],
+      [0, H],
+    ],
+    { seg: 36, steps: 1 },
+  )
+    .paint(() => rind, 0)
+    .pattern((x, y, z) => (y > H - 0.002 && noise3(x * 70, y * 70, z * 70, 41) > 0.8 ? 1 : 0), rgb(0xd9a53a))
+  // the wedge: a three-sided prism, its sharp edge in, its rind on the outside, lying against the round
+  const wedge = lathe(
+    [
+      [0, 0],
+      [0.07, 0],
+      [0.07, 0.06],
+      [0, 0.06],
+    ],
+    { seg: 3, steps: 1 },
+  )
+    .place([0, 0, 0], [0, 0, 0], [1, 1, 0.75])
+    .paint((x) => (x < -0.02 ? rind : inside), 0)
+    .pattern((x, y, z) => (x > -0.02 && noise3(x * 90, y * 90, z * 90, 43) > 0.78 ? 1 : 0), rgb(0xd9b55a))
+    .place([R + 0.035, 0, 0.02], [0, 0.3, 0])
+  return grounded({ cheese: { shape: merge(round, wedge), material: { roughness: 0.55 } } })
+}
+
+/** A round loaf of bread: a golden domed crust, three slashes across its top, a dusting of flour. */
+function bread(): Structure<'loaf'> {
+  const loaf = lathe(
+    [
+      [0, 0],
+      [0.1, 0.002],
+      [0.135, 0.03],
+      [0.14, 0.06],
+      [0.12, 0.1],
+      [0.07, 0.128],
+      [0, 0.135],
+    ],
+    { seg: 32, steps: 2 },
+  )
+    .place([0, 0, 0], [0, 0, 0], [1.25, 1, 0.9])
+    .paint((x, y, z) => mix(rgb(0xd29148), rgb(0x9c5a24), 0.25 + 0.5 * smoothstep(0.08, 0.13, y) * fbm3(x * 20, y * 20, z * 20, 51)), 0)
+    // three slashes across the top, paler where the crust opened
+    .pattern((x, y) => (y > 0.09 && Math.abs(((x + 0.3) % 0.07) - 0.035) < 0.008 ? 1 : 0), rgb(0xf0d39a))
+    .pattern((x, y, z) => (y > 0.11 && noise3(x * 120, y * 120, z * 120, 52) > 0.8 ? 1 : 0), rgb(0xfaf4e6))
+  return { loaf: { shape: loaf, material: { roughness: 0.75 } } }
+}
+
+/** A jar of honey: golden glass, a gingham cover tied over its lid with string, a wooden dipper leaning in. */
+function honey(): Structure<'jar' | 'cover' | 'dipper'> {
+  const jar = lathe(
+    [
+      [0, 0],
+      [0.06, 0],
+      [0.068, 0.02],
+      [0.07, 0.1],
+      [0.058, 0.13],
+      [0.05, 0.14],
+      [0, 0.14],
+    ],
+    { seg: 24, steps: 2 },
+  ).paint((_x, y) => mix(rgb(0xd88a12), rgb(0xf6c24a), smoothstep(0.0, 0.12, y)), 0)
+  const cover = lathe(
+    [
+      [0, 0.138],
+      [0.062, 0.136],
+      [0.07, 0.125],
+      [0.072, 0.13],
+      [0.064, 0.152],
+      [0, 0.158],
+    ],
+    { seg: 24, steps: 1, shape: (a) => 1 + 0.05 * Math.max(0, Math.sin(a * 6)) },
+  )
+    .fill(rgb(0xf4ece0), 0)
+    .pattern((x, _y, z) => (Math.sin(x * 140) * Math.sin(z * 140) > 0 ? 1 : 0), rgb(0xd23a3a))
+  const dipper = merge(
+    tube(
+      [
+        [0.02, 0.12, 0],
+        [0.07, 0.22, 0.01],
+      ],
+      0.006,
+      { seg: 6, steps: 1, caps: [true, true] },
+    ),
+    ellipsoid(0.016, 0.022, 0.016, 10, 6).place([0.075, 0.23, 0.01]),
+  ).paint(() => rgb(0xb98a54), 0)
+  return { jar: { shape: jar, material: { roughness: 0.15 } }, cover: { shape: cover, material: { roughness: 0.9 } }, dipper: { shape: dipper, material: { roughness: 0.7 } } }
+}
+
+/** A jar of jam: one jar, the jam's colour through its glass, a cloth cover (its colour, or a checked one) tied over its
+ *  lid, a paper label round its middle. The kettle's every jam is this jar in its own colours. */
+function jamJar(jam: V3, cloth: V3, check: boolean): () => Structure<'jar' | 'cover'> {
+  return () => {
+    const jar = lathe(
+      [
+        [0, 0],
+        [0.055, 0],
+        [0.062, 0.015],
+        [0.064, 0.1],
+        [0.056, 0.12],
+        [0.05, 0.125],
+        [0, 0.125],
+      ],
+      { seg: 24, steps: 2 },
+    )
+      .paint((_x, y) => mix(jam, mix(jam, rgb(0xffffff), 0.25), smoothstep(0.0, 0.11, y)), 0)
+      .pattern((_x, y) => (y > 0.045 && y < 0.085 ? 1 : 0), rgb(0xf5edd8))
+    const cover = lathe(
+      [
+        [0, 0.123],
+        [0.056, 0.121],
+        [0.066, 0.108],
+        [0.068, 0.114],
+        [0.06, 0.138],
+        [0, 0.143],
+      ],
+      { seg: 24, steps: 1, shape: (a) => 1 + 0.05 * Math.max(0, Math.sin(a * 6)) },
+    )
+      .fill(cloth, 0)
+      .pattern((x, _y, z) => (check && Math.sin(x * 140) * Math.sin(z * 140) > 0 ? 1 : 0), rgb(0xf4ece0))
+    return { jar: { shape: jar, material: { roughness: 0.15 } }, cover: { shape: cover, material: { roughness: 0.9 } } }
+  }
+}
+
+/** A paper cup of ice cream: two scoops, vanilla and strawberry, a wafer stuck in the top. */
+function iceCream(): Structure<'cup' | 'scoops'> {
+  const cup = lathe(
+    [
+      [0, 0],
+      [0.045, 0],
+      [0.062, 0.07],
+      [0.058, 0.074],
+      [0, 0.07],
+    ],
+    { seg: 24, steps: 1, shape: (a) => 1 + 0.03 * Math.abs(Math.sin(a * 10)) },
+  )
+    .fill(rgb(0xf6f1e6), 0)
+    .pattern((x, _y, z) => (Math.abs(Math.sin(Math.atan2(z, x) * 5)) < 0.3 ? 1 : 0), rgb(0x6fb6d8))
+  const scoop = (at: V3, r: number, colour: V3) =>
+    blob(r, 2, (x, y, z) => 0.08 * Math.max(0, Math.sin(Math.atan2(z, x) * 7)) * smoothstep(0.3, -0.4, y))
+      .place(at)
+      .fill(colour, 0)
+  const wafer = loft(
+    [
+      { c: [0.02, 0.14, 0.0], rx: 0.012, ry: 0.004 },
+      { c: [0.04, 0.2, 0.0], rx: 0.012, ry: 0.004 },
+    ],
+    { seg: 8, steps: 1, up: [0, 0, 1], shape: (a) => squircle(a, 6), caps: [true, true] },
+  ).fill(rgb(0xd9a35e), 0)
+  return {
+    cup: { shape: cup, material: { roughness: 0.8 } },
+    scoops: { shape: merge(scoop([0.0, 0.085, 0.0], 0.05, rgb(0xfbf1d2)), scoop([0.008, 0.135, 0.004], 0.042, rgb(0xf4a6b8)), wafer), material: { roughness: 0.6 } },
+  }
+}
+
+/** A cheesecake: a pale baked cream on a biscuit base, three strawberries on top. */
+const cheesecake = () => cake(rgb(0xc9935a), rgb(0xfbf1dc), merge(berry([0.048, 0.132, 0.0], 0), berry([-0.026, 0.132, 0.044], 2), berry([-0.026, 0.132, -0.044], 4)))
+
+/** A honey cake: a golden sponge iced with honey, three drops of it on top. */
+const honeyCake = () =>
+  cake(rgb(0xe3a24a), rgb(0xf3c14d), merge(...[0, 2.1, 4.2].map((a) => ellipsoid(0.018, 0.012, 0.018, 10, 5).place([Math.cos(a) * 0.05, 0.126, Math.sin(a) * 0.05]))).fill(rgb(0xd88a12), 0))
+
 /** Every good with a model: the farm's produce, and the fruit of the fruit trees and bushes. */
 export type GoodsId = ProduceId | FruitId
 
@@ -1295,4 +1667,23 @@ export const GOODS: Record<GoodsId, () => Structure> = {
   potato,
   melon,
   cotton: cottonBoll,
+  apple_pie: applePie,
+  blueberry_muffins: blueberryMuffins,
+  cherry_tart: cherryTart,
+  quilt,
+  butter,
+  cheese,
+  bread,
+  honey,
+  strawberry_jam: jamJar(rgb(0xb3172e), rgb(0xd23a3a), true),
+  cherry_jam: jamJar(rgb(0x6e0a1c), rgb(0x8c1426), false),
+  honey_cake: honeyCake,
+  blueberry_jam: jamJar(rgb(0x2e2a5e), rgb(0x3b6fb8), true),
+  ice_cream: iceCream,
+  marmalade: jamJar(rgb(0xe07a12), rgb(0xf2a33a), false),
+  yogurt: jamJar(rgb(0xf6f2ea), rgb(0x5b97d6), false),
+  blanket,
+  apple_butter: jamJar(rgb(0x7a4220), rgb(0x5c8a4a), true),
+  raspberry_jam: jamJar(rgb(0xb0204e), rgb(0xd8578a), false),
+  cheesecake,
 }

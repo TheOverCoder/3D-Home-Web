@@ -32,6 +32,9 @@ export interface UnlocksState {
 export const UPGRADE_ART: Record<UpgradeId, ArtId> = {
   east: 'seedling',
   west: 'sheaf-of-rice',
+  north: 'ear-of-corn',
+  meadow: 'four-leaf-clover',
+  far: 'tractor',
   queue: 'people-queue',
   pace: 'person-running',
   cow: 'cow',

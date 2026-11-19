@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LADDERS, LADDER_IDS, PRODUCERS, REMOTE_PRICE, TOOL, TOOLS, TOOL_KINDS, isToolKind, mostAnimals, toolLadder, type LadderId, type ProducerId, type ToolKind } from './data'
+import { LADDERS, LADDER_IDS, PRODUCERS, REMOTE_PRICE, TOOL, TOOLS, TOOL_KINDS, fullHerd, isToolKind, toolLadder, type LadderId, type ProducerId, type ToolKind } from './data'
 import { clampLevels, ladderPrice } from './market'
 import { fullest, mostAt, needsMet, ownsEach, perTapOf, spreadNest, toolOf, type ToolFarm } from './tools'
 
@@ -86,11 +86,11 @@ describe('what a ladder waits for', () => {
     expect(needsMet(LADDERS['machine-remote'].needs, farmWith({}))).toBe(true)
   })
 
-  it('a herd: every animal the shop sells', () => {
+  it('a herd: every animal the shop sells from the start (the herd full; the animals past it open with the levels)', () => {
     for (const kind of TOOL_KINDS) {
       const needs = LADDERS[toolLadder(kind, 'tool')].needs
-      expect(needsMet(needs, farmWith({ [kind]: mostAnimals(kind) - 1 })), kind).toBe(false)
-      expect(needsMet(needs, farmWith({ [kind]: mostAnimals(kind) })), kind).toBe(true)
+      expect(needsMet(needs, farmWith({ [kind]: fullHerd(kind) - 1 })), kind).toBe(false)
+      expect(needsMet(needs, farmWith({ [kind]: fullHerd(kind) })), kind).toBe(true)
     }
   })
 

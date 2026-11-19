@@ -228,7 +228,7 @@ describe("the machine's panel, as data", () => {
     const view = machineView('loom')
     expect(view).toMatchObject({ id: 'loom', name: 'Loom', capacity: 3, slots: [], upgrade: { capacity: 4, price: queuePrice(4) } })
     expect(view.level).toMatchObject({ n: 1, minutes: 0, next: MACHINE_LEVELS[1].minutes, progress: 0 })
-    expect(view.recipes).toEqual([{ id: 'wool', makes: 'cloth', needs: { wool: 1 }, have: { wool: 1 }, seconds: 6, can: true }])
+    expect(view.recipes[0]).toEqual({ id: 'wool', makes: 'cloth', needs: { wool: 1 }, have: { wool: 1 }, seconds: 6, can: true })
     expect(machineActions('loom')).toBe(machineActions('loom'))
     expect(machineActions('loom').add('wool')).toBe(true)
     expect(machineView('loom').recipes[0]).toMatchObject({ have: { wool: 0 }, can: false })

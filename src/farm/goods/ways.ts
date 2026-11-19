@@ -14,7 +14,7 @@ import { goFor } from './go'
 // Given once round the farm's panels (src/farm/FarmUI.tsx), so every GoodPic in them has it.
 
 /** Each machine's picture (its panel's, the bubble's "Open the mill"). */
-export const MACHINE_PIC: Record<MachineId, ArtId> = { mill: 'sheaf-of-rice', loom: 'yarn', oven: 'shortcake' }
+export const MACHINE_PIC: Record<MachineId, ArtId> = { mill: 'sheaf-of-rice', loom: 'yarn', oven: 'shortcake', dairy: 'cheese-wedge', kettle: 'pot-of-food' }
 
 /** The same panel (a machine's, a tool's) as the one open. */
 const samePanel = (a: Panel, b: Panel | null) =>

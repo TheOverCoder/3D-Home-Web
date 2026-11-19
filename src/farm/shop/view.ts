@@ -1,7 +1,8 @@
 import type { ArtId } from '../../ui/art'
 import { BEDS, LADDERS, PACE_LEVELS, QUEUE_LEVELS, TOOLS, TOOL_KINDS, UPGRADES, arrivalEvery, mostAnimals, queuePlaces, toolLadder, type LadderId, type ToolKind, type UpgradeId } from '../data'
+import { fullHerd, type Expansion } from '../data'
 import { ladderPrice } from '../market'
-import { animals, arrivalSeconds, clockText, farm, ladderMaxed, ladderOpen, lockOf, owned, placesInLine, upgradeLevel, upgradePrice } from '../state'
+import { animals, arrivalSeconds, clockText, farm, ladderMaxed, ladderOpen, lockOf, owned, placesInLine, upgradeLevel, upgradeLock, upgradePrice } from '../state'
 import { openFirst, UPGRADE_ART } from '../unlockArt'
 
 // What the farm shop shows (./ShopCard.tsx draws it; ./ShopPanel.tsx feeds it the farm's; the design lab's
@@ -75,7 +76,7 @@ export interface UpgradesView {
 const TITLE: Record<ToolKind, string> = { hens: 'Hens', cows: 'Cows', sheep: 'Sheep' }
 /** What a remote does, in a few words for its tile (its card says it whole: LADDERS' blurb). */
 const REMOTE_WORDS = { 'machine-remote': 'Opens a machine from its good', 'animal-remote': 'Opens a tool from its good' } as const
-const bedsIn = (e: 'east' | 'west') => BEDS.filter((b) => b.expansion === e).length
+const bedsIn = (e: Expansion) => BEDS.filter((b) => b.expansion === e).length
 
 /** A farm upgrade's row: which step is next and what it changes, "5 → 6" places in the line. */
 function farmRow(id: UpgradeId): FarmRow {
@@ -92,6 +93,9 @@ function farmRow(id: UpgradeId): FarmRow {
     }
     case 'east':
     case 'west':
+    case 'north':
+    case 'meadow':
+    case 'far':
       return { ...base, level: base.owned ? 1 : 0, levels: 1, icon: 'seedling', now: `+${bedsIn(id)} beds`, next: null }
     case 'sprinkler':
       return { ...base, level: base.owned ? 1 : 0, levels: 1, icon: 'droplet', now: 'Waters every bed', next: null }
@@ -117,14 +121,15 @@ export function upgradesView(): UpgradesView {
         kind,
         title: TITLE[kind],
         pic: UPGRADE_ART[u.id],
-        herd: { upgrade: u.id, name: u.name, n, most, price: upgradePrice(u.id), lock: lockOf(`upgrade:${u.id}`) },
+        herd: { upgrade: u.id, name: u.name, n, most, price: upgradePrice(u.id), lock: upgradeLock(u.id) },
         tool: {
           id,
           name: t.name,
           pic: t.art,
           state: onceState(id),
           price: ladderPrice(id, 0),
-          why: `${n}/${most} ${TITLE[kind].toLowerCase()}`,
+          // (what the tool waits for: the herd full, the animals past it opening with the levels)
+          why: `${Math.min(n, fullHerd(kind))}/${fullHerd(kind)} ${TITLE[kind].toLowerCase()}`,
           says: `${LADDERS[toolLadder(kind, 'hold')].say(0)} · ${LADDERS[toolLadder(kind, 'tap')].say(0)}`,
         },
       }

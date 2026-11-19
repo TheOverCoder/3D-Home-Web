@@ -162,7 +162,8 @@ export function collectMachine(id: MachineId) {
     goods.map((g) => ({ item: g.item, n: g.count })),
     at,
   )
-  machineSound(id, 'harvest')
+  // its own sound as its goods come out (a sack, a bolt of cloth, a tray, a crock, a jar: MACHINES' `sounds.collect`)
+  machineSound(id, MACHINES[id].sounds.collect)
   farmFx('harvest', at.x, at.y, at.z, { good: goods[0].item })
   const full = m.done ? recipeOf(id, m.jobs[0]) : undefined
   toast(`+ ${goods.map((g) => count(g.item, g.count)).join(', ')}${full ? ` · the ${STORES[storeOf(full.makes)].name.toLowerCase()} is full` : ''}`, goods[0].item)

@@ -52,7 +52,8 @@ describe('a save broken or edited by hand', () => {
 
   it('a list that is not one (the beds as a word, a number, an object) costs only the beds: everything saved after them is kept', () => {
     // the bought land's beds are built, nothing grows
-    const fresh = BEDS.map((b) => ({ built: b.price === 0, crop: null, growth: 0, water: 0, fixed: null }))
+    const bought = (played as { expansions: Record<string, boolean> }).expansions
+    const fresh = BEDS.map((b) => ({ built: b.price === 0 && (!b.expansion || bought[b.expansion]), crop: null, growth: 0, water: 0, fixed: null }))
     // (and a bed that was moved stands where it was staked out again: only a built bed moves)
     const unmoved = (s: Record<string, unknown>) => ({ ...without(s, 'beds'), layout: { ...(s.layout as object), beds: null } })
     for (const beds of ['lettuce', 7, true, { 0: { built: true, crop: 'lettuce', growth: 1, water: 1, fixed: null } }]) {
