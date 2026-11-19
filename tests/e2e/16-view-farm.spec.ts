@@ -40,10 +40,12 @@ async function quietAgain(game: Game) {
 // and the gate with a full line; third person and the edit mode over it; the hedge and the woods in pieces; things
 // reacting (src/fx/react.ts: a stretch of their own scale), held mid-way.
 
-/** Where the reactions held mid-way are seen: the beds and the lemon tree from the path, and the cows' pasture. */
+/** Where the reactions held mid-way are seen: the beds and the lemon tree from the path, the cows' pasture, and the
+ *  fenced garden where the house stood. */
 const HELD: Pose[] = [
   { name: 'held mid-way: the beds and the lemon tree, from the path', x: -1.2, z: 12.3, yaw: 0.35, pitch: -0.28 },
   { name: 'held mid-way: the cows, from the pasture’s fence', x: 9.5, z: -1, yaw: -Math.PI / 2, pitch: -0.05 },
+  { name: 'held mid-way: a fence put down, where the house stood', x: 0, z: -2, yaw: 0, pitch: -0.1 },
 ]
 test.describe('the drawing pass leaves out only what cannot be seen: the farm', () => {
   test('640×360: the farm — the yard over it, where the house stood, the pasture, the gate with a full line', async ({ game }) => {
@@ -187,11 +189,12 @@ test.describe('the drawing pass leaves out only what cannot be seen: the farm', 
     console.log(log.join('\n'))
   })
 
-  test('reactions held mid-way (a harvest plucked, a bed watered, one sown, lemons picked, a cow milked): the same frame', async ({ game }) => {
+  test('reactions held mid-way (a harvest plucked, a bed watered, one sown, lemons picked, a cow milked, a bed and a fence put down): the same frame', async ({ game }) => {
     await setUp(game, 'farm')
     const { page } = game
     const log: string[] = []
-    // (fillFarm planted every bed and ripened it, and filled the tree and the animals)
+    // (fillFarm planted every bed and ripened it, filled the tree and the animals, and fenced a garden where the house
+    // stood)
     const started = await page.evaluate(() => {
       const h = (window as any).__home
       const f = h.farm
@@ -203,11 +206,19 @@ test.describe('the drawing pass leaves out only what cannot be seen: the farm', 
       const picked = f.collect('tree', 0)
       f.state.producers.cows.stock[0] = Math.max(1, f.state.producers.cows.stock[0])
       const milked = f.collect('cows', 0)
+      // a bed with its crop, and a section of the fence, each put down again where it stands (the edit mode's drop)
+      const bed = f.state.layout.beds[3]
+      f.edit.dragTo({ kind: 'bed', index: 3 }, bed.x, bed.z, bed.rot)
+      const bedDown = f.edit.drop()?.ok
+      const fence = f.state.layout.decor.filter((d: any) => d.kind === 'fence').sort((a: any, b: any) => Math.hypot(a.x, a.z + 6) - Math.hypot(b.x, b.z + 6))[0]
+      f.edit.dragTo({ kind: 'decor', id: fence.id }, fence.x, fence.z, fence.rot)
+      const fenceDown = f.edit.drop()?.ok
       // every reaction held 120 ms into itself, frame after frame
       h.react.freeze(120)
-      return { harvested, watered, sown, picked, milked, plants: h.react.reacting('plant'), fruit: h.react.reacting('fruit'), animal: h.react.reacting('animal') }
+      const r = h.react
+      return { harvested, watered, sown, picked, milked, bedDown, fenceDown, plants: r.reacting('plant'), fruit: r.reacting('fruit'), animal: r.reacting('animal'), thing: r.reacting('thing') }
     })
-    expect(started).toMatchObject({ watered: true, sown: true, plants: true, fruit: true, animal: true })
+    expect(started).toMatchObject({ watered: true, sown: true, bedDown: true, fenceDown: true, plants: true, fruit: true, animal: true, thing: true })
     expect(started.harvested).toBeGreaterThan(0)
     expect(started.picked).toBeGreaterThan(0)
     expect(started.milked).toBeGreaterThan(0)

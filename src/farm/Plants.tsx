@@ -68,6 +68,8 @@ export function Plants() {
   useEffect(() => () => parts.dispose(), [parts])
   const last = useRef(-1)
   const seen = useRef<{ lemon?: Placement; hens?: Placement; beds?: unknown; drag?: unknown }>({})
+  /** something reacted at the last put */
+  const stirred = useRef(false)
 
   useFrame((state) => {
     const t = state.clock.elapsedTime
@@ -78,8 +80,10 @@ export function Plants() {
     const beds = farm.layout.beds
     const drag = useEdit.getState().drag
     const moved = lemon !== seen.current.lemon || hens !== seen.current.hens || beds !== seen.current.beds || drag !== seen.current.drag
-    // (while anything reacts, every frame: its stretch moves)
-    if (!moved && Math.abs(t - last.current) < 0.2 && !reacting('plant') && !reacting('fruit')) return
+    // (while anything reacts, every frame: its stretch moves; and once more as the last ends, at rest)
+    const now = reacting('plant') || reacting('fruit') || reacting('thing')
+    if (!moved && Math.abs(t - last.current) < 0.2 && !now && !stirred.current) return
+    stirred.current = now
     last.current = t
     seen.current = { lemon, hens, beds, drag }
     parts.begin()
@@ -95,11 +99,15 @@ export function Plants() {
       const at = shownAt({ kind: 'bed', index: i })
       if (!at) return
       const g = bed.crop ? bedProgress(i) : 1
-      const scale = stretch(r)
+      // the bed itself settling as it is put down (src/farm/Garden.tsx): its plants ride its soil, round its middle
+      const bedR = reaction('thing', `bed-${i}`)
+      const across = bedR?.xz ?? 1
+      const up = bedR?.y ?? 1
+      const scale = r || bedR ? s.set((r?.xz ?? 1) * across, (r?.y ?? 1) * up, (r?.xz ?? 1) * across) : 1
       LAYOUT[crop].forEach(([lx, lz], k) => {
         const seed = hash(i + 1, k + 1)
-        const [x, z] = toWorld(at, lx + (hash(k, i) - 0.5) * 0.04, lz + (hash(i, k) - 0.5) * 0.04)
-        parts.at(x, SOIL_Y, z, 0, scale)
+        const [x, z] = toWorld(at, (lx + (hash(k, i) - 0.5) * 0.04) * across, (lz + (hash(i, k) - 0.5) * 0.04) * across)
+        parts.at(x, SOIL_Y * up, z, 0, scale)
         GROWERS[crop](parts, 0, 0, 0, g, seed)
       })
     })

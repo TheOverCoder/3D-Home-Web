@@ -1,4 +1,6 @@
 import { create } from 'zustand'
+import { farmFx } from '../fx/fx'
+import { react } from '../fx/react'
 import { playerState } from '../lib/playerState'
 import { canPlaceThing, placementOf, snap, thingDoor, thingRect, type Fit, type ParcelId, type PlaceId, type Placement, type Rect, type Thing } from './layout'
 import { decorLanding, farm, moveBed, moveDecor, movePlace, useFarm } from './state'
@@ -114,8 +116,22 @@ export function drop(): Fit | null {
   const fit = moveThing(d.thing, d.at)
   e.setDrag(null)
   e.setNote(fit.ok ? null : (fit.reason ?? null))
-  if (fit.ok) keepPlayerClear(d.thing)
+  if (fit.ok) {
+    keepPlayerClear(d.thing)
+    settle(d.thing)
+  }
   return fit
+}
+
+/** A thing put down where it fits (dropped, turned; bought or taken out of the store: its caller's): it settles into the
+ *  ground with a small bounce (src/fx/react.ts, `settle`: read by its crowd or its group) and a puff of dust round its
+ *  footprint. Nothing moves under less motion. */
+export function settle(t: Thing) {
+  const p = placementOf(farm.layout, t)
+  const r = p ? thingRect(farm.layout, t, p) : null
+  if (!r) return
+  react('thing', keyOf(t), 'settle')
+  farmFx('dust', (r.minX + r.maxX) / 2, 0.04, (r.minZ + r.maxZ) / 2, { half: { x: (r.maxX - r.minX) / 2, z: (r.maxZ - r.minZ) / 2 } })
 }
 
 /** Turns a thing a quarter turn where it stands (if it fits turned). A place may be given by its id. */
@@ -125,7 +141,10 @@ export function turn(thing: Thing | PlaceId): Fit {
   if (!p) return { ok: false, reason: 'Not on the farm' }
   const fit = moveThing(t, { ...p, rot: (p.rot + 1) % 4 })
   useEdit.getState().setNote(fit.ok ? null : (fit.reason ?? null))
-  if (fit.ok) keepPlayerClear(t)
+  if (fit.ok) {
+    keepPlayerClear(t)
+    settle(t)
+  }
   return fit
 }
 

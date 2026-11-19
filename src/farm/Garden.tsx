@@ -1,13 +1,14 @@
 import { lazy, Suspense, useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { CuboidCollider, CylinderCollider, RigidBody } from '@react-three/rapier'
-import { BoxGeometry, CanvasTexture, Color, SRGBColorSpace, type BufferGeometry, type MeshStandardMaterial, type Sprite } from 'three'
+import { BoxGeometry, CanvasTexture, Color, SRGBColorSpace, type BufferGeometry, type Group, type MeshStandardMaterial, type Sprite } from 'three'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import { farmSound, placeSound } from '../audio/sound'
 import { GARDEN, GATE } from '../data/layout'
 import { debugFlag, debugSet } from '../lib/debug'
 import { playGesture } from '../lib/gestures'
 import { farmFx } from '../fx/fx'
+import { reaction } from '../fx/react'
 import { useInteractable } from '../lib/interaction'
 import { playerState } from '../lib/playerState'
 import { boxProject } from '../lib/boxProject'
@@ -354,6 +355,7 @@ function Bed({ index }: { index: number }) {
   const soilTex = useMemo(() => surface('soil', BED.w / 0.55, BED.d / 0.55), [])
   const soil = useRef<MeshStandardMaterial>(null)
   const icon = useRef<Sprite>(null)
+  const frame = useRef<Group>(null)
   // a staked plot carries a price board; a piece of land to buy has one board, on its first plot
   const lead = def.expansion ? BEDS.find((b) => b.expansion === def.expansion)!.index === index : true
   // (not open yet at the farm's level: the level it opens at for the price)
@@ -369,6 +371,13 @@ function Bed({ index }: { index: number }) {
   const wood = material('veneer')
 
   useFrame((state, dt) => {
+    // put down (dropped, turned): it settles into the ground with a small bounce (src/fx/react.ts)
+    const g = frame.current
+    if (g) {
+      const r = reaction('thing', `bed-${index}`)
+      if (r) g.scale.set(r.xz, r.y, r.xz)
+      else if (g.scale.x !== 1 || g.scale.y !== 1) g.scale.setScalar(1)
+    }
     const m = soil.current
     if (m) {
       const wet = farm.sprinkler || (bed.crop !== null && bed.water > 0) ? 1 : 0
@@ -503,7 +512,7 @@ function Bed({ index }: { index: number }) {
           <CuboidCollider args={[w / 2 + 0.06, h / 2, d / 2 + 0.06]} position={[0, h / 2, 0]} />
         </RigidBody>
       )}
-      <group name={`bed-${index}`} position={[shown.x, 0, shown.z]} rotation-y={turnOf(shown)}>
+      <group ref={frame} name={`bed-${index}`} position={[shown.x, 0, shown.z]} rotation-y={turnOf(shown)}>
         {bed.built ? (
           <>
             <mesh geometry={geo.frame} castShadow receiveShadow>
