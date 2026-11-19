@@ -8,6 +8,7 @@
 import { worthWithin } from '../farm/appointments'
 import { CROPS, MACHINE_IDS, type StoreId } from '../farm/data'
 import { returnWorth } from '../farm/economy'
+import { tilesEarned } from '../farm/album'
 import { garmentAt } from '../farm/outfit'
 import { AWAY_TELLS, awayNews, bedStage, dailyDue, farm, machineSecondsLeft, machineStage, stepNow, type AwayReport } from '../farm/state'
 import { opensAt, unlockName } from '../farm/unlocks'
@@ -102,6 +103,23 @@ export const SOURCES: Source<unknown>[] = [
     id: 'daily gift',
     look: () => farm.daily.last,
     news: (a, b) => (a === b ? [] : [{ kind: 'prize', what: 'the daily gift' }]),
+  }),
+  // what the farm's year and its people bring: a letter in the mailbox (a chapter, a heart, a birthday), a stop of the
+  // season road reached, an album tile earned — each something new to see, as JOURNEY counts them
+  source({
+    id: 'letters',
+    look: () => farm.mail.waiting.length + farm.mail.read.length,
+    news: (a, b) => (b > a ? [{ kind: 'new', what: plural(b - a, 'letter') }] : []),
+  }),
+  source({
+    id: 'season road',
+    look: () => farm.seasonRoad.on * 100 + farm.seasonRoad.paid,
+    news: (a, b) => (b > a ? [{ kind: 'new', what: 'a stop of the season road' }] : []),
+  }),
+  source({
+    id: 'album',
+    look: () => tilesEarned(farm).length,
+    news: (a, b) => (b > a ? [{ kind: 'new', what: plural(b - a, 'album tile') }] : []),
   }),
   source({ id: 'work', look: longest, news: () => [], pull: (now) => now }),
 ]

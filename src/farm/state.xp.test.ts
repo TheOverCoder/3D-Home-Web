@@ -53,7 +53,7 @@ import {
 } from './state'
 import { DEFAULT_OUTFIT, garmentAt } from './outfit'
 import { OLD_SAVE, justSaved, savedNow, startFrom } from './testSaves'
-import { levelOf, levelReward, xpAt, xpForSale } from './xp'
+import { CURVE, levelOf, levelReward, xpAt, xpForSale } from './xp'
 
 // Levels (src/farm/xp.ts; gainXp in src/farm/state.ts): every thing the player does is worth XP, counted once in the one
 // function every way to do it goes through — a press on many beds is that many beds' XP, never more — and nothing the
@@ -371,13 +371,15 @@ describe('a save from before the curve was marked', () => {
   it('level 20 halfway to 21 loads at level 20 halfway; saved again it is not moved twice', () => {
     try {
       startFrom(savedBefore(firstCurve(20, 0.5), 20))
-      expect(farm.xp.points).toBe(xpAt(20) + 300)
-      expect(xpNow()).toMatchObject({ level: 20, into: 300, need: 600, unpaid: 0 })
+      const need = xpAt(21) - xpAt(20)
+      const half = Math.ceil(need / 2)
+      expect(farm.xp.points).toBe(xpAt(20) + half)
+      expect(xpNow()).toMatchObject({ level: 20, into: half, need, unpaid: 0 })
       // saved again, it carries today's curve: loaded again, the same
       const again = savedNow()
-      expect(again.xp).toEqual({ points: xpAt(20) + 300, paid: 20, curve: LEVELS.step })
+      expect(again.xp).toEqual({ points: xpAt(20) + half, paid: 20, curve: CURVE })
       startFrom(justSaved(again))
-      expect(farm.xp).toEqual({ points: xpAt(20) + 300, paid: 20 })
+      expect(farm.xp).toEqual({ points: xpAt(20) + half, paid: 20 })
     } finally {
       switchSlot(1)
     }
@@ -419,7 +421,7 @@ describe('a save from before the curve was marked', () => {
   it('a save on today’s curve is untouched', () => {
     farm.xp = { points: firstCurve(20, 0.5), paid: levelOf(firstCurve(20, 0.5)) }
     const save = savedNow()
-    expect((save.xp as { curve: number }).curve).toBe(LEVELS.step)
+    expect((save.xp as { curve: string }).curve).toBe(CURVE)
     try {
       startFrom(justSaved(save))
       expect(farm.xp).toEqual({ points: firstCurve(20, 0.5), paid: levelOf(firstCurve(20, 0.5)) })

@@ -9,7 +9,7 @@
 // under Vitest, unless told on (then judged by the visits' own clock, as the device's: src/farm/events.ts). Run it
 // under happy-dom (the farm keeps its save). Nothing in the game imports it.
 
-import { cameBack, quietSteps, resetFarm, setDailyClock, setEventClock, setRandom, tick, unlockAll, type AwayReport } from '../farm/state'
+import { cameBack, quietNeighbours, quietSteps, resetFarm, setDailyClock, setEventClock, setRandom, tick, unlockAll, type AwayReport } from '../farm/state'
 import { STEP, WALK, seeded } from './play'
 import { nextMove, sellTools, type Spot } from './policy'
 import { SESSIONS, type VisitRow } from './targets'
@@ -86,6 +86,8 @@ export function playVisits(opts: { profile: ProfileId; days: number; pace?: Pace
   setDailyClock(() => wall)
   unlockAll(false)
   quietSteps(false)
+  // the neighbours come and send orders, as in the game
+  quietNeighbours(false)
   sellTools(true)
   try {
     resetFarm()
@@ -127,6 +129,7 @@ export function playVisits(opts: { profile: ProfileId; days: number; pace?: Pace
     // (everything open again, the steps quiet, the tools for sale: the tests' default)
     unlockAll(true)
     quietSteps(true)
+    quietNeighbours(true)
     sellTools(true)
   }
 }

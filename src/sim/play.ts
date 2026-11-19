@@ -11,7 +11,7 @@
 
 import { LADDERS, LADDER_IDS, LEVELS, TOOL_KINDS, fullHerd, toolLadder, type LadderId, type ToolKind } from '../farm/data'
 import { TIERS, type Tier } from '../lib/tier'
-import { animals, farm, quietSteps, resetFarm, resetRewardCounts, rewardCounts, setDailyClock, setEventClock, setRandom, tick, unlockAll } from '../farm/state'
+import { animals, farm, quietNeighbours, quietSteps, resetFarm, resetRewardCounts, rewardCounts, setDailyClock, setEventClock, setRandom, tick, unlockAll } from '../farm/state'
 import { levelOf } from '../farm/xp'
 import { nextMove, onTheWay, sellTools, type Spot } from './policy'
 
@@ -94,6 +94,8 @@ export function simulate(opts: { minutes: number; seed?: number; until?: number;
   setDailyClock(() => DAY)
   unlockAll(opts.open ?? false)
   quietSteps(false)
+  // the neighbours come and send orders, as in the game
+  quietNeighbours(false)
   sellTools(opts.tools ?? true)
   try {
     resetFarm()
@@ -186,6 +188,7 @@ export function simulate(opts: { minutes: number; seed?: number; until?: number;
     // (everything open again, the steps quiet, the tools for sale: the tests' default)
     unlockAll(true)
     quietSteps(true)
+    quietNeighbours(true)
     sellTools(true)
   }
 }

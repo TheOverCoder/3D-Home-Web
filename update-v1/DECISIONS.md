@@ -119,9 +119,13 @@ The orchestrator runs the plan to the end without asking:
 - **01b's 21 files outside its row accepted:** each forced by a type or test on the new machines, herds and fields, or
   asked for (06b's collect sound, 01a's pace hooks, the hive in the album). The farm's sun pass is 223 draws (claim +3,
   measured +7: three Meadow beds' frames in the box); the sideways yard view is 249.4k of 250k.
-- **Open for the next stage: the long game's pace.** The sim's daily player reaches level 32 on day 7, 50 on day 14 and
-  85 on day 30 (JOURNEY expects 20, 29, 44). Content cannot slow it; the level curve past 30 (`LEVELS`, `xp.ts`) or
-  JOURNEY's table must change. `quietDays` stays a debt until then.
+- **The long game's pace (the user's choice: slow the levels):** the curve bends from level 9 (`KNEE`, `GROW` in
+  `src/farm/xp.ts`: each level from 10 takes the plain step times 1 + 0.92 · ln(L − 8)), so the first day's levels are
+  as they were (level 10 at 1,350) and the daily player, with the neighbours on in the sim, is at 8 on day 2, 20 on
+  day 7, 28 on day 14 and 43 on day 30 (JOURNEY: 8, 20, 29, 44). A save carries its curve (`curve: 'bend-9'`); one made
+  on a plain curve (a number) is moved onto it at the same level and the same share of its bar. `PACE.levels` 16–30
+  are measured again by their own rule. The journey counts a letter, a stop of the season road and an album tile as
+  something new (what JOURNEY counts), so the first week has something new every visit or two.
 - **04b's one line in `src/scene/Player.tsx` accepted:** the intro hard-coded the living room's heading, so
   `FARM_START`'s heading and pitch could not reach the first frame otherwise. `PACE.first` and the journey's `pull`
   stay debts: the real-pace player's steps end at level 5, before the new last step, and a sunflower is exactly an hour.

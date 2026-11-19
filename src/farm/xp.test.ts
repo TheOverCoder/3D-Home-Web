@@ -1,7 +1,7 @@
 import fc from 'fast-check'
 import { describe, expect, it } from 'vitest'
 import { LEVELS } from './data'
-import { FIRST_STEP, levelOf, levelProgress, levelReward, onToday, sanitizeXp, savedOnToday, seedXp, unpaidCoins, xpAt, xpForSale, type Xp } from './xp'
+import { CURVE, FIRST_STEP, GROW, KNEE, levelOf, levelProgress, levelReward, onToday, sanitizeXp, savedOnToday, seedXp, unpaidCoins, xpAt, xpForSale, type Xp } from './xp'
 
 // Levels (src/farm/xp.ts): the curve and its inverse, the rewards waiting to be claimed, what a sale is worth, the XP a
 // farm from before levels starts with, and the saved XP read back. Pure: no farm, no page.
@@ -16,17 +16,22 @@ function valid(xp: Xp) {
 }
 
 describe('the curve', () => {
-  it('level 1 at 0, and from level L to the next takes LEVELS.step · L', () => {
+  it('level 1 at 0; from level L to the next takes LEVELS.step · L up to KNEE (the first day as it always was), then a little more each level', () => {
     expect(xpAt(1)).toBe(0)
     expect(xpAt(2)).toBe(30)
     expect(xpAt(5)).toBe(300)
     expect(xpAt(10)).toBe(1350)
-    for (let L = 1; L < TOP; L++) expect(xpAt(L + 1) - xpAt(L)).toBe(LEVELS.step * L)
+    for (let L = 1; L <= KNEE; L++) expect(xpAt(L + 1) - xpAt(L)).toBe(LEVELS.step * L)
+    for (let L = KNEE + 1; L < TOP; L++) expect(xpAt(L + 1) - xpAt(L)).toBe(Math.round(LEVELS.step * L * (1 + GROW * Math.log(L - KNEE + 1))))
+    // the month JOURNEY.md lays the content out over: about the XP of today's day 7, 14 and 30 (src/sim, the daily player)
+    expect(xpAt(20)).toBe(13_109)
+    expect(xpAt(29)).toBe(36_144)
+    expect(xpAt(44)).toBe(102_106)
   })
 
-  it('500 levels, each harder to reach than the one before; the top one at 3,742,500 XP', () => {
+  it('500 levels, each harder to reach than the one before; the top one at 23,300,357 XP (a whole number, far under the most a number holds)', () => {
     expect(TOP).toBe(500)
-    expect(xpAt(TOP)).toBe(3_742_500)
+    expect(xpAt(TOP)).toBe(23_300_357)
     for (let L = 2; L < TOP; L++) expect(xpAt(L + 1) - xpAt(L)).toBeGreaterThan(xpAt(L) - xpAt(L - 1))
   })
 
@@ -198,7 +203,8 @@ describe('XP saved under the first curve', () => {
   })
 
   it('level 20 halfway to 21 is level 20 halfway', () => {
-    expect(levelProgress(onToday(firstAt(20) + 150, FIRST_STEP))).toEqual({ level: 20, into: 300, need: 600, top: false })
+    const need = xpAt(21) - xpAt(20)
+    expect(levelProgress(onToday(firstAt(20) + 150, FIRST_STEP))).toEqual({ level: 20, into: Math.ceil(need / 2), need, top: false })
   })
 
   it('any points: the same level, at least the same share of its bar (the same boxes reached), and more points never fewer', () => {
@@ -222,8 +228,11 @@ describe('XP saved under the first curve', () => {
 
   it('a save without the mark is moved; one marked with today’s curve, or with a mark that cannot be read, is not', () => {
     expect(savedOnToday({ points: firstAt(7) + 3, paid: 7 })).toEqual({ points: onToday(firstAt(7) + 3, FIRST_STEP), paid: 7 })
-    const today = { points: firstAt(7) + 3, paid: 4, curve: LEVELS.step }
+    const today = { points: firstAt(7) + 3, paid: 4, curve: CURVE }
     expect(savedOnToday(today)).toBe(today)
+    // a save on the plain curve before today's (LEVELS.step 30, its mark a number) is moved too: the same level
+    const plain = (L: number) => (30 * L * (L - 1)) / 2
+    expect(levelOf((savedOnToday({ points: plain(25) + 10, paid: 25, curve: 30 }) as Xp).points)).toBe(25)
     for (const curve of [null, 0, -15, 2.5, 'fifteen', 1e9, NaN, {}]) expect(savedOnToday({ points: 99, paid: 1, curve }), JSON.stringify(curve)).toEqual({ points: 99, paid: 1, curve })
     // what is not an XP stays as it was (sanitizeXp reads it)
     for (const raw of [undefined, null, 7, 'xp', {}, { paid: 3 }, { points: '50' }]) expect(savedOnToday(raw)).toBe(raw)

@@ -7,7 +7,6 @@ import {
   CROPS,
   EXPANSIONS,
   EXPANSION_IDS,
-  LEVELS,
   MACHINE_IDS,
   MACHINES,
   NAMES,
@@ -31,7 +30,7 @@ import {
   type ProduceId,
   type ProducerId,
 } from '../data'
-import { levelOf, sanitizeXp, savedOnToday, seedXp, unpaidCoins } from '../xp'
+import { CURVE, levelOf, sanitizeXp, savedOnToday, seedXp, unpaidCoins } from '../xp'
 import { giftsFor, sanitizeGifts } from '../gifts'
 import { dailyFresh, sanitizeDaily } from '../daily'
 import { freshPlayed, sanitizePlayed } from '../calendar'
@@ -674,7 +673,7 @@ export function writeSlot() {
     // the curve of the game that loads it)
     // (and the chapter's request, as an order is)
     const requests = asked.map(({ id: _id, ...o }) => o)
-    text = JSON.stringify({ ...rest, xp: { ...xp, curve: LEVELS.step }, orders, requests, queue, time: Date.now() })
+    text = JSON.stringify({ ...rest, xp: { ...xp, curve: CURVE }, orders, requests, queue, time: Date.now() })
   } catch (e) {
     console.error('[3d-home] the farm could not be written as a save', e)
     return
