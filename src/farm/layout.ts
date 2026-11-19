@@ -192,6 +192,11 @@ export const DECOR_FEET: Record<ShopKind, DecorFoot> = {
   'raspberry-bush': { hx: 0.65, hz: 0.6 },
   // update v1's beehive: its stand and the hive on it
   beehive: { hx: 0.38, hz: 0.34 },
+  // the seasons' pieces: the arch between its posts, the parasol's base (its canopy overhangs), the bales, the snowman
+  'flower-arch': { hx: 0.7, hz: 0.2 },
+  parasol: { hx: 0.3, hz: 0.3 },
+  'hay-bales': { hx: 0.5, hz: 0.48 },
+  snowman: { hx: 0.36, hz: 0.36 },
 }
 
 /** Whether a name is a kind the shop sells (never a name every object has: `constructor`, `__proto__`). */

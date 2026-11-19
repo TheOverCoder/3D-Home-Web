@@ -370,6 +370,10 @@ const SOLID: Partial<Record<ShopKind, Solid>> = {
   'scarecrow-pumpkin': { box: [0.7, 0.95, 0.2] },
   'scarecrow-witch': { box: [0.7, 0.95, 0.3] },
   'scarecrow-crows': { box: [0.7, 0.95, 0.22] },
+  // the seasons' pieces: the arch's two posts (you walk under it), the parasol's pole, the bales, the snowman
+  parasol: { post: [1.1, 0.08] },
+  'hay-bales': { box: [0.47, 0.34, 0.46] },
+  snowman: { post: [0.65, 0.33] },
   'scarecrow-ribbons': { box: [0.7, 0.95, 0.2] },
   'scarecrow-pinwheel': { box: [0.7, 0.95, 0.2] },
   'scarecrow-jingle': { box: [0.7, 0.95, 0.26] },

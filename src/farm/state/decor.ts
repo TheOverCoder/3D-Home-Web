@@ -9,6 +9,8 @@ import { bump, farm, isUnlocked, lockField, lockOf, save, type FarmData } from '
 import { gainXp } from './levels'
 import { collect, stockOf } from './producers'
 import { quarter } from './shop'
+import { SEASONS, type SeasonId } from '../season'
+import { seasonPlaying } from './season'
 
 // The farm's decoration and fruit plants (the edit mode's shop), and the house's furniture and shell (decorating).
 
@@ -18,7 +20,15 @@ export const decorOwned = (kind: ShopKind) => farm.layout.decor.filter((d) => d.
 export const decorPrice = (kind: ShopKind) => nextPrice(FARM_SHOP[kind].price, decorOwned(kind))
 /** Whether one more of a kind can be bought: it is open at the farm's level, and a kind has a most (a fruit kind's
  *  plants). */
-export const decorForSale = (kind: ShopKind) => decorOwned(kind) < mostOf(kind) && isUnlocked(`decor:${kind}`)
+export const decorForSale = (kind: ShopKind) => decorOwned(kind) < mostOf(kind) && isUnlocked(`decor:${kind}`) && inItsSeason(kind)
+
+/** A season's piece is sold only in its season (mission 10 c8; bought, it stands all year); every other kind always.
+ *  While the farm's year is quiet or waits (src/farm/state/season.ts, seasonPlaying) nothing is held back. */
+export function inItsSeason(kind: ShopKind) {
+  const own = (FARM_SHOP[kind] as { season?: SeasonId }).season
+  const now = seasonPlaying()
+  return !own || now === null || own === now
+}
 
 /** Every kind of the farm's shop as it shows it: how many the farm has, the next one's price, and the level it opens at
  *  while it is locked. */
@@ -36,8 +46,16 @@ export function shopView(): ShopItemView[] {
       can: decorForSale(kind) && farm.coins >= price,
       ...(fruit ? { fruit } : {}),
       ...lockField(lockOf(`decor:${kind}`)),
+      ...seasonField(kind),
     }
   })
+}
+
+/** A season's piece's ribbon in the shop: its season, and whether it is now. */
+function seasonField(kind: ShopKind): Pick<ShopItemView, 'season'> {
+  const own = (FARM_SHOP[kind] as { season?: SeasonId }).season
+  if (!own) return {}
+  return { season: { name: SEASONS[own].name, pic: SEASONS[own].pic, now: inItsSeason(kind) } }
 }
 
 /** The plants of a fruit kind (or the hives) standing on the farm, in order: its producer's animals. */

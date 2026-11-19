@@ -5,6 +5,8 @@
 /** The edit mode shop's two tabs. */
 export type DecorTab = 'decor' | 'fruit'
 
+import type { SeasonId } from './season'
+
 export type DecorKind =
   | 'lamp'
   | 'lantern'
@@ -31,6 +33,10 @@ export type DecorKind =
   | 'scarecrow-pinwheel'
   | 'scarecrow-jingle'
   | 'beehive'
+  | 'flower-arch'
+  | 'parasol'
+  | 'hay-bales'
+  | 'snowman'
 export type FruitKind = 'apple-tree' | 'orange-tree' | 'cherry-tree' | 'blueberry-bush' | 'raspberry-bush'
 export type ShopKind = DecorKind | FruitKind
 /** The pieces of the shop that give a good as it fills (each a producer of the farm, its "animals" the pieces standing):
@@ -49,6 +55,9 @@ export interface ShopDef {
   /** a producing piece that is no plant (the beehive, update v1): the good it gives, the building that good is kept in,
    *  and the most the farm may own */
   bears?: { good: 'honey'; store: 'silo' | 'barn'; most: number }
+  /** a season's piece (mission 10 c8, src/farm/season.ts `decor`): sold only in its season, standing all year once
+   *  bought */
+  season?: SeasonId
 }
 
 /** Decoration: light, fences and paths, seats, trees, bushes and flowers, and nine scarecrows for the beds in three
@@ -81,6 +90,11 @@ export const DECOR: Record<DecorKind, ShopDef> = {
   // update v1 (update-v1/missions/01-loop-economy.md c8): a hive of bees, a piece that gives (its honey kept in the
   // barn); three at most
   beehive: { id: 'beehive', tab: 'decor', name: 'Beehive', price: 650, bears: { good: 'honey', store: 'barn', most: 3 } },
+  // update v1 (update-v1/missions/10-seasons-weather.md c8): a piece for each season, sold in it, kept all year
+  'flower-arch': { id: 'flower-arch', tab: 'decor', name: 'Flower arch', price: 320, season: 'spring' },
+  parasol: { id: 'parasol', tab: 'decor', name: 'Parasol', price: 280, season: 'summer' },
+  'hay-bales': { id: 'hay-bales', tab: 'decor', name: 'Hay bales', price: 240, season: 'autumn' },
+  snowman: { id: 'snowman', tab: 'decor', name: 'Snowman', price: 260, season: 'winter' },
 }
 
 /** Fruit trees and bushes: each bears its fruit (a producer of the farm, as the lemon tree is). */
@@ -124,6 +138,9 @@ export interface ShopItemView {
   fruit?: FruitId
   /** not open yet at the farm's level: the level it opens at (src/farm/unlocks.ts) */
   locked?: number
+  /** a season's piece (mission 10 c8): its season's name and picture, and whether it is that season now (sold, first
+   *  in the shop with its ribbon) or not (faded, "Back in spring") */
+  season?: { name: string; pic: string; now: boolean }
 }
 
 /** What the edit mode's shop does: buy one (it is then placed by the player, as a place is moved), or put one placed

@@ -683,4 +683,17 @@ export const GALLERY: GalleryEntry[] = [
       return { object, width: 5.2, height: 2.6, triangles: () => dairy.triangles() + kettle.triangles() + hive.triangles(), update() {} }
     },
   },
+  {
+    id: 'seasons',
+    label: 'Seasons',
+    name: "The seasons' pieces (mission 10 c8): spring's flower arch, summer's parasol, autumn's hay bales, winter's snowman",
+    make() {
+      const kinds = ['flower-arch', 'parasol', 'hay-bales', 'snowman'] as const
+      const parts = kinds.map((k) => structureParts(decorModel(k), k))
+      parts.forEach((p, i) => (p.group.position.x = (i - 1.5) * 1.8))
+      const object = new Group()
+      object.add(...parts.map((p) => p.group))
+      return { object, width: 7.4, height: 2.6, triangles: () => parts.reduce((n, p) => n + p.triangles(), 0), update() {} }
+    },
+  },
 ]

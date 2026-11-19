@@ -31,6 +31,9 @@ import { grain, mix, slab, type Structure } from './structures'
 //   planter   a wooden planter box with greens and flowers
 //   birdbath  a stone bird bath, water in its bowl and a blue tit on its rim
 //   well      a wishing well: a round stone wall, two posts under a shingled roof, a crank and a bucket on its rope
+//   flower-arch, parasol, hay-bales, snowman
+//             the seasons' pieces (mission 10 c8): a white arch wound with blossom, a striped parasol on its base,
+//             three hay bales with a pumpkin, a snowman with his scarf
 //   scarecrow-farmer, -haymaker, -sunflower; -pumpkin, -witch, -crows; -ribbons, -pinwheel, -jingle
 //             nine scarecrows in three styles of three — straw and patches, the harvest, ribbons and shine — 1.55 to
 //             about 2 m tall (src/models/scarecrows.ts)
@@ -878,6 +881,157 @@ function beehive(): Structure<'hive'> {
   return { hive: { shape: merge(...legs, board, lower, upper, lid, peak, landing), material: { roughness: 0.75 } } }
 }
 
+// ───────────────────────────── the seasons' pieces (mission 10 c8) ─────────────────────────────
+// Each sold in its own season (src/farm/season.ts, `decor`), standing all year once bought; a few hundred triangles.
+
+/** Spring's flower arch: two white posts and a white arch between them, wound with green and pink blossom. */
+function flowerArch(): Structure<'paint' | 'leaves' | 'petals'> {
+  const posts = [-1, 1].map((sx) => slab(0.045, 0.045, 0, 1.55, 6, 8).place([sx * 0.6, 0, 0]))
+  // the arch: a half circle from one post's top to the other's, into both
+  const arc: V3[] = Array.from({ length: 9 }, (_, k) => {
+    const a = Math.PI - (k / 8) * Math.PI
+    return [0.6 * Math.cos(a), 1.5 + 0.6 * Math.sin(a), 0]
+  })
+  const arch = tube(arc, 0.04, { seg: 5, caps: [true, true] })
+  const paint = merge(...posts, arch)
+    .paint(() => PAINT, 0)
+    .surface(0)
+  // green tufts along the arch and up the posts, and pink blooms among them
+  const spots: V3[] = [...arc.filter((_, k) => k % 2 === 1), [-0.6, 1.05, 0.02], [0.6, 0.95, -0.02]]
+  const green = merge(...spots.map((at, k) => lump(0.1, at, 140 + k, [1.1, 0.9, 1.1], 1)))
+  const leaves = leafy(green, rgb(0x3f6e33), rgb(0x6a9a46), 0.6, 2.1, 151)
+  const blooms = merge(...spots.slice(0, 5).map((at, k) => lump(0.055, [at[0] + 0.05 * (k % 2 ? 1 : -1), at[1] + 0.06, at[2] + 0.06], 160 + k, [1, 0.8, 1], 0))).paint(
+    (x, y) => mix(rgb(0xf3a3c0), rgb(0xfbe1ea), smoothstep(1.4, 2.1, y + 0.1 * Math.sin(x * 9))),
+    0,
+  )
+  return {
+    paint: { shape: paint, material: { roughness: 0.6 } },
+    leaves: { shape: leaves, material: LEAVES },
+    petals: { shape: blooms, material: { roughness: 0.6 } },
+  }
+}
+
+/** Summer's parasol: a weighted base, a pole and a striped canopy, red and cream. */
+function parasol(): Structure<'base' | 'canopy'> {
+  const base = lathe(
+    [
+      [0.26, 0],
+      [0.26, 0.05],
+      [0.2, 0.09],
+      [0.05, 0.1],
+      [0, 0.1],
+    ],
+    { seg: 12, steps: 1 },
+  ).paint(() => rgb(0x5e6a70), 0)
+  const pole = tube(
+    [
+      [0, 0.06, 0],
+      [0, 2.08, 0],
+    ],
+    0.024,
+    { seg: 6, caps: [true, true] },
+  ).paint(() => rgb(0xe9e3d6), 0)
+  const canopy = lathe(
+    [
+      [0, 2.2],
+      [0.16, 2.16],
+      [0.92, 1.86],
+      [0.9, 1.83],
+      [0, 1.98],
+    ],
+    { seg: 16, steps: 1 },
+  ).paint((x, _y, z) => (Math.floor(((Math.atan2(z, x) + Math.PI) / (2 * Math.PI)) * 8) % 2 ? rgb(0xd8483f) : rgb(0xf4ead2)), 0)
+  const finial = ellipsoid(0.035, 0.045, 0.035, 6, 4)
+    .place([0, 2.22, 0])
+    .paint(() => rgb(0xe9e3d6), 0)
+  return {
+    base: { shape: merge(base, pole), material: { roughness: 0.55 } },
+    canopy: { shape: merge(canopy, finial), material: { roughness: 0.8 } },
+  }
+}
+
+/** Autumn's hay bales: two side by side and one across them on top, bound with twine, a small pumpkin by them. */
+function hayBales(): Structure<'hay' | 'pumpkin'> {
+  const straw = (x: number, y: number, z: number): V3 => mix(rgb(0xd9b25c), rgb(0xb98e3a), 0.5 + 0.5 * noise3(x * 30, y * 6, z * 30, 171))
+  // twine: two dark bands round each bale, across its length
+  const bale = (along: 0 | 2) => (x: number, _y: number, z: number) => (Math.abs(Math.abs(along === 0 ? x : z) - 0.2) < 0.018 ? 1 : 0)
+  const lower = [-1, 1].map((sz) =>
+    slab(0.45, 0.22, 0, 0.36, 4, 16)
+      .place([0, 0, sz * 0.23])
+      .paint(straw, 0)
+      .pattern(bale(0), rgb(0x7a5a2a)),
+  )
+  const upper = slab(0.22, 0.42, 0.35, 0.68, 4, 16).paint(straw, 0).pattern(bale(2), rgb(0x7a5a2a))
+  const pumpkin = lathe(
+    [
+      [0, 0],
+      [0.09, 0.015],
+      [0.13, 0.07],
+      [0.12, 0.13],
+      [0.05, 0.17],
+      [0, 0.165],
+    ],
+    { seg: 10, steps: 1 },
+  )
+    .place([0.3, 0.355, 0.28])
+    .paint((x, _y, z) => mix(rgb(0xe07a2a), rgb(0xb85a1a), 0.5 + 0.5 * Math.cos(Math.atan2(z - 0.28, x - 0.3) * 8)), 0)
+  const stalk = tube(
+    [
+      [0.3, 0.505, 0.28],
+      [0.32, 0.56, 0.28],
+    ],
+    0.014,
+    { seg: 5, caps: [true, true] },
+  ).paint(() => rgb(0x4e6a2c), 0)
+  return {
+    hay: { shape: merge(...lower, upper), material: { roughness: 0.95, detail: { scale: 22, bump: 0.25, shade: 0.12 } } },
+    pumpkin: { shape: merge(pumpkin, stalk), material: { roughness: 0.6 } },
+  }
+}
+
+/** Winter's snowman: three balls of snow, coal eyes and buttons, a carrot nose, stick arms and a red scarf. */
+function snowman(): Structure<'snow' | 'trim'> {
+  const snowy = (_x: number, y: number): V3 => mix(rgb(0xe6edf5), rgb(0xfbfdff), smoothstep(0, 1.3, y))
+  const balls = merge(ellipsoid(0.33, 0.3, 0.33, 9, 5).place([0, 0.28, 0]), ellipsoid(0.24, 0.22, 0.24, 9, 5).place([0, 0.72, 0]), ellipsoid(0.17, 0.16, 0.17, 8, 5).place([0, 1.04, 0])).paint(
+    snowy,
+    0,
+  )
+  const coal = (at: V3) => ellipsoid(0.024, 0.024, 0.018, 4, 3).place(at)
+  const face = merge(coal([-0.06, 1.08, 0.15]), coal([0.06, 1.08, 0.15]), coal([0, 0.76, 0.235])).paint(() => rgb(0x222222), 0)
+  const nose = lathe(
+    [
+      [0.026, 0],
+      [0.016, 0.07],
+      [0, 0.13],
+    ],
+    { seg: 6, steps: 1 },
+  )
+    .place([0, 1.03, 0.13], [Math.PI / 2, 0, 0])
+    .paint(() => rgb(0xe8772a), 0)
+  const arm = (sx: number) =>
+    tube(
+      [
+        [sx * 0.2, 0.76, 0],
+        [sx * 0.5, 0.98, 0.02],
+      ],
+      [0.016, 0.009],
+      { seg: 4, caps: [true, true] },
+    )
+  const arms = merge(arm(-1), arm(1)).paint(() => rgb(0x5a4434), 0)
+  const scarf = tube(
+    Array.from({ length: 9 }, (_, k): V3 => {
+      const a = (k / 8) * Math.PI * 2
+      return [0.17 * Math.cos(a), 0.9, 0.17 * Math.sin(a)]
+    }),
+    0.035,
+    { seg: 5, caps: [true, true] },
+  ).paint(() => rgb(0xc8323a), 0)
+  return {
+    snow: { shape: balls, material: { roughness: 0.95 } },
+    trim: { shape: merge(face, nose, arms, scarf), material: { roughness: 0.7 } },
+  }
+}
+
 // ───────────────────────────── the catalogue's models ─────────────────────────────
 
 const MAKERS: Record<DecorKind, () => Structure> = {
@@ -906,6 +1060,10 @@ const MAKERS: Record<DecorKind, () => Structure> = {
   'scarecrow-pinwheel': () => scarecrowModel('scarecrow-pinwheel'),
   'scarecrow-jingle': () => scarecrowModel('scarecrow-jingle'),
   beehive,
+  'flower-arch': flowerArch,
+  parasol,
+  'hay-bales': hayBales,
+  snowman,
 }
 
 /** One decoration's model (made afresh each call: build it once per kind and share it). */

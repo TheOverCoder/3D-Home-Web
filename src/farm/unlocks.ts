@@ -112,6 +112,11 @@ const TABLE = {
   'recipe:oven:bread': 22,
   'recipe:dairy:cheese': 23,
   'decor:beehive': 24,
+  // the seasons' pieces (mission 10 c8: levels 6–14), each sold in its season
+  'decor:flower-arch': 5,
+  'decor:parasol': 10,
+  'decor:hay-bales': 11,
+  'decor:snowman': 14,
   'recipe:kettle:strawberry_jam': 25,
   'upgrade:meadow': 26,
   'recipe:kettle:cherry_jam': 27,

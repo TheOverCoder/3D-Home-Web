@@ -131,6 +131,11 @@ const DECOR_WEIGHT: Record<ShopKind, number> = {
   'blueberry-bush': 647,
   'raspberry-bush': 869,
   beehive: 400,
+  // the seasons' pieces (mission 10 c8: each under 600)
+  'flower-arch': 546,
+  parasol: 264,
+  'hay-bales': 312,
+  snowman: 588,
 }
 
 /** The big trees (src/models/trees.ts): on the farm, the woods' fourteen as a new farm has them and the garden's three

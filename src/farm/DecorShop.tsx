@@ -1,6 +1,6 @@
 import { farmSound, uiClick } from '../audio/sound'
 import { useHome } from '../store'
-import { art } from '../ui/art'
+import { art, type ArtId } from '../ui/art'
 import { LockCorner, LockTag, opensWords, useNope } from '../ui/LockTag'
 import { Coins, Purse, Shell, useArmed } from '../ui/Sheet'
 import { Check } from '../ui/glyphs'
@@ -51,6 +51,20 @@ function ShopCard({ item }: { item: ShopItemView }) {
         <span className="farm-card-tags">{item.fruit && <img className="decor-fruit" src={iconUrl(item.fruit)} alt="" />}</span>
       </button>
     )
+  // a season's piece out of its season: faded, back in its season (mission 10 c8; one bought stands all year)
+  if (item.season && !item.season.now)
+    return (
+      <button ref={scope} className="farm-card decor-card locked" aria-disabled="true" aria-label={`${item.name}: back in ${item.season.name.toLowerCase()}`} onClick={nope}>
+        <img className="art" src={shopArtUrl(item.kind)} alt="" />
+        <span className="farm-card-name">{item.name}</span>
+        <span className="farm-card-tags">
+          <span className="tag">
+            <img src={art(item.season.pic as ArtId)} alt="" />
+            Back in {item.season.name.toLowerCase()}
+          </span>
+        </span>
+      </button>
+    )
   return (
     <button
       className="farm-card decor-card"
@@ -63,6 +77,13 @@ function ShopCard({ item }: { item: ShopItemView }) {
       <img className="art" src={shopArtUrl(item.kind)} alt="" />
       <span className="farm-card-name">{item.name}</span>
       <span className="farm-card-tags">
+        {item.season && (
+          // its season's ribbon: sold now, for this season only
+          <span className="tag ribbon-season" title={`${item.season.name} only`}>
+            <img src={art(item.season.pic as ArtId)} alt="" />
+            {item.season.name}
+          </span>
+        )}
         {item.fruit && <img className="decor-fruit" src={iconUrl(item.fruit)} alt="" />}
         {item.owned > 0 && (
           <span className="tag ok">
@@ -84,10 +105,11 @@ export function DecorShop({ tab }: { tab: DecorTab }) {
   useFarm((s) => s.rev)
   const close = useHome((s) => s.closePanel)
   const open = useHome((s) => s.openPanel)
+  // the season's own piece first (mission 10 c8), then what is open, then what opens later
   const items = openFirst(
     shopView().filter((i) => i.tab === tab),
     (i) => i.locked ?? null,
-  )
+  ).sort((a, b) => Number(b.season?.now === true && b.locked === undefined) - Number(a.season?.now === true && a.locked === undefined))
   return (
     <Shell title={tab === 'decor' ? 'Decoration' : 'Fruit trees'} art={art(tab === 'decor' ? 'shopping-bags' : 'seedling')} sub={<Purse />} onClose={close}>
       <div className="edit-actions deco-tabs decor-tabs" role="tablist" aria-label="The farm shop">

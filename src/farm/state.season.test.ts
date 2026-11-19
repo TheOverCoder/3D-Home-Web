@@ -6,6 +6,9 @@ import { CLEAR, standing, weatherAt } from './weather'
 import { justSaved, savedNow, startFrom } from './testSaves'
 import {
   arrivalShown,
+  buyDecor,
+  shopView,
+  unlockAll,
   seasonArrival,
   seasonNews,
   bedYield,
@@ -325,5 +328,25 @@ describe('the season told', () => {
     quietSeasons(true)
     for (let k = 1; k <= SEASON_DAYS; k++) playOn(k)
     expect([seasonNews(), seasonArrival()]).toEqual([null, null])
+  })
+})
+
+// Mission 10 c8: a season's piece is sold in its season only (first in the shop with its ribbon), faded "back in …"
+// out of it; one bought stands all year; while the year is quiet nothing is held back.
+describe("the seasons' pieces", () => {
+  it('sold only in its season; out of it, not for sale and told when it is back; quiet: for sale', () => {
+    unlockAll(true)
+    farm.coins = 10_000
+    setSeason('winter')
+    const view = (k: string) => shopView().find((i) => i.kind === k)!
+    expect(view('snowman').season).toEqual({ name: 'Winter', pic: 'snowflake', now: true })
+    expect(view('parasol').season?.now).toBe(false)
+    expect(buyDecor('parasol')).toBe(false)
+    expect(buyDecor('snowman')).toBe(true)
+    setSeason('spring')
+    expect(buyDecor('snowman')).toBe(false)
+    expect(farm.layout.stored.snowman).toBe(1)
+    quietSeasons(true)
+    expect(buyDecor('parasol')).toBe(true)
   })
 })
