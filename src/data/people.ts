@@ -9,7 +9,7 @@
 
 import type { Keeper, ProduceId } from '../farm/data'
 import type { Voice } from '../film/voice'
-import { CONTRACTOR_LOOK, ESTATE_LOOK, MANAGER_LOOK, rollLook } from '../models/look'
+import { CONTRACTOR_LOOK, ESTATE_LOOK, MANAGER_LOOK, SELLER_LOOK, rollLook } from '../models/look'
 import type { PersonLook } from '../models/person'
 import type { Talker } from '../talk/speech'
 
@@ -64,6 +64,15 @@ export const PEOPLE = {
     voice: { pitch: 122, speed: 4.7, size: 1, bright: 0.7, swing: 0.8 },
     pic: 'people/agent',
     hours: 'estate',
+  },
+  /** the car dealer's seller (Lane Motors, update-v1/missions/11-buildings.md c9): warm, quick, sure of the paints */
+  seller: {
+    name: 'The car dealer',
+    role: 'staff',
+    look: { seed: 6113, over: SELLER_LOOK },
+    voice: { pitch: 190, speed: 4.6, size: 0.92, bright: 0.75, swing: 0.7 },
+    pic: 'people/seller',
+    hours: 'dealer',
   },
   /** the man on the tractor: calm, low, unhurried */
   driver: { name: 'The driver', role: 'staff', look: { whole: DRIVER_LOOK }, voice: { pitch: 96, speed: 4.1, size: 1.08, bright: 0.45, swing: 0.4 }, pic: 'people/driver' },

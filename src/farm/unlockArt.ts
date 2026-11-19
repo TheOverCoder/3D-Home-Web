@@ -43,6 +43,8 @@ export function unlockPic(id: UnlockId): string {
   // a neighbour moving in: their portrait (the face at the gate)
   if (kind === 'person') return pictureOf(rest as NeighbourId)
   if (kind === 'herd') return art(UPGRADE_ART[UPGRADES.find((u) => u.herd === rest)!.id])
+  // a paint for your car: the car, at the dealer
+  if (kind === 'paint') return art('automobile')
   return art('four-leaf-clover')
 }
 
@@ -56,6 +58,7 @@ export function whereOf(id: UnlockId): string {
   if (kind === 'upgrade' || kind === 'herd') return 'Shop'
   if (kind === 'decor') return SHOP[rest as ShopKind].tab === 'fruit' ? 'Fruit trees' : 'Decor'
   if (kind === 'person') return 'Neighbours'
+  if (kind === 'paint') return 'Car dealer'
   return 'Edit'
 }
 

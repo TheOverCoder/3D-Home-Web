@@ -60,6 +60,7 @@ export type Panel =
   | { kind: 'market-buy' } // the card that asks before the shop is bought
   | { kind: 'contractor' } // the contractor: today's pieces, and what he pays for materials
   | { kind: 'car' } // the car: where it drives you (the house once it is yours, the farm)
+  | { kind: 'dealer' } // the car dealer: the paints for your car (src/farm/car/DealerPanel.tsx)
   | { kind: 'estate' } // the estate agent: the house for sale, its price, or that it is yours
   | { kind: 'house-buy' } // the card that asks before the house is bought
   | { kind: 'ladder'; id: LadderId; from?: Panel } // the card that asks before a ladder's step is bought (from: the panel to go back to)
@@ -102,6 +103,7 @@ export const PANEL_KINDS: { readonly [K in Panel['kind']]: Extract<Panel, { kind
   'market-buy': { kind: 'market-buy' },
   contractor: { kind: 'contractor' },
   car: { kind: 'car' },
+  dealer: { kind: 'dealer' },
   estate: { kind: 'estate' },
   'house-buy': { kind: 'house-buy' },
   ladder: { kind: 'ladder', id: 'rate' },

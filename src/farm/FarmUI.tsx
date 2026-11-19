@@ -11,6 +11,7 @@ import { ManagerPanel, MarketBuyPanel, MarketPanel, MarketPlacePanel } from './M
 import { ContractorPanel } from './ContractorPanel'
 import { EstatePanel, HouseBuyPanel } from './EstatePanel'
 import { CarPanel } from './car/CarPanel'
+import { DealerPanel } from './car/DealerPanel'
 import { LadderCard } from './Ladder'
 import { ShopPanel } from './shop/ShopPanel'
 import { MachinePanel, MachineSlotCard } from './MachinePanel'
@@ -99,6 +100,7 @@ export function FarmUI() {
         {panel?.kind === 'market-buy' && <MarketBuyPanel />}
         {panel?.kind === 'contractor' && <ContractorPanel />}
         {panel?.kind === 'car' && <CarPanel />}
+        {panel?.kind === 'dealer' && <DealerPanel />}
         {panel?.kind === 'estate' && <EstatePanel />}
         {panel?.kind === 'house-buy' && <HouseBuyPanel />}
         {panel?.kind === 'ladder' && <LadderCard id={panel.id} />}

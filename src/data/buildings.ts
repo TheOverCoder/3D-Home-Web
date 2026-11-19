@@ -9,6 +9,7 @@
 // and a room would look roofless. src/data/buildings.test.ts checks every row.
 
 import { ESTATE_WALKIN } from './estate'
+import { DEALER_WALKIN } from './dealer'
 import { onLot } from './lot'
 import { MARKET_WALKIN } from './market'
 
@@ -78,7 +79,7 @@ export interface WalkIn {
   autoDoor?: AutoDoor
 }
 
-export const WALK_INS: readonly WalkIn[] = [MARKET_WALKIN, ESTATE_WALKIN]
+export const WALK_INS: readonly WalkIn[] = [MARKET_WALKIN, ESTATE_WALKIN, DEALER_WALKIN]
 
 /** The whole walk-in's extent on the ground (walls included). */
 export function bounds(w: WalkIn): Rect {

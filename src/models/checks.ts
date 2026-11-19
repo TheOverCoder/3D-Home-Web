@@ -26,6 +26,7 @@ import { WALK_INS } from '../data/buildings'
 import { DECOR_KINDS, FRUIT, FRUIT_KINDS } from '../farm/decor'
 import { decorModel } from './decor'
 import { parkModel } from './park'
+import { dealerFittingsParts, putDealerFittings } from './dealer'
 import { PARK_STAGES } from '../farm/park'
 import { fruitParts, fruitPlantModel, fruitSpots, putFruit } from './fruit'
 import { bigTreeKind, bigTreeModel, cornerTree, countryTree, gardenTree } from './trees'
@@ -336,10 +337,11 @@ export const MODEL_CHECKS: ModelCheck[] = [
   },
   {
     id: 'market',
-    name: "The walk-in buildings (the market and the contractor's cabin, the estate office and its parking sign) with their fittings",
+    name: "The walk-in buildings (the market and the contractor's cabin, the estate office and its parking sign, the car dealer) with their fittings",
     run() {
       const fittings = marketFittingsParts()
       const estate = estateFittingsParts()
+      const dealer = dealerFittingsParts()
       return WALK_INS.flatMap((def) => {
         // the shell and what stands in it and on it, as one model: the sign, the awning and the window hold on to the
         // walls, the till to the counter, the computer to the desk; the sliding door's leaves, shut and open, to the
@@ -355,6 +357,7 @@ export const MODEL_CHECKS: ModelCheck[] = [
                   ...structurePieces(walkInShellModel(def)),
                   ...(def.id === 'market' ? posedPieces(fittings, putMarketFittings) : []),
                   ...(def.id === 'estate' ? posedPieces(estate, putEstateFittings) : []),
+                  ...(def.id === 'dealer' ? posedPieces(dealer, putDealerFittings) : []),
                   ...(leaves && door ? posedPieces(leaves, (pp) => putSlidingDoor(pp, door, open)) : []),
                 ],
                 { ground: 0 },

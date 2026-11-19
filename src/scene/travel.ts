@@ -1,6 +1,9 @@
 import { ARRIVE } from '../data/maps'
 import { driveTo, farm, type Place } from '../farm/state'
 import { changeMap, changingMap } from './maps'
+import { setDrivePaint } from '../film/drivePaint'
+import { paintTint } from '../models/car'
+import { CAR_PAINTS } from '../farm/carPaints'
 
 // A drive to the other map, as the car's talk starts it (src/farm/car): the screen goes dark, the drive's film plays
 // (src/film/DriveFilm.tsx sets it from the scene's start), the drive happens in the save (`driveTo`), the other map comes
@@ -35,6 +38,8 @@ export const canTravel = (to: Place) => to !== farm.place && (to === 'farm' || f
 export function travel(to: Place): boolean {
   if (!canTravel(to)) return false
   const trip: Trip = { from: farm.place, to }
+  // the film's car in your car's paint
+  setDrivePaint(paintTint(CAR_PAINTS[farm.car.worn].hex))
   void changeMap(to, ARRIVE[to], async () => {
     try {
       const film = films[films.length - 1]

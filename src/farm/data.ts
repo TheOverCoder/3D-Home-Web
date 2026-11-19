@@ -1051,6 +1051,7 @@ export type Hours = readonly DayPhase[] | { readonly from: number; readonly to: 
 export const HOURS = {
   contractor: ['morning', 'noon', 'evening'],
   estate: { from: 8, to: 16 },
+  dealer: { from: 9, to: 17 },
   // the neighbours, when they come by the gate (src/farm/people/visits.ts): the baker after his early bake, the teacher
   // after school, the knitter in the day, the beekeeper while his bees fly, the child after school until supper
   baker: ['morning', 'noon'],

@@ -2,9 +2,11 @@ import { useEffect, useMemo } from 'react'
 import { CuboidCollider, RigidBody } from '@react-three/rapier'
 import { CAR_SPOT } from '../../data/maps'
 import { useInteractable } from '../../lib/interaction'
-import { CAR_SHAPE, carHalf, carParts, putCar } from '../../models/car'
+import { Color } from 'three'
+import { CAR_SHAPE, carHalf, carParts, paintTint, putCar } from '../../models/car'
+import { CAR_PAINTS } from '../carPaints'
 import { useHome } from '../../store'
-import type { Place } from '../state'
+import { farm, useFarm, type Place } from '../state'
 
 // The car on a map, at its spot (src/data/maps.ts, CAR_SPOT): its model (src/models/car.ts: one draw that casts, and
 // the soft shadow under it), a collider you bump into, and its talk — one press opens its sheet (./CarPanel.tsx: where
@@ -15,13 +17,15 @@ const CAR_REACH = 1.2
 
 export function Car({ place }: { place: Place }) {
   const spot = CAR_SPOT[place]
+  // in the paint it wears (src/farm/carPaints.ts: bought at the car dealer)
+  const paint = useFarm(() => farm.car.worn)
   const parts = useMemo(() => {
     const p = carParts(1)
     p.begin()
-    putCar(p, spot.x, spot.z, spot.heading)
+    putCar(p, spot.x, spot.z, spot.heading, new Color(...paintTint(CAR_PAINTS[paint].hex)))
     p.end()
     return p
-  }, [spot])
+  }, [spot, paint])
   useEffect(() => () => parts.dispose(), [parts])
   const half = carHalf(spot.heading)
   const openPanel = useHome((s) => s.openPanel)

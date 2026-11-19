@@ -18,8 +18,8 @@ const overlaps = (a: Rect, b: Rect) => a.x0 < b.x1 - EPS && a.x1 > b.x0 + EPS &&
 describe('the lot’s rows', () => {
   it('are the ground the lot always was: the lane’s strip, the market’s forecourt, the contractor’s corner', () => {
     // (the market's bigger hall, mission 11 c4: its east wall and the cabin further east, the lot to the dealer's wall)
-    // (the lane reaches the car park's west end, mission 11 c7)
-    expect(LOT_ROWS.lane).toEqual({ x0: PARK_AREA.x0, x1: 19.25, z0: 13, z1: 16.3 })
+    // (the lane reaches the car park's west end and past the dealer's forecourt, mission 11 c7, c9)
+    expect(LOT_ROWS.lane).toEqual({ x0: PARK_AREA.x0, x1: 28, z0: 13, z1: 16.3 })
     expect(LOT_ROWS.forecourt).toEqual({ x0: 5.9, x1: 19.25, z0: 16.3, z1: 17.0 })
     expect(LOT_ROWS.corner).toEqual({ x0: 16.6, x1: 19.25, z0: 17.0, z1: 19.0 })
     expect(LOT_ROWS.park).toEqual({ x0: -26, x1: -7.2, z0: 16.3, z1: 30.5 })

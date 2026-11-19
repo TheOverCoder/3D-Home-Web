@@ -89,11 +89,12 @@ const giftImage = () => artImage('wrapped-gift')
 // fifteen in line, room for those walking off after "sell to everyone" (`?debug&people=N`: N buyers, to measure), and
 // the guests: the tractor's driver, the market's manager, its shoppers, the contractor and the estate agent
 const asked = Math.floor(Number(debugFlag('people')))
-/** Places in the crowd kept for guests (crowdGuests): the tractor's driver, the contractor, the estate agent, and the
+/** Places in the crowd kept for guests (crowdGuests): the tractor's driver, the contractor, the estate agent, the car
+ *  dealer's seller, and the
  *  market's shoppers (up to MOST_SHOPPERS in src/farm/state.ts: as many as the top of its ladders keeps about at once,
  *  so a visit never waits for room; the manager, there only before the shop is yours, walks out in one of their
  *  places). */
-export const GUEST_SLOTS = 17
+export const GUEST_SLOTS = 18
 const BUYERS = asked > 0 ? asked : 32
 const MAX_PEOPLE = BUYERS + GUEST_SLOTS
 

@@ -57,6 +57,8 @@ export function rollLook(rand: () => number, overrides: Partial<PersonLook> = {}
 export const MANAGER_LOOK: Partial<PersonLook> = { sex: 'm', shirt: '#f2eee8', trousers: '#2f3a4f', hair: '#9a9894', hairStyle: 0, hat: false, extra: 'tie', basket: false, height: 1.02 }
 /** The estate agent: a navy jacket (the shirt) and a tie, charcoal trousers, short dark hair (the manager's is grey),
  *  no hat, no basket; he sits at his desk. */
+/** The car dealer's seller: a mechanic's blue overall over a white shirt, standing behind the desk. */
+export const SELLER_LOOK: Partial<PersonLook> = { sex: 'f', shirt: '#f2f0ea', trousers: '#2f5d8a', hair: '#5a3522', hairStyle: 2, hat: false, basket: false, height: 0.98 }
 export const ESTATE_LOOK: Partial<PersonLook> = { sex: 'm', shirt: '#2f4a6b', trousers: '#2b3038', hair: '#2b2017', hairStyle: 0, hat: false, extra: 'tie', basket: false, seated: true, height: 1.0 }
 /** The contractor: the cap in yellow for a hard hat, an orange work shirt, no basket. */
 export const CONTRACTOR_LOOK: Partial<PersonLook> = { sex: 'm', shirt: '#e8742c', trousers: '#3d4a5c', hat: 'cap', hatBand: '#f2c230', basket: false, height: 1.04 }

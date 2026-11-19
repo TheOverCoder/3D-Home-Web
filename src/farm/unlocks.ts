@@ -13,6 +13,7 @@ import { personById, type NeighbourId } from '../data/people'
 import { MACHINES, PRODUCERS, UPGRADES, fullHerd, type CropId, type MachineId, type ProducerId, type UpgradeId } from './data'
 import { SHOP, type ShopKind } from './decor'
 import { PARCELS, type ParcelId } from './layout'
+import { CAR_PAINTS, type PaintId } from './carPaints'
 
 /** A recipe of a machine, as `machine:recipe` (MACHINES in ./data): a recipe is a row there and its level a row here,
  *  nothing more (the unit test holds the two tables to each other: every recipe has its row, and every row a recipe). */
@@ -22,7 +23,8 @@ export type RecipeKey = `${MachineId}:${string}`
  *  among them), a recipe, a kind of the edit mode's shop (decoration, fruit trees and bushes), a field, an animal
  *  past a herd full (`herd:cows:4`, the fourth cow: PRODUCERS' `herd.full` in ./data); and a neighbour moving in
  *  (src/farm/people: the level their first chapter comes at — nothing to buy: met with its letter). */
-export type UnlockId = 'bed' | `crop:${CropId}` | `upgrade:${UpgradeId}` | `recipe:${RecipeKey}` | `decor:${ShopKind}` | `parcel:${ParcelId}` | `herd:${ProducerId}:${number}` | `person:${NeighbourId}`
+export type UnlockId =
+  'bed' | `crop:${CropId}` | `upgrade:${UpgradeId}` | `recipe:${RecipeKey}` | `decor:${ShopKind}` | `parcel:${ParcelId}` | `herd:${ProducerId}:${number}` | `person:${NeighbourId}` | `paint:${PaintId}`
 
 /** The level each opens at (1: from the start). By theme, something every level from 2 to 13, and held to the pace a
  *  new farm is held to: the pace simulation plays with these locks on (src/sim/pace.test.ts, `npm run sim`; a number
@@ -119,6 +121,13 @@ const TABLE = {
   'decor:snowman': 14,
   // (given by the season road, never sold: open from the start)
   'decor:banner': 1,
+  // the car's paints at the dealer (mission 11 c10): one every six levels from 16 (red is the car's own: open from the start)
+  'paint:red': 1,
+  'paint:sky': 16,
+  'paint:mint': 22,
+  'paint:sunflower': 28,
+  'paint:navy': 34,
+  'paint:plum': 40,
   'recipe:kettle:strawberry_jam': 25,
   'upgrade:meadow': 26,
   'recipe:kettle:cherry_jam': 27,
@@ -198,5 +207,6 @@ export function unlockName(id: UnlockId): string {
   if (kind === 'decor') return SHOP[rest as ShopKind].name
   if (kind === 'herd') return UPGRADES.find((u) => u.herd === rest)!.name
   if (kind === 'person') return personById(rest as NeighbourId).name
+  if (kind === 'paint') return `${CAR_PAINTS[rest as PaintId].name} paint for your car`
   return PARCELS[rest as ParcelId].name
 }

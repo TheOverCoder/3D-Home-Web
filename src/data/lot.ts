@@ -17,8 +17,10 @@ export { LANE_SOUTH }
 
 /** The lane's north edge, as far as you walk on it: the garden fence's collider along its south side. */
 export const LANE_NORTH = 13
-/** The lot's east end: past the contractor's corner, to the car dealer's west wall's outer face. */
-export const LOT_EAST = 19.25
+/** The lot's east end: the lane past the car dealer's forecourt (src/data/dealer.ts). */
+export const LOT_EAST = 28.0
+/** The forecourt's and the contractor's corner's east end: the car dealer's west wall's outer face. */
+export const CORNER_EAST = 19.25
 /** The market's hall's walls where the lot meets them, their outer faces (src/data/market.ts, HALL less or more the
  *  walls' 0.15 m): its west wall (the estate office's east wall stands against it), its front (the north wall, its door
  *  in it) and its east wall (the cabin's side). */
@@ -39,9 +41,9 @@ export const LOT_ROWS: Readonly<Record<LotRowId, Rect>> = {
    *  end (the buyers' line stands on it, people walk past along it, shoppers stand about at its east end) */
   lane: { x0: PARK_AREA.x0, x1: LOT_EAST, z0: LANE_NORTH, z1: LANE_SOUTH },
   /** the market's forecourt: from the lane's edge to the hall's front, west to east from its west wall */
-  forecourt: { x0: MARKET_FACES.west, x1: LOT_EAST, z0: LANE_SOUTH, z1: MARKET_FACES.front },
+  forecourt: { x0: MARKET_FACES.west, x1: CORNER_EAST, z0: LANE_SOUTH, z1: MARKET_FACES.front },
   /** the contractor's corner, east of the hall: his cabin against its wall, the way to his window */
-  corner: { x0: MARKET_FACES.east, x1: LOT_EAST, z0: MARKET_FACES.front, z1: CORNER_SOUTH },
+  corner: { x0: MARKET_FACES.east, x1: CORNER_EAST, z0: MARKET_FACES.front, z1: CORNER_SOUTH },
   /** the car park beyond the lane, west of the office */
   park: PARK_AREA,
 }

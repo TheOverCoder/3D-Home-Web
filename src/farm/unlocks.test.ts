@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { PAINT_IDS } from './carPaints'
 import { NEIGHBOUR_IDS } from '../data/people'
 import { CROPS, LEVELS, MACHINES, MACHINE_IDS, PRODUCERS, PRODUCER_IDS, START_COINS, UPGRADES, fullHerd, type ProduceId } from './data'
 import { movesInAt } from './people/chapters'
@@ -19,6 +20,7 @@ const EVERY: string[] = [
   ...PARCEL_IDS.map((p) => `parcel:${p}`),
   ...NEIGHBOUR_IDS.map((who) => `person:${who}`),
   ...PRODUCER_IDS.flatMap((p) => herdSteps(p).map((n) => herdUnlock(p, n))),
+  ...PAINT_IDS.map((id) => `paint:${id}`),
 ]
 
 /** The level a good can first be had at: a crop's seeds, what a machine makes (its first recipe that makes it), what a

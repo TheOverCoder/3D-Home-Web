@@ -147,6 +147,7 @@ import {
 } from './state'
 import { Market } from './Market'
 import { Park } from './Park'
+import { Dealer } from './Dealer'
 import { Estate } from './Estate'
 import { Car } from './car/Car'
 import { GardenGate, GateLeaf, useGateExclude } from './GardenGate'
@@ -950,6 +951,7 @@ export function Garden() {
       <Market />
       <Estate />
       <Park />
+      <Dealer />
       <Car place="farm" />
       {/* the buyers and the man on the tractor saying a word now and then (src/talk) */}
       <FarmTalk />

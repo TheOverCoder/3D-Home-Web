@@ -42,6 +42,7 @@ import type { Parts } from '../lib/sculpt'
 import { fenceRun, foliage, mulberry } from '../scene/flora'
 import { NOON, TINT, skySun, tint } from '../scene/Lighting'
 import { EYE, ROAD, type DriveFilm, type Moment, type SetId } from './drive'
+import { drivePaint } from './drivePaint'
 
 // The drive film's little world (./drive.ts says what happens in it): the farm's parking lot, the country road and the
 // house's driveway, each a handful of draws, with the car on its rolling wheels and, for the shot from the driver's seat,
@@ -635,7 +636,7 @@ export class DriveSet {
     this.signpost.rotation.y = -Math.PI / 2
     const c = now.car
     this.car.begin()
-    putRollingCar(this.car, c.x, c.z, c.yaw, c.roll, { pitch: c.pitch, lift: c.lift })
+    putRollingCar(this.car, c.x, c.z, c.yaw, c.roll, { pitch: c.pitch, lift: c.lift }, drivePaint)
     this.car.end()
     // what rides on the body, as the body sits (src/models/car.ts, putRollingCar)
     const r = CAR_SHAPE.wheel.r

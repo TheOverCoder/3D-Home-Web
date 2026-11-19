@@ -12,7 +12,7 @@ import type { Parts } from '../lib/sculpt'
 import { SEAT_Y } from '../data/estate'
 import { playerState } from '../lib/playerState'
 import { PersonRig, SITTING, type PersonLook } from '../models/person'
-import { contractorNow, estateAgentNow, managerNow, shoppersNow, type Walking } from './state'
+import { contractorNow, estateAgentNow, managerNow, sellerNow, shoppersNow, type Walking } from './state'
 import { crowdGuests } from './Visitors'
 
 interface Body {
@@ -118,6 +118,8 @@ export function useMarketPeople() {
       if (contractor) draw('contractor', contractor, parts, t, dt, 2)
       const agent = estateAgentNow()
       if (agent) draw('agent', agent, parts, t, dt, 3)
+      const seller = sellerNow()
+      if (seller) draw('seller', seller, parts, t, dt, 4)
       for (const [key, b] of bodies) if (b.seen !== frame) bodies.delete(key)
     }
     crowdGuests.add(guest)
