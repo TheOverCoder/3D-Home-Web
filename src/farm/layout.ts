@@ -5,7 +5,7 @@ import { WALK_INS, bounds } from '../data/buildings'
 import { LOT } from '../data/lot'
 import { CABIN } from '../data/market'
 import { BED, BEDS, MACHINES, MOST_PLANTS, OFFICE, PATH_X, SHED, STAND, TRACTOR } from './data'
-import { FRUIT, SHOP, type ShopKind } from './decor'
+import { FRUIT, SHOP, type BearerKind, type ShopKind } from './decor'
 
 // Where the farm's movable things stand, and the land they may stand on. A "place" is a whole thing moved in one
 // go in the edit mode (the hen run with its coop, the cows' pasture, the sheep fold, the silo, the barn, the lemon
@@ -15,7 +15,7 @@ import { FRUIT, SHOP, type ShopKind } from './decor'
 // land and clear of the paths, the shed, the other things and their ways in. Everything here is plain data and
 // arithmetic (no scene, no state), so the scene, the farm's save and the tests share it.
 
-export type PlaceId = 'hens' | 'cows' | 'sheep' | 'silo' | 'barn' | 'lemon' | 'tree0' | 'tree1' | 'tree2' | 'mill' | 'loom' | 'oven'
+export type PlaceId = 'hens' | 'cows' | 'sheep' | 'silo' | 'barn' | 'lemon' | 'tree0' | 'tree1' | 'tree2' | 'mill' | 'loom' | 'oven' | 'dairy' | 'kettle'
 export type ParcelId = 'north' | 'east' | 'west' | 'northEast' | 'northWest'
 
 export interface Rect {
@@ -95,6 +95,11 @@ export const PLACES: Record<PlaceId, PlaceDef> = {
   mill: { id: 'mill', name: 'Mill', local: rect(-0.85, 0.9, -0.75, 0.9), door: rect(-1.55, -0.85, -0.75, -0.3), home: { x: MACHINES.mill.x, z: MACHINES.mill.z, rot: 0 } },
   loom: { id: 'loom', name: 'Loom', local: rect(-1.0, 1.3, -0.6, 1.15), door: rect(-0.6, 0.6, 1.15, 1.8), home: { x: MACHINES.loom.x, z: MACHINES.loom.z, rot: 0 } },
   oven: { id: 'oven', name: 'Oven', local: rect(-0.75, 1.2, -1.4, 0.7), door: rect(-1.5, -0.75, -0.5, 0.5), home: { x: MACHINES.oven.x, z: MACHINES.oven.z, rot: 0 } },
+  // update v1's machines (MACHINES in data.ts): the dairy west of the cows' pasture, open to the west, where you stand by
+  // its churn
+  dairy: { id: 'dairy', name: 'Dairy', local: rect(-1.1, 1.1, -0.95, 0.95), door: rect(-1.9, -1.1, -0.4, 0.9), home: { x: MACHINES.dairy.x, z: MACHINES.dairy.z, rot: 0 } },
+  // the jam kettle by the kitchen: its hearth and tripod, the table of jars to its north; you stand on its west side
+  kettle: { id: 'kettle', name: 'Jam kettle', local: rect(-0.75, 0.75, -1.3, 0.75), door: rect(-1.6, -0.75, -0.5, 0.5), home: { x: MACHINES.kettle.x, z: MACHINES.kettle.z, rot: 0 } },
 }
 
 export const PLACE_IDS = Object.keys(PLACES) as PlaceId[]
@@ -185,6 +190,8 @@ export const DECOR_FEET: Record<ShopKind, DecorFoot> = {
   'cherry-tree': { hx: 1.2, hz: 1.2 },
   'blueberry-bush': { hx: 0.8, hz: 0.8 },
   'raspberry-bush': { hx: 0.65, hz: 0.6 },
+  // update v1's beehive: its stand and the hive on it
+  beehive: { hx: 0.38, hz: 0.34 },
 }
 
 /** Whether a name is a kind the shop sells (never a name every object has: `constructor`, `__proto__`). */
@@ -203,9 +210,11 @@ export const RENAMED_KINDS: Readonly<Record<string, ShopKind>> = {
 export const kindNow = (v: unknown): unknown => (typeof v === 'string' && Object.prototype.hasOwnProperty.call(RENAMED_KINDS, v) ? RENAMED_KINDS[v] : v)
 /** A fruit tree or bush (a producer of the farm). */
 export const isPlant = (kind: ShopKind) => Object.prototype.hasOwnProperty.call(FRUIT, kind)
+/** A piece that bears, a producer of the farm: a fruit tree or bush, or a piece that gives a good (the beehive). */
+export const bears = (kind: ShopKind): kind is BearerKind => isPlant(kind) || !!SHOP[kind]?.bears
 /** The most of a kind the farm can own (placed and stored): a fruit kind's most plants; decoration, as many as any
  *  farm could pay for. */
-export const mostOf = (kind: ShopKind) => (isPlant(kind) ? MOST_PLANTS : 999)
+export const mostOf = (kind: ShopKind) => (isPlant(kind) ? MOST_PLANTS : (SHOP[kind]?.bears?.most ?? 999))
 
 /** A piece's footprint, in the world (a run's ends included). */
 export const decorRect = (d: { kind: ShopKind; x: number; z: number; rot: number }) => {
@@ -668,9 +677,11 @@ export function sanitizeLayout(raw: unknown, built: readonly boolean[] = []): Fa
   })
   // each place and bed must still fit (a bad save, or a farm from before a change): otherwise it goes home; and should
   // one sent home now clash with another, the whole farm goes back to how it started
+  // (a bed not built stands where it was staked out, whatever is round it: a plot of a field of beds may lie on a meadow
+  // not bought yet, off the land; what stands is checked against it all the same)
   const things: { thing: Thing; home: Placement }[] = [
     ...PLACE_IDS.map((id) => ({ thing: { kind: 'place', id } as Thing, home: PLACES[id].home })),
-    ...BEDS.map((_, i) => ({ thing: { kind: 'bed', index: i } as Thing, home: bedHome(i) })),
+    ...BEDS.flatMap((_, i) => (built[i] === true ? [{ thing: { kind: 'bed', index: i } as Thing, home: bedHome(i) }] : [])),
   ]
   const at = (t: Thing) => placementOf(out, t)!
   const put = (t: Thing, p: Placement) => {

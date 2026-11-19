@@ -15,14 +15,14 @@ const DAYS = 7
 
 /** The bounds today's farm breaks, and the mission that pays each (update-v1/JOURNEY.md §3 names the fix). */
 const DEBTS: Partial<Record<Bound, string>> = {
-  quiet: 'mission 01 pays it: nothing opens after level 13, reached on day 3 (its unlock rows from level 14, change 7)',
   burst: 'missions 04 and 02 pay it: gift boxes and goals come one on another (fixes 3 and 10)',
   pull: 'mission 04 pays the first sitting (its last step, "Plant something long before you go", fix 1); open: the visit back within the hour, at level 6, has only the hour-long sunflower for the 2.5 hours to the first evening (cotton opens at 7, decision 1)',
 }
 
 /** Bounds a week cannot judge, with where they are measured and the mission that pays them. */
 const LONGER: Partial<Record<Bound, string>> = {
-  quietDays: 'needs days 8 to 30 (SIM_JOURNEY=daily npm run sim); mission 01 pays it: rows every 2 levels from 31 (fix 8)',
+  quietDays:
+    'needs days 8 to 30 (SIM_JOURNEY=daily npm run sim); the rows every 2 levels from 31 to 45 are in (01b, fix 8), but the daily player passes 45 on day 12: the level curve past 30 (PACE.levels ends at 30, JOURNEY expects 29 on day 14)',
 }
 
 let week: VisitNews[] = []
@@ -30,7 +30,8 @@ let broken: ReturnType<typeof holes>
 beforeAll(() => {
   week = journey({ profile: 'daily', days: DAYS })
   broken = holes(week)
-})
+  // (about 2 s alone; far more on a loaded machine, past the hooks' 10 s)
+}, 120_000)
 
 describe('the session runner', () => {
   it('plays every visit of the schedule, each for its minutes', () => {

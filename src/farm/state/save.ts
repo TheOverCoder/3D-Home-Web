@@ -5,6 +5,7 @@ import {
   BEDS,
   cropById,
   CROPS,
+  EXPANSION_IDS,
   LEVELS,
   MACHINE_IDS,
   MACHINES,
@@ -24,6 +25,7 @@ import {
   VISITOR,
   WAIT_LEVELS,
   type CropId,
+  type Expansion,
   type MachineId,
   type ProduceId,
   type ProducerId,
@@ -262,7 +264,7 @@ function fresh(): FarmData {
     machines: Object.fromEntries(MACHINE_IDS.map((id) => [id, freshMachine()])) as Record<MachineId, MachineState>,
     sprinkler: false,
     compost: false,
-    expansions: { east: false, west: false },
+    expansions: Object.fromEntries(EXPANSION_IDS.map((e) => [e, false])) as Record<Expansion, boolean>,
     queueLevel: 0,
     paceLevel: 0,
     started: false,
@@ -480,7 +482,7 @@ function read(text: string | null): Loaded {
     for (const id of produceIds) data.inv[id] = amount(field(raw.inv, id), 0)
     // the silo and the barn from level 1 (a farm from before them keeps all it has, even past what they hold)
     for (const id of STORE_IDS) data.storage[id] = int(field(raw.storage, id), 1, 1, MOST_LEVEL)
-    data.expansions = { east: !!raw.expansions?.east, west: !!raw.expansions?.west }
+    data.expansions = Object.fromEntries(EXPANSION_IDS.map((e) => [e, !!field(raw.expansions, e)])) as Record<Expansion, boolean>
     // the beds, read only from a list: on anything else a list method threw half-way, and everything read after the
     // beds came back as on a new farm (and was saved over the farm)
     const beds = list(raw.beds)

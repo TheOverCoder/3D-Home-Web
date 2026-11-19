@@ -1,7 +1,8 @@
 import { clock } from '../../lib/time'
-import { arrivalEvery, BEDS, EXPANSIONS, mostAnimals, PACE_LEVELS, PRODUCERS, QUEUE_LEVELS, queuePlaces, UPGRADES, type UpgradeId } from '../data'
+import { arrivalEvery, BEDS, EXPANSIONS, fullHerd, isExpansion, mostAnimals, PACE_LEVELS, PRODUCERS, QUEUE_LEVELS, queuePlaces, UPGRADES, type UpgradeId } from '../data'
 import { bedHome, canBuyParcel, canPlace, canPlaceBed, PARCELS, PLACES, snap, type Fit, type ParcelId, type PlaceId, type Placement } from '../layout'
-import { bump, farm, isUnlocked, save, toast } from './core'
+import { herdUnlock } from '../unlocks'
+import { bump, farm, isUnlocked, lockOf, save, toast } from './core'
 import { gainXp } from './levels'
 import { addAnimal, animalName, animals } from './producers'
 
@@ -22,10 +23,27 @@ export function upgradePrice(u: UpgradeId) {
 /** The herd an upgrade adds an animal to (another hen, cow or sheep). */
 const herdOf = (u: UpgradeId) => UPGRADES.find((x) => x.id === u)?.herd
 
+/** The level the next step of an upgrade opens at (null: open): its own row, and for an animal past its herd full, that
+ *  animal's (`herd:cows:4`, src/farm/unlocks.ts). */
+export function upgradeLock(u: UpgradeId): number | null {
+  const own = lockOf(`upgrade:${u}`)
+  const herd = herdOf(u)
+  if (own !== null || !herd) return own
+  const n = animals(herd) + 1
+  return n > fullHerd(herd) && n <= mostAnimals(herd) ? lockOf(herdUnlock(herd, n)) : null
+}
+
+/** The meadow a piece of land with beds lies on, while it is not the farm's yet (null: none, or it is yours). */
+export function landFirst(u: UpgradeId) {
+  const land = isExpansion(u) ? EXPANSIONS[u].land : undefined
+  return land && !farm.layout.land.includes(land) ? land : null
+}
+
 /** Bought (all of it, for an upgrade that comes in steps). */
 export function owned(u: UpgradeId) {
   const herd = herdOf(u)
   if (herd) return animals(herd) >= mostAnimals(herd)
+  if (isExpansion(u)) return farm.expansions[u]
   switch (u) {
     case 'sprinkler':
       return farm.sprinkler
@@ -35,9 +53,6 @@ export function owned(u: UpgradeId) {
       return farm.queueLevel >= QUEUE_LEVELS
     case 'pace':
       return farm.paceLevel >= PACE_LEVELS
-    case 'east':
-    case 'west':
-      return farm.expansions[u]
     default:
       return false
   }
@@ -49,7 +64,13 @@ export const arrivalSeconds = () => arrivalEvery(farm.paceLevel)
 export function buy(id: UpgradeId) {
   const u = UPGRADES.find((x) => x.id === id)
   const price = upgradePrice(id)
-  if (!u || owned(id) || !isUnlocked(`upgrade:${id}`) || farm.coins < price) return false
+  if (!u || owned(id) || upgradeLock(id) !== null || farm.coins < price) return false
+  // a field of beds on a meadow: the meadow first (the edit mode sells it)
+  const land = landFirst(id)
+  if (land) {
+    toast(`Buy the ${PARCELS[land].name.toLowerCase()} first: its beds lie on it`)
+    return false
+  }
   farm.coins -= price
   let note = `${u.name}: done`
   if (u.herd) {
@@ -66,7 +87,7 @@ export function buy(id: UpgradeId) {
     farm.paceLevel = Math.min(PACE_LEVELS, farm.paceLevel + 1)
     farm.nextVisitorIn = Math.min(farm.nextVisitorIn, arrivalSeconds())
     note = `A buyer every ${clock(arrivalSeconds())}`
-  } else if (id === 'east' || id === 'west') {
+  } else if (isExpansion(id)) {
     farm.expansions[id] = true
     BEDS.forEach((def, i) => {
       if (def.expansion === id) farm.beds[i].built = true

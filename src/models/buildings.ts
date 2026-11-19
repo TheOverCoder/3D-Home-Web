@@ -1,4 +1,4 @@
-import { Shape, fbm3, lathe, loft, merge, noise3, rgb, smoothstep, squircle, tube, type SculptSurface, type V3 } from '../lib/sculpt'
+import { Shape, ellipsoid, fbm3, lathe, loft, merge, noise3, rgb, smoothstep, spin, squircle, tube, type SculptSurface, type V3 } from '../lib/sculpt'
 import { grain, mix, slab, type Structure } from './structures'
 
 // The farm's newer buildings, sculpted like the coop and the oven (src/models/structures.ts): built once in their own
@@ -15,6 +15,11 @@ import { grain, mix, slab, type Structure } from './structures'
 //   crate    a slatted crate: an order on its way, on the pallet or on the tractor
 //   pallet   the pallet the crates wait on in the tractor's yard
 //   gate     the farm gate in the hedge the tractor goes out through: two posts and a leaf (drawn twice, swinging)
+//   dairy    a whitewashed lean-to of boards under a shingled roof, open at the front: a counter with a cheese and a
+//            crock of butter, a shelf, a barrel churn by the front post (its dasher, drawn on its own, plunges while it
+//            works) and two milk cans (update v1: the dairy turns the cows' milk into butter, cheese and ice cream)
+//   kettle   a copper jam kettle hung from an iron tripod over a stone hearth, a table of jars beside it (the paddle and
+//            the embers' glow are drawn on their own: the paddle stirs and the fire glows while it works)
 
 const STEEL = rgb(0xb7c0c6)
 const STEEL_DARK = rgb(0x7f8a92)
@@ -464,4 +469,299 @@ export function farmGateModel(): Structure<GatePart> {
     posts: { shape: gatePostsShape(), material: { roughness: 0.85 } },
     leaf: { shape: merge(gateLeafShape().place([0, 0, -half]), gateLeafShape().place([0, 0, 0], [0, Math.PI, 0]).place([0, 0, half])), material: { roughness: 0.85 } },
   }
+}
+
+// ───────────────────────────── the dairy (update v1) ─────────────────────────────
+
+const WHITEWASH = rgb(0xf1ece0)
+const CHEESE = rgb(0xf2c75a)
+const BUTTER = rgb(0xf7e08a)
+const CROCK = rgb(0x8a5a3c)
+const CAN = rgb(0xc9d0d4)
+
+export type DairyPart = 'base' | 'walls' | 'roof' | 'wood' | 'metal' | 'food'
+
+/** The dairy's churn: where it stands in the dairy's frame, how tall its barrel is, and how far its dasher plunges. */
+export const DAIRY_CHURN = { x: -0.42, z: 0.42, top: 0.86, plunge: 0.12 } as const
+
+/** The dairy: 2.0 × 1.7 m, open at the front (-x, where you stand to use it), its back wall against +x, a lean-to roof
+ *  from 1.98 m at the front to 2.32 m at the back. */
+export function dairyModel(): Structure<DairyPart> {
+  const W = 1.0
+  const D = 0.85
+  const T = 0.035 // half a wall's thickness
+  const front = 1.98
+  const back = 2.32
+  const floorTop = 0.1
+  const base = slab(W + 0.04, D + 0.04, 0, floorTop, 6, 24).paint((x, y, z) => mix(CONCRETE, rgb(0x8a8378), 0.45 * smoothstep(0.35, 0.75, fbm3(x * 4, y * 4, z * 4, 9))), 0)
+  // the walls: the back, and the two sides rising with the roof from the front post to the back
+  const height = (x: number) => front + ((x + W) / (2 * W)) * (back - front)
+  const side = (sz: number) =>
+    slab(W - 0.32, T, floorTop - 0.02, 2, 10, 12)
+      .place([0.32, 0, sz * (D - T)])
+      .warp((x, y, z) => (y > 1.5 ? [x, height(x) - 0.04, z] : [x, y, z]))
+  const walls = merge(slab(T, D, floorTop - 0.02, back - 0.04, 10, 12).place([W - T, 0, 0]), side(-1), side(1)).paint(() => WHITEWASH, 0)
+  // the roof: one slope of shingles, from the front post up to the back wall, past both
+  const roof = slope([W + 0.14, front - 0.06], [-W - 0.1, back + 0.02], D + 0.16, 0.035)
+    .place([0, 0, 0], [0, -Math.PI / 2, 0])
+    .paint(() => SHINGLE, 0)
+  // the timber: two posts at the front holding the roof, the counter along the back wall, a shelf over it, the churn
+  const posts = [-1, 1].map((sz) => beam([-W + 0.08, floorTop - 0.02, sz * (D - 0.06)], [-W + 0.08, height(-W + 0.08) - 0.02, sz * (D - 0.06)], 0.045, 0.045))
+  const counter = slab(0.24, D - 0.1, floorTop - 0.02, 0.86, 8, 16).place([W - 0.3, 0, 0])
+  const top = slab(0.28, D - 0.08, 0.86, 0.9, 8, 16).place([W - 0.31, 0, 0])
+  const shelf = slab(0.11, D - 0.12, 1.5, 1.53, 8, 12).place([W - 0.14, 0, 0])
+  const churn = lathe(
+    [
+      [0, floorTop - 0.01],
+      [0.15, floorTop - 0.01],
+      [0.17, 0.36],
+      [0.155, DAIRY_CHURN.top - 0.04],
+      [0.13, DAIRY_CHURN.top],
+      [0, DAIRY_CHURN.top],
+    ],
+    { seg: 20, steps: 2, shape: (a) => 1 + 0.012 * Math.cos(a * 18) },
+  ).place([DAIRY_CHURN.x, 0, DAIRY_CHURN.z])
+  const wood = merge(...posts, counter.paint(grain(1, 61), 0), top.paint(grain(0, 62), 0), shelf.paint(grain(0, 63), 0), churn.paint(grain(1, 64), 0)).paint(
+    (x, y, z) => mix(WOOD, WOOD_DARK, 0.3 + 0.4 * noise3(x * 9, y * 9, z * 9, 65)),
+    0,
+  )
+  // iron hoops round the churn, and two milk cans by the front post
+  const hoop = (y: number, r: number) =>
+    lathe(
+      [
+        [r - 0.01, y - 0.02],
+        [r + 0.012, y - 0.02],
+        [r + 0.012, y + 0.02],
+        [r - 0.01, y + 0.02],
+      ],
+      { seg: 20, steps: 1, caps: [true, true] },
+    ).place([DAIRY_CHURN.x, 0, DAIRY_CHURN.z])
+  const can = (x: number, z: number) =>
+    lathe(
+      [
+        [0, floorTop - 0.01],
+        [0.13, floorTop - 0.01],
+        [0.14, 0.12],
+        [0.14, 0.46],
+        [0.08, 0.56],
+        [0.07, 0.64],
+        [0.09, 0.66],
+        [0.09, 0.69],
+        [0, 0.7],
+      ],
+      { seg: 18, steps: 1 },
+    ).place([x, 0, z])
+  const metal = merge(hoop(0.2, 0.162), hoop(DAIRY_CHURN.top - 0.12, 0.152), can(-0.72, -0.5), can(-0.42, -0.62)).paint(() => CAN, 0)
+  // on the counter: a wheel of cheese, a wedge cut from it, and a crock of butter
+  const wheel = lathe(
+    [
+      [0, 0.9],
+      [0.15, 0.9],
+      [0.16, 0.95],
+      [0.15, 1.0],
+      [0, 1.0],
+    ],
+    { seg: 24, steps: 1 },
+  )
+    .place([W - 0.3, 0, -0.35])
+    .paint(() => CHEESE, 0)
+  const crock = lathe(
+    [
+      [0, 0.9],
+      [0.08, 0.9],
+      [0.095, 0.96],
+      [0.085, 1.02],
+      [0.07, 1.03],
+      [0, 1.04],
+    ],
+    { seg: 16, steps: 1 },
+  )
+    .place([W - 0.3, 0, 0.3])
+    .paint((_x, y) => (y > 1.025 ? BUTTER : CROCK), 0)
+  const food = merge(wheel, crock)
+  return {
+    base: { shape: base, material: { roughness: 0.95 } },
+    walls: { shape: walls, material: { roughness: 0.85, surface: { kind: 'boards', size: 0.5, turn: true, tone: 0.25 } } },
+    roof: { shape: roof, material: { roughness: 0.7, surface: { kind: 'shingle', size: 0.6, tone: 0.55 } } },
+    wood: { shape: wood, material: { roughness: 0.8 } },
+    metal: { shape: metal, material: { roughness: 0.35, metalness: 0.5 } },
+    food: { shape: food, material: { roughness: 0.6 } },
+  }
+}
+
+/** The churn's dasher: a handle that plunges into the churn while the dairy works, its foot at the barrel's lid, in the
+ *  dairy's frame (moved up and down by the scene: src/farm/Workshop.tsx). */
+export function dairyDasher(): Shape {
+  const { x, z, top } = DAIRY_CHURN
+  return merge(
+    tube(
+      [
+        [x, top - 0.08, z],
+        [x, top + 0.42, z],
+      ],
+      0.018,
+      { seg: 8, steps: 1, caps: [true, true] },
+    ),
+    lathe(
+      [
+        [0, top + 0.4],
+        [0.035, top + 0.41],
+        [0.04, top + 0.45],
+        [0, top + 0.47],
+      ],
+      { seg: 10, steps: 1 },
+    ).place([x, 0, z]),
+  ).paint(grain(1, 66), 0)
+}
+
+/** The dairy with its dasher in place (for the gallery and the checks). */
+export function dairyWithDasher(): Structure<DairyPart | 'dasher'> {
+  return { ...dairyModel(), dasher: { shape: dairyDasher(), material: { roughness: 0.8 } } }
+}
+
+// ───────────────────────────── the jam kettle (update v1) ─────────────────────────────
+
+const COPPER = rgb(0xc4703f)
+const COPPER_DARK = rgb(0x8e4526)
+const JAM = rgb(0x8c1426)
+const IRON = rgb(0x3a3d40)
+const HEARTH = rgb(0x8f877c)
+
+/** The jam kettle's parts in its frame: the hearth, the kettle's middle and its rim, the tripod's top, and the table's
+ *  middle beside it (where you stand: -x). */
+export const KETTLE = { hearth: 0.17, bottom: 0.42, rim: 0.84, jam: 0.78, r: 0.42, apex: 1.42, table: { x: 0.15, z: -0.95, top: 0.74 } } as const
+
+export type KettlePart = 'hearth' | 'iron' | 'copper' | 'wood' | 'jars'
+
+/** The jam kettle: a stone hearth 1.2 m across, a copper kettle hung over it from an iron tripod, and a little table of
+ *  jars on its north side. */
+export function kettleModel(): Structure<KettlePart> {
+  const { hearth: hy, bottom, rim, jam, r, apex, table } = KETTLE
+  const hearth = lathe(
+    [
+      [0, 0],
+      [0.6, 0],
+      [0.62, 0.08],
+      [0.58, hy - 0.01],
+      [0.44, hy],
+      [0.4, hy - 0.04],
+      [0, hy - 0.05],
+    ],
+    { seg: 28, steps: 1 },
+  ).paint((x, y, z) => mix(HEARTH, rgb(0x5c5650), 0.2 + 0.6 * smoothstep(0.35, 0.8, fbm3(x * 9, y * 9, z * 9, 71)) + 0.35 * smoothstep(0.42, 0.3, Math.hypot(x, z)) * smoothstep(0.1, 0.17, y)), 0)
+  // the tripod: three legs from the hearth's rim up to where they cross, a chain down to the kettle's bail
+  const legs = [0, 1, 2].map((k) => {
+    const a = (k / 3) * Math.PI * 2 + Math.PI / 6
+    return beam([Math.cos(a) * 0.66, 0, Math.sin(a) * 0.66], [Math.cos(a) * 0.02, apex + 0.04, Math.sin(a) * 0.02], 0.024, 0.024, [0, 0, 1], 6)
+  })
+  const chain = tube(
+    [
+      [0, apex + 0.02, 0],
+      [0, rim + 0.24, 0],
+    ],
+    0.011,
+    { seg: 6, steps: 1, caps: [true, true] },
+  )
+  // the bail: an arc over the kettle from rim to rim
+  const bail = tube(
+    Array.from({ length: 9 }, (_, k): V3 => {
+      const a = (k / 8) * Math.PI
+      return [Math.cos(a) * (r - 0.01), rim - 0.02 + Math.sin(a) * 0.27, 0]
+    }),
+    0.009,
+    { seg: 6, steps: 2, caps: [true, true] },
+  )
+  const iron = merge(...legs, chain, bail).paint(() => IRON, 0)
+  // the kettle: a round copper pan, its lip rolled out, the jam inside
+  const copper = spin(
+    [
+      [0, bottom],
+      [0.22, bottom + 0.01],
+      [0.34, bottom + 0.1],
+      [r - 0.01, bottom + 0.28],
+      [r, rim - 0.02],
+      [r + 0.03, rim],
+      [r - 0.02, rim + 0.005],
+      [r - 0.03, jam],
+      [0, jam],
+    ],
+    32,
+    { paint: (i, a) => (i >= 7 ? JAM : mix(COPPER, COPPER_DARK, 0.25 + 0.3 * Math.sin(a * 3 + i) ** 2 + (i < 2 ? 0.3 : 0))) },
+  )
+  // the table: a top on four legs, two crates under it
+  const legsT = [-1, 1].flatMap((sx) => [-1, 1].map((sz) => box(table.x + sx * 0.3, table.top / 2, table.z + sz * 0.17, 0.025, table.top / 2, 0.025, 6, 8)))
+  const top = box(table.x, table.top + 0.02, table.z, 0.36, 0.02, 0.22, 8, 12)
+  const wood = merge(...legsT.map((l) => l.paint(grain(1, 72), 0)), top.paint(grain(0, 73), 0))
+  // three jars on it, filled and lidded
+  const jar = (x: number, z: number, fill: V3) =>
+    merge(
+      lathe(
+        [
+          [0, table.top + 0.04],
+          [0.045, table.top + 0.04],
+          [0.05, table.top + 0.1],
+          [0.04, table.top + 0.14],
+          [0, table.top + 0.14],
+        ],
+        { seg: 14, steps: 1 },
+      ).paint((_x, y) => (y < table.top + 0.125 ? fill : rgb(0xeee6d6)), 0),
+      lathe(
+        [
+          [0, table.top + 0.135],
+          [0.046, table.top + 0.135],
+          [0.05, table.top + 0.15],
+          [0, table.top + 0.155],
+        ],
+        { seg: 14, steps: 1 },
+      )
+        .pattern((x, _y, z) => (Math.sin(x * 160) * Math.sin(z * 160) > 0 ? 1 : 0), rgb(0xd23a3a))
+        .fill(rgb(0xf4ece0), 0.5),
+    ).place([x, 0, z])
+  const jars = merge(jar(table.x - 0.2, table.z + 0.02, JAM), jar(table.x, table.z - 0.04, rgb(0x3a2a6a)), jar(table.x + 0.2, table.z + 0.03, rgb(0xe08a1e)))
+  return {
+    hearth: { shape: hearth, material: { roughness: 0.95, surface: { kind: 'stone', size: 0.5, joint: rgb(0x6f685f), tone: 0.45 } } },
+    iron: { shape: iron, material: { roughness: 0.55, metalness: 0.6 } },
+    copper: { shape: copper, material: { roughness: 0.3, metalness: 0.7 } },
+    wood: { shape: wood, material: { roughness: 0.8 } },
+    jars: { shape: jars, material: { roughness: 0.2 } },
+  }
+}
+
+/** The kettle's paddle, in its frame: a long wooden spoon from the jam up past the rim, turned round the kettle's middle by
+ *  the scene while it works (src/farm/Workshop.tsx). */
+export function kettlePaddle(): Shape {
+  const { jam } = KETTLE
+  return merge(
+    tube(
+      [
+        [0.12, jam - 0.08, 0],
+        [0.2, jam + 0.2, 0],
+        [0.3, jam + 0.62, 0],
+      ],
+      [0.016, 0.014, 0.014],
+      { seg: 8, steps: 2, caps: [true, true] },
+    ),
+    ellipsoid(0.05, 0.075, 0.016, 10, 6).place([0.11, jam - 0.1, 0], [0, 0, 0.25]),
+  ).paint(grain(1, 74), 0)
+}
+
+/** The jam kettle with its paddle in (for the gallery and the checks). */
+export function kettleWithPaddle(): Structure<KettlePart | 'paddle'> {
+  return { ...kettleModel(), paddle: { shape: kettlePaddle(), material: { roughness: 0.8 } } }
+}
+
+/** The embers under the kettle, as a disc on the hearth: drawn glowing by the scene while it works. */
+export function kettleEmbers(): Shape {
+  return lathe(
+    [
+      [0, KETTLE.hearth - 0.035],
+      [0.36, KETTLE.hearth - 0.035],
+      [0.36, KETTLE.hearth - 0.025],
+      [0, KETTLE.hearth - 0.02],
+    ],
+    { seg: 20, steps: 1 },
+  ).paint((x, _y, z) => {
+    const r = Math.hypot(x, z) / 0.36
+    return mix([1, 0.42, 0.1], [0.2, 0.03, 0.008], smoothstep(0.2, 1, r) + 0.3 * noise3(x * 30, 0, z * 30, 75))
+  }, 0)
 }

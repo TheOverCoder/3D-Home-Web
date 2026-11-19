@@ -13,7 +13,7 @@ import { coopModel, lemonSpots, lemonTreeModel, mouthGlowMaterial, mouthGlowShap
 import { MAIL_FLAG, mailboxModel, partGeometry } from './structures'
 import { Parts } from '../lib/sculpt'
 import { GOODS, type GoodsId } from './goods'
-import { DESK_SCREEN, OFFICE_FLOOR, barnModel, crateModel, deskModel, farmGateModel, officeModel, palletModel, siloModel } from './buildings'
+import { DESK_SCREEN, OFFICE_FLOOR, barnModel, crateModel, dairyWithDasher, kettleWithPaddle, deskModel, farmGateModel, officeModel, palletModel, siloModel } from './buildings'
 import { DRIVER, putTractor, seatDriver, tractorParts } from './tractor'
 import { MARKET_MIDDLE, MARKET_SCREEN, MARKET_SIGN, marketFittingsParts, marketShellParts } from './market'
 import { putSlidingDoor, slidingDoorParts } from './slidingDoor'
@@ -665,6 +665,22 @@ export const GALLERY: GalleryEntry[] = [
       }
       pose(0)
       return { object: parts.group, width: 1.5, height: 1.3, triangles: () => parts.triangles(), update: pose }
+    },
+  },
+  {
+    id: 'machines',
+    label: 'Machines',
+    name: "Update v1's machines: the dairy (its churn's dasher up), the jam kettle (its paddle in) and a beehive",
+    make() {
+      const dairy = structureParts(dairyWithDasher(), 'dairy')
+      const kettle = structureParts(kettleWithPaddle(), 'kettle')
+      const hive = structureParts(decorModel('beehive'), 'beehive')
+      dairy.group.position.x = -1.3
+      kettle.group.position.x = 1.6
+      hive.group.position.set(1.4, 0, 1.4)
+      const object = new Group()
+      object.add(dairy.group, kettle.group, hive.group)
+      return { object, width: 5.2, height: 2.6, triangles: () => dairy.triangles() + kettle.triangles() + hive.triangles(), update() {} }
     },
   },
 ]

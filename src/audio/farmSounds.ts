@@ -6,6 +6,7 @@ import { haptic, type Haptic } from '../lib/device'
 import { burst, live, rnd, tone, voice, type Engine } from './engine'
 import { WORK_GAP, XP_GAP, climb, keyStep, note, vary, type KeyNote } from './palette'
 import { SOUNDS } from './sounds'
+import { playLanding, playRattle } from './stings'
 
 export type FarmSound =
   | 'plant'
@@ -44,6 +45,12 @@ export type FarmSound =
   | 'nope' // cannot (the store is full, a piece went back): decline's soft fall, shorter and higher
   | 'lift' // decoration or furniture lifted under the finger
   | 'thud' // put down where it fits: a thud by its size
+  | 'rattle' // a gift box shaking before it opens: its lid knocking, faster and faster (./stings.ts)
+  | 'tink' // a coin landing on the coin chip: a quiet glassy tink, a step up the key each (./stings.ts)
+  | 'churn' // milk into the dairy's churn, and its dasher at work: a slosh and a wooden plunge
+  | 'crock' // butter or cheese taken out of the dairy: a stoneware crock set down, a soft clink
+  | 'bubble' // fruit and sugar into the jam kettle, and its jam at the boil: a few thick bubbles popping
+  | 'jar' // a jar of jam taken off the fire: glass set down, its lid twisted on
 
 /** Crystals landing one close behind another climb the key from A6 (its 4th note), a step each (./palette.ts, climb),
  *  then hold the top. */
@@ -66,6 +73,8 @@ const KEY_CLINKS = [5, 7, 4, 6, 5, 7]
  *  how it was asked for (a ding's note, a thud's size). */
 type Synth = (e: Engine, t: number, v: number, pan: number, o: PlayOpts) => void
 
+/** How long a rattle shakes when no length is asked for (ms): the daily gift's box (src/farm/DailyCard.tsx). */
+const RATTLE_MS = 680
 /** A ding's note when none is asked for: G6, the oven's. */
 const DING: KeyNote = 'G6'
 /** How big a thing put down is, 0..1, from its size across (m): a stool small, a sofa or a shed the biggest. */
@@ -337,6 +346,39 @@ const SYNTHS: Record<FarmSound, Synth> = {
     burst(e, t + 0.28, { type: 'lowpass', freq: 520, q: 0.7, gain: 0.4 * v, attack: 0.006, decay: 0.1, pan })
     burst(e, t + 0.28, { type: 'bandpass', freq: 800, q: 1.3, gain: 0.25 * v, attack: 0.004, decay: 0.07, pan })
   },
+  churn(e, t, v, pan) {
+    // milk sloshing in the churn as the dasher plunges: a wet swirl sweeping down, and the wood's dull knock under it
+    burst(e, t, { type: 'bandpass', freq: 1700, sweepTo: 700, q: 1.6, gain: 0.2 * v, attack: 0.02, decay: 0.24, pan })
+    burst(e, t + 0.16, { type: 'bandpass', freq: 900, sweepTo: 1600, q: 1.4, gain: 0.14 * v, attack: 0.02, decay: 0.2, pan })
+    burst(e, t + 0.3, { type: 'lowpass', freq: 380, q: 0.9, gain: 0.3 * v, attack: 0.004, decay: 0.08, pan })
+    tone(e, t + 0.3, { type: 'sine', f0: 210, f1: 140, gain: 0.04 * v, attack: 0.004, decay: 0.09, pan })
+  },
+  crock(e, t, v, pan) {
+    // a stoneware crock set down on the dairy's counter: a dull clay knock and a short glazed ring (A6)
+    burst(e, t, { type: 'bandpass', freq: 1100, q: 2.4, gain: 0.36 * v, attack: 0.002, decay: 0.06, pan })
+    burst(e, t, { type: 'lowpass', freq: 500, q: 0.8, gain: 0.22 * v, attack: 0.003, decay: 0.07, pan })
+    tone(e, t + 0.005, { type: 'triangle', f0: note(4, 6), gain: 0.026 * v, attack: 0.002, decay: 0.22, pan, key: true })
+  },
+  bubble(e, t, v, pan) {
+    // the jam at the boil: thick bubbles, each a little rising blip with a wet pop, a soft hiss under them
+    burst(e, t, { type: 'bandpass', freq: 3200, q: 0.6, gain: 0.05 * v, attack: 0.08, decay: 0.5, pan })
+    for (const [at, f] of [
+      [0.02, 380],
+      [0.17, 520],
+      [0.29, 440],
+      [0.43, 600],
+    ]) {
+      tone(e, t + at, { type: 'sine', f0: f, f1: f * 2.2, gain: 0.06 * v, attack: 0.003, decay: 0.06, pan })
+      burst(e, t + at + 0.04, { type: 'bandpass', freq: 1400, q: 2.5, gain: 0.16 * v, attack: 0.002, decay: 0.03, pan })
+    }
+  },
+  jar(e, t, v, pan) {
+    // a jar set down on the table: glass on wood, its ring (E7), then the lid twisted on in two short scrapes
+    burst(e, t, { type: 'bandpass', freq: 2000, q: 2, gain: 0.3 * v, attack: 0.002, decay: 0.04, pan })
+    tone(e, t + 0.003, { type: 'sine', f0: note(2, 7), gain: 0.028 * v, attack: 0.002, decay: 0.28, pan, key: true })
+    burst(e, t + 0.18, { type: 'bandpass', freq: 3600, sweepTo: 2600, q: 3, gain: 0.12 * v, attack: 0.01, decay: 0.06, pan })
+    burst(e, t + 0.27, { type: 'bandpass', freq: 3400, sweepTo: 2400, q: 3, gain: 0.12 * v, attack: 0.01, decay: 0.06, pan })
+  },
   tray(e, t, v, pan) {
     // the oven's tray slides out over its runners and is set down on the stone with a little ring of tin (E7)
     burst(e, t, { type: 'bandpass', freq: 2400, sweepTo: 1600, q: 2, gain: 0.14 * v, attack: 0.03, decay: 0.2, pan })
@@ -384,14 +426,25 @@ const SYNTHS: Record<FarmSound, Synth> = {
     tone(e, t, { type: 'sine', f0: 150 - 60 * h, f1: 85 - 35 * h, gain: 0.015 + 0.03 * h, attack: 0.004, decay: 0.1 + 0.08 * h })
     burst(e, t + 0.004, { type: 'bandpass', freq: 1300 - 450 * h, q: 1.2, gain: 0.28 + 0.24 * h, attack: 0.002, decay: 0.06 + 0.03 * h })
   },
+  rattle(e, t, _v, _pan, o) {
+    // a box shaking for as long as it is asked to (the daily gift's, by default), its knocks coming faster
+    playRattle(e, o.ms ?? RATTLE_MS, o.delay ?? 0, t)
+  },
+  tink(e, t, _v, _pan, o) {
+    // the coin that lands `step`-th on the chip, a step up the key from the one before
+    playLanding(e, o.step ?? 0, t)
+  },
 }
 
 /** What a sound may be asked for beyond where it is: a ding's note (a machine's own: `MACHINES[].sounds.done`), a
- *  thud's size across (m: what was put down), and how many beds one press did (a snap each, BATCH_MOST at most). */
+ *  thud's size across (m: what was put down), how many beds one press did (a snap each, BATCH_MOST at most), and how
+ *  long a rattle shakes (ms) after how long (ms). */
 export interface SoundMore {
   note?: KeyNote
   size?: number
   times?: number
+  ms?: number
+  delay?: number
 }
 
 /** A press's pip: a soft bell of the key `step` steps up its streak (and its octave for the glass), climbing while the

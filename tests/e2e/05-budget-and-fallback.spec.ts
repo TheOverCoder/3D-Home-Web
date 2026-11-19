@@ -173,6 +173,11 @@ const WALK: View[] = [
   // every walk-in building from its own row (src/data/buildings.ts), as 16-view poses it (`walkInPoses`): outside facing
   // its door, in each doorway both ways, and each room from its door across to the far corner
   ...WALK_INS.flatMap((w) => walkInPoses(w).first.map((p): View => ({ map: 'farm', name: `walk-in, ${p.name}`, x: p.x, z: p.z, yaw: p.yaw, pitch: p.pitch }))),
+  // update v1's fields and buildings (01b): the west meadow's beds full (fillFarm buys it), looking out over them from
+  // the home garden's edge; the jam kettle and the kitchen's corner; the dairy by the pasture
+  { map: 'farm', name: 'the meadows, their beds', x: -13, z: 1.5, yaw: (3 * P) / 4, pitch: -0.06 },
+  { map: 'farm', name: 'the jam kettle and the kitchen', x: 4.5, z: 7, yaw: (-3 * P) / 4, pitch: -0.06 },
+  { map: 'farm', name: 'the dairy and the pasture', x: 3.5, z: -4, yaw: -P / 2 - 0.4, pitch: -0.05 },
   // the mailbox by the gate (src/farm/Mailbox.tsx), a letter waiting (its flag up: fillFarm), from the lane by the
   // parking lot, looking past it at the gate and the line
   { map: 'farm', name: 'lane, the mailbox by the gate', x: 2.6, z: 16, yaw: -0.69, pitch: -0.1 },

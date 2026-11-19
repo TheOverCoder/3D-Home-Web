@@ -841,6 +841,43 @@ function well(): Structure<'stone' | 'wood' | 'roof' | 'water'> {
   }
 }
 
+// ───────────────────────────── the beehive (update v1) ─────────────────────────────
+
+/** A beehive on its stand: two painted boxes stacked on a board on four short legs, a lid with a shallow peak, the bees'
+ *  slot along the foot of its front (+x), a landing board under it. One part (its colours painted on), so a hive is one
+ *  draw and casts as one. */
+function beehive(): Structure<'hive'> {
+  const legs = [-1, 1].flatMap((sx) =>
+    [-1, 1].map((sz) =>
+      slab(0.03, 0.03, 0, 0.3, 6, 8)
+        .place([sx * 0.26, 0, sz * 0.22])
+        .paint(grain(1, 81), 0),
+    ),
+  )
+  const board = slab(0.34, 0.3, 0.28, 0.32, 8, 12).paint(grain(0, 82), 0)
+  const cream = rgb(0xf1e4bf)
+  const box = (y0: number, y1: number, tint: V3) =>
+    slab(0.27, 0.23, y0, y1, 9, 16)
+      .paint(() => tint, 0)
+      // a dark seam where one box sits on the next
+      .pattern((_x, y) => (y < y0 + 0.012 ? 1 : 0), rgb(0x8a7a5a))
+  const lower = box(0.32, 0.6, cream).pattern((x, y) => (x > 0.25 && y < 0.36 && y > 0.335 ? 1 : 0), rgb(0x2a2018))
+  const upper = box(0.6, 0.86, mix(cream, rgb(0xf3d27a), 0.35))
+  const lid = slab(0.31, 0.27, 0.86, 0.92, 7, 12).paint(() => rgb(0x9aa3a8), 0)
+  const peak = loft(
+    [
+      { c: [0, 0.91, 0], rx: 0.29, ry: 0.25 },
+      { c: [0, 0.98, 0], rx: 0.12, ry: 0.1 },
+    ],
+    { seg: 4, steps: 1, up: [0, 0, 1], shape: (a) => squircle(a + Math.PI / 4, 1.6), caps: [true, true] },
+  )
+    .place([0, 0, 0], [0, Math.PI / 4, 0])
+    .paint(() => rgb(0x7f888d), 0)
+  // the landing board, out from under the slot
+  const landing = slab(0.06, 0.18, 0.3, 0.33, 6, 8).place([0.31, 0, 0]).paint(grain(0, 83), 0)
+  return { hive: { shape: merge(...legs, board, lower, upper, lid, peak, landing), material: { roughness: 0.75 } } }
+}
+
 // ───────────────────────────── the catalogue's models ─────────────────────────────
 
 const MAKERS: Record<DecorKind, () => Structure> = {
@@ -868,6 +905,7 @@ const MAKERS: Record<DecorKind, () => Structure> = {
   'scarecrow-ribbons': () => scarecrowModel('scarecrow-ribbons'),
   'scarecrow-pinwheel': () => scarecrowModel('scarecrow-pinwheel'),
   'scarecrow-jingle': () => scarecrowModel('scarecrow-jingle'),
+  beehive,
 }
 
 /** One decoration's model (made afresh each call: build it once per kind and share it). */

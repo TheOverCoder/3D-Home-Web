@@ -1,6 +1,6 @@
 import { art, type ArtId } from '../../ui/art'
 import { CROPS, MACHINES, PRODUCERS, isItem, type MachineId, type ProduceId, type ProducerId } from '../data'
-import { FRUIT } from '../decor'
+import { FRUIT, SHOP } from '../decor'
 import { shopArtUrl } from '../icons'
 
 // Where a good comes from, said in its bubble (the order board's today, src/farm/orderBoard/OrdersBoard.tsx; every
@@ -28,6 +28,8 @@ const MACHINE: Partial<Record<MachineId, { pic: ArtId; verb: string }>> = {
   mill: { pic: 'sheaf-of-rice', verb: 'Made at' },
   loom: { pic: 'yarn', verb: 'Woven at' },
   oven: { pic: 'shortcake', verb: 'Baked in' },
+  dairy: { pic: 'cheese-wedge', verb: 'Made at' },
+  kettle: { pic: 'pot-of-food', verb: 'Cooked in' },
 }
 
 /** Where a good comes from, by the game's tables. */
@@ -35,7 +37,7 @@ export function sourceOf(good: ProduceId): Source {
   if (CROPS.some((c) => c.id === good)) return { pic: art('seedling'), words: 'Grows in a bed' }
   for (const [id, p] of Object.entries(PRODUCERS) as [ProducerId, (typeof PRODUCERS)[ProducerId]][]) {
     if (p.good !== good) continue
-    if (p.plant) return { pic: shopArtUrl(p.plant), words: `Picked from the ${FRUIT[p.plant].name.toLowerCase()}` }
+    if (p.plant) return { pic: shopArtUrl(p.plant), words: `${p.plant in FRUIT ? 'Picked' : 'Collected'} from the ${SHOP[p.plant].name.toLowerCase()}` }
     const own = PRODUCER[id]
     return own ? { pic: art(own.pic), words: own.words } : { pic: art('seedling'), words: 'Gathered on the farm' }
   }
