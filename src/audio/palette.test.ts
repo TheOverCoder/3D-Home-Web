@@ -4,7 +4,7 @@ import { FakeContext, notesOf, type PlayedNote } from './fakeAudio'
 import { play, type FarmSound } from './farmSounds'
 import { CLIMB_STEPS, KEY, climb, hz, note, offKey } from './palette'
 import { SOUNDS } from './sounds'
-import { TRACKS } from './music'
+import { TRACK_DEFS } from './composer'
 
 // The one key (./palette.ts): C major pentatonic. Every note of every sting that tells news or pays (the cues, the
 // rewards, the coins, the "no"), as the recording fake hears it, lies within a cent of the key; a bell's overtone off
@@ -36,7 +36,7 @@ describe('the key', () => {
   })
 
   it('lies in every one of the music’s scales, so no sting clashes with a track', () => {
-    for (const track of TRACKS) {
+    for (const track of TRACK_DEFS) {
       const scale = new Set(track.scale.map((n) => (((track.root + n) % 12) + 12) % 12))
       for (const k of KEY) expect(scale.has(k), track.name).toBe(true)
     }
