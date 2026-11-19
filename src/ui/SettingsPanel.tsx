@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { appleTouch, canVibrate, coarsePointer } from '../lib/device'
-import { X } from './glyphs'
+import { AnimatePresence } from 'motion/react'
+import { art } from './art'
+import { PanelSheet } from './PanelSheet'
 import { collectDiagnostics } from '../lib/diagnostics'
 import { DEFAULT_SETTINGS, useSettings, type Settings } from '../settings'
 import { useHome } from '../store'
@@ -88,7 +90,6 @@ export function SettingsPanel() {
   const still = useLessMotion()
   // the first steps' tips, skipped on a farm still young enough for them: they can come back (src/farm/state/steps.ts)
   const tips = useFarm(() => stepsResumable())
-  const closeRef = useRef<HTMLButtonElement>(null)
   const [copied, setCopied] = useState<'idle' | 'ok' | 'failed'>('idle')
   const copyReport = async () => {
     const text = collectDiagnostics()
@@ -103,24 +104,15 @@ export function SettingsPanel() {
     setTimeout(() => setCopied('idle'), 2500)
   }
 
-  useEffect(() => {
-    if (open) closeRef.current?.focus()
-  }, [open])
-
   if (phase !== 'playing') return null
 
+  // the game's one sheet (src/ui/PanelSheet.tsx): on the right sideways and on a computer, from the bottom upright; its
+  // ✕, a swipe, the shade and Esc close it
   return (
-    <>
+    <AnimatePresence>
       {open && (
-        <div className="drawer-backdrop" onClick={() => setOpen(false)}>
-          <aside className="drawer" role="dialog" aria-modal="true" aria-label="Settings" onClick={(e) => e.stopPropagation()}>
-            <header>
-              <h2>Settings</h2>
-              <button ref={closeRef} className="close" onClick={() => setOpen(false)} aria-label="Close (Esc)">
-                <X weight="bold" />
-              </button>
-            </header>
-
+        <PanelSheet key="settings" label="Settings" title="Settings" pic={art('gear')} side className="settings-sheet" onClose={() => setOpen(false)}>
+          <div className="drawer-body">
             <section>
               <h3>Controls</h3>
               {coarsePointer ? (
@@ -291,9 +283,9 @@ export function SettingsPanel() {
                 Done
               </button>
             </footer>
-          </aside>
-        </div>
+          </div>
+        </PanelSheet>
       )}
-    </>
+    </AnimatePresence>
   )
 }

@@ -58,6 +58,7 @@ export function PanelSheet({
   foot,
   className = '',
   near,
+  side = false,
   closing = false,
   onLeave,
   onClose,
@@ -78,6 +79,8 @@ export function PanelSheet({
   foot?: { cancel?: FootButton; action: FootButton }
   /** the panel's own class, on the root (its rules read `.name .mp-sheet …`) */
   className?: string
+  /** a drawer: on a computer too it stands on the right (the settings), as a phone on its side has every sheet */
+  side?: boolean
   /** what stands beside the sheet, outside it (the remote's tag of a panel opened from afar) */
   near?: ReactNode
   /** the panel asks it to go out (it then calls `onClose`) */
@@ -88,7 +91,8 @@ export function PanelSheet({
   onClose: () => void
   children: ReactNode
 }) {
-  const mode = useSheetMode()
+  const auto = useSheetMode()
+  const mode = side && auto === 'middle' ? 'right' : auto
   // taken away by its host (AnimatePresence): it goes out all the same, and never calls onClose for it
   const here = useIsPresent()
   const [leaving, setLeaving] = useState(false)
