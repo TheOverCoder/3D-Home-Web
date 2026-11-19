@@ -57,9 +57,14 @@ async function atMailbox(game: Game) {
   await game.page.waitForFunction(() => (window as any).__home.useHome.getState().nearby?.id === 'farm-mailbox', null, { timeout: 30_000, polling: 250 })
 }
 
-/** A still at phone size, when asked for. */
+/** A still at phone size, when asked for, once what opened has come to rest (a sheet slides and fades in on its spring,
+ *  slowly on a page drawn in software: every animation that ends has ended). */
 async function still(page: Page, name: string) {
-  if (STILLS) await page.screenshot({ path: `${STILLS}/${name}.png` })
+  if (!STILLS) return
+  await page
+    .waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running' || a.effect?.getComputedTiming().iterations === Infinity), null, { timeout: 15_000, polling: 250 })
+    .catch(() => {})
+  await page.screenshot({ path: `${STILLS}/${name}.png` })
 }
 
 /** The box of the first element `sel` matches, on the screen. */

@@ -9,6 +9,7 @@ import { acceptOffer, canSell, clockText, declineOffer, fairPrice, farm, inLine,
 import { Portrait } from '../../ui/Portrait'
 import { Hearts } from '../people/Hearts'
 import { heartsOf } from '../people/friends'
+import '../people/QueuePeople.css'
 
 /** A pale shirt colour wants a dark number on it. */
 const light = (hex: string) => {
@@ -85,9 +86,10 @@ export function QueuePanel() {
           const ok = canSell(v)
           return (
             <div key={v.id} className={`farm-buyer${ok ? ' ok' : ''}`}>
-              {/* a neighbour: their portrait (the face at the gate) in place of the shirt's colour, their hearts by their name */}
+              {/* a neighbour: their portrait (the face at the gate) in place of the shirt's colour, as big; their hearts a chip,
+                  first among those under their name (a line that wraps: the row keeps to a phone's width) */}
               {v.who ? (
-                <Portrait who={v.who} size={40} move={false} />
+                <Portrait who={v.who} size={30} move={false} />
               ) : (
                 <span className="farm-avatar small" style={{ background: v.look.shirt, color: light(v.look.shirt) ? '#1d232c' : '#fff' }} aria-hidden="true">
                   {i + 1}
@@ -95,11 +97,9 @@ export function QueuePanel() {
               )}
               <GoodPic good={v.want} count={v.qty} className="farm-want" />
               <div className="farm-buyer-body">
-                <strong>
-                  {v.name}
-                  {v.who && <Hearts n={heartsOf(farm.friends[v.who]?.points ?? 0)} />}
-                </strong>
+                <strong>{v.name}</strong>
                 <span>
+                  {v.who && <Hearts n={heartsOf(farm.friends[v.who]?.points ?? 0)} chip />}
                   <span className={`tag ${ok ? 'ok' : 'short'}`} title={`You have ${have}`}>
                     {ok && <Check weight="bold" />}
                     {Math.min(have, v.qty)}/{v.qty}
