@@ -2,7 +2,8 @@ import { GARDEN, GATE } from '../data/layout'
 import { isObject } from '../lib/saved'
 import { FARM_SHRUBS, CORNER_TREES } from '../data/garden'
 import { WALK_INS, bounds } from '../data/buildings'
-import { CABIN, LOT } from '../data/market'
+import { LOT } from '../data/lot'
+import { CABIN } from '../data/market'
 import { BED, BEDS, MACHINES, MOST_PLANTS, OFFICE, PATH_X, SHED, STAND, TRACTOR } from './data'
 import { FRUIT, SHOP, type BearerKind, type ShopKind } from './decor'
 
@@ -289,7 +290,7 @@ export const landBounds = (layout: FarmLayout): Rect => boxOf(ownedRects(layout)
 /** A rectangle of the places' data (src/data: x0..x1, z0..z1) as one of the farm's. */
 const fromData = (r: { x0: number; x1: number; z0: number; z1: number }): Rect => rect(r.x0, r.x1, r.z0, r.z1)
 
-/** The ground you can be on: the land you have, the lot beyond the gate (src/data/market.ts), and every walk-in
+/** The ground you can be on: the land you have, the lot beyond the gate (its rows: src/data/lot.ts), and every walk-in
  *  building (src/data/buildings.ts) — for the camera, the safety net and walking to a mark (src/scene/Player.tsx,
  *  src/lib/route). What you may build on stays your own land. */
 export const reachRects = (layout: FarmLayout): Rect[] => [...ownedRects(layout), ...LOT.map(fromData), ...WALK_INS.map((w) => fromData(bounds(w)))]
@@ -586,7 +587,7 @@ function outline(rs: Rect[]): Edge[] {
 }
 
 /**
- * The edges of the lot (src/data/market.ts) that nothing closes, where an invisible wall stands (src/farm/Land.tsx):
+ * The edges of the lot (its rows: src/data/lot.ts) that nothing closes, where an invisible wall stands (src/farm/Land.tsx):
  * along them stands no wall of a walk-in building nor its doorway (the way in), nor the cabin, and your own land is not
  * beyond them (its fence closes that, with the gate open in it).
  */

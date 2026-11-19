@@ -316,6 +316,7 @@ export function PanelSheet(props: {
   size?: 'panel' | 'card'            // a card is a question, as tall as its content
   foot?: { cancel?: FootButton; action: FootButton }   // at most two buttons, Cancel first: the type holds it
   className?: string; near?: ReactNode; closing?: boolean
+  onLeave?: () => void               // told once as it starts out by itself (✕, the shade, a swipe, Esc): the daily gift's goods fly then
   onClose: () => void; children: ReactNode
 }): ReactNode
 // Esc: whatever is open over the sheet takes it first: the sheet asks `[data-over-sheet]`, never a list of class names
@@ -694,7 +695,7 @@ export function yieldOf(crop: CropId, bed?: BedState): number   // compost, then
 ### 1.16 The sun box and the car park (owner 11, phase 1; already written, unwired)
 
 ```ts
-// src/data/sunBox.ts (as written): SunBox, SUN_BOXES: Record<Place, SunBox>, FARM_SUN_BOX_PLANNED, lightView, boxMargin, inBox, texelsFor
+// src/data/sunBox.ts (as written): SunBox, SUN_BOXES: Record<Place, SunBox>, FARM_SUN_BOX, lightView, boxMargin, inBox, texelsFor
 // src/data/sunCheck.ts (as written): SUN_MARGIN, roomMargins(room, roof, box), cornerMargins, worst
 // src/data/layout.ts, once the farm's box is planned (11's commit 1):
 export function inSunShadow(x: number, y: number, z: number, margin?: number, place?: Place): boolean   // asks SUN_BOXES[place]

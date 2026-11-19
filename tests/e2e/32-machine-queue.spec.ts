@@ -50,7 +50,7 @@ test.describe("a machine's queue", () => {
     await page.getByRole('button', { name: /^Oven, level 1/ }).click()
     await expect(page.locator('.mp-lv')).toContainText('to level 2')
     await expect(page.locator('.mp-lv-boosts')).toContainText('+20 %')
-    await page.getByRole('button', { name: 'Back to the oven' }).click()
+    await page.getByRole('button', { name: 'Back', exact: true }).click()
 
     // another place: its card asks first, Buy (armed after a moment) pays for it
     const coins = await page.evaluate(() => (window as any).__home.farm.state.coins)

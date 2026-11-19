@@ -235,3 +235,25 @@
     animation: none;
   }
 }
+
+/* The game's old panel frame (a backdrop round a .farm-panel, upright a sheet at the bottom, sideways on the right), for
+   the proposals drawn on it before every panel moved onto PanelSheet (src/ui/PanelSheet.tsx): they look as they were
+   seen. The game itself no longer has it. */
+.farm-backdrop { position: fixed; inset: 0; z-index: 42; display: grid; place-items: center; padding: 16px; background: rgba(40, 24, 10, 0.4); animation: fade 0.16s ease-out; }
+@media (max-width: 520px) {
+  .farm-backdrop { place-items: end center; padding: 0; }
+  .farm-backdrop .farm-panel { width: 100%; border-radius: var(--r-sheet) var(--r-sheet) 0 0; border-bottom: 0; max-height: 86dvh; padding-bottom: calc(18px + env(safe-area-inset-bottom)); }
+}
+@media (orientation: landscape) and (max-height: 560px) {
+  .farm-backdrop { place-items: stretch end; padding: 0; }
+  .farm-backdrop .farm-panel {
+    width: min(500px, 64vw);
+    height: 100dvh;
+    max-height: none;
+    border-radius: var(--r-sheet) 0 0 var(--r-sheet);
+    border-inline-end: 0;
+    padding: calc(10px + env(safe-area-inset-top)) calc(14px + env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) 14px;
+    animation: sheet-in 0.3s var(--ease-sheet);
+  }
+  .farm-backdrop .farm-head-art { width: 46px; height: 46px; }
+}

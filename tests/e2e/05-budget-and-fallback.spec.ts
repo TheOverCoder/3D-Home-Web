@@ -13,12 +13,14 @@ import {
   openingsNow,
   restoreHouse,
   watchErrors,
+  walkInPoses,
   BASE,
   NULL_GL,
   type MapId,
 } from './helpers'
 import { FRONT_DOOR, HALL } from '../../src/data/market'
 import { AGENT_SEAT, AGENT_STAND } from '../../src/data/estate'
+import { WALK_INS } from '../../src/data/buildings'
 import { makeProfile, PHONE_WEATHER_MOST } from '../../src/lib/profile'
 
 // The budget, measured the way phones meet the game: a walk through the house and its garden (the home map), then over
@@ -168,6 +170,9 @@ const WALK: View[] = [
   // 2 m from them); and inside the office, before the agent's desk, looking at him (its door open behind you)
   { map: 'farm', name: 'lane, the parking lot and the estate office', x: 7.4, z: 14.4, yaw: 1.9, pitch: -0.06 },
   { map: 'farm', name: 'estate office, the agent at his desk', x: AGENT_STAND.x, z: AGENT_STAND.z, yaw: Math.atan2(-(AGENT_SEAT.x - AGENT_STAND.x), -(AGENT_SEAT.z - AGENT_STAND.z)), pitch: -0.12 },
+  // every walk-in building from its own row (src/data/buildings.ts), as 16-view poses it (`walkInPoses`): outside facing
+  // its door, in each doorway both ways, and each room from its door across to the far corner
+  ...WALK_INS.flatMap((w) => walkInPoses(w).first.map((p): View => ({ map: 'farm', name: `walk-in, ${p.name}`, x: p.x, z: p.z, yaw: p.yaw, pitch: p.pitch }))),
   // update v1's fields and buildings (01b): the west meadow's beds full (fillFarm buys it), looking out over them from
   // the home garden's edge; the jam kettle and the kitchen's corner; the dairy by the pasture
   { map: 'farm', name: 'the meadows, their beds', x: -13, z: 1.5, yaw: (3 * P) / 4, pitch: -0.06 },

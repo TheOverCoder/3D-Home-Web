@@ -3,13 +3,13 @@ import type { Rect } from '../data/buildings'
 import { BAYS } from '../data/estate'
 import { LANE_SOUTH, PARK_AREA } from '../data/lotPlan'
 import { CAR_SPOT } from '../data/maps'
-import { FARM_SUN_BOX_PLANNED, inBox } from '../data/sunBox'
+import { FARM_SUN_BOX, inBox } from '../data/sunBox'
 import { CAR_SHAPE } from '../models/car'
 import { LADDERS, PACE_LEVELS, QUEUE_LEVELS } from './data'
 import { BY_CAR, MOST_CARS, PARK_BAYS, PARK_STAGES, TRAFFIC_MOST, baysAt, byCar, parkStage, trafficSteps, type Traffic } from './park'
 
 // The car park's stages and bays (./park.ts, update-v1/missions/11-buildings.md): stages that only add, today's two bays
-// first, a stage from the farm's own traffic, bays that hold a car each, outside the farm's planned sun box, and whose
+// first, a stage from the farm's own traffic, bays that hold a car each, outside the farm's sun box, and whose
 // car is whose on dice of its own.
 
 const EPS = 1e-9
@@ -83,9 +83,9 @@ describe('the bays', () => {
     }
   })
 
-  it('each new one lies outside the farm’s planned sun box, up to a car’s roof (a car there casts nothing)', () => {
+  it('each new one lies outside the farm’s sun box, up to a car’s roof (a car there casts nothing)', () => {
     for (const bay of PARK_BAYS.slice(BAYS.length))
-      for (const x of [bay.x0, bay.x1]) for (const z of [bay.z0, bay.z1]) for (const y of [0, CAR_SHAPE.height]) expect(inBox(x, y, z, FARM_SUN_BOX_PLANNED), `${x}, ${y}, ${z}`).toBe(false)
+      for (const x of [bay.x0, bay.x1]) for (const z of [bay.z0, bay.z1]) for (const y of [0, CAR_SHAPE.height]) expect(inBox(x, y, z, FARM_SUN_BOX), `${x}, ${y}, ${z}`).toBe(false)
   })
 })
 

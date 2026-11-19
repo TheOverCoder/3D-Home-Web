@@ -1,4 +1,4 @@
-import { AnimatePresence, m, useAnimate, useDragControls, type PanInfo } from 'motion/react'
+import { AnimatePresence, m, useAnimate } from 'motion/react'
 import { useLessMotion } from '../../ui/still'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
@@ -9,8 +9,9 @@ import { art, type ArtId } from '../../ui/art'
 import { celebrate } from '../../fx/reward'
 import { rewardKind } from '../../lib/tier'
 import { GoodPic } from '../../ui/GoodPic'
-import { CaretLeft, Check, Clock, HandGrabbing, LockSimple, X } from '../../ui/glyphs'
-import { ARRIVE, MotionRoot, PRESS, SHEET, SPRING, swipedAway } from '../../ui/motion'
+import { Check, Clock, HandGrabbing, LockSimple, X } from '../../ui/glyphs'
+import { MotionRoot, PRESS, SPRING } from '../../ui/motion'
+import { PanelSheet } from '../../ui/PanelSheet'
 import { useSheetMode } from '../../ui/sheetMode'
 import { useDragDrop, type Axis } from './drag'
 import { flyInto, storeChip } from '../../ui/fly'
@@ -26,9 +27,10 @@ import './MachinePanel.css'
 //
 // One sheet: the queue at the top (the hero: its places, the job at work with its time, what is done glowing, one
 // button to collect it all), the recipes under it (sideways: beside it) to drag into the places or tap, and the
-// machine's level as a chip that opens its own page in the same sheet (what this level gives, and the next). It comes in
-// on the sheet's spring (from the bottom upright, the right sideways), its places and cards one after another; a
-// swipe of its top down (sideways: right) or ✕ sends it out the same way.
+// machine's level as a chip that opens its own page in the same sheet (what this level gives, and the next: the
+// sheet's way back takes the picture's place). It stands on the one sheet (src/ui/PanelSheet.tsx): in on its spring
+// (from the bottom upright, the right sideways), its places and cards one after another; a swipe of its top down
+// (sideways: right), the shade, ✕ or Esc sends it out the same way.
 
 export interface MachinePanelProps {
   v: MachineView
@@ -120,20 +122,18 @@ function Panel({ v, act, coins, onClose, buying }: MachinePanelProps) {
   const [page, setPageNow] = useState<'queue' | 'level'>('queue')
   // the sheet keeps its height from one page to the other (the level's page is shorter: the sheet must not jump)
   const [tall, setTall] = useState<number | null>(null)
+  const pages = useRef<HTMLDivElement>(null)
   const setPage = (to: 'queue' | 'level') => {
-    if (to === 'level' && sheet.current) setTall(sheet.current.offsetHeight)
+    if (to === 'level' && pages.current) setTall(pages.current.offsetHeight)
     setPageNow(to)
   }
+  // on its way out (the sheet tells it): the first-time hand goes at once
   const [leaving, setLeaving] = useState(false)
   const [opening, setOpening] = useState(true)
-  const sheet = useRef<HTMLDivElement>(null)
-  const controls = useDragControls()
   useEffect(() => {
-    sheet.current?.focus({ preventScroll: true })
     const t = window.setTimeout(() => setOpening(false), 900)
     return () => window.clearTimeout(t)
   }, [])
-  const close = () => setLeaving(true)
   /** anything pressed in the panel yet (the first-time hint stops showing how) */
   const [touched, setTouched] = useState(false)
 
@@ -149,6 +149,17 @@ function Panel({ v, act, coins, onClose, buying }: MachinePanelProps) {
     setTarget(t)
   }
   const [picked, setPicked] = useState<number | null>(null)
+  const pickedNow = useRef(picked)
+  pickedNow.current = picked
+  // any press (on the sheet or round it): the first-time hint is done, and a picked job is let go unless it is the press
+  useEffect(() => {
+    const down = (e: PointerEvent) => {
+      setTouched(true)
+      if (pickedNow.current !== null && !(e.target as Element | null)?.closest?.('.mp-place.picked')) setPicked(null)
+    }
+    window.addEventListener('pointerdown', down, true)
+    return () => window.removeEventListener('pointerdown', down, true)
+  }, [])
   const [arriving, setArriving] = useState<string | null>(null)
   const [note, setNote] = useState<Note | null>(null)
   const noteId = useRef(0)
@@ -380,18 +391,10 @@ function Panel({ v, act, coins, onClose, buying }: MachinePanelProps) {
     return () => ro.disconnect()
   }, [page])
 
-  // ── Esc: back from the level's page, else the way out (before the game's own Esc, which would close it at once);
-  // on a computer, a recipe's number puts it in (as a tap on its card) ──
+  // ── on a computer, a recipe's number puts it in (as a tap on its card); Esc is the sheet's: a good's bubble or what
+  // is carried first (each is over the sheet), then back from the level's page, then the way out ──
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        // (a good's bubble open: Esc closes it first)
-        if (drag.lifted || document.querySelector('.good-pop')) return
-        e.stopPropagation()
-        if (page === 'level') setPageNow('queue')
-        else setLeaving(true)
-        return
-      }
       const n = Number(e.key)
       const r = page === 'queue' && !e.repeat && n >= 1 && n <= 9 ? v.recipes[n - 1] : undefined
       if (!r || (e.target as Element | null)?.closest?.('input, select, textarea')) return
@@ -401,8 +404,6 @@ function Panel({ v, act, coins, onClose, buying }: MachinePanelProps) {
     return () => window.removeEventListener('keydown', key, true)
   })
 
-  const letGo = (_: unknown, i: PanInfo) => swipedAway(mode, i) && setLeaving(true)
-
   const total = useCountdown(queueLeft(v.slots))
   const working = v.slots.find((s) => s.state === 'working')
   const queuedMinutes = queueLeft(v.slots) / 60
@@ -410,209 +411,164 @@ function Panel({ v, act, coins, onClose, buying }: MachinePanelProps) {
   const coach = !touched && !still && page === 'queue' && v.slots.length === 0 && !lifted ? v.recipes.find((r) => r.can) : undefined
 
   return (
-    <div className={`mp-root mp-${mode}`}>
-      <m.div className="mp-shade" aria-hidden="true" initial={{ opacity: 0 }} animate={{ opacity: leaving ? 0 : 1 }} transition={{ duration: leaving ? 0.18 : 0.24 }} onClick={close} />
-      <m.div
-        ref={sheet}
-        className="mp-sheet farm-panel"
-        role="dialog"
-        aria-modal="true"
-        aria-label={`${v.name}, level ${v.level.n}`}
-        tabIndex={-1}
-        custom={mode}
-        style={tall && mode !== 'right' ? { minHeight: tall } : undefined}
-        variants={SHEET}
-        initial="hidden"
-        animate={leaving ? 'out' : 'show'}
-        onAnimationComplete={(d) => d === 'out' && onClose()}
-        drag={mode === 'middle' ? false : mode === 'right' ? 'x' : 'y'}
-        dragListener={false}
-        dragControls={controls}
-        dragConstraints={{ top: 0, bottom: 0, left: 0, right: 0 }}
-        dragElastic={mode === 'right' ? { right: 0.9, left: 0 } : { bottom: 0.9, top: 0 }}
-        dragMomentum={false}
-        onDragEnd={letGo}
-        onPointerDownCapture={(e) => {
-          setTouched(true)
-          if (picked !== null && !(e.target as Element).closest('.mp-place.picked')) setPicked(null)
-        }}
+    <>
+      <PanelSheet
+        label={`${v.name}, level ${v.level.n}`}
+        title={v.name}
+        pic={art(PICTURE[v.id] ?? 'gear')}
+        back={page === 'level' ? () => setPage('queue') : undefined}
+        className="machine-panel"
+        onLeave={() => setLeaving(true)}
+        onClose={onClose}
+        sub={
+          page === 'queue' ? (
+            <>
+              <span ref={chip} className="mp-level-wrap">
+                <LevelChip level={v.level} name={v.name} onOpen={() => setPage('level')} />
+              </span>
+              {total > 0 && (
+                <span className="tag mp-total" aria-label={`All done in ${clock(total)}`}>
+                  <Clock weight="bold" />
+                  {clock(total)}
+                </span>
+              )}
+            </>
+          ) : (
+            v.level.next !== null && <span className="tag">{`${Math.round(v.level.progress * 100)} % to level ${v.level.n + 1}`}</span>
+          )
+        }
       >
-        <header
-          className="mp-head"
-          onPointerDown={(e) => {
-            if (mode !== 'middle' && !(e.target as Element).closest('button')) controls.start(e)
-          }}
-        >
-          <i className="mp-grab" aria-hidden="true" />
+        <div className="mp-pages" ref={pages} style={tall && mode !== 'right' ? { minHeight: tall } : undefined}>
           <AnimatePresence mode="popLayout" initial={false}>
             {page === 'queue' ? (
-              <m.img key="pic" className="art mp-head-art" src={art(PICTURE[v.id] ?? 'gear')} alt="" {...ARRIVE} exit={{ scale: 0.4, opacity: 0 }} />
+              <m.div key="queue" className="mp-body" initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={SPRING.sheet}>
+                <section className={`mp-queue${outOfQueue ? ' out' : ''}`} data-drop="queue" aria-label={`Queue: ${v.slots.length} of ${v.capacity} places`}>
+                  <QueueGrid
+                    cells={cells}
+                    lifted={lifted}
+                    holeSrc={holeSrc}
+                    outOfQueue={outOfQueue}
+                    picked={picked}
+                    setPicked={setPicked}
+                    h={h}
+                    upgrade={v.upgrade}
+                    coins={coins}
+                    onBuy={() => act.buySlot()}
+                    nudge={nudge}
+                    opening={opening}
+                    arriving={arriving}
+                    buying={buying}
+                  />
+                  <div className="mp-foot">
+                    <AnimatePresence mode="popLayout" initial={false}>
+                      {done.length > 0 || flying ? (
+                        <m.button
+                          key="collect"
+                          ref={collectBtn}
+                          className="btn mp-collect"
+                          onClick={collect}
+                          aria-label={`Collect ${flying?.n ?? done.length}`}
+                          initial={{ opacity: 0, scale: 0.7, y: 8 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.14 } }}
+                          {...PRESS}
+                        >
+                          <span ref={squash} className="mp-collect-in">
+                            <span className="mp-collect-pics" aria-hidden="true">
+                              {(flying?.src ?? [...new Set(done.map((s) => iconUrl(s.makes)))]).slice(0, 3).map((src) => (
+                                <img key={src} className="art" src={src} alt="" />
+                              ))}
+                            </span>
+                            Collect
+                            <span className="mp-collect-n">
+                              <Bump n={flying?.n ?? done.length} />
+                            </span>
+                          </span>
+                        </m.button>
+                      ) : note ? (
+                        <m.p
+                          key={`note-${note.id}`}
+                          className={`mp-note ${note.tone}`}
+                          role="status"
+                          initial={{ opacity: 0, scale: 0.85 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.92, transition: { duration: 0.12 } }}
+                          transition={SPRING.pop}
+                        >
+                          {note.text}
+                        </m.p>
+                      ) : working ? (
+                        <m.p
+                          key="next"
+                          className="mp-note calm"
+                          aria-label={`${cap(produceById(working.makes).name)} ready in ${clock(working.left)}`}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0, transition: { duration: 0.1 } }}
+                        >
+                          <img className="art" src={iconUrl(working.makes)} alt="" />
+                          <span>
+                            Ready in <Countdown left={working.left} />
+                          </span>
+                        </m.p>
+                      ) : (
+                        <m.p key="hint" className="mp-note hint" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.1 } }}>
+                          <HandGrabbing weight="fill" />
+                          {mode === 'right' ? 'Drag a recipe here, or tap it' : 'Drag a recipe up here, or tap it'}
+                        </m.p>
+                      )}
+                    </AnimatePresence>
+                    {/* a note while the Collect button shows: over it, for a moment */}
+                    <AnimatePresence>
+                      {note && (done.length > 0 || flying) && (
+                        <m.p
+                          key={`over-${note.id}`}
+                          className={`mp-note float ${note.tone}`}
+                          role="status"
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, transition: { duration: 0.12 } }}
+                          transition={SPRING.pop}
+                        >
+                          {note.text}
+                        </m.p>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </section>
+                <div className="mp-recipes" ref={list} aria-label="Recipes">
+                  <div className="mp-recipes-in">
+                    {v.recipes.map((r, i) => (
+                      <RecipeCard
+                        key={r.id}
+                        r={r}
+                        full={full}
+                        axis={axis}
+                        carried={carrying?.kind === 'recipe' && carrying.recipe === r.id}
+                        shake={shakes[r.id] ?? 0}
+                        press={drag.press}
+                        wasDrag={drag.wasDrag}
+                        onTap={tap}
+                        index={i}
+                        opening={opening}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </m.div>
             ) : (
-              <m.button
-                key="back"
-                className="mp-round"
-                onClick={() => setPage('queue')}
-                aria-label={`Back to the ${v.name.toLowerCase()}`}
-                initial={{ scale: 0.5, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.5, opacity: 0 }}
-                {...PRESS}
-              >
-                <CaretLeft weight="bold" />
-              </m.button>
+              <m.div key="level" className="mp-body level" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 30 }} transition={SPRING.sheet}>
+                <LevelPage level={v.level} queued={queuedMinutes} name={v.name} />
+              </m.div>
             )}
           </AnimatePresence>
-          <div className="mp-head-text">
-            <h2>{v.name}</h2>
-            <div className="mp-sub">
-              {page === 'queue' ? (
-                <>
-                  <span ref={chip} className="mp-level-wrap">
-                    <LevelChip level={v.level} name={v.name} onOpen={() => setPage('level')} />
-                  </span>
-                  {total > 0 && (
-                    <span className="tag mp-total" aria-label={`All done in ${clock(total)}`}>
-                      <Clock weight="bold" />
-                      {clock(total)}
-                    </span>
-                  )}
-                </>
-              ) : (
-                v.level.next !== null && <span className="tag">{`${Math.round(v.level.progress * 100)} % to level ${v.level.n + 1}`}</span>
-              )}
-            </div>
-          </div>
-          <m.button className="mp-round" onClick={close} aria-label="Close (Esc)" {...PRESS}>
-            <X weight="bold" />
-          </m.button>
-        </header>
-        <AnimatePresence mode="popLayout" initial={false}>
-          {page === 'queue' ? (
-            <m.div key="queue" className="mp-body" initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={SPRING.sheet}>
-              <section className={`mp-queue${outOfQueue ? ' out' : ''}`} data-drop="queue" aria-label={`Queue: ${v.slots.length} of ${v.capacity} places`}>
-                <QueueGrid
-                  cells={cells}
-                  lifted={lifted}
-                  holeSrc={holeSrc}
-                  outOfQueue={outOfQueue}
-                  picked={picked}
-                  setPicked={setPicked}
-                  h={h}
-                  upgrade={v.upgrade}
-                  coins={coins}
-                  onBuy={() => act.buySlot()}
-                  nudge={nudge}
-                  opening={opening}
-                  arriving={arriving}
-                  buying={buying}
-                />
-                <div className="mp-foot">
-                  <AnimatePresence mode="popLayout" initial={false}>
-                    {done.length > 0 || flying ? (
-                      <m.button
-                        key="collect"
-                        ref={collectBtn}
-                        className="btn mp-collect"
-                        onClick={collect}
-                        aria-label={`Collect ${flying?.n ?? done.length}`}
-                        initial={{ opacity: 0, scale: 0.7, y: 8 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.14 } }}
-                        {...PRESS}
-                      >
-                        <span ref={squash} className="mp-collect-in">
-                          <span className="mp-collect-pics" aria-hidden="true">
-                            {(flying?.src ?? [...new Set(done.map((s) => iconUrl(s.makes)))]).slice(0, 3).map((src) => (
-                              <img key={src} className="art" src={src} alt="" />
-                            ))}
-                          </span>
-                          Collect
-                          <span className="mp-collect-n">
-                            <Bump n={flying?.n ?? done.length} />
-                          </span>
-                        </span>
-                      </m.button>
-                    ) : note ? (
-                      <m.p
-                        key={`note-${note.id}`}
-                        className={`mp-note ${note.tone}`}
-                        role="status"
-                        initial={{ opacity: 0, scale: 0.85 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.92, transition: { duration: 0.12 } }}
-                        transition={SPRING.pop}
-                      >
-                        {note.text}
-                      </m.p>
-                    ) : working ? (
-                      <m.p
-                        key="next"
-                        className="mp-note calm"
-                        aria-label={`${cap(produceById(working.makes).name)} ready in ${clock(working.left)}`}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0, transition: { duration: 0.1 } }}
-                      >
-                        <img className="art" src={iconUrl(working.makes)} alt="" />
-                        <span>
-                          Ready in <Countdown left={working.left} />
-                        </span>
-                      </m.p>
-                    ) : (
-                      <m.p key="hint" className="mp-note hint" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.1 } }}>
-                        <HandGrabbing weight="fill" />
-                        {mode === 'right' ? 'Drag a recipe here, or tap it' : 'Drag a recipe up here, or tap it'}
-                      </m.p>
-                    )}
-                  </AnimatePresence>
-                  {/* a note while the Collect button shows: over it, for a moment */}
-                  <AnimatePresence>
-                    {note && (done.length > 0 || flying) && (
-                      <m.p
-                        key={`over-${note.id}`}
-                        className={`mp-note float ${note.tone}`}
-                        role="status"
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, transition: { duration: 0.12 } }}
-                        transition={SPRING.pop}
-                      >
-                        {note.text}
-                      </m.p>
-                    )}
-                  </AnimatePresence>
-                </div>
-              </section>
-              <div className="mp-recipes" ref={list} aria-label="Recipes">
-                <div className="mp-recipes-in">
-                  {v.recipes.map((r, i) => (
-                    <RecipeCard
-                      key={r.id}
-                      r={r}
-                      full={full}
-                      axis={axis}
-                      carried={carrying?.kind === 'recipe' && carrying.recipe === r.id}
-                      shake={shakes[r.id] ?? 0}
-                      press={drag.press}
-                      wasDrag={drag.wasDrag}
-                      onTap={tap}
-                      index={i}
-                      opening={opening}
-                    />
-                  ))}
-                </div>
-              </div>
-            </m.div>
-          ) : (
-            <m.div key="level" className="mp-body level" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 30 }} transition={SPRING.sheet}>
-              <LevelPage level={v.level} queued={queuedMinutes} name={v.name} />
-            </m.div>
-          )}
-        </AnimatePresence>
-      </m.div>
+        </div>
+      </PanelSheet>
       {lifted &&
         createPortal(
+          // over the sheet (data-over-sheet): Esc puts it back before it does anything to the sheet
           <m.div
+            data-over-sheet=""
             className={`mp-ghost${outOfQueue ? ' out' : ''}${carrying?.kind === 'recipe' && !target ? ' lost' : ''}`}
             style={{ x: drag.ghost.x, y: drag.ghost.y, scale: drag.ghost.scale, rotate: drag.ghost.rotate, opacity: drag.ghost.opacity, width: 64, height: 64, marginLeft: -32, marginTop: -32 }}
             aria-hidden="true"
@@ -627,7 +583,7 @@ function Panel({ v, act, coins, onClose, buying }: MachinePanelProps) {
           document.body,
         )}
       {coach && !leaving && <Coach key={coach.id} recipe={coach.id} src={iconUrl(coach.makes)} />}
-    </div>
+    </>
   )
 }
 

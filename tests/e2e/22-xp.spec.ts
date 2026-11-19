@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { Page } from '@playwright/test'
-import { test, expect, bootApp, watchErrors, BASE, type Game } from './helpers'
+import { test, expect, bootApp, closePanel, watchErrors, BASE, type Game } from './helpers'
 import { XP_FOR } from '../../src/farm/data'
 import { levelOf, levelReward, seedXp, xpAt } from '../../src/farm/xp'
 import { boxAt, boxCoins, boxXp } from '../../src/farm/gifts'
@@ -273,7 +273,7 @@ test.describe('levels', () => {
     await expect(card.locator('.level-next')).toContainText(`+${levelReward(3)}`)
     await expect(card.getByRole('button', { name: /^Claim/ })).toHaveCount(0)
     // its Close pays nothing more
-    await card.getByRole('button', { name: 'Close (Esc)' }).click()
+    await closePanel(page)
     await expect(card).toHaveCount(0)
     expect(await coins(page)).toBe(before.coins + levelReward(2))
     expect(await page.evaluate(() => (window as any).__home.farm.state.xp.paid)).toBe(2)
@@ -390,7 +390,7 @@ test.describe('levels', () => {
     await expect(card.getByRole('button', { name: /^Open \d+ gifts?$|^Open your gift$/ })).toHaveCount(0)
     await expect(card.locator('.lf-hint')).toContainText('Next gift: 75%')
     expect(await page.evaluate((boxes) => (window as any).__home.farm.openGifts(boxes), [boxAt(2, 3), boxAt(3, 0), boxAt(3, 1), boxAt(3, 2)])).toEqual([])
-    await card.getByRole('button', { name: 'Close (Esc)' }).click()
+    await closePanel(page)
     await expect(card).toHaveCount(0)
     // none left: the road no longer glows, and its end shows the next level's prize again
     await expect(chip).toHaveAttribute('aria-label', 'Level 3: what the next level brings')
