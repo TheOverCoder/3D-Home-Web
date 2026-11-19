@@ -2,10 +2,12 @@ import { farmSound } from '../../audio/sound'
 import { num } from '../../lib/saved'
 import { DAY, produceById, type ProduceId } from '../data'
 import { priceOf } from '../prices'
-import { activeAt, canDraw, dateKey, drawGoods, drawPool, EVENTS, luckyNow, markSeen, newsWaiting } from '../events'
+import { activeAt, canDraw, dateKey, drawGoods, drawPool, EVENTS, luckyNow, markSeen, newsWaiting, priceFactor } from '../events'
+import { dayNumber } from '../calendar'
+import { moodOf, moodOn } from '../mood'
 import { shortMaterials } from '../contractor'
 import { dayOf, hourOf, phaseOf } from '../day'
-import { bump, eventTime, farm, random, save, toast } from './core'
+import { bump, calendarTime, eventTime, farm, random, save, toast } from './core'
 import { inLine, knownGoods } from './buyers'
 import { contractorDay } from './contractor'
 
@@ -77,6 +79,11 @@ export const eventsNow = () => {
   const at = eventTime()
   return at === null ? [] : activeAt(at)
 }
+/** What the day multiplies a good's price by wherever it is sold (src/farm/prices.ts, priceEvents: every sale prices
+ *  through priceOf): the lucky draw's goods double on its day, and the town's market mood (src/farm/mood.ts) of the
+ *  events' day — a time away's step on its own — or, with the events off, the calendar's. */
+export const dayFactor = (good: ProduceId) => priceFactor(good, farm.events, eventTime()) * (moodOn() ? moodOf(good, dayNumber(eventTime() ?? calendarTime())) : 1)
+
 /** The goods a lucky draw picks from: those a buyer could ask for (what the farm grows and makes). */
 export const luckyPool = () => drawPool(knownGoods())
 

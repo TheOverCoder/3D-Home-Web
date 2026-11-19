@@ -18,6 +18,7 @@ Keep this file and `src/data/credits.ts` (shown in the app's intro) in sync. Any
 | Fluent Emoji 3D (interface art: coin, basket, shop and menu pictures, the orders clipboard, the tractor, the surprise gift, the XP crystal, the market, the manager and the contractor, the times of day, the car, the house for sale, its key and the estate agent, the farm news and its events (the newspaper, the clover, the corn, the lightning, the calendar), the calendar of the daily gift and the flame of its streak; the tools of the animals (the nest, the bucket, the scissors) and the premium crown; the farmer who walks a new farm through its first steps, a face for each of his moods (the Fluent farmer with a Fluent smiley for his face: grinning, beaming, star-struck, thinking, smiling, open-mouthed, laughing, winking, exhaling); the app icon) | Microsoft Corporation | MIT | https://github.com/microsoft/fluentui-emoji |
 | Phosphor Icons (interface glyphs) | Phosphor Icons | MIT | https://phosphoricons.com |
 | Fredoka and Nunito typefaces | The Fredoka Project Authors; The Nunito Project Authors | SIL OFL 1.1 | https://fonts.google.com/specimen/Fredoka |
+| Fluent Emoji 3D (the house's computer's apps: the rising chart, the light bulb, the ledger, the bar chart) | Microsoft Corporation | MIT | https://github.com/microsoft/fluentui-emoji |
 
 The models were compressed (meshopt + WebP textures, small props capped at 512–1024 px; the pouf and teacup meshes simplified with meshoptimizer) with `npm run assets:optimize`; nothing else was changed.
 

@@ -36,6 +36,7 @@ export type PieceType =
   | 'switch'
   | 'outlet'
   | 'screen'
+  | 'computer'
 
 export interface PieceDef {
   name: string
@@ -97,6 +98,9 @@ export const PIECES: Record<PieceType, PieceDef> = {
   // drawn by src/scene/Screens.tsx where its piece hangs, with its stand in front of it (its weight: the panel and the
   // stand; the hologram over the stand of the room you are in comes and goes with you)
   screen: { name: 'Screen', size: [1.68, 0.98, 0.09], layer: 'wall', hang: 1.0, keep: true, price: 0, group: 'fixtures', weight: 1294 },
+  // the house's computer (src/home/Computer.tsx): its desk, screen, keyboard and tower; used, it opens its desktop and its
+  // apps (src/farm/computer). Also sold by a price tag on the studio's desk while the house has none
+  computer: { name: 'Computer', size: [1.2, 1.26, 0.65], layer: 'floor', price: 500, group: 'tables', weight: 998 },
 }
 
 export const PIECE_TYPES = Object.keys(PIECES) as PieceType[]
