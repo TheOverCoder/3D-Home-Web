@@ -319,7 +319,7 @@ export const FIRST_STEPS: readonly StepDef[] = [
       // the longest crop open, by name, and a walk to a bed for it
       { when: () => true, say: longLine, pic: (f) => ({ item: longestOpen(f) }), target: (f) => ({ good: longestOpen(f) }) },
     ],
-    reward: { coins: 18 },
+    reward: { coins: 20 },
   },
 ]
 
