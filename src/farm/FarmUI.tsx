@@ -16,7 +16,7 @@ import { ShopPanel } from './shop/ShopPanel'
 import { MachinePanel, MachineSlotCard } from './MachinePanel'
 import { SkinShop } from './SkinShop'
 import { ToolPanel } from './ToolPanel'
-import { NewsPanel, NewsWatcher } from './news/NewsPanel'
+import { CharmWatcher, NewsPanel, NewsWatcher } from './news/NewsPanel'
 import { AlbumPanel } from './AlbumPanel'
 import { BedPanel } from './panels/Bed'
 import { BuildPanel } from './panels/Build'
@@ -131,6 +131,7 @@ export function FarmUI() {
         <AwayWatcher />
         <SeasonWatcher />
         <NewsWatcher />
+        <CharmWatcher />
         <DailyWatcher />
         <CardWatcher />
       </PanelGuard>

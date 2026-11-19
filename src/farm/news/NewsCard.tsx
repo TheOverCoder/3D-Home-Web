@@ -7,6 +7,7 @@ import { Road } from '../../ui/Road'
 import { EASE, ITEM, SPRING, STAGGER } from '../../ui/motion'
 import { PanelSheet } from '../../ui/PanelSheet'
 import { Odds } from '../DailyCard'
+import type { CharmView } from '../charm'
 import type { ProduceId } from '../data'
 import { iconUrl } from '../icons'
 import type { RoadStopView, SeasonRoadView } from '../seasonRoad'
@@ -173,9 +174,27 @@ const TAB: Variants = {
   out: { opacity: 0, transition: { duration: 0.1 } },
 }
 
+/** The farm's charm (mission 02 c10), at the foot of the week's news: its stars and name, and what would add to it.
+ *  Words only: nothing to claim. */
+function CharmLine({ c }: { c: CharmView }) {
+  return (
+    <m.section className="nw-charm" variants={ITEM} aria-label={`Charm: ${c.name}, ${c.stars} of ${c.of} stars${c.hint ? `. ${c.hint}` : ''}`}>
+      <img className="art" src={art(c.art)} alt="" />
+      <span className="nw-charm-words">
+        <b>
+          Charm: <span className="nw-charm-stars">{'★'.repeat(c.stars)}</span>
+          <span className="nw-charm-dim">{'★'.repeat(c.of - c.stars)}</span> {c.name}
+        </b>
+        {c.hint && <small>{c.hint[0].toUpperCase() + c.hint.slice(1)}.</small>}
+      </span>
+    </m.section>
+  )
+}
+
 export function NewsCard({
   v,
   road = null,
+  charm = null,
   onDraw,
   onClose,
   onLand,
@@ -184,6 +203,8 @@ export function NewsCard({
   v: NewsView
   /** the season road for the "This season" tab (none: the week's news alone) */
   road?: SeasonRoadView | null
+  /** the farm's charm, at the foot of the week (none: not shown) */
+  charm?: CharmView | null
   /** the lucky draw (the farm's): its goods, or null */
   onDraw: () => ProduceId[] | null
   onClose: () => void
@@ -270,6 +291,7 @@ export function NewsCard({
                 </m.ul>
               </m.section>
             )}
+            {charm && <CharmLine c={charm} />}
           </m.div>
         )}
       </AnimatePresence>

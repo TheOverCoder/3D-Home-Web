@@ -39,6 +39,7 @@ export * from './state/ledger'
 export * from './state/neighbours'
 export * from './state/album'
 export * from './state/seasonRoad'
+export * from './state/charm'
 
 /**
  * The farm as the page opens, once: the switches as the page has them (the week's events, the levels' locks, the first

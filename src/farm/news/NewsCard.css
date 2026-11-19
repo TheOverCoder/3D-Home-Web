@@ -218,3 +218,12 @@
 .nw-season-words b { font: 700 16px/1.2 var(--font-display); }
 .nw-season-words small { font-size: 15px; display: flex; flex-wrap: wrap; align-items: center; gap: 3px; }
 .nw-season-crop { width: 24px; height: 24px; }
+
+/* the farm's charm (mission 02 c10): at the foot of the week, words and stars only */
+.nw-charm { display: flex; align-items: center; gap: 10px; padding: 8px 10px; margin: 10px 0 0; border-radius: 14px; background: var(--paper-2); }
+.nw-charm > .art { width: 40px; height: 40px; flex: none; }
+.nw-charm-words { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.nw-charm-words b { font: 700 16px/1.2 var(--font-display); }
+.nw-charm-words small { font-size: 15px; }
+.nw-charm-stars { color: var(--sun-lip); letter-spacing: 1px; }
+.nw-charm-dim { color: var(--paper-3); letter-spacing: 1px; }

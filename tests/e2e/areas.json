@@ -143,7 +143,7 @@
     },
     { "name": "the garden's gate", "specs": ["08-garden", "23-market"], "paths": ["src/farm/GardenGate.tsx"] },
     { "name": "the contractor and the day", "specs": ["24-day"], "paths": ["src/farm/{contractor,day}.ts", "src/farm/ContractorPanel.tsx"] },
-    { "name": "events and news", "specs": ["34-events", "14-hud"], "paths": ["src/farm/events.ts", "src/farm/news/**"] },
+    { "name": "events and news", "specs": ["34-events", "14-hud"], "paths": ["src/farm/events.ts", "src/farm/news/**", "src/farm/charm.ts", "src/farm/state/charm.ts"] },
     { "name": "prices", "specs": ["34-events", "17-stores-orders", "23-market", "25-button"], "paths": ["src/farm/{prices,worth}.ts"] },
     { "name": "the daily gift", "specs": ["35-daily"], "paths": ["src/farm/{daily,useDaily,calendar}.ts", "src/farm/{DailyCard,DailyPanel}.{tsx,css}"] },
     { "name": "unlocks", "specs": ["36-unlocks"], "paths": ["src/farm/unlocks.ts", "src/farm/Unlocked.{tsx,css}", "src/ui/LockTag.tsx"] },

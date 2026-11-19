@@ -367,6 +367,12 @@ The README has the overview; `tests/README.md` what each test guards.
 - A fruit tree or bush is a `PRODUCERS` row whose plants are its kind's pieces standing, in the layout's order; its fruit
   a good of the silo. A piece that gives and is no plant (the beehive) is a `DECOR` row with `bears` (its good, the
   building that keeps it, the most the farm may own) and a `PRODUCERS` row the same way (`BEARER_KINDS`).
+- Each kind is in one set of the shop (`set` on its row, `SETS`: the shop groups and counts them). A piece may wear a
+  look (`DecorPiece.look`, one of its row's `tints`; kept in the store when put away: `layout.storedLooks`), drawn as
+  its parts' instance colour (`lookTints`: no new draw): a painted kind (`paint`, the part a paint covers, tint 1 in its
+  model) has a *Paint* chip on its edit card (`paintDecor`: free, no XP, Undo); the season banner (`given`: never sold)
+  comes from the season road in its season's two colours. The farm's charm (`src/farm/charm.ts`, `CHARM` rows capped,
+  `RANKS`) is words and stars in the news, a rank first reached told once (`farm.charm.told`): never a prize.
 - The mill, the loom and the oven are places of the layout, and a built bed moves (`layout.beds`): where one stands now
   is `machinePoint` and `bedSpot`, never the `x`/`z` of `MACHINES` or `BEDS` (where they start).
 

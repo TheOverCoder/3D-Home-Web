@@ -68,6 +68,7 @@ import { takePassed } from './steps'
 import { cameBack, forgetAway } from './away'
 import { savedSeason, seasonFresh } from './season'
 import { roadFresh, savedSeasonRoad } from './seasonRoad'
+import { charmFresh, savedCharm } from './charm'
 
 // The save: a new farm, reading a saved one safely (a hand-edited or old save can never break the game), writing it,
 // the three slots, and a slot as a file to keep or load.
@@ -303,6 +304,7 @@ function fresh(): FarmData {
     season: seasonFresh(),
     album: freshAlbum(),
     seasonRoad: roadFresh(),
+    charm: charmFresh(),
   }
 }
 
@@ -614,6 +616,8 @@ function read(text: string | null): Loaded {
     data.album = sanitizeAlbum(raw.album, data.outfit.owned)
     // the season road: as saved, never past the season now (a farm from before it: the season now's road, from its start)
     data.seasonRoad = savedSeasonRoad(raw.seasonRoad, data.played, data.season)
+    // the farm's charm: the highest rank told (a farm from before it: its rank now, told already)
+    data.charm = savedCharm(raw.charm, data)
     const queue = list(raw.queue)
       .map((b) => savedBuyer(b, met))
       .filter((b): b is SavedBuyer => !!b)
