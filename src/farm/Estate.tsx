@@ -1,33 +1,61 @@
 // The estate office and the parking lot in the scene (src/data/estate.ts): the walk-in building (src/scene/WalkIn.tsx:
-// its door shut out of the office's hours), its fittings and the lot (src/models/estate.ts), the pictures on its front
-// and inside — the sign with the logo (a house and a key), the opening hours, the house for sale in its window and on
-// its wall — and the things you press or tap: the agent (his panel: the house for sale), the board on the wall (the
-// house's price tag), and the door out of hours (when it opens). The agent himself is drawn with the market's people
+// its door shut out of the office's hours), its fittings and the lot (src/models/estate.ts), the house's model on its
+// table (as the save's shell has the house), the pictures on its front and inside — the sign with the logo (a house and
+// a key), the opening hours, the house for sale in its window and on its wall, the farm's map on its west wall and in
+// its wide window — and the things you press or tap: the agent (his panel: the house for sale), the board on the wall
+// (the house's price tag), each meadow for sale on the map (its price tag: the edit mode's card for it, where it is
+// bought), and the door out of hours (when it opens). The agent himself is drawn with the market's people
 // (./marketPeople.ts); where he is comes from the clock (estateAgentNow, src/farm/state.ts). The car in the lot is
 // src/farm/car.
 
 import { useEffect, useMemo } from 'react'
 import { CuboidCollider, CylinderCollider, RigidBody } from '@react-three/rapier'
 import { BufferAttribute, BufferGeometry, CanvasTexture, MeshStandardMaterial, SRGBColorSpace } from 'three'
-import type { Box } from '../data/buildings'
-import { AGENT_SEAT, AGENT_STAND, CABINET, ESTATE_DESK, ESTATE_HOURS, ESTATE_PATH, ESTATE_ROOM, ESTATE_SIGN, ESTATE_WALKIN, ESTATE_WINDOW, PARKING_SIGN, PLANT, SALE_BOARD } from '../data/estate'
+import { WALK_INS, bounds, type Box } from '../data/buildings'
+import {
+  AGENT_SEAT,
+  AGENT_STAND,
+  BENCH,
+  CABINET,
+  ESTATE_DESK,
+  ESTATE_DISPLAY,
+  ESTATE_HOURS,
+  ESTATE_MAP,
+  ESTATE_PATH,
+  ESTATE_ROOM,
+  ESTATE_SIGN,
+  ESTATE_WALKIN,
+  ESTATE_WINDOW,
+  HOUSE_TABLE,
+  MAP_AREA,
+  PARKING_SIGN,
+  PLANT,
+  SALE_BOARD,
+  onMap,
+} from '../data/estate'
+import { GATE } from '../data/layout'
+import { LOT } from '../data/lot'
+import { CABIN } from '../data/market'
 import { debugSet } from '../lib/debug'
 import { useInteractable } from '../lib/interaction'
 import { clock } from '../lib/time'
-import { estateFittingsParts, parkingLotParts } from '../models/estate'
+import { estateFittingsParts, houseModelParts, parkingLotParts } from '../models/estate'
 import { WalkIn, hidingPiece, walkInDoor } from '../scene/WalkIn'
 import { AGENT, talk } from '../talk/speech'
 import { useHome } from '../store'
 import { art } from '../ui/art'
 import { ESTATE } from './data'
 import { clockOf, hoursText, opensAt } from './day'
-import { agentBackIn, agentHere, estateAgentNow, estateOpen, estateOpensIn, farm, useFarm } from './state'
+import { useEdit } from './edit'
+import { HOME_LAND, PARCELS, PARCEL_IDS, type ParcelId, type Rect } from './layout'
+import { agentBackIn, agentHere, estateAgentNow, estateOpen, estateOpensIn, farm, lockOf, useFarm } from './state'
 
 // ───────────────────────────── the pictures ─────────────────────────────
 
-/** The pictures, all on one canvas (one texture, one draw outside and one inside): each a region of it in pixels. */
+/** The pictures, all on one canvas (one texture, one draw outside and one inside): each a region of it in pixels. The
+ *  map is 10 pixels a metre of the farm (MAP_AREA); the wide window's picture its own copy of it under a banner. */
 const W = 1024
-const H = 1024
+const H = 1536
 const REGIONS = {
   sign: { x: 0, y: 0, w: 1024, h: 240 },
   hours: { x: 0, y: 256, w: 512, h: 380 },
@@ -35,6 +63,8 @@ const REGIONS = {
   parking: { x: 848, y: 256, w: 176, h: 176 },
   board: { x: 0, y: 640, w: 512, h: 384 },
   plate: { x: 560, y: 660, w: 340, h: 340 },
+  map: { x: 0, y: 1032, w: (MAP_AREA.x1 - MAP_AREA.x0) * 10, h: (MAP_AREA.z1 - MAP_AREA.z0) * 10 },
+  display: { x: 576, y: 1032, w: 448, h: 256 },
 } as const
 type Region = keyof typeof REGIONS
 
@@ -127,8 +157,111 @@ function poster(g: CanvasRenderingContext2D, r: { x: number; y: number; w: numbe
   }
 }
 
-/** Draws every picture on the canvas: the sign, the hours, the window, the parking sign and the board inside. */
-function drawPictures(c: HTMLCanvasElement, pics: Pics, sold: boolean) {
+/** What the map shows of the farm now: the meadows it has. */
+type MapState = { land: readonly ParcelId[] }
+
+const GRASS = '#a6c97a'
+const FIELD_FOR_SALE = '#ece4c4'
+const COUNTRY = '#cdd6b6'
+const LANE_TONE = '#cbbfa5'
+const FENCE = '#7a5a3a'
+
+/** The farm's map, north up, 10 pixels a metre: the countryside, the lane and the lot's buildings (the office marked:
+ *  you are here), the garden and the meadows it has in green behind their fence, each meadow still for sale pale with
+ *  its name. */
+function drawMap(g: CanvasRenderingContext2D, r: { x: number; y: number; w: number; h: number }, map: MapState) {
+  const px = (x: number) => r.x + (x - MAP_AREA.x0) * 10
+  const pz = (z: number) => r.y + (z - MAP_AREA.z0) * 10
+  const fill = (rc: Rect, color: string) => {
+    g.fillStyle = color
+    g.fillRect(px(rc.minX), pz(rc.minZ), (rc.maxX - rc.minX) * 10, (rc.maxZ - rc.minZ) * 10)
+  }
+  g.save()
+  g.beginPath()
+  g.rect(r.x, r.y, r.w, r.h)
+  g.clip()
+  g.fillStyle = COUNTRY
+  g.fillRect(r.x, r.y, r.w, r.h)
+  // the lane and the lot beyond it
+  g.fillStyle = LANE_TONE
+  g.fillRect(r.x, pz(13.7), r.w, 2.6 * 10)
+  for (const l of LOT) g.fillRect(px(l.x0), pz(l.z0), (l.x1 - l.x0) * 10, (l.z1 - l.z0) * 10)
+  // the land: the garden and every meadow the farm has, green; those for sale pale, with a dashed edge
+  const owned = [HOME_LAND, ...map.land.map((id) => PARCELS[id].rect)]
+  for (const id of PARCEL_IDS) if (!map.land.includes(id)) fill(PARCELS[id].rect, FIELD_FOR_SALE)
+  for (const rc of owned) fill(rc, GRASS)
+  g.lineWidth = 3
+  g.strokeStyle = FENCE
+  for (const rc of owned) g.strokeRect(px(rc.minX) + 1.5, pz(rc.minZ) + 1.5, (rc.maxX - rc.minX) * 10 - 3, (rc.maxZ - rc.minZ) * 10 - 3)
+  // the gate in the garden's south fence
+  g.fillStyle = GRASS
+  g.fillRect(px(GATE.x - GATE.width / 2), pz(HOME_LAND.maxZ) - 3, GATE.width * 10, 6)
+  g.setLineDash([10, 7])
+  g.strokeStyle = GOLD
+  for (const id of PARCEL_IDS) {
+    if (map.land.includes(id)) continue
+    const rc = PARCELS[id].rect
+    g.strokeRect(px(rc.minX) + 3, pz(rc.minZ) + 3, (rc.maxX - rc.minX) * 10 - 6, (rc.maxZ - rc.minZ) * 10 - 6)
+  }
+  g.setLineDash([])
+  // the buildings on the lot: the market and the cabin grey, the office navy with a gold star (you are here)
+  g.fillStyle = '#8d9096'
+  for (const w of WALK_INS) {
+    const b = bounds(w)
+    g.fillRect(px(b.x0), pz(b.z0), (b.x1 - b.x0) * 10, (b.z1 - b.z0) * 10)
+  }
+  g.fillRect(px(CABIN.x0), pz(CABIN.z0), (CABIN.x1 - CABIN.x0) * 10, (CABIN.z1 - CABIN.z0) * 10)
+  const office = bounds(ESTATE_WALKIN)
+  g.fillStyle = NAVY
+  g.fillRect(px(office.x0), pz(office.z0), (office.x1 - office.x0) * 10, (office.z1 - office.z0) * 10)
+  star(g, px((office.x0 + office.x1) / 2), pz((office.z0 + office.z1) / 2), 13)
+  // the words: the farm's own, and each meadow's name and whether it is for sale
+  g.textAlign = 'center'
+  g.textBaseline = 'middle'
+  g.fillStyle = '#2f4a1f'
+  g.font = `600 30px ${DISPLAY}`
+  g.fillText('Your farm', px(0), pz(-1))
+  for (const id of PARCEL_IDS) {
+    const rc = PARCELS[id].rect
+    const cx = px((rc.minX + rc.maxX) / 2)
+    const cz = pz((rc.minZ + rc.maxZ) / 2)
+    const mine = map.land.includes(id)
+    g.fillStyle = mine ? '#2f4a1f' : NAVY
+    g.font = `700 ${PARCELS[id].name.length > 14 ? 15 : 18}px ${TEXT}`
+    g.fillText(PARCELS[id].name, cx, cz - 11)
+    g.font = `800 15px ${TEXT}`
+    g.fillStyle = mine ? '#2f4a1f' : RED
+    g.fillText(mine ? 'Yours' : 'FOR SALE', cx, cz + 11)
+  }
+  // north, in the bottom right corner (the countryside south-east of the lot)
+  g.fillStyle = NAVY
+  g.font = `800 22px ${TEXT}`
+  g.fillText('N', r.x + r.w - 30, r.y + r.h - 72)
+  g.beginPath()
+  g.moveTo(r.x + r.w - 30, r.y + r.h - 56)
+  g.lineTo(r.x + r.w - 39, r.y + r.h - 32)
+  g.lineTo(r.x + r.w - 21, r.y + r.h - 32)
+  g.closePath()
+  g.fill()
+  g.restore()
+}
+
+/** A five-pointed star, gold, `s` across, round (x, y). */
+function star(g: CanvasRenderingContext2D, x: number, y: number, s: number) {
+  g.fillStyle = GOLD
+  g.beginPath()
+  for (let k = 0; k < 10; k++) {
+    const a = -Math.PI / 2 + (k * Math.PI) / 5
+    const rr = k % 2 ? s * 0.42 : s
+    g.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr)
+  }
+  g.closePath()
+  g.fill()
+}
+
+/** Draws every picture on the canvas: the sign, the hours, the window, the parking sign, the board and the map inside,
+ *  and the map again in the wide window under its banner. */
+function drawPictures(c: HTMLCanvasElement, pics: Pics, sold: boolean, map: MapState) {
   const g = c.getContext('2d')!
   g.clearRect(0, 0, W, H)
   // the sign: navy, a gold line in from its edge, the logo, the words
@@ -195,6 +328,31 @@ function drawPictures(c: HTMLCanvasElement, pics: Pics, sold: boolean) {
   g.textAlign = 'center'
   g.font = `600 44px ${DISPLAY}`
   g.fillText('ESTATE AGENT', l.x + l.w / 2, l.y + 268)
+  // the farm's map, and in the wide window, on dark glass: the map under a red banner, and the house's poster beside it
+  const m = REGIONS.map
+  drawMap(g, m, map)
+  const d = REGIONS.display
+  const dark = g.createLinearGradient(0, d.y, 0, d.y + d.h)
+  dark.addColorStop(0, '#5f7f96')
+  dark.addColorStop(0.35, '#26394a')
+  dark.addColorStop(1, '#1b2a37')
+  g.fillStyle = dark
+  g.fillRect(d.x, d.y, d.w, d.h)
+  const pad = 18
+  const band = 40
+  const ph = d.h - band - pad * 2
+  const pw = (ph * m.w) / m.h
+  const p0 = d.x + pad
+  g.fillStyle = RED
+  g.fillRect(p0, d.y + pad, pw, band)
+  g.fillStyle = '#ffffff'
+  g.textAlign = 'center'
+  g.font = `600 26px ${DISPLAY}`
+  g.textBaseline = 'middle'
+  g.fillText('LAND FOR SALE', p0 + pw / 2, d.y + pad + band / 2 + 2)
+  g.drawImage(c, m.x, m.y, m.w, m.h, p0, d.y + pad + band, pw, ph)
+  const h0 = p0 + pw + pad
+  poster(g, { x: h0, y: d.y + pad, w: d.x + d.w - pad - h0, h: d.h - pad * 2 }, pics, sold)
 }
 
 /** One picture's quad: its middle, which way is right and up on it (its face looks along right × up), half its size,
@@ -208,6 +366,7 @@ interface Quad {
 
 const NORTH: [number, number, number] = [-1, 0, 0] // facing the lane (−z): its right is −x
 const EAST: [number, number, number] = [0, 0, -1] // facing +x: its right is −z
+const WEST: [number, number, number] = [0, 0, 1] // facing −x: its right is +z
 
 /** The quads as one geometry, its UVs in the canvas. */
 function quads(list: Quad[]): BufferGeometry {
@@ -246,17 +405,19 @@ function quads(list: Quad[]): BufferGeometry {
   return g
 }
 
-/** Outside: the sign, the hours, the window (each just in front of its board or frame) and the parking sign's plate. */
+/** Outside: the sign, the hours, the windows (each just in front of its board or frame) and the parking sign's plate. */
 const OUTSIDE: Quad[] = [
   { at: [ESTATE_SIGN.x, ESTATE_SIGN.y, ESTATE_SIGN.z - 0.047], right: NORTH, half: ESTATE_SIGN.half, region: 'sign' },
   { at: [ESTATE_HOURS.x, ESTATE_HOURS.y, ESTATE_HOURS.z - 0.022], right: NORTH, half: ESTATE_HOURS.half, region: 'hours' },
   { at: [ESTATE_WINDOW.x, ESTATE_WINDOW.y, ESTATE_WINDOW.z - 0.01], right: NORTH, half: ESTATE_WINDOW.half, region: 'window' },
+  { at: [ESTATE_DISPLAY.x, ESTATE_DISPLAY.y, ESTATE_DISPLAY.z - 0.01], right: NORTH, half: ESTATE_DISPLAY.half, region: 'display' },
   { at: [PARKING_SIGN.x + 0.052, PARKING_SIGN.y, PARKING_SIGN.z], right: EAST, half: PARKING_SIGN.half, region: 'parking' },
 ]
-/** Inside: the board with the house for sale, in its frame on the west wall, and the plate with the logo on the wall
- *  behind the agent's desk, over his head. */
+/** Inside: the board with the house for sale, in its frame on the east wall; the farm's map in its frame on the west
+ *  wall; the plate with the logo on the wall behind the agent's desk, over his head. */
 const INSIDE: Quad[] = [
-  { at: [SALE_BOARD.x + 0.018, SALE_BOARD.y, SALE_BOARD.z], right: EAST, half: SALE_BOARD.half, region: 'board' },
+  { at: [SALE_BOARD.x - 0.018, SALE_BOARD.y, SALE_BOARD.z], right: WEST, half: SALE_BOARD.half, region: 'board' },
+  { at: [ESTATE_MAP.x + 0.018, ESTATE_MAP.y, ESTATE_MAP.z], right: EAST, half: ESTATE_MAP.half, region: 'map' },
   { at: [AGENT_SEAT.x, 1.75, ESTATE_ROOM.z1 - 0.008], right: NORTH, half: [0.24, 0.24], region: 'plate' },
 ]
 
@@ -294,10 +455,13 @@ function Pictures() {
     [made],
   )
   const sold = useFarm(() => farm.apartment.owned)
+  // the meadows the farm has, as the map shows them (drawn again when one is bought)
+  const land = useFarm(() => farm.layout.land.join(' '))
   useEffect(() => {
     let live = true
+    const map: MapState = { land: land ? (land.split(' ') as ParcelId[]) : [] }
     const draw = () => {
-      drawPictures(made.canvas, made.pics, sold)
+      drawPictures(made.canvas, made.pics, sold, map)
       made.texture.needsUpdate = true
     }
     draw()
@@ -312,7 +476,7 @@ function Pictures() {
     return () => {
       live = false
     }
-  }, [made, sold])
+  }, [made, sold, land])
   return (
     <>
       <mesh name="estate-pictures" geometry={made.outside} material={made.material} receiveShadow />
@@ -347,12 +511,13 @@ function Counterparts() {
     },
   })
 
-  // the house for sale on the wall: nothing to press, its price tag (the card asks before anything is spent)
+  // the house for sale on the wall: nothing to press, its price tag (the card asks before anything is spent); in reach
+  // from where you talk to the agent
   useInteractable({
     id: 'farm-estate-board',
-    position: [SALE_BOARD.x + 0.3, 1.0, SALE_BOARD.z],
+    position: [SALE_BOARD.x - 0.3, 1.0, SALE_BOARD.z],
     aim: [SALE_BOARD.x, SALE_BOARD.y, SALE_BOARD.z],
-    radius: 1.2,
+    radius: 1.4,
     enabled: () => false,
     label: 'The house for sale',
     tag: () =>
@@ -362,7 +527,7 @@ function Counterparts() {
             kind: 'price',
             label: `Buy the house · ${ESTATE.price} coins`,
             price: ESTATE.price,
-            at: { x: SALE_BOARD.x + 0.06, y: SALE_BOARD.y + SALE_BOARD.half[1] + 0.16, z: SALE_BOARD.z },
+            at: { x: SALE_BOARD.x - 0.06, y: SALE_BOARD.y + SALE_BOARD.half[1] + 0.16, z: SALE_BOARD.z },
             open: () => openPanel({ kind: 'house-buy' }),
           },
     run: () => {},
@@ -383,6 +548,59 @@ function Counterparts() {
   return null
 }
 
+/** Where a meadow is on the map on the wall: its middle's. */
+export const meadowOnMap = (id: ParcelId) => {
+  const r = PARCELS[id].rect
+  return onMap((r.minX + r.maxX) / 2, (r.minZ + r.maxZ) / 2)
+}
+/** How far from the map you may stand to read a meadow's tag (from a metre in front of it, on the ground). */
+const MAP_REACH = 1.5
+
+/** A meadow on the map: nothing to press, its price tag while it is for sale — the edit mode opens on it, its card
+ *  asking before anything is spent (where every field is bought: src/farm/EditPanel.tsx); a meadow the level has not
+ *  opened yet carries the level instead of a price. */
+function Meadow({ id }: { id: ParcelId }) {
+  const spot = meadowOnMap(id)
+  const def = PARCELS[id]
+  useInteractable({
+    id: `farm-estate-map-${id}`,
+    position: [spot.x + 1.0, 1.0, spot.z],
+    aim: [spot.x, spot.y, spot.z],
+    radius: MAP_REACH,
+    enabled: () => false,
+    label: `The ${def.name.toLowerCase()} on the farm's map`,
+    tag: () => {
+      if (farm.layout.land.includes(id)) return null
+      const at = { x: spot.x + 0.05, y: spot.y, z: spot.z }
+      const open = () => {
+        useHome.getState().setEditing(true)
+        useEdit.getState().pick({ kind: 'parcel', id })
+      }
+      const lock = lockOf(`parcel:${id}`)
+      return lock !== null
+        ? { kind: 'price', label: `${def.name} · opens at level ${lock}`, locked: lock, at, open }
+        : { kind: 'price', label: `Buy the ${def.name.toLowerCase()} · ${def.price} coins`, price: def.price, at, open }
+    },
+    run: () => {},
+  })
+  return null
+}
+
+/** The house's model on its table, as the save's shell has the house: made again when the shell changes (an opening
+ *  moved or closed, a room painted, a floor laid). */
+function HouseModel() {
+  const shell = useFarm(() => farm.home.shell)
+  const parts = useMemo(() => houseModelParts(shell), [shell])
+  useEffect(
+    () => () => {
+      parts.dispose()
+      parts.meshes.house.geometry.dispose()
+    },
+    [parts],
+  )
+  return <primitive object={parts.group} />
+}
+
 // ───────────────────────────── the office and the lot ─────────────────────────────
 
 /** Who opens the office's door besides you: the agent, walking in or out (sitting at his desk he is near it too). */
@@ -398,8 +616,18 @@ const half = (b: Box) => [(b.x1 - b.x0) / 2, (b.y1 - b.y0) / 2, (b.z1 - b.z0) / 
 export function Estate() {
   const fittings = useMemo(() => estateFittingsParts(), [])
   const lot = useMemo(() => parkingLotParts(), [])
-  // ?debug: how far open its door is (0 shut, 1 open), and its walls as hiding pieces (for the tests)
-  useEffect(() => debugSet('estate', { door: () => walkInDoor(ESTATE_WALKIN.id), walls: ESTATE_WALKIN.walls.map(hidingPiece) }), [])
+  // ?debug: how far open its door is (0 shut, 1 open), its walls as hiding pieces, and where each meadow is on its map
+  // (for the tests)
+  useEffect(
+    () =>
+      debugSet('estate', {
+        door: () => walkInDoor(ESTATE_WALKIN.id),
+        walls: ESTATE_WALKIN.walls.map(hidingPiece),
+        meadows: Object.fromEntries(PARCEL_IDS.map((id) => [id, meadowOnMap(id)])),
+        reach: MAP_REACH,
+      }),
+    [],
+  )
   useEffect(
     () => () => {
       for (const p of [fittings, lot] as const) {
@@ -414,14 +642,21 @@ export function Estate() {
       <WalkIn def={ESTATE_WALKIN} walkers={doorWalkers} closed={closedNow} />
       <primitive object={fittings.group} />
       <primitive object={lot.group} />
+      <HouseModel />
       <Pictures />
       <Counterparts />
-      {/* what you bump into: the desk and his chair behind it, the cabinet, the plant; the parking sign's post */}
+      {PARCEL_IDS.map((id) => (
+        <Meadow key={id} id={id} />
+      ))}
+      {/* what you bump into: the desk and his chair behind it, the cabinet, the plant, the bench, the house's table; the
+          parking sign's post */}
       <RigidBody type="fixed" colliders={false}>
         <CuboidCollider args={half(ESTATE_DESK)} position={middle(ESTATE_DESK)} />
         <CuboidCollider args={[0.24, 0.5, 0.25]} position={[AGENT_SEAT.x, 0.5, AGENT_SEAT.z]} />
         <CuboidCollider args={half(CABINET)} position={middle(CABINET)} />
         <CylinderCollider args={[0.5, 0.2]} position={[PLANT.x, 0.5, PLANT.z]} />
+        <CuboidCollider args={half(BENCH)} position={middle(BENCH)} />
+        <CuboidCollider args={half(HOUSE_TABLE)} position={middle(HOUSE_TABLE)} />
         <CylinderCollider args={[1.1, 0.05]} position={[PARKING_SIGN.x, 1.1, PARKING_SIGN.z]} />
       </RigidBody>
     </group>
