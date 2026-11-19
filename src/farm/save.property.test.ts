@@ -730,6 +730,11 @@ describe('a save with one value turned into anything (fast-check)', () => {
     check('played', ['played', 'days'], [])
   })
 
+  it('the values it once found: a save from the first moments of the clock, its shop selling while away', () => {
+    check('played', ['time'], 1)
+    check('played', ['time'], -5e-324)
+  })
+
   it('as saved, each loads as it is and keeps every rule', () => {
     for (const b of bases) {
       loadedParts(toJson(b.save))

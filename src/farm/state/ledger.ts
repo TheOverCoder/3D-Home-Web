@@ -3,7 +3,8 @@ import { noteSale, shareOut, trimLedger, type Channel, type Ledger } from '../le
 import { unitPrice, type Shelf } from '../market'
 import type { Order } from '../orders'
 import { priceOf } from '../prices'
-import { calendarDay, farm } from './core'
+import { dayNumber } from '../daily'
+import { calendarDay, calendarTime, farm } from './core'
 
 // The farm's sales book (src/farm/ledger.ts holds its rules): every sale writes itself in, once, in the module that
 // pays it — a buyer at the gate (buyers.ts), an order sent (orders.ts), the manager and your shop's shelves
@@ -17,9 +18,11 @@ declare module './core' {
   }
 }
 
-/** A sale written into the book: `units` of `good` sold at `channel` for `coins`, today. */
+/** A sale written into the book: `units` of `good` sold at `channel` for `coins`, today (a time away's step: on its own
+ *  day). The book keeps only the two weeks up to the device's today, so a sale of a time away older than that is not
+ *  kept (a save from long ago, its shop selling while away). */
 export function sold(channel: Channel, good: ProduceId, units: number, coins: number) {
-  farm.ledger = noteSale(farm.ledger, calendarDay(), channel, good, units, coins)
+  farm.ledger = trimLedger(noteSale(farm.ledger, calendarDay(), channel, good, units, coins), dayNumber(calendarTime()))
 }
 
 /** The book as it stands today: the days it keeps (two weeks up to today). */
