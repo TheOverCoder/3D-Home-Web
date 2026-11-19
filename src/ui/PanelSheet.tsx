@@ -109,13 +109,16 @@ export function PanelSheet({
   const sheet = useRef<HTMLDivElement>(null)
   const root = useRef<HTMLDivElement>(null)
   const controls = useDragControls()
-  // Esc reads what is current (the page's way back changes with the page)
+  // Esc reads what is current (the page's way back changes with the page); a sheet on its way out leaves it to what is
+  // under it (the next Esc opens the settings again)
   const backNow = useRef(back)
   backNow.current = back
+  const outNow = useRef(out)
+  outNow.current = out
   useEffect(() => {
     sheet.current?.focus({ preventScroll: true })
     const key = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape' || above(root.current)) return
+      if (e.key !== 'Escape' || outNow.current || above(root.current)) return
       e.stopPropagation()
       if (backNow.current) backNow.current()
       else leave()
