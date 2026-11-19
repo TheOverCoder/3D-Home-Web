@@ -91,7 +91,7 @@ describe('the ladders', () => {
 
   it('saved levels read back whole, from 0 to each top; broken ones are 0', () => {
     for (const raw of [undefined, null, 'x', 4, [], {}, { rate: 'all' }, { rate: NaN, places: -Infinity }]) expect(clampLevels(raw), JSON.stringify(raw)).toEqual(NONE)
-    expect(clampLevels({ rate: 2.9, places: 99, group: -2, pace: 1, stock: Infinity, discount: 5, extra: 3 })).toEqual({ ...NONE, rate: 2, places: 7, group: 0, pace: 1, stock: 0, discount: 5 })
+    expect(clampLevels({ rate: 2.9, places: 99, group: -2, pace: 1, stock: Infinity, discount: 5, extra: 3 })).toEqual({ ...NONE, rate: 2, places: 13, group: 0, pace: 1, stock: 0, discount: 5 })
     expect(clampLevels(TOP)).toEqual(TOP)
   })
 
@@ -169,7 +169,8 @@ describe('the visits', () => {
     for (let k = 0; k <= LADDERS.group.levels; k++) expect(LADDERS.group.say(k)).toBe(`${shoppersAtOnce(k)} at a time`)
     for (let k = 0; k <= LADDERS.places.levels; k++) expect(LADDERS.places.say(k)).toBe(`${placesOpen(k)} places`)
     expect(placesOpen(LADDERS.places.levels)).toBe(MAX_PLACES)
-    expect(MAX_PLACES).toBe(10)
+    // (the market's bigger hall, mission 11 c5: sixteen places)
+    expect(MAX_PLACES).toBe(16)
   })
 })
 
@@ -216,9 +217,9 @@ describe('a shopper', () => {
 describe('the saved market read back', () => {
   const owned = (shelves: unknown[], rest: object = {}) => ({ owned: true, shelves, till: { coins: 40, goods: 9 }, nextIn: 20, ...rest })
 
-  it('a new market: not yours, ten empty places, an empty till, a whole wait to the first visit', () => {
+  it('a new market: not yours, sixteen empty places, an empty till, a whole wait to the first visit', () => {
     const m = freshMarket()
-    expect(m).toEqual({ owned: false, shelves: Array.from({ length: 10 }, () => shelf(null, 0)), till: { coins: 0, goods: 0 }, nextIn: SHOP.every })
+    expect(m).toEqual({ owned: false, shelves: Array.from({ length: 16 }, () => shelf(null, 0)), till: { coins: 0, goods: 0 }, nextIn: SHOP.every })
     expect(problems(m, NONE)).toEqual([])
     expect(sanitizeMarket(m, NONE)).toEqual(m)
   })
@@ -240,10 +241,15 @@ describe('the saved market read back', () => {
   })
 
   it('a closed place holds nothing', () => {
-    const full = Array.from({ length: 10 }, () => shelf('egg', 3, 200))
+    const full = Array.from({ length: 16 }, () => shelf('egg', 3, 200))
     const m = sanitizeMarket(owned(full), { ...NONE, places: 2 })
     expect(m.shelves.slice(0, 5)).toEqual(full.slice(0, 5))
-    expect(m.shelves.slice(5)).toEqual(Array.from({ length: 5 }, () => shelf(null, 0)))
+    expect(m.shelves.slice(5)).toEqual(Array.from({ length: 11 }, () => shelf(null, 0)))
+    // a save from the smaller hall (ten places) reads back with sixteen, the six new ones empty
+    const ten = sanitizeMarket(owned(full.slice(0, 10)), { ...NONE, places: 7 })
+    expect(ten.shelves).toHaveLength(16)
+    expect(ten.shelves.slice(0, 10)).toEqual(full.slice(0, 10))
+    expect(ten.shelves.slice(10)).toEqual(Array.from({ length: 6 }, () => shelf(null, 0)))
   })
 
   it('a shop not yours has empty shelves and an empty till, whatever was saved', () => {
@@ -284,9 +290,9 @@ describe('the saved market read back', () => {
     expect(sanitizeMarket(owned([], { till: 'full' }), NONE).till).toEqual({ coins: 0, goods: 0 })
   })
 
-  it('too many shelves, or shelves that are not shelves, read back as ten places', () => {
+  it('too many shelves, or shelves that are not shelves, read back as sixteen places', () => {
     const long = Array.from({ length: 50 }, () => shelf('egg', 3, 200))
-    expect(sanitizeMarket(owned(long), TOP).shelves).toHaveLength(10)
+    expect(sanitizeMarket(owned(long), TOP).shelves).toHaveLength(16)
     for (const shelves of ['shelves', 5, null, { 0: shelf('egg', 3) }, [null, 'egg', 3, [], true]]) {
       const m = sanitizeMarket({ owned: true, shelves }, TOP)
       expect(m.shelves, JSON.stringify(shelves)).toEqual(freshMarket().shelves)

@@ -1,5 +1,5 @@
 import { GARDEN } from '../data/layout'
-import { BACK, BAYS, DESK, FRONT_DOOR, HALL, INNER_DOOR, MANAGER_SPOT, MANAGER_STAND, MARKET_PATH, SCREEN, SHELF_RUN, TILL } from '../data/market'
+import { BACK, BAYS, CROSS_Z, DESK, FRONT_DOOR, GONDOLAS, HALL, INNER_DOOR, MANAGER_SPOT, MANAGER_STAND, MARKET_PATH, SCREEN, TILL } from '../data/market'
 import { managerLeaves, shopperIn, type Step } from '../farm/script'
 import { MARKET_SIGN } from '../models/market'
 import type { Spot } from './format'
@@ -234,10 +234,10 @@ export const THINGS_AT: Record<string, Thing> = {
   screen: { x: SCREEN.x, y: SCREEN.y, z: SCREEN.z, h: 0.3, w: 0.5, heading: SCREEN.heading },
   desk: { x: (DESK.x0 + DESK.x1) / 2, y: DESK.y1, z: (DESK.z0 + DESK.z1) / 2, h: 0.5, w: DESK.x1 - DESK.x0, heading: Math.PI },
   till: { x: TILL.x, y: TILL.y + 0.12, z: TILL.z, h: 0.3, w: 0.4, heading: 0 },
-  /** the shop's aisle, between the shelves along the south wall and the island, seen from its west end */
-  aisle: { x: (HALL.x0 + HALL.x1) / 2, y: 1.0, z: (SHELF_RUN.z0 + 19.15) / 2, h: 2.2, w: 1.4, heading: -Math.PI / 2 },
-  /** the shelves along the hall's south wall: the first three places, facing the door */
-  shelves: { x: (BAYS[0].x + BAYS[2].x) / 2, y: 1.0, z: SHELF_RUN.z0, h: 1.8, w: BAYS[2].x - BAYS[0].x + 0.6, heading: Math.PI },
+  /** the shop's middle aisle, between the two gondolas, seen from its north end (the cross aisle) */
+  aisle: { x: (GONDOLAS[0].x1 + GONDOLAS[1].x0) / 2, y: 1.0, z: (CROSS_Z + GONDOLAS[0].z1) / 2, h: 2.2, w: GONDOLAS[1].x0 - GONDOLAS[0].x1, heading: 0 },
+  /** the first gondola's west face: the first three places, towards the door */
+  shelves: { x: BAYS[0].x, y: 1.0, z: (BAYS[0].z + BAYS[2].z) / 2, h: 1.8, w: BAYS[2].z - BAYS[0].z + 0.6, heading: -Math.PI / 2 },
   /** the pen, its gate and post (seen from the lane), the tool's place and the old nest box */
   pen: { x: PEN_MIDDLE.x, y: 0.6, z: PEN_MIDDLE.z, h: 1.4, w: PEN.x1 - PEN.x0, heading: Math.PI },
   gate: { x: (PEN.gate.x0 + PEN.gate.x1) / 2, y: 0.5, z: PEN.z0, h: 1.0, w: PEN.gate.x1 - PEN.gate.x0 + 0.4, heading: Math.PI },

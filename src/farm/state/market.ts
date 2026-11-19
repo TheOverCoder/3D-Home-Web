@@ -6,8 +6,8 @@ import { managerPay, managerPct, placesOpen, rollShopper, SHOP_LADDERS, shopperE
 import { dailyOffers, offersPerDay } from '../contractor'
 import { rollLook } from '../../models/look'
 import { personLook } from '../../data/people'
-import { BROWSE_SPOTS, LOT, MANAGER_SPOT, SCREEN, TILL } from '../../data/market'
-import { hallStands, laneEnd, managerLeaves, payPlace, scriptSeconds, secondsLeft, shopperIn, shopperOut, shopperPay, stepScript, walker, type Pose } from '../script'
+import { BROWSE_SPOTS, CAFE_SEATS, checkoutsOpen, LOT, MANAGER_SPOT, SCREEN, TILL } from '../../data/market'
+import { hallStands, laneEnd, managerLeaves, payPlace, scriptSeconds, secondsLeft, shopperIn, shopperOut, shopperPay, shopperSit, stepScript, walker, type Pose } from '../script'
 import { randomItem } from '../storage'
 import { needsMet } from '../tools'
 import { bump, farm, isSellable, putBack, random, save, toast, type At, type Person, type Place, type Walking } from './core'
@@ -282,7 +282,7 @@ export function marketFill(item: ProduceId = 'corn', opts: { shoppers?: boolean;
 export const MOST_SHOPPERS = 14
 /** The most of them ever inside the market at once (its rooms and its doorway), at the top of both ladders: measured by
  *  playing the shop for hours (src/farm/state.market.test.ts); the rest of those about are on the lane. */
-export const MOST_INSIDE = 6
+export const MOST_INSIDE = 7
 /** The lane in front of the market, where those about but not inside stand when the shop is filled for measuring. */
 const LANE_IN_FRONT = { x0: 0, x1: LOT[0].x1 } as const
 /** Two shoppers never browse at one spot at once: the one coming is there this long after the one before has gone. */
@@ -292,11 +292,14 @@ const MANAGER_ID = -1
 
 let shopperSeq = 0
 
-/** A shopper: on their way in and browsing, on their way to pay and paying, or on their way out. */
+/** A shopper: on their way in and browsing, on their way to pay and paying (at checkout `till`), sitting in the café
+ *  (at `seat`) a while, or on their way out. */
 interface Shopper extends Person {
-  phase: 'in' | 'pay' | 'out'
+  phase: 'in' | 'pay' | 'sit' | 'out'
   spot: number
   side: 0 | 1
+  till: number
+  seat: number | null
 }
 /** Not saved: on a reload the shoppers are gone (what they bought is in the till already). */
 let shoppers: Shopper[] = []
@@ -325,7 +328,9 @@ let standing = false
 function standShoppers() {
   const at: { x: number; z: number; heading: number; pose: Pose; spot: number }[] = []
   BROWSE_SPOTS.forEach((b, spot) => at.push({ ...b, pose: 'browse', spot }))
-  for (let k = 0; k < BROWSE_SPOTS.length; k++) at.push({ ...payPlace(k), pose: k ? 'stand' : 'pay', spot: k })
+  // one paying at each checkout and one behind, then the café's seats
+  for (let k = 0; k < 2; k++) for (let till = 0; till < 2; till++) at.push({ ...payPlace(k, till), pose: k ? 'stand' : 'pay', spot: k })
+  CAFE_SEATS.forEach((c, k) => at.push({ ...c, pose: 'sit', spot: k }))
   for (const p of hallStands(MOST_INSIDE - at.length, at)) at.push({ ...p, pose: 'stand', spot: 0 })
   const inside = at.slice(0, MOST_INSIDE)
   const lane = MOST_SHOPPERS - inside.length
@@ -339,6 +344,8 @@ function standShoppers() {
     phase: 'in' as const,
     spot: p.spot,
     side: 1 as const,
+    till: 0,
+    seat: null,
   }))
   standing = true
 }
@@ -364,7 +371,17 @@ function visit(spots: number[]) {
   for (const spot of spots) {
     const side: 0 | 1 = random() < 0.5 ? 0 : 1
     const end = laneEnd(side)
-    shoppers.push({ ...walker(end.x, end.z, side ? -Math.PI / 2 : Math.PI / 2, shopperIn(spot)), walking: true, id: -(100 + ++shopperSeq), look: rollLook(random), phase: 'in', spot, side })
+    shoppers.push({
+      ...walker(end.x, end.z, side ? -Math.PI / 2 : Math.PI / 2, shopperIn(spot)),
+      walking: true,
+      id: -(100 + ++shopperSeq),
+      look: rollLook(random),
+      phase: 'in',
+      spot,
+      side,
+      till: 0,
+      seat: null,
+    })
   }
 }
 
@@ -391,9 +408,17 @@ function moveShoppers(dt: number) {
     if (!stepScript(s, dt, VISITOR.speed)) continue
     if (s.phase === 'in') {
       const bought = shopperBuys() > 0
-      const ahead = shoppers.filter((o) => o.phase === 'pay').length
-      Object.assign(s, { phase: bought ? 'pay' : 'out', steps: bought ? shopperPay(s.spot, ahead) : shopperOut(s.spot, false, s.side), ...setOff })
-    } else if (s.phase === 'pay') Object.assign(s, { phase: 'out', steps: shopperOut(s.spot, true, s.side), ...setOff })
+      // the checkout with the fewest paying there (the second only once it is open)
+      const paying = (till: number) => shoppers.filter((o) => o.phase === 'pay' && o.till === till).length
+      const till = checkoutsOpen(farm.ladders.group) > 1 && paying(1) < paying(0) ? 1 : 0
+      Object.assign(s, { phase: bought ? 'pay' : 'out', till, steps: bought ? shopperPay(s.spot, paying(till), till) : shopperOut(s.spot, false, s.side), ...setOff })
+    } else if (s.phase === 'pay') {
+      // one in SHOP.cafe.every who paid sits a while in the café, at a seat nobody has (by their own number, not the
+      // farm's dice: life only, the till already has their coins)
+      const seat = Math.abs(s.id) % SHOP.cafe.every === 0 ? CAFE_SEATS.findIndex((_, k) => !shoppers.some((o) => o.seat === k)) : -1
+      if (seat >= 0) Object.assign(s, { phase: 'sit', seat, steps: shopperSit(seat, s.till), ...setOff })
+      else Object.assign(s, { phase: 'out', steps: shopperOut(s.spot, true, s.side, s.till), ...setOff })
+    } else if (s.phase === 'sit') Object.assign(s, { phase: 'out', steps: shopperOut(s.spot, true, s.side, s.till, s.seat), seat: null, ...setOff })
     else shoppers.splice(shoppers.indexOf(s), 1)
   }
   if (leaving && stepScript(leaving, dt, VISITOR.speed)) leaving = null

@@ -1,6 +1,6 @@
 import type { AutoDoor, Box, Rect, WalkIn } from './buildings'
 import { ESTATE_ROOM, ESTATE_WALKIN, PARKING } from './estate'
-import { FRONT_DOOR, MARKET_WALKIN } from './market'
+import { BACK, CABIN, HALL, INNER_DOOR, MARKET_WALKIN } from './market'
 
 // The lot beyond the lane as update-v1/missions/11-buildings.md plans it: a bigger supermarket and estate office, a car
 // dealer, the contractor's cabin moved against the hall's new east wall, the car park, and the lot's walkable ground.
@@ -34,44 +34,15 @@ export const ESTATE_PLANNED: WalkIn = ESTATE_WALKIN
 
 // ───────────────────────────── the supermarket ─────────────────────────────
 
-/** The hall, 2.3 times today's, from today's front (its door where it is) south and east; it rises to 4 m. The
- *  manager's room behind it, twice today's. The doorway between them in the middle of the hall's south wall. */
-export const HALL_PLANNED: Rect = { x0: 6.05, x1: 16.45, z0: FRONT_DOOR.z1, z1: 22.9 }
-export const BACK_PLANNED: Rect = { x0: 8.5, x1: 14.0, z0: HALL_PLANNED.z1 + T, z1: 25.6 }
-export const INNER_DOOR_PLANNED: Rect = { x0: 10.75, x1: 11.75, z0: HALL_PLANNED.z1, z1: BACK_PLANNED.z0 }
+/** Built: the hall, 2.3 times the first, from the first's front (its door where it was) south and east, rising to 4 m;
+ *  the manager's room behind it, twice the first; the doorway between them in the middle of the hall's south wall; the
+ *  cabin against the hall's new east wall (src/data/market.ts). */
+export const HALL_PLANNED: Rect = HALL
+export const BACK_PLANNED: Rect = BACK
+export const INNER_DOOR_PLANNED: Rect = INNER_DOOR
 const HL = HALL_PLANNED
-const BK = BACK_PLANNED
-const MARKET_H = 4.0
-
-export const MARKET_PLANNED: WalkIn = {
-  id: 'market',
-  walls: [
-    // the hall: north (with today's front door), south (with the doorway to the back), west and east
-    ...wallX(HL.x0 - T, HL.x1 + T, HL.z0 - T, HL.z0, MARKET_H, FRONT_DOOR),
-    ...wallX(HL.x0 - T, HL.x1 + T, HL.z1, HL.z1 + T, MARKET_H, INNER_DOOR_PLANNED),
-    box(HL.x0 - T, HL.x0, HL.z0, HL.z1, 0, MARKET_H),
-    box(HL.x1, HL.x1 + T, HL.z0, HL.z1, 0, MARKET_H),
-    // the manager's room: west, east and south (its north side is the hall's south wall)
-    box(BK.x0 - T, BK.x0, BK.z0, BK.z1 + T, 0, MARKET_H),
-    box(BK.x1, BK.x1 + T, BK.z0, BK.z1 + T, 0, MARKET_H),
-    box(BK.x0, BK.x1, BK.z1, BK.z1 + T, 0, MARKET_H),
-  ],
-  roof: { y: 3.6, thick: 0.15 },
-  rooms: [
-    { space: 'market', ...HL, top: 3.48 },
-    { space: 'market-office', ...BK, top: 3.48 },
-  ],
-  doors: [FRONT_DOOR, INNER_DOOR_PLANNED],
-  floor: 'tile',
-  lights: [
-    { x: (HL.x0 + HL.x1) / 2, y: 3.3, z: (HL.z0 + HL.z1) / 2, color: '#fff1dc', intensity: 8, distance: 10 },
-    { x: (BK.x0 + BK.x1) / 2, y: 3.3, z: (BK.z0 + BK.z1) / 2, color: '#fff1dc', intensity: 4, distance: 6 },
-  ],
-  autoDoor: MARKET_WALKIN.autoDoor,
-}
-
-/** The contractor's site cabin, as big as today's, against the hall's new east wall; its window still faces east. */
-export const CABIN_PLANNED: Box = box(HL.x1 + T + 0.15, HL.x1 + T + 1.25, 17.35, 18.5, 0, 2.4)
+export const MARKET_PLANNED: WalkIn = MARKET_WALKIN
+export const CABIN_PLANNED: Box = CABIN
 
 // ───────────────────────────── the car dealer ─────────────────────────────
 

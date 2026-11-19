@@ -328,14 +328,14 @@ describe('shoppers and the till', () => {
 })
 
 describe('the market at its fullest, for measuring what it draws (marketFill)', () => {
-  it('every place open and full of one good; or, mixed, ten different goods, the heaviest to draw', () => {
+  it('every place open and full of one good; or, mixed, a different good each, the heaviest to draw', () => {
     marketFill('corn')
     expect(farm.market.shelves.every((sh) => sh.good === 'corn' && sh.units === SHOP.units)).toBe(true)
     expect(farm.ladders.places).toBe(LADDERS.places.levels)
-    // weighed by the scene: the heaviest ten, heaviest first
+    // weighed by the scene: the heaviest, heaviest first (as many as there are places; past the goods there are, corn)
     weighGoods((ids) => Object.fromEntries(ids.map((id, k) => [id, k])))
     marketFill('corn', { mixed: true })
-    expect(farm.market.shelves.map((sh) => sh.good)).toEqual([...SELLABLE].reverse().slice(0, 10))
+    expect(farm.market.shelves.map((sh) => sh.good)).toEqual(Array.from({ length: MAX_PLACES }, (_, k) => [...SELLABLE].reverse()[k] ?? 'corn'))
     expect(farm.market.shelves.every((sh) => sh.units === SHOP.units)).toBe(true)
   })
 
@@ -345,8 +345,8 @@ describe('the market at its fullest, for measuring what it draws (marketFill)', 
     expect(people.length).toBe(MOST_SHOPPERS)
     const inside = people.filter((p) => insideWalkIn(p.x, p.z))
     expect(inside.length).toBe(MOST_INSIDE)
-    // the browse spots first, then the counter
-    BROWSE_SPOTS.forEach((b) => expect(inside).toContainEqual(expect.objectContaining({ x: b.x, z: b.z, pose: 'browse' })))
+    // the browse spots first, then the counters
+    BROWSE_SPOTS.slice(0, MOST_INSIDE).forEach((b) => expect(inside).toContainEqual(expect.objectContaining({ x: b.x, z: b.z, pose: 'browse' })))
     if (MOST_INSIDE > BROWSE_SPOTS.length) expect(inside).toContainEqual(expect.objectContaining({ x: PAY_SPOT.x, z: PAY_SPOT.z, pose: 'pay' }))
     // the rest walking the lane in front of the market
     for (const p of people.filter((q) => !insideWalkIn(q.x, q.z))) {

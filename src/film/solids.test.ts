@@ -30,9 +30,9 @@ describe('a walk round the set', () => {
     // from the shop's hall into the manager's room: the doorway in the wall between
     const film: Film = {
       ...SUPERMARKET,
-      cast: { guy: { name: 'Guy', look: 'contractor', at: { x: 7.5, z: 19.5 } } },
+      cast: { guy: { name: 'Guy', look: 'contractor', at: { x: 10.6, z: 19.2 } } },
       props: {},
-      scenes: [{ place: 'market', light: 'noon', shots: [{ len: 6, cam: { on: 'guy' }, do: [{ at: 0, who: 'guy', to: { x: 11.8, z: 21.6 }, pace: 1.5 }] }] }],
+      scenes: [{ place: 'market', light: 'noon', shots: [{ len: 6, cam: { on: 'guy' }, do: [{ at: 0, who: 'guy', to: { x: 12.6, z: 24.0 }, pace: 1.5 }] }] }],
     }
     const tl = timeline(film)
     const walls = solidsOf('market')
@@ -40,7 +40,7 @@ describe('a walk round the set', () => {
       const m = memberAt(tl, 'guy', w)
       for (const s of walls) expect(gap(m, s), `${s.name} at ${w.toFixed(2)} s`).toBeGreaterThan(0.1)
     }
-    expect(memberAt(tl, 'guy', 6)).toMatchObject({ x: 11.8, z: 21.6 })
+    expect(memberAt(tl, 'guy', 6)).toMatchObject({ x: 12.6, z: 24.0 })
     expect(lintStage(film)).toEqual([])
   })
 })
@@ -54,7 +54,7 @@ describe('the stage’s checks', () => {
     const film: Film = {
       ...SUPERMARKET,
       cast: {
-        a: { name: 'A', look: 'manager', at: { x: 10, z: 20.55 } },
+        a: { name: 'A', look: 'manager', at: { x: 10, z: 22.95 } },
         b: { name: 'B', look: 'contractor', at: { x: 8, z: 18.6 } },
         c: { name: 'C', look: 'player', at: { x: 9, z: 18.6 }, off: true },
       },

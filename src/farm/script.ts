@@ -6,7 +6,7 @@
 // spots, the pay spot and the line behind it, the manager's place, the contractor's window, and the lane's ends; and
 // from the estate office's (src/data/estate.ts): its door, the way round the agent's desk, his chair.
 
-import { BROWSE_SPOTS, CABIN, CONTRACTOR_SPOT, COUNTER, INNER_DOOR, ISLAND, MANAGER_SPOT, MARKET_PATH, PAY_SPOT, PAY_STEP, DESK } from '../data/market'
+import { BROWSE_SPOTS, CABIN, CAFE_SEATS, CAFE_TABLES, CONTRACTOR_SPOT, COUNTERS, CROSS_Z, INNER_DOOR, MANAGER_SPOT, MARKET_PATH, PAY_SPOTS, PAY_STEP, DESK } from '../data/market'
 import { AGENT_SEAT, ESTATE_DESK, ESTATE_PATH } from '../data/estate'
 import { dampAngle } from '../lib/damp'
 import { LANE_ENDS, SHOP, WALK_Z } from './data'
@@ -105,54 +105,81 @@ export const laneEnd = (side: 0 | 1): Point => ({ x: LANE_ENDS[side], z: WALK_Z 
 /** The lane, the doorstep and just inside the front door. */
 const [LANE, OUTSIDE, INSIDE] = MARKET_PATH
 
-// Ways through the hall that keep a person's body clear of the counter, the shelves and the island (worked out from
-// their boxes in src/data/market.ts).
-/** The hall's middle: south of the pay line, north of the shelves along the south wall. */
-const MIDDLE: Point = { x: COUNTER.x0 + 0.2, z: (PAY_SPOT.z + BROWSE_SPOTS[0].z) / 2 + 0.1 }
-/** Just west of the counter's end, on the way out from paying. */
-const BY_COUNTER: Point = { x: COUNTER.x0 - 0.4, z: PAY_SPOT.z + 0.15 }
-/** West of the island, at a spot's own depth: the way round it to the spots on its faces. */
-const besideIsland = (z: number): Point => ({ x: ISLAND.x0 - 0.5, z })
-const pastIsland = (p: Point) => p.x > ISLAND.x0 - 0.5
+// Ways through the hall that keep a person's body clear of the counters, the gondolas and the café (worked out from
+// their boxes in src/data/market.ts): in from the door to the hall's north-west, along the cross aisle to an aisle's
+// top, and down it to a browse spot.
+/** In the hall's north-west, past the first counter's west end, south of the pay line. */
+const MIDDLE: Point = { x: 7.6, z: 18.6 }
+/** The top of the aisle a point is in (on the cross aisle). */
+const aisleTop = (p: Point): Point => ({ x: p.x, z: CROSS_Z })
+/** Just west of a checkout's counter, on the way out from paying. */
+const byCounter = (till: number): Point => ({ x: COUNTERS[till].x0 - 0.4, z: PAY_SPOTS[till].z + 0.2 })
 /** The doorway between the hall and the manager's room, a step either side of it, and the way round his desk. */
 const DOOR_X = (INNER_DOOR.x0 + INNER_DOOR.x1) / 2
 const BACK_SIDE: Point = { x: DOOR_X, z: INNER_DOOR.z1 + 0.3 }
 const HALL_SIDE: Point = { x: DOOR_X, z: INNER_DOOR.z0 - 0.4 }
+/** The aisle the doorway opens on, at the cross aisle. */
+const DOOR_AISLE: Point = { x: DOOR_X, z: CROSS_Z }
 const ROUND_DESK: Point = { x: DESK.x1 + 0.5, z: MANAGER_SPOT.z }
 /** The contractor's way out of his cabin, through the door in its north side (towards the lane: CABIN_DOOR in
  *  src/models/market.ts), and the corner of the lot beside it. */
 const CABIN_DOOR: Point = { x: CONTRACTOR_SPOT.x, z: CABIN.z0 - 0.2 }
 const CORNER: Point = { x: CABIN.x1 + 0.5, z: CABIN.z0 - 0.75 }
 
-/** Where the k-th of those paying stands: the first at the counter, the rest behind to the east, facing up the line. */
-export const payPlace = (k: number) => ({ x: PAY_SPOT.x + k * PAY_STEP, z: PAY_SPOT.z, heading: k === 0 ? PAY_SPOT.heading : -Math.PI / 2 })
+/** Where the k-th of those paying at checkout `till` stands: the first at the counter, the rest behind to the east,
+ *  facing up the line. */
+export const payPlace = (k: number, till = 0) => ({ x: PAY_SPOTS[till].x + k * PAY_STEP, z: PAY_SPOTS[till].z, heading: k === 0 ? PAY_SPOTS[till].heading : -Math.PI / 2 })
 
-/** A shopper's way in (they start at a lane end): through the front door to their browse spot, then a browse there. */
+/** A shopper's way in (they start at a lane end): through the front door, along the cross aisle and down their aisle to
+ *  their browse spot, then a browse there. */
 export function shopperIn(spot: number): Step[] {
   const s = BROWSE_SPOTS[spot]
-  return [to(LANE), to(OUTSIDE), to(INSIDE), to(MIDDLE), ...(pastIsland(s) ? [to(besideIsland(s.z))] : []), to(s), { wait: SHOP.browse, face: s.heading, pose: 'browse' }]
+  return [to(LANE), to(OUTSIDE), to(INSIDE), to(MIDDLE), to(aisleTop(s)), to(s), { wait: SHOP.browse, face: s.heading, pose: 'browse' }]
 }
 
-/** From their browse spot to their place in the line (`ahead`: how many pay before them), a wait while those ahead
- *  pay, then paying at the counter. */
-export function shopperPay(spot: number, ahead: number): Step[] {
+/** From their browse spot up their aisle to their place in checkout `till`'s line (`ahead`: how many pay there before
+ *  them), a wait while those ahead pay, then paying at the counter. */
+export function shopperPay(spot: number, ahead: number, till = 0): Step[] {
   const s = BROWSE_SPOTS[spot]
-  const place = payPlace(ahead)
-  const front = payPlace(0)
+  const place = payPlace(ahead, till)
+  const front = payPlace(0, till)
   const queue: Step[] = ahead > 0 ? [{ wait: ahead * SHOP.pay, face: place.heading }, to(front)] : []
-  return [...(pastIsland(s) ? [to(besideIsland(s.z))] : []), to(place), ...queue, { wait: SHOP.pay, face: front.heading, pose: 'pay' }]
+  return [to(aisleTop(s)), to({ x: place.x, z: CROSS_Z }), to(place), ...queue, { wait: SHOP.pay, face: front.heading, pose: 'pay' }]
 }
 
-/** Out of the shop to a lane end: from the counter (`paid`), or from their browse spot (nothing they wanted). */
-export function shopperOut(spot: number, paid: boolean, side: 0 | 1): Step[] {
+/** Café seat `seat` (src/data/market.ts, CAFE_SEATS) from the checkout: west of its table, from the cross aisle; east of
+ *  it, round the tables' south side and up between them and the coffee counter. */
+function toSeat(seat: number): Step[] {
+  const c = CAFE_SEATS[seat]
+  const t = CAFE_TABLES[Math.floor(seat / 2)]
+  const west = c.x < t.x
+  const south = CAFE_TABLES[CAFE_TABLES.length - 1].z + CAFE_TABLES[0].r + 0.35
+  const lane = c.x + 0.4
+  return west
+    ? [to({ x: c.x - 0.35, z: CROSS_Z }), to({ x: c.x - 0.35, z: c.z }), to(c)]
+    : [to({ x: c.x - 1.5, z: CROSS_Z }), to({ x: c.x - 1.5, z: south }), to({ x: lane, z: south }), to({ x: lane, z: c.z }), to(c)]
+}
+
+/** A shopper who has paid at checkout `till` sits a while in the café, at seat `seat` (life only: the till has their
+ *  coins already). */
+export function shopperSit(seat: number, till: number): Step[] {
+  const c = CAFE_SEATS[seat]
+  return [to({ x: PAY_SPOTS[till].x, z: CROSS_Z }), ...toSeat(seat), { wait: SHOP.cafe.seconds, face: c.heading, pose: 'sit' }]
+}
+
+/** Out of the shop to a lane end: from checkout `till` (`paid`), from a café seat (`seat`), or from their browse spot
+ *  (nothing they wanted). */
+export function shopperOut(spot: number, paid: boolean, side: 0 | 1, till = 0, seat: number | null = null): Step[] {
   const s = BROWSE_SPOTS[spot]
-  const inside: Step[] = paid ? [to(BY_COUNTER)] : [...(pastIsland(s) ? [to(besideIsland(s.z))] : []), to(MIDDLE)]
+  const back = seat === null ? [] : toSeat(seat).slice(0, -1).reverse()
+  const inside: Step[] = seat !== null ? [...back, to(MIDDLE)] : paid ? [to(byCounter(till)), to(MIDDLE)] : [to(aisleTop(s)), to(MIDDLE)]
   return [...inside, to(INSIDE), to(OUTSIDE), to(LANE), to(laneEnd(side))]
 }
 
-/** The manager, once the shop is yours: a wave goodbye, then through the doorway, out of the front door, down the lane. */
+/** The manager, once the shop is yours: a wave goodbye, then through the doorway, up the aisle, out of the front door,
+ *  down the lane. */
 export function managerLeaves(): Step[] {
-  return [{ wait: 2, face: MANAGER_SPOT.heading, pose: 'wave' }, to(ROUND_DESK), to(BACK_SIDE), to(HALL_SIDE), to(INSIDE), to(OUTSIDE), to(LANE), to(laneEnd(1))]
+  return [{ wait: 2, face: MANAGER_SPOT.heading, pose: 'wave' }, to(ROUND_DESK), to(BACK_SIDE), to(HALL_SIDE), to(DOOR_AISLE), to(MIDDLE), to(INSIDE), to(OUTSIDE), to(LANE), to(laneEnd(1))]
 }
 
 /** The contractor at night: a wave, out of his cabin to the lane, and off to its east end. */

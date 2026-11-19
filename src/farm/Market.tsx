@@ -25,13 +25,16 @@ import {
   DESK,
   DESK_STAND,
   HALL,
-  ISLAND,
-  ISLAND_PANEL,
+  CAFE_COUNTER,
+  CAFE_SEATS,
+  CAFE_TABLES,
+  COUNTERS,
+  GONDOLA_PANELS,
+  GONDOLAS,
   MANAGER_SPOT,
   MANAGER_STAND,
   MARKET_WALKIN,
   SCREEN,
-  SHELF_RUN,
   SHELF_YS,
   TILL,
 } from '../data/market'
@@ -41,7 +44,7 @@ import { groundDistance, useInteractable, type ActionIcon } from '../lib/interac
 import { playerState } from '../lib/playerState'
 import { Parts, type PartDef } from '../lib/sculpt'
 import { clock } from '../lib/time'
-import { BAY_DEPTH, CABIN_WINDOW, MARKET_SCREEN, MARKET_SIGN, fittingShapes, marketFittingsParts, putMarketFittings, type FittingPart } from '../models/market'
+import { BAY_DEPTH, CABIN_WINDOW, MARKET_SCREEN, MARKET_SIGN, fittingCount, fittingShapes, marketFittingsParts, putMarketFittings, type FittingPart } from '../models/market'
 import { hidingPiece, walkInDoor, WalkIn } from '../scene/WalkIn'
 import { useHome } from '../store'
 import { LADDERS, MANAGER, SELLABLE, SHOP, count, produceById, type ProduceId } from './data'
@@ -73,7 +76,7 @@ class Fittings {
     else {
       const shapes = fittingShapes()
       const defs = {} as Record<FittingPart, PartDef>
-      for (const k of Object.keys(shapes) as FittingPart[]) defs[k] = { geometry: shapes[k].geometry(), max: k === 'bay' ? BAYS.length : 1, material: { roughness: 0.7 }, castShadow: true }
+      for (const k of Object.keys(shapes) as FittingPart[]) defs[k] = { geometry: shapes[k].geometry(), max: fittingCount(k), material: { roughness: 0.7 }, castShadow: true }
       parts = new Parts<FittingPart>(defs, 'market-fittings-casting')
       putMarketFittings(parts)
     }
@@ -91,8 +94,8 @@ class Fittings {
   }
 }
 
-/** What you bump into: the counter, the shelving, the island, the desk, the cabin and the counter board under its
- *  window (it stands out into the corner: you stand at it, not in it). */
+/** What you bump into: the counters, the gondolas, the café's counter, tables and chairs, the desk, the cabin and the
+ *  counter board under its window (it stands out into the corner: you stand at it, not in it). */
 const WINDOW_COUNTER: Box = {
   x0: CABIN.x1,
   x1: CABIN.x1 + 0.26,
@@ -101,7 +104,17 @@ const WINDOW_COUNTER: Box = {
   y0: 0,
   y1: CABIN_WINDOW.y - CABIN_WINDOW.half[1],
 }
-const SOLID: Box[] = [COUNTER, SHELF_RUN, ISLAND, DESK, CABIN, WINDOW_COUNTER]
+const around = (x: number, z: number, h: number, y1: number): Box => ({ x0: x - h, x1: x + h, z0: z - h, z1: z + h, y0: 0, y1 })
+const SOLID: Box[] = [
+  ...COUNTERS,
+  ...GONDOLAS,
+  CAFE_COUNTER,
+  ...CAFE_TABLES.map((t) => around(t.x, t.z, t.r, 0.75)),
+  ...CAFE_SEATS.map((c) => around(c.x, c.z, 0.2, 0.46)),
+  DESK,
+  CABIN,
+  WINDOW_COUNTER,
+]
 
 // ───────────────────────────── the screen and the sign ─────────────────────────────
 
@@ -424,7 +437,7 @@ function Counterparts() {
 // ───────────────────────────── the market ─────────────────────────────
 
 /** The hiding pieces the walk-in registers (its walls, and the island's middle panel), for the tests. */
-const HIDERS = [ISLAND_PANEL]
+const HIDERS = GONDOLA_PANELS
 
 /** Who opens the front door besides you: the shoppers, and the manager on his way out. */
 function* doorWalkers() {

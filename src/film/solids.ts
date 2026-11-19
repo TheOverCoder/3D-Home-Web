@@ -1,4 +1,4 @@
-import { CABIN, COUNTER, DESK, ISLAND, MARKET_WALKIN, SHELF_RUN } from '../data/market'
+import { CABIN, CAFE_COUNTER, CAFE_TABLES, COUNTERS, DESK, GONDOLAS, MARKET_WALKIN } from '../data/market'
 import type { ToolKind } from '../farm/data'
 import type { Scene } from './format'
 import { PEN, PEN_TOOL, TOOL_FOOT } from './set'
@@ -48,9 +48,10 @@ function penSolids(herd?: ToolKind): Solid[] {
 function marketSolids(): Solid[] {
   return [
     ...MARKET_WALKIN.walls.filter((b) => b.y0 < 1).map((b) => ({ name: 'a wall', x0: b.x0, x1: b.x1, z0: b.z0, z1: b.z1 })),
-    { name: 'the counter', ...COUNTER },
-    { name: 'the shelves', ...SHELF_RUN },
-    { name: 'the island', ...ISLAND },
+    ...COUNTERS.map((c) => ({ name: 'a checkout', ...c })),
+    ...GONDOLAS.map((g) => ({ name: 'the shelves', ...g })),
+    { name: "the café's counter", ...CAFE_COUNTER },
+    ...CAFE_TABLES.map((t) => ({ name: 'a café table', x0: t.x - t.r - 0.25, x1: t.x + t.r + 0.25, z0: t.z - t.r, z1: t.z + t.r })),
     { name: 'the desk', ...DESK },
     { name: 'the cabin', ...CABIN },
   ].map(({ name, x0, x1, z0, z1 }) => ({ name, x0, x1, z0, z1 }))

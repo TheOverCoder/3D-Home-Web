@@ -815,7 +815,8 @@ export const MANAGER = { pct: 20, pctStep: 5, shopPrice: 1500 } as const
  *  `pct.min`% to `pct.max`% of its fair price; a shopper takes each unit they see with a chance falling from
  *  `chance.atMin` at the lowest price to `chance.atMax` at the highest (src/farm/market.ts, buyChance). A visit comes
  *  every `every` seconds, `faster` sooner for every step of the `pace` ladder (it waits while the shelves are empty);
- *  a shopper browses `browse` s and pays `pay` s. The till goes on the compass once it holds `readyAt` coins. */
+ *  a shopper browses `browse` s and pays `pay` s; one in `cafe.every` who has paid sits `cafe.seconds` s in the café
+ *  (life only: the till is the same). The till goes on the compass once it holds `readyAt` coins. */
 export const SHOP = {
   places: 3,
   units: 3,
@@ -825,6 +826,7 @@ export const SHOP = {
   faster: 30,
   browse: 4,
   pay: 3,
+  cafe: { every: 3, seconds: 12 },
   readyAt: 100,
 } as const
 
@@ -991,7 +993,7 @@ function TOOL_LADDERS(): Record<ToolLadderId, Ladder> {
  *  (src/farm/Ladder.tsx), one place in the save (farm.ladders). When each may be bought: `ladderOpen` in state.ts. */
 export const LADDERS: Record<LadderId, Ladder> = {
   rate: { name: 'A better price', blurb: 'The manager pays more for what you sell him.', levels: 4, price: [120, 80], say: (k) => `Pays ${MANAGER.pct + MANAGER.pctStep * k}%` },
-  places: { name: 'Another shelf place', blurb: 'One more good on the shelves.', levels: 7, price: [80, 40], say: (k) => `${SHOP.places + k} places` },
+  places: { name: 'Another shelf place', blurb: 'One more good on the shelves.', levels: 13, price: [80, 40], say: (k) => `${SHOP.places + k} places` },
   group: { name: 'More shoppers', blurb: 'More shoppers come at a time.', levels: 3, price: [150, 100], say: (k) => `${1 + k} at a time` },
   pace: { name: 'A busier shop', blurb: 'Shoppers come more often.', levels: 4, price: [100, 60], say: (k) => `Every ${SHOP.every - SHOP.faster * k} s` },
   stock: { name: 'More pieces', blurb: 'The contractor brings more pieces a day.', levels: 2, price: [250, 250], say: (k) => `${CONTRACTOR.offers + k} pieces a day` },

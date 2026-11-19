@@ -29,7 +29,7 @@ import {
   type ProduceId,
   type ProducerId,
 } from '../farm/data'
-import { MANAGER_SPOT } from '../data/market'
+import { MANAGER_STAND } from '../data/market'
 import { AGENT_STAND } from '../data/estate'
 import { jobAdds } from '../farm/economy'
 import { goalsNow } from '../farm/goals'
@@ -142,7 +142,8 @@ export function sellTools(on: boolean) {
 
 const GATE: Spot = { x: GATE_SPOT.x, z: GATE_SPOT.z - 1.5 }
 const SHOP: Spot = { x: SHED.x + 1.15, z: SHED.z }
-const MARKET: Spot = { x: MANAGER_SPOT.x, z: MANAGER_SPOT.z }
+/** Where you stand to talk to the manager (and to buy his shop): in front of his desk. */
+const MARKET: Spot = { x: MANAGER_STAND.x, z: MANAGER_STAND.z }
 
 /** The beds in patches a press reaches together: the first six, and each field of beds (EXPANSIONS). */
 const PATCHES = (['main', ...EXPANSION_IDS] as const).map((name) => ({ name, beds: BEDS.filter((b) => (b.expansion ?? 'main') === name).map((b) => b.index) }))

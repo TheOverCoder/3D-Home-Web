@@ -16,6 +16,7 @@ const DAYS = 7
 /** The bounds today's farm breaks, and the mission that pays each (update-v1/JOURNEY.md §3 names the fix). */
 const DEBTS: Partial<Record<Bound, string>> = {
   burst: 'missions 04 and 02 pay it: gift boxes and goals come one on another (fixes 3 and 10)',
+  full: 'the play step of update v1 (RUN.md step 9) pays it: with the bigger market (mission 11 c4) the walk to the manager is longer, and 6 of 18 returns of the first week find a store full (the bound 25 %); tuned with the sim to day 30 once 11c is in',
   pull: 'mission 04 pays the first sitting (its last step, "Plant something long before you go", fix 1); open: the visit back within the hour, at level 6, has only the hour-long sunflower for the 2.5 hours to the first evening (cotton opens at 7, decision 1)',
 }
 

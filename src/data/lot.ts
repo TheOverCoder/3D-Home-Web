@@ -17,14 +17,14 @@ export { LANE_SOUTH }
 
 /** The lane's north edge, as far as you walk on it: the garden fence's collider along its south side. */
 export const LANE_NORTH = 13
-/** The lot's east end: past the contractor's corner. */
-export const LOT_EAST = 16.3
+/** The lot's east end: past the contractor's corner, to the car dealer's west wall's outer face. */
+export const LOT_EAST = 19.25
 /** The market's hall's walls where the lot meets them, their outer faces (src/data/market.ts, HALL less or more the
  *  walls' 0.15 m): its west wall (the estate office's east wall stands against it), its front (the north wall, its door
  *  in it) and its east wall (the cabin's side). */
-export const MARKET_FACES = { west: 5.9, front: 17.0, east: 14.05 } as const
+export const MARKET_FACES = { west: 5.9, front: 17.0, east: 16.6 } as const
 /** How far south the contractor's corner reaches: past his cabin's south side, where its window looks east. */
-export const CORNER_SOUTH = 18.6
+export const CORNER_SOUTH = 19.0
 
 /** The lot's rows by name. */
 export type LotRowId = 'lane' | 'forecourt' | 'corner'

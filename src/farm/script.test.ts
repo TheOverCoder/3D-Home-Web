@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { BROWSE_SPOTS, CONTRACTOR_SPOT, COUNTER, DESK, ISLAND, MANAGER_SPOT, MARKET_WALKIN, PAY_SPOT, SHELF_RUN } from '../data/market'
+import { BROWSE_SPOTS, CAFE_COUNTER, CAFE_SEATS, CAFE_TABLES, CONTRACTOR_SPOT, COUNTERS, DESK, GONDOLAS, MANAGER_SPOT, MARKET_WALKIN, PAY_SPOT, PAY_SPOTS } from '../data/market'
 import type { Box } from '../data/buildings'
 import { LANE_ENDS, SHOP, VISITOR, WALK_Z } from './data'
 import { CABIN_DOOR } from '../models/market'
-import { contractorComes, contractorLeaves, hallStands, laneEnd, managerLeaves, payPlace, scriptSeconds, shopperIn, shopperOut, shopperPay, stepScript, walker, type Step } from './script'
+import { contractorComes, contractorLeaves, hallStands, laneEnd, managerLeaves, payPlace, scriptSeconds, shopperIn, shopperOut, shopperPay, shopperSit, stepScript, walker, type Step } from './script'
 
 // The movement scripts (src/farm/script.ts): a walker goes through its steps at its speed, the same however the
 // frames fall; and the ways made from the market's row keep a body clear of what stands in the hall.
@@ -67,7 +67,15 @@ function trail(x: number, z: number, steps: Step[]) {
 /** A body's half width: a person walking keeps this clear of everything. */
 const BODY = 0.2
 const inside = (p: { x: number; z: number }, b: Pick<Box, 'x0' | 'x1' | 'z0' | 'z1'>, grow: number) => p.x > b.x0 - grow && p.x < b.x1 + grow && p.z > b.z0 - grow && p.z < b.z1 + grow
-const FITTINGS = { counter: COUNTER, shelves: SHELF_RUN, island: ISLAND, desk: DESK }
+const FITTINGS: Record<string, Pick<Box, 'x0' | 'x1' | 'z0' | 'z1'>> = {
+  'checkout 1': COUNTERS[0],
+  'checkout 2': COUNTERS[1],
+  'gondola 1': GONDOLAS[0],
+  'gondola 2': GONDOLAS[1],
+  "café's counter": CAFE_COUNTER,
+  ...Object.fromEntries(CAFE_TABLES.map((t, k) => [`café table ${k + 1}`, { x0: t.x - t.r, x1: t.x + t.r, z0: t.z - t.r, z1: t.z + t.r }])),
+  desk: DESK,
+}
 /** What a walker bumps into on its way: a fitting or a wall within a body's width. */
 function bumps(x: number, z: number, steps: Step[]) {
   const hits = new Set<string>()
@@ -110,10 +118,17 @@ describe('the ways through the market', () => {
         expect([w.x, w.z, w.pose]).toEqual([PAY_SPOT.x, PAY_SPOT.z, 'pay'])
         expect(scriptSeconds(spot.x, spot.z, pay, speed)).toBeGreaterThanOrEqual((ahead + 1) * SHOP.pay)
       }
+      // at the second checkout too
+      const second = shopperPay(k, 1, 1)
+      expect(bumps(spot.x, spot.z, second), `spot ${k}, the second checkout`).toEqual([])
+      expect(endOf(spot.x, spot.z, second)).toMatchObject({ x: PAY_SPOTS[1].x, z: PAY_SPOTS[1].z, pose: 'pay' })
       for (const side of [0, 1] as const) {
         const paid = shopperOut(k, true, side)
         expect(bumps(PAY_SPOT.x, PAY_SPOT.z, paid)).toEqual([])
         expect(endOf(PAY_SPOT.x, PAY_SPOT.z, paid)).toMatchObject(laneEnd(side))
+        const paid2 = shopperOut(k, true, side, 1)
+        expect(bumps(PAY_SPOTS[1].x, PAY_SPOTS[1].z, paid2)).toEqual([])
+        expect(endOf(PAY_SPOTS[1].x, PAY_SPOTS[1].z, paid2)).toMatchObject(laneEnd(side))
         const none = shopperOut(k, false, side)
         expect(bumps(spot.x, spot.z, none)).toEqual([])
         expect(endOf(spot.x, spot.z, none)).toMatchObject(laneEnd(side))
@@ -123,6 +138,21 @@ describe('the ways through the market', () => {
     expect(payPlace(0)).toEqual({ x: PAY_SPOT.x, z: PAY_SPOT.z, heading: PAY_SPOT.heading })
     expect(payPlace(2).x).toBeGreaterThan(payPlace(1).x)
     expect(payPlace(2).heading).toBeCloseTo(-Math.PI / 2)
+  })
+
+  it('a shopper who has paid sits at a café seat, facing its table, clear of everything, and goes out from it', () => {
+    CAFE_SEATS.forEach((c, seat) => {
+      for (const till of [0, 1]) {
+        const sit = shopperSit(seat, till)
+        expect(bumps(PAY_SPOTS[till].x, PAY_SPOTS[till].z, sit), `seat ${seat}, checkout ${till}`).toEqual([])
+        const w = endOf(PAY_SPOTS[till].x, PAY_SPOTS[till].z, sit)
+        expect([w.x, w.z, w.pose]).toEqual([c.x, c.z, 'sit'])
+        expect(w.heading).toBeCloseTo(c.heading)
+        const out = shopperOut(0, true, 1, till, seat)
+        expect(bumps(c.x, c.z, out), `seat ${seat} out`).toEqual([])
+        expect(endOf(c.x, c.z, out)).toMatchObject(laneEnd(1))
+      }
+    })
   })
 
   it('the manager waves, then goes through the doorway and out of the front door to the lane', () => {
@@ -155,7 +185,7 @@ describe('the ways through the market', () => {
   })
 
   it('places to stand people on the ways in through the hall: clear of everything, of each other and of those already there', () => {
-    const taken = [...BROWSE_SPOTS, ...[0, 1, 2, 3].map(payPlace)]
+    const taken = [...BROWSE_SPOTS, ...[0, 1, 2, 3].map((k) => payPlace(k))]
     const stands = hallStands(6, taken)
     expect(stands.length).toBe(6)
     for (const p of stands) {

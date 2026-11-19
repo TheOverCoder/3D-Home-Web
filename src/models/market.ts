@@ -1,6 +1,27 @@
 import { Parts, lathe, merge, rgb, tube, type PartDef, type SculptSurface, type Shape, type V3 } from '../lib/sculpt'
 import type { Box, Rect, WalkIn } from '../data/buildings'
-import { BAYS, BAY_WIDTH, CABIN, CONTRACTOR_SPOT, COUNTER, DESK, FRONT_DOOR, HALL, ISLAND, ISLAND_PANEL, MARKET_WALKIN, SCREEN, SHELF_RUN, SHELF_YS, TILL } from '../data/market'
+import {
+  BAY_DEPTH,
+  BAYS,
+  BAY_WIDTH,
+  CABIN,
+  CAFE_COUNTER,
+  CAFE_SEATS,
+  CAFE_TABLES,
+  CONTRACTOR_SPOT,
+  COUNTER,
+  COUNTERS,
+  DESK,
+  FRONT_DOOR,
+  GONDOLA_PANELS,
+  GONDOLAS,
+  HALL,
+  MARKET_WALKIN,
+  SCREEN,
+  SHELF_TOP,
+  SHELF_YS,
+  TILL,
+} from '../data/market'
 import { grain, mix, structureParts, type Structure } from './structures'
 import { FACES, around, box, cuboid, type Paint } from './boxes'
 import { parkingSignShape } from './estate'
@@ -13,9 +34,10 @@ import { parkingSignShape } from './estate'
 //             part that casts: brick outside (the material's surface), plain plaster inside, the roof, the parapet's
 //             coping and the cabin kept plain by the per-vertex surface amount
 //   fittings  what stands in it, none of which casts (the shell shades all of it): a bay of shelves (one model, put
-//             at each of the ten bays), the island's middle panel, the counter with the till, the manager's desk with
-//             the computer (its screen drawn by the scene at MARKET_SCREEN), the shop front over the door (the sign,
-//             drawn by the scene at MARKET_SIGN, an awning, a shop window) and the cabin's counter window
+//             at each of the sixteen bays), each gondola's middle panel, the counter with the till (put at each
+//             checkout), the café corner, the manager's desk with the computer (its screen drawn by the scene at
+//             MARKET_SCREEN), the shop front over the door (the sign, drawn by the scene at MARKET_SIGN, an awning, a
+//             shop window) and the cabin's counter window
 //
 // Every piece is a box with flat faces (its own four corners each), so the light and the brick lie flat on it and a
 // wall costs twelve triangles; the colours change only from face to face, or at a line across a face (a plinth, a
@@ -181,13 +203,13 @@ export const marketShellParts = () => walkInShellParts(MARKET_WALKIN)
 
 /** A bay of shelves in its own frame: the middle of its front edge on the ground at the origin, facing +z (where you
  *  stand), its back BAY_DEPTH behind; the goods stand on its shelves at SHELF_YS. Put at each bay with its heading. */
-export const BAY_DEPTH = ISLAND_PANEL.z0 - ISLAND.z0
+export { BAY_DEPTH }
 
 function bayShape(): Shape {
   const h = BAY_WIDTH / 2
   const d = BAY_DEPTH
   const side = 0.015
-  const top = SHELF_RUN.y1
+  const top = SHELF_TOP
   const parts = [
     // the sides, the back, the plinth and the canopy over the top shelf
     cuboid(box(-h, -h + side, 0, top, -d, 0), { color: SHELF }),
@@ -204,10 +226,76 @@ function bayShape(): Shape {
   return merge(...parts)
 }
 
-/** The island's middle: its opaque panel between the two faces' bays (ISLAND_PANEL), up to their canopy. */
-function islandShape(): Shape {
-  const p = ISLAND_PANEL
-  return cuboid(box(p.x0, p.x1, 0, SHELF_RUN.y1, p.z0, p.z1), { color: SHELF_BACK })
+/** A gondola's middle: its opaque panel between the two faces' bays, up to their canopy, and an end cap at each end
+ *  (the first gondola's: put again at the second's, the same shape moved east). */
+function gondolaShape(): Shape {
+  const p = GONDOLA_PANELS[0]
+  const g = GONDOLAS[0]
+  return merge(cuboid(box(p.x0, p.x1, 0, SHELF_TOP, p.z0, p.z1), { color: SHELF_BACK }), ...[g.z0 - 0.03, g.z1].map((z) => cuboid(box(g.x0, g.x1, 0, SHELF_TOP, z, z + 0.03), { color: SHOP_GREEN })))
+}
+
+/** The café corner (CAFE_COUNTER, CAFE_TABLES, CAFE_SEATS): a coffee counter along the east wall with its machine and
+ *  cups, two round tables on a stem, and a chair at each seat facing its table. */
+function cafeShape(): Shape {
+  const c = CAFE_COUNTER
+  const top = c.y1
+  const wood = (n: V3, m: V3): Paint => ({ color: grain(0, 41)(m[0] + n[0] * 0.3, m[1], m[2]) })
+  const counter = [
+    cuboid(box(c.x0, c.x1, 0.08, top - 0.03, c.z0, c.z1), (n) => ({ color: n[0] < 0 ? SHOP_GREEN : SHOP_GREEN_DARK, band: { y: 0.2, color: SHOP_GREEN_DARK } })),
+    cuboid(box(c.x0 + 0.03, c.x1, 0, 0.08, c.z0 + 0.03, c.z1 - 0.03), { color: KICK }),
+    cuboid(box(c.x0 - 0.03, c.x1, top - 0.03, top, c.z0 - 0.02, c.z1 + 0.02), wood),
+    // the coffee machine and a stack of cups
+    cuboid(box(c.x0 + 0.12, c.x0 + 0.52, top, top + 0.42, c.z0 + 0.25, c.z0 + 0.7), (n) => ({ color: n[0] < 0 ? STEEL : BLACK })),
+    cuboid(box(c.x0 + 0.08, c.x0 + 0.56, top + 0.42, top + 0.46, c.z0 + 0.22, c.z0 + 0.73), { color: BLACK }),
+  ]
+  const cups = lathe(
+    [
+      [0, top],
+      [0.035, top],
+      [0.042, top + 0.12],
+      [0, top + 0.12],
+    ],
+    { seg: 8, steps: 1 },
+  )
+    .place([c.x0 + 0.3, 0, c.z1 - 0.3])
+    .fill(rgb(0xf4efe4), 0)
+  const tables = CAFE_TABLES.flatMap((t) => [
+    lathe(
+      [
+        [0, 0.72],
+        [t.r, 0.72],
+        [t.r, 0.75],
+        [0, 0.75],
+      ],
+      { seg: 16, steps: 1 },
+    )
+      .place([t.x, 0, t.z])
+      .paint(() => rgb(0xf1ece2), 0),
+    lathe(
+      [
+        [0, 0],
+        [0.22, 0],
+        [0.2, 0.03],
+        [0.035, 0.05],
+        [0.035, 0.72],
+        [0, 0.72],
+      ],
+      { seg: 10, steps: 1 },
+    )
+      .place([t.x, 0, t.z])
+      .fill(BLACK, 0),
+  ])
+  const seat = 0.46
+  const chairs = CAFE_SEATS.flatMap((p) => {
+    // its back away from the table (the side it faces from)
+    const bx = -Math.sin(p.heading) * 0.19
+    return [
+      cuboid(around(p.x, seat - 0.02, p.z, 0.2, 0.025, 0.2), wood),
+      ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => cuboid(around(p.x + sx * 0.16, (seat - 0.045) / 2, p.z + sz * 0.16, 0.018, (seat - 0.045) / 2, 0.018), { color: BLACK }))),
+      cuboid(around(p.x + bx, seat + 0.2, p.z, 0.02, 0.2, 0.19), wood),
+    ]
+  })
+  return merge(...counter, cups, ...tables, ...chairs)
 }
 
 /** The counter along the north wall by the door (COUNTER), the till on it (TILL), facing the shoppers who pay. */
@@ -366,25 +454,39 @@ function windowShape(): Shape {
   )
 }
 
-export type FittingPart = 'bay' | 'island' | 'counter' | 'desk' | 'front' | 'window'
+export type FittingPart = 'bay' | 'gondola' | 'counter' | 'cafe' | 'desk' | 'front' | 'window'
 
 let made: Record<FittingPart, Shape> | null = null
 
 /** Every fitting's shape (built once). */
 export function fittingShapes(): Record<FittingPart, Shape> {
-  made ??= { bay: bayShape(), island: islandShape(), counter: counterShape(), desk: deskShape(), front: frontShape(), window: windowShape() }
+  made ??= { bay: bayShape(), gondola: gondolaShape(), counter: counterShape(), cafe: cafeShape(), desk: deskShape(), front: frontShape(), window: windowShape() }
   return made
 }
 
+/** How many of each fitting are put (a bay at each bay, a gondola's middle at each gondola, a counter at each
+ *  checkout; one of the rest). */
+const MANY: Partial<Record<FittingPart, number>> = { bay: BAYS.length, gondola: GONDOLAS.length, counter: COUNTERS.length }
+export const fittingCount = (k: FittingPart) => MANY[k] ?? 1
+
 /** Puts the fittings, each its own model (so the drawing pass leaves out each one nobody can see): a bay at each of
- *  the ten bays, the rest where they stand (they are in world metres). */
+ *  the sixteen bays, a gondola's middle at each gondola and a counter at each checkout (the first's shape moved), the
+ *  rest where they stand (they are in world metres). */
 export function putMarketFittings(parts: Parts<FittingPart>) {
   parts.begin()
   for (const b of BAYS) {
     parts.at(b.x, 0, b.z, b.heading)
     parts.put('bay', 0, 0, 0)
   }
-  for (const k of ['island', 'counter', 'desk', 'front', 'window'] as const) {
+  for (const g of GONDOLAS) {
+    parts.at(g.x0 - GONDOLAS[0].x0, 0, g.z0 - GONDOLAS[0].z0)
+    parts.put('gondola', 0, 0, 0)
+  }
+  for (const c of COUNTERS) {
+    parts.at(c.x0 - COUNTER.x0, 0, c.z0 - COUNTER.z0)
+    parts.put('counter', 0, 0, 0)
+  }
+  for (const k of ['cafe', 'desk', 'front', 'window'] as const) {
     parts.at(0, 0, 0)
     parts.put(k, 0, 0, 0)
   }
@@ -396,8 +498,7 @@ export function putMarketFittings(parts: Parts<FittingPart>) {
 export function marketFittingsParts(): Parts<FittingPart> {
   const shapes = fittingShapes()
   const defs = {} as Record<FittingPart, PartDef>
-  for (const k of Object.keys(shapes) as FittingPart[])
-    defs[k] = { geometry: shapes[k].geometry(), max: k === 'bay' ? BAYS.length : 1, material: { roughness: 0.7 }, castShadow: false, receiveShadow: true }
+  for (const k of Object.keys(shapes) as FittingPart[]) defs[k] = { geometry: shapes[k].geometry(), max: fittingCount(k), material: { roughness: 0.7 }, castShadow: false, receiveShadow: true }
   const parts = new Parts<FittingPart>(defs, 'market-fittings')
   putMarketFittings(parts)
   return parts
