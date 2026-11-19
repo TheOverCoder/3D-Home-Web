@@ -1,14 +1,16 @@
 import { useHome } from '../../store'
+import { tierRank, type Tier } from '../../lib/tier'
 import { levelOf } from '../xp'
 import type { Prize } from '../gifts'
-import { dayNumber, dayStart, markPlayed as playedOn, type Played } from '../calendar'
-import { claimed, dailyStatus, dailyView, rollDay, type DailyView } from '../daily'
+import { dayNumber, dayStart, longDay, markPlayed as playedOn, type Played } from '../calendar'
+import { allPrizes, cameBackTo, claimed, dailyDay, dailyStatus, dailyView, rollClaim, type DailyView, type WeekClock } from '../daily'
 import { bump, calendarDay, calendarTime, farm, random, save } from './core'
 import { give } from './rewards'
 import { stepsBusy } from './steps'
 
-// The daily gift (src/farm/daily.ts): whether it waits, when it opens by itself, and claiming it. And days played
-// (src/farm/calendar.ts): the farm's long clock, counted here once a calendar day.
+// The daily gift (src/farm/daily.ts): whether it waits, when it opens by itself, and claiming it, on the season's week
+// (days played: it waits through any absence). And days played (src/farm/calendar.ts): the farm's long clock, counted
+// here once a calendar day.
 
 declare module './core' {
   interface FarmData {
@@ -37,9 +39,25 @@ export function markPlayed(): number {
   looked = { played, from: dayStart(today), to: dayStart(today + 1) }
   if (played === farm.played) return 0
   farm.played = played
+  // a return after two whole days or more: the daily gift's welcome-back gift waits for the next claim
+  farm.daily = cameBackTo(farm.daily, away)
   bump()
   save()
   return away
+}
+
+/** The week's clock today (src/farm/daily.ts): the day played today is (today counted, even before the farm's first
+ *  frame of the day counts it), the day played the farm's seasons began, and today's calendar day. */
+export function weekClock(): WeekClock {
+  const today = calendarDay()
+  return { played: longDay(playedOn(farm.played, today).played, today), from: farm.season.from, today }
+}
+
+/** The week's day today (src/farm/daily.ts, dailyDay): the season's day (1–7), which season it is, and the days of it
+ *  left after today. */
+export const dailyDayNow = () => {
+  const c = weekClock()
+  return dailyDay(c.played, c.from)
 }
 
 /** Put out of the way (the tests that do not test it: src/farm/daily.ts never opens by itself, nor shows on the menu).
@@ -53,14 +71,13 @@ export function quietDaily(on: boolean) {
 
 /** The daily gift's card as it stands today (./DailyCard.tsx), with how long until the next one opens. */
 export function dailyNow(): DailyView {
-  const now = calendarTime()
-  return dailyView(farm.daily, dayNumber(now), levelOf(farm.xp.points), now)
+  return dailyView(farm.daily, weekClock(), levelOf(farm.xp.points), farm.made, calendarTime())
 }
 
 /** Today's gift waits for the player: it can be claimed, on a farm that has begun (one that has planted: a new farm's
  *  first minutes are for learning to play) and is through its first steps, and it is not put out of the way. The menu
  *  in the corner shows it then. */
-export const dailyWaiting = () => !dailyQuiet && farm.started && !stepsBusy() && dailyStatus(farm.daily, calendarDay()).ready
+export const dailyWaiting = () => !dailyQuiet && farm.started && !stepsBusy() && dailyStatus(farm.daily, weekClock()).ready
 
 /** Today's gift opens by itself: it waits, and it has not opened by itself today (it does once a day, then only from
  *  the menu). */
@@ -75,23 +92,38 @@ export function offerDaily() {
   save()
 }
 
+/** A claim of the daily gift: every prize it gave (the days that waited, today's, the welcome-back gift), the welcome-back
+ *  gift's apart, and the tier of the bigger of its rewards (the card's show is sized by it). */
+export interface DailyClaim {
+  prizes: Prize[]
+  back: Prize[]
+  tier: Tier
+}
+
 /**
- * Claims today's gift: rolled on the farm's dice (src/farm/daily.ts, rollDay) for the week's day it is, at the farm's
- * level, and given at once — coins, or goods into their building even past full (as surprises go); the streak goes on
- * (a missed day forgiven) or a new week starts. What it gave, or null when there is none today (taken already, or the
- * clock before the last day claimed): never twice. No XP: a gift is not something done.
+ * Claims today's gift: rolled on the farm's dice (src/farm/daily.ts, rollClaim) for the season's day it is, at the
+ * farm's level, with the gifts of the days played before it that were not claimed and the welcome-back gift when one
+ * waits, and given at once — coins, or goods into their building even past full (as surprises go). The days' gifts are
+ * one reward and the welcome-back gift another, each through `give`. What it gave, with the tier, or null when there is
+ * none today (taken already, or the clock before the last day claimed): never twice. No XP: a gift is not something
+ * done.
  */
-export function claimDaily(): Prize[] | null {
-  const day = calendarDay()
-  const s = dailyStatus(farm.daily, day)
-  if (!s.ready) return null
-  const prizes = rollDay(s.day, levelOf(farm.xp.points), farm.made, random)
-  const next = claimed(farm.daily, day, prizes)
-  if (!next) return null
-  give(prizes, 'daily')
+export function claimToday(): DailyClaim | null {
+  const c = weekClock()
+  const got = rollClaim(farm.daily, c, levelOf(farm.xp.points), farm.made, random)
+  const next = got && claimed(farm.daily, c, got)
+  if (!got || !next) return null
+  let tier = give(allPrizes({ ...got, back: [] }), 'daily')
+  if (got.back.length) {
+    const t = give(got.back, 'back')
+    if (tierRank(t) > tierRank(tier)) tier = t
+  }
   farm.daily = next
   // (its sound and its touch come as it bursts open on its card)
   bump()
   save()
-  return prizes
+  return { prizes: allPrizes(got), back: got.back, tier }
 }
+
+/** Claims today's gift (claimToday): every prize it gave, or null. */
+export const claimDaily = (): Prize[] | null => claimToday()?.prizes ?? null

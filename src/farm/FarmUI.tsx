@@ -16,6 +16,7 @@ import { MachinePanel, MachineSlotCard } from './MachinePanel'
 import { SkinShop } from './SkinShop'
 import { ToolPanel } from './ToolPanel'
 import { NewsPanel, NewsWatcher } from './news/NewsPanel'
+import { AlbumPanel } from './AlbumPanel'
 import { BedPanel } from './panels/Bed'
 import { BuildPanel } from './panels/Build'
 import { QueuePanel } from './panels/Queue'
@@ -110,6 +111,8 @@ export function FarmUI() {
         <AnimatePresence>{panel?.kind === 'news' && <NewsPanel key={`news-${opening(panel)}`} />}</AnimatePresence>
         {/* the daily gift: out the way it came in, as the level's card */}
         <AnimatePresence>{panel?.kind === 'daily' && <DailyPanel key={`daily-${opening(panel)}`} />}</AnimatePresence>
+        {/* the farm album (the corner menu's): out the way it came in, as the level's card */}
+        <AnimatePresence>{panel?.kind === 'album' && <AlbumPanel key={`album-${opening(panel)}`} />}</AnimatePresence>
         {panel?.kind === 'wardrobe' && <WardrobePanel />}
         {panel?.kind === 'computer' && <ComputerPanel key={panel.buy ? 'buy' : panel.piece} piece={panel.piece} buy={panel.buy} />}
       </PanelGuard>

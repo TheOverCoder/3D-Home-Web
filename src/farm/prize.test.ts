@@ -4,7 +4,7 @@ import { ITEMS, SELLABLE, type ProduceId } from './data'
 import { dayCoins } from './daily'
 import { DECOR_KINDS, FRUIT_KINDS, SHOP } from './decor'
 import { boxCoins, savedPrize as savedGift, type Prize as Gift } from './gifts'
-import { GARMENTS } from './outfit'
+import { GARMENTS, GIFT_GARMENTS } from './outfit'
 import { isGiftGarment, looksOf, prizeKind, prizeWords, savedPrize, sized, type Prize } from './prize'
 
 // The prize (update-v1/CONTRACTS.md §1.9): every kind read back safe from a save, in words, and the one size of its
@@ -66,10 +66,15 @@ describe('a prize as saved', () => {
     for (const decor of ['gold', 'constructor', '__proto__', 3, null]) expect(savedPrize({ decor })).toBeNull()
   })
 
-  it('takes no garment that comes with a level (today, every one)', () => {
-    for (const g of GARMENTS) {
+  it('takes no garment that comes with a level; one from the album or a season road it takes', () => {
+    for (const g of GARMENTS.filter((x) => !x.from)) {
       expect(isGiftGarment(g.id)).toBe(false)
       expect(savedPrize({ garment: g.id })).toBeNull()
+    }
+    expect(GIFT_GARMENTS.length).toBeGreaterThan(0)
+    for (const g of GIFT_GARMENTS) {
+      expect(isGiftGarment(g.id)).toBe(true)
+      expect(savedPrize({ garment: g.id })).toEqual({ garment: g.id })
     }
     for (const garment of ['nothing', 3, null]) expect(savedPrize({ garment })).toBeNull()
   })
