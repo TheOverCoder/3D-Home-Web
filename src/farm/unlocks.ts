@@ -118,6 +118,7 @@ const TABLE = {
   'herd:cows:5': 30,
   // past 30, a row every two levels to 45 (update-v1/JOURNEY.md fix 8; the neighbours' and the sets' rows come between)
   'recipe:dairy:ice_cream': 31,
+  'recipe:oven:cheesecake': 32,
   'recipe:kettle:marmalade': 33,
   'recipe:dairy:yogurt': 35,
   'upgrade:far': 37,

@@ -1621,6 +1621,9 @@ function iceCream(): Structure<'cup' | 'scoops'> {
   }
 }
 
+/** A cheesecake: a pale baked cream on a biscuit base, three strawberries on top. */
+const cheesecake = () => cake(rgb(0xc9935a), rgb(0xfbf1dc), merge(berry([0.048, 0.132, 0.0], 0), berry([-0.026, 0.132, 0.044], 2), berry([-0.026, 0.132, -0.044], 4)))
+
 /** A honey cake: a golden sponge iced with honey, three drops of it on top. */
 const honeyCake = () =>
   cake(rgb(0xe3a24a), rgb(0xf3c14d), merge(...[0, 2.1, 4.2].map((a) => ellipsoid(0.018, 0.012, 0.018, 10, 5).place([Math.cos(a) * 0.05, 0.126, Math.sin(a) * 0.05]))).fill(rgb(0xd88a12), 0))
@@ -1682,4 +1685,5 @@ export const GOODS: Record<GoodsId, () => Structure> = {
   blanket,
   apple_butter: jamJar(rgb(0x7a4220), rgb(0x5c8a4a), true),
   raspberry_jam: jamJar(rgb(0xb0204e), rgb(0xd8578a), false),
+  cheesecake,
 }

@@ -302,7 +302,7 @@ export async function fillFarm(page: Page): Promise<FullFarm> {
     for (const kind of ['hens', 'cows', 'sheep']) for (const part of ['tool', 'hold', 'tap']) while (f.ladderOpen(`${kind}-${part}`) && f.buyLadder(`${kind}-${part}`));
     for (const kind of ['hens', 'cows', 'sheep']) f.state.producers[kind].stock = f.state.producers[kind].stock.map((n: number) => Math.max(2, n))
     for (let i = 0; i < 12; i++) f.buy('queue')
-    // update v1's fields of beds on the meadows (01b): the west and north-west meadows, then their beds, planted with the rest below; and three beehives (the north meadow is 16-view-farm's to buy)
+    // update v1's fields of beds (01b): the west and north-west meadows (the north one is 16-view-farm's to buy), the Meadow and Far beds on the west one, planted with the rest below; and three beehives
     for (const [land, field, hive] of [
       ['west', 'meadow', [-6, -3.5]],
       ['northWest', 'far', [-6, -2]],

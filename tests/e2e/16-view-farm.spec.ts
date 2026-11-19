@@ -189,7 +189,7 @@ test.describe('the drawing pass leaves out only what cannot be seen: the farm', 
       { name: 'the dairy, from its open side', x: 4.2, z: -6.3, yaw: -P / 2, pitch: -0.05, shadow: true },
       { name: 'the jam kettle, the oven beyond', x: 4.6, z: 9.4, yaw: -P / 2, pitch: -0.05, shadow: true },
       { name: 'the beehives', x: -3.2, z: -2.4, yaw: P / 2, pitch: -0.08, shadow: true },
-      { name: 'the beds on the west meadow', x: -13.5, z: 0.2, yaw: P / 2, pitch: -0.08, shadow: true },
+      { name: 'the beds on the west meadow', x: -13.5, z: 2, yaw: 0.6 * P, pitch: -0.08, shadow: true },
     ] satisfies Pose[])
       await compareAt(game, p, log)
     console.log(log.join('\n'))

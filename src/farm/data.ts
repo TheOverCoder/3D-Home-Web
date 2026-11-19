@@ -11,7 +11,7 @@ export type CropId = 'lettuce' | 'carrot' | 'strawberry' | 'tomato' | 'corn' | '
 export type CakeId = 'lemon_cake' | 'strawberry_cake' | 'carrot_cake' | 'pumpkin_pie'
 /** What the oven bakes from the fruit trees and bushes, and more (update-v1/missions/01-loop-economy.md c7, c8): longer
  *  jobs, worth more a press and less a minute (src/farm/economy.ts, jobWorth). */
-export type BakeId = 'apple_pie' | 'blueberry_muffins' | 'cherry_tart' | 'bread' | 'honey_cake'
+export type BakeId = 'apple_pie' | 'blueberry_muffins' | 'cherry_tart' | 'bread' | 'honey_cake' | 'cheesecake'
 /** Whatever comes out of the oven, a cake or a bake. */
 export type OvenId = CakeId | BakeId
 /** What the dairy makes from the cows' milk (update v1, wave 2). */
@@ -114,6 +114,7 @@ export const PRODUCE: ProduceDef[] = [
   { id: 'blanket', name: 'woollen blanket', plural: 'woollen blankets', price: 224, maxAsk: 1 },
   { id: 'apple_butter', name: 'apple butter', plural: 'apple butters', price: 172, maxAsk: 1 },
   { id: 'raspberry_jam', name: 'raspberry jam', plural: 'raspberry jams', price: 166, maxAsk: 1 },
+  { id: 'cheesecake', name: 'cheesecake', plural: 'cheesecakes', price: 367, maxAsk: 1 },
 ]
 export const produceById = (id: ProduceId) => PRODUCE.find((p) => p.id === id)!
 /** The six building materials, in the order the silo and the barn list them. */
@@ -192,6 +193,8 @@ export const RECIPES: Recipe[] = [
   { id: 'bread', needs: { flour: 3, butter: 1, egg: 1 }, makes: 'bread', seconds: 3600 },
   // the hive's honey and the dairy's butter: forty minutes
   { id: 'honey_cake', needs: { honey: 2, flour: 1, egg: 2, butter: 1 }, makes: 'honey_cake', seconds: 40 * 60 },
+  // the dairy's cheese and butter: forty minutes
+  { id: 'cheesecake', needs: { cheese: 1, butter: 1, egg: 2, sugar: 1 }, makes: 'cheesecake', seconds: 40 * 60 },
 ]
 /** What a recipe takes, when it takes one good (the mill's wheat, the loom's fleece). */
 export const inputOf = (r: Recipe) => Object.keys(r.needs)[0] as ProduceId
@@ -383,7 +386,7 @@ const COL_W = PATH_X - 0.75 - BED.w / 2 // west column
 const COL_E = PATH_X + 0.75 + BED.w / 2 // east column
 const COL_E2 = COL_E + BED.w + 0.9 // the east expansion, a narrow path further on
 const ROWS = [9.0, 10.3, 11.6]
-/** The path between the two columns of the beds on the west and north-west meadows (update v1). */
+/** The path between the two columns of the Meadow beds on the west meadow (update v1; the Far beds' a little further). */
 const MEADOW_PATH = -18.3
 
 export type Expansion = 'east' | 'west' | 'north' | 'meadow' | 'far'
@@ -415,16 +418,17 @@ export const BEDS: BedDef[] = [
     { index: 13 + row * 2, x: COL_W, z, side: -1 as const, price: 0, expansion: 'north' as const },
     { index: 14 + row * 2, x: COL_E, z, side: 1 as const, price: 0, expansion: 'north' as const },
   ]),
-  // the Meadow beds on the west meadow, past the silo; the Far beds on the north-west meadow, the farm's far corner
+  // the Meadow beds on the west meadow, west of the order office; the Far beds in its far corner, past the tractor's
+  // track (both out of the yard's two wide views: what they grow is seen up close, or from the meadow)
   ...(
     [
-      ['meadow', [-0.6, 0.7]],
-      ['far', [-16.6, -17.9]],
+      ['meadow', MEADOW_PATH, [3.6, 4.9]],
+      ['far', MEADOW_PATH - 2.7, [10.6, 11.9]],
     ] as const
-  ).flatMap(([expansion, rows], field) =>
+  ).flatMap(([expansion, path, rows], field) =>
     rows.flatMap((z, row) => [
-      { index: 17 + field * 4 + row * 2, x: MEADOW_PATH - 0.75 - BED.w / 2, z, side: -1 as const, price: 0, expansion },
-      { index: 18 + field * 4 + row * 2, x: MEADOW_PATH + 0.75 + BED.w / 2, z, side: 1 as const, price: 0, expansion },
+      { index: 17 + field * 4 + row * 2, x: path - 0.75 - BED.w / 2, z, side: -1 as const, price: 0, expansion },
+      { index: 18 + field * 4 + row * 2, x: path + 0.75 + BED.w / 2, z, side: 1 as const, price: 0, expansion },
     ]),
   ),
 ]
@@ -442,8 +446,8 @@ export const EXPANSIONS: Record<Expansion, ExpansionDef> = {
   east: { name: 'East beds', blurb: 'Three more raised beds beside the first ones.', price: 60 },
   west: { name: 'West field', blurb: 'Four beds in the west yard, by the living-room window.', price: 120 },
   north: { name: 'North beds', blurb: 'Four beds on the north meadow, behind the sheep fold.', price: 400, land: 'north' },
-  meadow: { name: 'Meadow beds', blurb: 'Four beds on the west meadow, past the silo.', price: 900, land: 'west' },
-  far: { name: 'Far beds', blurb: 'Four beds in the far corner, on the north-west meadow.', price: 1800, land: 'northWest' },
+  meadow: { name: 'Meadow beds', blurb: 'Four beds on the west meadow, past the order office.', price: 900, land: 'west' },
+  far: { name: 'Far beds', blurb: "Four beds in the west meadow's far corner, past the tractor's track.", price: 1800, land: 'west' },
 }
 export const EXPANSION_IDS = Object.keys(EXPANSIONS) as Expansion[]
 /** Whether an upgrade is a piece of land with beds on it. */

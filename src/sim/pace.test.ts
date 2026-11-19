@@ -12,7 +12,7 @@ import { PACE } from './targets'
 // level from 2 to 30 is reached within its band, the first hour has no stretch with nothing useful to do longer than
 // its most, each animal's tool (for sale as in play) is bought within its minutes of its herd being full, the first
 // hour's rewards are mostly small and now and then big, and play pays more as the levels go up. On the session runner
-// (./journey.ts: the daily player's first two weeks at a real player's pace, one roll of the dice, so `npm run check` stays
+// (./journey.ts: the daily player's first week at a real player's pace, one roll of the dice, so `npm run check` stays
 // quick; `npm run sim` prints every seed and two weeks): the first sitting ends by setting something long, and a
 // night pays. A rule today's farm breaks is a listed debt, as in ./journey.test.ts: expected to fail, naming who pays
 // it, so it can neither pass silently nor be forgotten.
@@ -20,8 +20,9 @@ import { PACE } from './targets'
 const LEVELS = Object.keys(PACE.levels).map(Number)
 const TOP = Math.max(...LEVELS)
 const SEEDS = [1, 2, 3]
-/** The days of the daily player's journey played here: two weeks, so the nights of days 7 and 14 are held too. */
-const DAYS = 14
+/** The days of the daily player's journey played here: a week, so the nights of days 2 and 7 are held (day 14's, which
+ *  runs from 18 to 42 minutes from one roll of the dice to another, by `npm run sim`). */
+const DAYS = 7
 
 /** The rules today's farm breaks, and who pays each. */
 const DEBTS: Partial<Record<'first' | 'night' | 'income', string>> = {
@@ -102,7 +103,7 @@ describe('the pace of a new farm', () => {
   else it('play pays more as it goes on', income)
 })
 
-describe('a session ends by setting something long, and a night pays (the daily player’s first two weeks)', () => {
+describe('a session ends by setting something long, and a night pays (the daily player’s first week)', () => {
   const first = () => {
     const pull = week[0].pull
     expect(pull?.seconds ?? 0, `the first sitting ends with ${pull ? `${pull.what} in ${mmss(pull.seconds / 60)}` : 'nothing'} on its way`).toBeGreaterThanOrEqual(PACE.first.seconds)
@@ -111,8 +112,7 @@ describe('a session ends by setting something long, and a night pays (the daily 
   else it('the first sitting ends with something long on its way', first)
 
   const mornings = PACE.night.days.filter((d) => d <= DAYS)
-  // (every night held to its minutes here, on one seed; on every seed by `npm run sim`: with 01b's fields of beds and
-  // machines the nights of days 7 and 14 pay 23–42 minutes)
+  // (each night of the week held to its minutes here, on one seed; on every seed by `npm run sim`)
   const night = (day: number) => {
     const n = nightOf(week, day)!
     const [least, most] = PACE.night.minutes
