@@ -4,7 +4,8 @@ import { test, expect, fillFarm, onMap, openGame, NULL_GL, type MapId } from './
 // The budget's counting without a GPU (tests/e2e/nullgl.js, used by 05-budget): one scene, at the same instant,
 // counted by the game's own renderer on a real (software) context and by a second renderer on the drawing-free one —
 // the camera's pass and the sun's, with the drawing pass on and off, at the farm's fullest, in the house and its garden
-// (the home map), at the gate, over the yard, in the market and on the lane (the farm), at two sizes. Every count the same: three.js keeps them on the CPU,
+// (the home map), at the gate, over the yard, in the market and on the lane (the farm), at two sizes, in winter and in the
+// rain (what falls round each view: src/fx/quarks.ts, `weatherFx`). Every count the same: three.js keeps them on the CPU,
 // whatever the context does. (Each renderer draws each view once before it is counted: a renderer's first frame of a
 // view starts with nothing kept from the one before.)
 
@@ -38,13 +39,25 @@ test('the drawing-free context counts what a real one counts, view by view @boot
       await onMap(page, map)
       await page.setViewportSize(size)
       await page.waitForTimeout(2500)
+      // winter's look and the rain at its full
+      await page.evaluate(() => {
+        const h = (window as any).__home
+        h.season.set('winter')
+        h.season.weather.set({ kind: 'rain', amount: 1, wind: 0.5, rainbow: 0 })
+      })
+      await page.waitForFunction(() => (window as any).__home.weatherFx?.stats != null, null, { timeout: 60_000, polling: 250 })
       for (const [, name, x, z, yaw, pitch] of POSES.filter((p) => p[0] === map)) {
+        // you there, so what falls is round the view (a frame or two aims it there)
+        await page.evaluate(([x, z]) => (window as any).__home.teleport(x, 1.4, z), [x, z])
+        await page.waitForTimeout(2000)
         const r = await page.evaluate(
           ([x, z, yaw, pitch]) => {
             const w = window as any
             const h = w.__home
             const gl = h.gl
             const cam = h.camera
+            // the rain set round you (the two renderers count it as it stands: no frame runs between them)
+            h.weatherFx.settle(3)
             cam.position.set(x, 1.62, z)
             cam.rotation.order = 'YXZ'
             cam.rotation.set(pitch, yaw, 0)
@@ -93,6 +106,7 @@ test('the drawing-free context counts what a real one counts, view by view @boot
     expect(differ, differ.join('\n')).toEqual([])
     expect(game.errors, game.errors.join('\n')).toEqual([])
   } finally {
+    await page.evaluate(() => (window as any).__home?.season?.quiet?.(true)).catch(() => {})
     await close()
   }
 })

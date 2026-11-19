@@ -209,6 +209,10 @@ export async function openGame(browser: Browser, counting = false): Promise<{ ga
         // the market's mood quiet (src/farm/mood.ts: every price as fair), as a ?debug page starts: a spec that turned it
         // on (34-events, 41-computer) leaves it quiet for the next
         h.mood?.quiet?.(true)
+        // the effects' clock at its own speed and the weather's drops at the device's count (a spec that set them,
+        // 05's walk in the rain, 16's frozen poses, leaves them as they start)
+        if (h.fx?.time) h.fx.time.speed = 1
+        if (h.weatherFx) h.weatherFx.most = null
       }, map)
     },
   }

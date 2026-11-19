@@ -19,6 +19,7 @@ import {
 } from './helpers'
 import { FRONT_DOOR, HALL } from '../../src/data/market'
 import { AGENT_SEAT, AGENT_STAND } from '../../src/data/estate'
+import { makeProfile, PHONE_WEATHER_MOST } from '../../src/lib/profile'
 
 // The budget, measured the way phones meet the game: a walk through the house and its garden (the home map), then over
 // the farm and into the supermarket (the farm's map: src/scene/Maps.tsx), at its fullest (every room filled with the
@@ -40,6 +41,11 @@ import { AGENT_SEAT, AGENT_STAND } from '../../src/data/estate'
 // The page is on the drawing-free WebGL context (nullgl.js, `countingTest`): three.js counts what a frame draws on the
 // CPU, the same with it as with a real context (26-counting holds the two side by side), and frames come at full speed
 // instead of software rendering's few a second — the three walks in about a minute, so all three run on every push.
+//
+// The walk is in the heaviest weather and season (`heaviestWeather`: winter's look, rain at its full with as many drops as
+// a phone draws at most, src/lib/profile.ts `weather`): the rain's one draw and its triangles are in every view that sees
+// the outside. Its script a frame is measured on its own at a 4× CPU throttle (a mid-range phone), on a phone's Medium
+// drops.
 
 /** The sizes: the e2e window, and a phone's drawing buffers held upright and turned sideways. */
 const SIZES = [
@@ -242,6 +248,28 @@ function count([pose, asWhole]: [number[] | null, boolean]) {
   }
 }
 
+/** The heaviest weather and season, for the walk (src/farm/state/season.ts: a test's own, standing): winter's look and
+ *  rain at its full, as many drops as a phone draws at most, once the weather's renderer is there (a moment after
+ *  play, as the bursts' engine). The season's look adds no draw; the rain is the most that falls (snow: fewer flakes). */
+async function heaviestWeather(page: Page) {
+  await page.evaluate((most) => {
+    const h = (window as any).__home
+    h.season.set('winter')
+    h.season.weather.set({ kind: 'rain', amount: 1, wind: 0.5, rainbow: 0 })
+    h.weatherFx.most = most
+  }, PHONE_WEATHER_MOST)
+  await page.waitForFunction(() => (window as any).__home.weatherFx?.stats != null, null, { timeout: 60_000, polling: 250 })
+}
+
+/** Spring and clear again, the tier's drops. */
+async function quietWeather(page: Page) {
+  await page.evaluate(() => {
+    const h = (window as any).__home
+    h.season.quiet(true)
+    if (h.weatherFx) h.weatherFx.most = null
+  })
+}
+
 /** Stands the player at a view with the kitchen's door as it says, until the camera is there and the door still. */
 async function standAt(page: Page, v: View) {
   await page.evaluate(
@@ -281,6 +309,8 @@ async function standAt(page: Page, v: View) {
     .toMatchObject({ ready: true })
   // the market's sliding doors still: as the view means them, or else either way (a shopper going by opens them)
   await marketDoorStill(page, v.marketDoor)
+  // what falls round you now (its look and box set at once, whatever frames have run)
+  await page.evaluate(() => (window as any).__home.weatherFx?.settle(2))
 }
 
 /** Counts a view: first person with the camera set by hand; third person and decorating with the game's camera, after
@@ -379,6 +409,7 @@ async function walk(page: Page, farm: string, sizes: typeof SIZES, check: boolea
         await onMap(page, map)
         // the farm at its fullest again on its map (the shelves, quiet), the animals and the buyers in their places
         await fillFarm(page)
+        await heaviestWeather(page)
         await page.waitForTimeout(6000)
         for (const v of views.filter((w) => w.map === map)) {
           const row = await measure(page, v, farm, whole)
@@ -393,6 +424,7 @@ async function walk(page: Page, farm: string, sizes: typeof SIZES, check: boolea
       }
     }
   } finally {
+    await quietWeather(page)
     await resize(page, null)
   }
 }
@@ -498,6 +530,48 @@ test.describe('performance budget', () => {
         await restoreHouse(game.page)
       }
     })
+})
+
+test.describe('the weather on a phone', () => {
+  // The rain's script a frame (src/fx/quarks.ts, `weatherFx`: the drops are moved by their own shader, the script sets a
+  // few uniforms — the mission's fallback, since three.quarks moving each drop took 4.3 ms here), at DevTools' 4× CPU
+  // throttle (a mid-range phone), with a phone's Medium drops at the full: under 1 ms a frame.
+  test('the rain’s script a frame at a 4× CPU throttle, on a phone’s Medium drops: under 1 ms', async ({ game }) => {
+    await game.ready('farm')
+    const { page } = game
+    const medium = makeProfile('phone', false, false).weather.medium
+    const cdp = await page.context().newCDPSession(page)
+    try {
+      await page.evaluate((most) => {
+        const h = (window as any).__home
+        h.season.set('spring')
+        h.season.weather.set({ kind: 'rain', amount: 1, wind: 0.5, rainbow: 0 })
+        h.weatherFx.most = most
+      }, medium)
+      await page.waitForFunction(() => (window as any).__home.weatherFx?.stats != null, null, { timeout: 60_000, polling: 250 })
+      await page.evaluate(() => (window as any).__home.weatherFx.settle(3))
+      /** 150 frames more, then the last 120 frames' script (ms) and what fell */
+      const frames = async () => {
+        const from = await page.evaluate(() => (window as any).__home.weatherFx.stats.frames)
+        await page.waitForFunction((f) => (window as any).__home.weatherFx.stats.frames > f + 150, from, { timeout: 120_000, polling: 500 })
+        return page.evaluate(() => ({ ...(window as any).__home.weatherFx.stats }))
+      }
+      const free = await frames()
+      await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 })
+      const s = await frames()
+      await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 })
+      console.log(
+        `the rain: ${s.rain} drops alive (${medium} at the full); a frame's script at a 4× throttle ${s.median.toFixed(3)} ms (the median; mean ${s.mean.toFixed(3)}, most ${s.most.toFixed(3)}), unthrottled ${free.median.toFixed(3)} (mean ${free.mean.toFixed(3)}), over 120 frames each`,
+      )
+      expect(s.rain, 'the rain falls').toBeGreaterThan(medium * 0.6)
+      // (the median: a frame of the page's own garbage collecting, or another program's on a loaded machine, is not the rain's)
+      expect(s.median, 'the rain’s script a frame, at a 4× throttle').toBeLessThan(1)
+    } finally {
+      await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 }).catch(() => {})
+      await cdp.detach().catch(() => {})
+      await quietWeather(page)
+    }
+  })
 })
 
 test.describe('ten times the farm', () => {
