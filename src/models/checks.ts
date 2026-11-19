@@ -25,6 +25,8 @@ import { putSlidingDoor, slidingDoorParts } from './slidingDoor'
 import { WALK_INS } from '../data/buildings'
 import { DECOR_KINDS, FRUIT, FRUIT_KINDS } from '../farm/decor'
 import { decorModel } from './decor'
+import { parkModel } from './park'
+import { PARK_STAGES } from '../farm/park'
 import { fruitParts, fruitPlantModel, fruitSpots, putFruit } from './fruit'
 import { bigTreeKind, bigTreeModel, cornerTree, countryTree, gardenTree } from './trees'
 import { CORNER_TREES } from '../data/garden'
@@ -373,6 +375,13 @@ export const MODEL_CHECKS: ModelCheck[] = [
     name: "The seasons' pieces (also among the decoration's)",
     run() {
       return (['flower-arch', 'parasol', 'hay-bales', 'snowman', 'banner'] as const).flatMap((kind) => checkPieces(kind, ...structure(decorModel(kind))))
+    },
+  },
+  {
+    id: 'park',
+    name: 'The car park at its fullest stage (mission 11 c7)',
+    run() {
+      return checkPieces('car park', ...structure(parkModel(PARK_STAGES.length - 1)))
     },
   },
   {

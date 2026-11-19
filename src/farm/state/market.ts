@@ -18,6 +18,7 @@ import { toolBought } from './producers'
 import { AT_CONTRACTOR, contractorDay, contractorHere, forgetContractorWalk } from './contractor'
 import { setLastPhase } from './day'
 import { shelfSales, sold } from './ledger'
+import { fillPark } from '../parkFill'
 
 // The supermarket: selling to the manager, buying his shop, the ladders, your shelves and till, and its people (the
 // shoppers, the manager walking out).
@@ -262,6 +263,8 @@ export function marketFill(item: ProduceId = 'corn', opts: { shoppers?: boolean;
   farm.ladders.places = LADDERS.places.levels
   const goods = opts.mixed ? heaviestGoods() : []
   farm.market.shelves.forEach((s, k) => Object.assign(s, { good: goods[k] ?? item, units: SHOP.units }))
+  // the car park with the most cars there ever are, while the shoppers stand (src/farm/Park.tsx)
+  fillPark(!!opts.shoppers)
   if (opts.shoppers) standShoppers()
   else if (opts.quiet) {
     // nobody about and nobody coming: a view of the farm is the same however long it is measured

@@ -6,7 +6,7 @@ import { CAR_SPOT } from '../data/maps'
 import { FARM_SUN_BOX, inBox } from '../data/sunBox'
 import { CAR_SHAPE } from '../models/car'
 import { LADDERS, PACE_LEVELS, QUEUE_LEVELS } from './data'
-import { BY_CAR, MOST_CARS, PARK_BAYS, PARK_STAGES, TRAFFIC_MOST, baysAt, byCar, parkStage, trafficSteps, type Traffic } from './park'
+import { BY_CAR, CAR_COLOURS, MOST_CARS, PARK_BAYS, PARK_STAGES, TRAFFIC_MOST, YOUR_BAY, baysAt, byCar, carColour, parkCars, parkStage, trafficSteps, visitorBays, type Traffic } from './park'
 
 // The car park's stages and bays (./park.ts, update-v1/missions/11-buildings.md): stages that only add, today's two bays
 // first, a stage from the farm's own traffic, bays that hold a car each, outside the farm's sun box, and whose
@@ -121,5 +121,45 @@ describe('who came by car', () => {
       longest = Math.max(longest, run)
     }
     expect(longest).toBeLessThan(20)
+  })
+})
+
+describe('the cars of people about (mission 11 c8)', () => {
+  const free = visitorBays(PARK_STAGES.length - 1)
+  const never = () => false
+
+  it('never your bay, never two cars in one bay, never more than MOST_CARS', () => {
+    expect(free).not.toContain(YOUR_BAY)
+    const many = Array.from({ length: 40 }, (_, k) => k + 1)
+    const cars = parkCars(new Map(), many, free, never)
+    expect(cars.size).toBe(Math.min(MOST_CARS, free.length))
+    expect(new Set(cars.values()).size).toBe(cars.size)
+    // the first to come take the first bays, in order
+    expect([...cars.keys()].slice(0, 3)).toEqual([1, 2, 3])
+    expect(cars.get(1)).toBe(free[0])
+  })
+
+  it('a car comes only to a bay out of view, and goes only from one out of view; each keeps its bay', () => {
+    const seen = new Set([free[0]])
+    const inView = (b: number) => seen.has(b)
+    // the bay in view is passed over: the first comes to the next
+    const one = parkCars(new Map(), [7], free, inView)
+    expect(one.get(7)).toBe(free[1])
+    // its person gone while its bay is in view: it stays; once out of view, it goes
+    const stays = parkCars(new Map([[7, free[0]]]), [], free, inView)
+    expect(stays.get(7)).toBe(free[0])
+    expect(parkCars(new Map([[7, free[0]]]), [], free, never).size).toBe(0)
+    // someone still about keeps their bay, whoever else comes
+    const kept = parkCars(new Map([[9, free[3]]]), [5, 9], free, never)
+    expect(kept.get(9)).toBe(free[3])
+    expect(kept.get(5)).toBe(free[0])
+  })
+
+  it('a bay closed (a smaller stage) holds no car; colours come from the person', () => {
+    expect(visitorBays(0)).toEqual([])
+    const small = visitorBays(1)
+    expect(parkCars(new Map([[3, free[free.length - 1]]]), [3], small, never).get(3)).toBe(small[0])
+    for (let id = -50; id < 50; id++) expect(CAR_COLOURS).toContain(carColour(id))
+    expect(carColour(12)).toBe(carColour(12))
   })
 })

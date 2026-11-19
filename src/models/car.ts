@@ -1,4 +1,4 @@
-import { Vector3 } from 'three'
+import { Color, Vector3 } from 'three'
 import { Parts, ellipsoid, lathe, loft, merge, rgb, shadowPart, squircle, tube, type PartDef, type Ring, type Shape, type V3 } from '../lib/sculpt'
 import { mix, slab } from './structures'
 
@@ -57,7 +57,7 @@ function lowerBody(): Shape {
       return { c: [0, (SILL + hi) / 2, z] as V3, rx: HALF_W - 0.05 * narrow * narrow, ry: (hi - SILL) / 2 }
     })
   return loft(rings, { seg: 18, steps: 1, up: [0, 1, 0], shape: (a) => squircle(a, 4.5), round: [0.12, 0.12] })
-    .paint(() => RED, 0)
+    .paint(() => RED, 1)
     .pattern((x, y, z) => {
       const sill = 0.5 + (0.34 - y) * 30
       const arch = Math.max(...[-W.z, W.z].map((az) => 0.5 + (ARCH - Math.hypot(y - W.r, z - az)) * 30))
@@ -97,7 +97,7 @@ function cabin(): Shape {
     round: [0, 0.035],
   })
   const glass = s
-    .paint(() => RED, 0)
+    .paint(() => RED, 1)
     .pattern(
       (_x, y) => Math.min(0.5 + (y - GLASS_Y[0]) * 40, 0.5 + (GLASS_Y[1] - y) * 40),
       (_x, y) => mix(GLASS, GLASS_TOP, Math.min(1, Math.max(0, (y - 1.0) / 0.3))),
@@ -112,7 +112,7 @@ function cabin(): Shape {
         { c: at(GLASS_Y[1] + 0.03), rx: 0.012, ry: 0.05 },
       ],
       { seg: 4, steps: 1, up: [0, 0, 1], shape: (a) => squircle(a, 8), caps: [true, true] },
-    ).fill(RED, 0)
+    ).fill(RED, 1)
   })
   return merge(glass, ...pillars)
 }
@@ -217,10 +217,23 @@ export const carWheelShape = (): Shape => wheel()
 
 export type CarPart = 'car' | 'shadow'
 
-/** The car's draws: the car (one part, casting) and the soft shadow under it, for up to `max` cars. */
-export function carParts(max = 1): Parts<CarPart> {
+/** The car's material: its paint (the red, tint 1) takes an instance's colour (`paintTint`), and nothing else does. */
+export const CAR_MATERIAL = { roughness: 0.38, metalness: 0.1, tintBase: true } as const
+
+/** The red the car is made in (linear), what a paint is measured against. */
+export const CAR_RED = RED
+
+/** The instance colour that paints a car `hex` (its red times this is the paint), in the drawing's linear space. */
+export function paintTint(hex: string): [number, number, number] {
+  const c = new Color(hex)
+  return [c.r / RED[0], c.g / RED[1], c.b / RED[2]]
+}
+
+/** The car's draws: the car (one part, casting unless `cast` is false: a car outside the sun's box) and the soft
+ *  shadow under it, for up to `max` cars. */
+export function carParts(max = 1, cast = true): Parts<CarPart> {
   const defs: Record<CarPart, PartDef> = {
-    car: { geometry: carGeometry(), max, material: { roughness: 0.38, metalness: 0.1 }, castShadow: true },
+    car: { geometry: carGeometry(), max, material: CAR_MATERIAL, castShadow: cast },
     shadow: shadowPart(max, 0.32),
   }
   return new Parts<CarPart>(defs, 'car')
@@ -229,11 +242,14 @@ export function carParts(max = 1): Parts<CarPart> {
 /** The soft shadow under it: its footprint. */
 const SHADOW = new Vector3(0.95, 1, 1.95)
 
-/** Puts the car at (x, z), its bonnet pointing `yaw` the way the player's yaw does (0 north, along −z; π/2 west). */
-export function putCar(parts: Parts<CarPart>, x: number, z: number, yaw: number) {
+const AS_MADE = new Color(1, 1, 1)
+
+/** Puts the car at (x, z), its bonnet pointing `yaw` the way the player's yaw does (0 north, along −z; π/2 west), in
+ *  its paint (`paint`: an instance colour, `paintTint`; none: as made, red). */
+export function putCar(parts: Parts<CarPart>, x: number, z: number, yaw: number, paint: Color = AS_MADE) {
   // the kit turns a model facing +z by its heading (0 south): the player's yaw points the other way
   parts.at(x, 0, z, yaw + Math.PI)
-  parts.put('car', 0, 0, 0)
+  parts.put('car', 0, 0, 0, 0, 0, 0, 1, paint)
   parts.put('shadow', 0, 0.012, 0, 0, 0, 0, SHADOW)
 }
 
@@ -247,7 +263,7 @@ let rolling: { body: ReturnType<Shape['geometry']>; wheel: ReturnType<Shape['geo
  *  it; the same car as `carParts` draws, in three draws. */
 export function rollingCarParts(): Parts<RollingCarPart> {
   rolling ??= { body: carBodyShape().geometry(), wheel: carWheelShape().geometry() }
-  const material = { roughness: 0.38, metalness: 0.1 }
+  const material = CAR_MATERIAL
   const defs: Record<RollingCarPart, PartDef> = {
     body: { geometry: rolling.body, max: 1, material, castShadow: true },
     wheel: { geometry: rolling.wheel, max: 4, material, castShadow: true },
@@ -265,10 +281,10 @@ export interface CarSway {
 
 /** Puts the car on the road at (x, z), its bonnet pointing `yaw` (the player's yaw: 0 north, along −z), its wheels turned
  *  for having rolled `roll` metres, the body swaying on its springs over them. */
-export function putRollingCar(parts: Parts<RollingCarPart>, x: number, z: number, yaw: number, roll: number, sway: CarSway = { pitch: 0, lift: 0 }) {
+export function putRollingCar(parts: Parts<RollingCarPart>, x: number, z: number, yaw: number, roll: number, sway: CarSway = { pitch: 0, lift: 0 }, paint: Color = AS_MADE) {
   parts.at(x, 0, z, yaw + Math.PI)
   // (the body turns round the middle of its wheelbase at the axles' height, so its wheels stay in their arches)
-  parts.put('body', 0, sway.lift + W.r * (1 - Math.cos(sway.pitch)), W.r * Math.sin(sway.pitch), -sway.pitch)
+  parts.put('body', 0, sway.lift + W.r * (1 - Math.cos(sway.pitch)), W.r * Math.sin(sway.pitch), -sway.pitch, 0, 0, 1, paint)
   // a wheel of so many sides, turned, stands on the corner nearest straight down: its axle drops a few millimetres
   // between two corners, so it keeps touching the road
   const turn = roll / W.r

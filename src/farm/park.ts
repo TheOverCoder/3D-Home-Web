@@ -1,12 +1,12 @@
 import type { Rect } from '../data/buildings'
 import { BAYS } from '../data/estate'
-import { PARK_AREA } from '../data/lotPlan'
+import { PARK_AREA } from '../data/lot'
 import { LADDERS, PACE_LEVELS, QUEUE_LEVELS } from './data'
 
-// The car park beyond the lane, as update-v1/missions/11-buildings.md plans it: it grows in stages with the farm's
+// The car park beyond the lane (update-v1/missions/11-buildings.md c7, c8): it grows in stages with the farm's
 // traffic — the steps bought for the line at the gate and for your shop — and the people about who came by car have
-// their cars in its bays. Pure and unwired: no game file imports this yet, nothing here is saved (a stage is worked out
-// from the farm's own numbers), and the cars are not drawn until the car park is (src/farm/Park.tsx, to come).
+// their cars in its bays. Pure: nothing here is saved (a stage is worked out from the farm's own numbers, and whose car
+// stands where is the scene's, from the people about: src/farm/Park.tsx).
 
 /** A bay's size in the car park's rows (a car is 3.5 × 1.62 m: src/models/car.ts, CAR_SHAPE). */
 export const BAY = { width: 2.4, depth: 4.5 } as const
@@ -92,3 +92,43 @@ export function byCar(id: number, share: number): boolean {
   h ^= h >>> 16
   return (h >>> 0) / 4294967296 < share
 }
+
+// ───────────────────────────── the cars of people about ─────────────────────────────
+
+/** The bay your own car stands in (the gate's east bay): never a visitor's. */
+export const YOUR_BAY = 1
+
+/** The bays a visitor's car may stand in at a stage, by their index in PARK_BAYS: the car park's (the gate's two are
+ *  yours and kept free; the car park lies outside the sun's box, so a visitor's car casts nothing there and keeps its
+ *  soft shadow). */
+export const visitorBays = (stage: number): number[] =>
+  baysAt(stage)
+    .map((_, k) => k)
+    .filter((k) => k >= PARK_STAGES[0].bays.length && k !== YOUR_BAY)
+
+/**
+ * Which bay each car stands in, from the last frame's (`prev`: a person's id → a bay's index): the people about who
+ * came by car (`wanted`, in the order they came) each keep theirs; one newly come takes the first free bay of `free`
+ * (in order) while it is out of the camera's view, else walks from the lane's end as everyone did before; a car whose
+ * person has gone stays until its bay is out of view. Never two cars in one bay, never more than MOST_CARS, and nothing
+ * comes or goes where it can be seen.
+ */
+export function parkCars(prev: ReadonlyMap<number, number>, wanted: readonly number[], free: readonly number[], inView: (bay: number) => boolean): Map<number, number> {
+  const want = new Set(wanted)
+  const out = new Map<number, number>()
+  for (const [id, bay] of prev) if (free.includes(bay) && (want.has(id) || inView(bay))) out.set(id, bay)
+  const used = new Set(out.values())
+  for (const id of wanted) {
+    if (out.size >= MOST_CARS) break
+    if (out.has(id)) continue
+    const bay = free.find((b) => !used.has(b) && !inView(b))
+    if (bay === undefined) continue
+    out.set(id, bay)
+    used.add(bay)
+  }
+  return out
+}
+
+/** The colours people's cars come in (a car's colour is its person's, by their id). */
+export const CAR_COLOURS = ['#d4402f', '#3b5f8a', '#e8eef5', '#2f3b33', '#e9b824', '#6d8f3a', '#9eacb8', '#7a3b52'] as const
+export const carColour = (id: number) => CAR_COLOURS[Math.abs(Math.imul(id | 0, 0x9e3779b1) >>> 7) % CAR_COLOURS.length]

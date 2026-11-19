@@ -1,5 +1,6 @@
 import type { AutoDoor, Box, Rect, WalkIn } from './buildings'
 import { ESTATE_ROOM, ESTATE_WALKIN, PARKING } from './estate'
+import { PARK_AREA } from './lot'
 import { BACK, CABIN, HALL, INNER_DOOR, MARKET_WALKIN } from './market'
 
 // The lot beyond the lane as update-v1/missions/11-buildings.md plans it: a bigger supermarket and estate office, a car
@@ -94,7 +95,7 @@ export const DISPLAY_BAYS_PLANNED: readonly Rect[] = [
 
 /** The car park, west of the estate office along the lane's south edge, wholly outside the farm's sun box. Its bays and
  *  stages: src/farm/park.ts. */
-export const PARK_AREA: Rect = { x0: -26, x1: -7.2, z0: LANE_SOUTH, z1: 30.5 }
+export { PARK_AREA }
 
 /** The ground you can walk on outside the garden, as planned: the lane from the car park's west end past the dealer's
  *  forecourt; the strip before the hall's front (set back from the lane's edge); the contractor's corner between the

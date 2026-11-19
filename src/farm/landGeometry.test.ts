@@ -152,7 +152,8 @@ describe('beyond the gate', () => {
 
     it(`${name}: the ground you can be on holds the lot, every walk-in's rooms and doorways, and the cabin's corner`, () => {
       const reach = reachRects(layout)
-      const on = (x: number, z: number) => reach.some((r) => x >= r.minX && x <= r.maxX && z >= r.minZ && z <= r.maxZ)
+      // (within a nanometre: an edge sampled as a sum of tenths lands a hair past it)
+      const on = (x: number, z: number) => reach.some((r) => x >= r.minX - 1e-9 && x <= r.maxX + 1e-9 && z >= r.minZ - 1e-9 && z <= r.maxZ + 1e-9)
       const areas: Area[] = [...LOT, ...WALK_INS.flatMap((w) => [...w.rooms, ...w.doors])]
       for (const a of areas)
         for (let i = 0; i <= 10; i++)

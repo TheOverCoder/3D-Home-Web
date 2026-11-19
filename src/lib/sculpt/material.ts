@@ -294,7 +294,7 @@ const COLOR_VERTEX =
   ShaderChunk.color_vertex.replace('vColor.rgb *= instanceColor.rgb;', 'vColor.rgb *= mix( vec3( 1.0 ), instanceColor.rgb, tint );') +
   `
 vColor2 = color2;
-#ifdef USE_INSTANCING_COLOR
+#if defined( USE_INSTANCING_COLOR ) && !defined( SCULPT_TINT_BASE )
 	vColor2 *= mix( vec3( 1.0 ), instanceColor.rgb, tint );
 #endif
 vPattern = pattern;
@@ -473,6 +473,9 @@ export interface SculptMaterialOptions {
   leaf?: boolean
   /** a pattern over the vertex colours: stone, brick, boards, shingles, bark, clay (see above) */
   surface?: SculptSurface
+  /** the instance colour tints the base layer only, never the pattern over it (a car's paint: its windows, sills and
+   *  wheel arches, patterns on the paint, keep their own colours). Off: both layers, as before. */
+  tintBase?: boolean
   /** a second instance colour (a crowd's `put` gives it: Parts), applied where the geometry's `tint2` attribute (0..1
    *  per vertex) says: the eyes on a head, the head's skin being the first colour. Off: the material is as before. */
   tint2?: boolean
@@ -490,7 +493,7 @@ export interface SculptMaterialOptions {
 export function sculptMaterial(o: SculptMaterialOptions = {}): MeshStandardMaterial {
   const d = o.detail
   const sf = o.surface
-  const key = `${o.roughness ?? 0.8}|${o.doubleSided ? 2 : 1}|${o.metalness ?? 0}|${d ? `${d.scale},${d.bump},${d.shade}` : ''}|${o.leaf ? 1 : 0}|${sf ? `${sf.kind},${sf.size},${sf.joint ? sf.joint.join(',') : ''},${sf.tone ?? ''},${sf.bump ?? ''},${sf.turn ? 1 : 0}` : ''}${o.tint2 ? '|tint2' : ''}${o.glow ? `|glow${o.glow}` : ''}${o.foliage ? `|foliage${o.foliage}` : ''}`
+  const key = `${o.roughness ?? 0.8}|${o.doubleSided ? 2 : 1}|${o.metalness ?? 0}|${d ? `${d.scale},${d.bump},${d.shade}` : ''}|${o.leaf ? 1 : 0}|${sf ? `${sf.kind},${sf.size},${sf.joint ? sf.joint.join(',') : ''},${sf.tone ?? ''},${sf.bump ?? ''},${sf.turn ? 1 : 0}` : ''}${o.tint2 ? '|tint2' : ''}${o.tintBase ? '|tintBase' : ''}${o.glow ? `|glow${o.glow}` : ''}${o.foliage ? `|foliage${o.foliage}` : ''}`
   let m = cache.get(key)
   if (m) return m
   m = ownSculptMaterial(o)
@@ -511,6 +514,7 @@ export function ownSculptMaterial(o: SculptMaterialOptions = {}): MeshStandardMa
   if (o.leaf) defines.SCULPT_LEAF = ''
   // (a define of its own: the shader's cache key is the same for every sculpt material but for its defines)
   if (o.tint2) defines.SCULPT_TINT2 = ''
+  if (o.tintBase) defines.SCULPT_TINT_BASE = ''
   if (o.glow) defines.SCULPT_GLOW = ''
   // the season (above): on what is built and on leaves
   const season = !!(sf || o.foliage)

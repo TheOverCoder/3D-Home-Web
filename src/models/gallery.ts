@@ -28,6 +28,9 @@ import { ESTATE_LOOK } from './look'
 import { sitAtDesk } from './person'
 import { setSculptGlow } from '../lib/sculpt'
 import { decorModel, PATH_HALF, SECTION_HALF } from './decor'
+import { parkModel } from './park'
+import { PARK_AREA } from '../data/lot'
+import { PARK_STAGES } from '../farm/park'
 import { FRUIT, FRUIT_KINDS, type DecorKind } from '../farm/decor'
 import { fruitParts, fruitPlantModel, fruitSpots, putFruit } from './fruit'
 import { SCARECROW_KINDS, scarecrowModel } from './scarecrows'
@@ -681,6 +684,19 @@ export const GALLERY: GalleryEntry[] = [
       const object = new Group()
       object.add(dairy.group, kettle.group, hive.group)
       return { object, width: 5.2, height: 2.6, triangles: () => dairy.triangles() + kettle.triangles() + hive.triangles(), update() {} }
+    },
+  },
+  {
+    id: 'park',
+    label: 'Car park',
+    name: 'The car park at its fullest stage (mission 11 c7): asphalt, bays, kerbs, the P sign, the trolley shelter and the crossing',
+    make() {
+      const parts = structureParts(parkModel(PARK_STAGES.length - 1), 'park')
+      // (it is in world metres: moved to the middle of the stage)
+      parts.group.position.set(-(PARK_AREA.x0 + PARK_AREA.x1) / 2, 0, -(PARK_AREA.z0 + PARK_AREA.z1) / 2 + 7)
+      const object = new Group()
+      object.add(parts.group)
+      return { object, width: 34, height: 6, triangles: () => parts.triangles(), update() {} }
     },
   },
   {
