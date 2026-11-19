@@ -145,6 +145,8 @@ async function plenty(page: Page) {
     f.marketFill('lettuce', { quiet: true })
     f.state.market.till.coins = 40
     for (let k = 0; k < 4; k++) f.spawnVisitor({ queued: true })
+    // a computer in the house's studio (src/home/Computer.tsx), used with the button there
+    if (!h.home.layout.pieces.some((p: any) => p.type === 'computer') && h.home.buy('computer')) h.home.placeStored('computer', h.home.freeSpot('computer', 'office') ?? { x: -5, z: -5.25, rot: 0 })
     f.useFarm.setState((s: any) => ({ rev: s.rev + 1 }))
   })
 }

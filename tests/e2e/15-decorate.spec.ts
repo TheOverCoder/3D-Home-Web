@@ -147,3 +147,37 @@ test.describe('decorating the house', () => {
     expect(game.errors).toEqual([])
   })
 })
+
+test.describe("the house's computer, a piece of furniture", () => {
+  test('bought and stood in the studio, it draws no more triangles than its weight in the catalogue', async ({ game }) => {
+    await game.ready()
+    const { page } = game
+    const id = await page.evaluate(() => {
+      const h = (window as any).__home
+      h.farm.reset()
+      h.farm.state.apartment.owned = true
+      h.farm.state.place = 'home'
+      h.farm.state.coins = 500
+      if (!h.home.buy('computer')) return null
+      return h.home.placeStored('computer', h.home.freeSpot('computer', 'office')).id ?? null
+    })
+    expect(id).toMatch(/^computer-/)
+    expect(await page.evaluate(() => (window as any).__home.farm.state.coins)).toBe(0)
+    // what it draws: the meshes under its group, as 05's furniture check counts them
+    await until(game, () => !!(window as any).__home.scene.getObjectByName(`piece-${(window as any).__home.home.layout.pieces.find((p: any) => p.type === 'computer')?.id}`))
+    const drawn = await page.evaluate((id) => {
+      const h = (window as any).__home
+      let triangles = 0
+      h.scene.getObjectByName(`piece-${id}`).traverse((o: any) => {
+        if (!o.isMesh || o.userData.shadowOnly) return
+        const n = o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count
+        triangles += (n / 3) * (o.isInstancedMesh ? o.count : 1)
+      })
+      return { triangles, weight: h.home.pieces.computer.weight }
+    }, id)
+    expect(drawn.triangles).toBeGreaterThan(0)
+    expect(drawn.triangles, 'a model drawing more than its weight: slim it, or raise its weight in src/home/catalogue.ts').toBeLessThanOrEqual(drawn.weight)
+    await page.evaluate(() => (window as any).__home.farm.reset())
+    expect(game.errors).toEqual([])
+  })
+})

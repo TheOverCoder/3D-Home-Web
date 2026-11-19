@@ -13,6 +13,7 @@ import { PIECES, type PieceType } from '../home/catalogue'
 import { hangOf, hostMove, type HomePiece } from '../home/layout'
 import { FloorLampStand, Mirror, Outlet, PictureSmall, PictureTall, PictureWide, Radiator, ScreenShape, SwitchPlate, WallClock } from './WallThings'
 import { useDecorate } from '../home/decorate'
+import { ComputerScreen, PC_SCREEN } from '../home/Computer'
 
 type V3 = [number, number, number]
 
@@ -444,6 +445,33 @@ function Wardrobe() {
   )
 }
 
+/** The house's computer (src/home/Computer.tsx): a small desk, its screen on a stand (the glass the farm's own
+ *  picture), a keyboard and a mouse, and the tower under it. */
+function ComputerDesk() {
+  const dark = '#2c2c2e'
+  const s = PC_SCREEN
+  return (
+    <group>
+      <B size={[1.2, 0.04, 0.65]} position={[0, 0.73, 0]} color="#c0905f" roughness={0.55} radius={0.015} mat="veneer" tile={1} />
+      {[-0.57, 0.57].map((x) => (
+        <B key={x} size={[0.04, 0.71, 0.6]} position={[x, 0.355, 0]} color="#e3e0d8" roughness={0.75} radius={0.005} mat="paint" tile={0.7} />
+      ))}
+      <B size={[1.1, 0.3, 0.02]} position={[0, 0.55, -0.29]} color="#e3e0d8" roughness={0.75} radius={0.005} mat="paint" tile={0.7} />
+      {/* the tower, under the desk */}
+      <B size={[0.2, 0.42, 0.44]} position={[0.4, 0.215, -0.03]} color={dark} roughness={0.5} radius={0.015} />
+      <B size={[0.03, 0.012, 0.005]} position={[0.4, 0.37, 0.193]} color="#6fd36a" emissive="#6fd36a" emissiveIntensity={1.2} radius={0.002} />
+      {/* the screen on its stand */}
+      <B size={[0.24, 0.015, 0.16]} position={[0, 0.7575, s.z]} color={dark} roughness={0.4} metalness={0.5} radius={0.004} />
+      <B size={[0.05, 0.16, 0.03]} position={[0, 0.84, s.z - 0.03]} color={dark} roughness={0.4} metalness={0.5} radius={0.004} />
+      <B size={[s.w + 0.04, s.h + 0.05, 0.035]} position={[0, s.y, s.z]} color={dark} roughness={0.35} radius={0.012} />
+      <ComputerScreen />
+      {/* the keyboard and the mouse */}
+      <B size={[0.44, 0.018, 0.14]} position={[-0.04, 0.759, 0.12]} color="#3a4047" roughness={0.7} radius={0.004} />
+      <B size={[0.055, 0.02, 0.09]} position={[0.3, 0.76, 0.13]} color="#3a4047" roughness={0.6} radius={0.004} />
+    </group>
+  )
+}
+
 function Rug({ size, color }: { size: [number, number]; color: string }) {
   return (
     <mesh position={[0, 0.011, 0]} rotation-x={-Math.PI / 2} receiveShadow>
@@ -519,6 +547,8 @@ export function PieceModel({ type }: { type: PieceType }) {
       return <Outlet />
     case 'screen':
       return <ScreenShape />
+    case 'computer':
+      return <ComputerDesk />
   }
 }
 

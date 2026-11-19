@@ -72,6 +72,11 @@ export type ArtId =
   | 'warning'
   | 'wrapped-gift'
   | 'yarn'
+  // the house's computer's apps (src/farm/computer/apps.ts): the Market, the Planner, the Sales book, its week
+  | 'chart-increasing'
+  | 'light-bulb'
+  | 'ledger'
+  | 'bar-chart'
 
 /** The URL of a piece of interface art. */
 export const art = (id: ArtId): string => files[`../assets/art/${id}.webp`]
