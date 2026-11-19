@@ -52,6 +52,25 @@ const WEIGHT: Record<GoodsId, number> = {
   potato: 1024,
   melon: 1204,
   cotton: 2330,
+  apple_pie: 1568,
+  blueberry_muffins: 1584,
+  cherry_tart: 1970,
+  quilt: 1680,
+  butter: 392,
+  cheese: 300,
+  bread: 704,
+  honey: 844,
+  strawberry_jam: 720,
+  cherry_jam: 720,
+  honey_cake: 1088,
+  blueberry_jam: 720,
+  ice_cream: 432,
+  marmalade: 720,
+  yogurt: 720,
+  blanket: 1680,
+  apple_butter: 720,
+  raspberry_jam: 720,
+  cheesecake: 1532,
 }
 
 /** The good the budget measures the market full of (marketFill's default and tests/e2e/05's `fillShelves`). */
@@ -111,6 +130,7 @@ const DECOR_WEIGHT: Record<ShopKind, number> = {
   'cherry-tree': 1188,
   'blueberry-bush': 647,
   'raspberry-bush': 869,
+  beehive: 400,
 }
 
 /** The big trees (src/models/trees.ts): on the farm, the woods' fourteen as a new farm has them and the garden's three

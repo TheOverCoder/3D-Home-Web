@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BEDS, MACHINES, MACHINE_IDS } from './data'
+import { BEDS, EXPANSIONS, MACHINES, MACHINE_IDS } from './data'
 import { SHOP, type ShopKind } from './decor'
 import {
   BLOCKERS,
@@ -40,7 +40,11 @@ describe('the kitchen and the beds move', () => {
   it('a new farm fits as it always stood: every place (the mill, the loom, the oven among them) and every bed', () => {
     const layout = defaultLayout()
     for (const id of PLACE_IDS) expect(canPlace(layout, id, layout.places[id]), id).toEqual({ ok: true })
-    BEDS.forEach((_, i) => expect(canPlaceBed(layout, i, layout.beds[i]), `bed ${i}`).toEqual({ ok: true }))
+    // (a field of beds on a meadow, with its meadow bought)
+    BEDS.forEach((b, i) => {
+      const land = b.expansion && EXPANSIONS[b.expansion].land
+      expect(canPlaceBed(land ? { ...layout, land: [land] } : layout, i, layout.beds[i]), `bed ${i}`).toEqual({ ok: true })
+    })
     for (const id of MACHINE_IDS) expect(PLACES[id].home).toEqual({ x: MACHINES[id].x, z: MACHINES[id].z, rot: 0 })
   })
 
@@ -159,7 +163,8 @@ describe('the layout as saved', () => {
 
   it('a built bed loads where it was moved; one not built where it was staked out', () => {
     const beds = defaultLayout().beds.map((p, i) => (i === 0 || i === 6 ? { x: 2, z: i === 0 ? 0 : 3, rot: 1 } : p))
-    const built = BEDS.map((_, i) => i !== 6)
+    // (the beds of a field on a meadow are built only on a farm that bought the meadow: here, none)
+    const built = BEDS.map((b, i) => i !== 6 && !(b.expansion && EXPANSIONS[b.expansion].land))
     const l = sanitizeLayout({ ...defaultLayout(), beds }, built)
     expect(l.beds[0]).toEqual({ x: 2, z: 0, rot: 1 })
     expect(l.beds[6]).toEqual(bedHome(6))

@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { filmAsked, takeFilm } from '../film/films'
-import { LADDERS, LADDER_IDS, PRODUCERS, PRODUCER_IDS, REMOTE_PRICE, TOOL, TOOL_KINDS, XP_FOR, mostAnimals, toolLadder, type LadderId, type ToolKind } from './data'
+import { LADDERS, LADDER_IDS, PRODUCERS, PRODUCER_IDS, REMOTE_PRICE, TOOL, TOOL_KINDS, XP_FOR, fullHerd, toolLadder, type LadderId, type ToolKind } from './data'
 import {
   animals,
   buy,
@@ -15,7 +15,6 @@ import {
   ladderNextPrice,
   ladderOpen,
   maxOf,
-  owned,
   perTap,
   resetFarm,
   room,
@@ -52,8 +51,9 @@ const HERD_UPGRADE: Record<ToolKind, 'hen' | 'cow' | 'sheep'> = { hens: 'hen', c
 /** A herd bought to its most. */
 function fillHerd(kind: ToolKind) {
   farm.coins += 100_000
-  while (!owned(HERD_UPGRADE[kind])) expect(buy(HERD_UPGRADE[kind])).toBe(true)
-  expect(animals(kind)).toBe(mostAnimals(kind))
+  // (the herd full as its tool waits for: the animals past it open with the levels)
+  while (animals(kind) < fullHerd(kind)) expect(buy(HERD_UPGRADE[kind])).toBe(true)
+  expect(animals(kind)).toBe(fullHerd(kind))
 }
 /** A tool bought (its herd filled first). */
 function ownTool(kind: ToolKind) {
@@ -74,7 +74,7 @@ describe('buying a tool', () => {
   it.each(TOOL_KINDS)('the %s’ tool opens only with the herd full, and its two ladders only with the tool', (kind) => {
     farm.coins = 1_000_000
     // one short of the herd
-    while (animals(kind) < mostAnimals(kind) - 1) expect(buy(HERD_UPGRADE[kind])).toBe(true)
+    while (animals(kind) < fullHerd(kind) - 1) expect(buy(HERD_UPGRADE[kind])).toBe(true)
     expect(ladderOpen(toolLadder(kind, 'tool'))).toBe(false)
     expect(buyLadder(toolLadder(kind, 'tool'))).toBe(false)
     fillHerd(kind)

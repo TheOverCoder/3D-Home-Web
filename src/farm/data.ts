@@ -4,15 +4,24 @@ import type { FarmSound } from '../audio/sound'
 import type { KeyNote } from '../audio/palette'
 import type { ArtId } from '../ui/art'
 import { GATE, GARDEN, LANE } from '../data/layout'
-import { FRUIT, FRUIT_KINDS, type FruitId, type FruitKind } from './decor'
-import type { PlaceId } from './layout'
+import { DECOR, FRUIT, FRUIT_KINDS, type BearerKind, type FruitId, type FruitKind } from './decor'
+import type { ParcelId, PlaceId } from './layout'
 
 export type CropId = 'lettuce' | 'carrot' | 'strawberry' | 'tomato' | 'corn' | 'pumpkin' | 'wheat' | 'sugarcane' | 'sunflower' | 'potato' | 'melon' | 'cotton'
 export type CakeId = 'lemon_cake' | 'strawberry_cake' | 'carrot_cake' | 'pumpkin_pie'
+/** What the oven bakes from the fruit trees and bushes, and more (update-v1/missions/01-loop-economy.md c7, c8): longer
+ *  jobs, worth more a press and less a minute (src/farm/economy.ts, jobWorth). */
+export type BakeId = 'apple_pie' | 'blueberry_muffins' | 'cherry_tart' | 'bread' | 'honey_cake' | 'cheesecake'
+/** Whatever comes out of the oven, a cake or a bake. */
+export type OvenId = CakeId | BakeId
+/** What the dairy makes from the cows' milk (update v1, wave 2). */
+export type DairyId = 'butter' | 'cheese' | 'ice_cream' | 'yogurt'
+/** What the jam kettle cooks from the fruit (update v1, wave 2): a jar each. */
+export type JamId = 'strawberry_jam' | 'cherry_jam' | 'blueberry_jam' | 'marmalade' | 'raspberry_jam' | 'apple_butter'
 /** The building materials: what the silo and the barn are made bigger with (STORES, below). Never asked for, and sold
  *  only to the contractor behind the market (CONTRACTOR); they come as surprises (ITEM_ODDS) and are kept in the barn. */
 export type ItemId = 'brick' | 'plank' | 'nail' | 'iron' | 'bolt' | 'log'
-export type ProduceId = CropId | 'lemon' | FruitId | 'egg' | 'milk' | 'wool' | 'sugar' | 'flour' | 'cloth' | CakeId | ItemId
+export type ProduceId = CropId | 'lemon' | FruitId | 'egg' | 'milk' | 'wool' | 'sugar' | 'flour' | 'cloth' | CakeId | ItemId | BakeId | 'quilt' | DairyId | 'honey' | JamId | 'blanket'
 
 export interface CropDef {
   id: CropId
@@ -83,6 +92,29 @@ export const PRODUCE: ProduceDef[] = [
   { id: 'iron', name: 'iron bar', plural: 'iron bars', price: 0, maxAsk: 0, material: true },
   { id: 'bolt', name: 'bolt', plural: 'bolts', price: 0, maxAsk: 0, material: true },
   { id: 'log', name: 'log', plural: 'logs', price: 0, maxAsk: 0, material: true },
+  // what the waves of update v1 make (update-v1/missions/01-loop-economy.md c7, c8): each priced at what goes in, at fair
+  // price, and what its job adds by the job law (src/farm/economy.ts, jobWorth: economy.test.ts holds every row to it)
+  { id: 'apple_pie', name: 'apple pie', plural: 'apple pies', price: 119, maxAsk: 1 },
+  { id: 'blueberry_muffins', name: 'tray of muffins', plural: 'trays of muffins', price: 121, maxAsk: 1 },
+  { id: 'cherry_tart', name: 'cherry tart', plural: 'cherry tarts', price: 137, maxAsk: 1 },
+  { id: 'quilt', name: 'quilt', plural: 'quilts', price: 369, maxAsk: 1 },
+  { id: 'butter', name: 'pat of butter', plural: 'pats of butter', price: 78, maxAsk: 2 },
+  { id: 'cheese', name: 'cheese', plural: 'cheeses', price: 159, maxAsk: 1 },
+  { id: 'bread', name: 'loaf of bread', plural: 'loaves of bread', price: 235, maxAsk: 1 },
+  // the beehive's (decor.ts, a producing piece of the edit mode's shop): a jar of honey every twenty minutes, kept in the
+  // barn
+  { id: 'honey', name: 'jar of honey', plural: 'jars of honey', price: 32, maxAsk: 3 },
+  { id: 'strawberry_jam', name: 'strawberry jam', plural: 'strawberry jams', price: 125, maxAsk: 1 },
+  { id: 'cherry_jam', name: 'cherry jam', plural: 'cherry jams', price: 131, maxAsk: 1 },
+  { id: 'honey_cake', name: 'honey cake', plural: 'honey cakes', price: 272, maxAsk: 1 },
+  { id: 'blueberry_jam', name: 'blueberry jam', plural: 'blueberry jams', price: 151, maxAsk: 1 },
+  { id: 'ice_cream', name: 'ice cream', plural: 'ice creams', price: 260, maxAsk: 1 },
+  { id: 'marmalade', name: 'marmalade', plural: 'marmalades', price: 178, maxAsk: 1 },
+  { id: 'yogurt', name: 'yogurt', plural: 'yogurts', price: 133, maxAsk: 1 },
+  { id: 'blanket', name: 'woollen blanket', plural: 'woollen blankets', price: 224, maxAsk: 1 },
+  { id: 'apple_butter', name: 'apple butter', plural: 'apple butters', price: 172, maxAsk: 1 },
+  { id: 'raspberry_jam', name: 'raspberry jam', plural: 'raspberry jams', price: 166, maxAsk: 1 },
+  { id: 'cheesecake', name: 'cheesecake', plural: 'cheesecakes', price: 367, maxAsk: 1 },
 ]
 export const produceById = (id: ProduceId) => PRODUCE.find((p) => p.id === id)!
 /** The six building materials, in the order the silo and the barn list them. */
@@ -123,7 +155,9 @@ export const upgradeCost = (level: number) => level
 const FRUIT_GOODS: readonly string[] = FRUIT_KINDS.map((k) => FRUIT[k].fruit)
 /** Where a good is kept: the silo for what grows (a crop, a lemon, the fruit of the trees and bushes), the barn for
  *  the rest. */
-export const storeOf = (id: ProduceId): StoreId => (CROPS.some((c) => c.id === id) || id === 'lemon' || FRUIT_GOODS.includes(id) ? 'silo' : 'barn')
+/** What the producing pieces that are no plants give, kept where their row says (the beehive's honey: the barn). */
+const BORN_IN_SILO: readonly string[] = Object.values(DECOR).flatMap((d) => (d.bears?.store === 'silo' ? [d.bears.good] : []))
+export const storeOf = (id: ProduceId): StoreId => (CROPS.some((c) => c.id === id) || id === 'lemon' || FRUIT_GOODS.includes(id) || BORN_IN_SILO.includes(id) ? 'silo' : 'barn')
 
 /** The odds of a surprise, a building material (any of the six alike): a buyer in two comes with one, given as you
  *  sell to them; each egg, bottle of milk and fleece collected; each bed harvested and each picking of the lemon
@@ -151,11 +185,21 @@ export const RECIPES: Recipe[] = [
   { id: 'strawberry_cake', needs: { flour: 1, sugar: 1, egg: 2, milk: 1, strawberry: 4 }, makes: 'strawberry_cake', seconds: 35 },
   { id: 'carrot_cake', needs: { flour: 1, sugar: 1, egg: 2, carrot: 3 }, makes: 'carrot_cake', seconds: 35 },
   { id: 'pumpkin_pie', needs: { flour: 1, sugar: 1, egg: 1, milk: 1, pumpkin: 1 }, makes: 'pumpkin_pie', seconds: 40 },
+  // the fruit trees and bushes into the oven (update v1, wave 1): twenty minutes and more, for while you are away
+  { id: 'apple_pie', needs: { apple: 4, flour: 1, sugar: 1, egg: 1 }, makes: 'apple_pie', seconds: 20 * 60 },
+  { id: 'blueberry_muffins', needs: { blueberry: 6, flour: 1, sugar: 1, egg: 1 }, makes: 'blueberry_muffins', seconds: 20 * 60 },
+  { id: 'cherry_tart', needs: { cherry: 6, flour: 1, sugar: 1, egg: 1 }, makes: 'cherry_tart', seconds: 30 * 60 },
+  // the dairy's butter into the oven (update v1, wave 2): an hour
+  { id: 'bread', needs: { flour: 3, butter: 1, egg: 1 }, makes: 'bread', seconds: 3600 },
+  // the hive's honey and the dairy's butter: forty minutes
+  { id: 'honey_cake', needs: { honey: 2, flour: 1, egg: 2, butter: 1 }, makes: 'honey_cake', seconds: 40 * 60 },
+  // the dairy's cheese and butter: forty minutes
+  { id: 'cheesecake', needs: { cheese: 1, butter: 1, egg: 2, sugar: 1 }, makes: 'cheesecake', seconds: 40 * 60 },
 ]
 /** What a recipe takes, when it takes one good (the mill's wheat, the loom's fleece). */
 export const inputOf = (r: Recipe) => Object.keys(r.needs)[0] as ProduceId
 
-export type MachineId = 'mill' | 'loom' | 'oven'
+export type MachineId = 'mill' | 'loom' | 'oven' | 'dairy' | 'kettle'
 
 /** What a machine's button says, about `n` jobs of a recipe (`left`: the time to go, as 1:05). */
 export interface MachineWords {
@@ -235,7 +279,13 @@ export const MACHINES: Record<MachineId, MachineDef> = {
     aim: [0, 0.95, 0.2],
     sparkle: [0, 1.05, 0.2],
     reach: 2.5,
-    recipes: [{ id: 'wool', needs: { wool: 1 }, makes: 'cloth', seconds: 6 }],
+    recipes: [
+      { id: 'wool', needs: { wool: 1 }, makes: 'cloth', seconds: 6 },
+      // the cotton bolls and the cloth into a quilt: two hours on the loom (update v1, wave 1)
+      { id: 'quilt', needs: { cloth: 2, cotton: 2 }, makes: 'quilt', seconds: 2 * 3600 },
+      // a blanket of fleeces and a roll of cloth: two hours (update v1, wave 2)
+      { id: 'blanket', needs: { wool: 4, cloth: 1 }, makes: 'blanket', seconds: 2 * 3600 },
+    ],
     picture: 'cloth',
     words: {
       word: 'Weave',
@@ -264,6 +314,58 @@ export const MACHINES: Record<MachineId, MachineDef> = {
     sounds: { load: 'oven', done: 'G6', collect: 'tray' },
     counts: 'baked',
   },
+  // update v1 (update-v1/missions/01-loop-economy.md c8): the dairy, a lean-to west of the cows' pasture, its open front
+  // facing west into the yard; the churn by its front post, where you stand. The cows' milk into butter and cheese:
+  // longer jobs, for while you are away
+  dairy: {
+    name: 'Dairy',
+    x: 6.5,
+    z: -6.6,
+    stand: [-1.55, 1.0, 0.3],
+    aim: [-0.42, 0.95, 0.42],
+    sparkle: [-0.42, 1.2, 0.42],
+    reach: 2.4,
+    recipes: [
+      { id: 'butter', needs: { milk: 2 }, makes: 'butter', seconds: 10 * 60 },
+      { id: 'cheese', needs: { milk: 4 }, makes: 'cheese', seconds: 3600 },
+      { id: 'ice_cream', needs: { milk: 2, sugar: 1, melon: 1 }, makes: 'ice_cream', seconds: 2 * 3600 },
+      { id: 'yogurt', needs: { milk: 3 }, makes: 'yogurt', seconds: 40 * 60 },
+    ],
+    words: {
+      word: 'Churn',
+      working: (r, n, left) => `Making ${n === 1 ? `a ${produceById(r.makes).name}` : count(r.makes, n)} · ready in ${left}`,
+      done: (r, n) => `Take out ${n === 1 ? `the ${produceById(r.makes).name}` : count(r.makes, n)}`,
+      idle: (nearest) => `Dairy · a ${produceById(nearest.makes).name} needs`,
+    },
+    sounds: { load: 'churn', done: 'C7', collect: 'crock', work: { sound: 'churn', every: 2.2, spread: 1.2 } },
+  },
+  // the jam kettle, by the farm's kitchen between the east beds and the oven: fruit and sugar cooked into jam over a
+  // fire, a jar a job (half an hour and more: for while you are away); you stand on its west side, the table of jars to
+  // the north
+  kettle: {
+    name: 'Jam kettle',
+    x: 7.0,
+    z: 9.6,
+    stand: [-1.25, 1.0, 0],
+    aim: [0, 0.85, 0],
+    sparkle: [0, 1.1, 0],
+    reach: 2.4,
+    recipes: [
+      { id: 'strawberry_jam', needs: { strawberry: 6, sugar: 1 }, makes: 'strawberry_jam', seconds: 30 * 60 },
+      { id: 'cherry_jam', needs: { cherry: 6, sugar: 1 }, makes: 'cherry_jam', seconds: 30 * 60 },
+      { id: 'blueberry_jam', needs: { blueberry: 6, sugar: 1 }, makes: 'blueberry_jam', seconds: 45 * 60 },
+      { id: 'marmalade', needs: { orange: 6, sugar: 1 }, makes: 'marmalade', seconds: 3600 },
+      { id: 'apple_butter', needs: { apple: 6, sugar: 1 }, makes: 'apple_butter', seconds: 3600 },
+      { id: 'raspberry_jam', needs: { raspberry: 6, sugar: 1 }, makes: 'raspberry_jam', seconds: 3600 },
+    ],
+    words: {
+      word: 'Cook',
+      working: (r, n, left) => `Cooking ${n === 1 ? `a ${produceById(r.makes).name}` : count(r.makes, n)} · ready in ${left}`,
+      done: (r, n) => `Take ${n === 1 ? `the ${produceById(r.makes).name}` : count(r.makes, n)} off the fire`,
+      idle: (nearest) => `Jam kettle · a ${produceById(nearest.makes).name} needs`,
+    },
+    sounds: { load: 'bubble', done: 'D7', collect: 'jar', work: { sound: 'bubble', every: 2.6, spread: 1.4 } },
+  },
 }
 export const MACHINE_IDS = Object.keys(MACHINES) as MachineId[]
 
@@ -284,8 +386,10 @@ const COL_W = PATH_X - 0.75 - BED.w / 2 // west column
 const COL_E = PATH_X + 0.75 + BED.w / 2 // east column
 const COL_E2 = COL_E + BED.w + 0.9 // the east expansion, a narrow path further on
 const ROWS = [9.0, 10.3, 11.6]
+/** The path between the two columns of the Meadow beds on the west meadow (update v1; the Far beds' a little further). */
+const MEADOW_PATH = -18.3
 
-export type Expansion = 'east' | 'west'
+export type Expansion = 'east' | 'west' | 'north' | 'meadow' | 'far'
 
 export interface BedDef {
   index: number
@@ -307,12 +411,47 @@ export const BEDS: BedDef[] = [
     { index: 9 + row * 2, x: -12.3, z, side: -1 as const, price: 0, expansion: 'west' as const },
     { index: 10 + row * 2, x: -9.6, z, side: 1 as const, price: 0, expansion: 'west' as const },
   ]),
+  // update v1 (update-v1/missions/01-loop-economy.md c7, c8): four beds a field on the meadows round the farm, laid out as
+  // the first ones are (two columns either side of a path, a row every 1.3 m): the North beds behind the sheep fold, in
+  // line with the path among the first beds
+  ...[-15.6, -16.9].flatMap((z, row) => [
+    { index: 13 + row * 2, x: COL_W, z, side: -1 as const, price: 0, expansion: 'north' as const },
+    { index: 14 + row * 2, x: COL_E, z, side: 1 as const, price: 0, expansion: 'north' as const },
+  ]),
+  // the Meadow beds on the west meadow, west of the order office; the Far beds in its far corner, past the tractor's
+  // track (both out of the yard's two wide views: what they grow is seen up close, or from the meadow)
+  ...(
+    [
+      ['meadow', MEADOW_PATH, [3.6, 4.9]],
+      ['far', MEADOW_PATH - 2.7, [10.6, 11.9]],
+    ] as const
+  ).flatMap(([expansion, path, rows], field) =>
+    rows.flatMap((z, row) => [
+      { index: 17 + field * 4 + row * 2, x: path - 0.75 - BED.w / 2, z, side: -1 as const, price: 0, expansion },
+      { index: 18 + field * 4 + row * 2, x: path + 0.75 + BED.w / 2, z, side: 1 as const, price: 0, expansion },
+    ]),
+  ),
 ]
 
-export const EXPANSIONS: Record<Expansion, { name: string; blurb: string; price: number }> = {
+/** A piece of land with beds on it, bought whole: its name and words in the shop, its price, and the meadow its beds lie
+ *  on (src/farm/layout.ts, PARCELS), bought first; without one, it lies in the home garden. */
+export interface ExpansionDef {
+  name: string
+  blurb: string
+  price: number
+  land?: ParcelId
+}
+
+export const EXPANSIONS: Record<Expansion, ExpansionDef> = {
   east: { name: 'East beds', blurb: 'Three more raised beds beside the first ones.', price: 60 },
   west: { name: 'West field', blurb: 'Four beds in the west yard, by the living-room window.', price: 120 },
+  north: { name: 'North beds', blurb: 'Four beds on the north meadow, behind the sheep fold.', price: 400, land: 'north' },
+  meadow: { name: 'Meadow beds', blurb: 'Four beds on the west meadow, past the order office.', price: 900, land: 'west' },
+  far: { name: 'Far beds', blurb: "Four beds in the west meadow's far corner, past the tractor's track.", price: 1800, land: 'west' },
 }
+export const EXPANSION_IDS = Object.keys(EXPANSIONS) as Expansion[]
+/** Whether an upgrade is a piece of land with beds on it. */
+export const isExpansion = (id: string): id is Expansion => Object.prototype.hasOwnProperty.call(EXPANSIONS, id)
 
 export const START_COINS = 20
 
@@ -337,7 +476,7 @@ export const FOLD = { minX: -4.3, maxX: 4.3, minZ: -1.85, maxZ: 1.85, gateX: 0, 
 
 // ───────────────────────────── what fills up, and is collected ─────────────────────────────
 
-export type ProducerId = 'tree' | 'hens' | 'cows' | 'sheep' | FruitKind
+export type ProducerId = 'tree' | 'hens' | 'cows' | 'sheep' | BearerKind
 
 /** Something that fills up over time and is collected: the lemon tree, the hens' nest, each cow, each sheep, each fruit
  *  tree and bush bought in the edit mode.
@@ -359,13 +498,16 @@ export interface ProducerDef {
   holdsFull?: boolean
   /** its animals: how many on a new farm and at most. `shared`: they all lay into one nest, its clock running as many
    *  times as fast as there are hens; otherwise each animal has her own, and her name (on the button, and in the
-   *  shop's note: "Bella joins the herd"). A fruit plant's "herd" is its kind's plants standing on the farm (`plant`). */
-  herd?: { start: number; max: number; shared?: boolean; names?: readonly string[]; joins?: string }
+   *  shop's note: "Bella joins the herd"). A fruit plant's "herd" is its kind's plants standing on the farm (`plant`).
+   *  `full`: the herd full as its tool waits for (the shop sells the tool from then on), where the levels open more
+   *  animals past it, one a level (`herd:<producer>:<n>` in src/farm/unlocks.ts: the cows' 4th and 5th, the sheep's 5th
+   *  and 6th); without it, `max`. */
+  herd?: { start: number; max: number; full?: number; shared?: boolean; names?: readonly string[]; joins?: string }
   /** the movable place it is in (src/farm/layout.ts); a fruit plant stands on its own (`plant`) */
   place?: PlaceId
   /** a fruit tree or bush of the edit mode's shop: one for each of its kind placed on the farm (src/farm/layout.ts,
    *  `decor`), each with its own fruit and clock, in the order they stand in the layout */
-  plant?: FruitKind
+  plant?: BearerKind
   /** the button: its id (an animal's own ends in her number: farm-cow-0), its word and its verb's picture */
   action: string
   word: string
@@ -469,7 +611,7 @@ export const PRODUCERS: Record<ProducerId, ProducerDef> = {
     every: 45,
     max: 3,
     fresh: 1,
-    herd: { start: 1, max: 3, names: ['Bella', 'Mazal', 'Daisy'], joins: 'the herd' },
+    herd: { start: 1, max: 5, full: 3, names: ['Bella', 'Mazal', 'Daisy', 'Clover', 'Hadas'], joins: 'the herd' },
     place: 'cows',
     action: 'farm-cow',
     word: 'Milk',
@@ -488,7 +630,7 @@ export const PRODUCERS: Record<ProducerId, ProducerDef> = {
     max: 2,
     fresh: 1,
     holdsFull: true,
-    herd: { start: 2, max: 4, names: ['Dolly', 'Pnina', 'Lulu', 'Tzipi'], joins: 'the flock' },
+    herd: { start: 2, max: 6, full: 4, names: ['Dolly', 'Pnina', 'Lulu', 'Tzipi', 'Bracha', 'Mitzi'], joins: 'the flock' },
     place: 'sheep',
     action: 'farm-sheep',
     word: 'Shear',
@@ -501,12 +643,33 @@ export const PRODUCERS: Record<ProducerId, ProducerDef> = {
     surprise: 'each',
   },
   ...FRUIT_PRODUCERS(),
+  // update v1 (update-v1/missions/01-loop-economy.md c8): each beehive standing fills with honey on its own clock, a jar
+  // every twenty minutes, up to six (two hours to full); collected with the action button from a step in front of it
+  beehive: {
+    good: DECOR.beehive.bears!.good,
+    every: 20 * 60,
+    max: 6,
+    fresh: 0,
+    herd: { start: 0, max: DECOR.beehive.bears!.most },
+    plant: 'beehive',
+    action: 'farm-beehive',
+    word: 'Collect',
+    verb: 'pick',
+    stand: [0, 1.0, 0],
+    aim: [0, 0.7, 0],
+    reach: 1.9,
+    sound: 'pick',
+    sparkle: 1.0,
+    surprise: 'once',
+  },
 }
 export const PRODUCER_IDS = Object.keys(PRODUCERS) as ProducerId[]
-/** The fruit trees and bushes, each kind a producer. */
-export const PLANT_PRODUCERS = PRODUCER_IDS.filter((id) => PRODUCERS[id].plant)
+/** The fruit trees and bushes, each kind a producer (not the beehive: what it gives is no fruit). */
+export const PLANT_PRODUCERS = PRODUCER_IDS.filter((id) => (FRUIT_KINDS as readonly string[]).includes(PRODUCERS[id].plant ?? ''))
 /** The most animals a producer can have (none for the tree). */
 export const mostAnimals = (id: ProducerId) => PRODUCERS[id].herd?.max ?? 0
+/** A producer's herd full, as its tool waits for (src/farm/tools.ts): the animals past it open with the levels. */
+export const fullHerd = (id: ProducerId) => PRODUCERS[id].herd?.full ?? mostAnimals(id)
 
 export const SHED = { x: -9.0, z: 11.3 } as const
 export const STAND = { x: GATE.x + 1.7, z: GARDEN.maxZ - 0.75 } as const
@@ -520,8 +683,8 @@ export const LANE_ENDS = [-34, 34] as const
 export const VISITOR = { firstAfter: 20, speed: 1.25 } as const
 
 /** What a buyer at the gate offers against what the goods are worth (priceOf, src/farm/prices.ts): mostly fair, now
- *  and then generous, sometimes cheeky. Each factor with its odds; the odds sum to 1. `priceFor` in src/farm/state.ts
- *  rolls these same five, in this order: a change here must be made there too until it reads this table. */
+ *  and then generous, sometimes cheeky. Each factor with its odds; the odds sum to 1. `priceFor` in
+ *  src/farm/state/buyers.ts draws from this table (`offerFactor`), and the house computer's Market shows it. */
 export const BUYER_OFFERS = [
   { factor: 0.6, odds: 0.15 },
   { factor: 0.85, odds: 0.23 },
@@ -558,10 +721,13 @@ export interface Upgrade {
 export const UPGRADES: Upgrade[] = [
   { id: 'east', name: EXPANSIONS.east.name, blurb: EXPANSIONS.east.blurb, price: EXPANSIONS.east.price },
   { id: 'west', name: EXPANSIONS.west.name, blurb: EXPANSIONS.west.blurb, price: EXPANSIONS.west.price },
+  { id: 'north', name: EXPANSIONS.north.name, blurb: EXPANSIONS.north.blurb, price: EXPANSIONS.north.price },
+  { id: 'meadow', name: EXPANSIONS.meadow.name, blurb: EXPANSIONS.meadow.blurb, price: EXPANSIONS.meadow.price },
+  { id: 'far', name: EXPANSIONS.far.name, blurb: EXPANSIONS.far.blurb, price: EXPANSIONS.far.price },
   { id: 'queue', name: 'A longer queue', blurb: 'One more place in the line at the gate.', price: 30, levels: QUEUE_LEVELS, priceStep: 12 },
   { id: 'pace', name: 'A busier lane', blurb: 'Buyers come by more often.', price: 50, levels: PACE_LEVELS, priceStep: 25 },
-  { id: 'cow', name: 'Another cow', blurb: 'More milk (up to three cows).', price: 70, herd: 'cows' },
-  { id: 'sheep', name: 'Another sheep', blurb: 'More wool (up to four sheep).', price: 55, herd: 'sheep' },
+  { id: 'cow', name: 'Another cow', blurb: 'More milk (up to five cows).', price: 70, herd: 'cows' },
+  { id: 'sheep', name: 'Another sheep', blurb: 'More wool (up to six sheep).', price: 55, herd: 'sheep' },
   { id: 'hen', name: 'Another hen', blurb: 'More eggs (up to six hens).', price: 25, herd: 'hens' },
   { id: 'sprinkler', name: 'Sprinklers', blurb: 'Every bed waters itself.', price: 60 },
   { id: 'compost', name: 'Compost bin', blurb: 'Half as much again from every harvest.', price: 45 },

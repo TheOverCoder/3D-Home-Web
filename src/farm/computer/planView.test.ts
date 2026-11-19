@@ -31,7 +31,7 @@ describe('a new farm, the events off', () => {
   })
 
   it("ranks the jobs by what they add to their ingredients a minute of the machine's work", () => {
-    expect(rounded(v.jobs, 'perMinute')).toEqual([
+    expect(rounded(v.jobs, 'perMinute').slice(0, 7)).toEqual([
       ['loom:wool', 100],
       ['mill:sugarcane', 45],
       ['oven:lemon_cake', 42],
@@ -40,7 +40,21 @@ describe('a new farm, the events off', () => {
       ['mill:wheat', 30],
       ['oven:pumpkin_pie', 28.5],
     ])
-    expect(rounded(v.jobs, 'perPress').map(([, n]) => n)).toEqual([10, 3, 21, 23, 21, 2, 19])
+    expect(
+      rounded(v.jobs, 'perPress')
+        .slice(0, 7)
+        .map(([, n]) => n),
+    ).toEqual([10, 3, 21, 23, 21, 2, 19])
+    // update v1's long jobs after them (src/farm/data.ts, its waves): for while you are away, more a press and less a
+    // minute, each what it adds to its ingredients
+    const rest = v.jobs.slice(7)
+    expect(rest.length).toBeGreaterThan(0)
+    for (const r of rest) {
+      expect(r.perMinute, r.id).toBeLessThan(10)
+      expect(r.perPress, r.id).toBeGreaterThan(60)
+      expect(r.perMinute, r.id).toBeCloseTo(r.perPress / (r.seconds / 60), 6)
+    }
+    expect(rest.map((r) => r.perMinute)).toEqual(rest.map((r) => r.perMinute).sort((a, b) => b - a))
     expect(v.jobs.every((r) => r.can === 0)).toBe(true)
   })
 

@@ -1,7 +1,7 @@
 import { farmSound, uiClick } from '../../audio/sound'
 import { farmFx } from '../../fx/fx'
 import { useHome } from '../../store'
-import { BEDS, BED_BOX, type BedDef } from '../data'
+import { BEDS, BED_BOX, isExpansion, type BedDef } from '../data'
 import { buy, useFarm } from '../state'
 import { ShopCard, type ShopActions } from './ShopCard'
 import { upgradesView } from './view'
@@ -20,7 +20,7 @@ const actions: ShopActions = {
     if (!buy(id)) return false
     uiClick()
     farmSound('build')
-    if (id === 'east' || id === 'west') dustOver(BEDS.filter((b) => b.expansion === id))
+    if (isExpansion(id)) dustOver(BEDS.filter((b) => b.expansion === id))
     return true
   },
   ask: (id) => useHome.getState().openPanel({ kind: 'ladder', id, from: SHOP }),

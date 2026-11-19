@@ -9,21 +9,23 @@
 // silo's and the barn's levels (materials), a machine's queue places (open with the machine), the office's upgrades,
 // the market's and the contractor's ladders, the shop and the house (prices, the rate ladder, the house's own price).
 
-import { MACHINES, UPGRADES, type CakeId, type CropId, type MachineId, type UpgradeId } from './data'
+import { MACHINES, PRODUCERS, UPGRADES, fullHerd, type CropId, type MachineId, type ProducerId, type UpgradeId } from './data'
 import { SHOP, type ShopKind } from './decor'
 import { PARCELS, type ParcelId } from './layout'
 
-/** A recipe of a machine, as `machine:recipe` (MACHINES in ./data; the oven's recipes are its cakes). */
-export type RecipeKey = 'mill:wheat' | 'mill:sugarcane' | 'loom:wool' | `oven:${CakeId}`
+/** A recipe of a machine, as `machine:recipe` (MACHINES in ./data): a recipe is a row there and its level a row here,
+ *  nothing more (the unit test holds the two tables to each other: every recipe has its row, and every row a recipe). */
+export type RecipeKey = `${MachineId}:${string}`
 
-/** Everything a level opens: building a staked bed, a crop's seeds, an upgrade of the farm shop (the east and west
- *  fields among them), a recipe, a kind of the edit mode's shop (decoration, fruit trees and bushes), a field. */
-export type UnlockId = 'bed' | `crop:${CropId}` | `upgrade:${UpgradeId}` | `recipe:${RecipeKey}` | `decor:${ShopKind}` | `parcel:${ParcelId}`
+/** Everything a level opens: building a staked bed, a crop's seeds, an upgrade of the farm shop (the fields of beds
+ *  among them), a recipe, a kind of the edit mode's shop (decoration, fruit trees and bushes), a field, and an animal
+ *  past a herd full (`herd:cows:4`, the fourth cow: PRODUCERS' `herd.full` in ./data). */
+export type UnlockId = 'bed' | `crop:${CropId}` | `upgrade:${UpgradeId}` | `recipe:${RecipeKey}` | `decor:${ShopKind}` | `parcel:${ParcelId}` | `herd:${ProducerId}:${number}`
 
 /** The level each opens at (1: from the start). By theme, something every level from 2 to 13, and held to the pace a
  *  new farm is held to: the pace simulation plays with these locks on (src/sim/pace.test.ts, `npm run sim`; a number
  *  moved is checked there). What a recipe needs opens no later than it (the test). */
-export const UNLOCKS = {
+const TABLE = {
   // a new farm: two crops for the seeds it can buy, the beds staked out, and the loom (the sheep come with fleeces)
   bed: 1,
   'crop:lettuce': 1,
@@ -95,7 +97,37 @@ export const UNLOCKS = {
   'decor:cherry-tree': 13,
   'decor:well': 13,
   'decor:scarecrow-jingle': 13,
+  // update v1's first wave (update-v1/missions/01-loop-economy.md c7): the fruit into the oven, the cotton onto the loom
+  'recipe:oven:apple_pie': 14,
+  'upgrade:north': 15,
+  'recipe:oven:blueberry_muffins': 16,
+  'herd:cows:4': 17,
+  'recipe:oven:cherry_tart': 18,
+  'recipe:loom:quilt': 19,
+  'herd:sheep:5': 20,
+  // the second wave (c8): the dairy and what it makes, the butter into bread
+  'recipe:dairy:butter': 21,
+  'recipe:oven:bread': 22,
+  'recipe:dairy:cheese': 23,
+  'decor:beehive': 24,
+  'recipe:kettle:strawberry_jam': 25,
+  'upgrade:meadow': 26,
+  'recipe:kettle:cherry_jam': 27,
+  'recipe:oven:honey_cake': 28,
+  'recipe:kettle:blueberry_jam': 29,
+  'herd:cows:5': 30,
+  // past 30, a row every two levels to 45 (update-v1/JOURNEY.md fix 8; the neighbours' and the sets' rows come between)
+  'recipe:dairy:ice_cream': 31,
+  'recipe:oven:cheesecake': 32,
+  'recipe:kettle:marmalade': 33,
+  'recipe:dairy:yogurt': 35,
+  'upgrade:far': 37,
+  'herd:sheep:6': 39,
+  'recipe:loom:blanket': 41,
+  'recipe:kettle:apple_butter': 43,
+  'recipe:kettle:raspberry_jam': 45,
 } as const satisfies Record<UnlockId, number>
+export const UNLOCKS: Readonly<Record<UnlockId, number>> = TABLE
 
 export const UNLOCK_IDS = Object.keys(UNLOCKS) as UnlockId[]
 
@@ -120,6 +152,16 @@ export function openedBetween(from: number, to: number, at: (level: number) => U
   return out
 }
 
+/** The animal past a herd full in the table: the n-th of a producer's herd (`herd:cows:4`). */
+export const herdUnlock = (producer: ProducerId, n: number) => `herd:${producer}:${n}` as UnlockId
+/** The animals past each herd full the table opens, one a row: the n-th's key, while n is past its herd full and no more
+ *  than its most (unlocks.test.ts holds each such animal to a row). */
+export const herdSteps = (producer: ProducerId): number[] => {
+  const h = PRODUCERS[producer].herd
+  if (!h) return []
+  return Array.from({ length: h.max - fullHerd(producer) }, (_, k) => fullHerd(producer) + k + 1)
+}
+
 /** A machine's recipe in the table. */
 export const recipeUnlock = (machine: MachineId, recipe: string) => `recipe:${machine}:${recipe}` as UnlockId
 
@@ -139,5 +181,6 @@ export function unlockName(id: UnlockId): string {
   if (kind === 'upgrade') return UPGRADES.find((u) => u.id === rest)!.name
   if (kind === 'recipe') return named(MACHINES[rest as MachineId].recipes.find((r) => r.id === more)!.makes)
   if (kind === 'decor') return SHOP[rest as ShopKind].name
+  if (kind === 'herd') return UPGRADES.find((u) => u.herd === rest)!.name
   return PARCELS[rest as ParcelId].name
 }

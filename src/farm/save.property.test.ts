@@ -8,6 +8,7 @@ import { ROOMS, type RoomId } from '../data/layout'
 import { endsWithin } from '../lib/endsWithin'
 import {
   BEDS,
+  EXPANSION_IDS,
   CROPS,
   ITEMS,
   LADDERS,
@@ -38,7 +39,7 @@ import {
 } from './data'
 import { GOAL_IDS, MOST_STEPS } from './goals'
 import { PARCELS, PARCEL_IDS, PLACE_IDS, bedHome, canPlace, canPlaceBed, canPlaceThing, isShopKind, mostOf } from './layout'
-import { FRUIT_KINDS, SHOP as FARM_SHOP, type ShopKind } from './decor'
+import { BEARER_KINDS, SHOP as FARM_SHOP, type ShopKind } from './decor'
 import { MAX_PLACES, SHOP_LADDERS, placesOpen, shopperEvery } from './market'
 import { mostAt, ownsEach } from './tools'
 import { offersPerDay } from './contractor'
@@ -204,7 +205,7 @@ function alsoChanges(part: string): RegExp | null {
   if (part.startsWith('beds.')) return /^layout$/
   if (part === 'office') return /^orders$/
   // the fruit trees and bushes standing are their producers' plants (one count and clock each)
-  if (part === 'layout') return /^dispatch$|^producers\.[a-z]+-(tree|bush)$/
+  if (part === 'layout') return /^dispatch$|^producers\.([a-z]+-(tree|bush)|beehive)$/
   const herd = /^producers\.(\w+)\.animals$/.exec(part)
   if (herd) return new RegExp(`^producers\\.${herd[1]}\\.(stock|timer)$`)
   if (part === 'queueLevel' || part === 'nextVisitorIn') return /^queue$/
@@ -296,7 +297,7 @@ function farmProblems(): string[] {
     p.timer.forEach((t, i) => bad(`producers.${id}.timer.${i}`, typeof t === 'number' && t >= 0 && t < def.every))
   }
   // a fruit kind's producer has a count and a clock for each of its plants standing on the farm
-  for (const kind of FRUIT_KINDS) bad(`producers.${kind}: one for each plant standing`, farm.producers[kind].animals === farm.layout.decor.filter((d) => d.kind === kind).length)
+  for (const kind of BEARER_KINDS) bad(`producers.${kind}: one for each plant standing`, farm.producers[kind].animals === farm.layout.decor.filter((d) => d.kind === kind).length)
   // the machines: a queue of their own recipes, twelve at most; the done ones first, no more than there are; the one
   // under way no further in than it takes at the machine's level (none: no progress); three to twelve places; the
   // seconds worked from 0
@@ -313,7 +314,7 @@ function farmProblems(): string[] {
     bad(`machines.${id}.progress`, r ? isWithin(m.progress, 0, r.seconds * (1 - machineLevel(m.worked).boost.speed)) : m.progress === 0)
   }
   for (const k of ['sprinkler', 'compost', 'started'] as const) bad(k, typeof farm[k] === 'boolean')
-  bad('expansions', sameKeys(farm.expansions, ['east', 'west']) && Object.values(farm.expansions).every((v) => typeof v === 'boolean'))
+  bad('expansions', sameKeys(farm.expansions, EXPANSION_IDS) && Object.values(farm.expansions).every((v) => typeof v === 'boolean'))
   bad('queueLevel', isCount(farm.queueLevel, QUEUE_LEVELS))
   bad('paceLevel', isCount(farm.paceLevel, PACE_LEVELS))
   bad('nextVisitorIn', isWithin(farm.nextVisitorIn, 0, arrivalSeconds()))
@@ -508,10 +509,11 @@ function placeProblems(): string[] {
   const { places, land, beds, decor } = farm.layout
   bad('layout: every place', sameKeys(places, PLACE_IDS))
   for (const id of PLACE_IDS) bad(`layout.places.${id} fits`, [0, 1, 2, 3].includes(places[id].rot) && canPlace(farm.layout, id, places[id]).ok)
-  // every bed where it fits; one not built where it was staked out
+  // every built bed where it fits; one not built where it was staked out (a field's plot on a meadow not bought yet lies
+  // off the land)
   bad('layout.beds: one for each bed', beds.length === BEDS.length)
   beds.forEach((p, i) => {
-    bad(`layout.beds.${i} fits`, [0, 1, 2, 3].includes(p.rot) && canPlaceBed(farm.layout, i, p).ok)
+    if (farm.beds[i].built) bad(`layout.beds.${i} fits`, [0, 1, 2, 3].includes(p.rot) && canPlaceBed(farm.layout, i, p).ok)
     if (!farm.beds[i].built) bad(`layout.beds.${i}: not built, where it was staked out`, json(p) === json(bedHome(i)))
   })
   // each piece of decoration a kind of the shop's, with an id of its own, where it fits; the store a count of each kind,
