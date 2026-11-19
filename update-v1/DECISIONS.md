@@ -111,3 +111,5 @@ The orchestrator runs the plan to the end without asking:
   `FARM_SUN_BOX_PLANNED` alias 11a asked it to drop and the planned office now being the built row.
 - **The run's pace changed (the user, 2026-11-19):** too many agents at once only waited for the two test slots. The
   eight running finish; the next stage runs at most four at once, in dependency order.
+- **07b's two files outside its row accepted:** `PanelSheet.tsx` (`onLeave`, an optional `pic`, `.farm-backdrop` out of
+  `above()`) and `ConfirmCard.tsx` (its time through `span()`, P0-split's ask). The 32 flake is fixed in `drag.ts`.
