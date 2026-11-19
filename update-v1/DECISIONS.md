@@ -122,3 +122,6 @@ The orchestrator runs the plan to the end without asking:
 - **Open for the next stage: the long game's pace.** The sim's daily player reaches level 32 on day 7, 50 on day 14 and
   85 on day 30 (JOURNEY expects 20, 29, 44). Content cannot slow it; the level curve past 30 (`LEVELS`, `xp.ts`) or
   JOURNEY's table must change. `quietDays` stays a debt until then.
+- **04b's one line in `src/scene/Player.tsx` accepted:** the intro hard-coded the living room's heading, so
+  `FARM_START`'s heading and pitch could not reach the first frame otherwise. `PACE.first` and the journey's `pull`
+  stay debts: the real-pace player's steps end at level 5, before the new last step, and a sunflower is exactly an hour.
