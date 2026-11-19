@@ -5,7 +5,9 @@ import { flyCoins, flyItem, holdCoins } from '../fx/coins'
 import { coinsToFly } from '../fx/fx'
 import { haptic } from '../lib/device'
 import { art } from '../ui/art'
-import { burst } from '../ui/burst'
+import { paying } from '../fx/paid'
+import { celebrate } from '../fx/reward'
+import type { Tier } from '../lib/tier'
 import { Check, Clock } from '../ui/glyphs'
 import { ItemPic } from '../ui/ItemPic'
 import { CountUp, EASE, ITEM, POP, SINK, SPRING } from '../ui/motion'
@@ -56,13 +58,12 @@ export function DailyCard({
   v,
   onClaim,
   onClose,
-  onReveal,
 }: {
   v: DailyView
   /** claims today's gift: what it gave (null: nothing to claim) */
   onClaim: () => Prize[] | null
   onClose: () => void
-  /** the moment it bursts open (its sound and touch) */
+  /** (not called: the moment it bursts open, its sting and its touch are its tier's, `celebrate`: src/fx/reward.ts) */
   onReveal?: () => void
 }) {
   const still = useLessMotion()
@@ -71,8 +72,8 @@ export function DailyCard({
   const got = useRef<Prize[]>([])
   const held = useRef(0)
   const flown = useRef(false)
-  const reveal = useRef(onReveal)
-  reveal.current = onReveal
+  /** the tier the gift was counted at (as it was claimed): its sting, its touch, its confetti */
+  const tier = useRef<Tier>('small')
   const phase = moment?.phase
   // until the gift is home the card still shows the day as it was (the road, the streak): then they move on, one thing
   // after another (with less motion: at once)
@@ -103,9 +104,10 @@ export function DailyCard({
 
   const claim = () => {
     if (moment || !v.ready) return
-    const list = onClaim()
+    const { got: list, tier: counted } = paying('daily', onClaim, (g) => g)
     if (!list?.length) return
     haptic('tick')
+    tier.current = counted ?? 'small'
     got.current = list
     flown.current = false
     const coins = list.reduce((n, p) => n + ('coins' in p ? p.coins : 0), 0)
@@ -114,17 +116,15 @@ export function DailyCard({
       held.current = coins
     }
     setMoment({ got: list, phase: still ? 'open' : 'shake', before: v })
-    if (still) reveal.current?.()
+    if (still) celebrate('daily', tier.current, null)
   }
 
-  // rattle → open (the burst) → home
+  // rattle → open (the burst: as big as the gift) → home
   useEffect(() => {
     if (phase === 'shake') {
       const t = window.setTimeout(() => {
         setMoment((x) => x && { ...x, phase: 'open' })
-        reveal.current?.()
-        const big = got.current.length > 1
-        if (stage.current) burst(stage.current, { count: big ? 110 : 54, spread: big ? 110 : 80, power: big ? 34 : 27 })
+        celebrate('daily', tier.current, stage.current)
       }, SHAKE_MS)
       return () => window.clearTimeout(t)
     }

@@ -270,7 +270,7 @@
     },
     "05b": {
       "phase": 2,
-      "owns": ["src/fx/{reward,coins,fx,react,xp}.ts", "src/fx/reward.css", "src/ui/fly.ts", "src/farm/{Plants,Herd}.tsx"],
+      "owns": ["src/fx/{reward,coins,fx,react,xp,celebrate,paid,pop}.ts", "src/fx/{celebrate,paid,pop,reward,react}.test.ts", "src/fx/reward.css", "src/ui/fly.ts", "src/farm/{Plants,Herd}.tsx"],
       "touch": [
         { "path": "src/fx/FarmFx.tsx", "how": "its reward request" },
         { "path": "{src/farm/{DailyCard,GoalsCard,LevelCard,XpChip,FirstSteps}.tsx,src/farm/orderBoard/OrdersBoard.tsx,src/farm/machine/MachinePanelView.tsx}", "how": "their burst and sound lines" },

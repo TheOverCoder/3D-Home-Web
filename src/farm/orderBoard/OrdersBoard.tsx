@@ -5,7 +5,8 @@ import { useEffect, useRef, useState, type Ref } from 'react'
 import { flyCoins } from '../../fx/coins'
 import { coinsToFly } from '../../fx/fx'
 import { art } from '../../ui/art'
-import { burst } from '../../ui/burst'
+import { paying } from '../../fx/paid'
+import { celebrate } from '../../fx/reward'
 import { ArrowRight, Check, X } from '../../ui/glyphs'
 import { GoodPic } from '../../ui/GoodPic'
 import { EASE, MotionRoot, PRESS, SPRING } from '../../ui/motion'
@@ -177,10 +178,16 @@ function Board({ v, act, asking, onAsk, onClose }: OrdersBoardProps) {
     const slot = v.slots[k]
     if (!slot || !('order' in slot)) return
     const r = el.getBoundingClientRect()
-    if (!act.send(k) || still) return
+    const { got: sent, tier } = paying(
+      'order',
+      () => act.send(k),
+      () => [{ coins: slot.order.coins }],
+    )
+    if (!sent || still) return
     const at = { x: r.left + r.width / 2, y: r.top + r.height / 2 }
     flyCoins(at.x, at.y, coinsToFly(slot.order.coins))
-    burst(at, { count: 40, spread: 70, power: 24 })
+    // as big as the order (its sound and touch the farm played as it paid: sendOrder's own line)
+    celebrate('order', tier ?? 'small', at, { sound: false })
   }
 
   const keep = tall && mode !== 'right' ? { minHeight: tall } : undefined

@@ -4,7 +4,9 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { flyCoins, flyItem } from '../fx/coins'
 import { coinsToFly } from '../fx/fx'
 import { art } from '../ui/art'
-import { burst } from '../ui/burst'
+import { paying } from '../fx/paid'
+import { celebrate } from '../fx/reward'
+import type { Tier } from '../lib/tier'
 import { GarmentPic } from '../ui/GarmentPic'
 import { Check, LockSimple } from '../ui/glyphs'
 import { ItemPic } from '../ui/ItemPic'
@@ -72,12 +74,11 @@ export function LevelCard({
   v,
   onOpen,
   onClose,
-  onReveal,
 }: {
   v: LevelView
   onOpen: (boxes: number[]) => Opened[]
   onClose: () => void
-  /** the moment a gift bursts open (its sound and touch) */
+  /** (not called: the moment a gift bursts open, its sting and its touch are its tier's, `celebrate`: src/fx/reward.ts) */
   onReveal?: () => void
 }) {
   const still = useLessMotion()
@@ -85,13 +86,18 @@ export function LevelCard({
   const before = Math.max(0, v.into - v.gain) / v.need
   const next = v.level + 1
   const left = v.need - v.into
-  const [opening, setOpening] = useState<{ got: Opened[]; from: DOMRect | null } | null>(null)
+  const [opening, setOpening] = useState<{ got: Opened[]; from: DOMRect | null; tier: Tier } | null>(null)
   const nextLocked = v.boxes.find((b) => b.state === 'locked')
 
   const open = (boxes: number[], from: HTMLElement | null) => {
     if (!boxes.length || opening) return
-    const got = onOpen(boxes)
-    if (got.length) setOpening({ got, from: from?.getBoundingClientRect() ?? null })
+    // (one open of however many boxes is one reward: the tier it was counted at)
+    const { got, tier } = paying(
+      'box',
+      () => onOpen(boxes),
+      (g) => g.map((o) => o.prize),
+    )
+    if (got.length) setOpening({ got, from: from?.getBoundingClientRect() ?? null, tier: tier ?? 'small' })
   }
 
   return (
@@ -177,7 +183,7 @@ export function LevelCard({
           ) : null}
         </AnimatePresence>
       </div>
-      <AnimatePresence>{opening && <Opening key="opening" got={opening.got} from={opening.from} onReveal={onReveal} onDone={() => setOpening(null)} />}</AnimatePresence>
+      <AnimatePresence>{opening && <Opening key="opening" got={opening.got} from={opening.from} tier={opening.tier} onDone={() => setOpening(null)} />}</AnimatePresence>
     </PanelSheet>
   )
 }
@@ -387,7 +393,7 @@ function Reached({ level, came }: { level: number; came: NonNullable<LevelView['
  * Opening: in the middle of the card the box (or the boxes) grow from where they stood, shake as the light gathers,
  * burst into their prizes, and wait for a tap: Collect sends them home.
  */
-function Opening({ got, from, onReveal, onDone }: { got: Opened[]; from: DOMRect | null; onReveal?: () => void; onDone: () => void }) {
+function Opening({ got, from, tier, onDone }: { got: Opened[]; from: DOMRect | null; tier: Tier; onDone: () => void }) {
   const still = useLessMotion()
   const [phase, setPhase] = useState<'shake' | 'open'>(still ? 'open' : 'shake')
   const stage = useRef<HTMLDivElement>(null)
@@ -401,20 +407,18 @@ function Opening({ got, from, onReveal, onDone }: { got: Opened[]; from: DOMRect
     const r = stage.current?.getBoundingClientRect()
     if (r && from) setOffset({ x: from.left + from.width / 2 - (r.left + r.width / 2), y: from.top + from.height / 2 - (r.top + r.height * 0.42) })
   }, [from])
-  // the reveal: at once for whoever prefers less motion, else after the shake
-  const reveal = useRef(onReveal)
+  // the reveal, as big as the gift: at once for whoever prefers less motion, else after the shake
   useEffect(() => {
     if (still) {
-      reveal.current?.()
+      celebrate('box', tier, null)
       return
     }
     const t = setTimeout(() => {
       setPhase('open')
-      reveal.current?.()
-      if (stage.current) burst(stage.current, { count: one ? 46 : 70, spread: 80, power: 26 })
+      celebrate('box', tier, stage.current)
     }, 820)
     return () => clearTimeout(t)
-  }, [still, one])
+  }, [still, tier])
   // once: the Collect button's press would reach the stage's too
   const gone = useRef(false)
   const collect = () => {
