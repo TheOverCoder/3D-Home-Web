@@ -316,6 +316,7 @@ export function PanelSheet(props: {
   size?: 'panel' | 'card'            // a card is a question, as tall as its content
   foot?: { cancel?: FootButton; action: FootButton }   // at most two buttons, Cancel first: the type holds it
   className?: string; near?: ReactNode; closing?: boolean
+  onLeave?: () => void               // told once as it starts out by itself (✕, the shade, a swipe, Esc): the daily gift's goods fly then
   onClose: () => void; children: ReactNode
 }): ReactNode
 // Esc: whatever is open over the sheet takes it first: the sheet asks `[data-over-sheet]`, never a list of class names

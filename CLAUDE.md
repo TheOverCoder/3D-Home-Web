@@ -361,9 +361,11 @@ The README has the overview; `tests/README.md` what each test guards.
 - Build a panel on the base: motion presets in `src/ui/motion.tsx` (`PRESS`, `SINK`, `SQUISH`, `TIP`, `POP`, `DID`,
   `NOPE`, `ARRIVE`, `REVEAL`, `DEAL`, `FLIP`, `SHIMMER`, `SHEET`), surfaces and tokens in `src/styles.css` ("the base":
   `.wood`, `.velvet` and its premium tokens, `.ribbon`, `.chip`, `.count`, `.stars`, `.shine`, `.sheet-heading`), and the
-  shared pieces: `PanelSheet` (a sheet from the edge; `size: 'card'` for a question, `foot` its two buttons, `back`
-  for pages; what opens over it carries `data-over-sheet`), `GoodPic` (a good's picture that says where it is made:
-  use it where a good's picture stands outside a button), `flyGoods` (`src/ui/fly.ts`), `Shell` for a centred card. A
+  shared pieces: `PanelSheet` (the one sheet every panel is drawn on, from the edge; `size: 'card'` for a question,
+  `foot` its two buttons, `back` for pages, `onLeave` as it starts out; what opens over it carries `data-over-sheet`;
+  a panel's CSS is only what is on it), `GoodPic` (a good's picture that says where it is made: use it where a good's
+  picture stands outside a button), `flyGoods` (`src/ui/fly.ts`), `Shell` (a card of that sheet, its own flow inside;
+  `closePanel()` in `tests/e2e/helpers.ts` closes one as a player does and waits for it to go). A
   new panel's kind is one line in `PANEL_KINDS` (`src/store.ts`): `39-panels` opens it on a phone and measures what
   can be read and pressed (`tests/e2e/readable.ts`). What may move at the top to call asks `useCalling(id)`
   (`src/ui/calls.ts`): one at a time.
