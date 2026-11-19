@@ -9,7 +9,8 @@
 // and a room would look roofless. src/data/buildings.test.ts checks every row.
 
 import { ESTATE_WALKIN } from './estate'
-import { LOT, MARKET_WALKIN } from './market'
+import { onLot } from './lot'
+import { MARKET_WALKIN } from './market'
 
 /** A box in world metres: x and z on the ground, y up. */
 export interface Box {
@@ -122,9 +123,9 @@ export function insideWalkIn(x: number, z: number, margin = 0): WalkIn | null {
   return null
 }
 
-/** The lane outside the garden's fence (the lot before the market and the estate office, the parking lot and the
- *  contractor's corner): a space of its own, so nothing in the garden is in reach from it over the fence, nor the other
- *  way. */
+/** The lane outside the garden's fence (the lot's rows, src/data/lot.ts: the lane's strip with the parking lot, the
+ *  market's forecourt and the contractor's corner): a space of its own, so nothing in the garden is in reach from it
+ *  over the fence, nor the other way. */
 export const LANE = 'lane'
 
 /** Which space a point of the farm is in, for the action button: a walk-in's room, the lane, or 'out' (the garden and
@@ -132,7 +133,7 @@ export const LANE = 'lane'
 export function spaceAt(x: number, z: number): string {
   const walkIn = walkInRoomAt(x, z)
   if (walkIn) return walkIn.room.space
-  return LOT.some((r) => inRect(r, x, z)) ? LANE : 'out'
+  return onLot(x, z) ? LANE : 'out'
 }
 
 /** Is this space a walk-in's room? */

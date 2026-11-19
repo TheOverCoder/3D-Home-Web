@@ -1,5 +1,28 @@
 import { Parts, blob, lathe, merge, noise3, rgb, tube, type PartDef, type Shape, type V3 } from '../lib/sculpt'
-import { AGENT_SEAT, CABINET, ESTATE_DESK, ESTATE_DOOR, ESTATE_HOURS, ESTATE_ROOM, ESTATE_SIGN, ESTATE_WINDOW, KERB, PARKING, PARKING_SIGN, PLANT, SALE_BOARD, SEAT_Y, BAYS } from '../data/estate'
+import {
+  AGENT_SEAT,
+  BENCH,
+  CABINET,
+  ESTATE_DESK,
+  ESTATE_DISPLAY,
+  ESTATE_DOOR,
+  ESTATE_HOURS,
+  ESTATE_MAP,
+  ESTATE_ROOM,
+  ESTATE_SIGN,
+  ESTATE_WINDOW,
+  HOUSE_MODEL,
+  HOUSE_TABLE,
+  KERB,
+  PARKING,
+  PARKING_SIGN,
+  PLANT,
+  SALE_BOARD,
+  SEAT_Y,
+  BAYS,
+} from '../data/estate'
+import { HOUSE, ROOMS } from '../data/layout'
+import { ROOM_IDS, floorOf, wallSegments, type HomeShell } from '../home/shell'
 import { around, box, cuboid, type Paint } from './boxes'
 import { grain, mix, structureParts, type Structure } from './structures'
 
@@ -9,9 +32,13 @@ import { grain, mix, structureParts, type Structure } from './structures'
 //
 //   front     the shop front on the north wall, facing the lane: the sign's navy board (the logo and the words are
 //             drawn by the scene at ESTATE_SIGN), the opening hours' plaque (ESTATE_HOURS), the window east of the door
-//             with the house for sale in it (ESTATE_WINDOW), a frame round the door and a canopy over it
-//   inside    the agent's desk (a monitor, a stack of papers, a pot of pens), his chair, a filing cabinet, a plant, the
-//             frame of the board with the house for sale (SALE_BOARD) and a rug
+//             with the house for sale in it (ESTATE_WINDOW) and the wide one west of it with the farm's map
+//             (ESTATE_DISPLAY), a frame round the door and a canopy over it
+//   inside    the agent's desk (a laptop, a stack of papers, a pot of pens), his chair, a filing cabinet, a plant, the
+//             frame of the board with the house for sale (SALE_BOARD), the frame of the farm's map (ESTATE_MAP), the
+//             table the house's model stands on, a bench by the front and a rug
+//   house     the house at 1:25 on its base (houseModel: its walls, floors and openings from the save's shell), on the
+//             table, made again when the shell changes
 //   lot       the parking lot: asphalt, the bays' white lines, and a kerb along the fence and at its west end
 //
 // None of them casts (the shell shades the inside; the front faces north, away from the sun; the lot lies flat). They
@@ -61,6 +88,15 @@ function frontShape(): Shape {
     cuboid(box(wn.x + wn.half[0], wn.x + wn.half[0] + f, wn.y - wn.half[1], wn.y + wn.half[1], FRONT - 0.03, FRONT), { color: TRIM }),
     cuboid(box(wn.x - wn.half[0], wn.x + wn.half[0], wn.y - wn.half[1], wn.y + wn.half[1], FRONT - 0.008, FRONT), { color: GLASS }),
   ]
+  // the wide window west of the door: the same frame and sill round it (its glass and the map in it: the scene's)
+  const dp = ESTATE_DISPLAY
+  const display = [
+    cuboid(box(dp.x - dp.half[0] - f, dp.x + dp.half[0] + f, dp.y - dp.half[1] - f - 0.03, dp.y - dp.half[1], FRONT - 0.06, FRONT), { color: TRIM }),
+    cuboid(box(dp.x - dp.half[0] - f, dp.x + dp.half[0] + f, dp.y + dp.half[1], dp.y + dp.half[1] + f, FRONT - 0.03, FRONT), { color: TRIM }),
+    cuboid(box(dp.x - dp.half[0] - f, dp.x - dp.half[0], dp.y - dp.half[1], dp.y + dp.half[1], FRONT - 0.03, FRONT), { color: TRIM }),
+    cuboid(box(dp.x + dp.half[0], dp.x + dp.half[0] + f, dp.y - dp.half[1], dp.y + dp.half[1], FRONT - 0.03, FRONT), { color: TRIM }),
+    cuboid(box(dp.x - dp.half[0], dp.x + dp.half[0], dp.y - dp.half[1], dp.y + dp.half[1], FRONT - 0.008, FRONT), { color: GLASS }),
+  ]
   // the door's frame on the wall's face (the leaves slide behind it into the wall) and a canopy over the door
   const jamb = 0.06
   const doorFrame = [
@@ -69,7 +105,7 @@ function frontShape(): Shape {
     cuboid(box(d.x0, d.x1, 2.1, 2.1 + jamb, FRONT - 0.03, FRONT), { color: TRIM }),
   ]
   const canopy = cuboid(box(d.x0 - 0.16, d.x1 + 0.16, 2.17, 2.21, FRONT - 0.3, FRONT), (n) => ({ color: n[1] > 0 ? STEEL_DARK : NAVY }))
-  return merge(...sign, plaque, ...frame, ...doorFrame, canopy)
+  return merge(...sign, plaque, ...frame, ...display, ...doorFrame, canopy)
 }
 
 // ───────────────────────────── inside ─────────────────────────────
@@ -165,19 +201,116 @@ function insideShape(): Shape {
     0.02,
     { seg: 6, steps: 1, caps: [true, true] },
   ).fill(rgb(0x5a4430), 0)
-  // the frame of the board with the house for sale (the picture is the scene's), on the west wall
+  // the frame of the board with the house for sale (the picture is the scene's), on the east wall, facing west
   const b = SALE_BOARD
   const w = 0.035
+  const ex = ESTATE_ROOM.x1
   const boardFrame = [
-    cuboid(box(ESTATE_ROOM.x0, ESTATE_ROOM.x0 + 0.035, b.y - b.half[1] - w, b.y - b.half[1], b.z - b.half[0] - w, b.z + b.half[0] + w), { color: NAVY }),
-    cuboid(box(ESTATE_ROOM.x0, ESTATE_ROOM.x0 + 0.035, b.y + b.half[1], b.y + b.half[1] + w, b.z - b.half[0] - w, b.z + b.half[0] + w), { color: NAVY }),
-    cuboid(box(ESTATE_ROOM.x0, ESTATE_ROOM.x0 + 0.035, b.y - b.half[1], b.y + b.half[1], b.z - b.half[0] - w, b.z - b.half[0]), { color: NAVY }),
-    cuboid(box(ESTATE_ROOM.x0, ESTATE_ROOM.x0 + 0.035, b.y - b.half[1], b.y + b.half[1], b.z + b.half[0], b.z + b.half[0] + w), { color: NAVY }),
-    cuboid(box(ESTATE_ROOM.x0, ESTATE_ROOM.x0 + 0.015, b.y - b.half[1], b.y + b.half[1], b.z - b.half[0], b.z + b.half[0]), { color: PAPER }),
+    cuboid(box(ex - 0.035, ex, b.y - b.half[1] - w, b.y - b.half[1], b.z - b.half[0] - w, b.z + b.half[0] + w), { color: NAVY }),
+    cuboid(box(ex - 0.035, ex, b.y + b.half[1], b.y + b.half[1] + w, b.z - b.half[0] - w, b.z + b.half[0] + w), { color: NAVY }),
+    cuboid(box(ex - 0.035, ex, b.y - b.half[1], b.y + b.half[1], b.z - b.half[0] - w, b.z - b.half[0]), { color: NAVY }),
+    cuboid(box(ex - 0.035, ex, b.y - b.half[1], b.y + b.half[1], b.z + b.half[0], b.z + b.half[0] + w), { color: NAVY }),
+    cuboid(box(ex - 0.015, ex, b.y - b.half[1], b.y + b.half[1], b.z - b.half[0], b.z + b.half[0]), { color: PAPER }),
   ]
-  // a rug in front of the desk, where you stand
+  // the frame of the farm's map on the west wall (the map is the scene's), oak round a cream backing
+  const mp = ESTATE_MAP
+  const wx = ESTATE_ROOM.x0
+  const mf = 0.045
+  const oak = (n: V3, m: V3): Paint => ({ color: grain(1, 23)(m[0], m[1] + n[1] * 0.2, m[2]) })
+  const mapFrame = [
+    cuboid(box(wx, wx + 0.04, mp.y - mp.half[1] - mf, mp.y - mp.half[1], mp.z - mp.half[0] - mf, mp.z + mp.half[0] + mf), oak),
+    cuboid(box(wx, wx + 0.04, mp.y + mp.half[1], mp.y + mp.half[1] + mf, mp.z - mp.half[0] - mf, mp.z + mp.half[0] + mf), oak),
+    cuboid(box(wx, wx + 0.04, mp.y - mp.half[1], mp.y + mp.half[1], mp.z - mp.half[0] - mf, mp.z - mp.half[0]), oak),
+    cuboid(box(wx, wx + 0.04, mp.y - mp.half[1], mp.y + mp.half[1], mp.z + mp.half[0], mp.z + mp.half[0] + mf), oak),
+    cuboid(box(wx, wx + 0.015, mp.y - mp.half[1], mp.y + mp.half[1], mp.z - mp.half[0], mp.z + mp.half[0]), { color: PAPER }),
+  ]
+  // the house's table: a top, an apron under it and four legs
+  const t = HOUSE_TABLE
+  const legs = 0.05
+  const table = [
+    cuboid(box(t.x0, t.x1, t.y1 - 0.035, t.y1, t.z0, t.z1), oak),
+    cuboid(box(t.x0 + 0.06, t.x1 - 0.06, t.y1 - 0.12, t.y1 - 0.035, t.z0 + 0.06, t.z1 - 0.06), oak),
+    ...[t.x0 + 0.04, t.x1 - 0.04 - legs].flatMap((x) => [t.z0 + 0.04, t.z1 - 0.04 - legs].map((z) => cuboid(box(x, x + legs, 0, t.y1 - 0.035, z, z + legs), oak))),
+  ]
+  // the bench by the front: a slatted seat, a back against the wall, a frame of steel at either end
+  const bn = BENCH
+  const bench = [
+    cuboid(box(bn.x0, bn.x1, bn.y1 - 0.04, bn.y1, bn.z0 + 0.06, bn.z1), oak),
+    cuboid(box(bn.x0, bn.x1, bn.y1 + 0.08, bn.y1 + 0.42, bn.z0 + 0.01, bn.z0 + 0.05), oak),
+    ...[bn.x0 + 0.05, bn.x1 - 0.09].flatMap((x) => [
+      cuboid(box(x, x + 0.04, 0, bn.y1 - 0.04, bn.z0 + 0.08, bn.z1 - 0.04), { color: STEEL_DARK }),
+      cuboid(box(x, x + 0.04, 0, bn.y1 + 0.42, bn.z0, bn.z0 + 0.01), { color: STEEL_DARK }),
+      cuboid(box(x, x + 0.04, bn.y1 - 0.08, bn.y1 + 0.42, bn.z0 + 0.01, bn.z0 + 0.06), { color: STEEL_DARK }),
+    ]),
+  ]
+  // a rug from the door to the desk, where you stand
   const rug = cuboid(box(dk.x0 - 0.05, dk.x1 + 0.05, 0.0, 0.008, ESTATE_ROOM.z0 + 0.25, dk.z0 - 0.05), { color: RUG })
-  return merge(...desk, ...things, pens, ...penSticks, ...chair, ...cabinet, pot, leaves, stem, ...boardFrame, rug)
+  return merge(...desk, ...things, pens, ...penSticks, ...chair, ...cabinet, pot, leaves, stem, ...boardFrame, ...mapFrame, ...table, ...bench, rug)
+}
+
+// ───────────────────────────── the house's model ─────────────────────────────
+
+/** The model's base: a board of lawn under the house, a little round it (in the model's metres). */
+const MODEL_BASE = 0.02
+const LAWN = rgb(0x7fa65a)
+const LAWN_EDGE = rgb(0x5d7d44)
+/** A wall's top, cut: the model's plaster. */
+const CUT = rgb(0xefe9df)
+
+const hexColor = (hex: string) => rgb(parseInt(hex.replace('#', ''), 16))
+
+/**
+ * The house at 1:25 as the save's shell has it (src/home/shell.ts): every piece of its walls (cut by its openings where
+ * they are now — windows and doorways open, a closed one walled up), each face in its room's paint or as built, each
+ * room's floor in its own colour, on a board of lawn. No roof: it is a model to look into. In its own frame: the house's
+ * middle at the origin, the base on the ground (y 0), its north to −z as the house's (the scene turns it).
+ */
+export function houseModelShape(shell: HomeShell): Shape {
+  const k = HOUSE_MODEL.scale
+  const y0 = MODEL_BASE
+  const half = HOUSE.wallThickness / 2
+  const bx = (HOUSE.maxX + half) * k + 0.035
+  const bz = (HOUSE.maxZ + half) * k + 0.035
+  const base = cuboid(box(-bx, bx, 0, y0, -bz, bz), (n) => ({ color: n[1] > 0 ? LAWN : LAWN_EDGE }))
+  const floors = ROOM_IDS.map((room) => {
+    const r = ROOMS[room].bounds
+    return cuboid(box(r.minX * k, r.maxX * k, y0, y0 + 0.003, r.minZ * k, r.maxZ * k), { color: hexColor(floorOf(shell, room).tint) })
+  })
+  // each piece of wall a box: its long faces in their rooms' colours (or the outside's), its top and its ends cut plaster
+  const walls = wallSegments(shell)
+    .filter((sg) => sg.kind === 'wall')
+    .map((sg) => {
+      const [cx, cy, cz] = sg.center
+      const [sx, sy, sz] = sg.size
+      const faces = sg.faces ?? [sg.color, sg.color]
+      const lower = hexColor(faces[0])
+      const higher = hexColor(faces[1])
+      const across = sg.axis === 'x' ? 2 : 0
+      return cuboid(box((cx - sx / 2) * k, (cx + sx / 2) * k, y0 + (cy - sy / 2) * k, y0 + (cy + sy / 2) * k, (cz - sz / 2) * k, (cz + sz / 2) * k), (n) => ({
+        color: n[across] < 0 ? lower : n[across] > 0 ? higher : CUT,
+      }))
+    })
+  return merge(base, ...floors, ...walls)
+}
+
+/** The house's model as a structure: one part, casting nothing (it stands indoors, under the office's roof). */
+export function houseModel(shell: HomeShell): Structure<'house'> {
+  return { house: { shape: houseModelShape(shell), material: { roughness: 0.75 }, castShadow: false } }
+}
+
+/** The house's model drawn, on its table in the office: one draw. */
+export function houseModelParts(shell: HomeShell): Parts<'house'> {
+  const parts = structureParts(houseModel(shell), 'estate-house')
+  putHouseModel(parts)
+  return parts
+}
+
+/** Puts the model on its table, its garden side to the door. */
+export function putHouseModel(parts: Parts<'house'>) {
+  parts.begin()
+  parts.at(HOUSE_MODEL.x, HOUSE_MODEL.y, HOUSE_MODEL.z, HOUSE_MODEL.heading)
+  parts.put('house', 0, 0, 0)
+  parts.end()
 }
 
 // ───────────────────────────── the parking lot ─────────────────────────────

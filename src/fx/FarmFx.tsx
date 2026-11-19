@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
-import { Vector3 } from 'three'
+import { Vector3, type Camera } from 'three'
 import { debugSet } from '../lib/debug'
 import { profile } from '../lib/profile'
+import { rewardKind } from '../lib/tier'
 import { useHome } from '../store'
 import { onLessMotion } from '../ui/still'
 import { flyCoins, flyItem } from './coins'
@@ -10,7 +11,9 @@ import { flyXp } from './xp'
 import { iconUrl } from '../farm/icons'
 import { coinsFx, coinsToFly, effectsOn, farmFx, fxStats, takeFx, type FxRequest } from './fx'
 import type { FxEngine, WeatherEngine } from './quarks'
-import { seasonNow, weatherNow } from '../farm/state'
+import { freeze, reacting, stopReactions } from './react'
+import { celebrate, takeRewardShows, type RewardShow } from './reward'
+import { farm, rewardCounts, resetRewardCounts, seasonNow, weatherNow } from '../farm/state'
 import { mapNow } from '../lib/world'
 import { lookOf } from '../scene/weatherLook'
 
@@ -50,8 +53,14 @@ export function FarmFx() {
   /** the last frame's length (ms), and so how old a request may be and still play (`FRESH_MS`) */
   const lastFrame = useRef(16)
 
+  /** the farm's beds as last seen: another farm (started again, loaded) has others, and no reaction of the last goes on */
+  const beds = useRef<unknown>(null)
+
   useEffect(() => {
     debugSet('fx', { stats: fxStats, time, play: farmFx, coins: coinsFx })
+    // every payout counted, by kind and tier (src/farm/state/rewards.ts); the reactions held still for a frozen pose
+    debugSet('reward', { rewardCounts, resetRewardCounts })
+    debugSet('react', { freeze, reacting, stopReactions })
   }, [])
   // the weather's rain, snow and rainbow: a renderer of their own, fed the season's and the weather's look (below)
   useWeatherFx(playing && motionOk)
@@ -92,6 +101,12 @@ export function FarmFx() {
     let coins = 0
     const freshMs = Math.max(FRESH_MS, FRESH_FRAMES * lastFrame.current)
     lastFrame.current = dt * 1000
+    if (farm.beds !== beds.current) {
+      if (beds.current) stopReactions()
+      beds.current = farm.beds
+    }
+    /** the coins that changed hands this frame, and where: the numbers of the rewards' shows */
+    const paid: Paid[] = []
     for (const r of asked) {
       if (r.kind === 'item') {
         // a surprise: from where it was found on the screen (or low in the middle, when that is behind you)
@@ -110,6 +125,7 @@ export function FarmFx() {
         const y = behind ? size.height * 0.6 : Math.min(size.height - 30, Math.max(90, ((1 - at.y) / 2) * size.height))
         if (flyXp(x, y, r.xp ?? 1)) fxStats.xp++
       } else if (r.kind === 'coins') {
+        paid.push({ x: r.x, z: r.z, coins: r.coins ?? 0 })
         // from the buyer's place on the screen (or the bottom edge, when they are behind you)
         at.set(r.x, r.y, r.z).project(camera)
         const behind = at.z > 1
@@ -126,6 +142,7 @@ export function FarmFx() {
         fxStats.started++
       } else waiting.current.push(r)
     }
+    showRewards(takeRewardShows(), paid, camera, size, freshMs)
     // asked for while the engine was on its way: what is still fresh plays now
     if (waiting.current.length) {
       const now = performance.now()
@@ -144,6 +161,47 @@ export function FarmFx() {
   })
 
   return null
+}
+
+/** Coins that changed hands at a place on the ground this frame (a buyer paying, the till emptied). */
+interface Paid {
+  x: number
+  z: number
+  coins: number
+}
+
+/** A world point on the screen, kept `edge` px in from the sides and `top` px under the top (the chips' row); low in
+ *  the middle when it is behind you. */
+function screenAt(x: number, y: number, z: number, camera: Camera, size: { width: number; height: number }, edge = 40, top = 90) {
+  at.set(x, y, z).project(camera)
+  if (at.z > 1) return { x: size.width / 2, y: size.height * 0.6 }
+  return { x: Math.min(size.width - edge, Math.max(edge, ((at.x + 1) / 2) * size.width)), y: Math.min(size.height - edge, Math.max(top, ((1 - at.y) / 2) * size.height)) }
+}
+
+/**
+ * The world's reward request (update-v1/missions/05-world-feel.md, change 2): each reward paid at a place in the world
+ * since the last frame (src/fx/reward.ts, queued by `rewarded`) is celebrated over where it was paid — its number and
+ * its confetti, by its tier. The number is the coins that changed hands there this frame, each flight of coins counted
+ * to the nearest show: a whole line sold is one show with the line's coins, one number. Its sound and its touch the farm
+ * played as it paid (06's lines in the sale paths). A show that waited too long (no frames: the page hidden) is dropped.
+ */
+function showRewards(shows: RewardShow[], paid: Paid[], camera: Camera, size: { width: number; height: number }, freshMs: number) {
+  if (!shows.length) return
+  const coins = new Map<RewardShow, number>()
+  const takers = shows.filter((s) => rewardKind(s.kind).family === 'coins')
+  for (const p of paid) {
+    let best: RewardShow | null = null
+    for (const s of takers) if (!best || Math.hypot(s.x - p.x, s.z - p.z) < Math.hypot(best.x - p.x, best.z - p.z)) best = s
+    if (best) coins.set(best, (coins.get(best) ?? 0) + p.coins)
+  }
+  const now = performance.now()
+  for (const s of shows) {
+    if (now - s.at > freshMs) continue
+    const n = coins.get(s)
+    celebrate(s.kind, s.tier, screenAt(s.x, s.y, s.z, camera, size), { coins: n, sound: false })
+    fxStats.rewards++
+    if (n) fxStats.pops++
+  }
 }
 
 /** For the tests and the stills (`window.__home.weatherFx`): what falls, how long its script takes, how many drops at

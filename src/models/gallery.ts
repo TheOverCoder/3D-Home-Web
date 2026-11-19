@@ -19,9 +19,10 @@ import { MARKET_MIDDLE, MARKET_SCREEN, MARKET_SIGN, marketFittingsParts, marketS
 import { putSlidingDoor, slidingDoorParts } from './slidingDoor'
 import { BROWSE_SPOTS, CONTRACTOR_SPOT, MANAGER_SPOT, MARKET_WALKIN, PAY_SPOT } from '../data/market'
 import { carParts, putCar, putRollingCar, rollingCarParts } from './car'
-import { ESTATE_MIDDLE, estateFittingsParts, parkingLotParts } from './estate'
+import { ESTATE_MIDDLE, estateFittingsParts, houseModel, houseModelParts, parkingLotParts } from './estate'
 import { walkInShellParts } from './market'
-import { AGENT_SEAT, ESTATE_HOURS, ESTATE_SIGN, ESTATE_WALKIN, ESTATE_WINDOW, SALE_BOARD, SEAT_Y } from '../data/estate'
+import { AGENT_SEAT, ESTATE_DISPLAY, ESTATE_HOURS, ESTATE_MAP, ESTATE_SIGN, ESTATE_WALKIN, ESTATE_WINDOW, SALE_BOARD, SEAT_Y } from '../data/estate'
+import { defaultShell } from '../home/shell'
 import { CAR_SPOT } from '../data/maps'
 import { ESTATE_LOOK } from './look'
 import { sitAtDesk } from './person'
@@ -420,13 +421,20 @@ export const GALLERY: GalleryEntry[] = [
   {
     id: 'estate',
     label: 'Estate office',
-    name: 'The estate office (its shell from the walk-in row, weatherboards; the agent sitting at his desk, the house for sale on the wall, the sign, the hours and the window; the sliding door opening and shutting), the parking lot with the car in its bay',
+    name: "The estate office (its shell from the walk-in row, weatherboards; the agent sitting at his desk, the house for sale on the wall, the house's model on its table and the farm's map on the west wall, the bench; the sign, the hours and the two windows; the sliding door opening and shutting), the parking lot with the car in its bay, and the house's model four times its size on the lane before it",
     make() {
       const shell = walkInShellParts(ESTATE_WALKIN)
       const fittings = estateFittingsParts()
       const door = ESTATE_WALKIN.autoDoor!
       const leaves = slidingDoorParts(door)
       const lot = parkingLotParts()
+      // the house's model on its table inside, and four times as big on the lane in front, to be seen from out here
+      const house = houseModelParts(defaultShell())
+      const big = structureParts(houseModel(defaultShell()), 'gallery-house')
+      big.begin()
+      big.at(ESTATE_MIDDLE.x, 0, 14.6, Math.PI, 4)
+      big.put('house', 0, 0, 0)
+      big.end()
       const car = carParts(1)
       car.begin()
       putCar(car, CAR_SPOT.farm.x, CAR_SPOT.farm.z, CAR_SPOT.farm.heading)
@@ -448,12 +456,16 @@ export const GALLERY: GalleryEntry[] = [
         fittings.group,
         leaves.group,
         lot.group,
+        house.group,
+        big.group,
         car.group,
         people.group,
         plane({ ...ESTATE_SIGN, z: ESTATE_SIGN.z - 0.047 }, 0x22344f),
         plane({ ...ESTATE_HOURS, z: ESTATE_HOURS.z - 0.022 }, 0xf6f1e4),
         plane({ ...ESTATE_WINDOW, z: ESTATE_WINDOW.z - 0.01 }, 0x26394a),
-        plane({ ...SALE_BOARD, x: SALE_BOARD.x + 0.018 }, 0xf6f1e4, Math.PI / 2),
+        plane({ ...ESTATE_DISPLAY, z: ESTATE_DISPLAY.z - 0.01 }, 0x26394a),
+        plane({ ...SALE_BOARD, x: SALE_BOARD.x - 0.018 }, 0xf6f1e4, -Math.PI / 2),
+        plane({ ...ESTATE_MAP, x: ESTATE_MAP.x + 0.018 }, 0xa6c97a, Math.PI / 2),
       )
       // its front (north, to the lane) turned to the gallery's camera, the lot to its right
       world.rotation.y = Math.PI
@@ -464,7 +476,7 @@ export const GALLERY: GalleryEntry[] = [
         object,
         width: 10,
         height: 3,
-        triangles: () => shell.triangles() + fittings.triangles() + leaves.triangles() + lot.triangles() + car.triangles() + people.triangles(),
+        triangles: () => shell.triangles() + fittings.triangles() + leaves.triangles() + lot.triangles() + house.triangles() + big.triangles() + car.triangles() + people.triangles(),
         update(t) {
           putSlidingDoor(leaves, door, Math.min(1, Math.max(0, 0.5 + Math.sin(t * 0.8) * 0.8)))
           sitAtDesk(agent, SEAT_Y, Math.sin(t * 0.6) * 0.4)

@@ -5,6 +5,7 @@ import { playGesture } from '../lib/gestures'
 import { useHome } from '../store'
 import { ItemPic } from '../ui/ItemPic'
 import { Coins, Purse, Shell, useArmed } from '../ui/Sheet'
+import { PanelSheet } from '../ui/PanelSheet'
 import { art } from '../ui/art'
 import { Check, Clock, Minus, Plus, Users } from '../ui/glyphs'
 import { ITEMS, LADDERS, MANAGER, SELLABLE, SHOP, count, produceById, type ProduceId } from './data'
@@ -18,7 +19,9 @@ import { clockText, emptyPlace, farm, fillPlace, ladderLevel, ladderMaxed, ladde
 // The supermarket's panels: the manager's (what he pays for each good you have, his rate and its ladder, buying the
 // shop), your shop's computer once it is yours (each place on the shelves with its good, how many, its price and the
 // chance a shopper takes one; the next place's price tag; the shoppers' two ladders), one place's card (a good from
-// the silo or the barn, how many, its price), and the card that asks before the shop is bought.
+// the silo or the barn, how many, its price), and the card that asks before the shop is bought. The manager's and the
+// shop's are panels of the one sheet (src/ui/PanelSheet.tsx: as tall as the sheet may stand, its list scrolling in it);
+// the place's and the buying's are cards (Shell).
 
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1)
 /** A chance as a whole percent. */
@@ -112,9 +115,11 @@ export function ManagerPanel() {
   const goods = SELLABLE.filter((id) => farm.inv[id] > 0)
   const all = goods.reduce((n, id) => n + managerPay(priceOf(id), farm.inv[id], pct), 0)
   return (
-    <Shell
+    <PanelSheet
+      label="The manager"
       title="The manager"
-      art={art('office-worker')}
+      pic={art('office-worker')}
+      className="market-panel"
       sub={
         <>
           <Purse />
@@ -125,34 +130,36 @@ export function ManagerPanel() {
       }
       onClose={close}
     >
-      <div className="farm-list">
-        {goods.map((id) => (
-          <ManagerRow key={id} id={id} pct={pct} />
-        ))}
-        {!goods.length && <p className="farm-empty">Nothing to sell — harvest, collect, bake.</p>}
+      <div className="market-body">
+        <div className="farm-list">
+          {goods.map((id) => (
+            <ManagerRow key={id} id={id} pct={pct} />
+          ))}
+          {!goods.length && <p className="farm-empty">Nothing to sell — harvest, collect, bake.</p>}
+        </div>
+        <button
+          className={`primary market-sell-all${armed ? '' : ' arming'}`}
+          disabled={all <= 0}
+          aria-disabled={!armed}
+          onClick={() => {
+            if (armed && sellAllToManager()) playGesture('interact')
+          }}
+        >
+          {all > 0 ? (
+            <>
+              Sell all · <Coins n={all} />
+            </>
+          ) : (
+            'Nothing he pays for yet'
+          )}
+        </button>
+        {ITEMS.some((id) => farm.inv[id] > 0) && <ContractorLink />}
+        <div className="farm-shop market-ladders">
+          <LadderRow id="rate" />
+        </div>
+        <ShopRow />
       </div>
-      <button
-        className={`primary market-sell-all${armed ? '' : ' arming'}`}
-        disabled={all <= 0}
-        aria-disabled={!armed}
-        onClick={() => {
-          if (armed && sellAllToManager()) playGesture('interact')
-        }}
-      >
-        {all > 0 ? (
-          <>
-            Sell all · <Coins n={all} />
-          </>
-        ) : (
-          'Nothing he pays for yet'
-        )}
-      </button>
-      {ITEMS.some((id) => farm.inv[id] > 0) && <ContractorLink />}
-      <div className="farm-shop market-ladders">
-        <LadderRow id="rate" />
-      </div>
-      <ShopRow />
-    </Shell>
+    </PanelSheet>
   )
 }
 
@@ -235,9 +242,11 @@ export function MarketPanel() {
   const open = placesOpen(ladderLevel('places'))
   const bare = m.shelves.slice(0, open).every((s) => !s.good || s.units <= 0)
   return (
-    <Shell
+    <PanelSheet
+      label="Your shop"
       title="Your shop"
-      art={art('convenience-store')}
+      pic={art('convenience-store')}
+      className="market-panel"
       sub={
         <>
           <span className="tag" title="Coins in the till">
@@ -263,17 +272,19 @@ export function MarketPanel() {
       }
       onClose={close}
     >
-      <div className="farm-list market-places">
-        {m.shelves.slice(0, open).map((_, k) => (
-          <PlaceRow key={k} k={k} />
-        ))}
-        <ClosedPlace />
+      <div className="market-body">
+        <div className="farm-list market-places">
+          {m.shelves.slice(0, open).map((_, k) => (
+            <PlaceRow key={k} k={k} />
+          ))}
+          <ClosedPlace />
+        </div>
+        <div className="farm-shop market-ladders">
+          <LadderRow id="group" />
+          <LadderRow id="pace" />
+        </div>
       </div>
-      <div className="farm-shop market-ladders">
-        <LadderRow id="group" />
-        <LadderRow id="pace" />
-      </div>
-    </Shell>
+    </PanelSheet>
   )
 }
 

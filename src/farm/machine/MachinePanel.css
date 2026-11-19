@@ -4,8 +4,11 @@
    (a lip under each, like the game's buttons: a thing to take, where the wells are things to fill). Upright a sheet
    at the bottom; sideways on the right, the queue and the recipes side by side; on a computer in the middle.
    Motion moves it (Motion for React): no CSS animation of the sheet here; loops (a glow, a bob) only for whoever
-   does not prefer less motion, and never on an element Motion moves (they would fight over its transform). */
-
+   does not prefer less motion, and never on an element Motion moves (they would fight over its transform). The sheet,
+   its head and its way out are PanelSheet's (src/ui/PanelSheet.tsx); its body is the panel's own: the queue stays, the
+   recipes scroll, the level's page scrolls by itself. */
+.machine-panel .ps-body { gap: 0; padding: 0; overflow: hidden; }
+.mp-pages { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
 
 /* the top: the machine's picture, its name, the level chip and how long the queue still works; ✕. It is where a
    swipe takes the sheet away (the grabber says so) */
