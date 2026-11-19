@@ -20,6 +20,8 @@ const fx = (game: Game) =>
       coins: number
       rewards: number
       pops: number
+      goods: number
+      landed: number
       drawn: boolean
     }
   })
@@ -129,6 +131,74 @@ test.describe('garden', () => {
     await until(game, () => (window as any).__home.farm.state.beds[0].crop === null)
     await page.keyboard.press('Digit2')
     await until(game, () => (window as any).__home.farm.state.beds[0].crop === 'carrot')
+  })
+
+  test('a harvest flies to the silo: one counted picture a bed, the silo stepping up as each lands; none with less motion or the top quiet', async ({ game }) => {
+    await game.ready('farm')
+    const { page } = game
+    await page.evaluate(() => {
+      const h = (window as any).__home
+      h.farm.reset()
+      h.settings.getState().update({ hudMode: 'all' })
+      // the pictures' flights at a quarter of their speed, so the software renderer's few frames a second see them fly
+      // eslint-disable-next-line @typescript-eslint/unbound-method -- called with the element as `this` below
+      const animate = Element.prototype.animate
+      ;(window as any).__goodsFull = animate
+      Element.prototype.animate = function (this: Element, ...args: Parameters<Element['animate']>) {
+        const a = animate.apply(this, args)
+        if (this.classList.contains('goods-pop')) a.playbackRate = 0.25
+        return a
+      }
+    })
+    await game.teleport(-1.2, 1.4, 9.0, Math.PI / 2, -0.6)
+    /** Beds 0 and 1 ripe with lettuces and harvested in the same frame: how many went into the silo. */
+    const harvest = () =>
+      page.evaluate(() => {
+        const f = (window as any).__home.farm
+        for (const i of [0, 1]) Object.assign(f.state.beds[i], { built: true, crop: 'lettuce', growth: 1e6, water: 1e6 })
+        return (f.harvest(0) + f.harvest(1)) as number
+      })
+    /** A few frames drawn (what was asked is played by then). */
+    const frames = async (n = 4) => {
+      const at = await page.evaluate(() => (window as any).__home.view.stats.renders)
+      await page.waitForFunction((f) => (window as any).__home.view.stats.renders > f, at + n, { timeout: 30_000, polling: 100 })
+    }
+    const s0 = await fx(game)
+    expect(await harvest()).toBe(8)
+    // one picture a bed, with how many in its badge, up from the beds and on to the silo's chip
+    await page.waitForFunction((g) => (window as any).__home.fx.stats.goods >= g + 2, s0.goods, { timeout: 30_000, polling: 50 })
+    await expect(page.locator('.goods-pop .qty').first()).toHaveText('4')
+    // while they fly, the silo's tank leaves out what is still in the air (its words say all it holds), read at once
+    const flying = await page.evaluate(() => {
+      const h = (window as any).__home
+      return { held: h.fx.held('silo') as number, landed: h.fx.stats.landed as number, label: document.querySelector('.top-gauge.silo')?.getAttribute('aria-label') ?? '' }
+    })
+    expect(flying.held).toBe(8 - 4 * (flying.landed - s0.landed))
+    expect(flying.held).toBeGreaterThan(0)
+    expect(flying.label).toMatch(/^Silo: 8 of /)
+    // and as the last lands, it holds all of it
+    await page.waitForFunction((l) => (window as any).__home.fx.stats.landed >= l + 2 && (window as any).__home.fx.held('silo') === 0, s0.landed, { timeout: 30_000, polling: 100 })
+    expect((await fx(game)).goods).toBe(s0.goods + 2)
+
+    // less motion: nothing flies, the count changes at once
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    const s1 = await fx(game)
+    expect(await harvest()).toBe(8)
+    await frames()
+    expect(await page.evaluate(() => (window as any).__home.fx.held('silo'))).toBe(0)
+    expect((await fx(game)).goods).toBe(s1.goods)
+    await page.emulateMedia({ reducedMotion: 'no-preference' })
+    // only the compass at the top: no chip to fly to, so nothing flies
+    await page.evaluate(() => (window as any).__home.settings.getState().update({ hudMode: 'compass' }))
+    const s2 = await fx(game)
+    expect(await harvest()).toBe(8)
+    await frames()
+    expect((await fx(game)).goods).toBe(s2.goods)
+    expect(await page.evaluate(() => (window as any).__home.fx.held('silo'))).toBe(0)
+    await page.evaluate(() => {
+      ;(window as any).__home.settings.getState().update({ hudMode: 'all' })
+      Element.prototype.animate = (window as any).__goodsFull
+    })
   })
 
   test('buyers queue at the gate: Sell only with something they want (2/2), Enter sells to the first you can, N sends the first away and someone new comes', async ({ game }) => {

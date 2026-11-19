@@ -49,7 +49,7 @@ function takeFrom(id: ProducerId, i: number, most: number, at?: At): { n: number
   const def = PRODUCERS[id]
   const p = farm.producers[id]
   const has = p.stock[i] ?? 0
-  const n = store(def.good, Math.min(has, Math.max(0, Math.floor(most))))
+  const n = store(def.good, Math.min(has, Math.max(0, Math.floor(most))), at)
   if (!n) return { n: 0, items: [] }
   p.stock[i] = has - n
   if (!def.keepsClock && !p.stock[i]) p.timer[i] = 0

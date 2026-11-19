@@ -9,6 +9,8 @@ import { onLessMotion } from '../ui/still'
 import { flyCoins, flyItem } from './coins'
 import { flyXp } from './xp'
 import { iconUrl } from '../farm/icons'
+import { storeOf, type ProduceId } from '../farm/data'
+import { goodsHeld, letGoodsGo, popInto } from '../ui/fly'
 import { coinsFx, coinsToFly, effectsOn, farmFx, fxStats, takeFx, type FxRequest } from './fx'
 import type { FxEngine, WeatherEngine } from './quarks'
 import { freeze, reacting, stopReactions } from './react'
@@ -30,6 +32,12 @@ const FRESH_MS = 700
 const FRESH_FRAMES = 3
 /** At most this many coins in the air from one frame's sales (selling to a whole line at once). */
 const MAX_COINS = 14
+/** Goods flying to their store from one press: at most this many pictures (one a bed, an animal), this far apart (ms),
+ *  each holding this long at the top of its pop (ms); the same press's crystals leave this much after the first. */
+const MAX_GOODS = 8
+const GOODS_STAGGER = 70
+const GOODS_HOLD = 90
+const XP_AFTER_GOODS = 120
 
 const at = new Vector3()
 /** For screenshots and tests (`window.__home.fx.time`): how fast the particles' clock runs. */
@@ -57,7 +65,7 @@ export function FarmFx() {
   const beds = useRef<unknown>(null)
 
   useEffect(() => {
-    debugSet('fx', { stats: fxStats, time, play: farmFx, coins: coinsFx })
+    debugSet('fx', { stats: fxStats, time, play: farmFx, coins: coinsFx, held: goodsHeld })
     // every payout counted, by kind and tier (src/farm/state/rewards.ts); the reactions held still for a frozen pose
     debugSet('reward', { rewardCounts, resetRewardCounts })
     debugSet('react', { freeze, reacting, stopReactions })
@@ -102,19 +110,39 @@ export function FarmFx() {
     const freshMs = Math.max(FRESH_MS, FRESH_FRAMES * lastFrame.current)
     lastFrame.current = dt * 1000
     if (farm.beds !== beds.current) {
-      if (beds.current) stopReactions()
+      if (beds.current) {
+        stopReactions()
+        letGoodsGo()
+      }
       beds.current = farm.beds
     }
     /** the coins that changed hands this frame, and where: the numbers of the rewards' shows */
     const paid: Paid[] = []
+    // goods collected fly to their store (none while a panel is open: it flies its own), and the crystals of the same
+    // press leave a moment after them, so the two read as two
+    const goodsFly = !useHome.getState().panel && asked.some((r) => r.kind === 'goods')
+    let flew = 0
     for (const r of asked) {
       if (r.kind === 'item') {
-        // a surprise: from where it was found on the screen (or low in the middle, when that is behind you)
+        // a surprise: from where it was found on the screen (or low in the middle, when that is behind you); the barn's
+        // gauge counts it in as it lands
         at.set(r.x, r.y, r.z).project(camera)
         const behind = at.z > 1
         const x = behind ? size.width / 2 : Math.min(size.width - 40, Math.max(40, ((at.x + 1) / 2) * size.width))
         const y = behind ? size.height * 0.6 : Math.min(size.height - 40, Math.max(90, ((1 - at.y) / 2) * size.height))
-        if (r.item && flyItem(x, y, iconUrl(r.item as Parameters<typeof iconUrl>[0]), r.order)) fxStats.items++
+        if (r.item && flyItem(x, y, iconUrl(r.item as ProduceId), r.order, 'barn', { count: 1, hold: 1 })) fxStats.items++
+      } else if (r.kind === 'goods') {
+        // goods into their store: one picture with how many from each place they came from, a moment apart, to the
+        // store's chip, whose gauge steps up as each lands (src/ui/fly.ts, popInto)
+        if (!goodsFly || !r.good || flew >= MAX_GOODS || performance.now() - r.at > freshMs) continue
+        const p = screenAt(r.x, r.y, r.z, camera, size)
+        const good = r.good as ProduceId
+        const n = r.count ?? 1
+        const landed = () => fxStats.landed++
+        if (popInto(p.x, p.y, { src: iconUrl(good), store: storeOf(good), count: n, hold: n, order: flew, stagger: GOODS_STAGGER, holdMs: GOODS_HOLD, landed })) {
+          flew++
+          fxStats.goods++
+        }
       } else if (r.kind === 'xp') {
         // XP: crystals from where it was gained (or low in the middle, when that is behind you) into the level chip;
         // asked for while no frame ran (the page hidden), they would only take their XP back off the bar: it is there
@@ -123,7 +151,7 @@ export function FarmFx() {
         const behind = at.z > 1
         const x = behind ? size.width / 2 : Math.min(size.width - 30, Math.max(30, ((at.x + 1) / 2) * size.width))
         const y = behind ? size.height * 0.6 : Math.min(size.height - 30, Math.max(90, ((1 - at.y) / 2) * size.height))
-        if (flyXp(x, y, r.xp ?? 1)) fxStats.xp++
+        if (flyXp(x, y, r.xp ?? 1, goodsFly ? XP_AFTER_GOODS : 0)) fxStats.xp++
       } else if (r.kind === 'coins') {
         paid.push({ x: r.x, z: r.z, coins: r.coins ?? 0 })
         // from the buyer's place on the screen (or the bottom edge, when they are behind you)

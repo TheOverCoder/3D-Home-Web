@@ -128,7 +128,7 @@ export function harvestBeds(beds: number[]) {
       full = true
       continue
     }
-    store(b.crop, n)
+    store(b.crop, n, bedAt(i))
     farm.stats.harvested += n
     farm.got[b.crop] += n
     got.set(b.crop, (got.get(b.crop) ?? 0) + n)

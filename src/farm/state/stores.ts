@@ -1,5 +1,5 @@
 import { farmSound } from '../../audio/sound'
-import { itemFx } from '../../fx/fx'
+import { goodsFx, itemFx } from '../../fx/fx'
 import { count, isItem, storeCapacity, storeOf, STORES, type ItemId, type ProduceId, type StoreId } from '../data'
 import { priceOf } from '../prices'
 import { canUpgrade, nextLevel, randomItem, roomIn, STORE_GOODS, usedIn } from '../storage'
@@ -31,12 +31,15 @@ const remember = (id: ProduceId) => {
 
 /**
  * Puts goods that were collected into their building, as many as it has room for: how many went in. What does not
- * fit is never thrown away: the caller leaves it where it was (on the animal, in the bed, in the machine).
+ * fit is never thrown away: the caller leaves it where it was (on the animal, in the bed, in the machine). Collected
+ * at a place in the world (`at`), what went in flies from there to its building's chip, one picture with how many
+ * (src/fx/fx.ts, goodsFx).
  */
-export function store(id: ProduceId, n: number) {
+export function store(id: ProduceId, n: number, at?: At) {
   const k = Math.max(0, Math.min(n, roomFor(id)))
   farm.inv[id] += k
   if (k) remember(id)
+  if (k && at) goodsFx(at.x, at.y, at.z, id, k)
   return k
 }
 
