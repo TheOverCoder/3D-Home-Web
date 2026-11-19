@@ -4,6 +4,10 @@
 .album-card .al-contents,
 .album-card .al-page { display: flex; flex-direction: column; gap: 12px; }
 
+/* the sheet's round buttons (close, back) keep their 44 px look and take a finger's 48 px: a ring of 2 px round them */
+.album-card .mp-round { position: relative; }
+.album-card .mp-round::after { content: ''; position: absolute; inset: -2px; border-radius: 50%; }
+
 /* the long ladders: three counts that only grow */
 .album-card .al-ladders { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .album-card .al-ladder { display: grid; justify-items: center; gap: 2px; padding: 8px 6px 9px; border-radius: 18px; background: var(--paper-2); box-shadow: 0 3px 0 var(--paper-3); text-align: center; }
