@@ -116,3 +116,9 @@ The orchestrator runs the plan to the end without asking:
 - **02b's six files outside its row accepted:** the daily and news cards' own CSS (their bodies), the garment line in
   `state/rewards.ts` (02a's ask), and three tests updated for gift garments, boxes at levels 3 and 7 and the *Album*
   line. `ONE_AT = 3` (one box a level from level 3) because PACE.income and JOURNEY.full failed below it.
+- **01b's 21 files outside its row accepted:** each forced by a type or test on the new machines, herds and fields, or
+  asked for (06b's collect sound, 01a's pace hooks, the hive in the album). The farm's sun pass is 223 draws (claim +3,
+  measured +7: three Meadow beds' frames in the box); the sideways yard view is 249.4k of 250k.
+- **Open for the next stage: the long game's pace.** The sim's daily player reaches level 32 on day 7, 50 on day 14 and
+  85 on day 30 (JOURNEY expects 20, 29, 44). Content cannot slow it; the level curve past 30 (`LEVELS`, `xp.ts`) or
+  JOURNEY's table must change. `quietDays` stays a debt until then.

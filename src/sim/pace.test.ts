@@ -20,6 +20,8 @@ import { PACE } from './targets'
 const LEVELS = Object.keys(PACE.levels).map(Number)
 const TOP = Math.max(...LEVELS)
 const SEEDS = [1, 2, 3]
+/** The days of the daily player's journey played here: a week, so the nights of days 2 and 7 are held (day 14's, which
+ *  runs from 18 to 42 minutes from one roll of the dice to another, by `npm run sim`). */
 const DAYS = 7
 
 /** The rules today's farm breaks, and who pays each. */
@@ -110,15 +112,12 @@ describe('a session ends by setting something long, and a night pays (the daily 
   else it('the first sitting ends with something long on its way', first)
 
   const mornings = PACE.night.days.filter((d) => d <= DAYS)
-  // (the first night is held to its minutes here; the later ones, on every seed, by `npm run sim`: with the farm's 13
-  // beds they pay about 21 minutes, the low end of the band, until 01b's meadows add their beds)
+  // (each night of the week held to its minutes here, on one seed; on every seed by `npm run sim`)
   const night = (day: number) => {
     const n = nightOf(week, day)!
     const [least, most] = PACE.night.minutes
-    if (day === mornings[0]) {
-      expect(n.minutes, `day ${day}: ${Math.round(n.worth)} coins at level ${n.level}`).toBeGreaterThanOrEqual(least)
-      expect(n.minutes, `day ${day}: ${Math.round(n.worth)} coins at level ${n.level}`).toBeLessThanOrEqual(most)
-    }
+    expect(n.minutes, `day ${day}: ${Math.round(n.worth)} coins at level ${n.level}`).toBeGreaterThanOrEqual(least)
+    expect(n.minutes, `day ${day}: ${Math.round(n.worth)} coins at level ${n.level}`).toBeLessThanOrEqual(most)
     // and the evening before set the night, not a break
     expect(n.within, `day ${day - 1}'s evening: ${Math.round(n.within)} coins on its way through the night, ${Math.round(n.brk)} within a break`).toBeGreaterThanOrEqual(PACE.night.break.times * n.brk)
   }

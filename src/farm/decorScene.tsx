@@ -7,12 +7,12 @@ import { registerInteractable } from '../lib/interaction'
 import { Parts, setSculptGlow, shadowPart, smoothstep, type PartDef } from '../lib/sculpt'
 import { partGeometry, type Structure } from '../models/structures'
 import { DAY, PRODUCERS } from './data'
-import { DECOR_KINDS, FRUIT, FRUIT_KINDS, type DecorKind, type FruitId, type FruitKind, type ShopKind } from './decor'
+import { DECOR_KINDS, FRUIT, FRUIT_KINDS, type BearerKind, type DecorKind, type FruitId, type FruitKind, type ShopKind } from './decor'
 import { decorModel, fruitParts, fruitPlantModel, fruitSpots, putFruit } from './decorModels'
 import { moodAt, phaseDef } from './day'
 import { useEdit } from './edit'
 import { reacting, reaction, slotsShown } from '../fx/react'
-import { DECOR_FEET, isPlant, toWorld, turnOf, type DecorPiece } from './layout'
+import { DECOR_FEET, bears, isPlant, toWorld, turnOf, type DecorPiece } from './layout'
 import { dayIsFrozen, farm, stockOf, useFarm } from './state'
 import { producerOffer } from './useProducer'
 
@@ -320,15 +320,16 @@ function Fruit() {
   return <primitive object={root} />
 }
 
-/** Each fruit plant on the action button where it stands: pick its fruit (the lemon tree's rules: src/farm/useProducer.ts). */
+/** Each fruit plant (and each beehive) on the action button where it stands: pick its fruit, collect its honey (the
+ *  lemon tree's rules: src/farm/useProducer.ts). */
 function FruitOffers() {
   const list = useFarm(() => farm.layout.decor)
   useEffect(() => {
     const offs: (() => void)[] = []
-    const index = new Map<FruitKind, number>()
+    const index = new Map<BearerKind, number>()
     for (const d of list) {
-      if (!isPlant(d.kind)) continue
-      const kind = d.kind as FruitKind
+      if (!bears(d.kind)) continue
+      const kind = d.kind
       const i = index.get(kind) ?? 0
       index.set(kind, i + 1)
       const def = PRODUCERS[kind]
@@ -377,6 +378,8 @@ const SOLID: Partial<Record<ShopKind, Solid>> = {
   'cherry-tree': { post: [1.2, 0.18] },
   'blueberry-bush': { post: [0.5, 0.6] },
   'raspberry-bush': { post: [0.7, 0.5] },
+  // update v1's beehive on its stand
+  beehive: { box: [0.3, 0.45, 0.28] },
 }
 
 /** The bodies of everything standing (made again when anything is put down, moved or put away). */

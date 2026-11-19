@@ -1,6 +1,6 @@
-import { PRODUCERS } from '../data'
-import { canPlaceNew, canPlaceThing, decorRect, freeSpot, isPlant, joinRun, mostOf, snap, type DecorPiece, type FarmLayout, type Fit, type Placement } from '../layout'
-import { SHOP as FARM_SHOP, FRUIT, FRUIT_KINDS, nextPrice, type FruitKind, type ShopItemView, type ShopKind } from '../decor'
+import { PRODUCERS, STORES, storeOf } from '../data'
+import { bears, canPlaceNew, canPlaceThing, decorRect, freeSpot, isPlant, joinRun, mostOf, snap, type DecorPiece, type FarmLayout, type Fit, type Placement } from '../layout'
+import { SHOP as FARM_SHOP, BEARER_KINDS, FRUIT, nextPrice, type BearerKind, type FruitKind, type ShopItemView, type ShopKind } from '../decor'
 import { PIECES, type PieceType } from '../../home/catalogue'
 import { canMoveOpening, canPlacePiece, findFreeSpot, type HomeFit, type HomeLayout, type HomePiece } from '../../home/layout'
 import { floorById, paintById, type OpeningAt } from '../../home/shell'
@@ -40,15 +40,15 @@ export function shopView(): ShopItemView[] {
   })
 }
 
-/** The plants of a fruit kind standing on the farm, in order: its producer's animals. */
-function plantsOf(kind: FruitKind, layout: FarmLayout = farm.layout) {
+/** The plants of a fruit kind (or the hives) standing on the farm, in order: its producer's animals. */
+function plantsOf(kind: BearerKind, layout: FarmLayout = farm.layout) {
   return layout.decor.filter((d) => d.kind === kind)
 }
 
 /** A fruit kind's producer holds as many plants (each a count and a clock) as stand on the farm: a save read, the counts
  *  and clocks of the plants there kept, any more start bare. */
 export function fitPlants(data: FarmData) {
-  for (const kind of FRUIT_KINDS) {
+  for (const kind of BEARER_KINDS) {
     const n = plantsOf(kind, data.layout).length
     const p = data.producers[kind]
     const max = PRODUCERS[kind].max
@@ -64,8 +64,8 @@ export function fitPlants(data: FarmData) {
  *  it stands in the layout. */
 function standPiece(d: DecorPiece) {
   farm.layout = { ...farm.layout, decor: [...farm.layout.decor, d], next: Math.max(farm.layout.next, d.id + 1) }
-  if (isPlant(d.kind)) {
-    const p = farm.producers[d.kind as FruitKind]
+  if (bears(d.kind)) {
+    const p = farm.producers[d.kind]
     p.animals += 1
     p.stock.push(0)
     p.timer.push(0)
@@ -135,13 +135,14 @@ export function storeDecor(id: number): Fit {
   const k = farm.layout.decor.findIndex((x) => x.id === id)
   if (k < 0) return { ok: false, reason: 'Not on the farm' }
   const d = farm.layout.decor[k]
-  if (isPlant(d.kind)) {
-    const kind = d.kind as FruitKind
+  if (bears(d.kind)) {
+    const kind = d.kind
     const i = plantsOf(kind).findIndex((x) => x.id === id)
     if (stockOf(kind, i) > 0) {
       const r = decorRect(d)
       collect(kind, i, { x: (r.minX + r.maxX) / 2, y: PRODUCERS[kind].sparkle, z: (r.minZ + r.maxZ) / 2 })
-      if (stockOf(kind, i) > 0) return { ok: false, reason: 'The silo is full: its fruit has nowhere to go' }
+      if (stockOf(kind, i) > 0)
+        return { ok: false, reason: `The ${STORES[storeOf(PRODUCERS[kind].good)].name.toLowerCase()} is full: ${isPlant(kind) ? 'its fruit has' : 'what it gives has'} nowhere to go` }
     }
     const p = farm.producers[kind]
     p.animals -= 1
@@ -155,10 +156,10 @@ export function storeDecor(id: number): Fit {
 }
 
 /** The fruit plant a piece is, with its place among its kind's plants (its producer's animal), or null. */
-export function plantOf(id: number): { kind: FruitKind; index: number } | null {
+export function plantOf(id: number): { kind: BearerKind; index: number } | null {
   const d = farm.layout.decor.find((x) => x.id === id)
-  if (!d || !isPlant(d.kind)) return null
-  const kind = d.kind as FruitKind
+  if (!d || !bears(d.kind)) return null
+  const kind = d.kind
   return { kind, index: plantsOf(kind).findIndex((x) => x.id === id) }
 }
 

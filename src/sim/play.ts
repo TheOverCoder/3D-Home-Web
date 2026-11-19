@@ -9,7 +9,7 @@
 // and the two remotes are for sale as in play (plans/animal-tools.md; `tools: false` plays without them, to compare).
 // Run it under happy-dom (the farm keeps its save).
 
-import { LADDERS, LADDER_IDS, LEVELS, TOOL_KINDS, mostAnimals, toolLadder, type LadderId, type ToolKind } from '../farm/data'
+import { LADDERS, LADDER_IDS, LEVELS, TOOL_KINDS, fullHerd, toolLadder, type LadderId, type ToolKind } from '../farm/data'
 import { TIERS, type Tier } from '../lib/tier'
 import { animals, farm, quietSteps, resetFarm, resetRewardCounts, rewardCounts, setDailyClock, setEventClock, setRandom, tick, unlockAll } from '../farm/state'
 import { levelOf } from '../farm/xp'
@@ -147,7 +147,7 @@ export function simulate(opts: { minutes: number; seed?: number; until?: number;
         run.earnedAt[l] ??= farm.stats.earned
       }
       // a herd full, a step of the farm shop's ladders bought
-      for (const kind of TOOL_KINDS) if (animals(kind) >= mostAnimals(kind)) run.herdFull[kind] ??= t / 60
+      for (const kind of TOOL_KINDS) if (animals(kind) >= fullHerd(kind)) run.herdFull[kind] ??= t / 60
       for (const id of SHOP_ROWS) {
         const steps = (run.shop[id] ??= [])
         while (steps.length < farm.ladders[id]) steps.push(t / 60)

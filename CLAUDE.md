@@ -153,12 +153,16 @@ The README has the overview; `tests/README.md` what each test guards.
 
 ## Animals and machines (src/farm/data.ts)
 
-- What fills up and is collected (the lemon tree, the nest, the cows, the sheep) is a row in `PRODUCERS`, a machine (the
-  mill, the loom, the oven) a row in `MACHINES`: its numbers, goods, words, sounds and place. `state.ts` runs every row
+- What fills up and is collected (the lemon tree, the nest, the cows, the sheep, the beehives) is a row in `PRODUCERS`, a
+  machine (the mill, the loom, the oven, the dairy, the jam kettle) a row in `MACHINES`: its numbers, goods, words, sounds
+  (`load`, `done`, `collect`: a row and a synth in `src/audio` each) and place (`PLACES`). `state.ts` runs every row
   the same way and keeps it in the save (`producers`, `machines`; `load()` converts older saves): no new state.
 - A new animal: its row (and an `UPGRADES` row with `herd` to buy more), its model, and a thin `<Herd>` (`Herd.tsx`) with
-  its wander numbers (`wander.ts`), body and pose. A new machine: its row, its model, and its moving parts driven by
-  the work level `useMachine(id)` gives back.
+  its wander numbers (`wander.ts`), body and pose. A herd's `full` is what its tool waits for; each animal past it opens
+  with a level (`herd:cows:4` in `UNLOCKS`). A new machine: its row, its model (`src/models/buildings.ts`, cast into the
+  sun's map as one mesh, `castAsOne`; what moves drawn on its own, casting nothing), and its moving parts driven by the
+  work level `useMachine(id)` gives back. A field of beds is a row of `EXPANSIONS` (its `land`: the meadow bought
+  first) and its `BEDS` rows.
 - A machine works a queue of jobs, one good each, of any of its recipes (`src/farm/machines.ts`; `farm.machines[id]`:
   the jobs, how many are done, the working one's progress, its places, the seconds it has worked): 3 places, bought up
   to 12 (`QUEUE_PRICES`); done jobs keep their place until collected. Its level comes from the time it has worked
@@ -341,7 +345,8 @@ The README has the overview; `tests/README.md` what each test guards.
   the sun's map does not reach (`inSunShadow`) has a soft shadow on the ground instead. The lamps' glass glows from the evening (`setSculptGlow`) over a pool of light on the
   ground (an additive disc): no light is added.
 - A fruit tree or bush is a `PRODUCERS` row whose plants are its kind's pieces standing, in the layout's order; its fruit
-  a good of the silo.
+  a good of the silo. A piece that gives and is no plant (the beehive) is a `DECOR` row with `bears` (its good, the
+  building that keeps it, the most the farm may own) and a `PRODUCERS` row the same way (`BEARER_KINDS`).
 - The mill, the loom and the oven are places of the layout, and a built bed moves (`layout.beds`): where one stands now
   is `machinePoint` and `bedSpot`, never the `x`/`z` of `MACHINES` or `BEDS` (where they start).
 

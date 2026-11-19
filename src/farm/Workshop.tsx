@@ -2,9 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { CanvasTexture, DoubleSide, SRGBColorSpace, type Group, type Mesh, type Sprite } from 'three'
 import { loadSolids, solidsReady } from '../lib/sculpt'
+import { castAsOne } from '../lib/sculpt/sun'
+import { DAIRY_CHURN, KETTLE, dairyDasher, dairyModel, kettleEmbers, kettleModel, kettlePaddle } from '../models/buildings'
 import { mouthGlowMaterial, mouthGlowShape, ovenModel, structureParts } from '../models/structures'
 import { B } from '../scene/Furnishings'
-import { type CakeId, type MachineId } from './data'
+import { type MachineId, type OvenId } from './data'
 import { Body, Placed, type Box } from './Places'
 import { farm, machineDone, machineProgress, machineStage, useFarm } from './state'
 import { useMachine } from './useMachine'
@@ -60,15 +62,23 @@ function signTexture(text: string, bg = '#2f3a2c', fg = '#f3ead8') {
   return t
 }
 
-const CAKE_LOOK: Record<CakeId, { top: string; dots: string; pie?: boolean }> = {
+const CAKE_LOOK: Record<OvenId, { top: string; dots: string; pie?: boolean }> = {
   lemon_cake: { top: '#f6e7a1', dots: '#f2d43a' },
   strawberry_cake: { top: '#f4c6cf', dots: '#d8213a' },
   carrot_cake: { top: '#f3ede0', dots: '#e8792a' },
   pumpkin_pie: { top: '#d9782a', dots: '#f3e6cf', pie: true },
+  // update v1's bakes (the oven's recipes in src/farm/data.ts): the apple pie's golden lid, the muffins' tops dotted
+  // with blueberries, the tart's cherries
+  apple_pie: { top: '#e3b16a', dots: '#b47634', pie: true },
+  blueberry_muffins: { top: '#d99a52', dots: '#3b4f8f' },
+  cherry_tart: { top: '#6e0a1c', dots: '#b8122c', pie: true },
+  bread: { top: '#c98a43', dots: '#e9c890' },
+  honey_cake: { top: '#f0c35a', dots: '#d58a1c' },
+  cheesecake: { top: '#fbf1dc', dots: '#d8213a' },
 }
 
 /** A cake (or pie) on a plate, decorated for its recipe. */
-export function Cake({ id }: { id: CakeId }) {
+export function Cake({ id }: { id: OvenId }) {
   const look = CAKE_LOOK[id]
   return (
     <group>
@@ -141,7 +151,7 @@ function Oven() {
     },
     [glowShape, glow],
   )
-  const ready = done('oven') as CakeId | null
+  const ready = done('oven') as OvenId | null
 
   useFrame((state) => {
     const s = machineStage('oven')
@@ -427,13 +437,135 @@ const LOOM_BODY = [
   { half: [0.47, 0.26, 0.18], at: [0, 0.26, 0.92] },
 ] satisfies Box[]
 
-/** The oven, the mill and the loom. */
+/** A building of update v1 that stands still, drawn with the kit (src/models/buildings.ts) and cast into the sun's map
+ *  as one mesh (src/lib/sculpt/sun.ts, castAsOne: one draw there for every part of it), made with it and let go with
+ *  it. */
+function useStill<K extends string>(make: () => Parameters<typeof structureParts<K>>[0], name: string) {
+  const parts = useMemo(() => structureParts(make(), name), [make, name])
+  useEffect(() => {
+    const one = castAsOne(parts.group)
+    return () => {
+      one.release()
+      parts.dispose()
+    }
+  }, [parts])
+  return parts
+}
+
+/** The dairy (update v1): a whitewashed lean-to by the cows' pasture, open to the west; while it works the churn's
+ *  dasher plunges up and down (drawn on its own, casting nothing: what moves is kept out of the sun's map). */
+function Dairy() {
+  useFarm((s) => s.rev)
+  const work = useMachine('dairy', 2)
+  const model = useStill(dairyModel, 'dairy')
+  const dasher = useMemo(() => structureParts({ dasher: { shape: dairyDasher(), material: { roughness: 0.8 }, castShadow: false } }, 'dairy-dasher'), [])
+  useEffect(() => () => dasher.dispose(), [dasher])
+  const t0 = useRef(0)
+
+  useFrame((_, rawDt) => {
+    const dt = Math.min(rawDt, 0.1)
+    const k = work.current
+    if (k > 0.001) t0.current += dt
+    // a plunge a second and a bit, as deep as the dairy works
+    dasher.group.position.y = -DAIRY_CHURN.plunge * k * (0.5 + 0.5 * Math.cos(t0.current * 5.2))
+  })
+
+  return (
+    <>
+      <Placed id="dairy">
+        <primitive object={model.group} />
+        <primitive object={dasher.group} />
+      </Placed>
+      <Body id="dairy" boxes={DAIRY_BODY} />
+    </>
+  )
+}
+
+/** The dairy's walls, roof and counter (you stand in front of its open side, by the churn), and the churn. */
+const DAIRY_BODY = [
+  { half: [0.75, 1.15, 0.9], at: [0.3, 1.15, 0] },
+  { half: [0.2, 0.45, 0.2], at: [DAIRY_CHURN.x, 0.45, DAIRY_CHURN.z] },
+] satisfies Box[]
+
+/** The jam kettle (update v1): its hearth, tripod, kettle and table of jars drawn with the kit and cast as one; while it
+ *  works the paddle stirs round the kettle, the embers glow and steam rises (drawn on their own, casting nothing). */
+function Kettle() {
+  useFarm((s) => s.rev)
+  const work = useMachine('kettle', 1.5)
+  const model = useStill(kettleModel, 'kettle')
+  const paddle = useMemo(() => structureParts({ paddle: { shape: kettlePaddle(), material: { roughness: 0.8 }, castShadow: false } }, 'kettle-paddle'), [])
+  const glow = useMemo(() => mouthGlowMaterial(0), [])
+  const embers = useMemo(() => kettleEmbers().geometry(), [])
+  const steam = useRef<(Sprite | null)[]>([])
+  const tex = useMemo(() => smokeTexture(), [])
+  useEffect(
+    () => () => {
+      paddle.dispose()
+      glow.dispose()
+      embers.dispose()
+    },
+    [paddle, glow, embers],
+  )
+  const turn = useRef(0)
+
+  useFrame((state, rawDt) => {
+    const dt = Math.min(rawDt, 0.1)
+    const k = work.current
+    const t = state.clock.elapsedTime
+    // the paddle goes round the kettle, a turn every few seconds, as hard as it works
+    turn.current += dt * 1.4 * k
+    paddle.group.rotation.y = turn.current
+    glow.emissiveIntensity = 2.2 * k * (0.8 + Math.sin(t * 11) * 0.1 + Math.sin(t * 23) * 0.08)
+    steam.current.forEach((sp, i) => {
+      if (!sp) return
+      sp.visible = k > 0.05
+      if (!sp.visible) return
+      const life = (t * 0.3 + i / steam.current.length) % 1
+      sp.position.set(Math.sin(t * 0.6 + i * 2) * 0.12 * life, KETTLE.rim + 0.05 + life * 0.9, Math.cos(t * 0.5 + i) * 0.12 * life)
+      const size = 0.2 + life * 0.4
+      sp.scale.set(size, size, 1)
+      sp.material.opacity = (1 - life) * 0.4 * k
+    })
+  })
+
+  return (
+    <>
+      <Placed id="kettle">
+        <primitive object={model.group} />
+        <primitive object={paddle.group} />
+        <mesh geometry={embers} material={glow} />
+        {Array.from({ length: 4 }, (_, i) => (
+          <sprite
+            key={i}
+            ref={(s) => {
+              steam.current[i] = s
+            }}
+            visible={false}
+          >
+            <spriteMaterial map={tex} transparent depthWrite={false} opacity={0.3} />
+          </sprite>
+        ))}
+      </Placed>
+      <Body id="kettle" boxes={KETTLE_BODY} />
+    </>
+  )
+}
+
+/** The hearth and the kettle over it, and the table of jars. */
+const KETTLE_BODY = [
+  { half: [0.62, 0.45, 0.62], at: [0, 0.45, 0] },
+  { half: [0.38, 0.4, 0.24], at: [KETTLE.table.x, 0.4, KETTLE.table.z] },
+] satisfies Box[]
+
+/** The oven, the mill and the loom; and update v1's dairy and jam kettle. */
 export function Workshop() {
   return (
     <group name="farm-workshop">
       <Oven />
       <Mill />
       <Loom />
+      <Dairy />
+      <Kettle />
     </group>
   )
 }

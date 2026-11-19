@@ -49,7 +49,8 @@ const SHEEP: HerdKind<SheepAgent> = {
   parts: sheepParts,
   // side by side across the fold, facing west, grazing
   spawn: (i, fold) => {
-    const [x, z] = toWorld(fold, INNER.maxX - 0.8 - i * 1.6, (INNER.minZ + INNER.maxZ) / 2 + (i % 2 ? 0.6 : -0.4))
+    // (four abreast, the fifth and sixth a second row behind: the flock grows to six with the levels)
+    const [x, z] = toWorld(fold, INNER.maxX - 0.8 - (i % 4) * 1.6 - (i >= 4 ? 0.8 : 0), (INNER.minZ + INNER.maxZ) / 2 + (i % 2 ? 0.6 : -0.4) * (i >= 4 ? -1 : 1))
     return { ...herdAgent('sheep', x, z, -Math.PI / 2 + turnOf(fold), 'graze', 1.5 + i), graze: 1, fluff: woolliness(i) }
   },
   body: { half: [0.28, 0.4, 0.55], y: 0.45 },
