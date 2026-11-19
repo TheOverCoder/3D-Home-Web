@@ -13,28 +13,29 @@ its waits are merged and a slot is free; a phase starts when the gate before it 
 ## Now: what is left (2026-11-19)
 
 23 of the 27 agents are merged (tags `v1/<agent>`); their rows and briefs are out of this file (git history keeps
-them). Left: four missions, the beta check, three decisions of the user's, and the open items below, each with who
+them). Left: four missions, the beta check, and the open items below, each with who
 takes it, so nothing is left without an owner.
 
-**The user's decisions, before the next agent starts**
-1. **The long game's pace.** The sim's daily player is at level 32 on day 7, 50 on day 14, 85 on day 30, against
-   JOURNEY's 20, 29, 44: the level curve past 30 (`LEVELS`, `src/farm/xp.ts`) slows, or JOURNEY's table changes.
-2. **What the beta holds.** 07c and the beta check are needed for any release. 10c (seasons that pay in play), 11c (the
-   supermarket's 16 places, the car park, the dealer) and 02c (decoration sets, paint) add content and drawing: each
-   is in, or after the beta.
-3. **The yard over the farm sideways** (05's debt, 247.1k–254.3k of 250k): paid in P3-budget by update v1's new models
-   drawn lighter where it cannot be seen, before 10c, 11c or 02c add to it.
+**The user's decisions (2026-11-19):** all four missions are in the beta; the levels past 30 slow down to JOURNEY's
+table; the yard's debt is paid in the budget step, after the content. Built by the orchestrator alone, in one line,
+no agents.
 
-**Left, in order** (one agent at a time; each brief is in §4)
+**Left, in the order it is built** (shared work done once; pictures, the budget and the e2e run once, at the end)
 
-| Step | Size | What it gives | Its specs (and every one `affected-specs.mjs` names) |
-|---|---|---|---|
-| 07c | L | every word and target read and hit on a phone; 39's debts empty and its checks hard; the top calls one thing at a time | 39, 03, 07, 14, 22, 28; `lab:build` |
-| 10c (if in) | L | rain waters the beds, crops in season, the season in the news; never a loss | 46, 34, 33, 25, 05's walk; the sim |
-| 11c (if in) | L | the supermarket, car park, dealer | 23, 30, 25, 27, 05's walk, 16-view-buildings; the sim |
-| 02c (if in) | M | decoration sets, paint, charm | 33, 05's walk, 27, 12 |
-| P3-play | M | the sim to day 30 with every JOURNEY bound held; the first steps on all seven weekdays; the first 30 minutes in the browser | the sim, 37 |
-| P3-budget | M | 05 and 16 whole, 26, 27, the night run by hand; every debt paid or listed with its reason | 05, 16, 26, 27 |
+| Step | What it gives | Shared with |
+|---|---|---|
+| 1. Clean-up | the open items' clean-up commit (below) | — |
+| 2. Pace | the levels past 30 slower (`LEVELS`, `src/farm/xp.ts`) to JOURNEY's day 7 / 14 / 30; `npm run sim` | 10c's and 11c's numbers are tuned after it |
+| 3. 10c | rain waters the beds; crops in season (+¼, kept from sowing); the season in the news and its arrival card; four seasonal pieces; rain and wind sounds, weather lines, the album's "The year" | its pieces are new decor kinds, as 02c's banner |
+| 4. 02c | sets in the shop; a piece's look (F5); the season road's banner; *Paint* on six kinds; the farm's charm in the news | the look is the tint 11c's car paint uses |
+| 5. 11c | the market's 16 places, two checkouts and the café; the car park's stages; cars with people; the dealer and the car's paints | the look/tint from 4 |
+| 6. 07c | the settings drawer on the sheet, `GoodPic` everywhere, the motion pass, one call at the top, sizes, contrast, consistency, over every panel the steps above add | — |
+| 7. Pictures | every new picture in one `render-item-art.mjs` run | — |
+| 8. Budget | 05 at the three sizes, the yard's debt and every new view paid by drawing lighter, 16's new poses | — |
+| 9. Play | the sim to day 30 inside JOURNEY, `PACE` held; the first steps on all seven weekdays | — |
+| 10. Tests | `affected-specs.mjs` for everything above, one run; push; CI green; the plan checked for anything missing | — |
+
+Each commit: `npm run check` and the unit tests its rules need; nothing heavy in between.
 
 **Open items, checked in the code on 2026-11-19, each with who takes it**
 
