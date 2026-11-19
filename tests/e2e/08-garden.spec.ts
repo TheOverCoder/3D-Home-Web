@@ -8,11 +8,20 @@ const until = (game: Game, fn: () => boolean, timeout = 30_000) => game.page.wai
 const nearbyIs = (game: Game, id: string) => game.page.waitForFunction((want) => (window as any).__home.useHome.getState().nearby?.id === want, id, { timeout: 60_000, polling: 250 })
 const label = (game: Game) => game.page.evaluate(() => (window as any).__home.useHome.getState().nearby?.label as string | undefined)
 const farm = (game: Game) => game.page.evaluate(() => JSON.parse(JSON.stringify((window as any).__home.farm.state)))
-/** The effects' counts (src/fx): bursts started, bursts alive, coin flights; and whether their renderer is drawn. */
+/** The effects' counts (src/fx): bursts started, bursts alive, coin flights, rewards shown in the world and their numbers;
+ *  and whether their renderer is drawn. */
 const fx = (game: Game) =>
   game.page.evaluate(() => {
     const h = (window as any).__home
-    return { ...h.fx.stats, drawn: h.scene.getObjectByName('farm-fx')?.visible === true } as { loaded: boolean; started: number; alive: number; coins: number; drawn: boolean }
+    return { ...h.fx.stats, drawn: h.scene.getObjectByName('farm-fx')?.visible === true } as {
+      loaded: boolean
+      started: number
+      alive: number
+      coins: number
+      rewards: number
+      pops: number
+      drawn: boolean
+    }
   })
 /** Waits for the effects engine, which is loaded a moment after the game starts playing. */
 const fxReady = (game: Game) => until(game, () => (window as any).__home.fx?.stats.loaded === true, 60_000)
@@ -154,12 +163,17 @@ test.describe('garden', () => {
     await page.keyboard.press('KeyE')
     await until(game, () => (window as any).__home.useHome.getState().panel?.kind === 'queue')
     await expect(page.locator('.farm-buyer')).toHaveCount(2)
-    const flights = (await fx(game)).coins
+    const before = await fx(game)
+    const flights = before.coins
     await page.keyboard.press('Enter')
     await until(game, () => (window as any).__home.farm.state.inv.tomato === 2)
     // the coins fly from the buyer to the coin chip at the top (the count has already gone up), and are gone again
     await page.waitForFunction((n) => (window as any).__home.fx.stats.coins > n, flights, { timeout: 30_000, polling: 100 })
     await expect(page.locator('.coin-fly')).toHaveCount(0, { timeout: 30_000 })
+    // and over the buyer its number pops up ("+12", as big as the sale), only for the eye: one sale, one number
+    await page.waitForFunction((n) => (window as any).__home.fx.stats.rewards > n, before.rewards, { timeout: 30_000, polling: 100 })
+    expect(await fx(game)).toMatchObject({ rewards: before.rewards + 1, pops: before.pops + 1 })
+    await expect(page.locator('.pop-num')).toHaveCount(0, { timeout: 30_000 })
     let f = await farm(game)
     expect(f.coins).toBe(coins0 + 12)
     expect(f.visitors.find((v: any) => v.id === first.id)?.phase ?? 'gone').toBe('leaving')
@@ -179,6 +193,18 @@ test.describe('garden', () => {
     await page.keyboard.press('Escape')
     await until(game, () => (window as any).__home.useHome.getState().panel === null)
     expect(second.id).toBeGreaterThan(first.id)
+
+    // the whole line sold at once is one reward: one number over the gate with every coin of the line, not one a buyer
+    const line = await fx(game)
+    const sold = await page.evaluate(() => {
+      const f = (window as any).__home.farm
+      f.state.inv.tomato = 30
+      for (const offer of [7, 8, 9]) f.spawnVisitor({ want: 'tomato', qty: 2, offer, queued: true, gift: false })
+      return f.sellAll()
+    })
+    expect(sold).toBeGreaterThanOrEqual(3)
+    await page.waitForFunction((n) => (window as any).__home.fx.stats.rewards > n, line.rewards, { timeout: 30_000, polling: 100 })
+    expect(await fx(game)).toMatchObject({ rewards: line.rewards + 1, pops: line.pops + 1 })
   })
 
   test('a staked-out bed carries a price tag, not an action; its card builds it, and the farm is saved', async ({ game }) => {
