@@ -118,10 +118,14 @@ async function closeAll(page: Page) {
   // each by its ✕, the top one first, and its leave played to its end before the next: the store closing a sheet
   // still leaving cuts its leave short, and the panel's own close (the welcome back telling its report) never runs
   for (let i = 0; i < 6; i++) {
-    const n = await page.locator('.farm-panel:not(.ps-leaving)').count()
-    const close = page.locator('.farm-panel:not(.ps-leaving) [aria-label="Close (Esc)"]')
-    if (!n || !(await close.count())) break
-    await close.last().click()
+    // (clicked in the page, as before: a card over the sheet may cover its ✕, and Playwright's click would wait on it)
+    const n = await page.evaluate(() => {
+      const open = document.querySelectorAll('.farm-panel:not(.ps-leaving)')
+      const x = Array.from(document.querySelectorAll<HTMLElement>('.farm-panel:not(.ps-leaving) [aria-label="Close (Esc)"]')).pop()
+      x?.click()
+      return x ? open.length : 0
+    })
+    if (!n) break
     await page.waitForFunction((n) => document.querySelectorAll('.farm-panel:not(.ps-leaving)').length < n && !document.querySelector('.ps-leaving'), n, { timeout: 15_000, polling: 100 })
   }
   await page.evaluate(() => {
