@@ -56,11 +56,13 @@ function lowerBody(): Shape {
       const narrow = Math.max(0, Math.abs(z) - (end - 0.3)) / 0.3
       return { c: [0, (SILL + hi) / 2, z] as V3, rx: HALF_W - 0.05 * narrow * narrow, ry: (hi - SILL) / 2 }
     })
+  // (each mask's slope only as steep as its edge needs: the shader reads where it crosses 0.5, its edge as sharp at any
+  // slope, while a steeper one keeps the far copies from simplifying: src/lib/sculpt/lod.ts)
   return loft(rings, { seg: 18, steps: 1, up: [0, 1, 0], shape: (a) => squircle(a, 4.5), round: [0.12, 0.12] })
     .paint(() => RED, 1)
     .pattern((x, y, z) => {
-      const sill = 0.5 + (0.34 - y) * 30
-      const arch = Math.max(...[-W.z, W.z].map((az) => 0.5 + (ARCH - Math.hypot(y - W.r, z - az)) * 30))
+      const sill = 0.5 + (0.34 - y) * 10
+      const arch = Math.max(...[-W.z, W.z].map((az) => 0.5 + (ARCH - Math.hypot(y - W.r, z - az)) * 10))
       return Math.abs(x) > HALF_W - 0.3 ? Math.max(sill, arch) : sill
     }, PLASTIC)
 }
@@ -99,7 +101,7 @@ function cabin(): Shape {
   const glass = s
     .paint(() => RED, 1)
     .pattern(
-      (_x, y) => Math.min(0.5 + (y - GLASS_Y[0]) * 40, 0.5 + (GLASS_Y[1] - y) * 40),
+      (_x, y) => Math.min(0.5 + (y - GLASS_Y[0]) * 13, 0.5 + (GLASS_Y[1] - y) * 13),
       (_x, y) => mix(GLASS, GLASS_TOP, Math.min(1, Math.max(0, (y - 1.0) / 0.3))),
     )
   // the pillars between the front and the back windows, on the cabin's sides (leaning in with them)

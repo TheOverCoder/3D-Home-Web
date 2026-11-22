@@ -16,7 +16,7 @@
 .tool-panel .tp-good { min-width: 32px; min-height: 32px; margin: -4px -2px -4px -4px; }
 .tool-panel .tp-good .item-pic .art { width: 26px; height: 26px; }
 /* (a finger's room round the small picture) */
-.tool-panel .tp-good::before { content: ''; position: absolute; inset: -6px; }
+.tool-panel .tp-good::before { content: ''; position: absolute; inset: -8px; }
 .tool-panel .tp-barn { gap: 3px; font-variant-numeric: tabular-nums; }
 .tool-panel .tp-barn img { width: 24px; height: 24px; margin-block: -4px; }
 .tool-panel .tp-barn b { display: inline-block; font: 800 15px/1 var(--font-text); }

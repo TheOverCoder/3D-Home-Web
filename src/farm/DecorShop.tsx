@@ -5,7 +5,7 @@ import { LockCorner, LockTag, opensWords, useNope } from '../ui/LockTag'
 import { Coins, Purse, Shell, useArmed } from '../ui/Sheet'
 import { Check } from '../ui/glyphs'
 import { SHOP, setsOf, type DecorTab, type ShopItemView, type ShopKind } from './decor'
-import { editView, useEdit } from './edit'
+import { editView, settle, useEdit } from './edit'
 import { iconUrl, shopArtUrl } from './icons'
 import { isShopKind } from './layout'
 import { buyDecor, decorOwned, decorPrice, farm, freeDecorSpot, lockOf, placeDecor, shopView, useFarm } from './state'
@@ -31,6 +31,8 @@ export function putDown(kind: ShopKind): boolean {
   const spot = freeDecorSpot(kind, editView.x, editView.z)
   const placed = spot ? placeDecor(kind, spot) : null
   if (placed?.ok && placed.id !== undefined) {
+    // it settles where it is put down, with a puff of dust (as one dropped does: ./edit.ts)
+    settle({ kind: 'decor', id: placed.id })
     useEdit.getState().pick({ kind: 'decor', id: placed.id })
     return true
   }

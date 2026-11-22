@@ -30,6 +30,7 @@ import {
   tick,
 } from './state'
 import { levelPay } from './testSaves'
+import { takeFx } from '../fx/fx'
 
 // The machines' queues on the farm (src/farm/state.ts, rules in src/farm/machines.ts): a job takes its ingredients as
 // it goes in and gives them back if it is taken out while it waits; jobs run one after another in play and while you
@@ -70,6 +71,23 @@ describe('the queue in play', () => {
     expect(machineView('oven').slots).toEqual([])
     expect([farm.inv.lemon_cake, farm.inv.carrot_cake, farm.inv.strawberry_cake, farm.stats.baked]).toEqual([1, 1, 1, 3])
     expect([farm.got.lemon_cake, farm.got.carrot_cake, farm.got.strawberry_cake]).toEqual([1, 1, 1])
+  })
+
+  it('taken out with the action button the goods fly from the machine to their building, once a good; from its panel, not (it flies them itself)', () => {
+    const goodsFlights = () => takeFx().filter((r) => r.kind === 'goods')
+    const act = machineActions('oven')
+    Object.assign(farm.inv, CAKES)
+    expect(act.add('lemon_cake')).toBe(true)
+    tick(35)
+    takeFx()
+    expect(collectMachine('oven', { fly: true })).toBe(1)
+    expect(goodsFlights().map((r) => [r.good, r.count])).toEqual([['lemon_cake', 1]])
+    Object.assign(farm.inv, CAKES)
+    expect(act.add('lemon_cake')).toBe(true)
+    tick(35)
+    takeFx()
+    expect(act.collect()).toBe(1)
+    expect(goodsFlights()).toEqual([])
   })
 
   it('while you are away the queue goes on, job after job, as it would have in play; the card says what was made', () => {

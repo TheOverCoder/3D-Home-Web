@@ -1,5 +1,5 @@
 import { farmSound, placeSound } from '../../audio/sound'
-import { farmFx } from '../../fx/fx'
+import { farmFx, goodsFx } from '../../fx/fx'
 import { count, MACHINE_IDS, MACHINES, storeOf, STORES, type MachineId, type ProduceId, type Recipe, type StoreId } from '../data'
 import { machineLevel, QUEUE, queuePrice, type MachineActions, type MachineView, type QueueSlot } from '../machineView'
 import { boostOf, hasPlace, insertJob, isWorking, jobSeconds, moveWaiting, secondsLeft as queueSecondsLeft, recipeOf, runQueue, takeDone, takeWaiting } from '../machines'
@@ -138,7 +138,7 @@ export function machineCollectable(id: MachineId) {
 /** Takes every done job out of a machine into store, as many as there is room for (the rest keep their places, done):
  *  how many. Each is worth its XP, more at a higher level of the machine; sparkles, a rustle and a word say what came
  *  out. */
-export function collectMachine(id: MachineId) {
+export function collectMachine(id: MachineId, { fly = false }: { fly?: boolean } = {}) {
   const m = farm.machines[id]
   if (!m.done) return 0
   const first = recipeOf(id, m.jobs[0])
@@ -165,6 +165,9 @@ export function collectMachine(id: MachineId) {
   // its own sound as its goods come out (a sack, a bolt of cloth, a tray, a crock, a jar: MACHINES' `sounds.collect`)
   machineSound(id, MACHINES[id].sounds.collect)
   farmFx('harvest', at.x, at.y, at.z, { good: goods[0].item })
+  // taken out with the action button (`fly`), they fly from the machine into the building that keeps them (its tank at
+  // the top), each good once; its panel flies them into its own button instead (./machine/MachinePanelView.tsx)
+  if (fly) for (const g of goods) goodsFx(at.x, at.y, at.z, g.item, g.count)
   const full = m.done ? recipeOf(id, m.jobs[0]) : undefined
   toast(`+ ${goods.map((g) => count(g.item, g.count)).join(', ')}${full ? ` · the ${STORES[storeOf(full.makes)].name.toLowerCase()} is full` : ''}`, goods[0].item)
   bump()

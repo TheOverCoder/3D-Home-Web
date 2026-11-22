@@ -1,4 +1,7 @@
-import { useEffect, useMemo, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, type ReactNode } from 'react'
+import { useFrame } from '@react-three/fiber'
+import type { Group } from 'three'
+import { reacting, reaction } from '../fx/react'
 import { CuboidCollider, CylinderCollider, RigidBody } from '@react-three/rapier'
 import { CORNER_TREES } from '../data/garden'
 import { B } from '../scene/Furnishings'
@@ -24,11 +27,21 @@ import { useTool } from './useTool'
 export const WOOD = '#8a6440'
 export const WOOD_DARK = '#5e4630'
 
-/** Draws a place where it stands (or is being dragged); its children are in its own frame. */
+/** Draws a place where it stands (or is being dragged); its children are in its own frame. Put down, it settles with
+ *  a small bounce (./edit.ts, settle: read here from src/fx/react.ts), its own size again after. */
 export function Placed({ id, children }: { id: PlaceId; children: ReactNode }) {
   const p = useShownPlacement(id)
+  const group = useRef<Group>(null)
+  useFrame(() => {
+    const g = group.current
+    if (!g) return
+    const r = reacting('thing') ? reaction('thing', id) : null
+    const xz = r?.xz ?? 1
+    const y = r?.y ?? 1
+    if (g.scale.x !== xz || g.scale.y !== y) g.scale.set(xz, y, xz)
+  })
   return (
-    <group name={`place-${id}`} position={[p.x, 0, p.z]} rotation-y={turnOf(p)}>
+    <group ref={group} name={`place-${id}`} position={[p.x, 0, p.z]} rotation-y={turnOf(p)}>
       {children}
     </group>
   )

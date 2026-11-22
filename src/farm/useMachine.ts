@@ -111,7 +111,7 @@ function main(id: MachineId): InteractableDef {
     },
     run: () => {
       if (machineCollectable(id)) {
-        if (collectMachine(id)) playGesture('interact')
+        if (collectMachine(id, { fly: true })) playGesture('interact')
       } else if (addable(id)) open()
     },
     // its queue and its level, whenever you look at it

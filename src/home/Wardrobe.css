@@ -55,3 +55,7 @@
   .wardrobe header { margin-bottom: 8px; }
   .wardrobe-grid { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); }
 }
+/* 44 px to the eye, 48 under a finger: the tabs grown up and down only (side by side, they never cover each other) */
+@media (pointer: coarse) {
+  .wardrobe-tab::after { content: ''; position: absolute; inset: -2px 0; }
+}
