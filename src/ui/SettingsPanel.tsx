@@ -239,6 +239,17 @@ export function SettingsPanel() {
                   ]}
                 />
               </Row>
+              <Row label="Frame rate" hint={settings.frameRate === 30 ? 'A steady 30 a second: saves the battery, and steadier on older phones' : 'As smooth as the screen can draw'}>
+                <Segmented
+                  label="Frame rate"
+                  value={settings.frameRate === 30 ? '30' : '60'}
+                  onChange={(r) => update({ frameRate: r === '30' ? 30 : 60 })}
+                  options={[
+                    { value: '60', label: '60' },
+                    { value: '30', label: '30' },
+                  ]}
+                />
+              </Row>
               <Row label="Light graphics" hint="For older phones: smaller textures, no extra effects · restarts the graphics where you stand">
                 <Toggle
                   id="set-light"

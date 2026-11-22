@@ -12,6 +12,7 @@ import { lessMotion } from '../ui/still'
 import { askFilm, filmAsked, onFilmAsked, storyControls, storyStep, takeFilm, useStory, type FilmAsk, type FilmId, type StoryEvent } from './films'
 import type { FilmRun, FrameInfo } from './run'
 import type { FilmStage } from './stage3d'
+import { runFrames } from '../scene/frameRate'
 
 // A moment's film (./films.ts: buying the shop opens "Under New Management"), played in the game's own canvas the way
 // the drive's film is (./DriveFilm.tsx): the screen fades to dark over the game, the film is made — its stage
@@ -128,7 +129,8 @@ export function StoryFilm() {
       const { gl, setFrameloop } = get()
       // (the sun's shadow drawn afresh: the film's frames left it as they drew it)
       gl.shadowMap.needsUpdate = true
-      setFrameloop(p.held === 'never' ? 'always' : p.held)
+      if (p.held === 'never') runFrames(setFrameloop)
+      else setFrameloop(p.held)
       p.held = null
     }
 

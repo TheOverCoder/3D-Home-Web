@@ -38,6 +38,7 @@ import { machineLevel, QUEUE } from '../machineView'
 import { freshMachine, jobSeconds, recipeOf, type MachineState } from '../machines'
 import { freshEvents, sanitizeEvents } from '../events'
 import { freshLedger, sanitizeLedger } from '../ledger'
+import { keyFor, SLOT_KEY } from '../../lib/saveKeys'
 import { DEFAULT_OUTFIT, sanitizeOutfit } from '../outfit'
 import { freshAlbum, sanitizeAlbum } from '../album'
 import { clampLevels, freshMarket, sanitizeMarket } from '../market'
@@ -88,8 +89,6 @@ import { carFresh, savedCar } from './car'
 // Three save slots ("farms"). The first keeps the original key, so saves from before slots load unchanged.
 export const SLOTS = [1, 2, 3] as const
 export type Slot = (typeof SLOTS)[number]
-const SLOT_KEY = '3d-home:slot:v1'
-const keyFor = (slot: number) => (slot === 1 ? '3d-home:farm:v1' : `3d-home:farm:v1:slot${slot}`)
 const brokenKey = (n: number) => `${keyFor(n)}:broken`
 const prevKey = (n: number) => `${keyFor(n)}:prev`
 const stampKey = (n: number) => `${keyFor(n)}:stamp`

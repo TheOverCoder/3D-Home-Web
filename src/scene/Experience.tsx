@@ -5,7 +5,7 @@ import { Physics } from '@react-three/rapier'
 import { debugSet } from '../lib/debug'
 import { registerRenderer } from '../lib/diagnostics'
 import { installHdrGuard } from '../lib/hdrGuard'
-import { setLoadPhase } from '../lib/loader'
+import { downloadLater, setLoadPhase } from '../lib/loader'
 import { resetSurfaces } from '../lib/proceduralTextures'
 import { profile } from '../lib/profile'
 import { setSculptDetail } from '../lib/sculpt'
@@ -29,6 +29,8 @@ import { RenderPause } from './RenderPause'
 import { Player } from './Player'
 import { ViewPass } from './ViewPass'
 import { Warmup } from './Warmup'
+import { FrameCount, FramePacer, fpsAsked } from './frameRate'
+import { useSettings } from '../settings'
 
 // before any material compiles: no lit surface may write a value the half-float buffers cannot hold
 installHdrGuard()
@@ -128,8 +130,9 @@ function QualityGovernor({ onLastResort }: { onLastResort: () => void }) {
   }
   return (
     <PerformanceMonitor
-      // [decline below, incline above] in fps; 60 Hz screens must hold ~58 to earn the next tier
-      bounds={(refresh) => (refresh > 90 ? [55, 100] : [45, 58])}
+      // [decline below, incline above] in fps; 60 Hz screens must hold ~58 to earn the next tier; at the 30 a player
+      // chose (./frameRate.ts) the bounds are 30's: below 24 is too slow, and nothing above it is asked for
+      bounds={(refresh) => (useSettings.getState().frameRate === 30 ? [24, 100] : refresh > 90 ? [55, 100] : [45, 58])}
       flipflops={3}
       onDecline={() => step(-1)}
       onIncline={() => step(1)}
@@ -151,6 +154,14 @@ export default function Experience() {
   const dpr = squeeze ? Math.min(device, 0.8) : Math.min(device, profile.dpr[quality])
 
   useEffect(() => useHome.setState({ progress }), [progress])
+  // what the loader left for later (the house's furniture on a farm that opens on the farm): a few seconds into play,
+  // in idle time, so the first frames have the network and the device to themselves
+  const playing = useHome((s) => s.phase === 'playing')
+  useEffect(() => {
+    if (!playing) return
+    const t = window.setTimeout(downloadLater, 5000)
+    return () => window.clearTimeout(t)
+  }, [playing])
 
   useEffect(() => {
     if (lockedQuality) return
@@ -176,6 +187,9 @@ export default function Experience() {
       // touch: every drag on the scene turns the view — no browser panning, zooming or pull-to-refresh
       style={{ position: 'fixed', inset: 0, zIndex: 0, touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}
     >
+      {/* the frames a second the player chose: 60, or a steady 30 */}
+      <FramePacer />
+      {fpsAsked && <FrameCount />}
       {!lockedQuality && qualityAuto && <QualityGovernor onLastResort={() => setSqueeze(true)} />}
       {/* leaves out of each frame what cannot be seen (behind walls, out of view, out of the sun) */}
       <ViewPass />

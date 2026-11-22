@@ -149,3 +149,16 @@ describe('the music’s track', () => {
     }
   })
 })
+
+describe('the frame rate', () => {
+  it('starts at 60 for everyone; 30 is kept once chosen; anything else stored is 60', async () => {
+    let s = await loaded()
+    expect(s.useSettings.getState().frameRate).toBe(60)
+    s.useSettings.getState().update({ frameRate: 30 })
+    expect(JSON.parse(localStorage.getItem(KEY)!).frameRate).toBe(30)
+    s = await loaded({ frameRate: 30 })
+    expect(s.useSettings.getState().frameRate).toBe(30)
+    s = await loaded({ frameRate: 45 })
+    expect(s.useSettings.getState().frameRate).toBe(60)
+  })
+})

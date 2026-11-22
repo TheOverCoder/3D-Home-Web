@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { profile } from './profile'
+import { startsOnFarm } from './saveKeys'
 import { swControlling } from './sw'
 
 // The loading screen's facts: what the 3D part of the game needs to download, how much of it has arrived, how
@@ -133,6 +134,28 @@ async function download(file: LoadFile) {
 }
 
 let started: Promise<void> | null = null
+/** What the preload left for once the game plays (the house's furniture, on a farm that opens on the farm). */
+let later: string[] = []
+
+/** The files left for later, fetched one at a time in the page's idle time once the game plays, so the device keeps
+ *  them (the service worker) for the house's map; nothing a second time. Never rejects. */
+export function downloadLater() {
+  const files = later
+  later = []
+  if (!files.length) return
+  const idle = (f: () => void) => (typeof window.requestIdleCallback === 'function' ? window.requestIdleCallback(f, { timeout: 4000 }) : setTimeout(f, 200))
+  const next = () => {
+    const url = files.shift()
+    if (!url) return
+    fetch(abs(url))
+      .then((r) => r.arrayBuffer())
+      .catch(() => {
+        /* offline: the house's map fetches it when it is first driven to */
+      })
+      .finally(() => idle(next))
+  }
+  idle(next)
+}
 
 /** Downloads everything the 3D scene will ask for (once), reporting progress in `useLoader`. Never rejects. */
 export function preload(): Promise<void> {
@@ -152,7 +175,13 @@ export function preload(): Promise<void> {
       return
     }
     // light graphics never use the HDR sky or the photographed textures: do not fetch them
-    const wanted = manifest.files.filter((f) => !(profile.light && (f.kind === 'hdr' || f.kind === 'texture')))
+    const usable = manifest.files.filter((f) => !(profile.light && (f.kind === 'hdr' || f.kind === 'texture')))
+    // the models are the house's furniture: a farm that opens on the farm's map does not need them yet, and they come
+    // down once it plays (`downloadLater`, into the device's keeping); the house's map waits for its own models behind
+    // the drive's curtain all the same (src/scene/Maps.tsx)
+    const farmFirst = startsOnFarm()
+    later = farmFirst ? usable.filter((f) => f.kind === 'model').map((f) => f.url) : []
+    const wanted = farmFirst ? usable.filter((f) => f.kind !== 'model') : usable
     const files: LoadFile[] = wanted.map((f) => ({ ...f, loaded: 0, status: 'waiting' }))
     useLoader.setState({ files, total: files.reduce((n, f) => n + f.bytes, 0) })
     // what this device already keeps needs no network at all

@@ -12,6 +12,7 @@ import { driveFilm, momentAt, shotAt, type DriveFilm as Film, type Trip } from '
 import { DriveSet, picture } from './driveSet'
 import { EngineSound } from './driveSound'
 import { onSkip, useFilm } from './state'
+import { runFrames } from '../scene/frameRate'
 
 // The drive's film, played in the game's own canvas while the map changes behind the curtain (src/scene/travel.ts:
 // every drive plays it). It takes the frame over: the game's frame loop is held (nothing of the farm or the house is
@@ -121,7 +122,8 @@ async function play(trip: Trip, r3f: () => RootState): Promise<void> {
       useFilm.setState({ on: null, lifted: false })
       // the game's frames again (its sun's shadow drawn afresh: the film's frames left it as it was)
       gl.shadowMap.needsUpdate = true
-      setFrameloop(loop === 'never' ? 'always' : loop)
+      if (loop === 'never') runFrames(setFrameloop)
+      else setFrameloop(loop)
       resolve()
     }
     const end = () => {

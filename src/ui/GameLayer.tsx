@@ -16,6 +16,7 @@ import { PhotoButton } from './PhotoButton'
 import { ScreenModal } from './ScreenModal'
 import { SettingsPanel } from './SettingsPanel'
 import { gameFree, useGameFree } from './useGameFree'
+import { FpsMeter, fpsAsked } from '../scene/frameRate'
 
 // What loads behind the start screen: the game's interface, everything drawn over the scene while you play (the sounds'
 // director, the HUD and the farm's panels, the touch controls, a screen open, the curtain, a film, the settings; over
@@ -87,6 +88,8 @@ export function GameLayer() {
   return (
     <>
       <SoundDirector />
+      {/* `?fps`: the frames a second drawn, to measure a phone (src/scene/frameRate.ts) */}
+      {fpsAsked && <FpsMeter />}
       <PanelGuard name="hud" layer>
         <Hud />
       </PanelGuard>

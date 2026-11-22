@@ -4,6 +4,7 @@ import { useProgress } from '@react-three/drei'
 import type { Camera, Material, Object3D, Scene, Texture, WebGLRenderer } from 'three'
 import { setLoadPhase, useLoader } from '../lib/loader'
 import { useHome } from '../store'
+import { runFrames } from './frameRate'
 
 // Gets every shader compiled and every texture onto the graphics card before you walk in, so turning round or
 // entering a room never stalls — the job drei's <Preload all /> did, done gently: it compiled everything in one
@@ -110,7 +111,7 @@ export function Warmup() {
         )
         if (cancelled) return
       } finally {
-        if (!cancelled) setFrameloop('always')
+        if (!cancelled) runFrames(setFrameloop)
       }
       if (cancelled) return
       useLoader.setState({ compile: 1 })

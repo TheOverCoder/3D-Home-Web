@@ -24,6 +24,7 @@ export interface Settings {
   followMove: boolean // touch: the view turns towards where you walk with the stick (the button beside it)
   motion: MotionPref // less motion: left to the device, less whatever it says, or full (src/ui/still.ts reads it)
   learnt: Learnt // what this player has done once with the controls on this device: each is taught until then
+  frameRate: 60 | 30 // frames a second: the screen's own pace, or a steady 30 that saves the battery (src/scene/frameRate.ts)
 }
 
 /** What a player has done once with the controls, on this device (taught in context until then, src/ui/TouchControls.tsx
@@ -59,6 +60,7 @@ export const DEFAULT_SETTINGS: Settings = {
   followMove: false,
   motion: 'device',
   learnt: { stick: false, look: false },
+  frameRate: 60,
 }
 
 const KEY = '3d-home:settings:v1'
@@ -80,7 +82,7 @@ function load(): Settings {
     const raw = localStorage.getItem(KEY)
     if (!raw) return DEFAULT_SETTINGS
     const s = { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<Settings>) }
-    return { ...s, motion: motionOf(s.motion), musicTrack: trackOf(s.musicTrack), learnt: learntOf(s.learnt) }
+    return { ...s, motion: motionOf(s.motion), musicTrack: trackOf(s.musicTrack), learnt: learntOf(s.learnt), frameRate: s.frameRate === 30 ? 30 : 60 }
   } catch {
     return DEFAULT_SETTINGS
   }
@@ -123,6 +125,7 @@ const pick = (s: Settings): Settings => ({
   followMove: s.followMove === true,
   motion: motionOf(s.motion),
   learnt: learntOf(s.learnt),
+  frameRate: s.frameRate === 30 ? 30 : 60,
 })
 
 export const useSettings = create<SettingsStore>()((set, get) => ({

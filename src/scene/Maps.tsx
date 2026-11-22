@@ -16,6 +16,7 @@ import { Screens } from './Screens'
 import { START, changeMap, changingMap, expecting, holdFramesWith, mapArrived, mapStep, mapTiming } from './maps'
 import { canTravel, setDriveFilm, travel } from './travel'
 import { compileScene, uploadTextures } from './Warmup'
+import { runFrames } from './frameRate'
 
 // The two maps (src/data/maps.ts), only the one you are on in the scene (`useHome.map`, following the save's `place`:
 // ./maps.ts): the farm, and the house on its own plot. What either has is mounted with it — its ground, its colliders,
@@ -62,7 +63,7 @@ function Arrived({ map }: { map: Place }) {
           mapStep('uploaded')
         }
       } finally {
-        if (warm()) setFrameloop('always')
+        if (warm()) runFrames(setFrameloop)
       }
       // one frame drawn, you standing where you get out
       await frame()
