@@ -94,10 +94,12 @@ function wanted(good: ProduceId): number {
 }
 
 /** What Make room would sell now in a building: the surplus nobody wants, the biggest first, as much as lets what waits
- *  go in (none while it fits already: ./ready.ts, waitingFor). Each good with how many, and the coins. */
-export function makeRoomPreview(id: StoreId): { goods: { item: ProduceId; count: number }[]; coins: number } {
+ *  go in (none while it fits already: ./ready.ts, waitingFor). Each good with how many and what it pays, and the coins:
+ *  whole coins, each good's rounded as every sale rounds (a price may carry a share more: a machine's level, the day's
+ *  factor), and at least one. */
+export function makeRoomPreview(id: StoreId): { goods: { item: ProduceId; count: number; coins: number }[]; coins: number } {
   let need = waitingFor(id) - room(id)
-  const goods: { item: ProduceId; count: number }[] = []
+  const goods: { item: ProduceId; count: number; coins: number }[] = []
   if (need <= 0) return { goods, coins: 0 }
   const spare = STORE_GOODS[id]
     .filter((g) => isSellable(g))
@@ -107,10 +109,18 @@ export function makeRoomPreview(id: StoreId): { goods: { item: ProduceId; count:
   for (const { g, n } of spare) {
     if (need <= 0) break
     const k = Math.min(n, need)
-    goods.push({ item: g, count: k })
+    goods.push({ item: g, count: k, coins: Math.round(k * priceOf(g)) })
     need -= k
   }
-  return { goods, coins: goods.reduce((sum, x) => sum + x.count * priceOf(x.item), 0) }
+  return {
+    goods,
+    coins: goods.length
+      ? Math.max(
+          1,
+          goods.reduce((sum, x) => sum + x.coins, 0),
+        )
+      : 0,
+  }
 }
 
 /** Make room: sells at fair price, in one press, the surplus of a building that no buyer or order wants, until what
@@ -123,10 +133,12 @@ export function makeRoom(id: StoreId, at?: At): number {
   farm.coins = Math.min(Number.MAX_SAFE_INTEGER, farm.coins + coins)
   farm.stats.sold += units
   farm.stats.earned += coins
-  gainXp('sale', coins, at)
+  // a sale like every sale: worth its coins in XP, and the toast says so (what went, the coins, the XP)
+  const xp = gainXp('sale', coins, at)
   const tier = rewarded('sale', [{ coins }], at)
-  for (const g of goods) sold('manager', g.item, g.count, g.count * priceOf(g.item))
-  toast(`${STORES[id].name}: room made · + ${coins} coins`, goods[0].item)
+  for (const g of goods) sold('manager', g.item, g.count, g.coins)
+  const went = goods.map((g) => count(g.item, g.count)).join(', ')
+  toast(`${STORES[id].name}: sold ${went} to make room · +${coins} coins${xp ? ` · +${xp} XP` : ''}`, goods[0].item)
   rewardSound('sale', tier)
   bump()
   save()

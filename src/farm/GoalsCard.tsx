@@ -13,7 +13,7 @@ import { PanelSheet } from '../ui/PanelSheet'
 import { useSideways } from '../ui/sheetMode'
 import { storeOf } from './data'
 import type { GoalId } from './goals'
-import { howFar, onBoard, type GoalView, type GoalsView } from './goalsView'
+import { howFar, nextToClaim, onBoard, type GoalView, type GoalsView } from './goalsView'
 import { iconUrl } from './icons'
 import './GoalsCard.css'
 
@@ -52,6 +52,9 @@ export function GoalsCard({ v, onClaim, onClose }: { v: GoalsView; onClaim: (id:
   // the step just reached by a claim: its words say how much of the next is already there
   const [fresh, setFresh] = useState<string | null>(null)
   const shown = held ?? v
+  // the board as it is now (a claim's timer reads it after the farm has paid)
+  const latest = useRef(v)
+  latest.current = v
   const rows = onBoard(shown.goals, atId)
   const i = Math.max(
     0,
@@ -99,8 +102,16 @@ export function GoalsCard({ v, onClaim, onClose }: { v: GoalsView; onClaim: (id:
       celebrate('goal', tier ?? 'small', c ? { x: c.left + c.width / 2, y: c.top + c.height / 2 } : button, { sound: false })
       if (coin.current) void spin(coin.current, { rotateY: [0, 720] }, { duration: 1.1, ease: [0.3, 0.9, 0.25, 1] })
       setHeld(v)
-      turning.current = setTimeout(() => setHeld(null), TURN)
     }
+    // once it has come round: on to the next goal whose prize waits, if another does (./goalsView.ts, nextToClaim)
+    turning.current = setTimeout(
+      () => {
+        setHeld(null)
+        const next = nextToClaim(onBoard(latest.current.goals, goal.id), goal.id)
+        if (next) setAtId(next)
+      },
+      still ? 0 : TURN,
+    )
     setFresh(`${goal.id}-${goal.step + 1}`)
   }
   const isFresh = !held && fresh === `${hero.id}-${hero.step}` && !hero.done

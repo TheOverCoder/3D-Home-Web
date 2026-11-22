@@ -205,7 +205,14 @@ test.describe('levels', () => {
       expect(got.xp.points).toBe(XP_FOR.harvest * got.harvested)
       expect(got.xp.level).toBe(1)
       // the crystals took off from the beds (in view), and every one landed
-      await page.waitForFunction(() => (window as any).__xpWatch.seen.flew > 0 && document.querySelectorAll('.xp-fly').length === 0, null, { timeout: 120_000, polling: 250 })
+      await page
+        .waitForFunction(() => (window as any).__xpWatch.seen.flew > 0 && document.querySelectorAll('.xp-fly').length === 0, null, { timeout: 120_000, polling: 250 })
+        .catch(async (e) => {
+          // what the effects did meanwhile, for the night's log (src/fx/FarmFx.tsx: a request dropped as stale, none asked…)
+          const fx = await page.evaluate(() => ({ stats: (window as any).__home.fx.stats, seen: (window as any).__xpWatch?.seen, inAir: document.querySelectorAll('.xp-fly').length }))
+          console.log(`the crystals did not all fly and land: ${JSON.stringify(fx)}`)
+          throw e
+        })
       // the bar: what has landed, of what the next level needs
       await expect.poll(() => barFill(page), { timeout: 60_000 }).toBeCloseTo(got.xp.into / got.xp.need, 1)
       const s = await stopWatching(page)

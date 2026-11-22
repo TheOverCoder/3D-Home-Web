@@ -14,6 +14,16 @@ describe('the sculpted models', () => {
     await loadSolids()
   })
 
+  // 12-models asks the page the same: every entry draws something once its first frame has posed it — here in
+  // seconds, where the page took a push's whole run to say so (the car park's ground alone drew 776)
+  it('every model of the gallery draws more than 1000 triangles once posed', () => {
+    for (const e of GALLERY) {
+      const m = e.make()
+      m.update(0.5)
+      expect(m.triangles(), e.id).toBeGreaterThan(1000)
+    }
+  })
+
   // without the WASM path plugin in vitest.config.ts the engine fails to load here, quietly: the models are built
   // without their cuts and every check below still passes — this is the test that notices
   it('the solid engine (manifold-3d WASM) loads in Node and really cuts', () => {

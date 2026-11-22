@@ -49,7 +49,9 @@ test.describe('physics & geometry guards', () => {
       return route.fulfill({ body: fs.readFileSync(file), contentType: 'text/javascript' })
     })
     const result = await page.evaluate(async () => {
-      const THREE: any = await import(/* @vite-ignore */ '/__three/three.module.js')
+      // (three.js as the preview server serves it, read in the page: a path, not a module of this project's)
+      const url = '/__three/three.module.js'
+      const THREE: any = await import(/* @vite-ignore */ url)
       const h = (window as any).__home
       const { world, rapier } = h.physics
       const scene = h.scene

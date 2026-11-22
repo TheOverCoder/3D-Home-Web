@@ -72,6 +72,18 @@ export function onBoard(goals: GoalView[], keep?: GoalId | null): GoalView[] {
   return held ? [...top.slice(0, ON_BOARD - 1), held] : top
 }
 
+/** After a claim, the goal to show next: the next one on the board (from the one just claimed, round to the first)
+ *  that has its prize waiting; the one just claimed only when nothing else waits (it stays in the hand on its next
+ *  step), and none (stay) when nothing waits at all. */
+export function nextToClaim(rows: readonly Pick<GoalView, 'id' | 'done'>[], from: GoalId): GoalId | null {
+  const k = rows.findIndex((g) => g.id === from)
+  for (let step = 1; step <= rows.length; step++) {
+    const g = rows[(Math.max(0, k) + step) % rows.length]
+    if (g.done && g.id !== from) return g.id
+  }
+  return null
+}
+
 /** How far a goal has come, in kind words (the small-area rule): what is done while under half the way, then what is
  *  left — "4 of 10", "8 to go", "Reached!". */
 export function howFar(g: Pick<GoalView, 'done' | 'have' | 'target' | 'part' | 'left'>): string {

@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { GOALS, boardGoals, goalById, goalReward, goalTarget } from './goals'
 import { ALMOST } from './road'
-import { goalsView, howFar, ON_BOARD, onBoard } from './goalsView'
+import { goalsView, howFar, nextToClaim, ON_BOARD, onBoard } from './goalsView'
 import { claimGoal, farm, resetFarm } from './state'
 
 // What the goals board shows (src/farm/goalsView.ts, drawn by GoalsCard.tsx): every goal in the board's order, with the
@@ -73,5 +73,19 @@ describe('how far, in kind words, and almost there', () => {
     expect(goalsView(farm).goals.find((g) => g.id === 'eggs')?.almost).toBe(false)
     farm.got.egg = Math.ceil(10 + ALMOST * 20)
     expect(goalsView(farm).goals.find((g) => g.id === 'eggs')?.almost).toBe(true)
+  })
+})
+
+describe('after a claim, the next prize', () => {
+  const g = (id: string, done: boolean) => ({ id, done }) as { id: never; done: boolean }
+  it('moves on to the next goal whose prize waits, round to the first', () => {
+    const rows = [g('a', false), g('b', true), g('c', false), g('d', true)]
+    expect(nextToClaim(rows, 'b' as never)).toBe('d')
+    expect(nextToClaim(rows, 'd' as never)).toBe('b')
+    expect(nextToClaim(rows, 'c' as never)).toBe('d')
+  })
+  it('stays on the one claimed when no other prize waits, even if its next step is reached too', () => {
+    expect(nextToClaim([g('a', false), g('b', true), g('c', false)], 'b' as never)).toBe(null)
+    expect(nextToClaim([g('a', false), g('b', false)], 'a' as never)).toBe(null)
   })
 })

@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it } from 'vitest'
 import { BEDS, cropById } from './data'
+import { setMood } from './mood'
 import { priceOf } from './prices'
 import { capacity, farm, harvestFits, ledgerNow, makeRoom, makeRoomPreview, plant, resetFarm, room, spawnVisitor, waitingFor } from './state'
 
@@ -41,7 +42,7 @@ describe('make room', () => {
     const earned = farm.stats.earned
     const xp = farm.xp.points
     const preview = makeRoomPreview('silo')
-    expect(preview.goods).toEqual([{ item: 'wheat', count: need }])
+    expect(preview.goods).toEqual([{ item: 'wheat', count: need, coins: need * priceOf('wheat') }])
     expect(makeRoom('silo')).toBe(need * priceOf('wheat'))
     expect(farm.inv.wheat).toBe(capacity('silo') - 10 - need)
     expect(farm.inv.carrot).toBe(10)
@@ -55,6 +56,28 @@ describe('make room', () => {
     expect(JSON.stringify(ledgerNow())).toContain('wheat')
   })
 
+  it("pays whole coins when a price carries a fraction (the day's mood), in the coins, the stats and the toast", () => {
+    setMood(true)
+    try {
+      ripeBed('cotton')
+      farm.inv.wheat = capacity('silo') - 10
+      farm.inv.carrot = 10
+      const coins = farm.coins
+      const earned = farm.stats.earned
+      const preview = makeRoomPreview('silo')
+      expect(Number.isInteger(preview.coins)).toBe(true)
+      for (const g of preview.goods) expect(Number.isInteger(g.coins)).toBe(true)
+      const got = makeRoom('silo')
+      expect(got).toBe(preview.coins)
+      expect(farm.coins - coins).toBeGreaterThanOrEqual(got)
+      expect(Number.isInteger(farm.coins)).toBe(true)
+      expect(farm.stats.earned - earned).toBe(got)
+      expect(Number.isInteger(farm.xp.points)).toBe(true)
+    } finally {
+      setMood(false)
+    }
+  })
+
   it('never sells what a buyer in line or an order still wants', () => {
     ripeBed('cotton')
     farm.inv.wheat = capacity('silo') - 3
@@ -62,7 +85,7 @@ describe('make room', () => {
     spawnVisitor({ want: 'wheat', qty: capacity('silo') - 4, offer: 99, queued: true })
     farm.orders[0] = { order: { id: 1, lines: [{ good: 'carrot', want: 3, have: 0 }], coins: 9, surprise: false } }
     // one spare sheaf of wheat is all that nobody wants: it goes, and nothing more
-    expect(makeRoomPreview('silo').goods).toEqual([{ item: 'wheat', count: 1 }])
+    expect(makeRoomPreview('silo').goods).toEqual([{ item: 'wheat', count: 1, coins: priceOf('wheat') }])
     makeRoom('silo')
     expect(farm.inv.wheat).toBe(capacity('silo') - 4)
     expect(farm.inv.carrot).toBe(3)

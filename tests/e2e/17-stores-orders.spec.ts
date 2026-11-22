@@ -300,8 +300,8 @@ test.describe('the silo, the barn, surprises and orders', () => {
         { timeout: 30_000, polling: 100 },
       )
     ).jsonValue()
-    expect(out.drawn).toBe(1)
-    expect(out.z).toBeCloseTo(7.9, 1)
+    expect(out!.drawn).toBe(1)
+    expect(out!.z).toBeCloseTo(7.9, 1)
     // the trip done, it stands in its yard again
     await page.evaluate(() => (window as any).__home.farm.tick(120))
     await until(game, () => (window as any).__home.farm.state.dispatch.trip === -1)
@@ -317,8 +317,8 @@ test.describe('the silo, the barn, surprises and orders', () => {
         { timeout: 30_000, polling: 100 },
       )
     ).jsonValue()
-    expect(back.x).toBeCloseTo(home.x, 1)
-    expect(back.drawn).toBe(1)
+    expect(back!.x).toBeCloseTo(home.x, 1)
+    expect(back!.drawn).toBe(1)
   })
 
   test('the tractor is solid: walking into it in its yard, you stop at it', async ({ game }) => {

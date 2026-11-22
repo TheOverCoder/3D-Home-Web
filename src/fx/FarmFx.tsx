@@ -30,6 +30,8 @@ import { lookOf } from '../scene/weatherLook'
  *  its frames altogether, and what was asked meanwhile is still dropped: the frame before the gap was quick. */
 const FRESH_MS = 700
 const FRESH_FRAMES = 3
+/** A gap between frames this long is a page that was hidden, not a slow frame (ms). */
+const HIDDEN_MS = 10_000
 /** At most this many coins in the air from one frame's sales (selling to a whole line at once). */
 const MAX_COINS = 14
 /** Goods flying to their store from one press: at most this many pictures (one a bed, an animal), this far apart (ms),
@@ -107,8 +109,11 @@ export function FarmFx() {
     const fx = engine.current
     const asked = takeFx()
     let coins = 0
-    const freshMs = Math.max(FRESH_MS, FRESH_FRAMES * lastFrame.current)
-    lastFrame.current = dt * 1000
+    // asked since the frame before is fresh whatever this frame's length (one slow frame after a short one must not
+    // drop a harvest's crystals), unless the gap is a page hidden: no frames ran, and what was asked is old news
+    const gap = dt * 1000
+    const freshMs = Math.max(FRESH_MS, FRESH_FRAMES * lastFrame.current, gap < HIDDEN_MS ? gap + FRESH_MS : 0)
+    lastFrame.current = gap
     if (farm.beds !== beds.current) {
       if (beds.current) {
         stopReactions()

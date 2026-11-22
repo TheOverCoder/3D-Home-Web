@@ -425,7 +425,9 @@ function installProbe() {
  * test is behind nothing: it is drawn over the shell. (three from node_modules, as 04 does.)
  */
 export async function behindShell() {
-  const THREE: any = await import(/* @vite-ignore */ '/__three/three.module.js')
+  // (three.js as the preview server serves it, read in the page: a path, not a module of this project's)
+  const url = '/__three/three.module.js'
+  const THREE: any = await import(/* @vite-ignore */ url)
   const w = window as any
   const h = w.__home
   const last = w.__viewProbe.last

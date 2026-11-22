@@ -105,6 +105,16 @@ export function PanelSheet({
     went.current = true
     setLeaving(true)
   }
+  // brought back by its host before it had gone (AnimatePresence keeps the same sheet for the same key: the settings
+  // closed by Esc and opened again by the next one): it comes in again, and is not on its way out any more
+  const [wasHere, setWasHere] = useState(here)
+  if (here !== wasHere) {
+    setWasHere(here)
+    if (here && leaving) {
+      setLeaving(false)
+      went.current = false
+    }
+  }
   const out = leaving || closing || !here
   const sheet = useRef<HTMLDivElement>(null)
   const root = useRef<HTMLDivElement>(null)

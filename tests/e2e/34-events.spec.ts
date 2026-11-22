@@ -161,7 +161,7 @@ test.describe('the week’s events', () => {
         h.events.set(time)
         return { lucky, plain, off, paidNow: f.state.xp.paid }
       },
-      [want[0], pool.find((g) => !want.includes(g))!] as const,
+      [want[0], pool.find((g) => !(want as string[]).includes(g))!] as const,
     )
     expect(sale.lucky.got).toBeGreaterThan(0)
     expect(Math.abs(sale.lucky.got - 2 * sale.off.got)).toBeLessThanOrEqual(1)
@@ -225,7 +225,7 @@ test.describe('the market’s mood', () => {
           const got = h.mood.price(g)
           const want = quiet[g] * h.mood.of(g, day)
           if (Math.abs(got - want) > 1e-9) wrong.push(`${g}: ${got}, not ${want}`)
-          if (items.includes(g) && got !== quiet[g]) wrong.push(`${g} (a material) moved`)
+          if ((items as string[]).includes(g) && got !== quiet[g]) wrong.push(`${g} (a material) moved`)
           if (got !== quiet[g]) moved++
         }
         // the day after, the next day's mood (and no draw)

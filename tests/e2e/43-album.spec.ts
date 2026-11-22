@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { ITEMS } from '../../src/farm/data'
 import { test, expect, type Game } from './helpers'
+import { ALBUM } from '../../src/farm/album'
 
 // The farm album (src/farm/album.ts; its look src/farm/AlbumCard.tsx, opened by AlbumPanel.tsx from the corner menu): it
 // opens on its contents — the long ladders and every page as a row, the garment each gives a silhouette until it is
@@ -57,8 +58,8 @@ test.describe('the farm album', () => {
     await openAlbum(game)
     const card = page.locator(CARD)
     await expect(card.locator('.al-ladder')).toHaveCount(3)
-    // (the year's page, 10c: the seasons' pieces and the seasons lived, the tenth)
-    await expect(card.locator('.al-row')).toHaveCount(10)
+    // a row a page, as many as the album has (src/farm/album.ts: a new page is a row there)
+    await expect(card.locator('.al-row')).toHaveCount(ALBUM.length)
     await expect(card.locator('.al-row.done')).toHaveCount(0)
     // a page: its tiles, each a silhouette to earn; one touched says how
     await card.getByRole('button', { name: /^Building materials: 0 of 6$/ }).click()
@@ -68,8 +69,8 @@ test.describe('the farm album', () => {
     await card.locator('.al-tile').first().click()
     await expect(card.locator('.al-line')).toHaveText('Brick: Comes as a surprise.')
     await card.getByRole('button', { name: 'Back' }).click()
-    // (the year's page, 10c: the seasons' pieces and the seasons lived, the tenth)
-    await expect(card.locator('.al-row')).toHaveCount(10)
+    // a row a page, as many as the album has (src/farm/album.ts: a new page is a row there)
+    await expect(card.locator('.al-row')).toHaveCount(ALBUM.length)
     await closeAlbum(game)
 
     // every material found (as surprises bring them): the page is done, its garment comes by itself, once, with a toast
