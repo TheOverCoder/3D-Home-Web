@@ -182,8 +182,15 @@ test.describe('the silo, the barn, surprises and orders', () => {
     expect(sent.coins).toBe(100 + first.coins)
     expect(sent.orders[0].order.lines.every((l: any) => l.have === 0)).toBe(true)
     expect(sent.dispatch.waiting + sent.dispatch.aboard).toBeGreaterThan(0)
-    // the second order half filled, then declined: its goods come back, and the next comes in ten minutes
-    const second = await page.evaluate(() => (window as any).__home.farm.orderAt(1))
+    // the second order half filled, then declined: its goods come back, and the next comes in ten minutes (its first
+    // line made to want at least two, so that one put in leaves it half filled: an order drawn wanting one is ready)
+    const second = await page.evaluate(() => {
+      const f = (window as any).__home.farm
+      const line = f.state.orders[1].order.lines[0]
+      line.want = Math.max(2, line.want)
+      f.useFarm.setState((s: any) => ({ rev: s.rev + 1 }))
+      return f.orderAt(1)
+    })
     await give(game, second.lines[0].good, 1)
     await press(page.locator('.farm-order').nth(1).getByRole('button', { name: 'Put in' }))
     await until(game, () => (window as any).__home.farm.orderAt(1).lines[0].have === 1)

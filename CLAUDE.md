@@ -6,10 +6,11 @@ The README has the overview; `tests/README.md` what each test guards.
 
 ## Before pushing
 
-- `npm run check` (types, oxlint, the Vitest unit tests, the format check: ~15 s) always. Then, locally, only the e2e
+- `npm run check` (types — the specs' too —, oxlint, the Vitest unit tests, the format check: ~15 s) always. Then, locally, only the e2e
   spec of the area the change touches, without the nightly tests:
   `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium npx playwright test --trace off --grep-invert @full <file>` (software
-  WebGL, a few minutes a file; it builds and serves on :4185). `05` and `16` only when the change is to geometry,
+  WebGL, a few minutes a file; it builds and serves on :4185; `PW_GPU=1` on a computer with a graphics card draws on it
+  instead, several times faster — CI stays on software WebGL). `05` and `16` only when the change is to geometry,
   models, materials, lighting or `src/lib/visibility`, and only the group it touches (`-g`). A small request is one
   agent, no team. A rule or a save change gets a unit test beside its code (`src/**/*.test.ts`, `tests/README.md`).
 - A new package goes on `src/deps.allowed.json` (held by `src/deps.test.ts`) only after the vetting in
@@ -74,6 +75,10 @@ The README has the overview; `tests/README.md` what each test guards.
   its walls as another source, and while its doors are shut it hides everything wholly inside its rooms from an eye
   outside (its `enclosure`). The walk-ins' shells cast into the sun's map through one mesh (`castAsOne`, `LotShells` in
   `src/scene/WalkIn.tsx`): a new walk-in joins it by being a row.
+- The frames a second are the player's (Settings → Picture → Frame rate: 60 by default, or a steady 30 that saves the
+  battery: `src/scene/frameRate.tsx`, the loop on demand and a pacer). Whatever holds the frames still (a change of map,
+  the warm-up, a film) lets them go with `runFrames`, never `setFrameloop('always')`. `?fps` (any page) shows the
+  frames drawn.
 - The house's shell (walls, floors, ceilings, doors) is drawn always: it is under `userData.cell = 'always'`
   (`House.tsx`), as is your own body for the camera (the sun judges it like anything in a room: `userData.sun =
   'room'`). What is outdoors is under `cell: 'outside'` (the farm on its map; the house's own garden and
@@ -474,6 +479,8 @@ The README has the overview; `tests/README.md` what each test guards.
   is a row). While the house has none, the studio's desk carries its price tag: a card, then it stands at the free spot
   nearest the desk (`place.ts`). An app's window is over the sheet (`data-over-sheet`): Esc closes its page, the window,
   then the computer. It gives no XP and asks nothing: everything it shows is the game's own numbers.
+- Every sale pays whole coins: a price may carry a share more (a machine's level, the day's factor), so each path that
+  pays rounds what it pays (Make room: each good's line), and the save reads coins and stats back whole.
 - Every price is one sum with named parts: `priceOf` is `priceAt` with the farm's parts (its machine's level, the
   day's factor), and the views call `priceAt` with a farm's own (`marketView`, `planView`, at `computerNow()`), so the
   computer never disagrees with a sale. `BUYER_OFFERS` (`data.ts`) is the gate's table of offers and their odds: a

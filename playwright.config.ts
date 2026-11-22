@@ -25,7 +25,9 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     launchOptions: {
       executablePath,
-      args: ['--use-angle=swiftshader', '--use-gl=angle', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
+      // software WebGL (SwiftShader) everywhere, the same picture on every machine; `PW_GPU=1` on a computer with a
+      // graphics card draws on it instead (the platform's own ANGLE), several times faster for the heavy specs
+      args: process.env.PW_GPU ? ['--ignore-gpu-blocklist', '--enable-gpu'] : ['--use-angle=swiftshader', '--use-gl=angle', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
     },
   },
   projects: [{ name: 'chromium', use: { browserName: 'chromium' } }],
