@@ -28,8 +28,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
-      # every spec has its time, and no shard of the eight would pass 13 minutes (tests/e2e/times.json)
-      - run: node scripts/ci-shards.mjs --check 8
+      # every spec has its time, and no shard of the twelve would pass 13 minutes (tests/e2e/times.json)
+      - run: node scripts/ci-shards.mjs --check 12
 
   test:
     runs-on: ubuntu-latest
@@ -42,14 +42,14 @@ jobs:
       options: --user 1001 --ipc=host
     # the core suite: every test but the `@full` ones (stable tests that boot a page of their own, ten times the farm,
     # the counting check, two of 16's groups), which run every night and by hand (full.yml). It renders in software
-    # (05's budget walk counts on a drawing-free context): eight shards side by side, each given whole spec files by
+    # (05's budget walk counts on a drawing-free context): twelve shards side by side, each given whole spec files by
     # their measured time (scripts/ci-shards.mjs, tests/e2e/times.json: the longest first, each to the shard with the
-    # least so far; about nine minutes each)
+    # least so far; about seven minutes of tests each)
     timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -65,7 +65,7 @@ jobs:
       # the Playwright config builds and serves the app itself on port 4185; the shard's specs come from their times (an
       # empty shard fails here: Playwright given no file would run them all)
       - run: |
-          specs=$(node scripts/ci-shards.mjs ${{ matrix.shard }} 8)
+          specs=$(node scripts/ci-shards.mjs ${{ matrix.shard }} 12)
           echo "$specs"
           npx playwright test --grep-invert @full $specs
       - uses: actions/upload-artifact@v7

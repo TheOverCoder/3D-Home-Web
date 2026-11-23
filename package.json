@@ -21,7 +21,7 @@
     "test:e2e:core": "playwright test --grep-invert @full",
     "lint": "oxlint",
     "format": "prettier --write \"src/**/*.{ts,tsx}\" \"lab/**/*.{ts,tsx}\" \"tests/**/*.ts\" \"*.ts\" \"scripts/*.mjs\"",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx}\" \"lab/**/*.{ts,tsx}\" \"tests/**/*.ts\" \"*.ts\" \"scripts/*.mjs\"",
+    "format:check": "prettier --check --cache \"src/**/*.{ts,tsx}\" \"lab/**/*.{ts,tsx}\" \"tests/**/*.ts\" \"*.ts\" \"scripts/*.mjs\"",
     "check": "tsc --noEmit && oxlint && vitest run && npm run format:check"
   },
   "dependencies": {

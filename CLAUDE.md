@@ -6,17 +6,19 @@ The README has the overview; `tests/README.md` what each test guards.
 
 ## Before pushing
 
-- `npm run check` (types — the specs' too —, oxlint, the Vitest unit tests, the format check: ~15 s) always. Then, locally, only the e2e
+- `npm run check` (types — the specs' too —, oxlint, the Vitest unit tests, the format check: about a minute and a quarter) always. Then, locally, only the e2e
   spec of the area the change touches (`node scripts/affected-specs.mjs` names them from the change, by
   `tests/e2e/areas.json`; `--run` runs them), without the nightly tests:
   `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium npx playwright test --trace off --grep-invert @full <file>` (software
   WebGL, a few minutes a file; it builds and serves on :4185; `PW_GPU=1` on a computer with a graphics card draws on it
   instead, several times faster, and stops if it would draw in software — CI stays on software WebGL). `05` and `16` only when the change is to geometry,
-  models, materials, lighting or `src/lib/visibility`, and only the group it touches (`-g`). A small request is one
-  agent, no team. A rule or a save change gets a unit test beside its code (`src/**/*.test.ts`, `tests/README.md`).
+  models, materials, lighting or `src/lib/visibility`, and only the group it touches (`-g`). All the specs in one
+  command (each command pays the build and a boot, about a minute); while mending, `-x` stops at the first failure
+  and `--last-failed --pass-with-no-tests` runs only what failed, and `npx vitest related --run <files>` only the unit
+  tests a change reaches — the whole file and the whole check before the push. A small request is one agent, no team. A rule or a save change gets a unit test beside its code (`src/**/*.test.ts`, `tests/README.md`).
 - A new package goes on `src/deps.allowed.json` (held by `src/deps.test.ts`) only after the vetting in
   `update-v1/REUSE.md`, with its row there; `.npmrc` pins it exactly and runs none of its install scripts.
-- A push runs the core suite on GitHub (`ci.yml`: everything but the `@full` tests, eight shards side by side,
+- A push runs the core suite on GitHub (`ci.yml`: everything but the `@full` tests, twelve shards side by side,
   balanced by `scripts/ci-shards.mjs` from `tests/e2e/times.json`), and the site is published only from a commit it
   passed on (`deploy.yml` waits for CI): a red push never reaches players.
   The `@full` tests — stable ones that boot a page of their own, the budget walk at ten times the farm, the counting

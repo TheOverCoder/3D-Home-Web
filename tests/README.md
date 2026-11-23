@@ -195,9 +195,9 @@ an hour in `20`), the budget walk at ten times the farm in `05`, the counting ch
 upright and the sun's map kept. `05` runs on the drawing-free WebGL
 context (`nullgl.js`, `countingTest` in `helpers.ts`): the counts are three.js's own, on the CPU, and `26` checks them
 against a real context view by view; the frames come at full speed, so its three walks take about a minute. A push runs the core
-suite on GitHub without them (`ci.yml`, `--grep-invert @full`; `npm run test:e2e:core` locally) in eight shards side by
+suite on GitHub without them (`ci.yml`, `--grep-invert @full`; `npm run test:e2e:core` locally) in twelve shards side by
 side, each given whole spec files by their measured time (`scripts/ci-shards.mjs` from `tests/e2e/times.json`, the
-longest first, each to the shard with the least so far: about nine minutes each; `node scripts/ci-shards.mjs --plan 8`
+longest first, each to the shard with the least so far: about seven minutes of tests each; `node scripts/ci-shards.mjs --plan 12`
 shows them, and the `check` job fails when a spec has no time or a shard would pass 13 minutes); each shard prints its
 files' seconds and any flaky test in its summary (`tests/e2e/fileTimes.ts`), the times to copy into `times.json`. A push
 that changes only words (`.md` files: `update-v1/`'s notes, `plans/`) runs no CI. The `@full` tests run every night and by hand
