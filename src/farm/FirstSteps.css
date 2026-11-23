@@ -9,51 +9,51 @@
   position: relative;
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 0.4375rem;
   min-width: 0;
-  max-width: min(300px, calc(100vw - 116px));
-  min-height: 52px;
-  margin-left: 12px;
-  padding: 6px 12px 6px 8px;
-  border: 3px solid #fff;
-  border-radius: 20px;
+  max-width: min(18.75rem, calc(100vw - 7.25rem));
+  min-height: 3.25rem;
+  margin-left: 0.75rem;
+  padding: 0.375rem 0.75rem 0.375rem 0.5rem;
+  border: 0.1875rem solid #fff;
+  border-radius: 1.25rem;
   background: var(--paper);
   color: var(--ink);
   text-align: left;
-  box-shadow: 0 3px 0 var(--edge-soft), 0 10px 24px rgba(40, 24, 10, 0.3);
+  box-shadow: 0 0.1875rem 0 var(--edge-soft), 0 0.625rem 1.5rem rgba(40, 24, 10, 0.3);
   -webkit-tap-highlight-color: transparent;
 }
 /* its tail, towards the face: a white edge and the paper inside it */
 .step-bubble::before,
 .step-bubble::after { content: ''; position: absolute; top: 50%; border-style: solid; border-color: transparent; border-left-width: 0; }
-.step-bubble::before { left: -14px; margin-top: -10px; border-width: 10px 11px 10px 0; border-right-color: #fff; }
-.step-bubble::after { left: -8px; margin-top: -6px; border-width: 6px 7px 6px 0; border-right-color: var(--paper); }
-.step-pic { width: 34px; height: 34px; }
-.step-words { position: relative; flex: 1 1 auto; min-width: 0; font: 600 17px/1.15 var(--font-display); }
+.step-bubble::before { left: -0.875rem; margin-top: -0.625rem; border-width: 0.625rem 0.6875rem 0.625rem 0; border-right-color: #fff; }
+.step-bubble::after { left: -0.5rem; margin-top: -0.375rem; border-width: 0.375rem 0.4375rem 0.375rem 0; border-right-color: var(--paper); }
+.step-pic { width: 2.125rem; height: 2.125rem; }
+.step-words { position: relative; flex: 1 1 auto; min-width: 0; font: 600 1.0625rem/1.15 var(--font-display); }
 .step-ghost { visibility: hidden; }
-.step-reward { display: inline-flex; align-items: center; gap: 2px; flex: none; padding: 2px 9px 2px 4px; border-radius: 999px; background: color-mix(in srgb, var(--sun) 30%, #fff); font: 900 15px/1.2 var(--font-text); font-variant-numeric: tabular-nums; }
-.step-reward img { width: 20px; height: 20px; }
+.step-reward { display: inline-flex; align-items: center; gap: 0.125rem; flex: none; padding: 0.125rem 0.5625rem 0.125rem 0.25rem; border-radius: 62.4375rem; background: color-mix(in srgb, var(--sun) 30%, #fff); font: 900 0.9375rem/1.2 var(--font-text); font-variant-numeric: tabular-nums; }
+.step-reward img { width: 1.25rem; height: 1.25rem; }
 /* done: a green stamp on the bubble's corner */
-.step-tick { position: absolute; top: -12px; right: 18px; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--leaf); color: #fff; box-shadow: 0 0 0 3px #fff, 0 3px 6px rgba(20, 60, 20, 0.35); }
-.step-tick svg { width: 18px; height: 18px; }
+.step-tick { position: absolute; top: -0.75rem; right: 1.125rem; display: grid; place-items: center; width: 1.875rem; height: 1.875rem; border-radius: 50%; background: var(--leaf); color: #fff; box-shadow: 0 0 0 0.1875rem #fff, 0 0.1875rem 0.375rem rgba(20, 60, 20, 0.35); }
+.step-tick svg { width: 1.125rem; height: 1.125rem; }
 .step-bubble.done { border-color: color-mix(in srgb, var(--leaf) 45%, #fff); }
 /* walking there: the bubble's rim in sun, breathing, and a walker on its corner */
-.step-walk { position: absolute; top: -10px; left: 6px; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--sun); color: var(--ink); box-shadow: 0 0 0 2px #fff; }
-.step-walk svg { width: 13px; height: 13px; }
-.step-bubble.going { border-color: var(--sun); box-shadow: 0 3px 0 var(--sun-lip), 0 0 0 4px color-mix(in srgb, var(--sun) 30%, transparent), 0 10px 24px rgba(40, 24, 10, 0.3); }
+.step-walk { position: absolute; top: -0.625rem; left: 0.375rem; display: grid; place-items: center; width: 1.375rem; height: 1.375rem; border-radius: 50%; background: var(--sun); color: var(--ink); box-shadow: 0 0 0 0.125rem #fff; }
+.step-walk svg { width: 0.8125rem; height: 0.8125rem; }
+.step-bubble.going { border-color: var(--sun); box-shadow: 0 0.1875rem 0 var(--sun-lip), 0 0 0 0.25rem color-mix(in srgb, var(--sun) 30%, transparent), 0 0.625rem 1.5rem rgba(40, 24, 10, 0.3); }
 :where(:root:not([data-motion='less'])) {
   .step-bubble.going { animation: step-going 1.4s ease-in-out infinite; }
 }
-@keyframes step-going { 50% { box-shadow: 0 3px 0 var(--sun-lip), 0 0 0 8px color-mix(in srgb, var(--sun) 16%, transparent), 0 10px 24px rgba(40, 24, 10, 0.3); } }
+@keyframes step-going { 50% { box-shadow: 0 0.1875rem 0 var(--sun-lip), 0 0 0 0.5rem color-mix(in srgb, var(--sun) 16%, transparent), 0 0.625rem 1.5rem rgba(40, 24, 10, 0.3); } }
 .step-bubble.going::before { border-right-color: var(--sun); }
 /* the ✕ on the bubble's corner: small to the eye, a finger's size to touch */
-.step-x { position: absolute; top: -18px; right: -12px; z-index: 1; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; background: none; }
-.step-x i { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--night); color: #fff; box-shadow: 0 0 0 2px #fff; }
-.step-x svg { width: 12px; height: 12px; }
+.step-x { position: absolute; top: -1.125rem; right: -0.75rem; z-index: 1; display: grid; place-items: center; width: 2.75rem; height: 2.75rem; padding: 0; border: 0; background: none; }
+.step-x i { display: grid; place-items: center; width: 1.5rem; height: 1.5rem; border-radius: 50%; background: var(--night); color: #fff; box-shadow: 0 0 0 0.125rem #fff; }
+.step-x svg { width: 0.75rem; height: 0.75rem; }
 /* the question, in the bubble: Keep, Skip */
-.step-bubble.ask { flex-wrap: wrap; gap: 6px 8px; padding: 8px 8px 8px 12px; }
-.step-answers { display: flex; gap: 8px; }
+.step-bubble.ask { flex-wrap: wrap; gap: 0.375rem 0.5rem; padding: 0.5rem 0.5rem 0.5rem 0.75rem; }
+.step-answers { display: flex; gap: 0.5rem; }
 /* the last card: its place in the column, the farmer beside it, and the sum of the coins beside "All set!" */
-.step-final { position: relative; display: flex; align-items: center; gap: 6px; }
-.step-final .tag.step-sum { background: color-mix(in srgb, var(--sun) 30%, #fff); color: var(--ink); font-size: 15px; }
-.step-final .tag.step-sum img { width: 20px; height: 20px; }
+.step-final { position: relative; display: flex; align-items: center; gap: 0.375rem; }
+.step-final .tag.step-sum { background: color-mix(in srgb, var(--sun) 30%, #fff); color: var(--ink); font-size: 0.9375rem; }
+.step-final .tag.step-sum img { width: 1.25rem; height: 1.25rem; }

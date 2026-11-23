@@ -8,8 +8,8 @@
   grid-template-rows: auto minmax(0, 1fr) auto;
   justify-items: center;
   align-items: center;
-  gap: 8px;
-  padding: calc(env(safe-area-inset-top) + 14px) 20px calc(env(safe-area-inset-bottom) + 16px);
+  gap: 0.5rem;
+  padding: calc(env(safe-area-inset-top) + 0.875rem) 1.25rem calc(env(safe-area-inset-bottom) + 1rem);
   overflow: hidden;
   color: var(--ink);
   user-select: none;
@@ -23,56 +23,56 @@
 .loading-screen .ls-day { opacity: var(--p); background: radial-gradient(100% 60% at 50% 42%, #fff, color-mix(in oklab, var(--sun) 30%, var(--paper)) 45%, transparent 80%), linear-gradient(to bottom, color-mix(in oklab, var(--sun) 22%, var(--paper)), var(--paper) 55%, color-mix(in oklab, var(--sun) 18%, var(--paper-2))); transition: opacity 0.6s ease-out; }
 .loading-screen.ready .ls-day { opacity: 1; }
 .loading-screen .ls-motes { position: absolute; inset: 0; pointer-events: none; }
-.loading-screen .ls-motes i { position: absolute; bottom: -10px; width: 6px; height: 6px; border-radius: 50%; background: rgba(255, 246, 220, 0.95); box-shadow: 0 0 10px 3px color-mix(in oklab, var(--sun) 55%, transparent); animation: ls-mote linear infinite; }
-.loading-screen .ls-motes i:nth-child(even) { width: 4px; height: 4px; }
+.loading-screen .ls-motes i { position: absolute; bottom: -0.625rem; width: 0.375rem; height: 0.375rem; border-radius: 50%; background: rgba(255, 246, 220, 0.95); box-shadow: 0 0 0.625rem 0.1875rem color-mix(in oklab, var(--sun) 55%, transparent); animation: ls-mote linear infinite; }
+.loading-screen .ls-motes i:nth-child(even) { width: 0.25rem; height: 0.25rem; }
 
 /* the name, as the opening screen draws it */
 .loading-screen .game-name { display: flex; flex-direction: column; align-items: center; text-align: center; }
-.loading-screen .game-name h1 { display: flex; margin: 0; white-space: pre; font: 700 clamp(44px, 12vw, 58px) / 1 var(--font-display); }
-.loading-screen .game-name h1 span { display: inline-block; color: #fff; -webkit-text-stroke: 7px var(--ink); paint-order: stroke fill; text-shadow: 0 6px 0 rgba(40, 24, 10, 0.3); }
-.loading-screen .game-name p { margin: 6px 0 0; font: 600 15px/1.3 var(--font-display); color: var(--ink-2); }
+.loading-screen .game-name h1 { display: flex; margin: 0; white-space: pre; font: 700 clamp(2.75rem, 12vw, 3.625rem) / 1 var(--font-display); }
+.loading-screen .game-name h1 span { display: inline-block; color: #fff; -webkit-text-stroke: 0.4375rem var(--ink); paint-order: stroke fill; text-shadow: 0 0.375rem 0 rgba(40, 24, 10, 0.3); }
+.loading-screen .game-name p { margin: 0.375rem 0 0; font: 600 0.9375rem/1.3 var(--font-display); color: var(--ink-2); }
 
 /* the round stage: the rays, the disc, and the look's world over them, all the same size */
-.loading-screen .ls-stage { position: relative; display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); place-items: center; width: 100%; height: 100%; min-height: 200px; container-type: size; }
+.loading-screen .ls-stage { position: relative; display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); place-items: center; width: 100%; height: 100%; min-height: 12.5rem; container-type: size; }
 .loading-screen .ls-stage > * { grid-area: 1 / 1; }
 .loading-screen .ls-stage > .ls-rays { position: absolute; left: 50%; top: 50%; translate: -50% -50%; }
 .loading-screen .ls-disc,
-.loading-screen .ls-hero { width: min(330px, 88cqw, 88cqh); aspect-ratio: 1; }
+.loading-screen .ls-hero { width: min(20.625rem, 88cqw, 88cqh); aspect-ratio: 1; }
 .loading-screen .ls-disc {
   position: relative;
   border-radius: 50%;
   overflow: hidden;
   background: radial-gradient(circle at 50% 38%, #fff 0, color-mix(in oklab, var(--sun) calc(30% + var(--p) * 40%), #fff) 45%, color-mix(in oklab, var(--sun) calc(55% + var(--p) * 35%), var(--berry) 10%) 100%);
-  box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.9), 0 0 0 7px color-mix(in oklab, var(--sun-lip) 30%, transparent), 0 14px 30px rgba(120, 70, 20, 0.22);
+  box-shadow: 0 0 0 0.375rem rgba(255, 255, 255, 0.9), 0 0 0 0.4375rem color-mix(in oklab, var(--sun-lip) 30%, transparent), 0 0.875rem 1.875rem rgba(120, 70, 20, 0.22);
   transition: background 0.6s;
 }
 .loading-screen .ls-flash { position: absolute; inset: 0; background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.95) 50%, transparent 70%); }
-.loading-screen .ls-rays { width: min(520px, 140cqw, 140cqh); aspect-ratio: 1; border-radius: 50%; background: repeating-conic-gradient(color-mix(in oklab, var(--sun) 50%, #fff) 0 7deg, transparent 7deg 20deg); -webkit-mask: radial-gradient(closest-side, #000 45%, transparent 100%); mask: radial-gradient(closest-side, #000 45%, transparent 100%); animation: ls-turn 50s linear infinite; pointer-events: none; }
+.loading-screen .ls-rays { width: min(32.5rem, 140cqw, 140cqh); aspect-ratio: 1; border-radius: 50%; background: repeating-conic-gradient(color-mix(in oklab, var(--sun) 50%, #fff) 0 7deg, transparent 7deg 20deg); -webkit-mask: radial-gradient(closest-side, #000 45%, transparent 100%); mask: radial-gradient(closest-side, #000 45%, transparent 100%); animation: ls-turn 50s linear infinite; pointer-events: none; }
 .loading-screen .ls-hero { position: relative; display: grid; place-items: center; }
-.loading-screen .ls-low { width: min(360px, 100%); }
+.loading-screen .ls-low { width: min(22.5rem, 100%); }
 
 /* sideways: the stage on the left, the name and the card on the right */
 .loading-screen.wide {
-  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+  grid-template-columns: minmax(0, 1fr) minmax(18.75rem, 22.5rem);
   grid-template-rows: auto auto;
   grid-template-areas: 'stage name' 'stage low';
   align-content: center;
-  column-gap: 24px;
-  row-gap: 14px;
-  padding: 10px calc(env(safe-area-inset-right) + 20px) calc(env(safe-area-inset-bottom) + 10px) calc(env(safe-area-inset-left) + 16px);
+  column-gap: 1.5rem;
+  row-gap: 0.875rem;
+  padding: 0.625rem calc(env(safe-area-inset-right) + 1.25rem) calc(env(safe-area-inset-bottom) + 0.625rem) calc(env(safe-area-inset-left) + 1rem);
 }
-.loading-screen.wide .ls-stage { grid-area: stage; height: calc(100dvh - 20px); }
+.loading-screen.wide .ls-stage { grid-area: stage; height: calc(100dvh - 1.25rem); }
 .loading-screen.wide .ls-name { grid-area: name; align-self: end; }
-.loading-screen.wide .ls-name h1 { font-size: 44px; }
+.loading-screen.wide .ls-name h1 { font-size: 2.75rem; }
 .loading-screen.wide .ls-low { grid-area: low; align-self: start; }
 
 @keyframes ls-turn { to { rotate: 360deg; } }
 @keyframes ls-mote {
   0% { transform: translate(0, 0); opacity: 0; }
   12% { opacity: 1; }
-  50% { transform: translate(16px, -50vh); }
+  50% { transform: translate(1rem, -50vh); }
   88% { opacity: 0.8; }
-  100% { transform: translate(-6px, -100vh); opacity: 0; }
+  100% { transform: translate(-0.375rem, -100vh); opacity: 0; }
 }
 :where(:root[data-motion='less']) {
   .loading-screen .ls-rays,
@@ -87,11 +87,11 @@
   --noon: color-mix(in oklab, var(--sun) 30%, var(--paper));
 }
 /* the world: a round window where the disc is; the meadow under the road fills its foot */
-.loading-screen .lb-world { position: absolute; inset: 0; border-radius: 50%; overflow: hidden; box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.9); isolation: isolate; container-type: size; }
+.loading-screen .lb-world { position: absolute; inset: 0; border-radius: 50%; overflow: hidden; box-shadow: 0 0 0 0.375rem rgba(255, 255, 255, 0.9); isolation: isolate; container-type: size; }
 .loading-screen .lb-world::after { content: ''; position: absolute; z-index: 2; left: 0; right: 0; bottom: 0; height: 17%; background: linear-gradient(to bottom, var(--leaf), var(--leaf-lip)); }
 .loading-screen .lb-sky { position: absolute; inset: 0; background: linear-gradient(to bottom, color-mix(in oklab, var(--dawn) calc((1 - var(--day)) * 100%), var(--noon)), color-mix(in oklab, color-mix(in oklab, var(--berry) 22%, var(--paper)) calc((1 - var(--day)) * 100%), var(--paper)) 80%); }
-.loading-screen .lb-sun { position: absolute; width: 64px; height: 64px; translate: -50% -50%; filter: drop-shadow(0 0 30px color-mix(in oklab, var(--sun) 80%, transparent)); }
-.loading-screen .lb-clouds i { position: absolute; width: 120px; height: 34px; border-radius: 999px; background: rgba(255, 255, 255, 0.75); box-shadow: 30px -14px 0 4px rgba(255, 255, 255, 0.75); left: 0; animation: lb-cloud 70s linear infinite; }
+.loading-screen .lb-sun { position: absolute; width: 4rem; height: 4rem; translate: -50% -50%; filter: drop-shadow(0 0 1.875rem color-mix(in oklab, var(--sun) 80%, transparent)); }
+.loading-screen .lb-clouds i { position: absolute; width: 7.5rem; height: 2.125rem; border-radius: 62.4375rem; background: rgba(255, 255, 255, 0.75); box-shadow: 1.875rem -0.875rem 0 0.25rem rgba(255, 255, 255, 0.75); left: 0; animation: lb-cloud 70s linear infinite; }
 .loading-screen .lb-clouds i:nth-child(1) { top: 16%; animation-delay: -10s; }
 .loading-screen .lb-clouds i:nth-child(2) { top: 30%; scale: 0.7; animation-duration: 95s; animation-delay: -60s; opacity: 0.8; }
 .loading-screen .lb-clouds i:nth-child(3) { top: 9%; scale: 0.5; animation-duration: 120s; animation-delay: -30s; opacity: 0.6; }
@@ -109,64 +109,84 @@
 .loading-screen .lb-plane.near path { fill: color-mix(in oklab, var(--leaf) 80%, var(--sun)); }
 .loading-screen .lb-plane.near .lb-tree circle { fill: var(--leaf); }
 .loading-screen .lb-plane.near .lb-tree rect { fill: var(--edge); }
-.loading-screen .lb-plane.front { bottom: 10%; height: 16%; z-index: 3; filter: blur(1.2px); }
+.loading-screen .lb-plane.front { bottom: 10%; height: 16%; z-index: 3; filter: blur(0.075rem); }
 .loading-screen .lb-plane.front path { fill: var(--leaf-lip); }
 /* the road the tractor drives on, its dashes going by */
-.loading-screen .lb-road { position: absolute; left: 0; right: 0; bottom: 16%; height: 13%; background: color-mix(in oklab, var(--edge) 55%, var(--paper-3)); box-shadow: inset 0 4px 0 color-mix(in oklab, var(--edge) 70%, var(--ink)); overflow: hidden; }
-.loading-screen .lb-road i { position: absolute; left: 0; top: 48%; width: 200%; height: 4px; background: repeating-linear-gradient(90deg, var(--paper) 0 26px, transparent 26px 60px); animation: lb-slide 4s linear infinite; }
+.loading-screen .lb-road { position: absolute; left: 0; right: 0; bottom: 16%; height: 13%; background: color-mix(in oklab, var(--edge) 55%, var(--paper-3)); box-shadow: inset 0 0.25rem 0 color-mix(in oklab, var(--edge) 70%, var(--ink)); overflow: hidden; }
+.loading-screen .lb-road i { position: absolute; left: 0; top: 48%; width: 200%; height: 0.25rem; background: repeating-linear-gradient(90deg, var(--paper) 0 1.625rem, transparent 1.625rem 3.75rem); animation: lb-slide 4s linear infinite; }
 
 /* the tractor at the front, rocking on the bumps, dust off its back wheel */
-.loading-screen .lb-tractor { position: absolute; bottom: 20%; z-index: 2; width: 34%; max-width: 130px; translate: -50% 0; padding: 0; border: 0; background: none; cursor: pointer; }
+.loading-screen .lb-tractor { position: absolute; bottom: 19%; z-index: 2; width: 40%; max-width: 9.375rem; translate: -50% 0; padding: 0; border: 0; background: none; cursor: pointer; }
 .loading-screen .lb-tractor-in { display: block; transform-origin: 50% 100%; }
-.loading-screen .lb-tractor img { display: block; width: 100%; height: auto; transform: scaleX(-1); animation: lb-rock 0.42s ease-in-out infinite alternate; filter: drop-shadow(0 6px 4px rgba(40, 24, 10, 0.25)); }
+/* the drawn tractor (Loading.tsx, Tractor): its wheels roll at the road's speed — the road's dashes go a world's width in
+   4 s, the tractor is 40 % of the world and its back wheel 22 of its 132 units in radius, so a turn of it is 2π·22/132 ×
+   0.4 world = 0.42 of a world, 1.67 s, at any size; the front one (13) in 0.99 s —, its body bounces on its springs about
+   the back axle, puffs leave its pipe, and its shadow breathes with the bounce */
+.loading-screen .lb-tractor-svg { display: block; width: 100%; height: auto; overflow: visible; filter: drop-shadow(0 0.1875rem 0.125rem rgba(40, 24, 10, 0.2)); }
+.loading-screen .lt-wheel { transform-box: fill-box; transform-origin: center; animation: lt-turn 1.67s linear infinite; }
+.loading-screen .lt-front { animation-duration: 0.99s; }
+.loading-screen .lt-body { transform-box: view-box; transform-origin: 2.5rem 4.25rem; animation: lt-bounce 0.34s ease-in-out infinite alternate; }
+.loading-screen .lt-shadow { fill: rgba(40, 24, 10, 0.22); transform-box: fill-box; transform-origin: center; animation: lt-breathe 0.34s ease-in-out infinite alternate; }
+.loading-screen .lt-puffs circle { fill: rgba(255, 252, 244, 0.92); transform-box: fill-box; transform-origin: center; opacity: 0; animation: lt-puff 1.5s ease-out infinite; }
+.loading-screen .lt-puffs circle:nth-child(2) { animation-delay: 0.5s; }
+.loading-screen .lt-puffs circle:nth-child(3) { animation-delay: 1s; }
+.loading-screen .lt-lamp { filter: drop-shadow(0 0 0.1875rem #fff3a0); }
 .loading-screen .lb-dust { position: absolute; left: 4%; bottom: 6%; }
-.loading-screen .lb-dust i { position: absolute; width: 16px; height: 16px; border-radius: 50%; background: color-mix(in oklab, var(--paper-3) 80%, var(--edge)); opacity: 0; animation: lb-dust 1.1s ease-out infinite; }
+.loading-screen .lb-dust i { position: absolute; width: 1rem; height: 1rem; border-radius: 50%; background: color-mix(in oklab, var(--paper-3) 80%, var(--edge)); opacity: 0; animation: lb-dust 1.1s ease-out infinite; }
 .loading-screen .lb-dust i:nth-child(2) { animation-delay: 0.28s; }
 .loading-screen .lb-dust i:nth-child(3) { animation-delay: 0.55s; }
 .loading-screen .lb-dust i:nth-child(4) { animation-delay: 0.82s; }
 /* a signpost on the verge, going by */
-.loading-screen .lb-sign { position: absolute; left: 0; bottom: 31%; z-index: 1; animation: lb-pass 6.5s linear forwards; display: grid; place-items: center; width: 52px; height: 52px; border: 3px solid var(--edge); border-radius: 14px; background: var(--paper); box-shadow: 0 3px 0 var(--edge); }
-.loading-screen .lb-sign::after { content: ''; position: absolute; top: 100%; left: 50%; width: 6px; height: 18px; margin-left: -3px; background: var(--edge); }
-.loading-screen .lb-sign img { width: 34px; height: 34px; }
+.loading-screen .lb-sign { position: absolute; left: 0; bottom: 31%; z-index: 1; animation: lb-pass 6.5s linear forwards; display: grid; place-items: center; width: 3.25rem; height: 3.25rem; border: 0.1875rem solid var(--edge); border-radius: 0.875rem; background: var(--paper); box-shadow: 0 0.1875rem 0 var(--edge); }
+.loading-screen .lb-sign::after { content: ''; position: absolute; top: 100%; left: 50%; width: 0.375rem; height: 1.125rem; margin-left: -0.1875rem; background: var(--edge); }
+.loading-screen .lb-sign img { width: 2.125rem; height: 2.125rem; }
 /* home: your house rolls in and the tractor parks at it */
-.loading-screen .lb-home { position: absolute; bottom: 22%; z-index: 1; width: 40%; max-width: 150px; height: auto; translate: -50% 0; filter: drop-shadow(0 8px 6px rgba(40, 24, 10, 0.25)); }
+.loading-screen .lb-home { position: absolute; bottom: 22%; z-index: 1; width: 40%; max-width: 9.375rem; height: auto; translate: -50% 0; filter: drop-shadow(0 0.5rem 0.375rem rgba(40, 24, 10, 0.25)); }
 
-/* ready: the world comes to a stop */
-.loading-screen.ready .lb-plane,
-.loading-screen.ready .lb-road i { animation-play-state: paused; }
-.loading-screen.ready .lb-tractor img { animation: none; }
-.loading-screen.ready .lb-dust { display: none; }
+/* ready: the world slows to a stop (Loading.tsx, Road: every animation's speed eased to nothing, then paused); the puffs
+   and the dust fade as it pulls up */
+.loading-screen .lb-world.stopped * { animation-play-state: paused; }
+.loading-screen .lb-dust,
+.loading-screen .lt-puffs { transition: opacity 0.5s ease-out; }
+.loading-screen.ready .lb-dust,
+.loading-screen.ready .lt-puffs { opacity: 0; }
 
 @keyframes lb-slide { to { translate: -50% 0; } }
 /* what moves while the page builds the house moves by translate, which the compositor carries on while the main thread is busy */
 @keyframes lb-cloud { from { translate: 105cqw 0; } to { translate: -40cqw 0; } }
 @keyframes lb-pass { from { translate: 112cqw 0; } to { translate: -20cqw 0; } }
-@keyframes lb-rock { from { transform: scaleX(-1) translateY(0) rotate(0); } to { transform: scaleX(-1) translateY(-2px) rotate(1.5deg); } }
-@keyframes lb-dust { 0% { opacity: 0.8; transform: translate(0, 0) scale(0.4); } 100% { opacity: 0; transform: translate(-46px, -20px) scale(1.6); } }
+@keyframes lt-turn { to { rotate: 360deg; } }
+@keyframes lt-bounce { from { translate: 0 0; rotate: 0deg; } to { translate: 0 -0.1rem; rotate: -0.7deg; } }
+@keyframes lt-breathe { from { scale: 1 1; opacity: 1; } to { scale: 0.96 1; opacity: 0.85; } }
+@keyframes lt-puff { 0% { opacity: 0; translate: 0 0; scale: 0.35; } 14% { opacity: 0.85; } 100% { opacity: 0; translate: -1.875rem -1.5rem; scale: 1.8; } }
+@keyframes lb-dust { 0% { opacity: 0.8; transform: translate(0, 0) scale(0.4); } 100% { opacity: 0; transform: translate(-2.875rem, -1.25rem) scale(1.6); } }
 
 :where(:root[data-motion='less']) {
   .loading-screen .lb-plane,
   .loading-screen .lb-road i,
   .loading-screen .lb-clouds i,
-  .loading-screen .lb-tractor img,
+  .loading-screen .lt-wheel,
+  .loading-screen .lt-body,
+  .loading-screen .lt-shadow,
   .loading-screen .lb-dust i { animation: none; }
+  .loading-screen .lt-puffs { display: none; }
   .loading-screen .lb-sign { display: none; }
 }
 
 /* the card by the thumb: the line and the share, the bar, the time left, the tip */
-.load-card { width: min(360px, 100%); display: grid; gap: 12px; color: var(--ink); }
-.load-card .load-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
-.load-card .load-head strong { display: inline-flex; align-items: center; gap: 6px; font: 600 20px/1.25 var(--font-display); }
-.load-card .load-head strong svg { width: 20px; height: 20px; color: var(--leaf); }
-.load-card .load-pct { font: 800 16px/1 var(--font-text); color: var(--ink-2); font-variant-numeric: tabular-nums; }
-.load-card .load-bar { position: relative; height: 16px; border-radius: 999px; overflow: hidden; background: var(--paper-3); box-shadow: inset 0 2px 0 rgba(60, 35, 10, 0.12); }
+.load-card { width: min(22.5rem, 100%); display: grid; gap: 0.75rem; color: var(--ink); }
+.load-card .load-head { display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem; }
+.load-card .load-head strong { display: inline-flex; align-items: center; gap: 0.375rem; font: 600 1.25rem/1.25 var(--font-display); }
+.load-card .load-head strong svg { width: 1.25rem; height: 1.25rem; color: var(--leaf); }
+.load-card .load-pct { font: 800 1rem/1 var(--font-text); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.load-card .load-bar { position: relative; height: 1rem; border-radius: 62.4375rem; overflow: hidden; background: var(--paper-3); box-shadow: inset 0 0.125rem 0 rgba(60, 35, 10, 0.12); }
 .load-card .load-bar > span {
   position: absolute;
   inset: 0;
   overflow: hidden;
-  border-radius: 999px;
+  border-radius: 62.4375rem;
   background: linear-gradient(to bottom, #ffd96b, var(--sun) 55%, #f4b52a);
-  box-shadow: inset 0 -2px 0 rgba(160, 100, 0, 0.25);
+  box-shadow: inset 0 -0.125rem 0 rgba(160, 100, 0, 0.25);
   translate: -100% 0;
   will-change: translate;
   transition:
@@ -174,24 +194,24 @@
     background 0.3s;
 }
 /* ribs drifting backwards: a bar that seems to go faster (Harrison et al., 2010); near the end they hurry */
-.load-card .load-bar i { position: absolute; inset: 0 -19.8px 0 0; background: repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.34) 0 7px, transparent 7px 14px); background-size: 19.8px 100%; animation: load-ribs 1s linear infinite; }
+.load-card .load-bar i { position: absolute; inset: 0 -1.2375rem 0 0; background: repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.34) 0 0.4375rem, transparent 0.4375rem 0.875rem); background-size: 1.2375rem 100%; animation: load-ribs 1s linear infinite; }
 .load-card.near .load-bar i { animation-duration: 0.55s; }
-.load-card.near .load-bar > span { box-shadow: inset 0 -2px 0 rgba(160, 100, 0, 0.25), 0 0 12px 2px color-mix(in oklab, var(--sun) 70%, transparent); }
+.load-card.near .load-bar > span { box-shadow: inset 0 -0.125rem 0 rgba(160, 100, 0, 0.25), 0 0 0.75rem 0.125rem color-mix(in oklab, var(--sun) 70%, transparent); }
 .load-card.ready .load-bar > span { background: linear-gradient(to bottom, #5fc272, var(--leaf)); }
 .load-card.ready .load-bar i { display: none; }
-.load-card .load-left { display: flex; align-items: center; gap: 5px; margin: -4px 0 0; font: 700 15px/1.2 var(--font-text); color: var(--ink-2); font-variant-numeric: tabular-nums; }
-.load-card .load-left svg { width: 16px; height: 16px; }
+.load-card .load-left { display: flex; align-items: center; gap: 0.3125rem; margin: -0.25rem 0 0; font: 700 0.9375rem/1.2 var(--font-text); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.load-card .load-left svg { width: 1rem; height: 1rem; }
 
-.load-card .load-slot { position: relative; min-height: 64px; display: grid; align-items: center; }
-.load-card .load-tip { display: grid; grid-template-columns: 44px 1fr; align-items: center; gap: 12px; min-height: 64px; padding: 8px 14px; border: 2px solid #fff; border-radius: 18px; background: var(--paper); box-shadow: 0 3px 0 var(--edge-soft); }
-.load-card .load-tip img { width: 44px; height: 44px; }
+.load-card .load-slot { position: relative; min-height: 4rem; display: grid; align-items: center; }
+.load-card .load-tip { display: grid; grid-template-columns: 2.75rem 1fr; align-items: center; gap: 0.75rem; min-height: 4rem; padding: 0.5rem 0.875rem; border: 0.125rem solid #fff; border-radius: 1.125rem; background: var(--paper); box-shadow: 0 0.1875rem 0 var(--edge-soft); }
+.load-card .load-tip img { width: 2.75rem; height: 2.75rem; }
 .load-card .load-tip p,
-.load-card .load-tip .load-note { margin: 0; font: 600 15px/1.35 var(--font-text); color: var(--ink); }
+.load-card .load-tip .load-note { margin: 0; font: 600 0.9375rem/1.35 var(--font-text); color: var(--ink); }
 .load-card .load-tip.again { background: color-mix(in oklab, var(--leaf) 10%, var(--paper)); }
 
 /* a paper card */
-.load-card { padding: 14px 16px 16px; border: 3px solid #fff; border-radius: 26px; background: var(--paper); box-shadow: 0 6px 0 var(--paper-3), 0 16px 34px rgba(60, 35, 10, 0.18); }
-@keyframes load-ribs { to { translate: -19.8px 0; } }
+.load-card { padding: 0.875rem 1rem 1rem; border: 0.1875rem solid #fff; border-radius: 1.625rem; background: var(--paper); box-shadow: 0 0.375rem 0 var(--paper-3), 0 1rem 2.125rem rgba(60, 35, 10, 0.18); }
+@keyframes load-ribs { to { translate: -1.2375rem 0; } }
 :where(:root[data-motion='less']) {
   .load-card .load-bar i { animation: none; }
 }

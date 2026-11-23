@@ -3,18 +3,18 @@
 .thing-tag-anchor { pointer-events: none; }
 .thing-tag {
   position: relative;
-  height: 44px;
-  min-width: 44px;
+  height: 2.75rem;
+  min-width: 2.75rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 0.25rem;
   padding: 0;
   border: 0;
-  border-radius: 999px;
+  border-radius: 62.4375rem;
   background: color-mix(in srgb, var(--paper) 88%, transparent);
   color: var(--ink);
-  box-shadow: 0 0 0 2px #fff, 0 4px 12px rgba(20, 12, 6, 0.35);
+  box-shadow: 0 0 0 0.125rem #fff, 0 0.25rem 0.75rem rgba(20, 12, 6, 0.35);
   pointer-events: auto;
   cursor: pointer;
   /* (backwards, not both: a fill held after it ends would hold its scale over the press's) */
@@ -26,25 +26,25 @@
   .thing-tag:hover { scale: 1.08; }
 }
 .thing-tag:active { scale: 0.88; transition-duration: var(--t-press); }
-.thing-gear img { width: 30px; height: 30px; }
+.thing-gear img { width: 1.875rem; height: 1.875rem; }
 .thing-gear.calling img { animation: thing-gear-spin 7s linear infinite; }
 /* a price tag: the coin and what it costs (Nunito), the coin rocking a little (the tag itself holds still, a steady
    target); a price the coins do not reach yet shows in red */
-.thing-price { padding: 0 14px 0 7px; background: color-mix(in srgb, var(--paper) 94%, transparent); animation: thing-price-in 0.4s var(--ease-pop) backwards; }
-.thing-price img { width: 28px; height: 28px; filter: drop-shadow(0 1px 1px rgba(60, 35, 5, 0.3)); }
+.thing-price { padding: 0 0.875rem 0 0.4375rem; background: color-mix(in srgb, var(--paper) 94%, transparent); animation: thing-price-in 0.4s var(--ease-pop) backwards; }
+.thing-price img { width: 1.75rem; height: 1.75rem; filter: drop-shadow(0 0.0625rem 0.0625rem rgba(60, 35, 5, 0.3)); }
 .thing-price.calling img { animation: thing-coin-rock 3.2s 0.4s ease-in-out infinite; }
-.thing-price b { font: 800 19px/1 var(--font-text); font-variant-numeric: tabular-nums; }
+.thing-price b { font: 800 1.1875rem/1 var(--font-text); font-variant-numeric: tabular-nums; }
 .thing-price.short b { color: var(--berry); }
 .thing-tag kbd {
   position: absolute;
-  inset-inline-end: -10px;
-  bottom: -8px;
-  min-width: 20px;
-  padding: 1px 5px;
-  border-radius: 6px;
+  inset-inline-end: -0.625rem;
+  bottom: -0.5rem;
+  min-width: 1.25rem;
+  padding: 0.0625rem 0.3125rem;
+  border-radius: 0.375rem;
   background: var(--night);
   color: #fff;
-  font: 700 13px/18px var(--font-text);
+  font: 700 0.8125rem/1.125rem var(--font-text);
   text-align: center;
 }
 @keyframes thing-tag-in {
@@ -65,5 +65,5 @@
   .thing-tag, .thing-tag img { animation: none; }
 }
 /* a thing not open yet: the level card's berry ribbon is the tag ("Level 5"), lifted off the scene by a white rim */
-.thing-lock { padding: 0; background: none; box-shadow: none; filter: drop-shadow(0 0 1.5px #fff) drop-shadow(0 4px 6px rgba(20, 12, 6, 0.35)); }
-.thing-lock .lock-tag { padding: 11px 18px 12px; font-size: 17px; }
+.thing-lock { padding: 0; background: none; box-shadow: none; filter: drop-shadow(0 0 0.09375rem #fff) drop-shadow(0 0.25rem 0.375rem rgba(20, 12, 6, 0.35)); }
+.thing-lock .lock-tag { padding: 0.6875rem 1.125rem 0.75rem; font-size: 1.0625rem; }

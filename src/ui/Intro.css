@@ -6,14 +6,14 @@
 /* over the farm: a warm wash and a few specks of light rising */
 .intro-wash { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse 90% 55% at 50% 30%, rgba(255, 214, 150, 0.38), transparent 70%), linear-gradient(to bottom, rgba(70, 46, 24, 0.28), rgba(70, 46, 24, 0.14) 40%, rgba(40, 24, 10, 0.66)); }
 .intro-motes { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
-.intro-motes i { position: absolute; bottom: -12px; width: 6px; height: 6px; border-radius: 50%; background: rgba(255, 236, 190, 0.85); box-shadow: 0 0 10px 3px rgba(255, 214, 150, 0.55); animation: intro-mote linear infinite; }
-.intro-motes i:nth-child(even) { width: 4px; height: 4px; }
+.intro-motes i { position: absolute; bottom: -0.75rem; width: 0.375rem; height: 0.375rem; border-radius: 50%; background: rgba(255, 236, 190, 0.85); box-shadow: 0 0 0.625rem 0.1875rem rgba(255, 214, 150, 0.55); animation: intro-mote linear infinite; }
+.intro-motes i:nth-child(even) { width: 0.25rem; height: 0.25rem; }
 @keyframes intro-mote {
   0% { transform: translate(0, 0); opacity: 0; }
   12% { opacity: 1; }
-  50% { transform: translate(18px, -50vh); }
+  50% { transform: translate(1.125rem, -50vh); }
   88% { opacity: 0.8; }
-  100% { transform: translate(-6px, -100vh); opacity: 0; }
+  100% { transform: translate(-0.375rem, -100vh); opacity: 0; }
 }
 :where(:root[data-motion='less']) { .intro-motes { display: none; } }
 
@@ -27,163 +27,163 @@
   inset: 0;
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
-  gap: 10px;
-  padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(14px, calc(env(safe-area-inset-bottom) + 8px)) max(16px, env(safe-area-inset-left));
+  gap: 0.625rem;
+  padding: max(0.75rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(0.875rem, calc(env(safe-area-inset-bottom) + 0.5rem)) max(1rem, env(safe-area-inset-left));
   color: var(--ink);
 }
 .intro-menu > :not(.intro-wash, .intro-motes) { position: relative; }
-.intro-menu > .intro-sun { position: absolute; left: 50%; top: 26%; width: 520px; height: 520px; margin: -260px 0 0 -260px; pointer-events: none; }
+.intro-menu > .intro-sun { position: absolute; left: 50%; top: 26%; width: 32.5rem; height: 32.5rem; margin: -16.25rem 0 0 -16.25rem; pointer-events: none; }
 .intro-menu .intro-sun i { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(closest-side, rgba(255, 236, 170, 0.85), rgba(255, 201, 60, 0.35) 38%, transparent 70%), repeating-conic-gradient(from 0deg, rgba(255, 240, 200, 0.28) 0 8deg, transparent 8deg 22deg); -webkit-mask: radial-gradient(closest-side, #000 30%, transparent 100%); mask: radial-gradient(closest-side, #000 30%, transparent 100%); }
 
 /* the side: the logo, and a returning player's farm */
-.intro-menu .intro-side { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; min-height: 0; }
+.intro-menu .intro-side { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.75rem; min-height: 0; }
 .intro-menu .intro-logo { display: flex; flex-direction: column; align-items: center; text-align: center; transition: scale 0.3s var(--ease-pop); }
-.intro-menu .intro-house .art { width: clamp(84px, 24vw, 120px); height: auto; margin-bottom: -10px; animation: intro-bob 3.4s ease-in-out 1s infinite; }
-.intro-menu h1 { display: flex; margin: 0; white-space: pre; font: 700 clamp(52px, 15vw, 76px) / 1 var(--font-display); letter-spacing: 0.01em; }
-.intro-menu h1 span { display: inline-block; color: #fff; -webkit-text-stroke: 8px var(--ink); paint-order: stroke fill; text-shadow: 0 7px 0 rgba(40, 24, 10, 0.4); }
-.intro-menu .intro-logo .game-name p { margin: 8px 0 0; padding: 4px 14px; border-radius: 999px; background: rgba(40, 24, 10, 0.62); font: 600 17px/1.3 var(--font-display); color: #fff8ec; }
-.intro-menu .intro-farm-wrap { width: min(420px, 100%); }
+.intro-menu .intro-house .art { width: clamp(5.25rem, 24vw, 7.5rem); height: auto; margin-bottom: -0.625rem; animation: intro-bob 3.4s ease-in-out 1s infinite; }
+.intro-menu h1 { display: flex; margin: 0; white-space: pre; font: 700 clamp(3.25rem, 15vw, 4.75rem) / 1 var(--font-display); letter-spacing: 0.01em; }
+.intro-menu h1 span { display: inline-block; color: #fff; -webkit-text-stroke: 0.5rem var(--ink); paint-order: stroke fill; text-shadow: 0 0.4375rem 0 rgba(40, 24, 10, 0.4); }
+.intro-menu .intro-logo .game-name p { margin: 0.5rem 0 0; padding: 0.25rem 0.875rem; border-radius: 62.4375rem; background: rgba(40, 24, 10, 0.62); font: 600 1.0625rem/1.3 var(--font-display); color: #fff8ec; }
+.intro-menu .intro-farm-wrap { width: min(26.25rem, 100%); }
 
 /* your farm: its name and level, its coins, how long, what waits */
-.intro-menu .intro-farm { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 8px; padding: 8px 10px 10px; border-radius: 24px; box-shadow: 0 5px 0 var(--paper-3), 0 14px 30px rgba(40, 24, 10, 0.3); }
-.intro-menu .intro-farm-name { justify-self: start; display: flex; align-items: center; gap: 8px; min-height: 52px; max-width: 100%; padding: 0 8px 0 0; border: 0; border-radius: 18px; background: none; color: var(--ink); text-align: left; }
+.intro-menu .intro-farm { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 0.25rem 0.5rem; padding: 0.5rem 0.625rem 0.625rem; border-radius: 1.5rem; box-shadow: 0 0.3125rem 0 var(--paper-3), 0 0.875rem 1.875rem rgba(40, 24, 10, 0.3); }
+.intro-menu .intro-farm-name { justify-self: start; display: flex; align-items: center; gap: 0.5rem; min-height: 3.25rem; max-width: 100%; padding: 0 0.5rem 0 0; border: 0; border-radius: 1.125rem; background: none; color: var(--ink); text-align: left; }
 .intro-menu .intro-farm-name > span:last-child { min-width: 0; }
-.intro-menu .intro-farm-name strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 21px/1.05 var(--font-display); }
-.intro-menu .intro-farm-name small { display: block; white-space: nowrap; font: 700 15px/1.25 var(--font-text); color: var(--ink-2); }
+.intro-menu .intro-farm-name strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 1.3125rem/1.05 var(--font-display); }
+.intro-menu .intro-farm-name small { display: block; white-space: nowrap; font: 700 0.9375rem/1.25 var(--font-text); color: var(--ink-2); }
 .intro-menu .intro-farm-name small.intro-away { color: var(--leaf-lip); }
-.intro-menu .intro-coins { padding: 4px 12px 4px 6px; font-size: 18px; }
-.intro-menu .intro-coins img { width: 26px; height: 26px; }
-.intro-menu .intro-ready { grid-column: 1 / -1; display: flex; align-items: center; gap: 14px; padding: 6px 12px 8px; border-radius: 16px; background: var(--paper-2); }
-.intro-menu .intro-ready .item-pic .art { width: 36px; height: 36px; }
-.intro-menu .intro-more { font: 800 15px var(--font-text); color: var(--ink-2); }
+.intro-menu .intro-coins { padding: 0.25rem 0.75rem 0.25rem 0.375rem; font-size: 1.125rem; }
+.intro-menu .intro-coins img { width: 1.625rem; height: 1.625rem; }
+.intro-menu .intro-ready { grid-column: 1 / -1; display: flex; align-items: center; gap: 0.875rem; padding: 0.375rem 0.75rem 0.5rem; border-radius: 1rem; background: var(--paper-2); }
+.intro-menu .intro-ready .item-pic .art { width: 2.25rem; height: 2.25rem; }
+.intro-menu .intro-more { font: 800 0.9375rem var(--font-text); color: var(--ink-2); }
 .intro-menu .intro-buyers { margin-left: auto; }
-.intro-menu .intro-buyers .art { width: 36px; height: 36px; }
+.intro-menu .intro-buyers .art { width: 2.25rem; height: 2.25rem; }
 
 /* the foot: the card, and under it the device, the graphics and the version */
-.intro-menu .intro-bottom { justify-self: center; display: grid; gap: 8px; width: min(420px, 100%); min-height: 0; }
-.intro-menu .intro-foot { justify-self: center; max-width: 100%; margin: 0; padding: 3px 12px; border-radius: 12px; background: rgba(40, 24, 10, 0.55); text-align: center; font: 700 13px/1.3 var(--font-text); color: #fff8ec; }
-.intro-menu .intro-card { display: flex; flex-direction: column; min-height: 0; max-height: calc(100dvh - 210px); padding: 12px; overflow: hidden; box-shadow: 0 6px 0 var(--paper-3), 0 18px 40px rgba(40, 24, 10, 0.35); }
-.intro-menu .intro-page-menu { display: grid; gap: 12px; }
+.intro-menu .intro-bottom { justify-self: center; display: grid; gap: 0.5rem; width: min(26.25rem, 100%); min-height: 0; }
+.intro-menu .intro-foot { justify-self: center; max-width: 100%; margin: 0; padding: 0.1875rem 0.75rem; border-radius: 0.75rem; background: rgba(40, 24, 10, 0.55); text-align: center; font: 700 0.8125rem/1.3 var(--font-text); color: #fff8ec; }
+.intro-menu .intro-card { display: flex; flex-direction: column; min-height: 0; max-height: calc(100dvh - 13.125rem); padding: 0.75rem; overflow: hidden; box-shadow: 0 0.375rem 0 var(--paper-3), 0 1.125rem 2.5rem rgba(40, 24, 10, 0.35); }
+.intro-menu .intro-page-menu { display: grid; gap: 0.75rem; }
 
 /* the big button: tall, a shine passing over it now and then; while the game loads, the loading bar itself */
-.intro-menu .intro-go { position: relative; overflow: hidden; min-height: 64px; font-size: 24px; gap: 10px; isolation: isolate; }
-.intro-menu .intro-go-words { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 10px; }
-.intro-menu .intro-go svg { width: 24px; height: 24px; transition: transform 0.15s var(--ease-pop); }
-.intro-menu .intro-go.loading { background: color-mix(in srgb, var(--sun) 28%, var(--paper-2)); box-shadow: 0 5px 0 color-mix(in srgb, var(--sun-lip) 45%, var(--paper-3)); color: var(--ink-2); cursor: default; }
+.intro-menu .intro-go { position: relative; overflow: hidden; min-height: 4rem; font-size: 1.5rem; gap: 0.625rem; isolation: isolate; }
+.intro-menu .intro-go-words { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 0.625rem; }
+.intro-menu .intro-go svg { width: 1.5rem; height: 1.5rem; transition: transform 0.15s var(--ease-pop); }
+.intro-menu .intro-go.loading { background: color-mix(in srgb, var(--sun) 28%, var(--paper-2)); box-shadow: 0 0.3125rem 0 color-mix(in srgb, var(--sun-lip) 45%, var(--paper-3)); color: var(--ink-2); cursor: default; }
 .intro-menu .intro-go.loading b { color: var(--ink); font-variant-numeric: tabular-nums; }
 .intro-menu .intro-go.loading::after { display: none; }
-.intro-menu .intro-go-fill { position: absolute; inset: 0 auto 0 0; z-index: 0; border-radius: inherit; background: repeating-linear-gradient(-55deg, rgba(255, 255, 255, 0.22) 0 10px, transparent 10px 20px), linear-gradient(to bottom, color-mix(in srgb, var(--sun) 60%, #fff), var(--sun)); transition: width 0.12s linear; }
-.intro-menu .intro-go.going svg { transform: translateX(6px); }
+.intro-menu .intro-go-fill { position: absolute; inset: 0 auto 0 0; z-index: 0; border-radius: inherit; background: repeating-linear-gradient(-55deg, rgba(255, 255, 255, 0.22) 0 0.625rem, transparent 0.625rem 1.25rem), linear-gradient(to bottom, color-mix(in srgb, var(--sun) 60%, #fff), var(--sun)); transition: width 0.12s linear; }
+.intro-menu .intro-go.going svg { transform: translateX(0.375rem); }
 .intro-menu .intro-go::after { content: ''; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.55) 50%, transparent 65%); transform: translateX(-120%); animation: intro-shine 4.2s ease-in-out 1.4s infinite; }
 
 /* the six tiles: a picture and a word each, three to a row, lower than the big button so it stays the one way in */
-.intro-menu .intro-tiles { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+.intro-menu .intro-tiles { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0.5rem; }
 .intro-menu .intro-tiles > * { grid-column: span 2; }
 /* five tiles (the first time, New farm is the big button): the last two share the second row */
 .intro-menu .intro-tiles:has(> :nth-child(5):last-child) > :nth-child(n + 4) { grid-column: span 3; }
-.intro-menu .intro-tile { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 64px; padding: 6px 4px; border: 0; border-radius: 18px; background: var(--paper-2); color: var(--ink); box-shadow: 0 3px 0 var(--paper-3); font: 600 15px/1.1 var(--font-display); }
-.intro-menu .intro-tile .art { width: 30px; height: 30px; }
-.intro-menu .intro-tile.on { background: color-mix(in srgb, var(--sun) 28%, var(--paper)); box-shadow: 0 3px 0 color-mix(in srgb, var(--sun-lip) 50%, var(--paper-3)); }
-.intro-menu .intro-tile-n { position: absolute; top: 6px; right: 8px; display: grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; background: var(--sun); font: 800 13px/1 var(--font-text); }
-.intro-menu .intro-eq { position: absolute; top: 8px; right: 10px; display: none; align-items: flex-end; gap: 2px; height: 14px; }
+.intro-menu .intro-tile { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.1875rem; min-height: 4rem; padding: 0.375rem 0.25rem; border: 0; border-radius: 1.125rem; background: var(--paper-2); color: var(--ink); box-shadow: 0 0.1875rem 0 var(--paper-3); font: 600 0.9375rem/1.1 var(--font-display); }
+.intro-menu .intro-tile .art { width: 1.875rem; height: 1.875rem; }
+.intro-menu .intro-tile.on { background: color-mix(in srgb, var(--sun) 28%, var(--paper)); box-shadow: 0 0.1875rem 0 color-mix(in srgb, var(--sun-lip) 50%, var(--paper-3)); }
+.intro-menu .intro-tile-n { position: absolute; top: 0.375rem; right: 0.5rem; display: grid; place-items: center; min-width: 1.25rem; height: 1.25rem; padding: 0 0.3125rem; border-radius: 62.4375rem; background: var(--sun); font: 800 0.8125rem/1 var(--font-text); }
+.intro-menu .intro-eq { position: absolute; top: 0.5rem; right: 0.625rem; display: none; align-items: flex-end; gap: 0.125rem; height: 0.875rem; }
 .intro-menu .intro-tile.on .intro-eq { display: flex; }
-.intro-menu .intro-eq i { width: 3px; height: 40%; border-radius: 2px; background: var(--sun-lip); animation: intro-eq 0.9s ease-in-out infinite; }
+.intro-menu .intro-eq i { width: 0.1875rem; height: 40%; border-radius: 0.125rem; background: var(--sun-lip); animation: intro-eq 0.9s ease-in-out infinite; }
 .intro-menu .intro-eq i:nth-child(2) { animation-delay: -0.3s; }
 .intro-menu .intro-eq i:nth-child(3) { animation-delay: -0.6s; }
 
 /* a page: Back, its picture and title, and its body (which scrolls when it is long) */
-.intro-menu .intro-page { display: flex; flex-direction: column; gap: 10px; min-height: 0; }
-.intro-menu .intro-page-head { display: flex; align-items: center; gap: 8px; }
-.intro-menu .intro-page-head .art { width: 32px; height: 32px; }
-.intro-menu .intro-page-head h2 { margin: 0; font: 600 23px/1.1 var(--font-display); }
-.intro-menu .intro-back { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%; background: var(--paper-2); color: var(--ink); box-shadow: 0 3px 0 var(--paper-3); }
-.intro-menu .intro-back svg { width: 22px; height: 22px; }
-.intro-menu .intro-page-body { flex: 1; min-height: 0; overflow: auto; margin: 0 -4px; padding: 2px 4px 4px; overscroll-behavior: contain; scrollbar-width: thin; }
+.intro-menu .intro-page { display: flex; flex-direction: column; gap: 0.625rem; min-height: 0; }
+.intro-menu .intro-page-head { display: flex; align-items: center; gap: 0.5rem; }
+.intro-menu .intro-page-head .art { width: 2rem; height: 2rem; }
+.intro-menu .intro-page-head h2 { margin: 0; font: 600 1.4375rem/1.1 var(--font-display); }
+.intro-menu .intro-back { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; padding: 0; border: 0; border-radius: 50%; background: var(--paper-2); color: var(--ink); box-shadow: 0 0.1875rem 0 var(--paper-3); }
+.intro-menu .intro-back svg { width: 1.375rem; height: 1.375rem; }
+.intro-menu .intro-page-body { flex: 1; min-height: 0; overflow: auto; margin: 0 -0.25rem; padding: 0.125rem 0.25rem 0.25rem; overscroll-behavior: contain; scrollbar-width: thin; }
 
 /* New farm: the name on a sign, the place, what it starts with, Start */
-.intro-menu .intro-new { display: grid; gap: 12px; }
-.intro-menu .intro-new-gives { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 0; }
-.intro-menu .intro-new-gives .tag { font-size: 14px; }
-.intro-menu .intro-new-gives .tag img { width: 20px; height: 20px; }
-.intro-menu .intro-start { min-height: 58px; font-size: 21px; gap: 8px; }
-.intro-menu .intro-start svg { width: 22px; height: 22px; }
+.intro-menu .intro-new { display: grid; gap: 0.75rem; }
+.intro-menu .intro-new-gives { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.375rem; margin: 0; }
+.intro-menu .intro-new-gives .tag { font-size: 0.875rem; }
+.intro-menu .intro-new-gives .tag img { width: 1.25rem; height: 1.25rem; }
+.intro-menu .intro-start { min-height: 3.625rem; font-size: 1.3125rem; gap: 0.5rem; }
+.intro-menu .intro-start svg { width: 1.375rem; height: 1.375rem; }
 
 /* Load farm: the saved farms' own design (../saves/SavesC.css), fitted to the card */
-.intro-menu .intro-saves { display: flex; flex-direction: column; gap: 10px; }
+.intro-menu .intro-saves { display: flex; flex-direction: column; gap: 0.625rem; }
 
 /* Settings: three tabs of rows, then what the device keeps and the reset */
-.intro-menu .intro-settings { display: grid; gap: 10px; }
-.intro-menu .intro-tablist { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 999px; background: var(--paper-2); }
-.intro-menu .intro-tab { min-height: 44px; border: 0; border-radius: 999px; background: none; color: var(--ink-2); font: 600 16px/1 var(--font-display); }
-.intro-menu .intro-tab[data-state='active'] { background: var(--paper); color: var(--ink); box-shadow: 0 2px 0 var(--paper-3), 0 0 0 2px var(--sun); }
-.intro-menu .intro-tab-body { display: grid; gap: 2px; padding-top: 6px; }
+.intro-menu .intro-settings { display: grid; gap: 0.625rem; }
+.intro-menu .intro-tablist { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.25rem; padding: 0.25rem; border-radius: 62.4375rem; background: var(--paper-2); }
+.intro-menu .intro-tab { min-height: 2.75rem; border: 0; border-radius: 62.4375rem; background: none; color: var(--ink-2); font: 600 1rem/1 var(--font-display); }
+.intro-menu .intro-tab[data-state='active'] { background: var(--paper); color: var(--ink); box-shadow: 0 0.125rem 0 var(--paper-3), 0 0 0 0.125rem var(--sun); }
+.intro-menu .intro-tab-body { display: grid; gap: 0.125rem; padding-top: 0.375rem; }
 .intro-menu .intro-tab-body:focus-visible { outline: none; }
-.intro-menu .intro-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 4px 4px 4px 2px; border-bottom: 1px solid color-mix(in srgb, var(--paper-3) 60%, transparent); }
+.intro-menu .intro-row { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; min-height: 3.25rem; padding: 0.25rem 0.25rem 0.25rem 0.125rem; border-bottom: 0.0625rem solid color-mix(in srgb, var(--paper-3) 60%, transparent); }
 .intro-menu .intro-row:last-child { border-bottom: 0; }
-.intro-menu .intro-row-words { display: flex; flex-direction: column; min-width: 0; font: 700 16px/1.2 var(--font-text); color: var(--ink); }
-.intro-menu .intro-row-words small { font: 600 13px/1.3 var(--font-text); color: var(--ink-2); }
+.intro-menu .intro-row-words { display: flex; flex-direction: column; min-width: 0; font: 700 1rem/1.2 var(--font-text); color: var(--ink); }
+.intro-menu .intro-row-words small { font: 600 0.8125rem/1.3 var(--font-text); color: var(--ink-2); }
 /* a switch: a finger-sized button (60 × 44) with its track drawn inside it */
-.intro-menu .intro-switch { position: relative; flex: none; width: 60px; height: 44px; padding: 0; border: 0; background: none; }
-.intro-menu .intro-switch::before { content: ''; position: absolute; inset: 5px 2px; border-radius: 999px; background: var(--paper-3); box-shadow: inset 0 2px 3px rgba(60, 35, 10, 0.2); transition: background 0.18s; }
+.intro-menu .intro-switch { position: relative; flex: none; width: 3.75rem; height: 2.75rem; padding: 0; border: 0; background: none; }
+.intro-menu .intro-switch::before { content: ''; position: absolute; inset: 0.3125rem 0.125rem; border-radius: 62.4375rem; background: var(--paper-3); box-shadow: inset 0 0.125rem 0.1875rem rgba(60, 35, 10, 0.2); transition: background 0.18s; }
 .intro-menu .intro-switch[data-state='checked']::before { background: var(--leaf); }
 .intro-menu .intro-switch:disabled { opacity: 0.45; }
-.intro-menu .intro-thumb { position: relative; display: block; width: 28px; height: 28px; margin-left: 5px; border-radius: 50%; background: #fff; box-shadow: 0 2px 3px rgba(0, 0, 0, 0.25); transition: translate 0.18s var(--ease-pop); }
-.intro-menu .intro-thumb[data-state='checked'] { translate: 22px 0; }
-.intro-menu .intro-seg { display: flex; flex: none; padding: 3px; border-radius: 999px; background: var(--paper-2); }
-.intro-menu .intro-seg-item { min-width: 44px; min-height: 44px; padding: 0 10px; border: 0; border-radius: 999px; background: none; color: var(--ink-2); font: 700 14px/1 var(--font-text); }
-.intro-menu .intro-seg-item[data-state='on'] { background: var(--sun); color: var(--ink); box-shadow: 0 2px 0 var(--sun-lip); }
-.intro-menu .intro-range { display: flex; align-items: center; gap: 8px; flex: 0 1 190px; min-width: 120px; }
-.intro-menu .intro-range output { min-width: 34px; font: 800 14px/1 var(--font-text); color: var(--ink-2); text-align: right; font-variant-numeric: tabular-nums; }
-.intro-menu .intro-slider { position: relative; display: flex; align-items: center; flex: 1; height: 44px; touch-action: none; user-select: none; }
-.intro-menu .intro-slider-track { position: relative; flex: 1; height: 8px; border-radius: 999px; background: var(--paper-3); }
-.intro-menu .intro-slider-range { position: absolute; height: 100%; border-radius: 999px; background: var(--sun); }
-.intro-menu .intro-slider-thumb { display: block; width: 26px; height: 26px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 3px var(--sun), 0 2px 4px rgba(0, 0, 0, 0.25); }
-.intro-menu .intro-slider-thumb:focus-visible { outline: 3px solid var(--xp); outline-offset: 2px; }
-.intro-menu .intro-keep { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; border-radius: 16px; background: var(--paper-2); }
+.intro-menu .intro-thumb { position: relative; display: block; width: 1.75rem; height: 1.75rem; margin-left: 0.3125rem; border-radius: 50%; background: #fff; box-shadow: 0 0.125rem 0.1875rem rgba(0, 0, 0, 0.25); transition: translate 0.18s var(--ease-pop); }
+.intro-menu .intro-thumb[data-state='checked'] { translate: 1.375rem 0; }
+.intro-menu .intro-seg { display: flex; flex: none; padding: 0.1875rem; border-radius: 62.4375rem; background: var(--paper-2); }
+.intro-menu .intro-seg-item { min-width: 2.75rem; min-height: 2.75rem; padding: 0 0.625rem; border: 0; border-radius: 62.4375rem; background: none; color: var(--ink-2); font: 700 0.875rem/1 var(--font-text); }
+.intro-menu .intro-seg-item[data-state='on'] { background: var(--sun); color: var(--ink); box-shadow: 0 0.125rem 0 var(--sun-lip); }
+.intro-menu .intro-range { display: flex; align-items: center; gap: 0.5rem; flex: 0 1 11.875rem; min-width: 7.5rem; }
+.intro-menu .intro-range output { min-width: 2.125rem; font: 800 0.875rem/1 var(--font-text); color: var(--ink-2); text-align: right; font-variant-numeric: tabular-nums; }
+.intro-menu .intro-slider { position: relative; display: flex; align-items: center; flex: 1; height: 2.75rem; touch-action: none; user-select: none; }
+.intro-menu .intro-slider-track { position: relative; flex: 1; height: 0.5rem; border-radius: 62.4375rem; background: var(--paper-3); }
+.intro-menu .intro-slider-range { position: absolute; height: 100%; border-radius: 62.4375rem; background: var(--sun); }
+.intro-menu .intro-slider-thumb { display: block; width: 1.625rem; height: 1.625rem; border-radius: 50%; background: #fff; box-shadow: 0 0 0 0.1875rem var(--sun), 0 0.125rem 0.25rem rgba(0, 0, 0, 0.25); }
+.intro-menu .intro-slider-thumb:focus-visible { outline: 0.1875rem solid var(--xp); outline-offset: 0.125rem; }
+.intro-menu .intro-keep { display: flex; align-items: center; justify-content: space-between; gap: 0.625rem; padding: 0.5rem 0.625rem; border-radius: 1rem; background: var(--paper-2); }
 .intro-menu .intro-keep .btn,
-.intro-menu .intro-reset { min-height: 44px; }
+.intro-menu .intro-reset { min-height: 2.75rem; }
 .intro-menu .intro-reset { justify-self: center; }
 
 /* Music: what plays, the three round buttons, the four tracks, the volume */
-.intro-menu .intro-music { display: grid; gap: 10px; }
-.intro-menu .intro-now { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 18px; background: var(--paper-2); }
-.intro-menu .intro-disc { display: grid; place-items: center; flex: none; width: 52px; height: 52px; border-radius: 50%; background: radial-gradient(circle, #fff 0 18%, var(--ink) 19% 100%); box-shadow: 0 3px 0 var(--paper-3); }
-.intro-menu .intro-disc .art { width: 26px; height: 26px; }
+.intro-menu .intro-music { display: grid; gap: 0.625rem; }
+.intro-menu .intro-now { display: flex; align-items: center; gap: 0.75rem; padding: 0.625rem 0.75rem; border-radius: 1.125rem; background: var(--paper-2); }
+.intro-menu .intro-disc { display: grid; place-items: center; flex: none; width: 3.25rem; height: 3.25rem; border-radius: 50%; background: radial-gradient(circle, #fff 0 18%, var(--ink) 19% 100%); box-shadow: 0 0.1875rem 0 var(--paper-3); }
+.intro-menu .intro-disc .art { width: 1.625rem; height: 1.625rem; }
 .intro-menu .intro-now.on .intro-disc { animation: intro-spin 4s linear infinite; }
 .intro-menu .intro-now-words { display: flex; flex-direction: column; min-width: 0; }
-.intro-menu .intro-now-words b { font: 600 19px/1.2 var(--font-display); }
-.intro-menu .intro-now-words small { font: 700 14px/1.3 var(--font-text); color: var(--ink-2); }
-.intro-menu .intro-controls { display: flex; align-items: center; justify-content: center; gap: 16px; }
-.intro-menu .intro-round { display: grid; place-items: center; width: 48px; height: 48px; padding: 0; border: 0; border-radius: 50%; background: var(--paper-2); color: var(--ink); box-shadow: 0 3px 0 var(--paper-3); }
-.intro-menu .intro-round svg { width: 22px; height: 22px; }
-.intro-menu .intro-round.big { width: 64px; height: 64px; background: var(--sun); box-shadow: 0 4px 0 var(--sun-lip); }
-.intro-menu .intro-round.big svg { width: 30px; height: 30px; }
-.intro-menu .intro-tracks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 0; padding: 0; list-style: none; }
-.intro-menu .intro-track { display: flex; flex-direction: column; align-items: flex-start; width: 100%; min-height: 52px; padding: 6px 10px; border: 0; border-radius: 14px; background: var(--paper-2); color: var(--ink); text-align: left; }
-.intro-menu .intro-track b { font: 600 15px/1.15 var(--font-display); }
-.intro-menu .intro-track small { font: 600 13px/1.25 var(--font-text); color: var(--ink-2); }
-.intro-menu .intro-track.on { background: color-mix(in srgb, var(--sun) 30%, var(--paper)); box-shadow: inset 0 0 0 2px var(--sun); }
+.intro-menu .intro-now-words b { font: 600 1.1875rem/1.2 var(--font-display); }
+.intro-menu .intro-now-words small { font: 700 0.875rem/1.3 var(--font-text); color: var(--ink-2); }
+.intro-menu .intro-controls { display: flex; align-items: center; justify-content: center; gap: 1rem; }
+.intro-menu .intro-round { display: grid; place-items: center; width: 3rem; height: 3rem; padding: 0; border: 0; border-radius: 50%; background: var(--paper-2); color: var(--ink); box-shadow: 0 0.1875rem 0 var(--paper-3); }
+.intro-menu .intro-round svg { width: 1.375rem; height: 1.375rem; }
+.intro-menu .intro-round.big { width: 4rem; height: 4rem; background: var(--sun); box-shadow: 0 0.25rem 0 var(--sun-lip); }
+.intro-menu .intro-round.big svg { width: 1.875rem; height: 1.875rem; }
+.intro-menu .intro-tracks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.375rem; margin: 0; padding: 0; list-style: none; }
+.intro-menu .intro-track { display: flex; flex-direction: column; align-items: flex-start; width: 100%; min-height: 3.25rem; padding: 0.375rem 0.625rem; border: 0; border-radius: 0.875rem; background: var(--paper-2); color: var(--ink); text-align: left; }
+.intro-menu .intro-track b { font: 600 0.9375rem/1.15 var(--font-display); }
+.intro-menu .intro-track small { font: 600 0.8125rem/1.25 var(--font-text); color: var(--ink-2); }
+.intro-menu .intro-track.on { background: color-mix(in srgb, var(--sun) 30%, var(--paper)); box-shadow: inset 0 0 0 0.125rem var(--sun); }
 
 /* How to play */
-.intro-menu .intro-help { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
-.intro-menu .intro-help li { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 6px 12px; border-radius: 16px; background: var(--paper-2); }
-.intro-menu .intro-help .art { width: 34px; height: 34px; flex: none; }
-.intro-menu .intro-help span { display: flex; flex-direction: column; font: 600 14px/1.3 var(--font-text); color: var(--ink-2); }
-.intro-menu .intro-help b { font: 600 17px/1.2 var(--font-display); color: var(--ink); }
+.intro-menu .intro-help { display: grid; gap: 0.375rem; margin: 0; padding: 0; list-style: none; }
+.intro-menu .intro-help li { display: flex; align-items: center; gap: 0.75rem; min-height: 3.25rem; padding: 0.375rem 0.75rem; border-radius: 1rem; background: var(--paper-2); }
+.intro-menu .intro-help .art { width: 2.125rem; height: 2.125rem; flex: none; }
+.intro-menu .intro-help span { display: flex; flex-direction: column; font: 600 0.875rem/1.3 var(--font-text); color: var(--ink-2); }
+.intro-menu .intro-help b { font: 600 1.0625rem/1.2 var(--font-display); color: var(--ink); }
 
 /* with a page open upright, the name steps back a little and the card takes the room */
 .intro-menu.paged .intro-logo { scale: 0.8; }
 .intro-menu.paged .intro-house,
 .intro-menu.paged .intro-logo .game-name p { display: none; }
 .intro-menu.paged .intro-farm-wrap { display: none; }
-.intro-menu.paged .intro-card { max-height: calc(100dvh - 190px); }
+.intro-menu.paged .intro-card { max-height: calc(100dvh - 11.875rem); }
 
-@keyframes intro-bob { 50% { transform: translateY(-5px) rotate(-1.5deg); } }
+@keyframes intro-bob { 50% { transform: translateY(-0.3125rem) rotate(-1.5deg); } }
 @keyframes intro-shine { 0% { transform: translateX(-120%); } 30%, 100% { transform: translateX(120%); } }
 @keyframes intro-eq { 0%, 100% { height: 30%; } 50% { height: 100%; } }
 @keyframes intro-spin { to { rotate: 360deg; } }
 @keyframes intro-turn { to { transform: rotate(1turn); } }
-@keyframes intro-run { to { background-position: 23px 0, 0 0; } }
+@keyframes intro-run { to { background-position: 1.4375rem 0, 0 0; } }
 :where(:root:not([data-motion='less'])) {
   .intro-menu .intro-sun i { animation: intro-turn 40s linear infinite; }
   .intro-menu .intro-go-fill { animation: intro-run 0.9s linear infinite; }
@@ -197,13 +197,13 @@
 
 /* a short phone upright: a smaller house and name */
 @media (orientation: portrait) and (max-height: 700px) {
-  .intro-menu .intro-house .art { width: 76px; }
-  .intro-menu h1 { font-size: 50px; }
-  .intro-menu .intro-logo .game-name p { font-size: 15px; margin-top: 4px; }
-  .intro-menu .intro-card { max-height: calc(100dvh - 170px); }
-  .intro-menu .intro-tile { min-height: 60px; }
+  .intro-menu .intro-house .art { width: 4.75rem; }
+  .intro-menu h1 { font-size: 3.125rem; }
+  .intro-menu .intro-logo .game-name p { font-size: 0.9375rem; margin-top: 0.25rem; }
+  .intro-menu .intro-card { max-height: calc(100dvh - 10.625rem); }
+  .intro-menu .intro-tile { min-height: 3.75rem; }
   .intro-menu.paged .intro-logo { display: none; }
-  .intro-menu.paged .intro-card { max-height: calc(100dvh - 60px); }
+  .intro-menu.paged .intro-card { max-height: calc(100dvh - 3.75rem); }
   /* a page takes the height, up to the corner: the music button steps aside (the page has the music's own) */
   .intro-menu.paged > .intro-sound { display: none; }
 }
@@ -214,56 +214,56 @@
 
 /* a phone on its side: the name and your farm on the left, the card on the right, the whole height */
 @media (orientation: landscape) and (max-height: 560px) {
-  .intro-menu { grid-template-rows: minmax(0, 1fr); grid-template-columns: minmax(0, 1fr) minmax(330px, 440px); column-gap: 20px; padding-top: 10px; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
+  .intro-menu { grid-template-rows: minmax(0, 1fr); grid-template-columns: minmax(0, 1fr) minmax(20.625rem, 27.5rem); column-gap: 1.25rem; padding-top: 0.625rem; padding-bottom: max(0.625rem, env(safe-area-inset-bottom)); }
   .intro-menu > .intro-sun { left: 30%; top: 40%; }
-  .intro-menu .intro-side { gap: 10px; }
-  .intro-menu .intro-house .art { width: 76px; }
-  .intro-menu h1 { font-size: 52px; }
-  .intro-menu h1 span { -webkit-text-stroke-width: 7px; }
-  .intro-menu .intro-logo .game-name p { margin-top: 4px; font-size: 15px; }
-  .intro-menu .intro-farm-wrap { width: min(380px, 100%); }
-  .intro-menu .intro-farm { padding: 6px 8px 8px; }
-  .intro-menu .intro-farm-name { min-height: 46px; }
-  .intro-menu .intro-ready { padding: 4px 10px 6px; }
+  .intro-menu .intro-side { gap: 0.625rem; }
+  .intro-menu .intro-house .art { width: 4.75rem; }
+  .intro-menu h1 { font-size: 3.25rem; }
+  .intro-menu h1 span { -webkit-text-stroke-width: 0.4375rem; }
+  .intro-menu .intro-logo .game-name p { margin-top: 0.25rem; font-size: 0.9375rem; }
+  .intro-menu .intro-farm-wrap { width: min(23.75rem, 100%); }
+  .intro-menu .intro-farm { padding: 0.375rem 0.5rem 0.5rem; }
+  .intro-menu .intro-farm-name { min-height: 2.875rem; }
+  .intro-menu .intro-ready { padding: 0.25rem 0.625rem 0.375rem; }
   .intro-menu .intro-ready .item-pic .art,
-  .intro-menu .intro-buyers .art { width: 32px; height: 32px; }
+  .intro-menu .intro-buyers .art { width: 2rem; height: 2rem; }
   .intro-menu .intro-bottom { align-self: stretch; align-content: center; width: 100%; }
-  .intro-menu .intro-card { max-height: calc(100dvh - 44px - env(safe-area-inset-bottom)); padding: 10px; }
-  .intro-menu.paged .intro-card { max-height: calc(100dvh - 44px - env(safe-area-inset-bottom)); }
+  .intro-menu .intro-card { max-height: calc(100dvh - 2.75rem - env(safe-area-inset-bottom)); padding: 0.625rem; }
+  .intro-menu.paged .intro-card { max-height: calc(100dvh - 2.75rem - env(safe-area-inset-bottom)); }
   .intro-menu.paged .intro-logo { scale: 1; }
   .intro-menu.paged .intro-house { display: block; }
   .intro-menu.paged .intro-logo .game-name p { display: inline-block; }
   .intro-menu.paged .intro-farm-wrap { display: block; }
-  .intro-menu .intro-go { min-height: 58px; }
-  .intro-menu .intro-tile { min-height: 60px; }
-  .intro-menu .intro-page { gap: 8px; }
-  .intro-menu .intro-page-head h2 { font-size: 20px; }
+  .intro-menu .intro-go { min-height: 3.625rem; }
+  .intro-menu .intro-tile { min-height: 3.75rem; }
+  .intro-menu .intro-page { gap: 0.5rem; }
+  .intro-menu .intro-page-head h2 { font-size: 1.25rem; }
   
 }
 
 /* the menu's notes: light graphics on, offline */
-.intro-menu .intro-note { margin: -4px 0 0; text-align: center; font: 700 15px/1.3 var(--font-text); color: #8a5a00; }
+.intro-menu .intro-note { margin: -0.25rem 0 0; text-align: center; font: 700 0.9375rem/1.3 var(--font-text); color: #8a5a00; }
 /* the failure card in the menu: its presses */
 .intro-menu .failure { margin: 0; }
-.intro-menu .failure .btn { min-height: 44px; }
+.intro-menu .failure .btn { min-height: 2.75rem; }
 
 /* New farm, in the game: where it goes, what it starts with, Start */
 .intro-menu .intro-new { justify-items: center; text-align: center; }
-.intro-menu .intro-new-pic { width: 64px; height: 64px; }
-.intro-menu .intro-new-where { margin: 0; font: 600 20px/1.2 var(--font-display); color: var(--ink); }
+.intro-menu .intro-new-pic { width: 4rem; height: 4rem; }
+.intro-menu .intro-new-where { margin: 0; font: 600 1.25rem/1.2 var(--font-display); color: var(--ink); }
 .intro-menu .intro-new .intro-start { width: 100%; }
 
 /* the music's tile, with the bars that dance while it plays */
-.intro-menu .intro-music .intro-now-words strong { font: 600 19px/1.2 var(--font-display); }
+.intro-menu .intro-music .intro-now-words strong { font: 600 1.1875rem/1.2 var(--font-display); }
 
 /* the credits: who made what, each with its licence */
-.intro-credit-list { display: flex; flex-direction: column; gap: 10px; min-height: 0; }
-.intro-credit-lead { margin: 0; font: 600 16px/1.35 var(--font-display); color: var(--ink-2); }
-.intro-credit-list ul { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0 4px 0 0; list-style: none; }
-.intro-credit-list li { display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border-radius: 14px; background: var(--paper-2); }
-.intro-credit-list li b { font: 700 15px/1.25 var(--font-text); color: var(--ink); }
+.intro-credit-list { display: flex; flex-direction: column; gap: 0.625rem; min-height: 0; }
+.intro-credit-lead { margin: 0; font: 600 1rem/1.35 var(--font-display); color: var(--ink-2); }
+.intro-credit-list ul { display: flex; flex-direction: column; gap: 0.5rem; margin: 0; padding: 0 0.25rem 0 0; list-style: none; }
+.intro-credit-list li { display: flex; flex-direction: column; gap: 0.125rem; padding: 0.5rem 0.75rem; border-radius: 0.875rem; background: var(--paper-2); }
+.intro-credit-list li b { font: 700 0.9375rem/1.25 var(--font-text); color: var(--ink); }
 .intro-credit-list li b a { color: inherit; }
-.intro-credit-list li span { font: 600 13px/1.3 var(--font-text); color: var(--ink-2); }
+.intro-credit-list li span { font: 600 0.8125rem/1.3 var(--font-text); color: var(--ink-2); }
 
 /* the saved farms in the card (./SavesPanel.css) */
 @media (orientation: landscape) and (max-height: 560px) {
@@ -271,5 +271,5 @@
 }
 
 /* the music on or off, in the corner (the top left: the card has the right sideways), clear of the notch */
-.intro-menu > .intro-sound { position: absolute; top: max(12px, env(safe-area-inset-top)); left: max(16px, env(safe-area-inset-left)); z-index: 2; }
+.intro-menu > .intro-sound { position: absolute; top: max(0.75rem, env(safe-area-inset-top)); left: max(1rem, env(safe-area-inset-left)); z-index: 2; }
 .intro-menu .intro-sound:not(.on) { --b-ink: var(--ink-2); }

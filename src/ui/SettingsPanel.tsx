@@ -4,12 +4,13 @@ import { AnimatePresence } from 'motion/react'
 import { art } from './art'
 import { PanelSheet } from './PanelSheet'
 import { collectDiagnostics } from '../lib/diagnostics'
-import { DEFAULT_SETTINGS, useSettings, type Settings } from '../settings'
+import { DEFAULT_SETTINGS, uiSizeOf, useSettings, type Settings, type UiSize } from '../settings'
 import { useHome } from '../store'
 import { MusicPlayer } from './MusicPlayer'
 import { profile, setLightMode } from '../lib/profile'
 import { restartGraphics } from '../lib/startup'
 import { useLessMotion } from './still'
+import { UI_SIZES, uiScale } from './uiSize'
 import { resumeSteps, stepsResumable, useFarm } from '../farm/state'
 
 function Segmented<T extends string>({ value, options, onChange, label }: { value: T; options: { value: T; label: string }[]; onChange: (v: T) => void; label: string }) {
@@ -72,6 +73,13 @@ const TOUCH: { action: string; how: string }[] = [
 ]
 
 /** What Less motion says under its name: that it follows the device while it does, what it stills once chosen. */
+/** The interface size's line: what it is on this screen, and when the screen holds it back. */
+function sizeHint(pick: UiSize): string {
+  const now = uiScale(pick, innerWidth, innerHeight)
+  const pct = `${Math.round(now * 100)}%`
+  return now < UI_SIZES[pick] ? `${pct}: as large as this screen allows` : pick === 'medium' ? `${pct}: as the game was drawn` : pct
+}
+
 const MOTION_HINT: Record<Settings['motion'], string | undefined> = { device: 'Follows your device', less: 'No flights, confetti or walking sway', full: undefined }
 
 /** The settings (opened from the top corner's menu, src/ui/HudMode.tsx, or Esc): every control, shortcut and visual
@@ -236,6 +244,19 @@ export function SettingsPanel() {
                     { value: 'high', label: 'High' },
                     { value: 'medium', label: 'Medium' },
                     { value: 'low', label: 'Low' },
+                  ]}
+                />
+              </Row>
+              <Row label="Interface size" hint={sizeHint(settings.uiSize)}>
+                <Segmented
+                  label="Interface size"
+                  value={settings.uiSize}
+                  onChange={(v) => update({ uiSize: uiSizeOf(v) })}
+                  options={[
+                    { value: 'small', label: 'Small' },
+                    { value: 'medium', label: 'Medium' },
+                    { value: 'large', label: 'Large' },
+                    { value: 'larger', label: 'Larger' },
                   ]}
                 />
               </Row>

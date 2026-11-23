@@ -3,7 +3,7 @@
 @media (orientation: landscape) {
   .mpv-stage { background-image: url('/lab/stills/yard-clean-sideways.jpg'); }
 }
-.mpv-open { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%); }
-.mpv-bar { position: fixed; z-index: 100; top: max(8px, env(safe-area-inset-top)); right: max(8px, env(safe-area-inset-right)); display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: rgba(13, 16, 20, 0.7); font: 600 13px/1 var(--font-text); }
-.mpv-bar select, .mpv-bar button { height: 28px; padding: 0 8px; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; background: rgba(255, 255, 255, 0.08); color: #fff; font: inherit; }
+.mpv-open { position: fixed; left: 50%; bottom: calc(1.5rem + env(safe-area-inset-bottom)); transform: translateX(-50%); }
+.mpv-bar { position: fixed; z-index: 100; top: max(0.5rem, env(safe-area-inset-top)); right: max(0.5rem, env(safe-area-inset-right)); display: flex; gap: 0.25rem; padding: 0.25rem; border-radius: 0.75rem; background: rgba(13, 16, 20, 0.7); font: 600 0.8125rem/1 var(--font-text); }
+.mpv-bar select, .mpv-bar button { height: 1.75rem; padding: 0 0.5rem; border: 0.0625rem solid rgba(255, 255, 255, 0.2); border-radius: 0.5rem; background: rgba(255, 255, 255, 0.08); color: #fff; font: inherit; }
 .mpv-bar select option { color: #000; }

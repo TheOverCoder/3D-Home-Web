@@ -418,6 +418,16 @@ The README has the overview; `tests/README.md` what each test guards.
   there rather than drawing one; credit anything new in `src/data/credits.ts`. A good of the farm is pictured by
   its model (`src/models/goods.ts`, `iconUrl` in `src/farm/icons.ts`): a new good gets a model there, and after
   changing one, save the pictures again with `node scripts/render-item-art.mjs` (dev server up).
+- Sizes are in rem, one root size for all (`html { font-size }` in `src/styles.css`: 16 px × `--ui`): a design size
+  is changed where it is written, and Settings → Picture → Interface size (`src/ui/uiSize.ts`, `UI_SIZES`: Small,
+  Medium as drawn, Large, Larger) scales everything at once, a phone's only as far as leaves `MIN_SIDE` px on its
+  short side. Write px and run `node scripts/px-to-rem.mjs` (`styles.units.test.ts` fails on a px length in a
+  stylesheet; the conditions of `@media` and `@container` keep their px). The touch controls keep their px sizes
+  (`TouchControls.tsx` places them): a thumb is a thumb.
+- The loading screen (`src/ui/Loading.tsx`): one bar at one even pace over the time this device's last loads took
+  (`src/ui/loadPace.ts`, each step's time kept), its speed changed and never its run, on the compositor (one
+  animation, so it keeps moving while the house is built); no number. The tractor is an SVG whose parts move by CSS
+  (`Loading.css`), stopping as the game is ready.
 - Build a panel on the base: motion presets in `src/ui/motion.tsx` (`PRESS`, `SINK`, `SQUISH`, `TIP`, `POP`, `DID`,
   `NOPE`, `ARRIVE`, `REVEAL`, `DEAL`, `FLIP`, `SHIMMER`, `SHEET`), surfaces and tokens in `src/styles.css` ("the base":
   `.wood`, `.velvet` and its premium tokens, `.ribbon`, `.chip`, `.count`, `.stars`, `.shine`, `.sheet-heading`), and the
@@ -492,6 +502,10 @@ The README has the overview; `tests/README.md` what each test guards.
   day's factor), and the views call `priceAt` with a farm's own (`marketView`, `planView`, at `computerNow()`), so the
   computer never disagrees with a sale. `BUYER_OFFERS` (`data.ts`) is the gate's table of offers and their odds: a
   buyer's offer is drawn from it, and the Market shows it.
+- Every price the game has is a row of the price book (`src/farm/priceBook.ts`, `__home.prices` on a ?debug page:
+  the admin dashboard's door): a stable key, a group, a name, its start; `setPrice` changes it in its own table and in
+  every table that copied it, `priceOverrides` / `applyPrices` keep and load what was changed. The prices stay in
+  their tables (where the code reads them); a new table of prices is a group there (`priceBook.test.ts`).
 - The day's factor is the one `priceEvents` setter, `dayFactor` (`state/day.ts`): the lucky draw's ×2 times the town's
   market mood (`mood.ts`: ±10 %, half a shared wave of 13 days and half each good's own of 7 to 11, by the date alone,
   the same on every farm, never because you sold; never a building material), judged on the events' day (a time away's

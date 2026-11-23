@@ -6,6 +6,7 @@ import { App } from './App'
 import '@fontsource-variable/fredoka'
 import '@fontsource-variable/nunito'
 import './styles.css'
+import './ui/uiSize' // the interface's size, from the settings, before the first paint
 import { installDiagnostics } from './lib/diagnostics'
 import './lib/sw' // registers the service worker that keeps the game on this device
 

@@ -146,6 +146,40 @@ test.describe('settings', () => {
     expect(await look()).toEqual({ marked: false, compass: 'compass-open', motion: 'device', sway: true })
   })
 
+  test('interface size: chosen in Settings, the whole interface grows from its one root size, as far as the screen lets it; kept, and medium again as drawn', async ({ game }) => {
+    await game.ready('farm')
+    const { page } = game
+    const root = () => page.evaluate(() => ({ px: parseFloat(getComputedStyle(document.documentElement).fontSize), size: (window as any).__home.settings.getState().uiSize as string }))
+    const pick = async (name: string) => {
+      await page.getByRole('radiogroup', { name: 'Interface size' }).getByRole('radio', { name }).click()
+    }
+    expect(await root()).toEqual({ px: 16, size: 'medium' })
+    // a screen with room: every size is what it says (16 px × 1.25 for Larger), and a panel's words grow with it
+    await page.setViewportSize({ width: 1280, height: 800 })
+    try {
+      await page.keyboard.press('Escape')
+      await page.waitForFunction(() => (window as any).__home.useHome.getState().settingsOpen === true, null, { timeout: 30_000 })
+      const heading = page.locator('.farm-panel').first()
+      const words = () => heading.evaluate((e) => parseFloat(getComputedStyle(e).fontSize))
+      const before = await words()
+      await pick('Larger')
+      await expect.poll(root, { timeout: 10_000 }).toEqual({ px: 20, size: 'larger' })
+      expect(await words()).toBeCloseTo(before * 1.25, 1)
+      await expect(page.locator('.settings-panel, .farm-panel').getByText('125%')).toBeVisible()
+      // a phone's 390 px: it grows only as far as leaves 350 px on its short side
+      await page.setViewportSize({ width: 390, height: 844 })
+      await expect.poll(async () => (await root()).px, { timeout: 10_000 }).toBeCloseTo((16 * 390) / 350, 1)
+      await page.setViewportSize({ width: 1280, height: 800 })
+      await pick('Small')
+      await expect.poll(root, { timeout: 10_000 }).toEqual({ px: 14.4, size: 'small' })
+    } finally {
+      await pick('Medium')
+      await expect.poll(root, { timeout: 10_000 }).toEqual({ px: 16, size: 'medium' })
+      await page.getByRole('button', { name: 'Close (Esc)' }).click()
+      await page.setViewportSize({ width: 640, height: 360 })
+    }
+  })
+
   test('Show the tips again: a young farm that skipped its first steps has them back from Settings, where it was', async ({ game }) => {
     await game.ready('farm')
     const { page } = game

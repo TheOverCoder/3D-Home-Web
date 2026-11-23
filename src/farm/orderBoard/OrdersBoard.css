@@ -19,35 +19,35 @@
 .ob-root .mp-sub { display: block; }
 
 /* the tabs: Orders with how many places are taken and a green count of those ready to send; Office */
-.ob-tablist { display: grid; grid-template-columns: 1fr 1fr; padding: 3px; border-radius: 999px; background: var(--paper-2); }
+.ob-tablist { display: grid; grid-template-columns: 1fr 1fr; padding: 0.1875rem; border-radius: 62.4375rem; background: var(--paper-2); }
 .ob-tab {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  min-height: 44px;
+  gap: 0.375rem;
+  min-height: 2.75rem;
   border: 0;
-  border-radius: 999px;
+  border-radius: 62.4375rem;
   background: none;
   color: var(--ink-2);
-  font: 600 17px/1 var(--font-display);
+  font: 600 1.0625rem/1 var(--font-display);
   isolation: isolate;
 }
 .ob-tab[data-state='active'] { color: var(--ink); }
-.ob-tab-on { position: absolute; inset: 0; z-index: -1; border-radius: 999px; background: var(--paper); box-shadow: 0 2px 0 var(--paper-3); }
-.ob-tab-n { font: 800 14px/1 var(--font-text); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.ob-tab-on { position: absolute; inset: 0; z-index: -1; border-radius: 62.4375rem; background: var(--paper); box-shadow: 0 0.125rem 0 var(--paper-3); }
+.ob-tab-n { font: 800 0.875rem/1 var(--font-text); color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .ob-tab-ready {
   display: grid;
   place-items: center;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 5px;
-  border-radius: 999px;
+  min-width: 1.375rem;
+  height: 1.375rem;
+  padding: 0 0.3125rem;
+  border-radius: 62.4375rem;
   background: var(--leaf);
   color: #fff;
-  font: 800 13px/1 var(--font-text);
-  box-shadow: 0 2px 0 var(--leaf-lip);
+  font: 800 0.8125rem/1 var(--font-text);
+  box-shadow: 0 0.125rem 0 var(--leaf-lip);
 }
 .ob-board[hidden],
 .ob-office[hidden] { display: none; }
@@ -59,136 +59,136 @@
   overflow: auto;
   overscroll-behavior: contain;
   touch-action: pan-x pan-y;
-  padding: 8px;
-  border-radius: 20px;
+  padding: 0.5rem;
+  border-radius: 1.25rem;
   background:
-    repeating-linear-gradient(90deg, transparent 0 calc(25% - 2px), rgba(0, 0, 0, 0.22) calc(25% - 2px) 25%), repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0 3px, transparent 3px 11px),
+    repeating-linear-gradient(90deg, transparent 0 calc(25% - 0.125rem), rgba(0, 0, 0, 0.22) calc(25% - 0.125rem) 25%), repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0 0.1875rem, transparent 0.1875rem 0.6875rem),
     var(--board);
   box-shadow:
-    inset 0 3px 8px rgba(0, 0, 0, 0.35),
-    0 3px 0 var(--board-lip);
+    inset 0 0.1875rem 0.5rem rgba(0, 0, 0, 0.35),
+    0 0.1875rem 0 var(--board-lip);
   scrollbar-width: none;
 }
-.ob-planks { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.ob-planks { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.625rem; }
 
 /* a plank: light wood with its grain, nailed at its top corners */
 .ob-plank,
-.ob-wait { position: relative; border-radius: 14px; }
+.ob-wait { position: relative; border-radius: 0.875rem; }
 .ob-plank {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 10px;
+  gap: 0.5rem;
+  padding: 0.625rem;
   background:
     linear-gradient(90deg, rgba(255, 255, 255, 0.18), transparent 30%, rgba(120, 70, 20, 0.05) 70%, rgba(255, 255, 255, 0.12)),
-    repeating-linear-gradient(178deg, transparent 0 8px, rgba(120, 70, 20, 0.09) 8px 9px, transparent 9px 17px), var(--plank);
+    repeating-linear-gradient(178deg, transparent 0 0.5rem, rgba(120, 70, 20, 0.09) 0.5rem 0.5625rem, transparent 0.5625rem 1.0625rem), var(--plank);
   box-shadow:
-    0 3px 0 var(--plank-lip),
-    0 7px 12px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+    0 0.1875rem 0 var(--plank-lip),
+    0 0.4375rem 0.75rem rgba(0, 0, 0, 0.3),
+    inset 0 0.0625rem 0 rgba(255, 255, 255, 0.45);
   transform-origin: 85% 0;
   transition: box-shadow 0.3s;
 }
 .ob-plank.done {
   box-shadow:
-    0 3px 0 var(--plank-lip),
-    0 7px 12px rgba(0, 0, 0, 0.3),
-    0 0 0 3px color-mix(in oklab, var(--leaf) 70%, #fff),
-    0 0 18px 4px color-mix(in oklab, var(--leaf) 45%, transparent);
+    0 0.1875rem 0 var(--plank-lip),
+    0 0.4375rem 0.75rem rgba(0, 0, 0, 0.3),
+    0 0 0 0.1875rem color-mix(in oklab, var(--leaf) 70%, #fff),
+    0 0 1.125rem 0.25rem color-mix(in oklab, var(--leaf) 45%, transparent);
 }
 .ob-nail {
   position: absolute;
   z-index: 2;
-  top: 6px;
-  width: 9px;
-  height: 9px;
+  top: 0.375rem;
+  width: 0.5625rem;
+  height: 0.5625rem;
   border-radius: 50%;
   background: radial-gradient(circle at 35% 35%, #fff 0 12%, color-mix(in oklab, var(--ink-2) 40%, var(--paper-3)) 30%, var(--ink-2) 100%);
-  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 0.0625rem 0.0625rem rgba(0, 0, 0, 0.4);
 }
-.ob-nail.tl { left: 6px; }
-.ob-nail.tr { right: 6px; }
+.ob-nail.tl { left: 0.375rem; }
+.ob-nail.tr { right: 0.375rem; }
 
 /* carved: the words and numbers cut into the wood (dark, the light catching the cut's lower lip) */
 .ob-pays b,
-.ob-name { color: var(--carve); text-shadow: 0 1px 0 rgba(255, 244, 220, 0.75), 0 -1px 0 rgba(60, 30, 10, 0.3); }
-.ob-pays { display: flex; align-items: center; gap: 4px; min-height: 30px; padding-inline: 10px 0; }
-.ob-pays .art { width: 26px; height: 26px; }
-.ob-pays b { font: 900 22px/1 var(--font-text); font-variant-numeric: tabular-nums; }
-.ob-pays .ob-surprise { margin-inline-start: 4px; }
-.ob-coins { display: inline-flex; align-items: center; gap: 4px; }
-.ob-crates { display: inline-flex; margin-inline-start: 6px; }
-.ob-crates img { width: 22px; height: 22px; margin-inline-start: -5px; }
+.ob-name { color: var(--carve); text-shadow: 0 0.0625rem 0 rgba(255, 244, 220, 0.75), 0 -0.0625rem 0 rgba(60, 30, 10, 0.3); }
+.ob-pays { display: flex; align-items: center; gap: 0.25rem; min-height: 1.875rem; padding-inline: 0.625rem 0; }
+.ob-pays .art { width: 1.625rem; height: 1.625rem; }
+.ob-pays b { font: 900 1.375rem/1 var(--font-text); font-variant-numeric: tabular-nums; }
+.ob-pays .ob-surprise { margin-inline-start: 0.25rem; }
+.ob-coins { display: inline-flex; align-items: center; gap: 0.25rem; }
+.ob-crates { display: inline-flex; margin-inline-start: 0.375rem; }
+.ob-crates img { width: 1.375rem; height: 1.375rem; margin-inline-start: -0.3125rem; }
 .ob-no {
   flex: none;
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
-  margin: -8px -6px -8px auto;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin: -0.5rem -0.375rem -0.5rem auto;
   padding: 0;
   border: 0;
   border-radius: 50%;
   background: transparent;
   color: var(--carve);
 }
-.ob-no svg { width: 18px; height: 18px; }
+.ob-no svg { width: 1.125rem; height: 1.125rem; }
 /* READY, a tag that swings onto the plank in the place of its price once all are in (Send says the coins) */
 .ob-pays b.ob-ready {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 5px 10px 5px 8px;
-  border-radius: 8px;
+  gap: 0.25rem;
+  padding: 0.3125rem 0.625rem 0.3125rem 0.5rem;
+  border-radius: 0.5rem;
   background: var(--leaf);
   color: #fff;
-  font: 700 14px/1 var(--font-display);
+  font: 700 0.875rem/1 var(--font-display);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   text-shadow: none;
   box-shadow:
-    0 2px 0 var(--leaf-lip),
-    0 4px 8px rgba(0, 0, 0, 0.25);
+    0 0.125rem 0 var(--leaf-lip),
+    0 0.25rem 0.5rem rgba(0, 0, 0, 0.25);
   transform-origin: 12% 0;
 }
-.ob-pays b.ob-ready svg { width: 14px; height: 14px; }
+.ob-pays b.ob-ready svg { width: 0.875rem; height: 0.875rem; }
 
 /* the goods, a line each (two to a row upright): the picture with how many it still wants, the name, the pegs */
-.ob-lines { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 0; padding: 0; list-style: none; }
+.ob-lines { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.375rem; margin: 0; padding: 0; list-style: none; }
 .ob-lines:has(> li:only-child) { grid-template-columns: minmax(0, 1fr); }
 .ob-line {
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr);
+  grid-template-columns: 2.75rem minmax(0, 1fr);
   grid-template-areas: 'pic name' 'pic pegs';
   align-items: center;
-  column-gap: 6px;
+  column-gap: 0.375rem;
   min-width: 0;
-  padding: 2px 8px 2px 2px;
-  border-radius: 12px;
+  padding: 0.125rem 0.5rem 0.125rem 0.125rem;
+  border-radius: 0.75rem;
   background: rgba(120, 70, 20, 0.1);
   box-shadow:
-    inset 0 2px 3px rgba(80, 45, 10, 0.18),
-    inset 0 -1px 0 rgba(255, 244, 220, 0.5);
+    inset 0 0.125rem 0.1875rem rgba(80, 45, 10, 0.18),
+    inset 0 -0.0625rem 0 rgba(255, 244, 220, 0.5);
   transition: background 0.3s;
 }
 .ob-line.in { background: color-mix(in oklab, var(--leaf) 16%, transparent); }
-.ob-good { grid-area: pic; position: relative; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 12px; background: none; }
-.ob-good .item-pic .art { width: 36px; height: 36px; }
+.ob-good { grid-area: pic; position: relative; display: grid; place-items: center; width: 2.75rem; height: 2.75rem; padding: 0; border: 0; border-radius: 0.75rem; background: none; }
+.ob-good .item-pic .art { width: 2.25rem; height: 2.25rem; }
 .ob-good .item-pic .qty { font-variant-numeric: tabular-nums; }
 .ob-in {
   position: absolute;
-  right: -2px;
+  right: -0.125rem;
   bottom: 0;
   display: grid;
   place-items: center;
-  width: 22px;
-  height: 22px;
+  width: 1.375rem;
+  height: 1.375rem;
   border-radius: 50%;
   background: var(--leaf);
   color: #fff;
-  box-shadow: 0 0 0 2px var(--plank);
+  box-shadow: 0 0 0 0.125rem var(--plank);
 }
-.ob-in svg { width: 13px; height: 13px; }
+.ob-in svg { width: 0.8125rem; height: 0.8125rem; }
 .ob-name {
   grid-area: name;
   align-self: end;
@@ -197,14 +197,14 @@
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
-  font: 600 15px/1.08 var(--font-display);
+  font: 600 0.9375rem/1.08 var(--font-display);
   letter-spacing: 0.01em;
 }
-.ob-pegs { grid-area: pegs; align-self: start; display: flex; flex-wrap: wrap; gap: 3px; padding-top: 3px; }
-.ob-pegs i { width: 10px; height: 10px; border-radius: 50%; background: rgba(80, 45, 10, 0.35); box-shadow: inset 0 1px 2px rgba(40, 20, 0, 0.5), 0 1px 0 rgba(255, 244, 220, 0.6); }
-.ob-pegs i.full { background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--sun) 40%, #fff), var(--sun) 55%, var(--sun-lip)); box-shadow: 0 1px 0 var(--plank-lip); }
+.ob-pegs { grid-area: pegs; align-self: start; display: flex; flex-wrap: wrap; gap: 0.1875rem; padding-top: 0.1875rem; }
+.ob-pegs i { width: 0.625rem; height: 0.625rem; border-radius: 50%; background: rgba(80, 45, 10, 0.35); box-shadow: inset 0 0.0625rem 0.125rem rgba(40, 20, 0, 0.5), 0 0.0625rem 0 rgba(255, 244, 220, 0.6); }
+.ob-pegs i.full { background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--sun) 40%, #fff), var(--sun) 55%, var(--sun-lip)); box-shadow: 0 0.0625rem 0 var(--plank-lip); }
 /* what the next Put in would add: a dashed ring of the sun's colour, breathing a little */
-.ob-pegs i.soon { background: color-mix(in oklab, var(--sun) 25%, transparent); box-shadow: inset 0 0 0 2px var(--sun-lip); animation: ob-soon 1.6s ease-in-out infinite; }
+.ob-pegs i.soon { background: color-mix(in oklab, var(--sun) 25%, transparent); box-shadow: inset 0 0 0 0.125rem var(--sun-lip); animation: ob-soon 1.6s ease-in-out infinite; }
 .ob-line.in .ob-pegs i.full { background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--leaf) 40%, #fff), var(--leaf) 60%, var(--leaf-lip)); }
 @keyframes ob-soon {
   50% { background: color-mix(in oklab, var(--sun) 55%, transparent); }
@@ -212,28 +212,28 @@
 
 .ob-foot { display: flex; margin-top: auto; }
 .ob-send,
-.ob-put { flex: 1; min-height: 48px; }
-.ob-send { font-size: 19px; gap: 8px; }
-.ob-put { font-size: 17px; }
+.ob-put { flex: 1; min-height: 3rem; }
+.ob-send { font-size: 1.1875rem; gap: 0.5rem; }
+.ob-put { font-size: 1.0625rem; }
 .ob-put:disabled { opacity: 0.7; }
 /* nothing in store to put in: the way to the first good short, its picture first */
-.ob-show-me { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
-.ob-show-me .item-pic .art { width: 28px; height: 28px; }
-.ob-show-me > .btn { flex: 1; min-height: 48px; }
+.ob-show-me { display: inline-flex; align-items: center; justify-content: center; gap: 0.375rem; }
+.ob-show-me .item-pic .art { width: 1.75rem; height: 1.75rem; }
+.ob-show-me > .btn { flex: 1; min-height: 3rem; }
 /* a good the store is short of wears the walker on its corner: a tap on it shows the way (src/ui/GoodPic.tsx) */
-.good-pic .good-way { position: absolute; top: -6px; left: -6px; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--paper); color: var(--ink); box-shadow: 0 0 0 2px #fff, 0 1px 3px rgba(0, 0, 0, 0.3); pointer-events: none; }
-.good-pic .good-way svg { width: 12px; height: 12px; }
+.good-pic .good-way { position: absolute; top: -0.375rem; left: -0.375rem; display: grid; place-items: center; width: 1.25rem; height: 1.25rem; border-radius: 50%; background: var(--paper); color: var(--ink); box-shadow: 0 0 0 0.125rem #fff, 0 0.0625rem 0.1875rem rgba(0, 0, 0, 0.3); pointer-events: none; }
+.good-pic .good-way svg { width: 0.75rem; height: 0.75rem; }
 
 /* a place waiting for its next order: a ring that runs down */
 .ob-wait {
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-height: 64px;
-  padding: 8px 16px;
-  border: 2px dashed rgba(255, 244, 220, 0.35);
+  gap: 0.75rem;
+  min-height: 4rem;
+  padding: 0.5rem 1rem;
+  border: 0.125rem dashed rgba(255, 244, 220, 0.35);
   color: rgba(255, 244, 220, 0.92);
-  font: 700 15px/1.2 var(--font-text);
+  font: 700 0.9375rem/1.2 var(--font-text);
 }
 .ob-ring {
   --share: 1;
@@ -241,49 +241,49 @@
   flex: none;
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
+  width: 2.75rem;
+  height: 2.75rem;
   border-radius: 50%;
   background: conic-gradient(var(--sun) calc(var(--share) * 360deg), rgba(255, 244, 220, 0.18) 0);
 }
-.ob-ring::before { content: ''; position: absolute; inset: 4px; border-radius: 50%; background: var(--board); }
-.ob-ring img { position: relative; width: 24px; height: 24px; }
-.ob-wait-words { text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.4); }
-.ob-wait-words b { display: block; font-variant-numeric: tabular-nums; color: #fff; font-size: 17px; }
+.ob-ring::before { content: ''; position: absolute; inset: 0.25rem; border-radius: 50%; background: var(--board); }
+.ob-ring img { position: relative; width: 1.5rem; height: 1.5rem; }
+.ob-wait-words { text-shadow: 0 -0.0625rem 0 rgba(0, 0, 0, 0.4); }
+.ob-wait-words b { display: block; font-variant-numeric: tabular-nums; color: #fff; font-size: 1.0625rem; }
 
 /* the office tab: what you have, then each upgrade as the farm shop shows its own */
-.ob-office { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 8px; }
-.ob-purse { display: flex; align-items: center; gap: 8px; margin: 0; padding: 4px 4px 2px; font: 700 15px/1.2 var(--font-text); color: var(--ink-2); }
-.ob-purse .art { width: 24px; height: 24px; }
-.ob-purse b { color: var(--ink); font-size: 17px; font-variant-numeric: tabular-nums; }
-.ob-root .ob-up { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 20px; background: var(--paper-2); }
-.ob-root .ob-up .art { width: 44px; height: 44px; }
-.ob-up-text { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; min-width: 0; }
-.ob-up-text > b { font: 600 17px/1.2 var(--font-display); }
-.ob-up-line { display: flex; flex-wrap: wrap; gap: 4px; }
-.ob-up .tag { font-size: 14px; }
-.ob-up .tag.effect { perspective: 200px; }
+.ob-office { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 0.5rem; }
+.ob-purse { display: flex; align-items: center; gap: 0.5rem; margin: 0; padding: 0.25rem 0.25rem 0.125rem; font: 700 0.9375rem/1.2 var(--font-text); color: var(--ink-2); }
+.ob-purse .art { width: 1.5rem; height: 1.5rem; }
+.ob-purse b { color: var(--ink); font-size: 1.0625rem; font-variant-numeric: tabular-nums; }
+.ob-root .ob-up { display: grid; grid-template-columns: 3rem minmax(0, 1fr) auto; align-items: center; gap: 0.625rem; padding: 0.625rem 0.75rem; border-radius: 1.25rem; background: var(--paper-2); }
+.ob-root .ob-up .art { width: 2.75rem; height: 2.75rem; }
+.ob-up-text { display: flex; flex-direction: column; align-items: flex-start; gap: 0.3125rem; min-width: 0; }
+.ob-up-text > b { font: 600 1.0625rem/1.2 var(--font-display); }
+.ob-up-line { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.ob-up .tag { font-size: 0.875rem; }
+.ob-up .tag.effect { perspective: 12.5rem; }
 .ob-up .tag.effect > span { display: inline-block; }
-.ob-up .tag svg { width: 14px; height: 14px; }
-.ob-root .ob-up .ob-up-buy { min-height: 44px; min-width: 80px; }
-.ob-up-done { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--leaf); color: #fff; }
-.ob-up-done svg { width: 20px; height: 20px; }
+.ob-up .tag svg { width: 0.875rem; height: 0.875rem; }
+.ob-root .ob-up .ob-up-buy { min-height: 2.75rem; min-width: 5rem; }
+.ob-up-done { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; border-radius: 50%; background: var(--leaf); color: #fff; }
+.ob-up-done svg { width: 1.25rem; height: 1.25rem; }
 
 /* the card that asks before an upgrade is bought: over the sheet, in its middle */
-.ob-ask-scrim { position: absolute; inset: 0; z-index: 6; display: grid; place-items: center; padding: 16px; background: rgba(40, 24, 10, 0.32); }
-.ob-ask { display: flex; flex-direction: column; align-items: center; gap: 8px; width: min(320px, 100%); padding: 16px; border-radius: 24px; text-align: center; }
-.ob-ask-art { width: 56px; height: 56px; }
-.ob-ask h3 { margin: 0; font: 600 21px/1.1 var(--font-display); }
-.ob-ask p { margin: 0; font: 600 15px/1.3 var(--font-text); color: var(--ink-2); }
-.ob-ask-effect { font-size: 15px; }
-.ob-ask-effect svg { width: 14px; height: 14px; }
-.ob-ask .farm-confirm { width: 100%; margin-top: 4px; }
+.ob-ask-scrim { position: absolute; inset: 0; z-index: 6; display: grid; place-items: center; padding: 1rem; background: rgba(40, 24, 10, 0.32); }
+.ob-ask { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; width: min(20rem, 100%); padding: 1rem; border-radius: 1.5rem; text-align: center; }
+.ob-ask-art { width: 3.5rem; height: 3.5rem; }
+.ob-ask h3 { margin: 0; font: 600 1.3125rem/1.1 var(--font-display); }
+.ob-ask p { margin: 0; font: 600 0.9375rem/1.3 var(--font-text); color: var(--ink-2); }
+.ob-ask-effect { font-size: 0.9375rem; }
+.ob-ask-effect svg { width: 0.875rem; height: 0.875rem; }
+.ob-ask .farm-confirm { width: 100%; margin-top: 0.25rem; }
 .ob-ask .farm-confirm > * { flex: 1; }
 .ob-ask .farm-confirm .farm-buy { min-width: 0; }
 
 /* the goods on their way into an order (beside the sheet, over it) */
 .ob-flights { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
-.ob-flights img { position: absolute; left: 0; top: 0; width: 36px; height: 36px; filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.25)); }
+.ob-flights img { position: absolute; left: 0; top: 0; width: 2.25rem; height: 2.25rem; filter: drop-shadow(0 0.25rem 0.25rem rgba(0, 0, 0, 0.25)); }
 
 :where(:root[data-motion='less']) {
   .ob-pegs i.soon { animation: none; }
@@ -291,10 +291,10 @@
 
 /* upright the sheet keeps one height whichever tab is open (it never jumps under the finger) */
 .ob-bottom .ob-board,
-.ob-bottom .ob-office { min-height: min(500px, 58dvh); }
+.ob-bottom .ob-office { min-height: min(31.25rem, 58dvh); }
 /* a tablet or a computer: the sheet in the middle, a plank's goods three to a row */
 .ob-middle .ob-board,
-.ob-middle .ob-office { min-height: min(520px, 60dvh); }
+.ob-middle .ob-office { min-height: min(32.5rem, 60dvh); }
 .ob-middle .ob-lines { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 
 /* a small phone: the goods one to a line, so a name never squeezes */
@@ -305,50 +305,50 @@
 /* a phone on its side: the tabs beside the title, the planks in a row that slides (three fit); a long order's goods
    scroll inside its plank, its press always in view */
 /* sideways the tabs stand beside the title, so the planks keep the height */
-.ob-right .mp-head-text { display: flex; align-items: center; gap: 8px; }
-.ob-right .mp-sub { flex: 1 1 200px; max-width: 230px; min-height: 0; margin: 0 0 0 auto; }
-.ob-right .ob-tab { font-size: 16px; gap: 4px; }
+.ob-right .mp-head-text { display: flex; align-items: center; gap: 0.5rem; }
+.ob-right .mp-sub { flex: 1 1 12.5rem; max-width: 14.375rem; min-height: 0; margin: 0 0 0 auto; }
+.ob-right .ob-tab { font-size: 1rem; gap: 0.25rem; }
 .ob-right .ob-tab-n { display: none; }
 .ob-right .ob-board { overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; }
-.ob-right .ob-planks { display: flex; align-items: stretch; height: 100%; gap: 8px; }
+.ob-right .ob-planks { display: flex; align-items: stretch; height: 100%; gap: 0.5rem; }
 .ob-right .ob-plank,
-.ob-right .ob-wait { flex: 0 0 calc((100% - 16px) / 3); min-width: 150px; min-height: 0; scroll-snap-align: start; }
-.ob-right .ob-plank { gap: 6px; padding: 8px; }
+.ob-right .ob-wait { flex: 0 0 calc((100% - 1rem) / 3); min-width: 9.375rem; min-height: 0; scroll-snap-align: start; }
+.ob-right .ob-plank { gap: 0.375rem; padding: 0.5rem; }
 .ob-right .ob-lines {
   grid-template-columns: minmax(0, 1fr);
-  gap: 4px;
+  gap: 0.25rem;
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
   align-content: start;
-  margin-inline: -2px;
-  padding: 2px 2px 10px;
+  margin-inline: -0.125rem;
+  padding: 0.125rem 0.125rem 0.625rem;
   scrollbar-width: none;
 }
 /* what scrolls inside a plank fades at its foot, so a line half seen says there is more */
 .ob-right .ob-plank:has(> .ob-lines > li:nth-child(4)) .ob-lines {
-  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 14px), transparent);
-  mask-image: linear-gradient(to bottom, #000 calc(100% - 14px), transparent);
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 0.875rem), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 0.875rem), transparent);
 }
 .ob-right .ob-line { padding-block: 0; }
-.ob-right .ob-good .item-pic .art { width: 32px; height: 32px; }
-.ob-right .ob-pays { padding-inline-start: 8px; }
-.ob-right .ob-pays b { font-size: 19px; }
-.ob-right .ob-pays .art { width: 22px; height: 22px; }
-.ob-right .ob-crates img { width: 18px; height: 18px; }
+.ob-right .ob-good .item-pic .art { width: 2rem; height: 2rem; }
+.ob-right .ob-pays { padding-inline-start: 0.5rem; }
+.ob-right .ob-pays b { font-size: 1.1875rem; }
+.ob-right .ob-pays .art { width: 1.375rem; height: 1.375rem; }
+.ob-right .ob-crates img { width: 1.125rem; height: 1.125rem; }
 .ob-right .ob-send,
-.ob-right .ob-put { min-height: 44px; padding-inline: 8px; font-size: 15px; }
-.ob-right .ob-send { gap: 4px; }
+.ob-right .ob-put { min-height: 2.75rem; padding-inline: 0.5rem; font-size: 0.9375rem; }
+.ob-right .ob-send { gap: 0.25rem; }
 .ob-right .ob-foot { flex: none; }
 .ob-right .ob-wait { flex-direction: column; justify-content: center; text-align: center; }
 /* a long order (four goods or more) is a wider plank with its goods two to a row */
-.ob-right .ob-plank:has(> .ob-lines > li:nth-child(4)) { flex-basis: calc((100% - 8px) * 2 / 3); }
+.ob-right .ob-plank:has(> .ob-lines > li:nth-child(4)) { flex-basis: calc((100% - 0.5rem) * 2 / 3); }
 .ob-right .ob-plank:has(> .ob-lines > li:nth-child(4)) .ob-lines { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 /* 44 px to the eye, 48 under a finger: the tabs grown up and down only (side by side, they never cover each other), the
    ✕ all round */
 @media (pointer: coarse) {
-  .ob-tab::after { content: ''; position: absolute; inset: -2px 0; }
+  .ob-tab::after { content: ''; position: absolute; inset: -0.125rem 0; }
   .ob-no { position: relative; }
-  .ob-no::after { content: ''; position: absolute; inset: -2px; border-radius: 50%; }
+  .ob-no::after { content: ''; position: absolute; inset: -0.125rem; border-radius: 50%; }
 }

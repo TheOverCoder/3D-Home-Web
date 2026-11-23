@@ -21,7 +21,7 @@
       "final": true,
       "specs": [],
       "paths": [
-        "scripts/{fetch-art,fetch-assets,fetch-polyhaven,hdr-to-gainmap,optimize-models,render-farmer-faces,render-furniture-art,render-item-art}.mjs",
+        "scripts/{fetch-art,fetch-assets,fetch-polyhaven,hdr-to-gainmap,optimize-models,px-to-rem,render-farmer-faces,render-furniture-art,render-item-art}.mjs",
         "scripts/assets.manifest.json",
         "scripts/{affected-specs,ci-shards,v1-scope}.{mjs,d.mts}",
         "scripts/v1-merge.sh",
@@ -62,12 +62,12 @@
         "src/lib/{loader,sw,startup,diagnostics,hdrGuard,textureBudget,clips}.ts",
         "src/lib/ErrorBoundary.tsx",
         "src/ui/{Intro,Loading,GraphicsNotice,SavesPanel}.{tsx,css}",
-        "src/ui/loadGlide.ts",
+        "src/ui/loadPace.ts",
         "src/scene/{Experience,Warmup}.tsx"
       ]
     },
     { "name": "the device's tier and the measuring tool", "specs": ["06-quality-and-resilience", "18-measure", "05-budget-and-fallback"], "paths": ["src/lib/{profile,device}.ts", "src/debug/**"] },
-    { "name": "settings, sound and music", "specs": ["03-settings", "01-boot"], "paths": ["src/settings.ts", "src/ui/{SettingsPanel,MusicPlayer,IntroPages}.tsx", "src/audio/**"] },
+    { "name": "settings, sound and music", "specs": ["03-settings", "01-boot"], "paths": ["src/settings.ts", "src/ui/{SettingsPanel,MusicPlayer,IntroPages}.tsx", "src/ui/uiSize.ts", "src/audio/**"] },
     { "name": "what people say", "specs": ["23-market", "24-day", "30-house-for-sale"], "paths": ["src/talk/**"] },
     {
       "name": "the top of the screen",
@@ -138,7 +138,11 @@
     { "name": "the two maps", "specs": ["29-maps", "30-house-for-sale", "01-boot"], "paths": ["src/scene/{Maps.tsx,maps.ts,travel.ts}", "src/lib/world.ts", "src/data/maps.ts"] },
     { "name": "films", "specs": ["29-maps", "30-house-for-sale", "23-market", "38-animal-tools"], "paths": ["src/film/**", "src/ui/{Film,FilmLayer,Curtain}.{tsx,css}"] },
     { "name": "the car and the estate office", "specs": ["30-house-for-sale"], "paths": ["src/farm/car/**", "src/farm/{Estate,EstatePanel}.tsx", "src/data/estate.ts"] },
-    { "name": "the car dealer and your car's paints", "specs": ["30-house-for-sale", "25-button", "16-view"], "paths": ["src/farm/Dealer.tsx", "src/farm/carPaints.ts", "src/farm/state/car.ts", "src/data/dealer.ts"] },
+    {
+      "name": "the car dealer and your car's paints",
+      "specs": ["30-house-for-sale", "25-button", "16-view"],
+      "paths": ["src/farm/Dealer.tsx", "src/farm/carPaints.ts", "src/farm/state/car.ts", "src/data/dealer.ts"]
+    },
     {
       "name": "the supermarket and the lane",
       "specs": ["23-market", "05-budget-and-fallback", "16-view"],
@@ -147,7 +151,7 @@
     { "name": "the garden's gate", "specs": ["08-garden", "23-market"], "paths": ["src/farm/GardenGate.tsx"] },
     { "name": "the contractor and the day", "specs": ["24-day"], "paths": ["src/farm/{contractor,day}.ts", "src/farm/ContractorPanel.tsx"] },
     { "name": "events and news", "specs": ["34-events", "14-hud"], "paths": ["src/farm/events.ts", "src/farm/news/**", "src/farm/charm.ts", "src/farm/state/charm.ts"] },
-    { "name": "prices", "specs": ["34-events", "17-stores-orders", "23-market", "25-button"], "paths": ["src/farm/{prices,worth}.ts"] },
+    { "name": "prices", "specs": ["34-events", "17-stores-orders", "23-market", "25-button"], "paths": ["src/farm/{prices,worth,priceBook}.ts"] },
     { "name": "the daily gift", "specs": ["35-daily"], "paths": ["src/farm/{daily,useDaily,calendar}.ts", "src/farm/{DailyCard,DailyPanel}.{tsx,css}"] },
     { "name": "unlocks", "specs": ["36-unlocks"], "paths": ["src/farm/unlocks.ts", "src/farm/Unlocked.{tsx,css}", "src/ui/LockTag.tsx"] },
     { "name": "goals", "specs": ["21-goals"], "paths": ["src/farm/{goals,goalsView}.ts", "src/farm/{GoalsCard,GoalsPanel}.{tsx,css}"] },

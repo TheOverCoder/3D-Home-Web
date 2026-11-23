@@ -30,6 +30,7 @@ interface LoaderState {
   speed: number // bytes per second, smoothed
   startedAt: number
   downloadedAt: number // when the downloads finished (ms since page start)
+  compileAt: number // when the graphics began to warm up
   readyAt: number // when everything was ready
   compile: number // 0..1 while the graphics warm up
   offline: boolean
@@ -44,12 +45,14 @@ export const useLoader = create<LoaderState>(() => ({
   speed: 0,
   startedAt: performance.now(),
   downloadedAt: 0,
+  compileAt: 0,
   readyAt: 0,
   compile: 0,
   offline: typeof navigator !== 'undefined' && navigator.onLine === false,
 }))
 
-export const setLoadPhase = (phase: LoadPhase) => useLoader.setState((s) => (s.phase === phase ? s : { phase, readyAt: phase === 'ready' ? performance.now() : s.readyAt }))
+export const setLoadPhase = (phase: LoadPhase) =>
+  useLoader.setState((s) => (s.phase === phase ? s : { phase, compileAt: phase === 'compile' ? performance.now() : s.compileAt, readyAt: phase === 'ready' ? performance.now() : s.readyAt }))
 
 interface Manifest {
   version: string

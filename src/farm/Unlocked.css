@@ -9,26 +9,26 @@
   display: grid;
   justify-items: center;
   align-content: start;
-  padding: calc(max(var(--chips-bottom, 50px), env(safe-area-inset-top)) + min(5vh, 40px)) calc(16px + env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
+  padding: calc(max(var(--chips-bottom, 3.125rem), env(safe-area-inset-top)) + min(5vh, 2.5rem)) calc(1rem + env(safe-area-inset-right)) calc(1rem + env(safe-area-inset-bottom)) calc(1rem + env(safe-area-inset-left));
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
-  --card-w: 96px;
-  --card-h: 134px;
+  --card-w: 6rem;
+  --card-h: 8.375rem;
 }
 :root[data-hud='clean'] .unlocked { display: none; }
-:root[data-hud='compass'] .unlocked { padding-top: calc(max(12px, env(safe-area-inset-top)) + 72px); }
+:root[data-hud='compass'] .unlocked { padding-top: calc(max(0.75rem, env(safe-area-inset-top)) + 4.5rem); }
 /* the light: warm in the middle, the scene a little quieter round it */
 .unlocked-light { position: absolute; inset: 0; background: radial-gradient(ellipse 70% 60% at 50% 55%, color-mix(in srgb, var(--sun) 34%, transparent), rgba(40, 24, 10, 0.12) 58%, rgba(30, 18, 8, 0.42) 100%); pointer-events: none; }
-.unlocked-stage { position: relative; display: grid; justify-items: center; gap: 14px; }
+.unlocked-stage { position: relative; display: grid; justify-items: center; gap: 0.875rem; }
 .unlocked-rays {
   position: absolute;
   left: 50%;
   top: 55%;
-  width: 640px;
-  height: 640px;
-  margin: -320px 0 0 -320px;
+  width: 40rem;
+  height: 40rem;
+  margin: -20rem 0 0 -20rem;
   border-radius: 50%;
   background: repeating-conic-gradient(color-mix(in srgb, var(--sun) 60%, transparent) 0 8deg, transparent 8deg 22deg);
   -webkit-mask: radial-gradient(circle, #000 12%, transparent 66%);
@@ -40,26 +40,26 @@
 @keyframes unlocked-rays-turn { to { rotate: 360deg; } }
 
 /* the ribbon: the level's star at its left end, "Unlocked!" in white on berry, notched */
-.unlocked-title { position: relative; display: flex; align-items: center; filter: drop-shadow(0 4px 8px rgba(60, 20, 10, 0.4)); }
+.unlocked-title { position: relative; display: flex; align-items: center; filter: drop-shadow(0 0.25rem 0.5rem rgba(60, 20, 10, 0.4)); }
 .unlocked-word {
-  margin-left: -14px;
-  padding: 6px 30px 8px 30px;
+  margin-left: -0.875rem;
+  padding: 0.375rem 1.875rem 0.5rem 1.875rem;
   color: #fff;
   background: linear-gradient(color-mix(in srgb, var(--berry) 88%, #fff), var(--berry) 45%, color-mix(in srgb, var(--berry) 75%, var(--berry-lip)));
-  font: 600 30px/1.1 var(--font-display);
+  font: 600 1.875rem/1.1 var(--font-display);
   letter-spacing: 0.02em;
-  text-shadow: 0 2px 0 var(--berry-lip);
+  text-shadow: 0 0.125rem 0 var(--berry-lip);
   white-space: nowrap;
-  clip-path: polygon(0 0, 100% 0, calc(100% - 12px) 50%, 100% 100%, 0 100%, 12px 50%);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 0.75rem) 50%, 100% 100%, 0 100%, 0.75rem 50%);
 }
-.unlocked-star { position: relative; z-index: 1; display: grid; place-items: center; flex: none; width: 64px; height: 64px; }
+.unlocked-star { position: relative; z-index: 1; display: grid; place-items: center; flex: none; width: 4rem; height: 4rem; }
 .unlocked-star img { position: absolute; inset: 0; width: 100%; height: 100%; }
 .unlocked-star b {
   position: relative;
-  top: 3px;
-  font: 900 20px/1 var(--font-text);
+  top: 0.1875rem;
+  font: 900 1.25rem/1 var(--font-text);
   color: #fff;
-  text-shadow: 1px 0 0 var(--xp-lip), -1px 0 0 var(--xp-lip), 0 1px 0 var(--xp-lip), 0 -1px 0 var(--xp-lip), 0 2px 3px rgba(40, 24, 10, 0.45);
+  text-shadow: 0.0625rem 0 0 var(--xp-lip), -0.0625rem 0 0 var(--xp-lip), 0 0.0625rem 0 var(--xp-lip), 0 -0.0625rem 0 var(--xp-lip), 0 0.125rem 0.1875rem rgba(40, 24, 10, 0.45);
 }
 
 /* the cards, in rows: up to three upright (four: two and two), six sideways */
@@ -69,44 +69,44 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 14px 12px;
-  max-width: calc(var(--cols) * var(--card-w) + (var(--cols) - 1) * 12px);
+  gap: 0.875rem 0.75rem;
+  max-width: calc(var(--cols) * var(--card-w) + (var(--cols) - 1) * 0.75rem);
 }
-.unlocked-slot { position: relative; display: grid; place-items: center; width: var(--card-w); height: var(--card-h); perspective: 800px; }
+.unlocked-slot { position: relative; display: grid; place-items: center; width: var(--card-w); height: var(--card-h); perspective: 50rem; }
 /* the ring of light a card lands in */
-.unlocked-ring { position: absolute; inset: -12%; border-radius: 50%; border: 4px solid var(--sun); box-shadow: 0 0 18px var(--sun), inset 0 0 14px color-mix(in srgb, var(--sun) 70%, transparent); opacity: 0; pointer-events: none; }
+.unlocked-ring { position: absolute; inset: -12%; border-radius: 50%; border: 0.25rem solid var(--sun); box-shadow: 0 0 1.125rem var(--sun), inset 0 0 0.875rem color-mix(in srgb, var(--sun) 70%, transparent); opacity: 0; pointer-events: none; }
 
 /* a card: its back and its face, one turned away from the other */
 .unlock-card { position: relative; display: block; width: var(--card-w); height: var(--card-h); transform-style: preserve-3d; }
 .unlock-bob { position: absolute; inset: 0; display: block; transform-style: preserve-3d; }
 .unlocked .unlock-bob { animation: unlock-bob 2.6s ease-in-out infinite; }
 .unlocked-slot:nth-child(2n) .unlock-bob { animation-delay: -1.3s; }
-@keyframes unlock-bob { 50% { translate: 0 -5px; } }
+@keyframes unlock-bob { 50% { translate: 0 -0.3125rem; } }
 .unlock-back,
-.unlock-face { position: absolute; inset: 0; border-radius: 16px; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
+.unlock-face { position: absolute; inset: 0; border-radius: 1rem; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
 .unlock-back {
   display: grid;
   place-items: center;
-  background: repeating-linear-gradient(45deg, var(--berry) 0 9px, color-mix(in srgb, var(--berry) 82%, var(--berry-lip)) 9px 18px);
-  box-shadow: 0 0 0 3px #fff, 0 0 0 5px color-mix(in srgb, var(--sun) 80%, transparent), 0 8px 16px rgba(40, 24, 10, 0.35);
+  background: repeating-linear-gradient(45deg, var(--berry) 0 0.5625rem, color-mix(in srgb, var(--berry) 82%, var(--berry-lip)) 0.5625rem 1.125rem);
+  box-shadow: 0 0 0 0.1875rem #fff, 0 0 0 0.3125rem color-mix(in srgb, var(--sun) 80%, transparent), 0 0.5rem 1rem rgba(40, 24, 10, 0.35);
   transform: rotateY(180deg);
 }
-.unlock-back img { width: 50px; height: 50px; }
+.unlock-back img { width: 3.125rem; height: 3.125rem; }
 .unlock-face {
   display: grid;
   grid-template-rows: auto 1fr auto;
   justify-items: center;
   align-items: center;
-  gap: 2px;
-  padding: 10px 4px 9px;
+  gap: 0.125rem;
+  padding: 0.625rem 0.25rem 0.5625rem;
   overflow: hidden;
   background: linear-gradient(#fff, var(--paper) 60%);
   color: var(--ink);
-  box-shadow: 0 0 0 3px #fff, 0 0 0 5px color-mix(in srgb, var(--sun) 80%, transparent), 0 0 22px 2px color-mix(in srgb, var(--sun) 55%, transparent), 0 10px 18px rgba(40, 24, 10, 0.32);
+  box-shadow: 0 0 0 0.1875rem #fff, 0 0 0 0.3125rem color-mix(in srgb, var(--sun) 80%, transparent), 0 0 1.375rem 0.125rem color-mix(in srgb, var(--sun) 55%, transparent), 0 0.625rem 1.125rem rgba(40, 24, 10, 0.32);
 }
-.unlock-face .art { width: 58px; height: 58px; }
-.unlock-face b { font: 800 14px/1.1 var(--font-text); text-align: center; overflow-wrap: anywhere; }
-.unlock-face small { padding: 1px 8px; border-radius: 999px; background: var(--paper-2); color: var(--ink-2); font: 800 13px/1.3 var(--font-text); white-space: nowrap; }
+.unlock-face .art { width: 3.625rem; height: 3.625rem; }
+.unlock-face b { font: 800 0.875rem/1.1 var(--font-text); text-align: center; overflow-wrap: anywhere; }
+.unlock-face small { padding: 0.0625rem 0.5rem; border-radius: 62.4375rem; background: var(--paper-2); color: var(--ink-2); font: 800 0.8125rem/1.3 var(--font-text); white-space: nowrap; }
 /* a shine runs over each face now and then while they hold */
 .unlocked .unlock-face::after { content: ''; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 35%, rgba(255, 255, 255, 0.85) 48%, transparent 60%); translate: -120% 0; animation: unlock-shine 2.4s ease-in-out 1.6s infinite; pointer-events: none; }
 .unlocked-slot:nth-child(2) .unlock-face::after { animation-delay: 1.9s; }
@@ -114,33 +114,33 @@
 @keyframes unlock-shine { 0% { translate: -120% 0; } 40%, 100% { translate: 120% 0; } }
 
 /* the next level's cards in the level card's "At level N": small, face up, a little fanned */
-.unlock-row { --cols: var(--cols-up); display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 5px; max-width: calc(var(--cols) * 78px + (var(--cols) - 1) * 5px); margin-top: 2px; }
-.unlock-card.small { width: 78px; height: 100px; }
-.unlock-card.small .unlock-face { padding: 6px 3px; border-radius: 14px; box-shadow: 0 0 0 2px #fff, 0 3px 6px rgba(40, 24, 10, 0.2); }
-.unlock-card.small .unlock-face .art { width: 38px; height: 38px; }
-.unlock-card.small .unlock-face b { font-size: 13px; }
+.unlock-row { --cols: var(--cols-up); display: flex; flex-wrap: wrap; justify-content: center; gap: 0.375rem 0.3125rem; max-width: calc(var(--cols) * 4.875rem + (var(--cols) - 1) * 0.3125rem); margin-top: 0.125rem; }
+.unlock-card.small { width: 4.875rem; height: 6.25rem; }
+.unlock-card.small .unlock-face { padding: 0.375rem 0.1875rem; border-radius: 0.875rem; box-shadow: 0 0 0 0.125rem #fff, 0 0.1875rem 0.375rem rgba(40, 24, 10, 0.2); }
+.unlock-card.small .unlock-face .art { width: 2.375rem; height: 2.375rem; }
+.unlock-card.small .unlock-face b { font-size: 0.8125rem; }
 
 /* sideways: one row of cards; the level card's row is the pictures alone, in a line (their names are its label) */
 @media (orientation: landscape) {
   .unlocked-row { --cols: var(--cols-side); }
 }
 @media (orientation: landscape) and (max-height: 560px) {
-  .unlocked { --card-w: 92px; --card-h: 126px; }
-  .unlocked-stage { gap: 10px; }
-  .unlocked-word { font-size: 24px; padding-block: 5px 6px; }
-  .unlocked-star { width: 52px; height: 52px; }
-  .unlock-row { flex-wrap: nowrap; gap: 5px; max-width: none; margin: 2px 0; }
-  .unlock-card.small { width: 34px; height: 40px; }
-  .unlock-card.small .unlock-face { display: grid; place-items: center; padding: 0; border-radius: 9px; }
-  .unlock-card.small .unlock-face .art { width: 28px; height: 28px; }
+  .unlocked { --card-w: 5.75rem; --card-h: 7.875rem; }
+  .unlocked-stage { gap: 0.625rem; }
+  .unlocked-word { font-size: 1.5rem; padding-block: 0.3125rem 0.375rem; }
+  .unlocked-star { width: 3.25rem; height: 3.25rem; }
+  .unlock-row { flex-wrap: nowrap; gap: 0.3125rem; max-width: none; margin: 0.125rem 0; }
+  .unlock-card.small { width: 2.125rem; height: 2.5rem; }
+  .unlock-card.small .unlock-face { display: grid; place-items: center; padding: 0; border-radius: 0.5625rem; }
+  .unlock-card.small .unlock-face .art { width: 1.75rem; height: 1.75rem; }
   .unlock-card.small .unlock-face b,
   .unlock-card.small .unlock-face small { display: none; }
 }
 /* a computer's screen: the cards bigger */
 @media (min-width: 900px) and (min-height: 700px) {
-  .unlocked { --card-w: 118px; --card-h: 160px; }
-  .unlocked .unlock-face .art { width: 72px; height: 72px; }
-  .unlocked .unlock-face b { font-size: 16px; }
+  .unlocked { --card-w: 7.375rem; --card-h: 10rem; }
+  .unlocked .unlock-face .art { width: 4.5rem; height: 4.5rem; }
+  .unlocked .unlock-face b { font-size: 1rem; }
 }
 :where(:root[data-motion='less']) {
   .unlocked-rays,

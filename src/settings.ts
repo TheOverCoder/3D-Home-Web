@@ -25,7 +25,12 @@ export interface Settings {
   motion: MotionPref // less motion: left to the device, less whatever it says, or full (src/ui/still.ts reads it)
   learnt: Learnt // what this player has done once with the controls on this device: each is taught until then
   frameRate: 60 | 30 // frames a second: the screen's own pace, or a steady 30 that saves the battery (src/scene/frameRate.ts)
+  uiSize: UiSize // the interface's size: words, panels, the top (src/ui/uiSize.ts; the screen caps how big)
 }
+
+/** The interface's sizes to pick from (src/ui/uiSize.ts gives each its scale). */
+export type UiSize = 'small' | 'medium' | 'large' | 'larger'
+export const uiSizeOf = (x: unknown): UiSize => (x === 'small' || x === 'large' || x === 'larger' ? x : 'medium')
 
 /** What a player has done once with the controls, on this device (taught in context until then, src/ui/TouchControls.tsx
  *  and src/ui/Hud.tsx): walked with the stick (or the keys), and turned the view with a drag (or the mouse). A record of
@@ -61,6 +66,7 @@ export const DEFAULT_SETTINGS: Settings = {
   motion: 'device',
   learnt: { stick: false, look: false },
   frameRate: 60,
+  uiSize: 'medium',
 }
 
 const KEY = '3d-home:settings:v1'
@@ -82,7 +88,7 @@ function load(): Settings {
     const raw = localStorage.getItem(KEY)
     if (!raw) return DEFAULT_SETTINGS
     const s = { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<Settings>) }
-    return { ...s, motion: motionOf(s.motion), musicTrack: trackOf(s.musicTrack), learnt: learntOf(s.learnt), frameRate: s.frameRate === 30 ? 30 : 60 }
+    return { ...s, motion: motionOf(s.motion), musicTrack: trackOf(s.musicTrack), learnt: learntOf(s.learnt), frameRate: s.frameRate === 30 ? 30 : 60, uiSize: uiSizeOf(s.uiSize) }
   } catch {
     return DEFAULT_SETTINGS
   }
@@ -126,6 +132,7 @@ const pick = (s: Settings): Settings => ({
   motion: motionOf(s.motion),
   learnt: learntOf(s.learnt),
   frameRate: s.frameRate === 30 ? 30 : 60,
+  uiSize: uiSizeOf(s.uiSize),
 })
 
 export const useSettings = create<SettingsStore>()((set, get) => ({

@@ -55,6 +55,10 @@ if (import.meta.env.DEV || new URLSearchParams(location.search).has('debug')) {
   void farmIn.then(({ switchSlot, exportSlot, importSlot, slotSummary, deleteSlot, currentSlot }) => {
     hooks.slots = { switchSlot, exportSlot, importSlot, slotSummary, deleteSlot, currentSlot }
   })
+  // every price of the game, to read and set (src/farm/priceBook.ts: the admin dashboard's door), in its own chunk
+  void import('./farm/priceBook').then(({ allPrices, setPrice, applyPrices, priceOverrides, resetPrices }) => {
+    hooks.prices = { all: allPrices, set: setPrice, apply: applyPrices, changed: priceOverrides, reset: resetPrices }
+  })
 }
 
 export function App() {

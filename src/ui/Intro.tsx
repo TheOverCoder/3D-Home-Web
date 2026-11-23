@@ -12,7 +12,7 @@ import { useSettings } from '../settings'
 import { useHome } from '../store'
 import { art, type ArtId } from './art'
 import { ArrowRight, CaretLeft, SpeakerSimpleHigh, SpeakerSimpleSlash } from './glyphs'
-import { GameName, Loading, useLoadView, type LoadView } from './Loading'
+import { GameName, Loading, useLoadView, useSettled, type LoadView } from './Loading'
 import { EASE, MotionRoot, PRESS, SPRING } from './motion'
 import { lessMotion } from './still'
 import './Intro.css'
@@ -145,7 +145,8 @@ export function Intro() {
 
 /** The loading screen until the game is ready (and a moment after), then the menu. */
 function Opening() {
-  const ready = useHome((s) => s.ready.scene && s.ready.env && s.ready.warm)
+  // (settled: a couple of frames after the game is ready, once its heaviest first frames have passed)
+  const ready = useSettled(useHome((s) => s.ready.scene && s.ready.env && s.ready.warm))
   const failure = useHome((s) => s.failure)
   // (read again only when the farm changes: reading the playing farm's summary saves it first; until the farm is in, its
   // place as stored)

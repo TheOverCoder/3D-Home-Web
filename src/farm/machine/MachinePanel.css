@@ -12,47 +12,47 @@
 
 /* the top: the machine's picture, its name, the level chip and how long the queue still works; ✕. It is where a
    swipe takes the sheet away (the grabber says so) */
-.mp-total { gap: 4px; font-variant-numeric: tabular-nums; }
-.mp-total svg { width: 15px; height: 15px; }
+.mp-total { gap: 0.25rem; font-variant-numeric: tabular-nums; }
+.mp-total svg { width: 0.9375rem; height: 0.9375rem; }
 
 /* the level chip: a small ring of the way to the next level round the number, and the word */
 .mp-level-wrap { display: inline-flex; }
-.mp-level { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 6px; min-height: 34px; margin-block: -2px; padding: 2px 2px 2px 12px; border: 0; border-radius: 999px; background: #fff; color: var(--ink); font: 600 15px/1 var(--font-display); box-shadow: 0 2px 0 var(--paper-3), 0 0 0 1.5px var(--edge-soft); }
+.mp-level { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 0.375rem; min-height: 2.125rem; margin-block: -0.125rem; padding: 0.125rem 0.125rem 0.125rem 0.75rem; border: 0; border-radius: 62.4375rem; background: #fff; color: var(--ink); font: 600 0.9375rem/1 var(--font-display); box-shadow: 0 0.125rem 0 var(--paper-3), 0 0 0 0.09375rem var(--edge-soft); }
 /* a finger's worth of room round it */
-.mp-level::before { content: ''; position: absolute; inset: -7px -4px; }
-.mp-level-ring { position: relative; display: grid; place-items: center; width: 30px; height: 30px; }
+.mp-level::before { content: ''; position: absolute; inset: -0.4375rem -0.25rem; }
+.mp-level-ring { position: relative; display: grid; place-items: center; width: 1.875rem; height: 1.875rem; }
 .mp-level-ring svg { position: absolute; inset: 0; }
-.mp-level-ring b { position: relative; font: 800 14px/1 var(--font-text); }
+.mp-level-ring b { position: relative; font: 800 0.875rem/1 var(--font-text); }
 
 /* ── the queue: a tray of wells ── */
 .mp-body { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
-.mp-queue { position: relative; flex: none; margin: 0 16px; padding: 10px; border-radius: 22px; background: var(--paper-2); box-shadow: inset 0 2px 0 rgba(158, 123, 87, 0.16); transition: background 0.2s; }
+.mp-queue { position: relative; flex: none; margin: 0 1rem; padding: 0.625rem; border-radius: 1.375rem; background: var(--paper-2); box-shadow: inset 0 0.125rem 0 rgba(158, 123, 87, 0.16); transition: background 0.2s; }
 /* a waiting job dragged out of the queue: the tray says it is leaving */
 .mp-queue.out { background: color-mix(in srgb, var(--berry) 10%, var(--paper-2)); }
-.mp-places { position: relative; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 7px; }
-.mp-place { position: relative; aspect-ratio: 1; min-width: 0; border-radius: 16px; background: color-mix(in srgb, var(--paper-3) 55%, var(--paper-2)); box-shadow: inset 0 3px 0 rgba(110, 84, 64, 0.13); }
+.mp-places { position: relative; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.4375rem; }
+.mp-place { position: relative; aspect-ratio: 1; min-width: 0; border-radius: 1rem; background: color-mix(in srgb, var(--paper-3) 55%, var(--paper-2)); box-shadow: inset 0 0.1875rem 0 rgba(110, 84, 64, 0.13); }
 .mp-place > svg { pointer-events: none; }
 .mp-place-btn { position: absolute; inset: 0; display: grid; place-items: center; padding: 0; border: 0; border-radius: inherit; background: none; color: inherit; touch-action: none; user-select: none; -webkit-touch-callout: none; }
 .mp-place .art { width: 62%; height: 62%; margin-top: -10%; }
 .mp-place .mp-pop { display: grid; place-items: center; width: 100%; height: 100%; }
-.mp-time { position: absolute; left: 0; right: 0; bottom: 4%; text-align: center; font: 800 13px/1 var(--font-text); font-variant-numeric: tabular-nums; color: var(--ink-2); pointer-events: none; }
+.mp-time { position: absolute; left: 0; right: 0; bottom: 4%; text-align: center; font: 800 0.8125rem/1 var(--font-text); font-variant-numeric: tabular-nums; color: var(--ink-2); pointer-events: none; }
 
 /* empty: a faint +; while a recipe is carried, every empty well's rim lights and breathes */
 .mp-place.empty { display: grid; place-items: center; color: color-mix(in srgb, var(--ink-2) 35%, transparent); }
 .mp-place.empty svg { width: 34%; height: 34%; }
-.mp-place.empty::after { content: ''; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 2.5px var(--sun-lip); opacity: 0; transition: opacity 0.15s; pointer-events: none; }
+.mp-place.empty::after { content: ''; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 0.15625rem var(--sun-lip); opacity: 0; transition: opacity 0.15s; pointer-events: none; }
 .mp-places.inviting .mp-place.empty { color: var(--amber-ink); }
 .mp-places.inviting .mp-place.empty::after { opacity: 0.6; }
 
 /* waiting: its picture and its time, a step back from the one at work; tapped, it is ringed red with its ✕ */
 .mp-place.waiting .art { opacity: 0.92; }
-.mp-place.waiting.picked { z-index: 2; background: #fff; box-shadow: 0 0 0 2.5px var(--berry), 0 6px 12px rgba(40, 24, 10, 0.18); }
-.mp-remove { position: absolute; z-index: 3; top: -9px; right: -9px; display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 2px solid #fff; border-radius: 50%; background: var(--berry); color: #fff; box-shadow: 0 2px 0 var(--berry-lip); }
-.mp-remove::before { content: ''; position: absolute; inset: -9px; border-radius: 50%; }
-.mp-remove svg { width: 15px; height: 15px; }
+.mp-place.waiting.picked { z-index: 2; background: #fff; box-shadow: 0 0 0 0.15625rem var(--berry), 0 0.375rem 0.75rem rgba(40, 24, 10, 0.18); }
+.mp-remove { position: absolute; z-index: 3; top: -0.5625rem; right: -0.5625rem; display: grid; place-items: center; width: 1.75rem; height: 1.75rem; padding: 0; border: 0.125rem solid #fff; border-radius: 50%; background: var(--berry); color: #fff; box-shadow: 0 0.125rem 0 var(--berry-lip); }
+.mp-remove::before { content: ''; position: absolute; inset: -0.5625rem; border-radius: 50%; }
+.mp-remove svg { width: 0.9375rem; height: 0.9375rem; }
 
 /* at work: a warm well, a fuse round its edge filling clockwise, the picture bobbing as it works */
-.mp-place.working { background: radial-gradient(circle at 50% 40%, #fff6dc, color-mix(in srgb, var(--sun) 38%, var(--paper))); box-shadow: inset 0 3px 0 rgba(211, 154, 28, 0.2), 0 0 14px color-mix(in srgb, var(--sun) 45%, transparent); }
+.mp-place.working { background: radial-gradient(circle at 50% 40%, #fff6dc, color-mix(in srgb, var(--sun) 38%, var(--paper))); box-shadow: inset 0 0.1875rem 0 rgba(211, 154, 28, 0.2), 0 0 0.875rem color-mix(in srgb, var(--sun) 45%, transparent); }
 .mp-fuse { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 .mp-fuse path { fill: none; stroke-width: 8.5; stroke-linecap: round; }
 .mp-fuse-track { stroke: color-mix(in srgb, var(--sun-lip) 24%, transparent); }
@@ -61,185 +61,185 @@
 .mp-bob .art { width: 62%; height: 62%; }
 
 /* done: green, glowing, a ✓ on its corner; a tap (or Collect) takes them all */
-.mp-place.done { background: radial-gradient(circle at 50% 40%, #fff, #e3f5d8); box-shadow: inset 0 0 0 2.5px #8fd18a; }
-.mp-place.done::after { content: ''; position: absolute; inset: -3px; border-radius: 19px; box-shadow: 0 0 16px 3px color-mix(in srgb, var(--sun) 65%, transparent); opacity: 0.55; pointer-events: none; }
+.mp-place.done { background: radial-gradient(circle at 50% 40%, #fff, #e3f5d8); box-shadow: inset 0 0 0 0.15625rem #8fd18a; }
+.mp-place.done::after { content: ''; position: absolute; inset: -0.1875rem; border-radius: 1.1875rem; box-shadow: 0 0 1rem 0.1875rem color-mix(in srgb, var(--sun) 65%, transparent); opacity: 0.55; pointer-events: none; }
 .mp-place.done .art { margin-top: 0; width: 66%; height: 66%; }
-.mp-check { position: absolute; top: -6px; right: -6px; display: grid; place-items: center; width: 22px; height: 22px; border: 2px solid #fff; border-radius: 50%; background: var(--leaf); color: #fff; box-shadow: 0 2px 0 var(--leaf-lip); }
-.mp-check svg { width: 13px; height: 13px; }
+.mp-check { position: absolute; top: -0.375rem; right: -0.375rem; display: grid; place-items: center; width: 1.375rem; height: 1.375rem; border: 0.125rem solid #fff; border-radius: 50%; background: var(--leaf); color: #fff; box-shadow: 0 0.125rem 0 var(--leaf-lip); }
+.mp-check svg { width: 0.8125rem; height: 0.8125rem; }
 /* a job just finished: a light sweeps over it once */
-.mp-pop.shine { position: relative; overflow: hidden; border-radius: 16px; }
+.mp-pop.shine { position: relative; overflow: hidden; border-radius: 1rem; }
 .mp-pop.shine::after { content: ''; position: absolute; inset: 0; background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.85) 48%, transparent 66%); transform: translateX(-120%); pointer-events: none; }
 
 /* where the dragged thing would land: a dashed sun well, its picture faint (out of the queue: red) */
-.mp-place.hole { display: grid; place-items: center; background: color-mix(in srgb, var(--sun) 20%, var(--paper)); box-shadow: inset 0 0 0 2.5px var(--sun-lip); }
+.mp-place.hole { display: grid; place-items: center; background: color-mix(in srgb, var(--sun) 20%, var(--paper)); box-shadow: inset 0 0 0 0.15625rem var(--sun-lip); }
 .mp-place.hole .art { opacity: 0.35; margin-top: 0; }
-.mp-place.hole.out { background: color-mix(in srgb, var(--berry) 12%, var(--paper)); box-shadow: inset 0 0 0 2.5px color-mix(in srgb, var(--berry) 55%, transparent); }
+.mp-place.hole.out { background: color-mix(in srgb, var(--berry) 12%, var(--paper)); box-shadow: inset 0 0 0 0.15625rem color-mix(in srgb, var(--berry) 55%, transparent); }
 .mp-place.hole.out .art { opacity: 0.15; }
 
 /* the next place, for its price */
-.mp-place.buy { background: none; box-shadow: inset 0 0 0 2px var(--edge-soft); }
-.mp-place.buy .mp-place-btn { display: flex; flex-direction: column; justify-content: center; gap: 3px; color: var(--ink-2); touch-action: manipulation; }
+.mp-place.buy { background: none; box-shadow: inset 0 0 0 0.125rem var(--edge-soft); }
+.mp-place.buy .mp-place-btn { display: flex; flex-direction: column; justify-content: center; gap: 0.1875rem; color: var(--ink-2); touch-action: manipulation; }
 .mp-place.buy .mp-place-btn > svg { width: 30%; height: 30%; opacity: 0.6; }
-.mp-place.buy .farm-coins { font-size: 13.5px; color: var(--ink); }
-.mp-place.buy .farm-coins img { width: 17px; height: 17px; }
+.mp-place.buy .farm-coins { font-size: 0.84375rem; color: var(--ink); }
+.mp-place.buy .farm-coins img { width: 1.0625rem; height: 1.0625rem; }
 .mp-place.buy .short .farm-coins { color: var(--berry); }
 
 /* under the tray: one sun-yellow Collect, or a line that says what is going on */
-.mp-foot { position: relative; display: grid; margin-top: 10px; min-height: 52px; }
+.mp-foot { position: relative; display: grid; margin-top: 0.625rem; min-height: 3.25rem; }
 .mp-foot > * { grid-area: 1 / 1; }
-.mp-collect { position: relative; width: 100%; min-height: 52px; padding: 0 16px; }
-.mp-collect-in { display: inline-flex; align-items: center; gap: 10px; }
+.mp-collect { position: relative; width: 100%; min-height: 3.25rem; padding: 0 1rem; }
+.mp-collect-in { display: inline-flex; align-items: center; gap: 0.625rem; }
 .mp-collect-pics { display: inline-flex; }
-.mp-collect-pics .art { width: 34px; height: 34px; margin-block: -6px; }
-.mp-collect-pics .art + .art { margin-left: -14px; }
-.mp-collect-n { display: grid; place-items: center; min-width: 28px; height: 28px; padding: 0 7px; border-radius: 999px; background: var(--ink); color: var(--sun); font: 800 15px/1 var(--font-text); font-variant-numeric: tabular-nums; }
-.mp-collect::after { content: ''; position: absolute; inset: -4px; border-radius: inherit; box-shadow: 0 0 18px 4px color-mix(in srgb, var(--sun) 70%, transparent); opacity: 0; pointer-events: none; }
+.mp-collect-pics .art { width: 2.125rem; height: 2.125rem; margin-block: -0.375rem; }
+.mp-collect-pics .art + .art { margin-left: -0.875rem; }
+.mp-collect-n { display: grid; place-items: center; min-width: 1.75rem; height: 1.75rem; padding: 0 0.4375rem; border-radius: 62.4375rem; background: var(--ink); color: var(--sun); font: 800 0.9375rem/1 var(--font-text); font-variant-numeric: tabular-nums; }
+.mp-collect::after { content: ''; position: absolute; inset: -0.25rem; border-radius: inherit; box-shadow: 0 0 1.125rem 0.25rem color-mix(in srgb, var(--sun) 70%, transparent); opacity: 0; pointer-events: none; }
 .mp-note.hint { color: var(--ink-2); }
-.mp-note.hint svg { width: 22px; height: 22px; color: var(--sun-lip); }
-.mp-note.float { position: absolute; z-index: 2; left: 8px; right: 8px; bottom: calc(100% + 6px); min-height: 40px; box-shadow: 0 6px 16px rgba(40, 24, 10, 0.18); }
-.mp-xp-pic { filter: hue-rotate(48deg) saturate(1.3) brightness(1.08) drop-shadow(0 0 2px var(--sun)); }
+.mp-note.hint svg { width: 1.375rem; height: 1.375rem; color: var(--sun-lip); }
+.mp-note.float { position: absolute; z-index: 2; left: 0.5rem; right: 0.5rem; bottom: calc(100% + 0.375rem); min-height: 2.5rem; box-shadow: 0 0.375rem 1rem rgba(40, 24, 10, 0.18); }
+.mp-xp-pic { filter: hue-rotate(48deg) saturate(1.3) brightness(1.08) drop-shadow(0 0 0.125rem var(--sun)); }
 
 /* ── the recipes: raised cards to pick up ── */
-.mp-recipes { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 14px 16px calc(16px + env(safe-area-inset-bottom)); }
-.mp-recipes-in { display: grid; gap: 10px; container-type: inline-size; }
-.mp-recipe { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto; align-items: center; gap: 4px 12px; width: 100%; min-height: 64px; padding: 8px 12px 8px 8px; border: 0; border-radius: var(--r-card); background: #fff; color: var(--ink); text-align: left; box-shadow: 0 4px 0 var(--paper-3), 0 6px 14px rgba(40, 24, 10, 0.08); user-select: none; -webkit-touch-callout: none; cursor: grab; }
-.mp-recipe:focus-visible { outline: 3px solid var(--sun); outline-offset: 2px; }
-.mp-recipe-pic { grid-row: 1 / span 2; display: grid; place-items: center; width: 60px; height: 60px; border-radius: 18px; background: color-mix(in srgb, var(--sun) 16%, var(--paper)); }
-.mp-recipe-pic .item-pic .art { width: 50px; height: 50px; }
-.mp-recipe-pic .item-pic .qty { min-width: 20px; height: 20px; font-size: 13px; inset-inline-end: -8px; bottom: -6px; }
-.mp-recipe-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
-.mp-recipe-top b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 17px/1.2 var(--font-display); }
-.mp-recipe-time { flex: none; gap: 3px; padding: 1px 8px 1px 5px; background: var(--paper-2); font-variant-numeric: tabular-nums; }
-.mp-recipe-time svg { width: 14px; height: 14px; }
-.mp-recipe-needs { display: flex; flex-wrap: wrap; gap: 2px 6px; }
-.mp-need { display: flex; flex-direction: column; align-items: center; gap: 0; min-width: 36px; }
-.mp-need .item-pic .art { width: 28px; height: 28px; }
-.mp-need-count { font: 700 13px/1.1 var(--font-text); color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mp-recipes { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0.875rem 1rem calc(1rem + env(safe-area-inset-bottom)); }
+.mp-recipes-in { display: grid; gap: 0.625rem; container-type: inline-size; }
+.mp-recipe { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto; align-items: center; gap: 0.25rem 0.75rem; width: 100%; min-height: 4rem; padding: 0.5rem 0.75rem 0.5rem 0.5rem; border: 0; border-radius: var(--r-card); background: #fff; color: var(--ink); text-align: left; box-shadow: 0 0.25rem 0 var(--paper-3), 0 0.375rem 0.875rem rgba(40, 24, 10, 0.08); user-select: none; -webkit-touch-callout: none; cursor: grab; }
+.mp-recipe:focus-visible { outline: 0.1875rem solid var(--sun); outline-offset: 0.125rem; }
+.mp-recipe-pic { grid-row: 1 / span 2; display: grid; place-items: center; width: 3.75rem; height: 3.75rem; border-radius: 1.125rem; background: color-mix(in srgb, var(--sun) 16%, var(--paper)); }
+.mp-recipe-pic .item-pic .art { width: 3.125rem; height: 3.125rem; }
+.mp-recipe-pic .item-pic .qty { min-width: 1.25rem; height: 1.25rem; font-size: 0.8125rem; inset-inline-end: -0.5rem; bottom: -0.375rem; }
+.mp-recipe-top { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; min-width: 0; }
+.mp-recipe-top b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 1.0625rem/1.2 var(--font-display); }
+.mp-recipe-time { flex: none; gap: 0.1875rem; padding: 0.0625rem 0.5rem 0.0625rem 0.3125rem; background: var(--paper-2); font-variant-numeric: tabular-nums; }
+.mp-recipe-time svg { width: 0.875rem; height: 0.875rem; }
+.mp-recipe-needs { display: flex; flex-wrap: wrap; gap: 0.125rem 0.375rem; }
+.mp-need { display: flex; flex-direction: column; align-items: center; gap: 0; min-width: 2.25rem; }
+.mp-need .item-pic .art { width: 1.75rem; height: 1.75rem; }
+.mp-need-count { font: 700 0.8125rem/1.1 var(--font-text); color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .mp-need-count b { display: inline-block; font-weight: 800; color: var(--ink); }
 .mp-need.lack .art { opacity: 0.45; }
 .mp-need.lack .mp-need-count, .mp-need.lack .mp-need-count b { color: var(--berry); }
 /* too little in store: the card steps back (what is short is red); the queue full: it waits */
-.mp-recipe.short { background: var(--paper-2); box-shadow: 0 3px 0 var(--paper-3); cursor: default; }
+.mp-recipe.short { background: var(--paper-2); box-shadow: 0 0.1875rem 0 var(--paper-3); cursor: default; }
 .mp-recipe.short .mp-recipe-pic { background: var(--paper-3); }
 .mp-recipe.short .mp-recipe-pic .art { filter: grayscale(0.7); opacity: 0.7; }
 .mp-recipe.full { cursor: not-allowed; opacity: 0.72; }
 /* not open yet: a shade darker, its picture faded (the game's .locked .art), the level it opens at where its time was */
-.mp-recipe.locked { background: var(--paper-2); box-shadow: 0 3px 0 var(--paper-3); cursor: default; }
+.mp-recipe.locked { background: var(--paper-2); box-shadow: 0 0.1875rem 0 var(--paper-3); cursor: default; }
 .mp-recipe.locked .mp-recipe-pic { background: var(--paper-3); }
 .mp-recipe.locked .mp-recipe-top b { color: var(--ink-2); }
-.mp-recipe.locked .lock-tag { flex: none; font-size: 13px; padding: 2px 12px 3px; }
+.mp-recipe.locked .lock-tag { flex: none; font-size: 0.8125rem; padding: 0.125rem 0.75rem 0.1875rem; }
 .mp-recipe.full .mp-recipe-pic { background: var(--paper-2); }
 /* being carried: its picture is the one in the air */
-.mp-recipe.carried { box-shadow: 0 0 0 2.5px var(--sun), 0 4px 0 var(--sun-lip); }
+.mp-recipe.carried { box-shadow: 0 0 0 0.15625rem var(--sun), 0 0.25rem 0 var(--sun-lip); }
 .mp-recipe.carried .mp-recipe-pic .item-pic { opacity: 0.25; }
 /* a narrow card (a small phone on its side, beside the queue): its time under its name, what it takes under both */
 @container (max-width: 300px) {
-  .mp-recipe { gap: 6px 8px; padding: 8px; }
-  .mp-recipe-pic { grid-row: auto; width: 48px; height: 48px; border-radius: 14px; }
-  .mp-recipe-pic .item-pic .art { width: 40px; height: 40px; }
-  .mp-recipe-top { flex-direction: column; align-items: flex-start; gap: 3px; }
-  .mp-recipe-top b { font-size: 16px; max-width: 100%; }
-  .mp-recipe-needs { grid-column: 1 / -1; gap: 2px 3px; }
-  .mp-need { min-width: 32px; }
+  .mp-recipe { gap: 0.375rem 0.5rem; padding: 0.5rem; }
+  .mp-recipe-pic { grid-row: auto; width: 3rem; height: 3rem; border-radius: 0.875rem; }
+  .mp-recipe-pic .item-pic .art { width: 2.5rem; height: 2.5rem; }
+  .mp-recipe-top { flex-direction: column; align-items: flex-start; gap: 0.1875rem; }
+  .mp-recipe-top b { font-size: 1rem; max-width: 100%; }
+  .mp-recipe-needs { grid-column: 1 / -1; gap: 0.125rem 0.1875rem; }
+  .mp-need { min-width: 2rem; }
 }
 
 /* ── the thing being dragged: its picture on a round plate, riding above the finger ── */
-.mp-ghost { position: fixed; left: 0; top: 0; z-index: 80; display: grid; place-items: center; border-radius: 50%; background: radial-gradient(circle, #fff 0 52%, color-mix(in srgb, var(--sun) 45%, #fff) 100%); box-shadow: 0 0 0 3px var(--sun), 0 16px 28px rgba(40, 24, 10, 0.35); pointer-events: none; transition: box-shadow 0.15s, background 0.15s; }
-.mp-ghost img { width: 75%; height: 75%; object-fit: contain; filter: drop-shadow(0 3px 2px rgba(60, 35, 10, 0.25)); }
-.mp-ghost.out { background: radial-gradient(circle, #fff 0 52%, color-mix(in srgb, var(--berry) 30%, #fff) 100%); box-shadow: 0 0 0 3px var(--berry), 0 16px 28px rgba(40, 24, 10, 0.35); }
+.mp-ghost { position: fixed; left: 0; top: 0; z-index: 80; display: grid; place-items: center; border-radius: 50%; background: radial-gradient(circle, #fff 0 52%, color-mix(in srgb, var(--sun) 45%, #fff) 100%); box-shadow: 0 0 0 0.1875rem var(--sun), 0 1rem 1.75rem rgba(40, 24, 10, 0.35); pointer-events: none; transition: box-shadow 0.15s, background 0.15s; }
+.mp-ghost img { width: 75%; height: 75%; object-fit: contain; filter: drop-shadow(0 0.1875rem 0.125rem rgba(60, 35, 10, 0.25)); }
+.mp-ghost.out { background: radial-gradient(circle, #fff 0 52%, color-mix(in srgb, var(--berry) 30%, #fff) 100%); box-shadow: 0 0 0 0.1875rem var(--berry), 0 1rem 1.75rem rgba(40, 24, 10, 0.35); }
 .mp-ghost.out img { opacity: 0.6; filter: grayscale(0.6); }
-.mp-ghost.lost { box-shadow: 0 0 0 3px var(--paper-3), 0 16px 28px rgba(40, 24, 10, 0.3); }
-.mp-ghost-x { position: absolute; top: -4px; right: -4px; display: grid; place-items: center; width: 24px; height: 24px; border: 2px solid #fff; border-radius: 50%; background: var(--berry); color: #fff; }
-.mp-ghost-x svg { width: 13px; height: 13px; }
+.mp-ghost.lost { box-shadow: 0 0 0 0.1875rem var(--paper-3), 0 1rem 1.75rem rgba(40, 24, 10, 0.3); }
+.mp-ghost-x { position: absolute; top: -0.25rem; right: -0.25rem; display: grid; place-items: center; width: 1.5rem; height: 1.5rem; border: 0.125rem solid #fff; border-radius: 50%; background: var(--berry); color: #fff; }
+.mp-ghost-x svg { width: 0.8125rem; height: 0.8125rem; }
 /* the first time: a hand carrying a recipe's picture into the queue */
-.mp-coach { position: fixed; z-index: 79; width: 56px; height: 56px; margin: -28px 0 0 -28px; pointer-events: none; }
-.mp-coach img { width: 100%; height: 100%; object-fit: contain; opacity: 0.85; filter: drop-shadow(0 6px 6px rgba(40, 24, 10, 0.3)); }
-.mp-coach svg { position: absolute; right: -14px; bottom: -16px; width: 38px; height: 38px; color: #fff; filter: drop-shadow(0 0 1.5px var(--ink)) drop-shadow(0 3px 3px rgba(40, 24, 10, 0.4)); }
+.mp-coach { position: fixed; z-index: 79; width: 3.5rem; height: 3.5rem; margin: -1.75rem 0 0 -1.75rem; pointer-events: none; }
+.mp-coach img { width: 100%; height: 100%; object-fit: contain; opacity: 0.85; filter: drop-shadow(0 0.375rem 0.375rem rgba(40, 24, 10, 0.3)); }
+.mp-coach svg { position: absolute; right: -0.875rem; bottom: -1rem; width: 2.375rem; height: 2.375rem; color: #fff; filter: drop-shadow(0 0 0.09375rem var(--ink)) drop-shadow(0 0.1875rem 0.1875rem rgba(40, 24, 10, 0.4)); }
 /* goods flying (to the Collect button, to the barn's chip, into a place) */
 
 /* the card that asks before a place is bought */
-.mp-buy-card { z-index: 90; width: min(280px, calc(100vw - 24px)); padding: 12px 14px 14px; border-radius: var(--r-card); color: var(--ink); }
-.mp-buy-head { display: flex; align-items: center; gap: 10px; }
-.mp-buy-head > span:last-child { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
-.mp-buy-head strong { font: 600 18px/1.1 var(--font-display); }
-.mp-buy-icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 14px; background: var(--paper-2); box-shadow: inset 0 0 0 2px var(--edge-soft); color: var(--ink-2); }
-.mp-buy-icon svg { width: 22px; height: 22px; }
-.mp-buy-actions { display: flex; gap: 8px; margin-top: 12px; }
-.mp-buy-actions .btn { flex: 1; padding: 0 12px; }
+.mp-buy-card { z-index: 90; width: min(17.5rem, calc(100vw - 1.5rem)); padding: 0.75rem 0.875rem 0.875rem; border-radius: var(--r-card); color: var(--ink); }
+.mp-buy-head { display: flex; align-items: center; gap: 0.625rem; }
+.mp-buy-head > span:last-child { display: flex; flex-direction: column; align-items: flex-start; gap: 0.1875rem; }
+.mp-buy-head strong { font: 600 1.125rem/1.1 var(--font-display); }
+.mp-buy-icon { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; border-radius: 0.875rem; background: var(--paper-2); box-shadow: inset 0 0 0 0.125rem var(--edge-soft); color: var(--ink-2); }
+.mp-buy-icon svg { width: 1.375rem; height: 1.375rem; }
+.mp-buy-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
+.mp-buy-actions .btn { flex: 1; padding: 0 0.75rem; }
 .mp-buy-go { transition: opacity 0.2s, box-shadow 0.1s; }
 .mp-buy-go.arming { opacity: 0.55; }
-.mp-buy-short { margin: 8px 0 0; font-size: 13.5px; color: var(--berry-lip); text-align: center; }
+.mp-buy-short { margin: 0.5rem 0 0; font-size: 0.84375rem; color: var(--berry-lip); text-align: center; }
 
 /* ── the level's page: the ring, the stations, what it gives now and next ── */
 .mp-body.level { overflow-y: auto; }
-.mp-lv { display: grid; gap: 14px; padding: 2px 16px calc(18px + env(safe-area-inset-bottom)); }
-.mp-lv-hero { display: flex; align-items: center; gap: 16px; }
-.mp-lv-ring { position: relative; flex: none; width: 124px; height: 124px; }
+.mp-lv { display: grid; gap: 0.875rem; padding: 0.125rem 1rem calc(1.125rem + env(safe-area-inset-bottom)); }
+.mp-lv-hero { display: flex; align-items: center; gap: 1rem; }
+.mp-lv-ring { position: relative; flex: none; width: 7.75rem; height: 7.75rem; }
 .mp-lv-ring svg { position: absolute; inset: 0; }
-.mp-lv-ring .mp-ring-fill { filter: drop-shadow(0 0 4px color-mix(in srgb, var(--sun) 70%, transparent)); }
+.mp-lv-ring .mp-ring-fill { filter: drop-shadow(0 0 0.25rem color-mix(in srgb, var(--sun) 70%, transparent)); }
 .mp-lv-n { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; line-height: 1; }
-.mp-lv-n small { font: 700 13px/1 var(--font-text); color: var(--ink-2); }
-.mp-lv-n b { font: 600 46px/1 var(--font-display); color: var(--ink); }
-.mp-lv-words { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
-.mp-lv-big { font: 600 19px/1.15 var(--font-display); color: var(--ink); }
+.mp-lv-n small { font: 700 0.8125rem/1 var(--font-text); color: var(--ink-2); }
+.mp-lv-n b { font: 600 2.875rem/1 var(--font-display); color: var(--ink); }
+.mp-lv-words { display: flex; flex-direction: column; align-items: flex-start; gap: 0.375rem; min-width: 0; }
+.mp-lv-big { font: 600 1.1875rem/1.15 var(--font-display); color: var(--ink); }
 .mp-lv-big strong { font-weight: 700; color: var(--amber-ink); }
-.mp-lv-line { font-size: 15px; color: var(--ink-2); }
-.mp-lv-facts { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
-.mp-lv-ghost { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--ink-2); }
-.mp-lv-ghost i { width: 14px; height: 8px; border-radius: 4px; background: var(--sun); opacity: 0.75; }
-.mp-lv-stations { position: relative; display: flex; justify-content: space-between; margin: 0; padding: 0 4px; list-style: none; }
-.mp-lv-stations::before { content: ''; position: absolute; left: 20px; right: 20px; top: 50%; height: 4px; margin-top: -2px; border-radius: 2px; background: var(--paper-3); }
+.mp-lv-line { font-size: 0.9375rem; color: var(--ink-2); }
+.mp-lv-facts { display: flex; flex-direction: column; align-items: flex-start; gap: 0.375rem; }
+.mp-lv-ghost { display: inline-flex; align-items: center; gap: 0.375rem; font-size: 0.875rem; color: var(--ink-2); }
+.mp-lv-ghost i { width: 0.875rem; height: 0.5rem; border-radius: 0.25rem; background: var(--sun); opacity: 0.75; }
+.mp-lv-stations { position: relative; display: flex; justify-content: space-between; margin: 0; padding: 0 0.25rem; list-style: none; }
+.mp-lv-stations::before { content: ''; position: absolute; left: 1.25rem; right: 1.25rem; top: 50%; height: 0.25rem; margin-top: -0.125rem; border-radius: 0.125rem; background: var(--paper-3); }
 .mp-lv-station { position: relative; display: grid; place-items: center; }
-.mp-lv-station > span { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--paper-2); color: var(--ink-2); font: 800 15px/1 var(--font-text); box-shadow: 0 0 0 3px var(--paper); }
+.mp-lv-station > span { display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 50%; background: var(--paper-2); color: var(--ink-2); font: 800 0.9375rem/1 var(--font-text); box-shadow: 0 0 0 0.1875rem var(--paper); }
 .mp-lv-station.past > span { background: var(--sun-lip); color: #fff; }
-.mp-lv-station.past svg { width: 16px; height: 16px; }
-.mp-lv-station.here > span { width: 40px; height: 40px; background: var(--sun); color: var(--ink); font-size: 18px; box-shadow: 0 0 0 3px var(--paper), 0 0 0 5px var(--sun-lip); }
-.mp-lv-station.next > span { background: #fff; color: var(--ink); box-shadow: 0 0 0 3px var(--paper), inset 0 0 0 2.5px var(--sun-lip); }
-.mp-lv-boosts { display: grid; gap: 6px; }
-.mp-lv-row { display: grid; grid-template-columns: minmax(0, 1fr) 64px 18px 84px; align-items: center; gap: 8px; min-height: 48px; padding: 4px 10px; border-radius: 16px; background: var(--paper-2); }
-.mp-lv-boosts.top .mp-lv-row { grid-template-columns: minmax(0, 1fr) 92px; }
-.mp-lv-row.head { min-height: 0; padding-block: 0; background: none; font: 700 13px/1.2 var(--font-text); color: var(--ink-2); }
+.mp-lv-station.past svg { width: 1rem; height: 1rem; }
+.mp-lv-station.here > span { width: 2.5rem; height: 2.5rem; background: var(--sun); color: var(--ink); font-size: 1.125rem; box-shadow: 0 0 0 0.1875rem var(--paper), 0 0 0 0.3125rem var(--sun-lip); }
+.mp-lv-station.next > span { background: #fff; color: var(--ink); box-shadow: 0 0 0 0.1875rem var(--paper), inset 0 0 0 0.15625rem var(--sun-lip); }
+.mp-lv-boosts { display: grid; gap: 0.375rem; }
+.mp-lv-row { display: grid; grid-template-columns: minmax(0, 1fr) 4rem 1.125rem 5.25rem; align-items: center; gap: 0.5rem; min-height: 3rem; padding: 0.25rem 0.625rem; border-radius: 1rem; background: var(--paper-2); }
+.mp-lv-boosts.top .mp-lv-row { grid-template-columns: minmax(0, 1fr) 5.75rem; }
+.mp-lv-row.head { min-height: 0; padding-block: 0; background: none; font: 700 0.8125rem/1.2 var(--font-text); color: var(--ink-2); }
 .mp-lv-row.head > span { text-align: center; }
-.mp-lv-what { display: flex; align-items: center; gap: 8px; font: 700 15px/1.2 var(--font-text); }
-.mp-lv-what .art { width: 30px; height: 30px; }
-.mp-lv-now, .mp-lv-next { justify-self: center; font: 800 15px/1 var(--font-text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mp-lv-what { display: flex; align-items: center; gap: 0.5rem; font: 700 0.9375rem/1.2 var(--font-text); }
+.mp-lv-what .art { width: 1.875rem; height: 1.875rem; }
+.mp-lv-now, .mp-lv-next { justify-self: center; font: 800 0.9375rem/1 var(--font-text); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .mp-lv-now.none { color: var(--ink-2); font-weight: 700; }
-.mp-lv-next.up { padding: 7px 10px; border-radius: 999px; background: var(--sun); color: var(--ink); box-shadow: 0 2px 0 var(--sun-lip); }
+.mp-lv-next.up { padding: 0.4375rem 0.625rem; border-radius: 62.4375rem; background: var(--sun); color: var(--ink); box-shadow: 0 0.125rem 0 var(--sun-lip); }
 .mp-lv-arrow { display: grid; place-items: center; color: var(--ink-2); }
-.mp-lv-arrow svg { width: 16px; height: 16px; }
+.mp-lv-arrow svg { width: 1rem; height: 1rem; }
 
 /* ── a phone on its side: the sheet on the right, the queue and the recipes side by side ── */
-.mp-right .mp-body { display: grid; grid-template-columns: clamp(230px, 32vw, 262px) minmax(0, 1fr); align-items: start; }
-.mp-right .mp-queue { margin: 0 0 0 16px; padding: 8px; }
-.mp-right .mp-places { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
-.mp-right .mp-foot { margin-top: 8px; min-height: 48px; }
-.mp-right .mp-collect, .mp-right .mp-note { min-height: 48px; }
-.mp-right .mp-collect { min-width: 0; padding: 0 10px; }
-.mp-right .mp-collect-in { gap: 8px; }
-.mp-right .mp-collect-pics .art { width: 28px; height: 28px; }
-.mp-right .mp-collect-pics .art + .art { margin-left: -15px; }
-.mp-right .mp-note { font-size: 14px; padding: 4px 10px; }
-.mp-right .mp-note.float { min-height: 36px; }
-.mp-right .mp-recipes { align-self: stretch; padding: 0 calc(12px + env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) 12px; }
-.mp-right .mp-recipes-in { gap: 8px; padding-bottom: 4px; }
+.mp-right .mp-body { display: grid; grid-template-columns: clamp(14.375rem, 32vw, 16.375rem) minmax(0, 1fr); align-items: start; }
+.mp-right .mp-queue { margin: 0 0 0 1rem; padding: 0.5rem; }
+.mp-right .mp-places { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.375rem; }
+.mp-right .mp-foot { margin-top: 0.5rem; min-height: 3rem; }
+.mp-right .mp-collect, .mp-right .mp-note { min-height: 3rem; }
+.mp-right .mp-collect { min-width: 0; padding: 0 0.625rem; }
+.mp-right .mp-collect-in { gap: 0.5rem; }
+.mp-right .mp-collect-pics .art { width: 1.75rem; height: 1.75rem; }
+.mp-right .mp-collect-pics .art + .art { margin-left: -0.9375rem; }
+.mp-right .mp-note { font-size: 0.875rem; padding: 0.25rem 0.625rem; }
+.mp-right .mp-note.float { min-height: 2.25rem; }
+.mp-right .mp-recipes { align-self: stretch; padding: 0 calc(0.75rem + env(safe-area-inset-right)) calc(0.75rem + env(safe-area-inset-bottom)) 0.75rem; }
+.mp-right .mp-recipes-in { gap: 0.5rem; padding-bottom: 0.25rem; }
 .mp-right .mp-body.level { display: block; }
-.mp-right .mp-lv { grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr); grid-template-areas: 'hero boosts' 'stations boosts'; align-items: start; gap: 14px 16px; padding: 2px calc(14px + env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) 22px; }
-.mp-right .mp-lv-hero { grid-area: hero; gap: 12px; }
-.mp-right .mp-lv-ring { width: 96px; height: 96px; }
-.mp-right .mp-lv-ring svg { width: 96px; height: 96px; }
-.mp-right .mp-lv-n b { font-size: 36px; }
-.mp-right .mp-lv-big { font-size: 17px; }
-.mp-right .mp-lv-line { font-size: 14px; }
-.mp-right .mp-lv-ghost { font-size: 13.5px; }
+.mp-right .mp-lv { grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr); grid-template-areas: 'hero boosts' 'stations boosts'; align-items: start; gap: 0.875rem 1rem; padding: 0.125rem calc(0.875rem + env(safe-area-inset-right)) calc(0.75rem + env(safe-area-inset-bottom)) 1.375rem; }
+.mp-right .mp-lv-hero { grid-area: hero; gap: 0.75rem; }
+.mp-right .mp-lv-ring { width: 6rem; height: 6rem; }
+.mp-right .mp-lv-ring svg { width: 6rem; height: 6rem; }
+.mp-right .mp-lv-n b { font-size: 2.25rem; }
+.mp-right .mp-lv-big { font-size: 1.0625rem; }
+.mp-right .mp-lv-line { font-size: 0.875rem; }
+.mp-right .mp-lv-ghost { font-size: 0.84375rem; }
 .mp-right .mp-lv-stations { grid-area: stations; padding: 0; }
-.mp-right .mp-lv-stations::before { left: 14px; right: 14px; }
+.mp-right .mp-lv-stations::before { left: 0.875rem; right: 0.875rem; }
 .mp-right .mp-lv-boosts { grid-area: boosts; }
-.mp-right .mp-lv-row { grid-template-columns: minmax(0, 1fr) 58px 14px 74px; gap: 6px; min-height: 46px; padding: 4px 8px; }
-.mp-right .mp-lv-what { gap: 6px; }
-.mp-right .mp-lv-what .art { width: 26px; height: 26px; }
-.mp-right .mp-lv-next.up { padding: 6px 8px; }
-.mp-right .mp-lv-station > span { width: 28px; height: 28px; font-size: 13px; }
-.mp-right .mp-lv-station.here > span { width: 34px; height: 34px; font-size: 16px; }
+.mp-right .mp-lv-row { grid-template-columns: minmax(0, 1fr) 3.625rem 0.875rem 4.625rem; gap: 0.375rem; min-height: 2.875rem; padding: 0.25rem 0.5rem; }
+.mp-right .mp-lv-what { gap: 0.375rem; }
+.mp-right .mp-lv-what .art { width: 1.625rem; height: 1.625rem; }
+.mp-right .mp-lv-next.up { padding: 0.375rem 0.5rem; }
+.mp-right .mp-lv-station > span { width: 1.75rem; height: 1.75rem; font-size: 0.8125rem; }
+.mp-right .mp-lv-station.here > span { width: 2.125rem; height: 2.125rem; font-size: 1rem; }
 
 /* ── on a computer or a tablet: in the middle, six places a row ── */
 .mp-middle .mp-places { grid-template-columns: repeat(6, minmax(0, 1fr)); }
@@ -253,12 +253,12 @@
   .mp-pop.shine::after { animation: mp-shine 0.7s 0.15s ease-out both; }
   .mp-lv-station.next > span { animation: mp-next 1.8s ease-in-out infinite; }
 }
-@keyframes mp-bob { 0%, 100% { transform: translateY(0) rotate(0); } 30% { transform: translateY(-3px) rotate(-3deg); } 65% { transform: translateY(-1px) rotate(2deg); } }
+@keyframes mp-bob { 0%, 100% { transform: translateY(0) rotate(0); } 30% { transform: translateY(-0.1875rem) rotate(-3deg); } 65% { transform: translateY(-0.0625rem) rotate(2deg); } }
 @keyframes mp-glow { 0%, 100% { opacity: 0.25; } 50% { opacity: 0.85; } }
 @keyframes mp-shine { to { transform: translateX(120%); } }
-@keyframes mp-next { 0%, 100% { box-shadow: 0 0 0 3px var(--paper), inset 0 0 0 2.5px var(--sun-lip); } 50% { box-shadow: 0 0 0 3px var(--paper), inset 0 0 0 2.5px var(--sun-lip), 0 0 12px 3px color-mix(in srgb, var(--sun) 70%, transparent); } }
+@keyframes mp-next { 0%, 100% { box-shadow: 0 0 0 0.1875rem var(--paper), inset 0 0 0 0.15625rem var(--sun-lip); } 50% { box-shadow: 0 0 0 0.1875rem var(--paper), inset 0 0 0 0.15625rem var(--sun-lip), 0 0 0.75rem 0.1875rem color-mix(in srgb, var(--sun) 70%, transparent); } }
 
 /* what a recipe lacks, in its note: each good's picture says where it is made (src/ui/GoodPic.tsx) */
-.mp-lack { display: inline-flex; align-items: center; gap: 2px; margin-block: -6px; }
-.mp-lack .good-pic { min-width: 40px; min-height: 40px; }
-.mp-lack .item-pic .art { width: 30px; height: 30px; }
+.mp-lack { display: inline-flex; align-items: center; gap: 0.125rem; margin-block: -0.375rem; }
+.mp-lack .good-pic { min-width: 2.5rem; min-height: 2.5rem; }
+.mp-lack .item-pic .art { width: 1.875rem; height: 1.875rem; }
