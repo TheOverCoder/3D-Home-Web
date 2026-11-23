@@ -32,6 +32,7 @@
         ".oxlintrc.json",
         ".prettierrc.json",
         ".gitignore",
+        ".gitattributes",
         "tsconfig.json",
         "src/vite-env.d.ts"
       ]

@@ -13,6 +13,7 @@
 import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { dirname, join, relative, extname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 const args = process.argv.slice(2)
 const flag = (name, fallback) => {
@@ -52,9 +53,10 @@ for (const input of files) {
   const simplify = entry.simplify ? ['--simplify', 'true', '--simplify-ratio', String(entry.simplify), '--simplify-error', String(entry.simplifyError ?? 0.001)] : ['--simplify', 'false']
   mkdirSync(dirname(output), { recursive: true })
   console.log(`\n→ ${rel}${entry.textureSize ? `  (textures ≤ ${entry.textureSize}px)` : ''}${entry.simplify ? `  (simplify to ${entry.simplify})` : ''}`)
+  // node itself runs glTF-Transform's command line (on Windows `npx` is a .cmd that Node will not start without a shell)
   const r = spawnSync(
-    'npx',
-    ['--no-install', 'gltf-transform', 'optimize', input, output, '--compress', 'meshopt', '--texture-compress', 'webp', '--texture-size', String(entry.textureSize ?? size), ...simplify],
+    process.execPath,
+    [fileURLToPath(new URL('../node_modules/@gltf-transform/cli/bin/cli.js', import.meta.url)), 'optimize', input, output, '--compress', 'meshopt', '--texture-compress', 'webp', '--texture-size', String(entry.textureSize ?? size), ...simplify],
     { stdio: 'inherit' },
   )
   if (r.status !== 0) {

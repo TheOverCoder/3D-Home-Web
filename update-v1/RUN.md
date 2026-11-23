@@ -10,6 +10,8 @@ waiting. Each owns its files and touches a hot file only as §2 says. Every comm
 merge a prefix of a branch early (`[early]`) when another agent waits on it. Within a phase an agent starts the moment
 its waits are merged and a slot is free; a phase starts when the gate before it is green (DECISIONS.md, CHECKS.md).
 
+> **2026-11-23:** the run is over; this section is its record as of 2026-11-19. What comes next: `NEXT.md`.
+
 ## Now: what is left (2026-11-19)
 
 23 of the 27 agents are merged (tags `v1/<agent>`); their rows and briefs are out of this file (git history keeps

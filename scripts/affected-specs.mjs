@@ -156,7 +156,9 @@ function main(argv) {
   }
   const env = { ...process.env }
   if (!env.PW_CHROMIUM_PATH && existsSync('/opt/pw-browsers/chromium')) env.PW_CHROMIUM_PATH = '/opt/pw-browsers/chromium'
-  return spawnSync('npx', ['playwright', 'test', '--trace', 'off', '--grep-invert', '@full', ...toRun], { cwd: ROOT, stdio: 'inherit', env }).status ?? 1
+  // node itself runs Playwright's command line (on Windows `npx` is a .cmd that Node will not start without a shell)
+  const cli = join(ROOT, 'node_modules', '@playwright', 'test', 'cli.js')
+  return spawnSync(process.execPath, [cli, 'test', '--trace', 'off', '--grep-invert', '@full', ...toRun], { cwd: ROOT, stdio: 'inherit', env }).status ?? 1
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) process.exitCode = main(process.argv.slice(2))

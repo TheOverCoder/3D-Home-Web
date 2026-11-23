@@ -7,10 +7,11 @@ The README has the overview; `tests/README.md` what each test guards.
 ## Before pushing
 
 - `npm run check` (types — the specs' too —, oxlint, the Vitest unit tests, the format check: ~15 s) always. Then, locally, only the e2e
-  spec of the area the change touches, without the nightly tests:
+  spec of the area the change touches (`node scripts/affected-specs.mjs` names them from the change, by
+  `tests/e2e/areas.json`; `--run` runs them), without the nightly tests:
   `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium npx playwright test --trace off --grep-invert @full <file>` (software
   WebGL, a few minutes a file; it builds and serves on :4185; `PW_GPU=1` on a computer with a graphics card draws on it
-  instead, several times faster — CI stays on software WebGL). `05` and `16` only when the change is to geometry,
+  instead, several times faster, and stops if it would draw in software — CI stays on software WebGL). `05` and `16` only when the change is to geometry,
   models, materials, lighting or `src/lib/visibility`, and only the group it touches (`-g`). A small request is one
   agent, no team. A rule or a save change gets a unit test beside its code (`src/**/*.test.ts`, `tests/README.md`).
 - A new package goes on `src/deps.allowed.json` (held by `src/deps.test.ts`) only after the vetting in
@@ -42,7 +43,8 @@ The README has the overview; `tests/README.md` what each test guards.
   under half a pixel at phone size). Judge "not noticed" by a screenshot at phone size, not by pixel equality. A limit
   that exists only for speed is a debt to remove, not a rule to keep.
 - Tests must not read a value that runs on in real time across separate `page.evaluate` calls (the farm ticks
-  every frame): advance and read in the same call.
+  every frame): advance and read in the same call. Nor may one pass on a single random draw: it sets the farm's dice
+  (`setRandom`), fixed seeds (the phone mix's `DRAWS`), or makes what it needs (17's second order wants two).
 
 ## Two maps (src/scene/Maps.tsx, maps.ts, travel.ts, src/lib/world.ts, src/data/maps.ts)
 
@@ -455,6 +457,9 @@ The README has the overview; `tests/README.md` what each test guards.
   kind's `weight` is its model's triangle count and `05-budget` fails when a model draws more: keep a piece under its
   weight — slim a heavy model (`simplify` in `scripts/assets.manifest.json`, then `npm run assets:optimize`) rather
   than raise the weight; if a weight or the limit must change, measure again.
+- A new farm starts on the farm and does not download the furniture's models before it plays: they come down in idle
+  time a few seconds into play (`downloadLater`, `src/lib/loader.ts`; `startsOnFarm`, `src/lib/saveKeys.ts`); a farm
+  that opens in the house fetches them first (`saveKeys.test.ts`; `11-startup`: a new farm's first download has none).
 - Things that stand on a piece follow it: `OnPiece` for the small ones, `HOSTED` for lamps and pickups (the standing
   lamp is a piece of its own, its light `HOSTED` by it: the house keeps as many lights as it always had).
 - What hangs on the walls is a piece on the `wall` layer (pictures, the mirror, the clock, the radiator, the switches,

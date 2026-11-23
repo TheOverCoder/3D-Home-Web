@@ -1,7 +1,8 @@
 # Update v1: the beta
 
-**Where it stands (2026-11-19):** 23 of 27 agents merged. What is left, in order, with who takes each open item and
-what the user decides first: `RUN.md`, *Now: what is left*.
+**Where it stands (2026-11-23):** the beta is built and live (all four missions, the clean-up, the play and budget
+checks). This file and `RUN.md` are the record of how it was planned and run; what comes next, and the checklist of
+what always helps, is `NEXT.md`.
 
 > **בעברית, בקצרה: איך המשחק ירגיש אחרי, ומה יהיה אחרת**
 >

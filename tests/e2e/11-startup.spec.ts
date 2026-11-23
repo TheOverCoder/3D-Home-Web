@@ -39,7 +39,9 @@ test.describe('starting up', () => {
     expect(first.files.length).toBeGreaterThan(8)
     expect(first.files.every((s: string) => s === 'done' || s === 'cached')).toBe(true)
     expect(first.kinds).toContain('code')
-    expect(first.kinds).toContain('model')
+    // a new farm starts on the farm's map: the house's furniture (the models) is left for idle time once it plays
+    // (`downloadLater`, src/lib/loader.ts), so the first download has none; the service worker keeps them all the same
+    expect(first.kinds).not.toContain('model')
     // ready: the loading screen has given way to the opening menu
     await expect(page.locator('.intro .loading-screen')).toHaveCount(0)
     await expect(page.locator('.intro-menu')).toBeVisible()
@@ -54,6 +56,10 @@ test.describe('starting up', () => {
     const shell = await page.evaluate(async () => await (await fetch('/index.html')).text())
     expect(shell).not.toMatch(/vendor-three|vendor-r3f|vendor-physics|\/models-|Experience-/)
     expect(listed.some((u) => /vendor-three-/.test(u))).toBe(true)
+    expect(
+      listed.some((u) => u.endsWith('.glb')),
+      'the furniture is in the manifest the service worker keeps',
+    ).toBe(true)
 
     // the service worker controls the page and has kept every file of the manifest
     await page.waitForFunction(

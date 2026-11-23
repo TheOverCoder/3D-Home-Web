@@ -23,6 +23,10 @@ export default defineConfig({
     viewport: { width: 640, height: 360 },
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
+    // `PW_GPU=1`: Chromium's new headless (`channel: 'chromium'`), since the default headless shell draws WebGL in
+    // software whatever it is told (Chromium's own source); the specs then refuse to run on a software renderer
+    // (tests/e2e/helpers.ts, `onGpu`)
+    ...(process.env.PW_GPU && !executablePath ? { channel: 'chromium' } : {}),
     launchOptions: {
       executablePath,
       // software WebGL (SwiftShader) everywhere, the same picture on every machine; `PW_GPU=1` on a computer with a

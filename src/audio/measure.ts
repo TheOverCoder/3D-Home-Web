@@ -172,20 +172,63 @@ export function mixFaults(family: SoundFamily, m: { peak: number; loud: number; 
 
 /** A sound rendered offline at full size, as a press plays it (the first step of its streak, a ding's own note, a thud
  *  at one size): its samples, mono, 48 kHz. Browsers only (Node has no Web Audio). */
-export async function renderSound(kind: FarmSound, o: PlayOpts = {}): Promise<Float32Array> {
+export async function renderSound(kind: FarmSound, o: PlayOpts = {}, seed?: number): Promise<Float32Array> {
   const ac = new OfflineAudioContext(1, Math.round(RENDER_SECONDS * RATE), RATE)
   const step = SOUNDS[kind].climb ? 0 : undefined
-  play(makeEngine(ac), kind, { at: 0.01, step, ...o })
+  onSeed(seed, () => play(makeEngine(ac), kind, { at: 0.01, step, ...o }))
   const buf = await ac.startRendering()
   return buf.getChannelData(0)
 }
 
 /** A reward's sting rendered offline at full size (./stings.ts), as it rings: its samples, mono, 48 kHz. */
-export async function renderSting(kind: RewardKind, tier: Tier): Promise<Float32Array> {
+export async function renderSting(kind: RewardKind, tier: Tier, seed?: number): Promise<Float32Array> {
   const ac = new OfflineAudioContext(1, Math.round(RENDER_SECONDS * RATE), RATE)
-  playSting(makeEngine(ac), kind, tier, 0.01)
+  onSeed(seed, () => playSting(makeEngine(ac), kind, tier, 0.01))
   const buf = await ac.startRendering()
   return buf.getChannelData(0)
+}
+
+/** A sound is a fresh draw each time it plays (its pitch, the stretch of noise it starts from, a sting's sparkles), so
+ *  one render can lie a few dB from another: each is measured over this many renders, on fixed seeds, so the table is
+ *  the same on every run and judges the sound as a player hears it over a few presses, not one draw of it. */
+export const DRAWS = 4
+
+/** `make` run with Math.random on a fixed seed (none: as it is). A sound writes its whole graph at once, before the
+ *  render, so only its own draws read the seed. */
+function onSeed<T>(seed: number | undefined, make: () => T): T {
+  if (seed === undefined) return make()
+  const was = Math.random
+  let a = seed
+  Math.random = () => {
+    a = (a + 0x6d2b79f5) | 0
+    let t = Math.imul(a ^ (a >>> 15), 1 | a)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+  try {
+    return make()
+  } finally {
+    Math.random = was
+  }
+}
+
+/** Several renders of one sound as one: its loudness their mean energy, its share on a phone's speaker and how long it
+ *  sounds their mean, its peak the highest (no draw may lean on the limiter). */
+export function overDraws(ms: readonly ReturnType<typeof measureSamples>[]): ReturnType<typeof measureSamples> {
+  const mean = (f: (m: ReturnType<typeof measureSamples>) => number) => ms.reduce((n, m) => n + f(m), 0) / ms.length
+  return {
+    peak: Math.max(...ms.map((m) => m.peak)),
+    loud: 10 * Math.log10(mean((m) => 10 ** (m.loud / 10))),
+    seconds: mean((m) => m.seconds),
+    band: mean((m) => m.band),
+  }
+}
+
+/** A sound measured over its DRAWS renders. */
+async function drawn(render: (seed: number) => Promise<Float32Array>) {
+  const ms: ReturnType<typeof measureSamples>[] = []
+  for (let seed = 1; seed <= DRAWS; seed++) ms.push(measureSamples(await render(seed)))
+  return overDraws(ms)
 }
 
 /** The kinds the stings are measured by: one of each family that rings (coins in, a gift, a level, a garment, the
@@ -206,8 +249,8 @@ export async function measureSounds(kinds: readonly FarmSound[] = PLAYER_SOUNDS,
     seconds: r(m.seconds, 2),
     faults: mixFaults(family, m),
   })
-  for (const kind of kinds) out.push(row(kind, SOUNDS[kind].family, measureSamples(await renderSound(kind))))
-  for (const kind of stings) for (const tier of TIERS) out.push(row(`sting ${kind} ${tier}`, 'reward', measureSamples(await renderSting(kind, tier))))
+  for (const kind of kinds) out.push(row(kind, SOUNDS[kind].family, await drawn((seed) => renderSound(kind, {}, seed))))
+  for (const kind of stings) for (const tier of TIERS) out.push(row(`sting ${kind} ${tier}`, 'reward', await drawn((seed) => renderSting(kind, tier, seed))))
   return out
 }
 

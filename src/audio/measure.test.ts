@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MIX_TARGETS, MIX_WITHIN, PEAK_MOST, PHONE_BAND, PHONE_SHARE, bandShare, measureSamples, mixFaults } from './measure'
+import { DRAWS, MIX_TARGETS, MIX_WITHIN, PEAK_MOST, PHONE_BAND, PHONE_SHARE, bandShare, measureSamples, mixFaults, overDraws } from './measure'
 import { PLAYER_SOUNDS, SOUNDS } from './sounds'
 
 // The phone mix's measure (./measure.ts) on signals made here (Node has no Web Audio: the sounds themselves are rendered
@@ -61,5 +61,18 @@ describe('the phone mix’s measure', () => {
     for (const k of ['moo', 'baa', 'crow', 'chug', 'bell', 'ding', 'chime'] as const) expect(PLAYER_SOUNDS, k).not.toContain(k)
     // every family a player sound is in has its loudness
     for (const k of PLAYER_SOUNDS) expect(MIX_TARGETS[SOUNDS[k].family], k).toBeTypeOf('number')
+  })
+
+  it('judges a sound over several draws: its loudness their mean energy, its peak the highest', () => {
+    expect(DRAWS).toBeGreaterThan(1)
+    // the same sine at full and half size: a mean energy of 0.625 of the full one's (−2.04 dB), the full one's peak
+    const full = measureSamples(sines(1, [1000, 1]))
+    const half = measureSamples(sines(1, [1000, 0.5]))
+    const m = overDraws([full, half])
+    expect(m.loud).toBeCloseTo(full.loud + 10 * Math.log10(0.625), 2)
+    expect(m.peak).toBeCloseTo(full.peak, 5)
+    expect(m.band).toBeCloseTo((full.band + half.band) / 2, 5)
+    // one draw is itself
+    expect(overDraws([half])).toEqual(half)
   })
 })

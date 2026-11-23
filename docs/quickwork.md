@@ -4,6 +4,27 @@
 > נכון ל־2026-11-10. הפרויקט: `3D-Home-Web` (Vite 8.3, React 19.3, three 0.186, R3F 9.8, drei 10.7, rapier 2.2, ecctrl 2.0, zustand 5.0).
 > **איך אומת:** גרסה, תאריך, רישיון ו־peerDependencies — מה־npm registry ישירות; כוכבים — מעמוד ה־GitHub; רישיונות של ריפוזיטוריז ונכסים — מקובץ ה־LICENSE עצמו ב־GitHub; התנהגות של מה שכבר מותקן — מהקבצים ב־`node_modules` שלנו. אתרים שחסומים מהסביבה הזאת (kenney.nl, ‏quaternius.com, ‏polyhaven.com, ‏ambientcg.com, ‏poly.pizza, ‏freesound.org, ‏itch.io, ‏webkit.org) נבדקו דרך מנוע חיפוש בלבד, ומסומנים כך בטבלאות. מה שלא אומת מסומן **[UNVERIFIED]**.
 
+## מצב ב-23.11.2026: מה מהמסמך הזה בשימוש
+
+| # | מה | מצב |
+|---|---|---|
+| 1 | Vitest | ✓ בשימוש: `npm run check` (כ-15 שניות) |
+| 2 | פיצול ה-e2e ב-CI | ✓ שמונה חלקים, מאוזנים לפי `tests/e2e/times.json`. `--last-failed` / `--only-changed` מקומית: עוד לא (נבדק, `update-v1/NEXT.md`) |
+| 3 | leva | הוחלף ב-lil-gui תחת `?tune` (טיימרים, מחירים, אור, פריימים, ציורים ומשולשים) |
+| 4 | KayKit לרהיטים | לא: הרהיטים הם המודלים שלנו ועוד 7 קבצי GLB |
+| 5 | עברית | לא התחיל: מחכה להחלטה |
+| 6 | manifest + אייקונים | ✓ `public/manifest.webmanifest` |
+| 7 | HDR → gain map | ✓ `src/assets/hdri/home.jpg`, 108 KB במקום 1.5 MB |
+| 8 | drei: `<Outlines>` | ✓ במצב העיצוב. `<Bvh>` ו-`<Detailed>`: לא, יש לנו מערכת עותקים רחוקים משלנו (`src/lib/sculpt/lod.ts`) |
+| 9 | wawa-vfx | לא: three.quarks וחלקיקים משלנו עושים את זה |
+| 10 | @three.ez/instanced-mesh | לא: `Parts` ומעבר הציור (`src/lib/visibility`). נבדק שוב לעומס המעבד בטלפון (`update-v1/NEXT.md`) |
+| 4ב | eruda | ✓ `?console` |
+| 4ב | StatsGl | לא: `?fps` (מונה פריימים) ו-`?tune` במקומו |
+| 4ב | Three.js DevTools, Spector.js | לא: תוספים לדפדפן, למחשב שלך |
+| 4א | @react-three/test-renderer | לא: נבדק אם יעביר בדיקות מהדפדפן לבדיקות יחידה (`update-v1/NEXT.md`) |
+| 4ג | glTF-Transform | ✓ `npm run assets:optimize` |
+| 4ג | rollup-plugin-visualizer | נדחה (`update-v1/REUSE.md` §2): Rolldown נותן את הגדלים בעצמו |
+
 ## TL;DR — עשרת הדברים שחוסכים הכי הרבה זמן
 
 | # | מה | למה (לפרויקט הזה) | מאמץ | עדיפות |

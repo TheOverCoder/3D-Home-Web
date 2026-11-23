@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { test as base, expect, type Browser, type Locator, type Page } from '@playwright/test'
+import { fileURLToPath } from 'node:url'
 import type { Rect, WalkIn, WalkInRoom } from '../../src/data/buildings'
 import { unpaidCoins, xpAt } from '../../src/farm/xp'
 
@@ -121,7 +122,18 @@ async function isPlaying(page: Page) {
 
 /** The drawing-free WebGL context (nullgl.js): what a frame draws is counted as by a real one (tests/e2e/26-counting
  *  checks it, side by side), at full speed instead of software rendering's few frames a second. */
-export const NULL_GL = new URL('./nullgl.js', import.meta.url).pathname
+export const NULL_GL = fileURLToPath(new URL('./nullgl.js', import.meta.url))
+
+/** `PW_GPU=1` asks for the graphics card: a run that would quietly draw in software instead (a headless shell, a
+ *  blocklisted driver, Windows' own software renderer) stops at once and says what it got. */
+async function onGpu(page: Page) {
+  const renderer = await page.evaluate(() => {
+    const gl = document.createElement('canvas').getContext('webgl2')
+    const info = gl?.getExtension('WEBGL_debug_renderer_info')
+    return gl ? String(gl.getParameter(info ? info.UNMASKED_RENDERER_WEBGL : gl.RENDERER)) : 'no WebGL'
+  })
+  if (/swiftshader|llvmpipe|softpipe|software|basic render|no webgl/i.test(renderer)) throw new Error(`PW_GPU=1, but WebGL draws in software here: ${renderer}`)
+}
 
 /** A page with the game and the helpers round it (`ready`, `teleport`…), booted on its first `ready()`. `counting`: on
  *  the drawing-free context, for what only counts draws and triangles (the budget walk); nothing is drawn. */
@@ -129,6 +141,7 @@ export async function openGame(browser: Browser, counting = false): Promise<{ ga
   const context = await browser.newContext({ viewport: { width: 640, height: 360 }, baseURL: BASE })
   const page = await context.newPage()
   if (counting) await page.addInitScript({ path: NULL_GL })
+  else if (process.env.PW_GPU) await onGpu(page)
   const errors: string[] = []
   watchErrors(page, errors)
 
