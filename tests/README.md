@@ -337,8 +337,13 @@ empties the list and makes the checks hard. `PANELS_MEASURE=1` prints the table 
 | Check | Found | Where | Paid by |
 |---|---|---|---|
 | Words under 15 px | 26 | the coop's *Full* 9, the buyers' moods in the line (`.farm-tag`, 13 px) 5, the level's lines 3, the shop 2, the news 2, the welcome back's *Next*, the daily gift, the goals, the machine and its slot | 07 change 10 (the designed cards' words: a design's call) |
-| Hit area under 48 px (touch) | 37 | the top's chips (44 px) 8 at rest and with a toast, the order board 8, the wardrobe 3, the barn's upgrade 3, the shop and the decoration shop 2 each, the machine, its slot and the coop | 07 change 10 (an `::after` to 48 px, the look kept at 44) |
+| Hit area under 48 px (touch) | 3 | one compass mark covered by its neighbour on the strip, at rest and with a toast; the order card's ✕ on a phone held sideways (at the board's clipped top edge) | 07 change 10 (an `::after` to 48 px, from outside the border) |
 | A good's picture not a `GoodPic` | 11 | the contractor's 6 (`ItemPic` outside a button), the place's head 2, the goals' and the level's prizes, the coop's line | 07 change 7 |
+
+Paid on 23.11 (34 hit areas): an `::after` is placed from inside its box's border, so the bordered ones (the top's tanks,
+the wardrobe's tabs, the paint swatches) grow by their border's width more; the goods' pictures, the shop's dots, the
+order board's *Put in* and the compass's marks got one; the decoration shop's tabs got their top margin back; the
+machine's level and the tool's good came above what lay over them.
 
 Paid in v1's last steps (the panel-debts' fixes, and NEXT.md's stage 4: the order board's and the wardrobe's tabs, the
 order card's ✕, every panel's ✕, the coop's good and the machine's level grown to 48 px; the buyers' moods at 13 px,
