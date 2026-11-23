@@ -1,10 +1,10 @@
 import { uiClick } from '../../audio/sound'
 import { useWalk, walkTo } from '../../lib/route/walking'
 import { useHome, type Panel } from '../../store'
-import { art, type ArtId } from '../../ui/art'
+import { art } from '../../ui/art'
 import type { GoodGo, GoodWays } from '../../ui/GoodPic'
-import { MACHINES, STORES, TOOLS, TOOL_KINDS, storeOf, type MachineId, type ProduceId } from '../data'
-import { farm, ladderMaxed, toolOwned } from '../state'
+import { MACHINES, MACHINE_IDS, MACHINE_PIC, STORES, TOOLS, TOOL_KINDS, storeOf, type ProduceId } from '../data'
+import { farm, ladderMaxed, machineOwned, toolOwned } from '../state'
 import { placeFor } from '../walkTargets'
 import { goFor } from './go'
 
@@ -12,9 +12,6 @@ import { goFor } from './go'
 // on this farm — a remote owned opens the machine or the tool from afar, coming back to the panel the good was tapped
 // in; on the farm "Show me" closes the panel and walks you to where the good is made, as a compass mark tapped does.
 // Given once round the farm's panels (src/farm/FarmUI.tsx), so every GoodPic in them has it.
-
-/** Each machine's picture (its panel's, the bubble's "Open the mill"). */
-export const MACHINE_PIC: Record<MachineId, ArtId> = { mill: 'sheaf-of-rice', loom: 'yarn', oven: 'shortcake', dairy: 'cheese-wedge', kettle: 'pot-of-food' }
 
 /** The same panel (a machine's, a tool's) as the one open. */
 const samePanel = (a: Panel, b: Panel | null) =>
@@ -37,6 +34,7 @@ export const GAME_WAYS: GoodWays = {
         machineRemote: remotes && ladderMaxed('machine-remote'),
         animalRemote: remotes && ladderMaxed('animal-remote'),
         tools: TOOL_KINDS.filter((k) => toolOwned(k) !== null),
+        machines: MACHINE_IDS.filter(machineOwned),
         map: s.map,
         placeFor,
         from: s.panel ?? undefined,

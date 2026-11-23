@@ -4,11 +4,12 @@ import { art, type ArtId } from '../ui/art'
 import { LockCorner, LockTag, opensWords, useNope } from '../ui/LockTag'
 import { Coins, Purse, Shell, useArmed } from '../ui/Sheet'
 import { Check } from '../ui/glyphs'
-import { SHOP, setsOf, type DecorTab, type ShopItemView, type ShopKind } from './decor'
-import { editView, settle, useEdit } from './edit'
+import { MACHINES, MACHINE_IDS, MACHINE_PIC, type MachineId } from './data'
+import { SHOP, setsOf, type MachineItemView, type ShopItemView, type ShopKind, type ShopTab } from './decor'
+import { editView, keepPlayerClear, settle, useEdit } from './edit'
 import { iconUrl, shopArtUrl } from './icons'
 import { isShopKind } from './layout'
-import { buyDecor, decorOwned, decorPrice, farm, freeDecorSpot, lockOf, placeDecor, shopView, useFarm } from './state'
+import { buyDecor, buyMachine, decorOwned, decorPrice, farm, freeDecorSpot, lockOf, machineOwned, machineShopView, placeDecor, shopView, useFarm } from './state'
 import { openFirst } from './unlockArt'
 
 // The edit mode's shop (the bag on its card): the farm's decoration — lights, fences and hedges, paths, a bench, trees,
@@ -19,11 +20,22 @@ import { openFirst } from './unlockArt'
 // farm's store, on the edit mode's card). A kind not open yet at the farm's level is shown after the open ones, faded,
 // with the level it opens at across its corner (a tap shakes it); its card has no Buy. The kinds stand in their sets
 // (src/farm/decor.ts, SETS: "Harvest scarecrows 2/3", how many of the set the farm has), the year's first.
+//
+// The third tab sells the machines (MACHINES' `price` in src/farm/data.ts): each once, locked till its level like a
+// kind, then bought on the same card; it comes onto the farm at its own place in the yard (or the free spot nearest
+// it), picked, so a drag moves it on. One the farm has is marked as on the farm, with nothing to buy.
 
-const TABS: { id: DecorTab; name: string }[] = [
+const TABS: { id: ShopTab; name: string }[] = [
   { id: 'decor', name: 'Decoration' },
-  { id: 'fruit', name: 'Fruit trees & bushes' },
+  { id: 'fruit', name: 'Fruit trees' },
+  { id: 'machines', name: 'Machines' },
 ]
+/** Each tab's title and picture. */
+const TAB_HEAD: Record<ShopTab, { title: string; art: string }> = {
+  decor: { title: 'Decoration', art: art('shopping-bags') },
+  fruit: { title: 'Fruit trees', art: art('seedling') },
+  machines: { title: 'Machines', art: art('gear') },
+}
 
 /** Puts one of a kind down from the store at the free spot nearest the middle of the view, picked so a drag moves it on:
  *  whether it went down (with no room in view it stays in the store, and the card says so). */
@@ -103,8 +115,55 @@ function ShopCard({ item }: { item: ShopItemView }) {
   )
 }
 
-/** The shop: two tabs, decoration and fruit plants. */
-export function DecorShop({ tab }: { tab: DecorTab }) {
+/** A machine on the Machines tab: its picture, its name and its price; one not open yet faded with its level, one the
+ *  farm has marked as on the farm (nothing to buy). */
+function MachineCard({ item }: { item: MachineItemView }) {
+  const open = useHome((s) => s.openPanel)
+  const [scope, nope] = useNope<HTMLButtonElement>()
+  if (item.locked !== undefined)
+    return (
+      <button ref={scope} className="farm-card decor-card machine-card locked" aria-disabled="true" aria-label={`${item.name}: ${opensWords(item.locked)}`} onClick={nope}>
+        <LockCorner level={item.locked} />
+        <img className="art" src={art(item.art)} alt="" />
+        <span className="farm-card-name">{item.name}</span>
+      </button>
+    )
+  if (item.owned)
+    return (
+      <div className="farm-card decor-card machine-card" role="group" aria-label={`${item.name}: on your farm`}>
+        <img className="art" src={art(item.art)} alt="" />
+        <span className="farm-card-name">{item.name}</span>
+        <span className="farm-card-tags">
+          <span className="tag ok">
+            <Check weight="bold" />
+            On the farm
+          </span>
+        </span>
+      </div>
+    )
+  return (
+    <button
+      className="farm-card decor-card machine-card"
+      aria-label={`${item.name}: ${item.price} coins`}
+      onClick={() => {
+        uiClick()
+        open({ kind: 'machine-buy', id: item.id })
+      }}
+    >
+      <img className="art" src={art(item.art)} alt="" />
+      <span className="farm-card-name">{item.name}</span>
+      <span className="farm-card-tags">
+        <span className={`tag${item.can ? '' : ' short'}`}>
+          <img src={art('coin')} alt="" />
+          {item.price}
+        </span>
+      </span>
+    </button>
+  )
+}
+
+/** The shop: three tabs, decoration, fruit plants and machines. */
+export function DecorShop({ tab }: { tab: ShopTab }) {
   useFarm((s) => s.rev)
   const close = useHome((s) => s.closePanel)
   const open = useHome((s) => s.openPanel)
@@ -113,8 +172,10 @@ export function DecorShop({ tab }: { tab: DecorTab }) {
     shopView().filter((i) => i.tab === tab),
     (i) => i.locked ?? null,
   ).sort((a, b) => Number(b.season?.now === true && b.locked === undefined) - Number(a.season?.now === true && a.locked === undefined))
+  // (the machines: what is open first, then what opens later, the nearest level first)
+  const machines = tab === 'machines' ? openFirst(machineShopView(), (m) => m.locked ?? null) : []
   return (
-    <Shell title={tab === 'decor' ? 'Decoration' : 'Fruit trees'} art={art(tab === 'decor' ? 'shopping-bags' : 'seedling')} sub={<Purse />} onClose={close}>
+    <Shell title={TAB_HEAD[tab].title} art={TAB_HEAD[tab].art} sub={<Purse />} onClose={close}>
       <div className="edit-actions deco-tabs decor-tabs" role="tablist" aria-label="The farm shop">
         {TABS.map((t) => (
           <button
@@ -132,6 +193,13 @@ export function DecorShop({ tab }: { tab: DecorTab }) {
         ))}
       </div>
       <div role="tabpanel">
+        {machines.length > 0 && (
+          <div className="farm-grid compact decor-grid">
+            {machines.map((m) => (
+              <MachineCard key={m.id} item={m} />
+            ))}
+          </div>
+        )}
         {setsOf(items).map((set) => (
           <section key={set.id} className="deco-shop-group decor-set" aria-label={`${set.name}: ${set.got} of ${set.of}`}>
             <h3>
@@ -190,6 +258,73 @@ export function BuyDecor({ item }: { item: string }) {
           Cancel
         </button>
         {lock !== null ? (
+          <span role="note" className="farm-lock">
+            <LockTag big level={lock} words={`Opens at level ${lock}`} />
+          </span>
+        ) : (
+          <button className={`btn farm-buy${armed ? '' : ' arming'}`} disabled={!afford} aria-disabled={!armed} onClick={buy}>
+            {afford ? (
+              <>
+                Buy · <Coins n={price} />
+              </>
+            ) : (
+              <>Needs {price - farm.coins} more</>
+            )}
+          </button>
+        )}
+      </div>
+    </Shell>
+  )
+}
+
+/** Where a machine just bought stands up: it settles with a puff of dust, you step out of it if it went up where you
+ *  stand, and it is picked, so a drag moves it on (as a piece put down is). */
+function standUp(id: MachineId) {
+  const t = { kind: 'place', id } as const
+  settle(t)
+  keepPlayerClear(t)
+  useEdit.getState().pick(t)
+}
+
+/** Buying a machine asks first, as a piece of decoration does: its picture, how many things it makes, what it costs and
+ *  what you have, Cancel or Buy. One not open yet shows its level instead; one the farm has, that it is there. */
+export function BuyMachine({ id }: { id: MachineId }) {
+  useFarm((s) => s.rev)
+  const close = useHome((s) => s.closePanel)
+  const open = useHome((s) => s.openPanel)
+  const armed = useArmed()
+  if (!MACHINE_IDS.includes(id) || MACHINES[id].price === undefined) return null
+  const def = MACHINES[id]
+  const price = def.price!
+  const owned = machineOwned(id)
+  const afford = farm.coins >= price
+  const lock = lockOf(`machine:${id}`)
+  const back = () => open({ kind: 'decor-shop', tab: 'machines' })
+  const buy = () => {
+    if (!armed || !afford || lock !== null || owned) return
+    close()
+    if (!buyMachine(id)) return
+    farmSound('build', 0, 1)
+    standUp(id)
+  }
+  return (
+    <Shell title={def.name} art={art(MACHINE_PIC[id])} sub={<Purse />} onClose={back}>
+      <div className="farm-shop-tags">
+        {owned ? (
+          <span className="tag ok">
+            <Check weight="bold" />
+            On the farm
+          </span>
+        ) : (
+          <span className="tag">{def.recipes.length} recipes</span>
+        )}
+      </div>
+      <p className="farm-line">{owned ? 'It stands on your land.' : 'It goes to its own place on your land, ready to drag.'}</p>
+      <div className="farm-confirm">
+        <button className="btn soft" onClick={back}>
+          Cancel
+        </button>
+        {owned ? null : lock !== null ? (
           <span role="note" className="farm-lock">
             <LockTag big level={lock} words={`Opens at level ${lock}`} />
           </span>

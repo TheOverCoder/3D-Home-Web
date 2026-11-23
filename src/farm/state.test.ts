@@ -98,13 +98,14 @@ describe('a save from before the tables', () => {
     p.sheep.timer.forEach((t, i) => expect(t).toBeCloseTo([30.5, 0, 59][i], 1))
     expect(p.sheep.timer[1]).toBe(0) // a full fleece: its clock held at 0
     // the mill's five sheaves, 7.5 s into the batch: five jobs, the first done and the second 3.5 s in (all five done
-    // when the batch would have been); the loom's three rolls and the oven's cake done jobs; three places each
+    // when the batch would have been); the loom's three rolls and the oven's cake done jobs; three places each; each the
+    // farm's (it holds jobs: nobody loses a machine they had)
     expect([machineStage('mill'), machineStage('loom'), machineStage('oven')]).toEqual(['working', 'done', 'done'])
     expect(farm.machines.mill).toMatchObject({ jobs: ['wheat', 'wheat', 'wheat', 'wheat', 'wheat'], done: 1, capacity: 3 })
     expect(farm.machines.mill.progress).toBeCloseTo(3.5, 1)
     expect(machineSecondsLeft('mill')).toBeCloseTo(5 * 4 - 7.5, 1)
-    expect(farm.machines.loom).toEqual({ jobs: ['wool', 'wool', 'wool'], done: 3, progress: 0, capacity: 3, worked: 0 })
-    expect(farm.machines.oven).toEqual({ jobs: ['strawberry_cake'], done: 1, progress: 0, capacity: 3, worked: 0 })
+    expect(farm.machines.loom).toEqual({ jobs: ['wool', 'wool', 'wool'], done: 3, progress: 0, capacity: 3, worked: 0, owned: true })
+    expect(farm.machines.oven).toEqual({ jobs: ['strawberry_cake'], done: 1, progress: 0, capacity: 3, worked: 0, owned: true })
     expect([farm.coins, farm.inv.wheat, farm.stats.baked, farm.beds[0].crop, waiting().map((v) => v.name)]).toEqual([321, 2, 2, 'lettuce', ['Omer']])
     // saved again: the new shape, none of the old fields
     saveFarm()
@@ -124,7 +125,7 @@ describe('a save from before the tables', () => {
     expect([p.sheep.timer[0], p.sheep.timer[1]]).toEqual([0, 0])
     expect(p.sheep.timer[3]).toBeCloseTo(1.5, 1)
     // four bags of sugar done: four done jobs, past the three places (none is lost; no new job until one is collected)
-    expect(farm.machines.mill).toEqual({ jobs: ['sugarcane', 'sugarcane', 'sugarcane', 'sugarcane'], done: 4, progress: 0, capacity: 3, worked: 0 })
+    expect(farm.machines.mill).toEqual({ jobs: ['sugarcane', 'sugarcane', 'sugarcane', 'sugarcane'], done: 4, progress: 0, capacity: 3, worked: 0, owned: true })
     farm.inv.sugarcane = 1
     expect(addJob('mill', 'sugarcane')).toBe(false)
     expect(farm.machines.oven).toMatchObject({ jobs: ['carrot_cake'], done: 0 })

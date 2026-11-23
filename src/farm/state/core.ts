@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { useHome } from '../../store'
-import { SELLABLE, type CropId, type Expansion, type LadderId, type MachineId, type ProduceId, type ProducerId, type StoreId } from '../data'
+import { MACHINE_IDS, SELLABLE, type CropId, type Expansion, type LadderId, type MachineId, type ProduceId, type ProducerId, type StoreId } from '../data'
 import { levelOf, type Xp } from '../xp'
 import type { Gifts } from '../gifts'
 import { dayNumber, type Daily } from '../daily'
@@ -13,7 +13,7 @@ import type { PersonLook } from '../../models/person'
 import type { Pose, Walker } from '../script'
 import type { OrderSlot } from '../orders'
 import type { GoalId } from '../goals'
-import type { FarmLayout } from '../layout'
+import type { FarmLayout, PlaceId } from '../layout'
 import { lockedAt, machineOpensAt, opensAt, type UnlockId } from '../unlocks'
 import type { StepsRecord } from '../firstSteps'
 import type { Skins } from '../skins'
@@ -87,7 +87,7 @@ export interface FarmData {
   beds: BedState[]
   /** the lemon tree, the hens' nest, the cows, the sheep */
   producers: Record<ProducerId, ProducerState>
-  /** the mill, the loom, the oven */
+  /** the mill, the loom, the oven, the dairy, the jam kettle: each bought or not, and its queue */
   machines: Record<MachineId, MachineState>
   sprinkler: boolean
   compost: boolean
@@ -278,8 +278,16 @@ export function unlockAll(on: boolean) {
  *  it here, and the interface draws the same answer. Only buying is locked: what the farm has stays, and works. */
 export const lockOf = (id: UnlockId): number | null => (allOpen ? null : lockedAt(id, levelOf(farm.xp.points)))
 export const isUnlocked = (id: UnlockId) => lockOf(id) === null
-/** A machine while every recipe of it is locked: the level it opens at; else null. */
-export const machineLock = (id: MachineId): number | null => (allOpen || levelOf(farm.xp.points) >= machineOpensAt(id) ? null : machineOpensAt(id))
+/** A machine is on the farm: bought in the edit mode's shop (the loom: from the start), or everything is open (the
+ *  tests: every machine stands, as before machines were bought). What is not on the farm is not drawn, takes no ground
+ *  and offers nothing. */
+export const machineOwned = (id: MachineId) => allOpen || farm.machines[id].owned
+/** The farm's places not on it now: its machines not bought (src/farm/layout.ts leaves them out of everything that
+ *  stands; a save being read asks for its own farm's). */
+export const placesAway = (f: FarmData = farm): PlaceId[] => (allOpen ? [] : MACHINE_IDS.filter((id) => !f.machines[id].owned))
+/** A machine that cannot work: while every recipe of it is locked, the level it opens at; once open, until it is bought,
+ *  the level it opened at. Null: it works. Every "is this machine open" asks it (its jobs, its places, the busy card). */
+export const machineLock = (id: MachineId): number | null => (allOpen || (levelOf(farm.xp.points) >= machineOpensAt(id) && farm.machines[id].owned) ? null : machineOpensAt(id))
 /** What a level opens, as the interface tells it (the level-up show, the level's card): nothing while all is open. */
 export const opensOn = (level: number) => (allOpen ? [] : opensAt(level))
 /** A crop's seeds can be bought now. */

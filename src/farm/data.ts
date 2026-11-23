@@ -243,6 +243,11 @@ export interface MachineDef {
   sounds: { load: FarmSound; done: KeyNote; collect: FarmSound; work?: { sound: FarmSound; every: number; spread: number } }
   /** what the farm's stats count of it, one for each job taken out (the cakes baked) */
   counts?: 'baked'
+  /** what it costs in the edit mode's shop (its Machines tab), where it is bought once its level opens it (`machine:`
+   *  in src/farm/unlocks.ts): a good share of what a player has as the level comes, never the cheapest thing then
+   *  (measured with `npm run sim`); until bought it is not on the farm. None: every farm's from the start (the loom: the
+   *  first steps weave at it) */
+  price?: number
 }
 
 export const MACHINES: Record<MachineId, MachineDef> = {
@@ -262,6 +267,7 @@ export const MACHINES: Record<MachineId, MachineDef> = {
       { id: 'wheat', needs: { wheat: 1 }, makes: 'flour', seconds: 4 },
     ],
     picture: 'flour',
+    price: 50,
     words: {
       word: 'Mill',
       working: (r, n, left) => `Milling ${count(inputOf(r), n)} · ${left}`,
@@ -305,6 +311,7 @@ export const MACHINES: Record<MachineId, MachineDef> = {
     sparkle: [-0.72, 1.04, 0],
     reach: 2.4,
     recipes: RECIPES,
+    price: 80,
     words: {
       word: 'Bake',
       working: (r, n, left) => `Baking ${n === 1 ? `a ${produceById(r.makes).name}` : count(r.makes, n)} · ready in ${left}`,
@@ -331,6 +338,7 @@ export const MACHINES: Record<MachineId, MachineDef> = {
       { id: 'ice_cream', needs: { milk: 2, sugar: 1, melon: 1 }, makes: 'ice_cream', seconds: 2 * 3600 },
       { id: 'yogurt', needs: { milk: 3 }, makes: 'yogurt', seconds: 40 * 60 },
     ],
+    price: 1200,
     words: {
       word: 'Churn',
       working: (r, n, left) => `Making ${n === 1 ? `a ${produceById(r.makes).name}` : count(r.makes, n)} · ready in ${left}`,
@@ -358,6 +366,7 @@ export const MACHINES: Record<MachineId, MachineDef> = {
       { id: 'apple_butter', needs: { apple: 6, sugar: 1 }, makes: 'apple_butter', seconds: 3600 },
       { id: 'raspberry_jam', needs: { raspberry: 6, sugar: 1 }, makes: 'raspberry_jam', seconds: 3600 },
     ],
+    price: 2500,
     words: {
       word: 'Cook',
       working: (r, n, left) => `Cooking ${n === 1 ? `a ${produceById(r.makes).name}` : count(r.makes, n)} · ready in ${left}`,
@@ -368,6 +377,10 @@ export const MACHINES: Record<MachineId, MachineDef> = {
   },
 }
 export const MACHINE_IDS = Object.keys(MACHINES) as MachineId[]
+/** The machines bought in the edit mode's shop, in its order (each with a `price`). */
+export const BOUGHT_MACHINES = MACHINE_IDS.filter((id) => MACHINES[id].price !== undefined)
+/** Each machine's picture (its card in the edit mode's shop, the bubble's "Open the mill"). */
+export const MACHINE_PIC: Record<MachineId, ArtId> = { mill: 'sheaf-of-rice', loom: 'yarn', oven: 'shortcake', dairy: 'cheese-wedge', kettle: 'pot-of-food' }
 
 // ───────────────────────────── the yard ─────────────────────────────
 

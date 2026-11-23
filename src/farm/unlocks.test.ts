@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { PAINT_IDS } from './carPaints'
 import { NEIGHBOUR_IDS } from '../data/people'
-import { CROPS, LEVELS, MACHINES, MACHINE_IDS, PRODUCERS, PRODUCER_IDS, START_COINS, UPGRADES, fullHerd, type ProduceId } from './data'
+import { BOUGHT_MACHINES, CROPS, LEVELS, MACHINES, MACHINE_IDS, PRODUCERS, PRODUCER_IDS, START_COINS, UPGRADES, fullHerd, type ProduceId } from './data'
 import { movesInAt } from './people/chapters'
 import { SHOP } from './decor'
 import { PARCELS, PARCEL_IDS } from './layout'
@@ -17,6 +17,7 @@ const EVERY: string[] = [
   ...UPGRADES.map((u) => `upgrade:${u.id}`),
   ...MACHINE_IDS.flatMap((m) => MACHINES[m].recipes.map((r) => `recipe:${m}:${r.id}`)),
   ...Object.keys(SHOP).map((k) => `decor:${k}`),
+  ...MACHINE_IDS.map((m) => `machine:${m}`),
   ...PARCEL_IDS.map((p) => `parcel:${p}`),
   ...NEIGHBOUR_IDS.map((who) => `person:${who}`),
   ...PRODUCER_IDS.flatMap((p) => herdSteps(p).map((n) => herdUnlock(p, n))),
@@ -89,6 +90,11 @@ describe('what each level opens', () => {
     expect(lockedAt('crop:wheat', UNLOCKS['crop:wheat'])).toBeNull()
     expect(lockedAt('crop:lettuce', 1)).toBeNull()
     for (const m of MACHINE_IDS) expect(machineOpensAt(m)).toBe(Math.min(...MACHINES[m].recipes.map((r) => UNLOCKS[recipeUnlock(m, r.id)])))
+    // a machine bought in the edit mode's shop is sold from the level its first recipe opens at; the loom is a new
+    // farm's, never sold (its row and its first recipe at level 1: the first steps weave at it)
+    for (const m of MACHINE_IDS) expect(UNLOCKS[`machine:${m}`], m).toBe(machineOpensAt(m))
+    expect(BOUGHT_MACHINES).toEqual(['mill', 'oven', 'dairy', 'kettle'])
+    expect(UNLOCKS['machine:loom']).toBe(1)
   })
 
   it('what levels reached together opened, one reveal for each level that opened something', () => {
@@ -116,5 +122,6 @@ describe('what each level opens', () => {
     expect(unlockName('parcel:north')).toBe('North meadow')
     expect(unlockName('herd:cows:4')).toBe('Another cow')
     expect(unlockName('upgrade:north')).toBe('North beds')
+    expect(unlockName('machine:oven')).toBe('Oven')
   })
 })

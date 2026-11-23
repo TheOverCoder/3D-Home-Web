@@ -1,16 +1,18 @@
 import { farmSound, placeSound } from '../../audio/sound'
 import { farmFx, goodsFx } from '../../fx/fx'
-import { count, MACHINE_IDS, MACHINES, storeOf, STORES, type MachineId, type ProduceId, type Recipe, type StoreId } from '../data'
+import { BOUGHT_MACHINES, count, MACHINE_IDS, MACHINE_PIC, MACHINES, storeOf, STORES, type MachineId, type ProduceId, type Recipe, type StoreId } from '../data'
+import type { MachineItemView } from '../decor'
 import { machineLevel, QUEUE, queuePrice, type MachineActions, type MachineView, type QueueSlot } from '../machineView'
 import { boostOf, hasPlace, insertJob, isWorking, jobSeconds, moveWaiting, secondsLeft as queueSecondsLeft, recipeOf, runQueue, takeDone, takeWaiting } from '../machines'
-import { toWorld } from '../layout'
+import { freePlaceSpot, toWorld } from '../layout'
 import { recipeUnlock } from '../unlocks'
-import { bump, eventSpeed, farm, isUnlocked, lockField, lockOf, machineLock, putBack, save, toast } from './core'
+import { bump, eventSpeed, farm, isUnlocked, lockField, lockOf, machineLock, machineOwned, putBack, save, toast } from './core'
 import { gainXp } from './levels'
 import { rewarded } from './rewards'
 import { room, store } from './stores'
 
-// The machines (MACHINES: the mill, the loom, the oven) and their queues of jobs.
+// The machines (MACHINES: the mill, the loom, the oven, the dairy, the jam kettle), bought in the edit mode's shop, and
+// their queues of jobs.
 
 // Each machine works through a queue of jobs, one good each (src/farm/machines.ts has its rules): a job goes in with
 // its ingredients, the first one waiting starts as soon as the machine is free, and a done job keeps its place until
@@ -84,15 +86,16 @@ const hasNeeds = (r: Recipe) => Object.entries(r.needs).every(([k, per]) => farm
 /** A recipe is open at the farm's level (src/farm/unlocks.ts). */
 const recipeOpen = (id: MachineId, recipe: string) => isUnlocked(recipeUnlock(id, recipe))
 
-/** A job of a recipe could go into a machine's queue now: it is open, a place is free and its ingredients are in store. */
-export const canAddJob = (id: MachineId, r: Recipe) => recipeOpen(id, r.id) && hasPlace(farm.machines[id]) && hasNeeds(r)
+/** A job of a recipe could go into a machine's queue now: the machine works (open and the farm's), the recipe is open, a
+ *  place is free and its ingredients are in store. */
+export const canAddJob = (id: MachineId, r: Recipe) => machineLock(id) === null && recipeOpen(id, r.id) && hasPlace(farm.machines[id]) && hasNeeds(r)
 
 /** A job into a machine's queue, at the end or at a waiting place: its ingredients are taken now, and it starts as
  *  soon as the machine is free. No XP for it (it can be taken out again, its ingredients back): its job's comes as it
  *  is collected. */
 export function addJob(id: MachineId, recipe: string, at?: number): boolean {
   const r = recipeOf(id, recipe)
-  if (!r || !recipeOpen(id, r.id) || !hasNeeds(r) || !insertJob(farm.machines[id], r.id, at)) return false
+  if (!r || machineLock(id) !== null || !recipeOpen(id, r.id) || !hasNeeds(r) || !insertJob(farm.machines[id], r.id, at)) return false
   for (const [k, per] of Object.entries(r.needs)) farm.inv[k as ProduceId] -= per ?? 0
   machineSound(id, MACHINES[id].sounds.load)
   bump()
@@ -190,6 +193,51 @@ export function buySlot(id: MachineId): boolean {
   bump()
   save()
   return true
+}
+
+// ───────────────────────────── buying one ─────────────────────────────
+
+/** Why a machine cannot be bought now (null: it can): the farm's already (or never sold: the loom), not open yet at the
+ *  farm's level, or short of coins. (With no free spot on your land for it, `buyMachine` says so.) */
+export function machineProblem(id: MachineId): 'owned' | 'locked' | 'coins' | null {
+  const price = MACHINE_IDS.includes(id) ? MACHINES[id].price : undefined
+  if (price === undefined || farm.machines[id].owned) return 'owned'
+  if (!isUnlocked(`machine:${id}`)) return 'locked'
+  if (!(farm.coins >= price)) return 'coins'
+  return null
+}
+
+/** Buys a machine (its card in the edit mode's shop asked first): it comes onto the farm where it stands on a new farm,
+ *  or at the free spot nearest that, turned the same way. A build's XP, as decoration bought gives. Whether it was
+ *  bought (with no free spot on your land, nothing is spent: a word says why). */
+export function buyMachine(id: MachineId): boolean {
+  if (machineProblem(id) !== null) return false
+  const spot = freePlaceSpot(farm.layout, id)
+  if (!spot) {
+    toast(`No room for the ${MACHINES[id].name.toLowerCase()} on your land`)
+    return false
+  }
+  farm.coins -= MACHINES[id].price!
+  farm.machines[id].owned = true
+  farm.layout = { ...farm.layout, places: { ...farm.layout.places, [id]: spot } }
+  gainXp('build')
+  toast(`${MACHINES[id].name}: it is yours`)
+  bump()
+  save()
+  return true
+}
+
+/** The shop's Machines tab: each machine it sells, in MACHINES' order, as it shows it. */
+export function machineShopView(): MachineItemView[] {
+  return BOUGHT_MACHINES.map((id) => ({
+    id,
+    name: MACHINES[id].name,
+    art: MACHINE_PIC[id],
+    price: MACHINES[id].price!,
+    owned: machineOwned(id),
+    can: !machineOwned(id) && machineProblem(id) === null,
+    ...lockField(lockOf(`machine:${id}`)),
+  }))
 }
 
 const percent = (share: number) => `${Math.round(share * 100)}%`

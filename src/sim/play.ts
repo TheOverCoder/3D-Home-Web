@@ -169,7 +169,7 @@ export function simulate(opts: { minutes: number; seed?: number; until?: number;
       const m = (run.moves[move.rule] ??= { n: 0, xp: 0 })
       m.n++
       m.xp += farm.xp.points - xp
-      if (move.rule === 'buy') run.bought.push({ minute: t / 60, what: move.what })
+      if (move.rule === 'buy' || move.rule === 'buy machine') run.bought.push({ minute: t / 60, what: move.what })
       reached()
       // it is done as it is chosen, and then the time it took passes: the way there from the last move, the press (an
       // animal's tool: the press opens its panel), and each tap on that panel

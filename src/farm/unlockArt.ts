@@ -1,7 +1,7 @@
 import { art, type ArtId } from '../ui/art'
 import { pictureOf } from '../ui/Portrait'
 import type { NeighbourId } from '../data/people'
-import { MACHINES, UPGRADES, type CropId, type MachineId, type UpgradeId } from './data'
+import { MACHINES, MACHINE_PIC, UPGRADES, type CropId, type MachineId, type UpgradeId } from './data'
 import { SHOP, type ShopKind } from './decor'
 import { iconUrl, shopArtUrl } from './icons'
 import type { UnlockId } from './unlocks'
@@ -31,8 +31,8 @@ const parts = (id: UnlockId) => {
   return { kind, rest, more }
 }
 
-/** A thing's picture: a crop's good, a recipe's (what it makes), an upgrade's shop picture, a decoration's, a field's
- *  clover, the new bed's hammer. */
+/** A thing's picture: a crop's good, a recipe's (what it makes), an upgrade's shop picture, a decoration's, a machine's,
+ *  a field's clover, the new bed's hammer. */
 export function unlockPic(id: UnlockId): string {
   const { kind, rest, more } = parts(id)
   if (kind === 'bed') return art('hammer')
@@ -40,6 +40,7 @@ export function unlockPic(id: UnlockId): string {
   if (kind === 'recipe') return iconUrl(MACHINES[rest as MachineId].recipes.find((r) => r.id === more)!.makes)
   if (kind === 'upgrade') return art(UPGRADE_ART[rest as UpgradeId])
   if (kind === 'decor') return shopArtUrl(rest as ShopKind)
+  if (kind === 'machine') return art(MACHINE_PIC[rest as MachineId])
   // a neighbour moving in: their portrait (the face at the gate)
   if (kind === 'person') return pictureOf(rest as NeighbourId)
   if (kind === 'herd') return art(UPGRADE_ART[UPGRADES.find((u) => u.herd === rest)!.id])
@@ -49,7 +50,7 @@ export function unlockPic(id: UnlockId): string {
 }
 
 /** Where a thing is found once it is open: the seed packets, its machine, the farm shop, the edit mode's shop (its
- *  decoration or its fruit trees), the edit mode itself (a field), a staked plot's tag (a bed). */
+ *  decoration, its fruit trees or its machines), the edit mode itself (a field), a staked plot's tag (a bed). */
 export function whereOf(id: UnlockId): string {
   const { kind, rest } = parts(id)
   if (kind === 'bed') return 'Build'
@@ -57,6 +58,7 @@ export function whereOf(id: UnlockId): string {
   if (kind === 'recipe') return MACHINES[rest as MachineId].name
   if (kind === 'upgrade' || kind === 'herd') return 'Shop'
   if (kind === 'decor') return SHOP[rest as ShopKind].tab === 'fruit' ? 'Fruit trees' : 'Decor'
+  if (kind === 'machine') return 'Machines'
   if (kind === 'person') return 'Neighbours'
   if (kind === 'paint') return 'Car dealer'
   return 'Edit'

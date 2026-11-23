@@ -251,6 +251,8 @@ function free(base: Base, path: Key[], names: string[]): (name: string) => boole
   if (base.old && /^(stats|got)(\.|$)/.test(at)) coupled.push(/^goals(\.|$)/)
   // and its XP starts from what it did (src/farm/xp.ts, seedXp), and so what the wardrobe has
   if (base.old && /^stats(\.|$)/.test(at)) coupled.push(/^(xp|outfit|gifts)(\.|$)/)
+  // and a farm from before machines were bought owns each its level had opened (src/farm/state/save.ts, boughtAsSaved)
+  if (base.old && /^(stats|xp)(\.|$)/.test(at)) coupled.push(/^machines\./)
   // and its days played start from its daily gift's streak and the day it last claimed one
   if (base.old && /^daily(\.|$)/.test(at)) coupled.push(/^played$/)
   // and so its year (src/farm/season.ts: read against its days played), and its season road
@@ -310,12 +312,13 @@ function farmProblems(): string[] {
   for (const kind of BEARER_KINDS) bad(`producers.${kind}: one for each plant standing`, farm.producers[kind].animals === farm.layout.decor.filter((d) => d.kind === kind).length)
   // the machines: a queue of their own recipes, twelve at most; the done ones first, no more than there are; the one
   // under way no further in than it takes at the machine's level (none: no progress); three to twelve places; the
-  // seconds worked from 0
+  // seconds worked from 0; the farm's or not (the loom always, and one that holds jobs or has worked)
   bad('the machines', sameKeys(farm.machines, MACHINE_IDS))
   for (const id of MACHINE_IDS) {
     const def = MACHINES[id]
     const m = farm.machines[id]
-    bad(`machines.${id}: its fields`, sameKeys(m, ['jobs', 'done', 'progress', 'capacity', 'worked']))
+    bad(`machines.${id}: its fields`, sameKeys(m, ['jobs', 'done', 'progress', 'capacity', 'worked', 'owned']))
+    bad(`machines.${id}.owned`, typeof m.owned === 'boolean' && (m.owned || (def.price !== undefined && m.jobs.length === 0 && m.worked === 0)))
     bad(`machines.${id}.jobs`, Array.isArray(m.jobs) && m.jobs.length <= QUEUE.max && m.jobs.every((j) => def.recipes.some((r) => r.id === j)))
     bad(`machines.${id}.done`, isCount(m.done, m.jobs.length))
     bad(`machines.${id}.capacity`, isCount(m.capacity, QUEUE.max) && m.capacity >= QUEUE.start)

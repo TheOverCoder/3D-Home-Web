@@ -15,6 +15,8 @@ export interface GoContext {
   animalRemote: boolean
   /** the animals' tools owned */
   tools: readonly ToolKind[]
+  /** the machines on the farm (one not bought yet is opened by no remote) */
+  machines: readonly MachineId[]
   /** the map you are on: a walk only on the farm (null: none yet) */
   map: 'farm' | 'home' | null
   /** where on this map to walk to for a good (an interactable's id; null: nowhere) */
@@ -30,7 +32,7 @@ export const animalsOf = (good: ProduceId): ToolKind | null => TOOL_KINDS.find((
 
 /**
  * The button under a good's words, the first that applies:
- * 1. the machines' remote owned and the good made at a machine: open that machine (on either map);
+ * 1. the machines' remote owned and the good made at a machine on the farm: open that machine (on either map);
  * 2. the animals' remote owned and the good given by animals whose tool is owned: open that tool (only a tool owned);
  * 3. on the farm, with a place it is made: "Show me", the walk there;
  * 4. else nothing: the words alone.
@@ -38,7 +40,7 @@ export const animalsOf = (good: ProduceId): ToolKind | null => TOOL_KINDS.find((
 export function goFor(good: ProduceId, ctx: GoContext): Go {
   const back = ctx.from ? { from: ctx.from } : {}
   const machine = machineOf(good)
-  if (ctx.machineRemote && machine) return { kind: 'open', panel: { kind: 'machine', id: machine, ...back } }
+  if (ctx.machineRemote && machine && ctx.machines.includes(machine)) return { kind: 'open', panel: { kind: 'machine', id: machine, ...back } }
   const kind = animalsOf(good)
   if (ctx.animalRemote && kind && ctx.tools.includes(kind)) return { kind: 'open', panel: { kind: 'tool', tool: kind, ...back } }
   const to = ctx.map === 'farm' ? ctx.placeFor(good) : null

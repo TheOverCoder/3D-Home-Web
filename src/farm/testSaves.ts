@@ -191,8 +191,9 @@ export function seeded(seed: number) {
 /** A farm played for a while, as the game saves it: something in every part of the save. The east beds, the west field
  *  and two meadows bought, the lemon tree moved out onto one; three cows, three sheep, four hens; beds growing (two
  *  watered, the rest dry), two set to a crop, a staked-out one built; things sold, declined, harvested and baked; the
- *  machines' queues: the oven's second cake done (the first collected), the loom's three rolls done, the mill a place
- *  bigger, a bag of flour done, wheat under way and cane waiting (a sheaf taken out again, the cane moved down); five
+ *  machines' queues (the mill and the oven bought, the dairy and the kettle not): the oven's second cake done (the first
+ *  collected), the loom's three rolls done, the mill a place bigger, a bag of flour done, wheat under way and cane
+ *  waiting (a sheaf taken out again, the cane moved down); five
  *  buyers in a line of seven; the barn made bigger once, a building material or two kept; four orders on the board, one half filled, one sent (its crates out on the tractor) and one
  *  declined (a new one on its way); the pouf moved, a plant put away, a stool bought and stood in the kitchen, a plant
  *  bought and waiting in storage; XP from all of it, a level's coins claimed and more waiting; the manager's rate at its
@@ -236,6 +237,10 @@ export function playedSave(): Record<string, unknown> {
     acceptOffer(spawnVisitor({ want: 'lettuce', qty: 2, offer: 9, queued: true }).id)
     declineOffer(spawnVisitor({ want: 'cloth', qty: 2, offer: 40, queued: true }).id)
     Object.assign(farm.inv, { flour: 3, sugar: 3, egg: 6, milk: 3, strawberry: 8, lemon: 4, wool: 3, wheat: 9, sugarcane: 2 })
+    // the mill and the oven the farm's (bought in the edit mode's shop, as if long ago: nothing spent here); the dairy and
+    // the jam kettle not bought
+    farm.machines.mill.owned = true
+    farm.machines.oven.owned = true
     addJob('oven', 'strawberry_cake')
     addJob('oven', 'lemon_cake')
     for (let k = 0; k < 3; k++) addJob('loom', 'wool')

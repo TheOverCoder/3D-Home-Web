@@ -1,14 +1,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { Page } from '@playwright/test'
-import { BEDS } from '../../src/farm/data'
+import { BEDS, MACHINES } from '../../src/farm/data'
 import { opensAt, unlockName } from '../../src/farm/unlocks'
+import { xpAt } from '../../src/farm/xp'
 import { expect, test } from './helpers'
 
 // What each level opens (src/farm/unlocks.ts), as a player's farm has it (a ?debug page has everything open: the locks
 // are turned on here, `unlocks.all(false)`, and off again by `ready()`): a new farm offers what level 1 opens, and
 // shows the rest locked with the level it opens at — the berry ribbon where the price was (src/ui/LockTag.tsx) — and
 // buys none of it; a level reached plays its show, then "Unlocked!" (src/farm/Unlocked.tsx): a card for each thing it
-// opened, which a tap takes away; and what it opened is then bought, planted and put into its machine.
+// opened, which a tap takes away; and what it opened is then bought, planted and put into its machine. A machine is
+// bought in the edit mode shop's Machines tab (src/farm/DecorShop.tsx) once its level opens it, and until then is not on
+// the farm.
 
 /** A new farm at level 1 with its locks on, and coins for anything; once the interface has seen it at level 1 (the
  *  level's show counts from the level it last saw: XP gained in the same frame as the reset would count from before). */
@@ -34,6 +37,15 @@ const reach = (page: Page, to: number) =>
     const f = (window as any).__home.farm
     for (let i = 0; i < 500 && f.xpNow().level < to; i++) f.gainXp('sale', 10)
   }, to)
+
+/** Which machines stand on the farm: drawn (their place in the scene) and on the action button (their interactable). */
+const onFarm = (page: Page) =>
+  page.evaluate(() => {
+    const h = (window as any).__home
+    const ids = h.interactables().map((d: any) => d.id)
+    const standing = (m: string) => !!h.scene.getObjectByName(`place-${m}`) && ids.includes(`farm-${m}`)
+    return Object.fromEntries(['mill', 'loom', 'oven', 'dairy', 'kettle'].map((m) => [m, standing(m)]))
+  })
 
 /** The cards of the reveal on the screen: their names, and whether each stands whole on the screen, under the
  *  dashboard and clear of the others. */
@@ -87,11 +99,21 @@ test.describe('what each level opens', () => {
     await expect(page.locator('.farm-shop-item.locked', { hasText: 'East beds' }).locator('.lock-tag')).toHaveText('Level 5')
     await page.evaluate(() => (window as any).__home.useHome.getState().closePanel())
 
-    // the mill, every recipe locked: a status that says when it opens, its picture beside the ribbon
-    const mill = await page.evaluate(() => (window as any).__home.interactables().find((d: any) => d.id === 'farm-mill').position)
-    await game.teleport(mill.x, 1.4, mill.z, -Math.PI / 2, -0.7)
-    await expect.poll(() => page.evaluate(() => (window as any).__home.useHome.getState().status?.label ?? null), { timeout: 30_000 }).toBe('Mill · opens at level 2')
-    await expect(page.locator('.prompt.status .lock-tag')).toHaveText('Level 2')
+    // the machines: the loom, a new farm's, stands on it; the mill, the oven, the dairy and the jam kettle are not on the
+    // farm (nothing drawn, nothing to press) but in the edit mode's shop, its Machines tab, each locked with its level
+    expect(await onFarm(page)).toEqual({ mill: false, loom: true, oven: false, dairy: false, kettle: false })
+    await openPanel(page, { kind: 'decor-shop', tab: 'decor' })
+    await page.locator('.farm-panel [role="tab"]', { hasText: 'Machines' }).click()
+    const machines = page.locator('.farm-panel .machine-card')
+    await expect(machines).toHaveCount(4)
+    await expect(machines.locator('.farm-card-name')).toHaveText(['Mill', 'Oven', 'Dairy', 'Jam kettle'])
+    await expect(machines.locator('.lock-tag')).toHaveText(['Level 2', 'Level 5', 'Level 21', 'Level 25'])
+    // the oven's card shakes (a card not open yet says so to the browser: the tap is forced), and nothing is bought
+    await machines.filter({ hasText: 'Oven' }).click({ force: true })
+    expect(await panelKind(page)).toBe('decor-shop')
+    expect(await page.evaluate(() => (window as any).__home.farm.buyMachine('oven'))).toBe(false)
+    expect(await onFarm(page)).toMatchObject({ oven: false })
+    await page.evaluate(() => (window as any).__home.useHome.getState().closePanel())
 
     // an East field's plot: its tag is the level, with no price, and its card has nothing to build with
     const east = BEDS.find((b) => b.expansion === 'east')!.index
@@ -111,7 +133,7 @@ test.describe('what each level opens', () => {
     expect(game.errors, game.errors.join('\n')).toEqual([])
   })
 
-  test('level 2 reached: its show, then "Unlocked!" — wheat, flour and a hen — gone at a tap; then wheat plants and the mill takes it', async ({ game }) => {
+  test('level 2 reached: its show, then "Unlocked!" — wheat, the mill, flour and a hen — gone at a tap; then wheat plants, and the mill, bought, takes it', async ({ game }) => {
     const { page } = game
     await game.ready('farm')
     await newFarm(page)
@@ -121,7 +143,7 @@ test.describe('what each level opens', () => {
     await expect(page.locator('.unlocked')).toBeAttached({ timeout: 30_000 })
     await expect(page.locator('.unlocked')).toHaveAttribute('aria-label', `Unlocked at level 2: ${opensAt(2).map(unlockName).join(', ')}`)
     const shown = await dealt(page)
-    expect(shown.names).toEqual(['Wheat', 'Flour', 'Another hen'])
+    expect(shown.names).toEqual(['Wheat', 'Mill', 'Flour', 'Another hen'])
     expect(shown.problems, shown.problems.join('\n')).toEqual([])
     // a tap gathers them (a second on the way ends it)
     await page.locator('.unlocked').click({ position: { x: 20, y: 200 } })
@@ -132,14 +154,14 @@ test.describe('what each level opens', () => {
     await expect(page.locator('.level-card .lf-next .unlock-row .unlock-card')).toHaveCount(opensAt(3).length)
     await page.evaluate(() => (window as any).__home.useHome.getState().closePanel())
 
-    // what level 2 opened works: wheat planted, flour put into the mill, another hen bought
+    // what level 2 opened works: wheat planted, the mill bought and flour put into it, another hen bought
     const r = await page.evaluate(() => {
       const f = (window as any).__home.farm
       const bed = f.state.beds.findIndex((b: any) => b.built && !b.crop)
       f.state.inv.wheat = 1
-      return { planted: f.plant(bed, 'wheat'), milled: f.addJob('mill', 'wheat'), hen: f.buy('hen') }
+      return { planted: f.plant(bed, 'wheat'), mill: f.buyMachine('mill'), milled: f.addJob('mill', 'wheat'), hen: f.buy('hen') }
     })
-    expect(r).toEqual({ planted: true, milled: true, hen: true })
+    expect(r).toEqual({ planted: true, mill: true, milled: true, hen: true })
     expect(game.errors, game.errors.join('\n')).toEqual([])
   })
 
@@ -169,7 +191,7 @@ test.describe('what each level opens', () => {
       const label = (l: number) => `Unlocked at level ${l}: ${opensAt(l).map(unlockName).join(', ')}`
       // level 2's reveal, then level 3's: every card there at once, at its place (nothing flies)
       await expect.poll(() => page.evaluate(() => Object.keys((window as any).__revealed)), { timeout: 60_000 }).toEqual([label(2), label(3)])
-      await expect.poll(() => page.evaluate(() => (window as any).__revealed[`Unlocked at level 2: Wheat, Flour, Another hen`].opacity), { timeout: 10_000 }).toBe(1)
+      await expect.poll(() => page.evaluate((k) => (window as any).__revealed[k].opacity, label(2)), { timeout: 10_000 }).toBe(1)
       const two = await page.evaluate((k) => (window as any).__revealed[k], label(2))
       expect(two).toMatchObject({ cards: opensAt(2).length, moved: false })
       // a tap takes level 3's away
@@ -180,6 +202,51 @@ test.describe('what each level opens', () => {
       await page.evaluate(() => window.clearInterval((window as any).__watch))
       await page.emulateMedia({ reducedMotion: null })
     }
+    expect(game.errors, game.errors.join('\n')).toEqual([])
+  })
+
+  test('the oven, bought in the edit mode shop’s Machines tab at its level: it stands at its place, and the action button opens it', async ({ game }) => {
+    const { page } = game
+    await game.ready('farm')
+    await newFarm(page)
+    // level 5 at once, as a farm loaded there (no gain from play: no show), the coins for the oven and a lemon cake's
+    // makings in the barn
+    await page.evaluate((points) => {
+      const f = (window as any).__home.farm
+      f.state.xp = { points, paid: 5 }
+      f.state.coins = 500
+      Object.assign(f.state.inv, { flour: 1, sugar: 1, egg: 2, milk: 1, lemon: 2 })
+      f.useFarm.setState((s: any) => ({ rev: s.rev + 1 }))
+    }, xpAt(5))
+    expect(await onFarm(page)).toMatchObject({ oven: false })
+    await openPanel(page, { kind: 'decor-shop', tab: 'machines' })
+    const oven = page.locator('.farm-panel .machine-card', { hasText: 'Oven' })
+    await expect(oven).not.toHaveClass(/locked/)
+    await expect(oven.locator('.tag')).toHaveText(String(MACHINES.oven.price))
+    // its card asks first: Cancel, or Buy with its price
+    await oven.click()
+    const card = page.locator('.farm-panel[aria-label="Oven"]')
+    await expect(card.locator('.farm-buy')).toContainText(String(MACHINES.oven.price))
+    await page.waitForTimeout(600)
+    await card.locator('.farm-buy').click()
+    await expect.poll(() => onFarm(page), { timeout: 30_000 }).toMatchObject({ oven: true })
+    const bought = await page.evaluate(() => {
+      const f = (window as any).__home.farm
+      return { coins: f.state.coins, owned: f.state.machines.oven.owned, at: f.state.layout.places.oven, home: f.places.oven.home }
+    })
+    expect(bought).toMatchObject({ coins: 500 - MACHINES.oven.price!, owned: true })
+    expect(bought.at).toEqual(bought.home)
+    // the Machines tab says it is on the farm, with nothing to buy
+    await openPanel(page, { kind: 'decor-shop', tab: 'machines' })
+    await expect(page.locator('.farm-panel .machine-card', { hasText: 'Oven' })).toContainText('On the farm')
+    await page.evaluate(() => (window as any).__home.useHome.getState().closePanel())
+    // where you stand to use it: the action button opens its queue
+    const stand = await page.evaluate(() => (window as any).__home.interactables().find((d: any) => d.id === 'farm-oven').position)
+    await game.teleport(stand.x, 1.4, stand.z, -Math.PI / 2, -0.3)
+    await expect.poll(() => page.evaluate(() => (window as any).__home.useHome.getState().nearby?.id ?? null), { timeout: 60_000 }).toBe('farm-oven')
+    await page.keyboard.press('KeyE')
+    await expect.poll(() => page.evaluate(() => (window as any).__home.useHome.getState().panel), { timeout: 30_000 }).toEqual({ kind: 'machine', id: 'oven' })
+    await page.evaluate(() => (window as any).__home.useHome.getState().closePanel())
     expect(game.errors, game.errors.join('\n')).toEqual([])
   })
 

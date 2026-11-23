@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { DOOR, LAMPS, PICKUPS, type RoomId, type Vec3 } from './data/layout'
 import type { ActionIcon } from './lib/interaction'
 import type { LadderId, MachineId, ToolKind } from './farm/data'
+import type { ShopTab } from './farm/decor'
 import type { SkinStyle } from './farm/skins'
 import type { Place } from './farm/state'
 
@@ -46,7 +47,7 @@ export type Panel =
   | { kind: 'office-upgrade'; id: 'slots' | 'wait' } // the order board with the card that asks before an office upgrade is bought
   | { kind: 'furniture' } // the furniture shop (decorating)
   | { kind: 'buy-piece'; type: string } // buying one piece: what it is and its price, Cancel or Buy
-  | { kind: 'decor-shop'; tab: 'decor' | 'fruit' } // the farm's edit mode's shop: decoration, or fruit trees and bushes
+  | { kind: 'decor-shop'; tab: ShopTab } // the farm's edit mode's shop: decoration, fruit trees and bushes, or the machines
   | { kind: 'decor-buy'; item: string } // buying one of a kind for the farm: what it is and its next price, Cancel or Buy
   | { kind: 'away' } // welcome back: what happened on the farm while you were away
   | { kind: 'daily' } // the daily gift: today's to claim, and the week's streak (src/farm/DailyPanel.tsx)
@@ -73,6 +74,7 @@ export type Panel =
   | { kind: 'computer'; piece: string; buy?: true } // the house's computer: its desktop and apps (src/farm/computer; buy: the card that asks before one is bought, from the desk's price tag)
   | { kind: 'letter'; id?: string; again?: boolean } // a neighbour's letter: the oldest waiting in the mailbox, or one read again (src/farm/people)
   | { kind: 'neighbours' } // the neighbours: everyone met, the story's road, the letters to read again (src/farm/people)
+  | { kind: 'machine-buy'; id: MachineId } // buying a machine for the farm (the edit mode's shop, its Machines tab): what it is and its price, Cancel or Buy
 
 /** Every kind of panel, as one that opens on a farm with plenty of everything (tests/e2e/39-panels opens each, upright
  *  and sideways, and measures what can be read and pressed). The type holds every kind of `Panel` once: a new panel
@@ -116,6 +118,7 @@ export const PANEL_KINDS: { readonly [K in Panel['kind']]: Extract<Panel, { kind
   computer: { kind: 'computer', piece: 'computer' },
   letter: { kind: 'letter', id: 'chapter:bread', again: true },
   neighbours: { kind: 'neighbours' },
+  'machine-buy': { kind: 'machine-buy', id: 'oven' },
 }
 
 /** The thing you look at carries a tag (src/ui/ThingTag.tsx): a gear for what can be set about it, or a price tag for

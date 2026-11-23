@@ -1,12 +1,16 @@
 // Things the player buys for the farm in the edit mode (B, from above): decoration, and fruit trees and bushes that
 // bear fruit. Each kind's price rises with every one bought (`nextPrice`). Placing, the save and the drawing are in
-// the farm's layout and scene; the models in src/models/decor.ts and src/models/fruit.ts.
+// the farm's layout and scene; the models in src/models/decor.ts and src/models/fruit.ts. (The shop's third tab sells
+// the machines, a row each of MACHINES in ./data with its `price`: bought once, they stand where they always stood.)
 
-/** The edit mode shop's two tabs. */
+/** The tabs of the kinds the shop sells over and over: decoration, and fruit trees and bushes. */
 export type DecorTab = 'decor' | 'fruit'
+/** The edit mode shop's three tabs: those two, and the machines. */
+export type ShopTab = DecorTab | 'machines'
 
 import { Color } from 'three'
 import type { ArtId } from '../ui/art'
+import type { MachineId } from './data'
 import type { SeasonId } from './season'
 
 export type DecorKind =
@@ -229,6 +233,18 @@ export interface ShopItemView {
   /** a season's piece (mission 10 c8): its season's name and picture, and whether it is that season now (sold, first
    *  in the shop with its ribbon) or not (faded, "Back in spring") */
   season?: { name: string; pic: string; now: boolean }
+}
+
+/** A machine as the shop's Machines tab shows it: its name, picture and price, whether it is on the farm already, whether
+ *  it can be bought now (open, not the farm's yet, the coins for it), and the level it opens at while it is locked. */
+export interface MachineItemView {
+  id: MachineId
+  name: string
+  art: ArtId
+  price: number
+  owned: boolean
+  can: boolean
+  locked?: number
 }
 
 /** A set as the shop shows it: its kinds (as given), and how many of them the farm has one of at least. */

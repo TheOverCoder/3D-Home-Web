@@ -5,7 +5,23 @@ import { BufferAttribute, BufferGeometry, FogExp2, MathUtils, Matrix4, Quaternio
 import { farmSound } from '../audio/sound'
 import { useHome } from '../store'
 import { dragTo, drop, editCamera, editView, keyOf, shownAt, shownPlacement, thingOf, useEdit, type Pick } from './edit'
-import { BLOCKERS, PARCELS, PARCEL_IDS, PLACE_IDS, bedRect, canBuyParcel, decorRect, doorway, footprint, landBounds, thingRect, type ParcelId, type PlaceId, type Rect, type Thing } from './layout'
+import {
+  BLOCKERS,
+  PARCELS,
+  PARCEL_IDS,
+  bedRect,
+  canBuyParcel,
+  decorRect,
+  doorway,
+  footprint,
+  landBounds,
+  standingPlaces,
+  thingRect,
+  type ParcelId,
+  type PlaceId,
+  type Rect,
+  type Thing,
+} from './layout'
 import { farm, lockOf, useFarm } from './state'
 import { LockTag } from '../ui/LockTag'
 
@@ -53,10 +69,10 @@ function groundAt(v: View, ndcX: number, ndcY: number, aspect: number): [number,
 
 const inRect = (r: Rect, x: number, z: number, m = 0) => x >= r.minX - m && x <= r.maxX + m && z >= r.minZ - m && z <= r.maxZ + m
 
-/** Everything that moves in the edit mode, with its footprint where it is shown: the places, the built beds (one not built
- *  yet stays where it was staked out) and the decoration. */
+/** Everything that moves in the edit mode, with its footprint where it is shown: the places on the farm (a machine not
+ *  bought is not), the built beds (one not built yet stays where it was staked out) and the decoration. */
 function movables(): { thing: Thing; rect: Rect }[] {
-  const out: { thing: Thing; rect: Rect }[] = PLACE_IDS.map((id) => ({ thing: { kind: 'place', id } as Thing, rect: footprint(id, shownPlacement(id)) }))
+  const out: { thing: Thing; rect: Rect }[] = standingPlaces().map((id) => ({ thing: { kind: 'place', id } as Thing, rect: footprint(id, shownPlacement(id)) }))
   farm.beds.forEach((b, index) => {
     const t: Thing = { kind: 'bed', index }
     const at = b.built ? shownAt(t) : null
@@ -474,6 +490,8 @@ export function EditMode() {
   const view = useRef<View>({ x: 0, z: 0, h: 40 })
   const editing = useHome((s) => s.editing)
   const parcels = useMemo(() => PARCEL_IDS, [])
+  // (the places on the farm: a machine bought comes in)
+  const places = useFarm(() => standingPlaces().join(' ')).split(' ') as PlaceId[]
   // the outlines and the labels once the camera is up (on the way they would swing across the screen)
   const [up, setUp] = useState(false)
   useFrame(() => {
@@ -487,7 +505,7 @@ export function EditMode() {
       {editing && up && (
         <group name="edit-overlay">
           <Blocked />
-          {PLACE_IDS.map((id) => (
+          {places.map((id) => (
             <PlaceOutline key={id} id={id} />
           ))}
           <IdleOutlines />

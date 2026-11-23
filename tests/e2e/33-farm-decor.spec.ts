@@ -55,11 +55,11 @@ test.describe("the farm's decoration", () => {
     await page.keyboard.press('KeyB')
     await until(game, () => (window as any).__home.useHome.getState().editing && (window as any).__home.farm.edit.camera.blend >= 1)
 
-    // the shop: two tabs, every kind with its price; the yard lamp's card asks first
+    // the shop: three tabs, every kind with its price; the yard lamp's card asks first
     await page.locator('.edit-card .deco-shop').click()
     const shop = page.locator('.farm-panel[aria-label="Decoration"]')
     await expect(shop).toBeVisible()
-    await expect(shop.locator('[role="tab"]')).toHaveText(['Decoration', 'Fruit trees & bushes'])
+    await expect(shop.locator('[role="tab"]')).toHaveText(['Decoration', 'Fruit trees', 'Machines'])
     // every kind of decoration sold (the beehive and the seasons' four among them; the season banner is given, not
     // sold), in their sets
     await expect(shop.locator('.decor-card')).toHaveCount(29)
