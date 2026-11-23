@@ -8,6 +8,9 @@ import { ESTATE_MAP, HOUSE_MODEL, SALE_BOARD } from '../../src/data/estate'
 // and the supermarket's own poses, its interior's shadows proven never seen.
 test.describe('the drawing pass leaves out only what cannot be seen: the walk-in buildings', () => {
   test('640×360: every walk-in building — outside facing its door, in its doorways, each room; third person outside and in', async ({ game }) => {
+    // every walk-in's poses in one test (about 2.4 minutes on CI for three buildings), and as the first test of its shard
+    // it also pays the page's boot: as long as 16's other walks may take
+    test.setTimeout(600_000)
     await setUp(game, 'farm')
     const log: string[] = []
     for (const w of WALK_INS) {
