@@ -13,7 +13,7 @@
 .tool-panel .tp-pertap { gap: 3px; padding-block: 0; font-variant-numeric: tabular-nums; }
 .tool-panel .tp-pertap b { font: 800 15px/1 var(--font-text); }
 .tool-panel .tp-pertap-word { font: 700 13px/1 var(--font-text); color: var(--ink-2); }
-.tool-panel .tp-good { min-width: 32px; min-height: 32px; margin: -4px -2px -4px -4px; }
+.tool-panel .tp-good { z-index: 1; min-width: 32px; min-height: 32px; margin: -4px -2px -4px -4px; }
 .tool-panel .tp-good .item-pic .art { width: 26px; height: 26px; }
 /* (a finger's room round the small picture) */
 .tool-panel .tp-good::before { content: ''; position: absolute; inset: -8px; }
@@ -31,7 +31,7 @@
 
 /* ── the coop: a little roof of shingles over a nest box of planks, a dark cubby for every hen ── */
 .tool-panel .tp-coop { position: relative; padding-top: 28px; }
-.tool-panel .tp-roof { position: absolute; left: -8px; right: -8px; top: 0; height: 36px; background: repeating-linear-gradient(180deg, transparent 0 10px, rgba(60, 10, 0, 0.18) 10px 12px), repeating-linear-gradient(90deg, var(--berry) 0 18px, color-mix(in srgb, var(--berry) 82%, var(--berry-lip)) 18px 20px); clip-path: polygon(0 100%, 20% 0, 80% 0, 100% 100%); box-shadow: inset 0 -4px 0 var(--berry-lip); }
+.tool-panel .tp-roof { pointer-events: none; position: absolute; left: -8px; right: -8px; top: 0; height: 36px; background: repeating-linear-gradient(180deg, transparent 0 10px, rgba(60, 10, 0, 0.18) 10px 12px), repeating-linear-gradient(90deg, var(--berry) 0 18px, color-mix(in srgb, var(--berry) 82%, var(--berry-lip)) 18px 20px); clip-path: polygon(0 100%, 20% 0, 80% 0, 100% 100%); box-shadow: inset 0 -4px 0 var(--berry-lip); }
 .tool-panel .tp-box { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 10px; border-radius: 6px 6px 20px 20px; }
 .tool-panel .tp-nest { position: relative; aspect-ratio: 1 / 0.92; min-height: 84px; padding: 0; border: 0; border-radius: 16px; background: radial-gradient(ellipse at 50% 20%, color-mix(in srgb, var(--ink) 62%, var(--edge)), var(--ink)); box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.45), 0 2px 0 rgba(255, 255, 255, 0.16); overflow: hidden; color: #fff; }
 .tool-panel .tp-straw { position: absolute; left: 9%; right: 9%; bottom: 8%; height: 36%; border-radius: 50%; background: radial-gradient(ellipse at 50% 35%, var(--sun) 0 35%, var(--sun-lip) 80%); box-shadow: inset 0 -4px 0 rgba(110, 70, 10, 0.35); }

@@ -151,11 +151,17 @@ button:focus-visible { outline: 3px solid var(--sun); outline-offset: 2px; }
   .btn.small,
   .deco-swatch,
   .mp-round,
+  .ob-put,
   .farm-panel .close { position: relative; }
   .btn.small::after,
   .deco-swatch::after,
   .mp-round::after,
-  .farm-panel .close::after { content: ''; position: absolute; inset: -2px; border-radius: inherit; }
+  .farm-panel .close::after,
+  .ob-put::after,
+  .shop-dots button::after,
+  button.good-pic::after { content: ''; position: absolute; inset: -2px; border-radius: inherit; }
+  /* (an ::after is placed from inside its box's border: a bordered one reaches past it by its border's width more) */
+  .deco-swatch::after { inset: -5px; }
 }
 .btn.round { width: 44px; min-height: 44px; padding: 0; }
 .btn svg { width: 22px; height: 22px; flex: none; }
@@ -870,6 +876,8 @@ a:focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; border-rad
 /* the silo and the barn: buttons, their tap area grown to 44 px round the 36 px chip */
 button.farm-chip-item { position: relative; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 button.farm-chip-item::after { content: ''; position: absolute; inset: -4px -2px; }
+/* the tanks: 44 px with a 2 px border, so 4 px out of the box inside it to reach 48 */
+.top-dash .top-gauge.farm-chip-item::after { inset: -4px; }
 button.farm-chip-item { transition: transform var(--t-release) var(--ease-pop), filter 0.15s; }
 @media (hover: hover) and (pointer: fine) {
   button.farm-chip-item:hover { filter: brightness(1.15); }
@@ -1218,7 +1226,9 @@ button.farm-chip-item:focus-visible { outline: 3px solid var(--sun); outline-off
 }
 .edit-open:hover { transform: none; }
 /* the edit mode's shop (src/farm/DecorShop.tsx): its two tabs, and a picked piece's picture on the card */
-.decor-tabs { margin: 2px 0 12px; }
+/* (both classes: the house's decorate tabs' `.deco-tabs` sets no top margin, and the farm shop's two must keep theirs,
+   or the sheet's scrolling body clips the top of their 48 px hit area under a finger) */
+.decor-tabs.deco-tabs { margin: 2px 0 12px; }
 .decor-tabs .btn { white-space: nowrap; }
 .decor-grid .farm-card { gap: 4px; }
 .decor-card .decor-fruit { width: 22px; height: 22px; }

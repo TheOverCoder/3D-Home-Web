@@ -36,24 +36,27 @@ const DEBTS: Record<string, Partial<Record<Check, number>>> = {
   // (the sheet's ✕ and the plain rows' faded words were paid in v1's last step: a 48 px hit area on every round button of
   // the sheet, an owned row's picture faded and not its words, the baskets' names at 15 px; then the order board's and
   // the wardrobe's tabs, the order card's ✕, every panel's ✕, the coop's good and the machine's level grown to 48 px; the
-  // buyers' moods in the line at 13 px, words now and no longer tiny)
-  'the top at rest': { target: 8 },
-  'the top with a toast': { target: 8 },
+  // buyers' moods in the line at 13 px, words now and no longer tiny. Then every hit area that had not grown: an ::after
+  // is placed from inside its box's border, so a bordered one (the tanks, the wardrobe's tabs, the swatches) reached only
+  // its own edge; the goods' pictures, the shop's dots, the order board's Put in and the compass's marks had none; the
+  // decoration shop's tabs lost their top margin to the house's tabs' rule, and the sheet's body clipped them; the
+  // machine's level and the tool's good were under the queue's well and the coop's roof)
+  // two compass marks side by side on the strip: the one drawn over its neighbour covers that one's edge
+  'the top at rest': { target: 1 },
+  'the top with a toast': { target: 1 },
   queue: { words: 5 },
-  shop: { words: 2, target: 2 },
-  'store-upgrade': { target: 3 },
-  orders: { target: 8 },
-  'decor-shop': { target: 2 },
+  shop: { words: 2 },
+  // the order card's ✕ sideways, at the board's top edge, which clips it
+  orders: { target: 1 },
   away: { words: 1 },
   daily: { words: 1 },
   goals: { words: 1, goodpic: 1 },
   level: { words: 3, goodpic: 1 },
-  wardrobe: { target: 3 },
   'market-place': { goodpic: 2 },
   contractor: { goodpic: 6 },
-  machine: { words: 1, target: 1 },
-  tool: { words: 9, target: 1, goodpic: 1 },
-  'machine-slot': { words: 1, target: 1 },
+  machine: { words: 1 },
+  tool: { words: 9, goodpic: 1 },
+  'machine-slot': { words: 1 },
   news: { words: 2 },
 }
 

@@ -17,7 +17,7 @@
 
 /* the level chip: a small ring of the way to the next level round the number, and the word */
 .mp-level-wrap { display: inline-flex; }
-.mp-level { position: relative; display: inline-flex; align-items: center; gap: 6px; min-height: 34px; margin-block: -2px; padding: 2px 2px 2px 12px; border: 0; border-radius: 999px; background: #fff; color: var(--ink); font: 600 15px/1 var(--font-display); box-shadow: 0 2px 0 var(--paper-3), 0 0 0 1.5px var(--edge-soft); }
+.mp-level { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 6px; min-height: 34px; margin-block: -2px; padding: 2px 2px 2px 12px; border: 0; border-radius: 999px; background: #fff; color: var(--ink); font: 600 15px/1 var(--font-display); box-shadow: 0 2px 0 var(--paper-3), 0 0 0 1.5px var(--edge-soft); }
 /* a finger's worth of room round it */
 .mp-level::before { content: ''; position: absolute; inset: -7px -4px; }
 .mp-level-ring { position: relative; display: grid; place-items: center; width: 30px; height: 30px; }
