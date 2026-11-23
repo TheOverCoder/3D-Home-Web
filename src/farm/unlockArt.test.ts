@@ -21,6 +21,7 @@ describe('how an unlock is shown', () => {
     expect(whereOf('upgrade:hen')).toBe('Shop')
     expect(whereOf('decor:path')).toBe('Decor')
     expect(whereOf('decor:apple-tree')).toBe('Fruit trees')
+    expect(whereOf('machine:oven')).toBe('Machines')
     expect(whereOf('parcel:north')).toBe('Edit')
     expect(whereOf('bed')).toBe('Build')
   })

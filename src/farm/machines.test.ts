@@ -92,7 +92,9 @@ describe("a machine's queue", () => {
   })
 
   it('three places to start with, and the most is twelve', () => {
-    expect(freshMachine()).toEqual({ jobs: [], done: 0, progress: 0, capacity: QUEUE.start, worked: 0 })
+    expect(freshMachine()).toEqual({ jobs: [], done: 0, progress: 0, capacity: QUEUE.start, worked: 0, owned: true })
+    // (one still to be bought in the edit mode's shop: the same, not the farm's yet)
+    expect(freshMachine(false)).toEqual({ jobs: [], done: 0, progress: 0, capacity: QUEUE.start, worked: 0, owned: false })
     expect([QUEUE.start, QUEUE.max]).toEqual([3, 12])
   })
 

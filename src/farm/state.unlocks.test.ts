@@ -8,6 +8,7 @@ import {
   buy,
   buyDecor,
   buyLand,
+  buyMachine,
   buySlot,
   canAddJob,
   collect,
@@ -69,10 +70,13 @@ const TRIES: { id: UnlockId; what: string; try: () => boolean }[] = [
   { id: 'upgrade:east', what: 'the East beds', try: () => buy('east') },
   { id: 'decor:lamp', what: 'a yard lamp', try: () => buyDecor('lamp') },
   { id: 'parcel:north', what: 'the north meadow', try: () => buyLand('north') },
+  // (the mill bought before its flour goes in, the oven before a place in its queue: a machine is bought first)
+  { id: 'machine:mill', what: 'the mill', try: () => buyMachine('mill') },
   { id: 'recipe:mill:wheat', what: 'flour at the mill', try: () => addJob('mill', 'wheat') },
+  { id: 'machine:oven', what: 'the oven', try: () => buyMachine('oven') },
 ]
 
-/** A machine's queue place: open with its first recipe (no row of its own). */
+/** A machine's queue place: open with the machine (no row of its own). */
 const ovenSlot = { machine: 'oven' as MachineId, what: 'a queue place at the oven', try: () => buySlot('oven') }
 
 describe('the locks, at level 1', () => {

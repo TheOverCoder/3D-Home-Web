@@ -9,6 +9,7 @@ import { levelOf, seedXp } from './xp'
 import { dayNumber } from './calendar'
 import { goalById, goalTarget, startStep, type GoalId } from './goals'
 import { tripSeconds } from './tractorRoute'
+import { machineOpensAt } from './unlocks'
 import { OLD_SAVE, playedSave, savedNow, startFrom } from './testSaves'
 import { defaultHome } from '../home/layout'
 import { defaultShell } from '../home/shell'
@@ -109,7 +110,8 @@ describe('a save broken or edited by hand', () => {
       [2.5, 2.5],
     ] as const) {
       startFrom({ ...played, machines: { ...machines, mill: queue(progress) } })
-      expect(farm.machines.mill, String(progress)).toEqual({ ...queue(kept) })
+      // (a mill saved with no word of being bought: as a farm from before, the farm's: its level had opened it)
+      expect(farm.machines.mill, String(progress)).toEqual({ ...queue(kept), owned: true })
       expect(without(savedNow(), 'machines'), String(progress)).toEqual(without(loaded, 'machines'))
     }
     // a job at its end is done with the next frame, and the next one starts
@@ -124,19 +126,20 @@ describe('a save broken or edited by hand', () => {
       [9, 2, 1],
     ] as const) {
       startFrom({ ...played, machines: { ...machines, mill: { recipe: 'wheat', count: 6, progress, ready: 0 } } })
-      expect(farm.machines.mill, String(progress)).toEqual({ jobs: Array.from({ length: 6 }, () => 'wheat'), done, progress: kept, capacity: 3, worked: 0 })
+      expect(farm.machines.mill, String(progress)).toEqual({ jobs: Array.from({ length: 6 }, () => 'wheat'), done, progress: kept, capacity: 3, worked: 0, owned: true })
     }
   })
 
   it("a machine's queue saved broken loads made safe: only its own recipes, twelve at most, done no more than there are, three to twelve places, worked from 0", () => {
     const machines = played.machines as Record<string, object>
     const mill = (m: object) => ({ ...played, machines: { ...machines, mill: m } })
-    const idle = { jobs: [], done: 0, progress: 0, capacity: 3, worked: 0 }
+    // (a mill saved with no word of being bought: the farm's, as on a farm from before whose level had opened it)
+    const idle = { jobs: [], done: 0, progress: 0, capacity: 3, worked: 0, owned: true }
     startFrom(mill({ jobs: ['wheat', 'flour', 7, null, 'lemon_cake', 'sugarcane', '__proto__'], done: 3, progress: 1, capacity: 5, worked: 99 }))
     // of the three saved done, one was a job of its own: the wheat; the cane is the one under way
-    expect(farm.machines.mill).toEqual({ jobs: ['wheat', 'sugarcane'], done: 1, progress: 1, capacity: 5, worked: 99 })
+    expect(farm.machines.mill).toEqual({ jobs: ['wheat', 'sugarcane'], done: 1, progress: 1, capacity: 5, worked: 99, owned: true })
     startFrom(mill({ jobs: Array.from({ length: 40 }, () => 'wheat'), done: 1e20, progress: 1, capacity: 1e20, worked: 1e308 }))
-    expect(farm.machines.mill).toEqual({ jobs: Array.from({ length: 12 }, () => 'wheat'), done: 12, progress: 0, capacity: 12, worked: Number.MAX_SAFE_INTEGER })
+    expect(farm.machines.mill).toEqual({ jobs: Array.from({ length: 12 }, () => 'wheat'), done: 12, progress: 0, capacity: 12, worked: Number.MAX_SAFE_INTEGER, owned: true })
     for (const broken of [{ jobs: 'wheat', done: 1, progress: 1, capacity: 2, worked: -5 }, { jobs: { 0: 'wheat' }, done: -1, progress: NaN, capacity: 'twelve', worked: Infinity }, { jobs: null }]) {
       startFrom(mill(broken))
       expect(farm.machines.mill, JSON.stringify(broken)).toEqual(idle)
@@ -164,21 +167,29 @@ describe('a save broken or edited by hand', () => {
 
   it('a machine at work on "constructor" or "__proto__" (names every object has) loads idle, and nothing else changes', () => {
     const machines = played.machines as Record<string, object>
+    // (saved with no word of being bought: the farm's as its level had opened each — the played farm's, 4: the mill, not
+    // the oven)
     const idle = { jobs: [], done: 0, progress: 0, capacity: 3, worked: 0 }
+    const mill = { ...idle, owned: true }
+    const oven = { ...idle, owned: false }
     for (const recipe of ['constructor', '__proto__', 'valueOf', 'hasOwnProperty']) {
       startFrom({
         ...played,
         machines: { ...machines, mill: { jobs: [recipe, recipe], done: 1, progress: 1, capacity: 3, worked: 0 }, oven: { jobs: [recipe], done: 1, progress: 0, capacity: 3, worked: 0 } },
       })
-      expect([farm.machines.mill, farm.machines.oven], recipe).toEqual([idle, idle])
+      expect([farm.machines.mill, farm.machines.oven], recipe).toEqual([mill, oven])
       expect(without(savedNow(), 'machines'), recipe).toEqual(without(loaded, 'machines'))
       // as a save from before the queue had it
       startFrom({ ...played, machines: { ...machines, mill: { recipe, count: 2, progress: 1, ready: 0 }, oven: { recipe, count: 0, progress: 0, ready: 1 } } })
-      expect([farm.machines.mill, farm.machines.oven], recipe).toEqual([idle, idle])
+      expect([farm.machines.mill, farm.machines.oven], recipe).toEqual([mill, oven])
     }
     // a save from before the tables: what the mill grinds or made, what the oven bakes or baked
     startFrom({ ...OLD_SAVE, time: NOW, mill: { input: 'constructor', count: 2, progress: 0, output: '__proto__', ready: 2 }, oven: { baking: 'valueOf', progress: 3, ready: 'toString' } })
-    expect([farm.machines.mill, farm.machines.oven]).toEqual([idle, idle])
+    const level = levelOf(farm.xp.points)
+    expect([farm.machines.mill, farm.machines.oven]).toEqual([
+      { ...idle, owned: level >= machineOpensAt('mill') },
+      { ...idle, owned: level >= machineOpensAt('oven') },
+    ])
   })
 
   it('with the number for new pieces lost, a stool taken out of storage gets an id of its own, and putting it away loses none', () => {

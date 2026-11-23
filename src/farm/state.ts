@@ -1,6 +1,7 @@
+import { placesAwayFrom } from './layout'
 import { machineLevel } from './machineView'
 import { priceBoosts, priceEvents } from './prices'
-import { farm, saveNow, switchesByPage, writeWith } from './state/core'
+import { farm, placesAway, saveNow, switchesByPage, writeWith } from './state/core'
 import { dayFactor } from './state/day'
 import { load, resumeFrom, startSlot, writeSlot } from './state/save'
 import { stepsByPage } from './state/steps'
@@ -45,8 +46,9 @@ export * from './state/car'
 /**
  * The farm as the page opens, once: the switches as the page has them (the week's events, the levels' locks, the first
  * steps: off where the game is tested), the slot this device played last read and made safe into the farm, the prices
- * told the machines' levels and the lucky draw, the farm written into its slot as it changes and as the page hides,
- * and then the line at the gate as it was left and the time since it was saved played on.
+ * told the machines' levels and the lucky draw, the layout told which machines are not on the farm, the farm written
+ * into its slot as it changes and as the page hides, and then the line at the gate as it was left and the time since it
+ * was saved played on.
  */
 function start() {
   switchesByPage()
@@ -57,6 +59,8 @@ function start() {
   // what a machine makes sells for more at its level (every sale asks src/farm/prices.ts); only once the farm is here:
   // a save that loads before it asks nothing of it
   priceBoosts((id) => machineLevel(farm.machines[id].worked).boost.coins)
+  // a machine not bought yet is not on the farm: it takes no ground in the layout (src/farm/layout.ts)
+  placesAwayFrom(() => placesAway())
   writeWith(writeSlot)
   if (typeof window !== 'undefined') {
     window.addEventListener('pagehide', saveNow)

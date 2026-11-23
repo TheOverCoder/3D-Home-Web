@@ -1,4 +1,4 @@
-import { BuyDecor, DecorShop } from './DecorShop'
+import { BuyDecor, BuyMachine, DecorShop } from './DecorShop'
 import { GoalsPanel } from './GoalsPanel'
 import { AwayPanel, AwayWatcher } from './AwayPanel'
 import { SeasonPanel, SeasonWatcher } from './SeasonCard'
@@ -86,6 +86,7 @@ export function FarmUI() {
         {panel?.kind === 'buy-piece' && <BuyPiece type={panel.type} />}
         {panel?.kind === 'decor-shop' && <DecorShop tab={panel.tab} />}
         {panel?.kind === 'decor-buy' && <BuyDecor item={panel.item} />}
+        {panel?.kind === 'machine-buy' && <BuyMachine id={panel.id} />}
         {panel?.kind === 'queue' && <QueuePanel />}
         {panel?.kind === 'shop' && <ShopPanel />}
         {panel?.kind === 'store' && <StorePanel store={panel.store} />}

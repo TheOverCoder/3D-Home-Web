@@ -19,9 +19,13 @@ export interface MachineState {
   capacity: number
   /** every second it has worked: its level */
   worked: number
+  /** the farm's: bought in the edit mode's shop (MACHINES' `price` in ./data; the loom is every farm's). Until then it
+   *  is not on the farm (src/farm/state/core.ts, machineOwned) */
+  owned: boolean
 }
 
-export const freshMachine = (): MachineState => ({ jobs: [], done: 0, progress: 0, capacity: QUEUE.start, worked: 0 })
+/** A machine with nothing in its queue and nothing worked: the farm's (`owned`), or one still to be bought. */
+export const freshMachine = (owned = true): MachineState => ({ jobs: [], done: 0, progress: 0, capacity: QUEUE.start, worked: 0, owned })
 
 /** A recipe of the machine by its key (anything else, a name every object has included: none). */
 export const recipeOf = (id: MachineId, recipe: unknown): Recipe | undefined => MACHINES[id].recipes.find((r) => r.id === recipe)

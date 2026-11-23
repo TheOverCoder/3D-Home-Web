@@ -9,11 +9,12 @@ import { FRUIT, isLookOf, SHOP, type BearerKind, type ShopKind } from './decor'
 
 // Where the farm's movable things stand, and the land they may stand on. A "place" is a whole thing moved in one
 // go in the edit mode (the hen run with its coop, the cows' pasture, the sheep fold, the silo, the barn, the lemon
-// tree, the big trees, the mill, the loom and the oven): its footprint is a rectangle in its own frame, turned in quarter
-// turns. Each built bed moves too, and the decoration and fruit plants bought in the edit mode stand where they are put
-// (or wait in the farm's store). Land is the home garden plus fields for sale round it; a thing fits where it is on owned
-// land and clear of the paths, the shed, the other things and their ways in. Everything here is plain data and
-// arithmetic (no scene, no state), so the scene, the farm's save and the tests share it.
+// tree, the big trees, the machines): its footprint is a rectangle in its own frame, turned in quarter turns. A machine
+// not bought yet is not on the farm (`placesAwayFrom`): it takes no ground until it is. Each built bed moves too, and
+// the decoration and fruit plants bought in the edit mode stand where they are put (or wait in the farm's store). Land
+// is the home garden plus fields for sale round it; a thing fits where it is on owned land and clear of the paths, the
+// shed, the other things and their ways in. Everything here is plain data and arithmetic (no scene, no state), so the
+// scene, the farm's save and the tests share it.
 
 export type PlaceId = 'hens' | 'cows' | 'sheep' | 'silo' | 'barn' | 'lemon' | 'tree0' | 'tree1' | 'tree2' | 'mill' | 'loom' | 'oven' | 'dairy' | 'kettle'
 export type ParcelId = 'north' | 'east' | 'west' | 'northEast' | 'northWest'
@@ -108,6 +109,17 @@ export const PLACES: Record<PlaceId, PlaceDef> = {
 }
 
 export const PLACE_IDS = Object.keys(PLACES) as PlaceId[]
+
+/** The places not on the farm now (its machines not bought: src/farm/state/core.ts, placesAway): drawn nowhere, taking
+ *  no ground, in nothing's way. None until the farm's state says (once, as it starts); a save being read is asked
+ *  about its own (sanitizeLayout's `away`). */
+let awayNow: () => readonly PlaceId[] = () => []
+/** Where the places not on the farm are read from: once, from the farm's start (src/farm/state.ts). */
+export function placesAwayFrom(f: () => readonly PlaceId[]) {
+  awayNow = f
+}
+/** The places on the farm now (all but those away), in PLACES' order. */
+export const standingPlaces = (away: readonly PlaceId[] = awayNow()): PlaceId[] => PLACE_IDS.filter((id) => !away.includes(id))
 
 export interface ParcelDef {
   id: ParcelId
@@ -427,9 +439,10 @@ function clash(a: Cover, b: Cover): string | null {
   return null
 }
 
-/** Everything standing in a layout, as covers: the beds first (a reason names a bed before the path beside it). */
-function coversOf(layout: FarmLayout): Cover[] {
-  return [...layout.beds.map((p, i) => bedCover(i, p)), ...PLACE_IDS.map((id) => placeCover(id, layout.places[id])), ...layout.decor.map(decorCover)]
+/** Everything standing in a layout, as covers: the beds first (a reason names a bed before the path beside it); a place
+ *  away (a machine not bought) stands nowhere. */
+function coversOf(layout: FarmLayout, away: readonly PlaceId[] = awayNow()): Cover[] {
+  return [...layout.beds.map((p, i) => bedCover(i, p)), ...standingPlaces(away).map((id) => placeCover(id, layout.places[id])), ...layout.decor.map(decorCover)]
 }
 
 /** What a thing would cover at a placement. */
@@ -462,12 +475,12 @@ function fits(layout: FarmLayout, a: Cover, others: readonly Cover[]): Fit {
   return { ok: true }
 }
 
-/** Does a thing fit at a placement: on your land, clear of everything else, its way in open, and nothing's way in
- *  blocked by it? */
-export function canPlaceThing(layout: FarmLayout, thing: Thing, p: Placement): Fit {
+/** Does a thing fit at a placement: on your land, clear of everything else (what stands: `away` is not on the farm),
+ *  its way in open, and nothing's way in blocked by it? */
+export function canPlaceThing(layout: FarmLayout, thing: Thing, p: Placement, away: readonly PlaceId[] = awayNow()): Fit {
   const a = coverAt(layout, thing, p)
   if (!a) return { ok: false, reason: 'Not on the farm' }
-  return fits(layout, a, coversOf(layout))
+  return fits(layout, a, coversOf(layout, away))
 }
 
 /** Does a place fit at a placement: on your land, clear of everything else, and its way in open? */
@@ -534,10 +547,9 @@ export function joinRun(layout: FarmLayout, d: DecorPiece, reach = 0.6): DecorPi
   return b ? { ...d, x: round3(d.x + b.dx), z: round3(d.z + b.dz) } : d
 }
 
-/** A free spot for a new piece of a kind, nearest to (x, z) on the half-metre grid, on your land: its placement, or null
- *  where there is none within `most` metres. */
-export function freeSpot(layout: FarmLayout, kind: ShopKind, x: number, z: number, rot = 0, most = 14): Placement | null {
-  const covers = coversOf(layout)
+/** The point of the half-metre grid nearest to (x, z) where `ok` says yes, ring by ring out to `most` metres (null:
+ *  none there). */
+function nearestOnGrid(x: number, z: number, rot: number, most: number, ok: (p: Placement) => boolean): Placement | null {
   const cx = snap(x)
   const cz = snap(z)
   for (let ring = 0; ring <= most * 2; ring++) {
@@ -547,10 +559,27 @@ export function freeSpot(layout: FarmLayout, kind: ShopKind, x: number, z: numbe
     spots.sort((a, b) => Math.hypot(a[0] - x, a[1] - z) - Math.hypot(b[0] - x, b[1] - z))
     for (const [sx, sz] of spots) {
       const p = { x: sx, z: sz, rot }
-      if (fits(layout, decorCover({ id: -1, kind, ...p }), covers).ok) return p
+      if (ok(p)) return p
     }
   }
   return null
+}
+
+/** A free spot for a new piece of a kind, nearest to (x, z) on the half-metre grid, on your land: its placement, or null
+ *  where there is none within `most` metres. */
+export function freeSpot(layout: FarmLayout, kind: ShopKind, x: number, z: number, rot = 0, most = 14): Placement | null {
+  const covers = coversOf(layout)
+  return nearestOnGrid(x, z, rot, most, (p) => fits(layout, decorCover({ id: -1, kind, ...p }), covers).ok)
+}
+
+/** Where a place coming onto the farm (a machine bought) stands: where it stands on a new farm if that is free, else the
+ *  free spot nearest it on the half-metre grid, turned the same way, on your land; null with none within `most` metres.
+ *  (Checked against everything else that stands, as a place moved is: never against itself.) */
+export function freePlaceSpot(layout: FarmLayout, id: PlaceId, most = 14): Placement | null {
+  const covers = coversOf(layout)
+  const home = PLACES[id].home
+  const ok = (p: Placement) => fits(layout, placeCover(id, p), covers).ok
+  return ok(home) ? { ...home } : nearestOnGrid(home.x, home.z, home.rot, most, ok)
 }
 
 // ───────────────────────────── the boundary ─────────────────────────────
@@ -666,10 +695,11 @@ function savedPlacement(v: unknown): Placement | null {
 /**
  * A layout read from a save: anything missing, misplaced or unknown goes back to where it starts. `built`: which beds
  * are built (src/farm/state.ts reads the beds first): only those may stand anywhere but where they were staked out.
+ * `away`: the places not on that farm (its machines not bought): kept where they were saved, and in nothing's way.
  * The decoration that no longer fits where it was saved (a field not bought any more, a place sent home onto it) goes
  * into the farm's store, never lost; an unknown kind is dropped.
  */
-export function sanitizeLayout(raw: unknown, built: readonly boolean[] = []): FarmLayout {
+export function sanitizeLayout(raw: unknown, built: readonly boolean[] = [], away: readonly PlaceId[] = awayNow()): FarmLayout {
   const out = defaultLayout()
   if (!isObject(raw)) return out
   const r = raw as { places?: unknown; land?: unknown; beds?: unknown; decor?: unknown; stored?: unknown; storedLooks?: unknown; next?: unknown }
@@ -692,7 +722,7 @@ export function sanitizeLayout(raw: unknown, built: readonly boolean[] = []): Fa
   // (a bed not built stands where it was staked out, whatever is round it: a plot of a field of beds may lie on a meadow
   // not bought yet, off the land; what stands is checked against it all the same)
   const things: { thing: Thing; home: Placement }[] = [
-    ...PLACE_IDS.map((id) => ({ thing: { kind: 'place', id } as Thing, home: PLACES[id].home })),
+    ...standingPlaces(away).map((id) => ({ thing: { kind: 'place', id } as Thing, home: PLACES[id].home })),
     ...BEDS.flatMap((_, i) => (built[i] === true ? [{ thing: { kind: 'bed', index: i } as Thing, home: bedHome(i) }] : [])),
   ]
   const at = (t: Thing) => placementOf(out, t)!
@@ -703,13 +733,13 @@ export function sanitizeLayout(raw: unknown, built: readonly boolean[] = []): Fa
   for (let pass = 0; pass < 3; pass++) {
     let moved = false
     for (const { thing, home } of things) {
-      if (canPlaceThing(out, thing, at(thing)).ok || samePlacement(at(thing), home)) continue
+      if (canPlaceThing(out, thing, at(thing), away).ok || samePlacement(at(thing), home)) continue
       put(thing, home)
       moved = true
     }
     if (!moved) break
   }
-  if (things.some(({ thing }) => !canPlaceThing(out, thing, at(thing)).ok)) {
+  if (things.some(({ thing }) => !canPlaceThing(out, thing, at(thing), away).ok)) {
     out.places = defaultLayout().places
     out.beds = defaultLayout().beds
   }
@@ -725,7 +755,7 @@ export function sanitizeLayout(raw: unknown, built: readonly boolean[] = []): Fa
   // the decoration, in the order it was put down: each where it was saved if it fits there (with its own id, once),
   // otherwise into the store
   const list: unknown[] = Array.isArray(r.decor) ? r.decor : []
-  const covers = coversOf(out)
+  const covers = coversOf(out, away)
   const ids = new Set<number>()
   const standing = new Map<ShopKind, number>()
   const keep: DecorPiece[] = []

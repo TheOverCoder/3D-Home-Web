@@ -4,8 +4,8 @@
 // level opened. A new crop, upgrade, recipe, decoration or field is a row here: the unit test fails until it has one.
 // Pure: levels in, answers out (the switch that opens everything for the tests is the farm's: state.ts, unlockAll).
 //
-// Not here, on purpose: what a new farm stands with (the lemon tree, the hens, the cow, the sheep, the machines
-// themselves: a machine is locked while all its recipes are), and what is held back by something else already — the
+// Not here, on purpose: what a new farm stands with (the lemon tree, the hens, the cow, the sheep), and what is held
+// back by something else already — the
 // silo's and the barn's levels (materials), a machine's queue places (open with the machine), the office's upgrades,
 // the market's and the contractor's ladders, the shop and the house (prices, the rate ladder, the house's own price).
 
@@ -20,23 +20,36 @@ import { CAR_PAINTS, type PaintId } from './carPaints'
 export type RecipeKey = `${MachineId}:${string}`
 
 /** Everything a level opens: building a staked bed, a crop's seeds, an upgrade of the farm shop (the fields of beds
- *  among them), a recipe, a kind of the edit mode's shop (decoration, fruit trees and bushes), a field, an animal
- *  past a herd full (`herd:cows:4`, the fourth cow: PRODUCERS' `herd.full` in ./data); and a neighbour moving in
+ *  among them), a recipe, a kind of the edit mode's shop (decoration, fruit trees and bushes), a machine of its
+ *  Machines tab (one with a `price` in ./data, at its first recipe's level; the loom, never sold, at 1), a field, an
+ *  animal past a herd full (`herd:cows:4`, the fourth cow: PRODUCERS' `herd.full` in ./data); and a neighbour moving in
  *  (src/farm/people: the level their first chapter comes at — nothing to buy: met with its letter). */
 export type UnlockId =
-  'bed' | `crop:${CropId}` | `upgrade:${UpgradeId}` | `recipe:${RecipeKey}` | `decor:${ShopKind}` | `parcel:${ParcelId}` | `herd:${ProducerId}:${number}` | `person:${NeighbourId}` | `paint:${PaintId}`
+  | 'bed'
+  | `crop:${CropId}`
+  | `upgrade:${UpgradeId}`
+  | `recipe:${RecipeKey}`
+  | `decor:${ShopKind}`
+  | `machine:${MachineId}`
+  | `parcel:${ParcelId}`
+  | `herd:${ProducerId}:${number}`
+  | `person:${NeighbourId}`
+  | `paint:${PaintId}`
 
 /** The level each opens at (1: from the start). By theme, something every level from 2 to 13, and held to the pace a
  *  new farm is held to: the pace simulation plays with these locks on (src/sim/pace.test.ts, `npm run sim`; a number
  *  moved is checked there). What a recipe needs opens no later than it (the test). */
 const TABLE = {
-  // a new farm: two crops for the seeds it can buy, the beds staked out, and the loom (the sheep come with fleeces)
+  // a new farm: two crops for the seeds it can buy, the beds staked out, and the loom (the sheep come with fleeces; it
+  // is every farm's, never sold: the first steps weave at it)
   bed: 1,
   'crop:lettuce': 1,
   'crop:carrot': 1,
+  'machine:loom': 1,
   'recipe:loom:wool': 1,
   // flour, and the first upgrade
   'crop:wheat': 2,
+  'machine:mill': 2,
   'recipe:mill:wheat': 2,
   'upgrade:hen': 2,
   // a fruit, a longer line, the first decoration
@@ -53,7 +66,8 @@ const TABLE = {
   'decor:bush': 4,
   // the first long crop: an hour (update-v1/missions/01-loop-economy.md)
   'crop:sunflower': 4,
-  // the oven's first cakes, more beds
+  // the oven and its first cakes, more beds
+  'machine:oven': 5,
   'recipe:oven:carrot_cake': 5,
   'recipe:oven:lemon_cake': 5,
   'upgrade:east': 5,
@@ -110,12 +124,14 @@ const TABLE = {
   'recipe:loom:quilt': 19,
   'herd:sheep:5': 20,
   // the second wave (c8): the dairy and what it makes, the butter into bread
+  'machine:dairy': 21,
   'recipe:dairy:butter': 21,
   'recipe:oven:bread': 22,
   'recipe:dairy:cheese': 23,
   'decor:beehive': 24,
-  // the seasons' pieces (mission 10 c8: levels 6–14), each sold in its season
-  'decor:flower-arch': 5,
+  // the seasons' pieces (mission 10 c8: levels 6–14), each sold in its season (the arch at 3: level 5 opens the oven,
+  // and a level's cards are six at most, one row on a phone held sideways)
+  'decor:flower-arch': 3,
   'decor:parasol': 10,
   'decor:hay-bales': 11,
   'decor:snowman': 14,
@@ -128,6 +144,7 @@ const TABLE = {
   'paint:sunflower': 28,
   'paint:navy': 34,
   'paint:plum': 40,
+  'machine:kettle': 25,
   'recipe:kettle:strawberry_jam': 25,
   'upgrade:meadow': 26,
   'recipe:kettle:cherry_jam': 27,
@@ -189,7 +206,8 @@ export const herdSteps = (producer: ProducerId): number[] => {
 /** A machine's recipe in the table. */
 export const recipeUnlock = (machine: MachineId, recipe: string) => `recipe:${machine}:${recipe}` as UnlockId
 
-/** The level a machine opens at: its first recipe's (while all of them are locked, it offers nothing). */
+/** The level a machine opens at: its first recipe's (while all of them are locked, it offers nothing); one bought in the
+ *  edit mode's shop is sold from then (its `machine:` row, the same level: the unit test holds them to each other). */
 export const machineOpensAt = (machine: MachineId) => Math.min(...MACHINES[machine].recipes.map((r) => unlockLevel(recipeUnlock(machine, r.id))))
 
 /** A good's id as a name: "wheat" → "Wheat", "lemon_cake" → "Lemon cake" (shorter than a sale's words for it, "sheaf
@@ -205,6 +223,7 @@ export function unlockName(id: UnlockId): string {
   if (kind === 'upgrade') return UPGRADES.find((u) => u.id === rest)!.name
   if (kind === 'recipe') return named(MACHINES[rest as MachineId].recipes.find((r) => r.id === more)!.makes)
   if (kind === 'decor') return SHOP[rest as ShopKind].name
+  if (kind === 'machine') return MACHINES[rest as MachineId].name
   if (kind === 'herd') return UPGRADES.find((u) => u.herd === rest)!.name
   if (kind === 'person') return personById(rest as NeighbourId).name
   if (kind === 'paint') return `${CAR_PAINTS[rest as PaintId].name} paint for your car`

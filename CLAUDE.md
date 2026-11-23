@@ -170,7 +170,16 @@ The README has the overview; `tests/README.md` what each test guards.
   its wander numbers (`wander.ts`), body and pose. A herd's `full` is what its tool waits for; each animal past it opens
   with a level (`herd:cows:4` in `UNLOCKS`). A new machine: its row, its model (`src/models/buildings.ts`, cast into the
   sun's map as one mesh, `castAsOne`; what moves drawn on its own, casting nothing), and its moving parts driven by the
-  work level `useMachine(id)` gives back. A field of beds is a row of `EXPANSIONS` (its `land`: the meadow bought
+  work level `useMachine(id)` gives back.
+- A machine with a `price` on its row is bought once, in the edit mode shop's Machines tab (`buyMachine` in
+  `src/farm/state/machines.ts`; its `machine:` row in `UNLOCKS`, at its first recipe's level), the price a good share of
+  what a player has as that level comes, measured with `npm run sim` (whose player buys it first thing once the coins run
+  to it and it has work: the mill with wheat or cane in store). Until then it is not on the farm (`machineOwned`, `farm.machines[id].owned`): not drawn, no body, nothing to press,
+  no ground in the layout (`placesAwayFrom`, `standingPlaces`: decoration may stand there), nothing goes into it
+  (`machineLock` is not null). Bought, it stands at its place as on a new farm, or the free spot nearest it
+  (`freePlaceSpot`). The loom has no price: every farm's (the first steps weave at it). A farm from before owns each
+  machine its level had opened, and one that holds jobs or has worked whatever its save says; where the game is tested
+  (the locks off) every machine stands. A field of beds is a row of `EXPANSIONS` (its `land`: the meadow bought
   first) and its `BEDS` rows.
 - A machine works a queue of jobs, one good each, of any of its recipes (`src/farm/machines.ts`; `farm.machines[id]`:
   the jobs, how many are done, the working one's progress, its places, the seconds it has worked): 3 places, bought up
@@ -368,7 +377,8 @@ The README has the overview; `tests/README.md` what each test guards.
 
 ## The farm's decoration (src/farm/decor.ts, layout.ts, decorScene.tsx, DecorShop.tsx)
 
-- The edit mode's shop (the bag on its card) sells decoration and, on a tab of its own, fruit trees and bushes: a row
+- The edit mode's shop (the bag on its card) sells decoration and, on tabs of their own, fruit trees and bushes, and the
+  machines (once each, a `price` on its MACHINES row: `machineShopView`, its card `BuyMachine`; above): a kind is a row
   each in `decor.ts` (name, first price; `nextPrice`: each one dearer than the last, counted from what the farm owns,
   standing and in its store). Its card asks before anything is spent; bought, it stands at the nearest free spot in
   view, picked, to be dragged, turned or put away into the farm's store (`layout.stored`, put down again for nothing).

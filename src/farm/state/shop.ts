@@ -2,7 +2,7 @@ import { clock } from '../../lib/time'
 import { arrivalEvery, BEDS, EXPANSIONS, fullHerd, isExpansion, mostAnimals, PACE_LEVELS, PRODUCERS, QUEUE_LEVELS, queuePlaces, UPGRADES, type UpgradeId } from '../data'
 import { bedHome, canBuyParcel, canPlace, canPlaceBed, PARCELS, PLACES, snap, type Fit, type ParcelId, type PlaceId, type Placement } from '../layout'
 import { herdUnlock } from '../unlocks'
-import { bump, farm, isUnlocked, lockOf, save, toast } from './core'
+import { bump, farm, isUnlocked, lockOf, placesAway, save, toast } from './core'
 import { gainXp } from './levels'
 import { addAnimal, animalName, animals } from './producers'
 
@@ -114,8 +114,10 @@ export function buyLand(id: ParcelId) {
   return true
 }
 
-/** Moves a whole place (the hen run, the pasture, the fold, a tree) to a free spot on your land, on the half-metre grid. */
+/** Moves a whole place (the hen run, the pasture, the fold, a tree, a machine) to a free spot on your land, on the
+ *  half-metre grid (a machine not bought is not on the farm to move). */
 export function movePlace(id: PlaceId, to: Placement): Fit {
+  if (placesAway().includes(id)) return { ok: false, reason: 'Not on the farm' }
   const p = { x: snap(to.x), z: snap(to.z), rot: ((Math.round(to.rot) % 4) + 4) % 4 }
   const fit = canPlace(farm.layout, id, p)
   if (!fit.ok) return fit

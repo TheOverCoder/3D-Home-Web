@@ -34,8 +34,8 @@ const STILL: Speeds = { crops: 1, machines: 1 }
 /** Whether a bed is the farm's to sow: built, on land that is bought. */
 const bedOwned = (f: FarmData, i: number) => f.beds[i]?.built && (!BEDS[i].expansion || f.expansions[BEDS[i].expansion!])
 
-/** A machine is open at the farm's level (its first recipe's). */
-const openByLevel = (f: FarmData) => (id: MachineId) => levelOf(f.xp.points) >= machineOpensAt(id)
+/** A machine is open at the farm's level (its first recipe's), and the farm's (bought). */
+const openByLevel = (f: FarmData) => (id: MachineId) => levelOf(f.xp.points) >= machineOpensAt(id) && f.machines[id].owned
 
 /** Everything on its way, soonest first. A bed that will run dry before it ripens (no sprinklers, too little water) is
  *  not: it will not be ready by itself. Nor is anything ready already. */

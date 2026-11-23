@@ -5,6 +5,7 @@
 
 import {
   BEDS,
+  BOUGHT_MACHINES,
   CROPS,
   ESTATE,
   EXPANSION_IDS,
@@ -32,6 +33,7 @@ import {
 import { MANAGER_STAND } from '../data/market'
 import { AGENT_STAND } from '../data/estate'
 import { jobAdds } from '../farm/economy'
+import { recipeUnlock } from '../farm/unlocks'
 import { goalsNow } from '../farm/goals'
 import { PARCEL_IDS, PARCELS, canBuyParcel, toWorld } from '../farm/layout'
 import { STORE_GOODS } from '../farm/storage'
@@ -46,6 +48,7 @@ import {
   buyLadder,
   buyApartment,
   buyLand,
+  buyMachine,
   buyMarket,
   buyOffice,
   buySkin,
@@ -74,7 +77,9 @@ import {
   ladderOpen,
   machineCollectable,
   machineLock,
+  machineOwned,
   machinePoint,
+  machineProblem,
   machineSecondsLeft,
   machineStage,
   makeRoom,
@@ -302,6 +307,13 @@ function purchase(): Purchase | null {
   return cheapest && farm.coins - cheapest.price >= RESERVE ? cheapest : null
 }
 
+/** It would have work now: a recipe of it open at the farm's level, with all it needs in store (the mill: wheat or cane). */
+const workFor = (id: MachineId) => MACHINES[id].recipes.some((r) => isUnlocked(recipeUnlock(id, r.id)) && (Object.entries(r.needs) as [ProduceId, number][]).every(([good, n]) => farm.inv[good] >= n))
+
+/** A machine the edit mode's shop sells that a player buys now: open at the farm's level and not the farm's yet, the coins
+ *  for it with a few left for seeds, and work for it in store (null: none). */
+const machineToBuy = (): MachineId | null => BOUGHT_MACHINES.find((id) => !machineOwned(id) && machineProblem(id) === null && farm.coins - MACHINES[id].price! >= RESERVE && workFor(id)) ?? null
+
 // ───────────────────────────── the list ─────────────────────────────
 
 /** The priorities, first first: each gives the move it would make now, or null. */
@@ -353,6 +365,16 @@ export const PRIORITIES: { name: string; move: () => Move | null }[] = [
         if (crop) return { what: `plant ${crop} in ${empty.length} beds`, at: middleOf(p.beds), run: () => plantBeds(empty, crop) }
       }
       return null
+    },
+  },
+  // a machine open and not the farm's yet, before anything cheaper, as soon as the coins run to it and there is work for
+  // it in store (the mill once there is wheat to grind: it opens a whole line of goods; bought in the edit mode, from
+  // wherever the player stands)
+  {
+    name: 'buy machine',
+    move: () => {
+      const id = machineToBuy()
+      return id ? { what: `buy the ${id} (${MACHINES[id].price})`, at: null, run: () => buyMachine(id) } : null
     },
   },
   // spending, as soon as the coins run to it: the cheapest thing for sale (and open at the farm's level)

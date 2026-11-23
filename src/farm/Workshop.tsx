@@ -6,9 +6,9 @@ import { castAsOne } from '../lib/sculpt/sun'
 import { DAIRY_CHURN, KETTLE, dairyDasher, dairyModel, kettleEmbers, kettleModel, kettlePaddle } from '../models/buildings'
 import { mouthGlowMaterial, mouthGlowShape, ovenModel, structureParts } from '../models/structures'
 import { B } from '../scene/Furnishings'
-import { type MachineId, type OvenId } from './data'
+import { MACHINE_IDS, type MachineId, type OvenId } from './data'
 import { Body, Placed, type Box } from './Places'
-import { farm, machineDone, machineProgress, machineStage, useFarm } from './state'
+import { farm, machineDone, machineOwned, machineProgress, machineStage, useFarm } from './state'
 import { useMachine } from './useMachine'
 
 // The farm's kitchen, each machine a movable place of the edit mode (src/farm/layout.ts: drawn where it stands or is
@@ -557,15 +557,19 @@ const KETTLE_BODY = [
   { half: [0.38, 0.4, 0.24], at: [KETTLE.table.x, 0.4, KETTLE.table.z] },
 ] satisfies Box[]
 
-/** The oven, the mill and the loom; and update v1's dairy and jam kettle. */
+/** The oven, the mill and the loom; and update v1's dairy and jam kettle: each once it is the farm's (bought in the edit
+ *  mode's shop; every one where the game is tested: machineOwned). One not bought is not drawn, has no body and offers
+ *  nothing, until it comes. */
 export function Workshop() {
+  const owned = useFarm(() => MACHINE_IDS.filter(machineOwned).join(' '))
+  const has = (id: MachineId) => owned.split(' ').includes(id)
   return (
     <group name="farm-workshop">
-      <Oven />
-      <Mill />
-      <Loom />
-      <Dairy />
-      <Kettle />
+      {has('oven') && <Oven />}
+      {has('mill') && <Mill />}
+      {has('loom') && <Loom />}
+      {has('dairy') && <Dairy />}
+      {has('kettle') && <Kettle />}
     </group>
   )
 }

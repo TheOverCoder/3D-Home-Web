@@ -49,6 +49,7 @@ import { GOAL_IDS, GOALS, MOST_STEPS, startStep, type GoalId } from '../goals'
 import { tripSeconds } from '../tractorRoute'
 import { PARCELS, PARCEL_IDS, defaultLayout, sanitizeLayout } from '../layout'
 import { sanitizeSteps, stepsFresh } from '../firstSteps'
+import { machineOpensAt } from '../unlocks'
 import { mostAt, ownsEach, type Steps } from '../tools'
 import { freshSkins, sanitizeSkins } from '../skins'
 import { defaultHome, sanitizeHome } from '../../home/layout'
@@ -56,7 +57,7 @@ import { isNeighbour, personById, personLook, type NeighbourId } from '../../dat
 import { sanitizeFriends } from '../people/friends'
 import { freshMail, sanitizeMail } from '../people/mail'
 import { freshStory, metOf, sanitizeStory } from '../people/story'
-import { asLook, bump, calendarDay, farm, isSellable, saveNow, type FarmData, type Look, type ProducerState } from './core'
+import { asLook, bump, calendarDay, farm, isSellable, placesAway, saveNow, type FarmData, type Look, type ProducerState } from './core'
 import { fullWater } from './beds'
 import { stocksFor } from './producers'
 import { fitPlants } from './decor'
@@ -262,7 +263,8 @@ function fresh(): FarmData {
     storage: { silo: 1, barn: 1 },
     beds: BEDS.map((b) => ({ built: b.price === 0 && !b.expansion, crop: null, growth: 0, water: 0, fixed: null, inSeason: false })),
     producers: Object.fromEntries(PRODUCER_IDS.map((id) => [id, freshProducer(id)])) as Record<ProducerId, ProducerState>,
-    machines: Object.fromEntries(MACHINE_IDS.map((id) => [id, freshMachine()])) as Record<MachineId, MachineState>,
+    // (the loom is every farm's; the others are bought in the edit mode's shop: MACHINES' `price`)
+    machines: Object.fromEntries(MACHINE_IDS.map((id) => [id, freshMachine(MACHINES[id].price === undefined)])) as Record<MachineId, MachineState>,
     sprinkler: false,
     compost: false,
     expansions: Object.fromEntries(EXPANSION_IDS.map((e) => [e, false])) as Record<Expansion, boolean>,
@@ -375,7 +377,7 @@ function oldMachine(id: MachineId, raw: Record<string, unknown>): Record<string,
  *  ones at work jobs one after another, the time they had been at it spent on them in turn (the last is done when the
  *  batch would have been). Three places, and a machine that has not worked yet; one that held more jobs than three
  *  keeps them all and takes no more until there is a place. */
-function batchMachine(id: MachineId, m: Record<string, unknown>): MachineState {
+function batchMachine(id: MachineId, m: Record<string, unknown>): Queue {
   const r = recipeOf(id, m.recipe)
   if (!r) return freshMachine()
   const count = int(m.count, 0, 0, QUEUE.max)
@@ -388,11 +390,13 @@ function batchMachine(id: MachineId, m: Record<string, unknown>): MachineState {
   return { ...freshMachine(), jobs: Array.from({ length: ready }, () => r.id), done: ready }
 }
 
-/** A machine as saved (or as a save from before the queue or the tables kept it), made safe: only jobs of its own
+/** A machine's queue, as the save keeps it (whether it is the farm's is read beside it: `savedMachine`). */
+type Queue = Omit<MachineState, 'owned'>
+
+/** A machine's queue as saved (or as a save from before the queue or the tables kept it), made safe: only jobs of its own
  *  recipes, no more than the most places a queue has; the done ones first (as many as were done of those kept), the
  *  one under way no further into it than it takes; its places from three to twelve; the seconds it has worked from 0. */
-function savedMachine(id: MachineId, raw: Record<string, unknown>): MachineState {
-  const saved = field(raw.machines, id)
+function savedQueue(id: MachineId, raw: Record<string, unknown>, saved: unknown): Queue {
   const m = isObject(saved) ? saved : oldMachine(id, raw)
   if (!('jobs' in m)) return batchMachine(id, m)
   const savedJobs = list(m.jobs)
@@ -414,6 +418,21 @@ function savedMachine(id: MachineId, raw: Record<string, unknown>): MachineState
     capacity: int(m.capacity, QUEUE.start, QUEUE.start, QUEUE.max),
     worked,
   }
+}
+
+/** Whether a machine is the farm's, as a save has it: one never sold (the loom) always; one bought, as saved; one that
+ *  holds jobs or has worked, whatever the save says (nobody loses a machine they had); and on a farm saved before
+ *  machines were bought (no word of it), each its level had opened. */
+function boughtAsSaved(id: MachineId, saved: unknown, q: Queue, level: number): boolean {
+  if (MACHINES[id].price === undefined || saved === true || q.jobs.length > 0 || q.worked > 0) return true
+  return typeof saved !== 'boolean' && level >= machineOpensAt(id)
+}
+
+/** A machine as saved, made safe: its queue, and whether it is the farm's (`level`: the farm's, as its save reached). */
+function savedMachine(id: MachineId, raw: Record<string, unknown>, level: number): MachineState {
+  const saved = field(raw.machines, id)
+  const q = savedQueue(id, raw, saved)
+  return { ...q, owned: boughtAsSaved(id, field(saved, 'owned'), q, level) }
 }
 
 function savedBuyer(raw: unknown, met: readonly NeighbourId[]): SavedBuyer | null {
@@ -527,9 +546,8 @@ function read(text: string | null): Loaded {
     data.ladders = clampLevels(raw.ladders, field(raw.market, 'owned') === true)
     // the tools' skins: as saved, for the tools the farm has (a farm from before them owns each tool's own and wears it)
     data.skins = sanitizeSkins(raw.skins, data.ladders)
-    // the tree, the nest, the animals and the machines (a save from before the tables kept each in fields of its own)
+    // the tree, the nest and the animals (a save from before the tables kept each in fields of its own)
     for (const id of PRODUCER_IDS) data.producers[id] = savedProducer(id, raw, data.ladders)
-    for (const id of MACHINE_IDS) data.machines[id] = savedMachine(id, raw)
     data.queueLevel = int(raw.queueLevel, 0, 0, QUEUE_LEVELS)
     data.paceLevel = int(raw.paceLevel, 0, 0, PACE_LEVELS)
     data.nextVisitorIn = Math.min(arrivalEvery(data.paceLevel), Math.max(0, num(raw.nextVisitorIn, VISITOR.firstAfter)))
@@ -541,11 +559,17 @@ function read(text: string | null): Loaded {
     // each stat a count, and no others (spread in as saved, a count saved as text made a harvest add "7" + 3 = "73")
     for (const k of Object.keys(data.stats) as (keyof FarmData['stats'])[]) data.stats[k] = amount(field(raw.stats, k), 0)
     for (const id of produceIds) data.got[id] = amount(field(raw.got, id), 0)
+    // the machines (a save from before the tables kept each in fields of its own), each the farm's as saved; a farm from
+    // before they were bought owns each its level had opened (the level as the XP is read below)
+    const reached = levelOf(sanitizeXp(savedOnToday(raw.xp), seedXp(data.stats)).points)
+    for (const id of MACHINE_IDS) data.machines[id] = savedMachine(id, raw, reached)
     // a farm from before the layout keeps everything where it always stood (a bed moves only once it is built; the
     // fruit trees and bushes standing on the farm are their producers' plants)
+    // (a machine not bought is not on the farm: in nothing's way)
     data.layout = sanitizeLayout(
       raw.layout,
       data.beds.map((b) => b.built),
+      placesAway(data),
     )
     fitPlants(data)
     // a farm from before the house could be furnished keeps today's furniture where it always stood

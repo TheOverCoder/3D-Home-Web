@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Panel } from '../../store'
-import { ITEMS, PRODUCE, TOOL_KINDS, type ProduceId } from '../data'
+import { ITEMS, MACHINE_IDS, PRODUCE, TOOL_KINDS, type ProduceId } from '../data'
 import { CONTRACTOR_PLACE, nearestPlace, placesOf } from '../orderPlace'
 import type { BedState } from '../state'
 import { animalsOf, goFor, machineOf, type GoContext } from './go'
@@ -15,7 +15,7 @@ const BEDS = [bed({ crop: 'wheat' }), bed({})]
 /** The farm's places registered: two beds, the nest, the cows, the sheep, the machines, the contractor's window. */
 const FARM_IDS = ['farm-bed-0', 'farm-bed-1', 'farm-nest', 'farm-cow-0', 'farm-cow-1', 'farm-sheep-0', 'farm-mill', 'farm-loom', 'farm-oven', CONTRACTOR_PLACE]
 
-/** A context: on the farm, nothing owned, the contractor out (as `over` says otherwise). */
+/** A context: on the farm, nothing owned but the machines, the contractor out (as `over` says otherwise). */
 function ctx(over: Partial<GoContext> & { contractorIn?: boolean } = {}): GoContext {
   const { contractorIn = false, ...rest } = over
   const map = rest.map === undefined ? 'farm' : rest.map
@@ -23,6 +23,7 @@ function ctx(over: Partial<GoContext> & { contractorIn?: boolean } = {}): GoCont
     machineRemote: false,
     animalRemote: false,
     tools: [],
+    machines: [...MACHINE_IDS],
     map,
     placeFor: (good) => nearestPlace(placesOf(good, BEDS, map === 'farm' ? FARM_IDS : ['door-kitchen'], contractorIn).map((id, k) => ({ id, ready: false, d: k }))),
     ...rest,
@@ -38,6 +39,10 @@ describe('the button under a good', () => {
       expect(goFor('cloth', ctx({ map, machineRemote: true }))).toEqual({ kind: 'open', panel: { kind: 'machine', id: 'loom' } })
       expect(goFor('pumpkin_pie', ctx({ map, machineRemote: true }))).toEqual({ kind: 'open', panel: { kind: 'machine', id: 'oven' } })
     }
+    // a machine not on the farm yet (not bought: src/farm/state/machines.ts, buyMachine) is opened by no remote: what
+    // its places say instead, as without one
+    expect(goFor('flour', ctx({ machineRemote: true, machines: ['loom', 'oven'] }))).toEqual({ kind: 'walk', to: 'farm-mill' })
+    expect(goFor('cloth', ctx({ machineRemote: true, machines: ['loom'] }))).toEqual({ kind: 'open', panel: { kind: 'machine', id: 'loom' } })
     // the animals' remote opens no machine; a crop has no machine
     expect(goFor('flour', ctx({ animalRemote: true, tools: [...TOOL_KINDS] }))).toEqual({ kind: 'walk', to: 'farm-mill' })
     expect(goFor('wheat', ctx({ machineRemote: true }))).toEqual({ kind: 'walk', to: 'farm-bed-0' })
