@@ -125,7 +125,7 @@
 .loading-screen .lb-tractor-svg { display: block; width: 100%; height: auto; overflow: visible; filter: drop-shadow(0 0.1875rem 0.125rem rgba(40, 24, 10, 0.2)); }
 .loading-screen .lt-wheel { transform-box: fill-box; transform-origin: center; animation: lt-turn 1.67s linear infinite; }
 .loading-screen .lt-front { animation-duration: 0.99s; }
-.loading-screen .lt-body { transform-box: view-box; transform-origin: 2.5rem 4.25rem; animation: lt-bounce 0.34s ease-in-out infinite alternate; }
+.loading-screen .lt-body { transform-box: view-box; transform-origin: 30.303% 70.833%; animation: lt-bounce 0.34s ease-in-out infinite alternate; }
 .loading-screen .lt-shadow { fill: rgba(40, 24, 10, 0.22); transform-box: fill-box; transform-origin: center; animation: lt-breathe 0.34s ease-in-out infinite alternate; }
 .loading-screen .lt-puffs circle { fill: rgba(255, 252, 244, 0.92); transform-box: fill-box; transform-origin: center; opacity: 0; animation: lt-puff 1.5s ease-out infinite; }
 .loading-screen .lt-puffs circle:nth-child(2) { animation-delay: 0.5s; }

@@ -6,7 +6,7 @@
 // began: a crop's sale price is the good's too, a field's price the upgrade's), `priceOverrides` gives what differs from
 // where it started (JSON, to keep), `applyPrices` takes such a set back, `resetPrices` puts all back. A new table of
 // prices is one more group here (src/farm/priceBook.test.ts fails until every price of the tables it knows is in it).
-import { CROPS, ESTATE, EXPANSIONS, LADDERS, MANAGER, CONTRACTOR, OFFICE_UPGRADES, PRODUCE, UPGRADES, BEDS, type LadderId } from './data'
+import { BOUGHT_MACHINES, CROPS, ESTATE, EXPANSIONS, LADDERS, MACHINES, MANAGER, CONTRACTOR, OFFICE_UPGRADES, PRODUCE, UPGRADES, BEDS, type LadderId } from './data'
 import { DECOR, FRUIT } from './decor'
 import { PARCELS } from './layout'
 import { SKINS } from './skins'
@@ -77,6 +77,8 @@ function entries(): Entry[] {
     out.push({ key: `ladders:${id}`, group: 'ladders', name: l.name, get: () => price[0], set: (v) => (price[0] = v) })
     out.push({ key: `ladders:${id}:step`, group: 'ladders', name: `${l.name}: each step more`, get: () => price[1], set: (v) => (price[1] = v) })
   }
+  // the machines bought in the edit mode's shop (the loom is every farm's: no price)
+  for (const id of BOUGHT_MACHINES) out.push(field('machines', id, MACHINES[id].name, MACHINES[id] as { price: number }, 'price'))
   // a machine's places in its queue, by the place
   for (const k of Object.keys(QUEUE_PRICES)) {
     const n = Number(k)

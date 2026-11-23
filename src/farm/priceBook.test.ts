@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { CONTRACTOR, CROPS, ESTATE, EXPANSIONS, LADDERS, MANAGER, OFFICE_UPGRADES, PRODUCE, UPGRADES, BEDS } from './data'
+import { BOUGHT_MACHINES, CONTRACTOR, CROPS, ESTATE, EXPANSIONS, LADDERS, MACHINES, MANAGER, OFFICE_UPGRADES, PRODUCE, UPGRADES, BEDS } from './data'
 import { DECOR, FRUIT } from './decor'
 import { PARCELS } from './layout'
 import { SKINS } from './skins'
@@ -28,6 +28,7 @@ describe('the price book', () => {
       ...UPGRADES.filter((u) => u.priceStep !== undefined).map((u) => `upgrades:${u.id}:step`),
       ...Object.keys(OFFICE_UPGRADES).flatMap((id) => [`office:${id}`, `office:${id}:step`]),
       ...Object.keys(LADDERS).flatMap((id) => [`ladders:${id}`, `ladders:${id}:step`]),
+      ...BOUGHT_MACHINES.map((id) => `machines:${id}`),
       ...Object.keys(QUEUE_PRICES).map((n) => `queue:${n}`),
       ...BEDS.flatMap((b, i) => (b.price !== undefined ? [`beds:${i}`] : [])),
       ...Object.entries({ ...DECOR, ...FRUIT }).flatMap(([id, d]) => (d.given ? [] : [`decor:${id}`])),
@@ -73,6 +74,8 @@ describe('the price book', () => {
     expect(MANAGER.shopPrice).toBe(1600)
     setPrice('contractor:sells', 120)
     expect(CONTRACTOR.sells).toBe(120)
+    setPrice('machines:oven', 90)
+    expect(MACHINES.oven.price).toBe(90)
     setPrice('queue:4', 500)
     expect(QUEUE_PRICES[4]).toBe(500)
   })
