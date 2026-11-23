@@ -87,11 +87,11 @@
   --noon: color-mix(in oklab, var(--sun) 30%, var(--paper));
 }
 /* the world: a round window where the disc is; the meadow under the road fills its foot */
-.loading-screen .lb-world { position: absolute; inset: 0; border-radius: 50%; overflow: hidden; box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.9); isolation: isolate; }
+.loading-screen .lb-world { position: absolute; inset: 0; border-radius: 50%; overflow: hidden; box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.9); isolation: isolate; container-type: size; }
 .loading-screen .lb-world::after { content: ''; position: absolute; z-index: 2; left: 0; right: 0; bottom: 0; height: 17%; background: linear-gradient(to bottom, var(--leaf), var(--leaf-lip)); }
 .loading-screen .lb-sky { position: absolute; inset: 0; background: linear-gradient(to bottom, color-mix(in oklab, var(--dawn) calc((1 - var(--day)) * 100%), var(--noon)), color-mix(in oklab, color-mix(in oklab, var(--berry) 22%, var(--paper)) calc((1 - var(--day)) * 100%), var(--paper)) 80%); }
 .loading-screen .lb-sun { position: absolute; width: 64px; height: 64px; translate: -50% -50%; filter: drop-shadow(0 0 30px color-mix(in oklab, var(--sun) 80%, transparent)); }
-.loading-screen .lb-clouds i { position: absolute; width: 120px; height: 34px; border-radius: 999px; background: rgba(255, 255, 255, 0.75); box-shadow: 30px -14px 0 4px rgba(255, 255, 255, 0.75); animation: lb-cloud 70s linear infinite; }
+.loading-screen .lb-clouds i { position: absolute; width: 120px; height: 34px; border-radius: 999px; background: rgba(255, 255, 255, 0.75); box-shadow: 30px -14px 0 4px rgba(255, 255, 255, 0.75); left: 0; animation: lb-cloud 70s linear infinite; }
 .loading-screen .lb-clouds i:nth-child(1) { top: 16%; animation-delay: -10s; }
 .loading-screen .lb-clouds i:nth-child(2) { top: 30%; scale: 0.7; animation-duration: 95s; animation-delay: -60s; opacity: 0.8; }
 .loading-screen .lb-clouds i:nth-child(3) { top: 9%; scale: 0.5; animation-duration: 120s; animation-delay: -30s; opacity: 0.6; }
@@ -125,7 +125,7 @@
 .loading-screen .lb-dust i:nth-child(3) { animation-delay: 0.55s; }
 .loading-screen .lb-dust i:nth-child(4) { animation-delay: 0.82s; }
 /* a signpost on the verge, going by */
-.loading-screen .lb-sign { position: absolute; bottom: 31%; z-index: 1; display: grid; place-items: center; width: 52px; height: 52px; border: 3px solid var(--edge); border-radius: 14px; background: var(--paper); box-shadow: 0 3px 0 var(--edge); }
+.loading-screen .lb-sign { position: absolute; left: 0; bottom: 31%; z-index: 1; animation: lb-pass 6.5s linear forwards; display: grid; place-items: center; width: 52px; height: 52px; border: 3px solid var(--edge); border-radius: 14px; background: var(--paper); box-shadow: 0 3px 0 var(--edge); }
 .loading-screen .lb-sign::after { content: ''; position: absolute; top: 100%; left: 50%; width: 6px; height: 18px; margin-left: -3px; background: var(--edge); }
 .loading-screen .lb-sign img { width: 34px; height: 34px; }
 /* home: your house rolls in and the tractor parks at it */
@@ -138,7 +138,9 @@
 .loading-screen.ready .lb-dust { display: none; }
 
 @keyframes lb-slide { to { translate: -50% 0; } }
-@keyframes lb-cloud { from { left: 105%; } to { left: -40%; } }
+/* what moves while the page builds the house moves by translate, which the compositor carries on while the main thread is busy */
+@keyframes lb-cloud { from { translate: 105cqw 0; } to { translate: -40cqw 0; } }
+@keyframes lb-pass { from { translate: 112cqw 0; } to { translate: -20cqw 0; } }
 @keyframes lb-rock { from { transform: scaleX(-1) translateY(0) rotate(0); } to { transform: scaleX(-1) translateY(-2px) rotate(1.5deg); } }
 @keyframes lb-dust { 0% { opacity: 0.8; transform: translate(0, 0) scale(0.4); } 100% { opacity: 0; transform: translate(-46px, -20px) scale(1.6); } }
 
@@ -148,6 +150,7 @@
   .loading-screen .lb-clouds i,
   .loading-screen .lb-tractor img,
   .loading-screen .lb-dust i { animation: none; }
+  .loading-screen .lb-sign { display: none; }
 }
 
 /* the card by the thumb: the line and the share, the bar, the time left, the tip */
@@ -159,17 +162,19 @@
 .load-card .load-bar { position: relative; height: 16px; border-radius: 999px; overflow: hidden; background: var(--paper-3); box-shadow: inset 0 2px 0 rgba(60, 35, 10, 0.12); }
 .load-card .load-bar > span {
   position: absolute;
-  inset: 0 auto 0 0;
+  inset: 0;
   overflow: hidden;
   border-radius: 999px;
   background: linear-gradient(to bottom, #ffd96b, var(--sun) 55%, #f4b52a);
   box-shadow: inset 0 -2px 0 rgba(160, 100, 0, 0.25);
+  translate: -100% 0;
+  will-change: translate;
   transition:
-    width 0.45s ease-out,
+    translate 0.45s ease-out,
     background 0.3s;
 }
 /* ribs drifting backwards: a bar that seems to go faster (Harrison et al., 2010); near the end they hurry */
-.load-card .load-bar i { position: absolute; inset: 0; background: repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.34) 0 7px, transparent 7px 14px); background-size: 19.8px 100%; animation: load-ribs 1s linear infinite; }
+.load-card .load-bar i { position: absolute; inset: 0 -19.8px 0 0; background: repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.34) 0 7px, transparent 7px 14px); background-size: 19.8px 100%; animation: load-ribs 1s linear infinite; }
 .load-card.near .load-bar i { animation-duration: 0.55s; }
 .load-card.near .load-bar > span { box-shadow: inset 0 -2px 0 rgba(160, 100, 0, 0.25), 0 0 12px 2px color-mix(in oklab, var(--sun) 70%, transparent); }
 .load-card.ready .load-bar > span { background: linear-gradient(to bottom, #5fc272, var(--leaf)); }
@@ -186,7 +191,7 @@
 
 /* a paper card */
 .load-card { padding: 14px 16px 16px; border: 3px solid #fff; border-radius: 26px; background: var(--paper); box-shadow: 0 6px 0 var(--paper-3), 0 16px 34px rgba(60, 35, 10, 0.18); }
-@keyframes load-ribs { to { background-position: -19.8px 0; } }
+@keyframes load-ribs { to { translate: -19.8px 0; } }
 :where(:root[data-motion='less']) {
   .load-card .load-bar i { animation: none; }
 }

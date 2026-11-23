@@ -118,6 +118,7 @@ check and the linter; CI runs it beside the e2e shards.
 | `src/specs.test.ts` | The e2e specs' numbers (update-v1 CONTRACTS B12): no two specs share one; a spec in parts (`16-view-rooms`, `-openings`, `-farm`, `-buildings`: the number, the name, then the part) is one spec, never two specs with one number, nor a whole and a part. |
 | `src/deps.test.ts` | The packages: every dependency and devDependency in `package.json` is on `src/deps.allowed.json`, the list of what passed the vetting in `update-v1/REUSE.md`, and the list names nothing `package.json` no longer has (a package taken out and put back is vetted again). Each failure names the packages and what to do. |
 | `src/ui/PanelGuard.test.ts` | A part of the interface that throws (`src/ui/PanelGuard.tsx`, drawn with React in `happy-dom`): a panel's slot closes the panel, the toast *That didn't open properly*, the error said with the panel's name, the rest of the page drawn on; the same panel opens again from fresh; a guard with its own `close` closes with it. A layer (the HUD) is left out with no toast and nothing closed, drawn again once what is over the game changes; one that fails each time is drawn again `LAYER_TRIES` times, then stays out; one that drew whole in between is always tried again. A fault armed for a test (`guardHooks.fail`) throws once, in its guard, as that panel opens. |
+| `src/ui/loadGlide.test.ts` | The loading bar (`src/ui/loadGlide.ts`): it follows the downloads as they count and never goes back; through building the house it glides on by itself (moving within a second, two thirds of the way in a quarter of its time) and never into the next step; a glide takes a step's time for a whole step and its share for a part; it goes on from a step's own count when that gets ahead, from the next step's start, and is full once ready. |
 | `src/ui/PanelSheet.test.ts` | The panel sheet brought back before it had gone (`src/ui/PanelSheet.tsx`, React in `happy-dom`, its exit held as a slow frame holds it): Esc sends it out, the game closes it, it is opened again during its exit — it comes in and stays, its buttons there, no `onClose` (06's *Copy diagnostics* lost its button this way). |
 | `src/lib/saveKeys.test.ts` | Which farm the device opens, read by the page shell before the farm's code (`src/lib/saveKeys.ts`, `happy-dom`): a new device and a farm saved on the farm open on the farm (the house's furniture waits until play, `src/lib/loader.ts`); one in the house, one from before the two maps and a save that cannot be read do not; the slot played last decides. |
 | `src/scene/frameRate.test.ts` | The frame rate's pacing (`src/scene/frameRate.tsx`): 60 runs the loop always, 30 on demand; at 30 every other frame of a 60 Hz screen is due (a few ms early counts) and every fourth of a 120 Hz one. |
@@ -199,9 +200,11 @@ suite on GitHub without them (`ci.yml`, `--grep-invert @full`; `npm run test:e2e
 side, each given whole spec files by their measured time (`scripts/ci-shards.mjs` from `tests/e2e/times.json`, the
 longest first, each to the shard with the least so far: about seven minutes of tests each; `node scripts/ci-shards.mjs --plan 12`
 shows them, and the `check` job fails when a spec has no time or a shard would pass 13 minutes); each shard prints its
-files' seconds and any flaky test in its summary (`tests/e2e/fileTimes.ts`), the times to copy into `times.json`. A push
+files' seconds and any flaky test in its summary (`tests/e2e/fileTimes.ts`), the times to copy into `times.json`, and
+names a file that ran well over the table's time (refresh it then). A push
 that changes only words (`.md` files: `update-v1/`'s notes, `plans/`) runs no CI. The `@full` tests run every night and by hand
-(`full.yml`, Run workflow, with `--fail-on-flaky-tests`: a test that passes only on its retry turns the night red), and
+(`full.yml`, Run workflow, with `--fail-on-flaky-tests`: a test that passes only on its retry turns the night red; eight
+shards dealt by the night's own times, `times.json`'s `full`: `ci-shards.mjs --full`), and
 a red night is the next thing to fix. Locally, run only the file of the area a change touches; `E2E_FRESH=1` never
 reuses a server already answering on the port (a run killed half way can leave an old build's there).
 

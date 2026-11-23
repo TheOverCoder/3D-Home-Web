@@ -41,6 +41,9 @@ test.describe('settings and diagnostics', () => {
   })
 
   test('"Copy diagnostics" produces a readable report', async ({ game }) => {
+    // 4–7 s on CI: a minute is plenty, and a hang (twice in a few runs before the settings sheet's fix) costs its shard
+    // one minute instead of four
+    test.setTimeout(60_000)
     await game.ready()
     const { page } = game
     await page.evaluate(() => {

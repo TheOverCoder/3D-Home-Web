@@ -2,7 +2,8 @@ import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { affected, globToRegExp, kindOf, loadAreas, resolveSpec, specFiles } from '../scripts/affected-specs.mjs'
-import { deal, loadTimes, problems } from '../scripts/ci-shards.mjs'
+import { deal, loadTimes, nightTimes, problems } from '../scripts/ci-shards.mjs'
+import { slower } from '../tests/e2e/fileTimes'
 
 // The checks' own maps (update-v1/CHECKS.md): which e2e specs a changed file reaches (tests/e2e/areas.json, read by
 // scripts/affected-specs.mjs) and each spec's time on CI (tests/e2e/times.json, by which scripts/ci-shards.mjs deals the
@@ -85,6 +86,10 @@ describe("each spec's time on CI (tests/e2e/times.json)", () => {
     expect(problems(times, specs, 1, Infinity), 'a new spec gets its seconds from the push that first ran it (the job summary of tests/e2e/fileTimes.ts)').toEqual([])
   })
 
+  it('times every spec for the night too, and only specs', () => {
+    expect(problems(nightTimes(times), specs, 1, Infinity), "a new spec gets its night's seconds (`full`) from the first night that ran it").toEqual([])
+  })
+
   it('deals each file into exactly one shard, longest first, the same way every time', () => {
     for (let n = 1; n <= 8; n++) {
       const shards = deal(times.seconds, specs, n, times.newFile)
@@ -96,6 +101,14 @@ describe("each spec's time on CI (tests/e2e/times.json)", () => {
       const longest = Math.max(...specs.map((f) => times.seconds[f]))
       for (const s of shards) expect(s.seconds).toBeLessThanOrEqual(total / n + longest)
     }
+  })
+
+  it('names a file that ran well over its time in the table, past a boot’s minute', () => {
+    expect(slower({ 'a.spec.ts': 100, 'b.spec.ts': 400, 'c.spec.ts': 70 }, { 'a.spec.ts': 60, 'b.spec.ts': 200, 'c.spec.ts': 1 })).toEqual([
+      'b.spec.ts: 200 s in the table, 400 s now',
+      'c.spec.ts: 1 s in the table, 70 s now',
+    ])
+    expect(slower({ 'new.spec.ts': 900 }, {})).toEqual([])
   })
 
   it('counts a file with no time yet as a new one', () => {

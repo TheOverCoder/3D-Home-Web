@@ -62,6 +62,7 @@
         "src/lib/{loader,sw,startup,diagnostics,hdrGuard,textureBudget,clips}.ts",
         "src/lib/ErrorBoundary.tsx",
         "src/ui/{Intro,Loading,GraphicsNotice,SavesPanel}.{tsx,css}",
+        "src/ui/loadGlide.ts",
         "src/scene/{Experience,Warmup}.tsx"
       ]
     },

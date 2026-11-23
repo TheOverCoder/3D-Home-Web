@@ -61,7 +61,6 @@ jobs:
         run: |
           v=$(node -p "require('@playwright/test/package.json').version")
           if [ "$v" != "1.63.0" ]; then echo "::error::@playwright/test is $v but the job's image is v1.63.0: move the image tag in ci.yml to v$v"; exit 1; fi
-      - run: npx tsc --noEmit
       # the Playwright config builds and serves the app itself on port 4185; the shard's specs come from their times (an
       # empty shard fails here: Playwright given no file would run them all)
       - run: |

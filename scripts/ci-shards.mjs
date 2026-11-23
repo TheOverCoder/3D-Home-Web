@@ -8,6 +8,8 @@
 //   node scripts/ci-shards.mjs --plan <n>              each shard's minutes and files
 //   node scripts/ci-shards.mjs --check <n> [--most m]  fails when a spec has no time, a time names no spec, a shard is
 //                                                      empty, or the longest would pass m minutes (13)
+//   … --full                                           by the night's times (`full`: every test, the @full ones
+//                                                      included), for full.yml
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -16,6 +18,9 @@ import { specFiles } from './affected-specs.mjs'
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 
 export const loadTimes = (root = ROOT) => JSON.parse(readFileSync(join(root, 'tests/e2e/times.json'), 'utf8'))
+
+/** The table the night deals by: its own times, in the shape of the push's (`seconds`). */
+export const nightTimes = (times) => ({ ...times, seconds: times.full })
 
 /** The files dealt into n shards, longest first, each to the shard with the least seconds so far (the first on a tie);
  *  each shard's files in name order, with its seconds. The same input always gives the same shards. */
@@ -44,8 +49,10 @@ export function problems(times, files, n, mostMinutes) {
   return out
 }
 
-function main(argv) {
-  const times = loadTimes()
+function main(args) {
+  const full = args.includes('--full')
+  const argv = args.filter((a) => a !== '--full')
+  const times = full ? nightTimes(loadTimes()) : loadTimes()
   const files = specFiles()
   const number = (s, what) => {
     const v = Number(s)

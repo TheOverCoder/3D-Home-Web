@@ -7,6 +7,7 @@ import { art } from './art'
 import { burst } from './burst'
 import { Check, Clock } from './glyphs'
 import { EASE, SPRING } from './motion'
+import { EASE_OUT_CSS, nextShown, type Glide } from './loadGlide'
 import './Loading.css'
 // three goods' pictures for the tips, by their files (src/farm/icons.ts has them all, and the farm's table with them:
 // not part of the page shell)
@@ -26,11 +27,15 @@ import strawberryCake from '../assets/items/strawberry_cake.webp?url'
 // the middle, the card at the bottom; sideways the window on the left, the name and the card on the right.
 //
 // Its numbers are the loader's own (src/lib/loader.ts, the scene's count, the attempt): downloads take the bar to 70 %,
-// building the house to 85 %, warming up the graphics to 100 %.
+// building the house to 85 %, warming up the graphics to 100 %. The bar never goes back, and through the two steps
+// that count coarsely it glides on by itself (./loadGlide.ts), on the compositor, as does everything that moves here
+// while the page builds the house (the hills, the clouds, the signposts, the ribs): none of it waits for the main thread.
 
 export interface LoadView {
-  /** 0..1, the whole way */
+  /** 0..1, the whole way, as the bar shows it: never back */
   p: number
+  /** the glide the bar is on by itself through a step that counts coarsely (none while the downloads count bytes) */
+  glide: Glide | null
   pct: number
   /** which part of the way it is on */
   step: 'fetch' | 'build' | 'light' | 'ready'
@@ -46,14 +51,16 @@ export interface LoadView {
 /** The loading as the screen tells it, from the loader, the scene's count and whether the game can be entered. */
 export function useLoadView(ready: boolean, returning: boolean): LoadView {
   const s = useLoader()
-  const scene = useHome((st) => st.progress)
   const attempt = useHome((st) => st.attempt)
   const fromDevice = s.total > 0 && s.fromDevice >= s.total
-  const way = s.phase === 'download' ? (s.total ? s.loaded / s.total : 0) * 0.7 : s.phase === 'prepare' ? 0.7 + Math.min(1, scene / 100) * 0.15 : s.phase === 'compile' ? 0.85 + s.compile * 0.15 : 1
-  const p = ready ? 1 : Math.min(0.99, way)
+  // building the house has no count of its own worth showing (the scene's loading manager reaches its end long before
+  // the house is built, and starts again from nothing): the bar glides through it by itself
+  const way = s.phase === 'download' ? (s.total ? s.loaded / s.total : 0) * 0.7 : s.phase === 'prepare' ? 0.7 : s.phase === 'compile' ? 0.85 + s.compile * 0.15 : 1
+  const step = ready ? 'ready' : s.phase === 'download' ? 'fetch' : s.phase === 'prepare' ? 'build' : 'light'
+  const bar = useGlide(step, ready ? 1 : Math.min(0.99, way))
+  const p = ready ? 1 : Math.min(0.99, bar.shown)
   const secs = s.phase === 'download' && !fromDevice ? (secondsLeft(s) ?? 0) : 0
   const again = attempt > 0 && !ready
-  const step = ready ? 'ready' : s.phase === 'download' ? 'fetch' : s.phase === 'prepare' ? 'build' : 'light'
   const line = again
     ? 'Starting again, lighter'
     : ready
@@ -69,6 +76,7 @@ export function useLoadView(ready: boolean, returning: boolean): LoadView {
           : 'Lighting the lamps…'
   return {
     p,
+    glide: bar.glide,
     pct: Math.round(p * 100),
     step,
     line,
@@ -78,6 +86,63 @@ export function useLoadView(ready: boolean, returning: boolean): LoadView {
     again,
     offline: s.offline,
   }
+}
+
+/** The bar as it shows, a few times a second until ready (./loadGlide.ts): the loader's count, never back, and on
+ *  through the coarse steps by itself. */
+function useGlide(step: LoadView['step'], real: number) {
+  const [bar, setBar] = useState<{ shown: number; glide: Glide | null }>({ shown: 0, glide: null })
+  const now = useRef({ step, real })
+  now.current = { step, real }
+  const ready = step === 'ready'
+  useEffect(() => {
+    let raf = 0
+    let last = 0
+    const tick = (t: number) => {
+      if (t - last >= 100) {
+        last = t
+        setBar((b) => {
+          const n = nextShown(b.shown, now.current.step, now.current.real, b.glide, performance.now())
+          return n.shown === b.shown && n.glide === b.glide ? b : n
+        })
+      }
+      if (now.current.step !== 'ready') raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [ready])
+  return ready ? { shown: 1, glide: null } : bar
+}
+
+/** The bar's fill, slid in from the left: by a transition while the downloads count, and on a glide (an animation the
+ *  compositor runs, so it goes on while the main thread builds the house) through the coarse steps. */
+function BarFill({ p, glide }: { p: number; glide: Glide | null }) {
+  const el = useRef<HTMLSpanElement>(null)
+  const running = useRef<Animation | null>(null)
+  const at = (v: number) => `${(Math.max(0.04, v) - 1) * 100}% 0`
+  useEffect(() => {
+    const s = el.current
+    if (!s || typeof s.animate !== 'function') return
+    // from wherever the bar is now (a glide under way included), a moment's catch-up to the glide's start, then the glide
+    const from = getComputedStyle(s).translate || at(p)
+    running.current?.cancel()
+    running.current = null
+    if (!glide) return
+    const catchUp = 300
+    const ms = catchUp + glide.ms
+    running.current = s.animate([{ translate: from, easing: 'ease-out' }, { translate: at(glide.from), offset: catchUp / ms, easing: EASE_OUT_CSS }, { translate: at(glide.to) }], {
+      duration: ms,
+      fill: 'forwards',
+    })
+    // (`p` is only where it starts: the glide moves it on)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [glide])
+  useEffect(() => () => running.current?.cancel(), [])
+  return (
+    <span ref={el} style={{ translate: at(p) }}>
+      <i />
+    </span>
+  )
 }
 
 /** One tip or teaser of the farm while it loads: a picture and one line, each true of the game. */
@@ -209,9 +274,7 @@ export function Loading({ v }: { v: LoadView }) {
             <span className="load-pct">{v.pct}%</span>
           </div>
           <div className="load-bar" role="progressbar" aria-label={v.line} aria-valuemin={0} aria-valuemax={100} aria-valuenow={v.pct}>
-            <span style={{ width: `${Math.max(4, v.p * 100)}%` }}>
-              <i />
-            </span>
+            <BarFill p={v.p} glide={v.glide} />
           </div>
           {v.left && (
             <p className="load-left">
@@ -323,14 +386,12 @@ function Road({ v }: { v: LoadView }) {
       <div className="lb-road" aria-hidden="true">
         <i />
       </div>
-      {/* each step passes as a signpost on the verge */}
-      <AnimatePresence>
-        {!v.ready && (
-          <m.span key={v.step} className="lb-sign" aria-hidden="true" initial={{ left: '112%' }} animate={{ left: '-20%' }} transition={{ duration: still ? 0 : 6.5, ease: 'linear' }}>
-            <img className="art" src={SIGN[v.step]} alt="" />
-          </m.span>
-        )}
-      </AnimatePresence>
+      {/* each step passes as a signpost on the verge (a CSS animation: it goes on while the house is built) */}
+      {!v.ready && (
+        <span key={v.step} className="lb-sign" aria-hidden="true">
+          <img className="art" src={SIGN[v.step]} alt="" />
+        </span>
+      )}
       <AnimatePresence>
         {v.ready && (
           <m.img

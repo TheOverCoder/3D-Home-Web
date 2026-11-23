@@ -25,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -33,8 +33,13 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # eight shards dealt by each file's own time at night (scripts/ci-shards.mjs --full, tests/e2e/times.json's `full`),
+      # not Playwright's --shard, which deals by the number of tests (all of 16 went into one shard of thirty minutes);
       # a test that passes only on its retry fails the night: a flake is seen the next morning, not hidden
-      - run: npx playwright test --shard=${{ matrix.shard }}/6 --fail-on-flaky-tests
+      - run: |
+          specs=$(node scripts/ci-shards.mjs --full ${{ matrix.shard }} 8)
+          echo "$specs"
+          TIMES_TABLE=full npx playwright test --fail-on-flaky-tests $specs
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
