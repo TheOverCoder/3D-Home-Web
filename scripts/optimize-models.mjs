@@ -56,7 +56,19 @@ for (const input of files) {
   // node itself runs glTF-Transform's command line (on Windows `npx` is a .cmd that Node will not start without a shell)
   const r = spawnSync(
     process.execPath,
-    [fileURLToPath(new URL('../node_modules/@gltf-transform/cli/bin/cli.js', import.meta.url)), 'optimize', input, output, '--compress', 'meshopt', '--texture-compress', 'webp', '--texture-size', String(entry.textureSize ?? size), ...simplify],
+    [
+      fileURLToPath(new URL('../node_modules/@gltf-transform/cli/bin/cli.js', import.meta.url)),
+      'optimize',
+      input,
+      output,
+      '--compress',
+      'meshopt',
+      '--texture-compress',
+      'webp',
+      '--texture-size',
+      String(entry.textureSize ?? size),
+      ...simplify,
+    ],
     { stdio: 'inherit' },
   )
   if (r.status !== 0) {
