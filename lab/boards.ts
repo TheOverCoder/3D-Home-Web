@@ -20,10 +20,16 @@ import { filmCoopBoard } from './boards/film-coop'
 import { filmMilkBucketBoard } from './boards/film-milk-bucket'
 import { filmShearsBoard } from './boards/film-shears'
 import { tools3dBoard } from './boards/tools-3d'
+import { loadingFarmerBoard } from './boards/loading-farmer'
+import { loadingAlmanacBoard } from './boards/loading-almanac'
+import { loadingTodayBoard } from './boards/loading-today'
 
 /** Every board of the lab, newest first. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const BOARDS: Board<any>[] = [
+  loadingTodayBoard,
+  loadingAlmanacBoard,
+  loadingFarmerBoard,
   premiumRemotesBoard,
   shopAnimalsBoard,
   animalToolsBoard,

@@ -1,0 +1,260 @@
+/* A · the farmer keeps you company (./LoadingFarmerA.tsx): a morning sky, the farm's hills and fence, the farmer leaning
+   on it with his words in a bubble, and the three stations of the way on a paper strip by the thumb. Every rule under
+   .v-loading-farmer-a. Everything that loops is a transform or an opacity (on the compositor). */
+.v-loading-farmer-a {
+  --ground: 35%;
+  --face: clamp(8.5rem, 25vh, 13rem);
+  --sky-top: color-mix(in oklab, var(--xp) 30%, #fff);
+  --sky-low: color-mix(in oklab, var(--sun) 48%, var(--paper));
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  color: var(--ink);
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* the sky: lilac high up warming to the sun at the horizon, a glow behind the farmer, clouds drifting by */
+.v-loading-farmer-a .lf-sky { position: absolute; inset: 0; background: linear-gradient(to bottom, var(--sky-top), color-mix(in oklab, var(--sun) 22%, #fff) 45%, var(--sky-low) calc(100% - var(--ground))); }
+.v-loading-farmer-a .lf-glow { position: absolute; left: 50%; bottom: calc(var(--ground) + 2rem); width: 34rem; height: 34rem; translate: -50% 50%; border-radius: 50%; background: radial-gradient(closest-side, rgba(255, 255, 255, 0.95), color-mix(in oklab, var(--sun) 60%, transparent) 45%, transparent 100%); opacity: 0.85; }
+.v-loading-farmer-a .lf-cloud {
+  position: absolute;
+  left: 0;
+  width: 7.5rem;
+  height: 2.25rem;
+  border-radius: 62.4375rem;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow:
+    2rem -0.875rem 0 0.375rem rgba(255, 255, 255, 0.92),
+    4.25rem -0.25rem 0 -0.125rem rgba(255, 255, 255, 0.92);
+  animation: lf-cloud 46s linear infinite;
+}
+.v-loading-farmer-a .lf-cloud.c1 { top: 13%; animation-delay: -8s; }
+.v-loading-farmer-a .lf-cloud.c2 { top: 24%; scale: 0.7; opacity: 0.8; animation-duration: 64s; animation-delay: -40s; }
+.v-loading-farmer-a .lf-cloud.c3 { top: 7%; scale: 0.5; opacity: 0.65; animation-duration: 80s; animation-delay: -22s; }
+
+/* the hills and the meadow */
+.v-loading-farmer-a .lf-hills { position: absolute; left: 0; right: 0; bottom: calc(var(--ground) - 0.5rem); width: 100%; height: 7rem; }
+.v-loading-farmer-a .lf-hills .far { fill: color-mix(in oklab, var(--leaf) 45%, var(--sky-top)); }
+.v-loading-farmer-a .lf-hills .near { fill: color-mix(in oklab, var(--leaf) 72%, var(--sun) 12%); }
+.v-loading-farmer-a .lf-ground {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--ground);
+  background:
+    repeating-linear-gradient(96deg, rgba(255, 255, 255, 0.06) 0 2.75rem, transparent 2.75rem 5.5rem),
+    radial-gradient(120% 60% at 50% 0%, color-mix(in oklab, var(--leaf) 82%, var(--sun)) 0%, var(--leaf) 55%, color-mix(in oklab, var(--leaf) 70%, var(--leaf-lip)) 100%);
+}
+/* the farm far off on the hill: its barn and silo */
+.v-loading-farmer-a .lf-farm { position: absolute; left: 8%; bottom: calc(var(--ground) + 1.75rem); display: flex; align-items: flex-end; gap: 0.125rem; opacity: 0.9; }
+.v-loading-farmer-a .lf-farm img { width: 3rem; height: 3rem; filter: saturate(0.8) drop-shadow(0 0.125rem 0.125rem rgba(40, 24, 10, 0.2)); }
+.v-loading-farmer-a .lf-farm img + img { width: 2.25rem; height: 2.25rem; }
+
+/* the name, as the opening menu draws it: white letters in a thick ink line */
+.v-loading-farmer-a .lf-name { position: absolute; left: 0; right: 0; top: calc(env(safe-area-inset-top) + 1.5rem); display: flex; flex-direction: column; align-items: center; }
+.v-loading-farmer-a .lf-name p { margin: 0.375rem 0 0; font: 600 0.9375rem/1.3 var(--font-display); color: var(--ink-2); }
+.v-loading-farmer-a .lf-name h1 { margin: 0; font: 700 3rem/1 var(--font-display); color: #fff; -webkit-text-stroke: 0.375rem var(--ink); paint-order: stroke fill; text-shadow: 0 0.3125rem 0 rgba(40, 24, 10, 0.25); }
+
+/* the farmer, his bubble over him and the fence in front of him */
+.v-loading-farmer-a .lf-host { position: absolute; left: 0; right: 0; bottom: calc(var(--ground) - 1.75rem); display: flex; flex-direction: column; align-items: center; }
+.v-loading-farmer-a .lf-bubble {
+  position: relative;
+  z-index: 2;
+  width: min(21.5rem, calc(100% - 2.5rem));
+  min-height: 5.25rem;
+  display: grid;
+  align-items: center;
+  margin-bottom: 0.875rem;
+  padding: 0.875rem 1.125rem;
+  border: 0.1875rem solid var(--ink);
+  border-radius: 1.5rem;
+  background: #fff;
+  box-shadow: 0 0.3125rem 0 rgba(59, 42, 30, 0.18);
+  transform-origin: 50% 100%;
+}
+/* its tail, down to him */
+.v-loading-farmer-a .lf-bubble::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -0.8125rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  translate: -50% 0;
+  rotate: 45deg;
+  background: #fff;
+  border-right: 0.1875rem solid var(--ink);
+  border-bottom: 0.1875rem solid var(--ink);
+  border-bottom-right-radius: 0.25rem;
+}
+.v-loading-farmer-a .lf-words { display: grid; gap: 0.375rem; }
+.v-loading-farmer-a .lf-say { display: block; margin: 0; font: 600 1.3125rem/1.25 var(--font-display); text-wrap: balance; }
+.v-loading-farmer-a .lf-say svg { width: 1.25rem; height: 1.25rem; margin-right: 0.375rem; vertical-align: -0.125rem; color: var(--leaf); }
+.v-loading-farmer-a .lf-more { display: flex; align-items: center; gap: 0.3125rem; margin: 0; font: 700 0.9375rem/1.3 var(--font-text); color: var(--ink-2); }
+.v-loading-farmer-a .lf-more svg { flex: none; width: 1rem; height: 1rem; }
+.v-loading-farmer-a .lf-tip { display: grid; grid-template-columns: 2.75rem 1fr; align-items: center; gap: 0.625rem; font-size: 1.125rem; }
+.v-loading-farmer-a .lf-tip img { width: 2.75rem; height: 2.75rem; }
+/* the dots after his words: he is at it */
+.v-loading-farmer-a .lf-dots { display: inline-flex; gap: 0.1875rem; margin-left: 0.25rem; vertical-align: 0.125rem; }
+.v-loading-farmer-a .lf-dots i { width: 0.375rem; height: 0.375rem; border-radius: 50%; background: var(--ink-2); animation: lf-dot 1.2s ease-in-out infinite; }
+.v-loading-farmer-a .lf-dots i:nth-child(2) { animation-delay: 0.2s; }
+.v-loading-farmer-a .lf-dots i:nth-child(3) { animation-delay: 0.4s; }
+/* what waits on the farm (✦): its goods with their counts, the buyers */
+.v-loading-farmer-a .lf-away { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; }
+.v-loading-farmer-a .lf-away .item-pic .art,
+.v-loading-farmer-a .lf-buyers img { width: 2.75rem; height: 2.75rem; }
+.v-loading-farmer-a .lf-buyers { position: relative; display: inline-grid; place-items: center; }
+.v-loading-farmer-a .lf-buyers b {
+  position: absolute;
+  right: -0.375rem;
+  bottom: -0.25rem;
+  min-width: 1.375rem;
+  height: 1.375rem;
+  padding: 0 0.3125rem;
+  display: grid;
+  place-items: center;
+  border-radius: 62.4375rem;
+  background: var(--berry);
+  color: #fff;
+  font: 800 0.8125rem/1 var(--font-text);
+}
+
+.v-loading-farmer-a .lf-farmer {
+  position: relative;
+  z-index: 1;
+  width: var(--face);
+  height: var(--face);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.v-loading-farmer-a .lf-farmer:focus-visible { outline: 0.1875rem solid var(--sun); outline-offset: 0.25rem; border-radius: 50%; }
+.v-loading-farmer-a .lf-sway { position: absolute; inset: 0; display: block; transform-origin: 50% 90%; animation: lf-sway 3.2s ease-in-out infinite alternate; }
+.v-loading-farmer-a .lf-sway img { position: absolute; inset: 0; width: 100%; height: 100%; filter: drop-shadow(0 0.375rem 0.375rem rgba(40, 24, 10, 0.25)); }
+.v-loading-farmer-a .lf-farmer:active .lf-sway { scale: 0.94; transition: scale 0.06s ease-out; }
+/* the sun's rays behind him: quiet while he works, wide when the farm is ready */
+.v-loading-farmer-a .lf-rays {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 220%;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: repeating-conic-gradient(rgba(255, 255, 255, 0.75) 0 8deg, transparent 8deg 22deg);
+  -webkit-mask: radial-gradient(closest-side, #000 30%, transparent 100%);
+  mask: radial-gradient(closest-side, #000 30%, transparent 100%);
+  opacity: 0.35;
+  scale: 0.7;
+  animation: lf-turn 60s linear infinite;
+  transition:
+    opacity 0.5s ease-out,
+    scale 0.7s var(--ease-pop);
+  pointer-events: none;
+}
+
+/* the fence: posts and two rails, the farmer behind its top rail */
+.v-loading-farmer-a .lf-fence { position: relative; z-index: 2; width: 100%; height: 3.75rem; margin-top: -2.625rem; }
+.v-loading-farmer-a .lf-fence::before { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 1.375rem, var(--edge) 1.375rem 2.5rem, color-mix(in oklab, var(--edge) 70%, var(--ink)) 2.5rem 2.625rem, transparent 2.625rem 4.5rem); }
+.v-loading-farmer-a .lf-fence i,
+.v-loading-farmer-a .lf-fence::after { content: ''; position: absolute; left: 0; right: 0; height: 0.875rem; border-radius: 0.25rem; background: linear-gradient(color-mix(in oklab, var(--edge) 70%, #fff), var(--edge)); box-shadow: 0 0.1875rem 0 color-mix(in oklab, var(--edge) 60%, var(--ink)); }
+.v-loading-farmer-a .lf-fence i { top: 0.75rem; }
+.v-loading-farmer-a .lf-fence::after { top: 2.375rem; }
+
+/* the way: three stations on a paper strip by the thumb */
+.v-loading-farmer-a .lf-way {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom) + 1rem);
+  width: min(22.5rem, calc(100% - 2rem));
+  translate: -50% 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 0.1875rem solid #fff;
+  border-radius: 1.5rem;
+  background: var(--paper);
+  box-shadow:
+    0 0.3125rem 0 var(--paper-3),
+    0 0.875rem 1.75rem rgba(20, 50, 20, 0.28);
+}
+.v-loading-farmer-a .lf-station { display: grid; justify-items: center; gap: 0.25rem; padding: 0.5rem 0.25rem 0.5rem; border-radius: 1rem; transition: background 0.3s; }
+.v-loading-farmer-a .lf-station.now { background: color-mix(in oklab, var(--sun) 22%, var(--paper)); box-shadow: inset 0 0 0 0.125rem color-mix(in oklab, var(--sun) 70%, transparent); }
+.v-loading-farmer-a .lf-pic { position: relative; display: grid; place-items: center; width: 2.75rem; height: 2.75rem; }
+.v-loading-farmer-a .lf-pic img {
+  width: 100%;
+  height: 100%;
+  transition:
+    opacity 0.3s,
+    filter 0.3s;
+}
+.v-loading-farmer-a .lf-station.later .lf-pic img { opacity: 0.45; filter: grayscale(0.6); }
+.v-loading-farmer-a .lf-station.now .lf-pic img { animation: lf-busy 1.1s ease-in-out infinite; }
+.v-loading-farmer-a .lf-tick {
+  position: absolute;
+  right: -0.375rem;
+  bottom: -0.25rem;
+  display: grid;
+  place-items: center;
+  width: 1.375rem;
+  height: 1.375rem;
+  border: 0.125rem solid #fff;
+  border-radius: 50%;
+  background: var(--leaf);
+  color: #fff;
+  animation: lf-tick 0.42s var(--ease-pop) both;
+}
+.v-loading-farmer-a .lf-tick svg { width: 0.875rem; height: 0.875rem; }
+.v-loading-farmer-a .lf-word { font: 600 0.9375rem/1.1 var(--font-display); }
+.v-loading-farmer-a .lf-station.later .lf-word { color: var(--ink-2); }
+.v-loading-farmer-a .lf-track { position: relative; width: 100%; height: 0.5rem; overflow: hidden; border-radius: 62.4375rem; background: var(--paper-3); }
+.v-loading-farmer-a .lf-track i { position: absolute; inset: 0; border-radius: 62.4375rem; background: linear-gradient(to bottom, #ffd96b, var(--sun) 60%, #f4b52a); translate: -96% 0; }
+.v-loading-farmer-a .lf-station.done .lf-track i { background: linear-gradient(to bottom, #5fc272, var(--leaf)); }
+
+/* ready: he hops, the rays open wide, every station ticked */
+.v-loading-farmer-a.ready .lf-rays { opacity: 0.9; scale: 1.15; }
+.v-loading-farmer-a.ready .lf-farmer { animation: lf-hop 0.6s var(--ease-pop) 0.15s both; }
+.v-loading-farmer-a.ready .lf-tick { animation-delay: calc(0.1s + var(--i) * 0.08s); }
+
+/* sideways: the farmer and the fence on the left, his bubble beside his head, the stations under it on the right */
+.v-loading-farmer-a.wide { --ground: 25%; --face: clamp(7.5rem, 44vh, 11rem); }
+.v-loading-farmer-a.wide .lf-farm { left: calc(env(safe-area-inset-left) + 0.5rem); }
+.v-loading-farmer-a.wide .lf-name p { display: none; }
+.v-loading-farmer-a.wide .lf-name { left: calc(env(safe-area-inset-left) + 1.25rem); right: auto; top: 0.75rem; align-items: flex-start; }
+.v-loading-farmer-a.wide .lf-name h1 { font-size: 2rem; -webkit-text-stroke-width: 0.3125rem; }
+.v-loading-farmer-a.wide .lf-glow { left: 28%; }
+.v-loading-farmer-a.wide .lf-host { display: block; bottom: calc(var(--ground) - 1.75rem); }
+.v-loading-farmer-a.wide .lf-farmer { position: absolute; left: calc(28% - var(--face) / 2); bottom: 1.125rem; }
+.v-loading-farmer-a.wide .lf-fence { position: absolute; left: 0; bottom: 0; margin: 0; }
+.v-loading-farmer-a.wide .lf-bubble { position: absolute; left: calc(28% + var(--face) / 2 + 1rem); right: auto; bottom: calc(var(--face) * 0.55); width: min(22rem, calc(72% - var(--face) / 2 - env(safe-area-inset-right) - 2.25rem)); margin: 0; transform-origin: 0% 80%; }
+.v-loading-farmer-a.wide .lf-bubble::after { left: -0.0625rem; bottom: 1.25rem; translate: -50% 0; rotate: 135deg; }
+.v-loading-farmer-a.wide .lf-way { left: auto; right: calc(env(safe-area-inset-right) + 1rem); bottom: calc(env(safe-area-inset-bottom) + 0.625rem); translate: none; width: min(21rem, 46%); padding: 0.5rem; }
+.v-loading-farmer-a.wide .lf-station { padding: 0.375rem 0.25rem; }
+.v-loading-farmer-a.wide .lf-pic { width: 2.25rem; height: 2.25rem; }
+
+@keyframes lf-cloud { from { translate: 110vw 0; } to { translate: -14rem 0; } }
+@keyframes lf-dot { 0%, 100% { opacity: 0.25; translate: 0 0; } 40% { opacity: 1; translate: 0 -0.1875rem; } }
+@keyframes lf-sway { from { rotate: -2.5deg; translate: 0 0.125rem; } to { rotate: 2.5deg; translate: 0 -0.25rem; } }
+@keyframes lf-busy { 0%, 100% { rotate: -7deg; scale: 1; } 50% { rotate: 7deg; scale: 1.08; } }
+@keyframes lf-tick { from { scale: 0; rotate: -40deg; } to { scale: 1; rotate: 0deg; } }
+@keyframes lf-turn { to { rotate: 360deg; } }
+@keyframes lf-hop { 0% { translate: 0 0; scale: 1 1; } 30% { translate: 0 -1.5rem; scale: 0.95 1.06; } 60% { translate: 0 0; scale: 1.08 0.92; } 100% { translate: 0 0; scale: 1 1; } }
+
+/* less motion: what loops stands still; the words, the ticks and the fills still say it */
+:where(:root[data-motion='less']) {
+  .v-loading-farmer-a .lf-cloud,
+  .v-loading-farmer-a .lf-sway,
+  .v-loading-farmer-a .lf-rays,
+  .v-loading-farmer-a .lf-dots i,
+  .v-loading-farmer-a .lf-station.now .lf-pic img,
+  .v-loading-farmer-a.ready .lf-farmer,
+  .v-loading-farmer-a .lf-tick { animation: none; }
+  .v-loading-farmer-a .lf-dots i { opacity: 0.6; }
+}

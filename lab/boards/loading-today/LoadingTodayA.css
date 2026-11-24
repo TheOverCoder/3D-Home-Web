@@ -1,0 +1,209 @@
+/* A · today's page (./LoadingTodayA.tsx): a warm table, the calendar pad on it — today's weekday, the date circled by a
+   marker as the farm loads, what is on at the farm — a mug steaming beside it, and the line by the thumb. Every rule
+   under .v-loading-today-a. What loops or runs is a transform or an opacity (on the compositor). */
+.v-loading-today-a {
+  --pad-w: min(21.5rem, 88vw);
+  --ring: min(14rem, 60vw);
+  --marker: color-mix(in oklab, var(--berry) 88%, var(--ink));
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template: auto minmax(0, 1fr) auto / minmax(0, 1fr);
+  justify-items: center;
+  align-items: center;
+  gap: 0.75rem;
+  padding: calc(env(safe-area-inset-top) + 0.75rem) 1rem calc(env(safe-area-inset-bottom) + 1rem);
+  overflow: hidden;
+  color: var(--ink);
+  user-select: none;
+}
+/* the table: warm wood, its grain, a pool of morning light on it */
+.v-loading-today-a .lt-table {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(70% 45% at 50% 42%, color-mix(in oklab, var(--sun) 45%, transparent), transparent 75%),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0 0.125rem, transparent 0.125rem 1.75rem, rgba(60, 35, 10, 0.07) 1.75rem 1.875rem, transparent 1.875rem 4.5rem),
+    linear-gradient(to bottom, color-mix(in oklab, var(--edge) 85%, var(--sun)), var(--edge) 50%, color-mix(in oklab, var(--edge) 80%, var(--ink)));
+}
+
+.v-loading-today-a .lt-name h1 { margin: 0; font: 700 2.5rem/1 var(--font-display); color: #fff; -webkit-text-stroke: 0.375rem var(--ink); paint-order: stroke fill; text-shadow: 0 0.3125rem 0 rgba(40, 24, 10, 0.3); }
+
+/* the pad: the page on top, the edges of the pages under it */
+.v-loading-today-a .lt-pad { position: relative; width: var(--pad-w); }
+.v-loading-today-a .lt-jolt { position: relative; }
+.v-loading-today-a .lt-under {
+  position: absolute;
+  inset: 0.75rem 0 -0.625rem;
+  border-radius: 1rem;
+  background: var(--paper-2);
+  box-shadow:
+    0 0.375rem 0 var(--paper-3),
+    0 0.75rem 0 -0.125rem var(--paper-2),
+    0 1.125rem 0 -0.125rem var(--paper-3),
+    0 1.5rem 2rem rgba(30, 15, 5, 0.35);
+}
+.v-loading-today-a .lt-page { position: relative; display: grid; justify-items: center; overflow: visible; border-radius: 1rem; background: var(--paper); box-shadow: 0 0.1875rem 0 var(--edge-soft); }
+.v-loading-today-a .lt-rings { position: absolute; top: -0.875rem; left: 0; right: 0; z-index: 2; display: flex; justify-content: space-around; padding: 0 3.5rem; }
+.v-loading-today-a .lt-rings i { width: 0.75rem; height: 1.75rem; border: 0.25rem solid color-mix(in oklab, var(--ink) 80%, #fff); border-radius: 62.4375rem; background: transparent; box-shadow: 0 0.125rem 0 rgba(0, 0, 0, 0.2); }
+.v-loading-today-a .lt-band { width: 100%; padding: 0.875rem 1rem 0.625rem; border-radius: 1rem 1rem 0 0; background: var(--ribbon); color: #fff; text-align: center; font: 600 1.5rem/1.1 var(--font-display); letter-spacing: 0.02em; text-shadow: 0 0.125rem 0 var(--berry-lip); }
+.v-loading-today-a .lt-date { display: grid; justify-items: center; padding: 0.375rem 0 1.5rem; }
+.v-loading-today-a .lt-month { margin: 0; font: 600 1.125rem/1.2 var(--font-display); color: var(--ink-2); }
+
+/* the date, and the marker circling it: three strokes, a step each */
+.v-loading-today-a .lt-ring { position: relative; width: var(--ring); aspect-ratio: 1; display: grid; place-items: center; margin: 0.25rem 0; }
+.v-loading-today-a .lt-track { position: absolute; inset: 0; width: 100%; height: 100%; rotate: -4deg; }
+.v-loading-today-a .lt-track path { fill: none; stroke: var(--paper-3); stroke-width: 9; stroke-dasharray: 1.2 3.4; stroke-linecap: round; }
+.v-loading-today-a .lt-strokes { position: absolute; inset: 0; rotate: -4deg; -webkit-mask: radial-gradient(closest-side, transparent 80.5%, #000 81%, #000 99%, transparent 99.5%); mask: radial-gradient(closest-side, transparent 80.5%, #000 81%, #000 99%, transparent 99.5%); }
+.v-loading-today-a .lt-arc { position: absolute; inset: 0; }
+.v-loading-today-a .lt-clip { position: absolute; left: 50%; top: 0; width: 50%; height: 100%; overflow: hidden; }
+.v-loading-today-a .lt-clip i { position: absolute; top: 0; left: -100%; width: 200%; height: 100%; background: linear-gradient(to right, var(--marker) 50%, transparent 50%); rotate: 0deg; }
+.v-loading-today-a .lt-arc.done .lt-clip i { background: linear-gradient(to right, var(--leaf) 50%, transparent 50%); }
+/* the marker's tip, glowing where it draws */
+.v-loading-today-a .lt-tip { position: absolute; left: calc(50% - 0.5rem); top: 0; width: 1rem; height: 1.375rem; border-radius: 50%; background: radial-gradient(closest-side, #fff, color-mix(in oklab, var(--sun) 80%, transparent) 60%, transparent); opacity: 0; }
+.v-loading-today-a .lt-arc.now .lt-tip { animation: lt-glow 0.9s ease-in-out infinite alternate; }
+.v-loading-today-a .lt-num { position: relative; font: 700 calc(var(--ring) * 0.46) / 1 var(--font-display); color: var(--ink); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+/* each step's picture beside its stroke */
+.v-loading-today-a .lt-step {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 0.125rem solid #fff;
+  border-radius: 50%;
+  background: var(--paper-2);
+  box-shadow: 0 0.125rem 0 var(--paper-3);
+  transform: translate(-50%, -50%) rotate(var(--a)) translateY(calc(var(--ring) * -0.5 - 0.625rem)) rotate(calc(-1 * var(--a)));
+}
+.v-loading-today-a .lt-step img { width: 1.625rem; height: 1.625rem; transition: opacity 0.3s; }
+.v-loading-today-a .lt-step.later img { opacity: 0.4; filter: grayscale(0.7); }
+.v-loading-today-a .lt-step.now { background: color-mix(in oklab, var(--sun) 40%, var(--paper)); box-shadow: 0 0 0 0.1875rem color-mix(in oklab, var(--sun) 55%, transparent); }
+.v-loading-today-a .lt-step.now img { animation: lt-busy 1.1s ease-in-out infinite; }
+.v-loading-today-a .lt-step b {
+  position: absolute;
+  right: -0.375rem;
+  bottom: -0.25rem;
+  display: grid;
+  place-items: center;
+  width: 1.125rem;
+  height: 1.125rem;
+  border: 0.125rem solid #fff;
+  border-radius: 50%;
+  background: var(--leaf);
+  color: #fff;
+  animation: lt-pop 0.4s var(--ease-pop) both;
+}
+.v-loading-today-a .lt-step b svg { width: 0.6875rem; height: 0.6875rem; }
+
+/* what is on at the farm today, or next */
+.v-loading-today-a .lt-today { width: 100%; display: grid; grid-template-columns: 3rem 1fr; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem 1rem; border-top: 0.125rem dashed var(--edge-soft); }
+.v-loading-today-a .lt-today img { width: 3rem; height: 3rem; }
+.v-loading-today-a .lt-today p { margin: 0; }
+.v-loading-today-a .lt-when { font: 800 0.8125rem/1.3 var(--font-text); letter-spacing: 0.04em; text-transform: uppercase; color: var(--berry-lip); }
+.v-loading-today-a .lt-when span { color: var(--ink-2); }
+.v-loading-today-a .lt-ev { display: flex; flex-wrap: wrap; align-items: center; gap: 0.375rem; font: 600 1.25rem/1.2 var(--font-display); }
+.v-loading-today-a .lt-chip { padding: 0.125rem 0.5rem; border-radius: 62.4375rem; background: color-mix(in oklab, var(--sun) 45%, var(--paper)); font: 800 0.8125rem/1.3 var(--font-text); color: var(--amber-ink); }
+.v-loading-today-a .lt-say { font: 600 0.9375rem/1.3 var(--font-text); color: var(--ink-2); }
+
+/* the page's corner, lifting a little in a draught */
+.v-loading-today-a .lt-curl {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0 0 1rem 0;
+  background: linear-gradient(135deg, transparent 50%, color-mix(in oklab, var(--paper-3) 70%, var(--edge)) 50%, var(--paper-2) 78%);
+  transform-origin: 100% 100%;
+  scale: 0.6;
+  animation: lt-curl 4.5s ease-in-out infinite;
+}
+
+/* the stamp: down on the page when the farm is ready */
+.v-loading-today-a .lt-stamp {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  z-index: 3;
+  padding: 0.25rem 1rem 0.375rem;
+  border: 0.3125rem double var(--leaf);
+  border-radius: 0.75rem;
+  color: var(--leaf);
+  background: color-mix(in oklab, var(--leaf) 8%, rgba(255, 255, 255, 0.6));
+  font: 700 2.5rem/1 var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  translate: -50% -50%;
+  rotate: -14deg;
+  opacity: 0;
+  scale: 2.4;
+  pointer-events: none;
+}
+.v-loading-today-a.ready .lt-stamp { animation: lt-stamp 0.42s cubic-bezier(0.5, 0, 0.75, 0) 0.35s both; }
+.v-loading-today-a.ready .lt-jolt { animation: lt-jolt 0.4s ease-out 0.74s both; }
+.v-loading-today-a.ready .lt-step b { animation-delay: calc(var(--i) * 0.09s); }
+
+/* the mug, steaming */
+.v-loading-today-a .lt-mug { position: absolute; right: calc(env(safe-area-inset-right) + 1.25rem); top: calc(env(safe-area-inset-top) + 1rem); z-index: 1; width: 3.5rem; height: 3.5rem; }
+.v-loading-today-a .lt-mug img { position: absolute; inset: 0; width: 100%; height: 100%; filter: drop-shadow(0 0.375rem 0.25rem rgba(30, 15, 5, 0.35)); }
+.v-loading-today-a .lt-mug i { position: absolute; left: 40%; top: -0.5rem; width: 0.75rem; height: 1.75rem; border-radius: 62.4375rem; background: radial-gradient(closest-side, rgba(255, 255, 255, 0.75), transparent); opacity: 0; animation: lt-steam 2.8s ease-out infinite; }
+.v-loading-today-a .lt-mug i:nth-child(2) { left: 26%; animation-delay: 0.9s; }
+.v-loading-today-a .lt-mug i:nth-child(3) { left: 54%; animation-delay: 1.8s; }
+
+/* under the pad: what waits on the farm (✦), and the line */
+.v-loading-today-a .lt-side { display: grid; justify-items: center; gap: 0.625rem; width: min(22rem, 100%); }
+.v-loading-today-a .lt-note { width: min(19rem, 100%); padding: 0.625rem 0.875rem 0.75rem; border-radius: 0.375rem; background: color-mix(in oklab, var(--sun) 35%, #fff); box-shadow: 0 0.5rem 1rem rgba(30, 15, 5, 0.3); }
+.v-loading-today-a .lt-note p { margin: 0 0 0.375rem; font: 600 1rem/1.2 var(--font-display); }
+.v-loading-today-a .lt-goods { display: flex; gap: 0.75rem; }
+.v-loading-today-a .lt-goods .item-pic .art { width: 2.5rem; height: 2.5rem; }
+.v-loading-today-a .lt-line {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.375rem 0.5rem;
+  margin: 0;
+  padding: 0.5rem 1rem;
+  border-radius: 62.4375rem;
+  background: rgba(255, 247, 232, 0.94);
+  box-shadow: 0 0.25rem 0 rgba(30, 15, 5, 0.25);
+  font: 600 1.125rem/1.2 var(--font-display);
+}
+.v-loading-today-a .lt-line > svg { width: 1.125rem; height: 1.125rem; color: var(--leaf); }
+.v-loading-today-a .lt-left { display: inline-flex; align-items: center; gap: 0.25rem; font: 700 0.9375rem/1 var(--font-text); color: var(--ink-2); }
+.v-loading-today-a .lt-left svg { width: 1rem; height: 1rem; }
+
+/* sideways: the pad on the left; the name, what is on and the line on the right */
+.v-loading-today-a.wide { --ring: min(10.5rem, 42vh); --pad-w: min(17rem, 38vw); grid-template: auto auto / minmax(0, 1fr) minmax(0, 1fr); align-content: center; row-gap: 0.875rem; column-gap: 1.5rem; padding: 0.75rem calc(env(safe-area-inset-right) + 1.25rem) calc(env(safe-area-inset-bottom) + 0.75rem) calc(env(safe-area-inset-left) + 1rem); }
+.v-loading-today-a.wide .lt-pad { grid-row: 1 / 3; grid-column: 1; }
+.v-loading-today-a.wide .lt-name { grid-row: 1; grid-column: 2; }
+.v-loading-today-a.wide .lt-name h1 { font-size: 2rem; -webkit-text-stroke-width: 0.3125rem; }
+.v-loading-today-a.wide .lt-side { grid-row: 2; grid-column: 2; align-self: start; }
+.v-loading-today-a.wide .lt-band { padding: 0.625rem 1rem 0.5rem; font-size: 1.3125rem; }
+.v-loading-today-a.wide .lt-date { padding: 0.25rem 0 0.75rem; }
+.v-loading-today-a.wide .lt-month { font-size: 1rem; }
+.v-loading-today-a.wide .lt-today { border: 0.1875rem solid #fff; border-radius: 1.25rem; background: var(--paper); box-shadow: 0 0.3125rem 0 var(--paper-3); }
+.v-loading-today-a.wide .lt-mug { top: auto; bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
+
+@keyframes lt-glow { from { opacity: 0.35; scale: 0.8; } to { opacity: 1; scale: 1.15; } }
+@keyframes lt-busy { 0%, 100% { rotate: -8deg; scale: 1; } 50% { rotate: 8deg; scale: 1.1; } }
+@keyframes lt-pop { from { scale: 0; } to { scale: 1; } }
+@keyframes lt-curl { 0%, 70%, 100% { scale: 0.6; } 82% { scale: 1; } }
+@keyframes lt-steam { 0% { opacity: 0; translate: 0 0; scale: 0.6 0.8; } 25% { opacity: 0.9; } 100% { opacity: 0; translate: 0.25rem -2.5rem; scale: 1.4 1.6; } }
+@keyframes lt-stamp { 0% { opacity: 0; scale: 2.4; } 70% { opacity: 1; } 100% { opacity: 1; scale: 1; } }
+@keyframes lt-jolt { 0% { translate: 0 0; } 25% { translate: 0 0.375rem; scale: 1.01 0.99; } 60% { translate: 0 -0.125rem; } 100% { translate: 0 0; } }
+
+/* less motion: the strokes and the stamp still say it, without travel */
+:where(:root[data-motion='less']) {
+  .v-loading-today-a .lt-tip,
+  .v-loading-today-a .lt-step.now img,
+  .v-loading-today-a .lt-curl,
+  .v-loading-today-a .lt-mug i,
+  .v-loading-today-a.ready .lt-jolt { animation: none; }
+  .v-loading-today-a .lt-mug i { display: none; }
+  .v-loading-today-a.ready .lt-stamp { animation: none; opacity: 1; scale: 1; }
+}

@@ -46,6 +46,8 @@ try {
       for (const anim of seen.keys()) if (!done.has(anim)) seen.set(anim, seen.get(anim) + ms)
       for (const anim of document.getAnimations()) {
         if (done.has(anim)) continue
+        // a scroll-driven one follows its scroller, not the clock
+        if (anim.timeline && !(anim.timeline instanceof DocumentTimeline)) continue
         if (!seen.has(anim)) seen.set(anim, 0)
         const t = seen.get(anim)
         // one at its end is finished, so whatever waits for it (Motion, a way out) goes on

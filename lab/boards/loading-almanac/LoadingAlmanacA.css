@@ -1,0 +1,219 @@
+/* A · the farm's almanac, in your hand (./LoadingAlmanacA.tsx): the name and a hint, a deck of big cards that snaps
+   under the thumb, a dot for each card, and the way by the thumb. Every rule under .v-loading-almanac-a. What moves with
+   the deck is a scroll-driven animation (a transform or an opacity, off the page's thread); what loops is CSS. */
+.v-loading-almanac-a {
+  --card-w: min(16rem, 66vw);
+  --gap: 1rem;
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  gap: 0.75rem;
+  padding: calc(env(safe-area-inset-top) + 0.75rem) 0 calc(env(safe-area-inset-bottom) + 1rem);
+  overflow: hidden;
+  color: var(--ink);
+  user-select: none;
+  timeline-scope: --la-deck;
+}
+/* a warm table under the deck: paper, a soft sun from above, a faint check of a tablecloth */
+.v-loading-almanac-a .la-bg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(90% 50% at 50% 38%, rgba(255, 255, 255, 0.9), transparent 70%),
+    repeating-linear-gradient(0deg, color-mix(in oklab, var(--berry) 4%, transparent) 0 1.5rem, transparent 1.5rem 3rem),
+    repeating-linear-gradient(90deg, color-mix(in oklab, var(--berry) 4%, transparent) 0 1.5rem, transparent 1.5rem 3rem),
+    linear-gradient(to bottom, color-mix(in oklab, var(--sun) 26%, var(--paper)), var(--paper) 55%, color-mix(in oklab, var(--sun) 20%, var(--paper-2)));
+}
+
+/* the name and the hint */
+.v-loading-almanac-a .la-top { display: grid; justify-items: center; gap: 0.375rem; padding: 0 1.25rem; text-align: center; }
+.v-loading-almanac-a .la-top h1 { margin: 0; font: 700 2.5rem/1 var(--font-display); color: #fff; -webkit-text-stroke: 0.375rem var(--ink); paint-order: stroke fill; text-shadow: 0 0.3125rem 0 rgba(40, 24, 10, 0.25); }
+.v-loading-almanac-a .la-hint { display: inline-flex; align-items: center; gap: 0.375rem; margin: 0; font: 600 0.9375rem/1.3 var(--font-display); color: var(--ink-2); }
+.v-loading-almanac-a .la-hint svg { width: 1.375rem; height: 1.375rem; color: var(--sun-lip); animation: la-nudge 1.6s ease-in-out infinite; }
+.v-loading-almanac-a.swiped .la-hint svg,
+.v-loading-almanac-a.ready .la-hint svg { animation: none; }
+
+/* the deck: a scroller that snaps a card into the middle; the cards at its sides peek in */
+.v-loading-almanac-a .la-deck-wrap { position: relative; height: 100%; min-height: 0; }
+.v-loading-almanac-a .la-deck {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+  padding: 0.75rem calc(50% - var(--card-w) / 2);
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  touch-action: pan-x;
+  scroll-timeline: --la-deck x;
+}
+.v-loading-almanac-a .la-deck::-webkit-scrollbar { display: none; }
+.v-loading-almanac-a .la-card {
+  position: relative;
+  flex: none;
+  width: var(--card-w);
+  height: min(100%, 29rem);
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto auto;
+  gap: 0.375rem;
+  padding: 0.625rem 0.625rem 1rem;
+  border: 0.1875rem solid #fff;
+  border-radius: 1.625rem;
+  background: var(--paper);
+  box-shadow:
+    0 0.375rem 0 var(--paper-3),
+    0 1rem 2rem rgba(60, 35, 10, 0.2);
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+}
+.v-loading-almanac-a .la-card { --tone: var(--sun); }
+.v-loading-almanac-a .la-card.berry { --tone: var(--berry); }
+.v-loading-almanac-a .la-card.leaf { --tone: var(--leaf); }
+.v-loading-almanac-a .la-card.xp { --tone: var(--xp); }
+/* the card's window: its colour, a soft light, the big picture */
+.v-loading-almanac-a .la-art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 1.125rem;
+  background:
+    radial-gradient(circle at 50% 45%, rgba(255, 255, 255, 0.85) 0, transparent 55%),
+    repeating-conic-gradient(from 0deg at 50% 45%, color-mix(in oklab, var(--tone) 30%, #fff) 0 10deg, color-mix(in oklab, var(--tone) 40%, #fff) 10deg 20deg);
+  box-shadow: inset 0 -0.25rem 0 color-mix(in oklab, var(--tone) 35%, transparent);
+}
+.v-loading-almanac-a .la-pic { display: block; width: min(10.5rem, 78%); aspect-ratio: 1; }
+.v-loading-almanac-a .la-pic img { width: 100%; height: 100%; filter: drop-shadow(0 0.625rem 0.5rem rgba(40, 24, 10, 0.25)); animation: la-bob 2.6s ease-in-out infinite alternate; }
+.v-loading-almanac-a .la-num { position: absolute; top: 0.5rem; right: 0.625rem; padding: 0.125rem 0.5rem; border-radius: 62.4375rem; background: rgba(255, 255, 255, 0.85); font: 800 0.8125rem/1.3 var(--font-text); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.v-loading-almanac-a .la-card h2 { margin: 0.25rem 0.375rem 0; font: 600 1.5rem/1.1 var(--font-display); }
+.v-loading-almanac-a .la-card p { margin: 0 0.375rem; font: 600 1rem/1.35 var(--font-text); color: var(--ink-2); text-wrap: pretty; }
+/* what waits on the farm (✦): four goods with their counts */
+.v-loading-almanac-a .la-away { display: grid; grid-template-columns: repeat(2, auto); gap: 0.875rem 1.25rem; }
+.v-loading-almanac-a .la-away .item-pic .art { width: 4rem; height: 4rem; }
+.v-loading-almanac-a .la-away .item-pic .qty { font-size: 0.9375rem; min-width: 1.75rem; height: 1.75rem; }
+
+/* the arrows: only where there is a mouse (a finger swipes) */
+.v-loading-almanac-a .la-arrow {
+  display: none;
+  position: absolute;
+  top: 50%;
+  translate: 0 -50%;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  padding: 0;
+  border: 0.1875rem solid #fff;
+  border-radius: 50%;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 0.25rem 0 var(--paper-3);
+  cursor: pointer;
+}
+.v-loading-almanac-a .la-arrow svg { width: 1.25rem; height: 1.25rem; }
+.v-loading-almanac-a .la-arrow.left { left: max(0.75rem, calc(50% - var(--card-w) / 2 - 3.75rem)); }
+.v-loading-almanac-a .la-arrow.right { right: max(0.75rem, calc(50% - var(--card-w) / 2 - 3.75rem)); }
+@media (hover: hover) and (pointer: fine) {
+  .v-loading-almanac-a .la-arrow { display: grid; }
+}
+
+/* a dot for each card, and the one in view moving along them as the deck turns */
+.v-loading-almanac-a .la-dots { position: relative; justify-self: center; display: flex; gap: 0.625rem; }
+.v-loading-almanac-a .la-dots i { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: color-mix(in oklab, var(--ink) 22%, transparent); }
+.v-loading-almanac-a .la-dot-now { position: absolute; left: -0.125rem; top: -0.125rem; width: 0.75rem; height: 0.75rem; border-radius: 50%; background: var(--sun-lip); box-shadow: 0 0 0 0.1875rem color-mix(in oklab, var(--sun) 45%, transparent); }
+
+/* the way: one line and a bar cut in three, by the thumb */
+.v-loading-almanac-a .la-way {
+  justify-self: center;
+  width: min(22.5rem, calc(100% - 2rem));
+  display: grid;
+  gap: 0.625rem;
+  padding: 0.875rem 1rem 1rem;
+  border: 0.1875rem solid #fff;
+  border-radius: 1.5rem;
+  background: var(--paper);
+  box-shadow:
+    0 0.3125rem 0 var(--paper-3),
+    0 0.875rem 1.75rem rgba(60, 35, 10, 0.16);
+}
+.v-loading-almanac-a .la-line { display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem; }
+.v-loading-almanac-a .la-line strong { display: inline-flex; align-items: center; gap: 0.375rem; font: 600 1.25rem/1.25 var(--font-display); }
+.v-loading-almanac-a .la-line strong svg { width: 1.25rem; height: 1.25rem; color: var(--leaf); }
+.v-loading-almanac-a .la-left { display: inline-flex; align-items: center; gap: 0.25rem; flex: none; font: 700 0.9375rem/1 var(--font-text); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.v-loading-almanac-a .la-note { margin: 0; font: 700 0.9375rem/1.3 var(--font-text); color: var(--ink-2); }
+.v-loading-almanac-a.wide .la-note { display: none; }
+.v-loading-almanac-a .la-left svg { width: 1rem; height: 1rem; }
+.v-loading-almanac-a .la-bar { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.3125rem; }
+.v-loading-almanac-a .la-part { position: relative; height: 0.875rem; overflow: hidden; background: var(--paper-3); box-shadow: inset 0 0.125rem 0 rgba(60, 35, 10, 0.12); }
+.v-loading-almanac-a .la-part:first-child { border-radius: 62.4375rem 0.25rem 0.25rem 62.4375rem; }
+.v-loading-almanac-a .la-part:nth-child(2) { border-radius: 0.25rem; }
+.v-loading-almanac-a .la-part:nth-child(3) { border-radius: 0.25rem 62.4375rem 62.4375rem 0.25rem; }
+.v-loading-almanac-a .la-part i { position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(to bottom, #ffd96b, var(--sun) 55%, #f4b52a); box-shadow: inset 0 -0.125rem 0 rgba(160, 100, 0, 0.25); translate: -97% 0; }
+.v-loading-almanac-a .la-part.done i { background: linear-gradient(to bottom, #5fc272, var(--leaf)); box-shadow: inset 0 -0.125rem 0 rgba(20, 70, 30, 0.3); }
+/* the running part: a light running along it, at its own pace */
+.v-loading-almanac-a .la-part.now::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent); width: 40%; animation: la-shine 1.4s ease-in-out infinite; }
+.v-loading-almanac-a .la-seal {
+  position: absolute;
+  right: -0.5rem;
+  top: 50%;
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  translate: 0 -50%;
+  border: 0.1875rem solid #fff;
+  border-radius: 50%;
+  background: var(--leaf);
+  color: #fff;
+  scale: 0;
+}
+.v-loading-almanac-a .la-seal svg { width: 1rem; height: 1rem; }
+.v-loading-almanac-a.ready .la-seal { animation: la-seal 0.45s var(--ease-pop) 0.4s both; }
+
+/* scroll-driven: each card leans and grows as it comes to the middle, its picture slides in with depth, the dot moves */
+@supports (animation-timeline: view()) {
+  .v-loading-almanac-a .la-card { animation: la-card linear both; animation-timeline: view(inline); }
+  .v-loading-almanac-a .la-pic { animation: la-pic linear both; animation-timeline: view(inline); }
+  .v-loading-almanac-a .la-dot-now { animation: la-dot linear both; animation-timeline: --la-deck; }
+}
+@keyframes la-card { 0% { scale: 0.84; rotate: 4deg; opacity: 0.55; } 50% { scale: 1; rotate: 0deg; opacity: 1; } 100% { scale: 0.84; rotate: -4deg; opacity: 0.55; } }
+@keyframes la-pic { 0% { translate: 55% 0; rotate: 16deg; scale: 0.8; } 50% { translate: 0 0; rotate: 0deg; scale: 1; } 100% { translate: -55% 0; rotate: -16deg; scale: 0.8; } }
+@keyframes la-dot { to { translate: calc((var(--n) - 1) * 1.125rem) 0; } }
+@keyframes la-bob { from { translate: 0 0.25rem; rotate: -2deg; } to { translate: 0 -0.375rem; rotate: 2deg; } }
+@keyframes la-nudge { 0%, 100% { translate: 0 0; } 50% { translate: 0.375rem 0; } }
+@keyframes la-shine { from { translate: -100% 0; } to { translate: 260% 0; } }
+@keyframes la-seal { from { scale: 0; rotate: -60deg; } to { scale: 1; rotate: 0deg; } }
+
+/* sideways: a lower deck of narrower cards across the width, the name and the hint over it, the way under it */
+.v-loading-almanac-a.wide { --card-w: min(12.5rem, 30vw); gap: 0.375rem; padding: 0.5rem calc(env(safe-area-inset-right)) calc(env(safe-area-inset-bottom) + 0.5rem) calc(env(safe-area-inset-left)); grid-template-rows: auto minmax(0, 1fr) auto auto; }
+.v-loading-almanac-a.wide .la-top { grid-auto-flow: column; justify-content: center; align-items: center; gap: 1rem; }
+.v-loading-almanac-a.wide .la-top h1 { font-size: 1.75rem; -webkit-text-stroke-width: 0.25rem; }
+.v-loading-almanac-a.wide .la-deck { padding: 0.25rem 1rem 0.25rem max(1rem, env(safe-area-inset-left)); scroll-padding-inline: max(1rem, env(safe-area-inset-left)) 1rem; }
+.v-loading-almanac-a.wide .la-card { scroll-snap-align: start; scroll-snap-stop: normal; animation: none; }
+.v-loading-almanac-a.wide .la-card { height: 100%; padding: 0.5rem 0.5rem 0.625rem; gap: 0.125rem; }
+.v-loading-almanac-a.wide .la-card h2 { font-size: 1.1875rem; }
+.v-loading-almanac-a.wide .la-card p { font-size: 0.9375rem; line-height: 1.25; }
+.v-loading-almanac-a.wide .la-pic { width: min(5.5rem, 60%); }
+.v-loading-almanac-a.wide .la-away { grid-template-columns: repeat(4, auto); gap: 0.375rem; }
+.v-loading-almanac-a.wide .la-away .item-pic .art { width: 2.125rem; height: 2.125rem; }
+.v-loading-almanac-a.wide .la-away .item-pic .qty { min-width: 1.375rem; height: 1.375rem; font-size: 0.8125rem; }
+.v-loading-almanac-a.wide .la-dots { display: none; }
+.v-loading-almanac-a.wide .la-way { width: min(30rem, calc(100% - 2rem)); grid-template-columns: auto 1fr; align-items: center; gap: 1rem; padding: 0.5rem 0.875rem; }
+.v-loading-almanac-a.wide .la-line strong { font-size: 1.0625rem; white-space: nowrap; }
+
+/* less motion: the deck still turns (at once), nothing leans or bobs */
+:where(:root[data-motion='less']) {
+  .v-loading-almanac-a .la-card,
+  .v-loading-almanac-a .la-pic,
+  .v-loading-almanac-a .la-pic img,
+  .v-loading-almanac-a .la-hint svg,
+  .v-loading-almanac-a .la-part.now::after { animation: none; }
+  .v-loading-almanac-a .la-deck { scroll-behavior: auto; }
+  .v-loading-almanac-a.ready .la-seal { animation: none; scale: 1; }
+}

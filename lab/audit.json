@@ -1,5 +1,5 @@
 {
- "at": "2026-11-17T18:40:18.179Z",
+ "at": "2026-11-24T14:19:09.879Z",
  "devices": [
   "upright",
   "sideways"
@@ -278,6 +278,36 @@
   },
   "tools-3d": {
    "screens": 72,
+   "errors": [],
+   "blank": [],
+   "scroll": [],
+   "small": [],
+   "tiny": [],
+   "under": [],
+   "off": []
+  },
+  "loading-today": {
+   "screens": 24,
+   "errors": [],
+   "blank": [],
+   "scroll": [],
+   "small": [],
+   "tiny": [],
+   "under": [],
+   "off": []
+  },
+  "loading-almanac": {
+   "screens": 24,
+   "errors": [],
+   "blank": [],
+   "scroll": [],
+   "small": [],
+   "tiny": [],
+   "under": [],
+   "off": []
+  },
+  "loading-farmer": {
+   "screens": 24,
    "errors": [],
    "blank": [],
    "scroll": [],
