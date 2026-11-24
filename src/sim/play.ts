@@ -13,7 +13,7 @@ import { LADDERS, LADDER_IDS, LEVELS, TOOL_KINDS, fullHerd, toolLadder, type Lad
 import { TIERS, type Tier } from '../lib/tier'
 import { animals, farm, quietNeighbours, quietSteps, resetFarm, resetRewardCounts, rewardCounts, setDailyClock, setEventClock, setRandom, tick, unlockAll } from '../farm/state'
 import { levelOf } from '../farm/xp'
-import { nextMove, onTheWay, sellTools, type Spot } from './policy'
+import { nextMove, onTheWay, planJam, sellTools, type Spot } from './policy'
 
 /** The farm's clock moves on in steps this long (a buyer walks at most a quarter of a second a step). */
 export const STEP = 0.25
@@ -82,7 +82,7 @@ export function seeded(seed: number): () => number {
  * farm before its locks: to compare); with `tools: false`, the farm shop sells no tools and no remotes (the farm
  * before them: to compare).
  */
-export function simulate(opts: { minutes: number; seed?: number; until?: number; most?: number; every?: number; open?: boolean; tools?: boolean }): SimRun {
+export function simulate(opts: { minutes: number; seed?: number; until?: number; most?: number; every?: number; open?: boolean; tools?: boolean; jam?: boolean }): SimRun {
   const seed = opts.seed ?? 1
   const every = opts.every ?? 10
   const end = Math.max(opts.minutes, opts.most ?? 0) * 60
@@ -97,6 +97,7 @@ export function simulate(opts: { minutes: number; seed?: number; until?: number;
   // the neighbours come and send orders, as in the game
   quietNeighbours(false)
   sellTools(opts.tools ?? true)
+  planJam(opts.jam ?? false)
   try {
     resetFarm()
     resetRewardCounts()
@@ -190,6 +191,7 @@ export function simulate(opts: { minutes: number; seed?: number; until?: number;
     quietSteps(true)
     quietNeighbours(true)
     sellTools(true)
+    planJam(false)
   }
 }
 

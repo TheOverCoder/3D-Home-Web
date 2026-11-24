@@ -143,6 +143,17 @@ export function sellTools(on: boolean) {
   toolsForSale = on
 }
 
+/** Whether the player plans for the jam kettle once it is open (`npm run sim` with SIM_JAM=on): grows its strawberries,
+ *  keeps a sugar for its next jam and makes room in the barn when it or the mill stands full, buys it and makes jam. Off
+ *  by default, as PACE was tuned: measured on 24.11, a good player has its 2,500 coins minutes after level 25, but its
+ *  jam (125 coins, 30 minutes) earns less in play than the cakes the same sugar makes (levels 28–30: 175 coins a minute
+ *  where 184; PACE's "play pays more" 1.34× under its 1.4×), and more while away (the night before day 14 at 46 to 50
+ *  minutes of play, over its 40): the jam's numbers are a decision to take first (update-v1/NEXT.md). */
+let jamPlanned = false
+export function planJam(on: boolean) {
+  jamPlanned = on
+}
+
 // ───────────────────────────── where things are ─────────────────────────────
 
 const GATE: Spot = { x: GATE_SPOT.x, z: GATE_SPOT.z - 1.5 }
@@ -190,6 +201,18 @@ function shortCrop(): CropId | null {
 }
 /** The mill's crops are kept in stock (its flour and sugar go into cakes). */
 const MILL_STOCK = 6
+const CROP_IDS = new Set<string>(CROPS.map((c) => c.id))
+/** The jam kettle's first jam open at the farm's level whose fruit grows in a bed (its strawberry jam), and how many of
+ *  the fruit one takes: null while the kettle is not open. */
+function jamCrop(): { crop: CropId; per: number } | null {
+  if (!jamPlanned || !isUnlocked('machine:kettle')) return null
+  for (const r of MACHINES.kettle.recipes) {
+    if (!isUnlocked(recipeUnlock('kettle', r.id))) continue
+    const crop = (Object.entries(r.needs) as [string, number][]).find(([good]) => CROP_IDS.has(good))
+    if (crop) return { crop: crop[0] as CropId, per: crop[1] }
+  }
+  return null
+}
 /**
  * Which seeds go in: what the line and the orders are short of; else wheat or sugar cane while the mill would run
  * short; else the quickest crop. Only seeds open at the farm's level that the player can pay for.
@@ -199,6 +222,10 @@ function cropToPlant(): CropId | null {
   const short = shortCrop()
   if (short && can(short)) return short
   for (const c of ['wheat', 'sugarcane'] as const) if (farm.inv[c] + growing(c) < MILL_STOCK && can(c)) return c
+  // once the jam kettle is open (bought or for sale), the fruit of a jam that grows in a bed, kept for a jam as the
+  // mill's crops are: a player who means to buy it grows what it needs first
+  const jam = jamCrop()
+  if (jam && farm.inv[jam.crop] + growing(jam.crop) < jam.per && can(jam.crop)) return jam.crop
   const quick = [...CROPS].sort((a, b) => a.growSeconds - b.growSeconds).find((c) => can(c.id))
   return quick?.id ?? null
 }
@@ -223,7 +250,7 @@ const worthTakingOut = (id: MachineId) => {
 const nextJob = (id: MachineId) =>
   [...MACHINES[id].recipes]
     .sort((a, b) => Number(lacks(b.makes) > 0) - Number(lacks(a.makes) > 0) || produceById(b.makes).price - produceById(a.makes).price)
-    .find((r) => canAddJob(id, r) && spares(r.needs))
+    .find((r) => canAddJob(id, r) && spares(r.needs, id))
 
 /** What the neighbours' requests still want of a good (src/farm/people: the chapter's, pinned above the board): what
  *  they ask for, and what goes into what they ask for that the store and the machines do not have yet (a cake's flour
@@ -239,13 +266,22 @@ function wanted(good: ProduceId, depth = 0): number {
   return n
 }
 /** How many the store is short of it for them: a player makes that first, */
-const lacks = (good: ProduceId, depth = 0) => Math.max(0, wanted(good, depth) - farm.inv[good])
+const lacks = (good: ProduceId, depth = 0) => Math.max(0, wanted(good, depth) + (depth === 0 ? jamKeeps(good) : 0) - farm.inv[good])
 /** (how many of a good a machine has queued or done and not taken out yet) */
 const machineMaking = (id: MachineId, good: ProduceId) => farm.machines[id].jobs.filter((j) => MACHINES[id].recipes.find((r) => r.id === j)?.makes === good).length
 /** What they ask for of a good, still to go in. */
 const asked = (good: ProduceId) => farm.requests.reduce((sum, o) => sum + o.lines.reduce((m, l) => m + (l.good === good ? l.want - l.have : 0), 0), 0)
-/** and a job takes none of what they ask for. */
-const spares = (needs: Partial<Record<ProduceId, number>>) => (Object.entries(needs) as [ProduceId, number][]).every(([good, n]) => farm.inv[good] - n >= asked(good))
+/** and a job takes none of what they ask for (nor, at another machine, what the jam kettle keeps for its next jam). */
+const spares = (needs: Partial<Record<ProduceId, number>>, at?: MachineId) =>
+  (Object.entries(needs) as [ProduceId, number][]).every(([good, n]) => farm.inv[good] - n >= asked(good) + (at === 'kettle' ? 0 : jamKeeps(good)))
+/** What a player keeps for the jam kettle's next jam once it is open (./jamCrop): its fruit, grown for it, and, once the
+ *  fruit is in, one sugar, milled for it before the oven and the dairy take it. */
+function jamKeeps(good: ProduceId): number {
+  const jam = jamCrop()
+  if (!jam) return 0
+  if (good === jam.crop) return jam.per
+  return good === 'sugar' && farm.inv[jam.crop] >= jam.per ? 1 : 0
+}
 
 /** An order whose every line the silo and the barn can fill now. */
 function orderToSend(): number {
@@ -365,6 +401,19 @@ export const PRIORITIES: { name: string; move: () => Move | null }[] = [
         if (crop) return { what: `plant ${crop} in ${empty.length} beds`, at: middleOf(p.beds), run: () => plantBeds(empty, crop) }
       }
       return null
+    },
+  },
+  // the jam kettle, once open, kept going: when it, or the mill with the sugar its next jam waits for, stands with goods
+  // done that the barn has no room for, the game's own Make room at once, as a player who bought it for its jam would
+  // (before the kettle opens the barn is left to the end of the list, as before)
+  {
+    name: 'unblock',
+    move: () => {
+      const blocked = (m: MachineId) => farm.machines[m].done > 0 && machineCollectable(m) === 0
+      const id = !jamCrop() ? undefined : (['kettle', 'mill'] as const).find((m) => blocked(m) && (m === 'kettle' || lacks('sugar') > 0))
+      if (!id) return null
+      const store = storeOf(MACHINES[id].recipes.find((r) => r.id === farm.machines[id].jobs[0])?.makes ?? MACHINES[id].recipes[0].makes)
+      return makeRoomPreview(store).goods.length ? { what: `make room in the ${store} for the ${id}`, at: null, run: () => makeRoom(store) } : null
     },
   },
   // a machine open and not the farm's yet, before anything cheaper, as soon as the coins run to it and there is work for

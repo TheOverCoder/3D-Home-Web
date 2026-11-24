@@ -174,7 +174,7 @@ The README has the overview; `tests/README.md` what each test guards.
 - A machine with a `price` on its row is bought once, in the edit mode shop's Machines tab (`buyMachine` in
   `src/farm/state/machines.ts`; its `machine:` row in `UNLOCKS`, at its first recipe's level), the price a good share of
   what a player has as that level comes, measured with `npm run sim` (whose player buys it first thing once the coins run
-  to it and it has work: the mill with wheat or cane in store). Until then it is not on the farm (`machineOwned`, `farm.machines[id].owned`): not drawn, no body, nothing to press,
+  to it and it has work: the mill with wheat or cane in store; `SIM_JAM=on`, a player who plans for the jam kettle). Until then it is not on the farm (`machineOwned`, `farm.machines[id].owned`): not drawn, no body, nothing to press,
   no ground in the layout (`placesAwayFrom`, `standingPlaces`: decoration may stand there), nothing goes into it
   (`machineLock` is not null). Bought, it stands at its place as on a new farm, or the free spot nearest it
   (`freePlaceSpot`). The loom has no price: every farm's (the first steps weave at it). A farm from before owns each

@@ -4,7 +4,8 @@
 // weeks on the session runner (the first sitting, the nights, full stores). Not a test: src/sim/pace.test.ts holds the
 // pace to PACE (one seed's first week on the runner). SIM_SEED picks the dice; SIM_LOCKS=off plays with everything open
 // whatever the level (the farm before its locks, src/farm/unlocks.ts), to compare; SIM_TOOLS=off without the animals'
-// tools and the remotes for sale (the farm before them, plans/animal-tools.md), to compare. SIM_JOURNEY=daily or light
+// tools and the remotes for sale (the farm before them, plans/animal-tools.md), to compare; SIM_JAM=on with a player who
+// plans for the jam kettle (./policy.ts, planJam). SIM_JOURNEY=daily or light
 // prints the journey instead (./journey.ts, update-v1/JOURNEY.md): that player's visits for SIM_DAYS days (30), at a
 // real player's pace (SIM_PACE=good: the good player's), with what each brought and the bounds of JOURNEY it breaks.
 // Last, the game's health (./health.ts): the daily player's first 30 days, as a table.
@@ -33,9 +34,11 @@ it('plays a new farm for three hours', () => {
   }
   const open = process.env.SIM_LOCKS === 'off'
   const tools = process.env.SIM_TOOLS !== 'off'
+  // SIM_JAM=on: a player who plans for the jam kettle (./policy.ts, planJam)
+  const jam = process.env.SIM_JAM === 'on'
   // as far as the last level PACE bands, as pace.test.ts plays it
   const top = Math.max(...Object.keys(PACE.levels).map(Number))
-  const play = (s: number) => simulate({ minutes: PACE.idle.within, until: top, most: PACE.levels[top][1] + 5, seed: s, open, tools })
+  const play = (s: number) => simulate({ minutes: PACE.idle.within, until: top, most: PACE.levels[top][1] + 5, seed: s, open, tools, jam })
   console.log(`\n${report(play(seed))}\n`)
   if (open || !tools) return
   const runs = SEEDS.map(play)
