@@ -45,6 +45,9 @@ if (params.has('gallery')) {
 } else if (import.meta.env.DEV && params.get('preview') === 'machine') {
   // a machine's panel on its own, fed with sample data (src/farm/machine/Preview.tsx): while developing only
   import('./farm/machine/Preview').then(({ MachinePreview }) => root.render(<MachinePreview />)).catch(failed('machine preview'))
+} else if (params.has('prices')) {
+  // every price of the game, to set on this device and try in play (src/farm/PricesPage.tsx)
+  import('./farm/PricesPage').then(({ PricesPage }) => root.render(<PricesPage />)).catch(failed('prices'))
 } else if (params.has('items')) {
   // the item pictures drawn from the models (src/models/ItemArtPage.tsx), to look at and to save
   import('./models/ItemArtPage').then(({ ItemArtPage }) => root.render(<ItemArtPage />)).catch(failed('item pictures'))

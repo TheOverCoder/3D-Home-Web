@@ -515,7 +515,10 @@ The README has the overview; `tests/README.md` what each test guards.
 - Every price the game has is a row of the price book (`src/farm/priceBook.ts`, `__home.prices` on a ?debug page:
   the admin dashboard's door): a stable key, a group, a name, its start; `setPrice` changes it in its own table and in
   every table that copied it, `priceOverrides` / `applyPrices` keep and load what was changed. The prices stay in
-  their tables (where the code reads them); a new table of prices is a group there (`priceBook.test.ts`).
+  their tables (where the code reads them); a new table of prices is a group there (`priceBook.test.ts`, its name in
+  `GROUP_NAMES`). The prices page (`?prices`, `src/farm/PricesPage.tsx`, the dev-pages chunk: no player downloads it)
+  sets them on one device (`keepDevicePrices`), and the farm puts that device's in as it starts (`applyDevicePrices`),
+  to try in play; what was changed is copied as text, and becomes the game's own when it is written into the tables.
 - The day's factor is the one `priceEvents` setter, `dayFactor` (`state/day.ts`): the lucky draw's ×2 times the town's
   market mood (`mood.ts`: ±10 %, half a shared wave of 13 days and half each good's own of 7 to 11, by the date alone,
   the same on every farm, never because you sold; never a building material), judged on the events' day (a time away's

@@ -1,4 +1,4 @@
-// Every price of the game in one book, for whoever sets them (the admin dashboard to come; on a ?debug page,
+// Every price of the game in one book, for whoever sets them (the prices page, `?prices`; on a ?debug page,
 // `window.__home.prices`). The prices stay in their own tables (src/farm/data.ts, decor.ts, layout.ts, skins.ts,
 // carPaints.ts, machineView.ts, src/home/catalogue.ts), where the game's code reads them; the book is the one door to all
 // of them: each price a row with a stable key ("decor:lamp", "goods:lettuce", "ladders:rate:step"), its group, its name
@@ -6,6 +6,8 @@
 // began: a crop's sale price is the good's too, a field's price the upgrade's), `priceOverrides` gives what differs from
 // where it started (JSON, to keep), `applyPrices` takes such a set back, `resetPrices` puts all back. A new table of
 // prices is one more group here (src/farm/priceBook.test.ts fails until every price of the tables it knows is in it).
+// The prices page (`?prices`, src/farm/PricesPage.tsx) sets them on one device (`keepDevicePrices`), and the farm puts
+// that device's in as it starts (`applyDevicePrices`), to try them in play; the game's own stay the tables'.
 import { BOUGHT_MACHINES, CROPS, ESTATE, EXPANSIONS, LADDERS, MACHINES, MANAGER, CONTRACTOR, OFFICE_UPGRADES, PRODUCE, UPGRADES, BEDS, type LadderId } from './data'
 import { DECOR, FRUIT } from './decor'
 import { PARCELS } from './layout'
@@ -140,4 +142,58 @@ export function applyPrices(prices: Record<string, unknown>): number {
 /** Every price back to where it started. */
 export function resetPrices() {
   for (const e of theBook()) e.set(e.base)
+}
+
+/** Each group's name on the prices page (src/farm/PricesPage.tsx), in the book's order. */
+export const GROUP_NAMES: Readonly<Record<string, string>> = {
+  goods: 'What the farm sells',
+  seeds: 'Seeds',
+  upgrades: 'The farm shop',
+  office: 'The order office',
+  ladders: 'Upgrades a step at a time',
+  machines: 'Machines',
+  queue: "A machine's queue",
+  beds: 'Beds',
+  decor: 'Decoration and fruit trees',
+  land: 'Land',
+  skins: "The tools' looks",
+  furniture: 'Furniture',
+  house: 'The house',
+  paints: "The car's paints",
+  manager: 'The manager',
+  contractor: 'The contractor',
+}
+
+// ───────────────────────────── this device's prices ─────────────────────────────
+
+/** Where the prices page keeps the prices set on this device: they are this device's alone, to try in play; the game's
+ *  own are the tables'. */
+const DEVICE_KEY = '3d-home:prices:v1'
+
+/** The prices set on this device (none: nothing set, or nothing readable). */
+export function devicePrices(): Record<string, number> {
+  try {
+    const raw: unknown = JSON.parse(localStorage.getItem(DEVICE_KEY) ?? '{}')
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {}
+    return Object.fromEntries(Object.entries(raw).filter(([, v]) => typeof v === 'number' && Number.isFinite(v))) as Record<string, number>
+  } catch {
+    return {}
+  }
+}
+
+/** Keeps what differs from the start as this device's prices (all back: nothing kept). */
+export function keepDevicePrices() {
+  const changed = priceOverrides()
+  try {
+    if (Object.keys(changed).length) localStorage.setItem(DEVICE_KEY, JSON.stringify(changed))
+    else localStorage.removeItem(DEVICE_KEY)
+  } catch {
+    /* private mode: they last as long as the page */
+  }
+}
+
+/** This device's prices put in (the farm's start, src/farm/state.ts, and the prices page): how many. */
+export function applyDevicePrices(): number {
+  if (typeof localStorage === 'undefined') return 0
+  return applyPrices(devicePrices())
 }

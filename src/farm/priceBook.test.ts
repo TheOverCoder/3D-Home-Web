@@ -1,3 +1,4 @@
+// @vitest-environment happy-dom
 import { afterEach, describe, expect, it } from 'vitest'
 import { BOUGHT_MACHINES, CONTRACTOR, CROPS, ESTATE, EXPANSIONS, LADDERS, MACHINES, MANAGER, OFFICE_UPGRADES, PRODUCE, UPGRADES, BEDS } from './data'
 import { DECOR, FRUIT } from './decor'
@@ -7,12 +8,15 @@ import { CAR_PAINTS } from './carPaints'
 import { QUEUE_PRICES } from './machineView'
 import { PIECES } from '../home/catalogue'
 import { priceAt } from './prices'
-import { allPrices, applyPrices, priceOverrides, resetPrices, setPrice } from './priceBook'
+import { allPrices, applyDevicePrices, applyPrices, devicePrices, GROUP_NAMES, keepDevicePrices, priceOverrides, resetPrices, setPrice } from './priceBook'
 
 // The price book (./priceBook.ts): every price of the game's tables is a row of it, under a key of its own; setting one
 // changes what the game reads (and every table that copied it), and what was changed comes back as a set to keep.
 
-afterEach(() => resetPrices())
+afterEach(() => {
+  resetPrices()
+  localStorage.clear()
+})
 
 const keys = () => new Set(allPrices().map((r) => r.key))
 
@@ -105,5 +109,34 @@ describe('the price book', () => {
     expect(ESTATE.price).toBe(allPrices().find((r) => r.key === 'house:estate')!.base)
     expect(applyPrices(JSON.parse(json))).toBe(2)
     expect(priceOverrides()).toEqual(kept)
+  })
+
+  it('names every group on the prices page', () => {
+    for (const r of allPrices()) expect(GROUP_NAMES[r.group], r.group).toBeTruthy()
+  })
+
+  it("keeps what was changed as this device's prices, and puts them in again as the farm starts", () => {
+    expect(devicePrices()).toEqual({})
+    setPrice('house:estate', 4200)
+    setPrice('machines:mill', 60)
+    keepDevicePrices()
+    expect(devicePrices()).toEqual({ 'house:estate': 4200, 'machines:mill': 60 })
+    // a new page: the tables as the game has them, then this device's prices in
+    resetPrices()
+    expect(ESTATE.price).not.toBe(4200)
+    expect(applyDevicePrices()).toBe(2)
+    expect(ESTATE.price).toBe(4200)
+    expect(MACHINES.mill.price).toBe(60)
+    // all back as the game has them: nothing kept
+    resetPrices()
+    keepDevicePrices()
+    expect(localStorage.getItem('3d-home:prices:v1')).toBeNull()
+    // what is not a set of prices is nothing
+    localStorage.setItem('3d-home:prices:v1', '[1,2]')
+    expect(devicePrices()).toEqual({})
+    localStorage.setItem('3d-home:prices:v1', '{"house:estate":"lots","machines:oven":90,')
+    expect(devicePrices()).toEqual({})
+    localStorage.setItem('3d-home:prices:v1', '{"house:estate":"lots","machines:oven":90}')
+    expect(devicePrices()).toEqual({ 'machines:oven': 90 })
   })
 })

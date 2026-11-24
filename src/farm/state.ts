@@ -4,6 +4,7 @@ import { priceBoosts, priceEvents } from './prices'
 import { farm, placesAway, saveNow, switchesByPage, writeWith } from './state/core'
 import { dayFactor } from './state/day'
 import { load, resumeFrom, startSlot, writeSlot } from './state/save'
+import { applyDevicePrices } from './priceBook'
 import { stepsByPage } from './state/steps'
 
 // The farm's state: one import for the whole game (`./state`), its parts in src/farm/state/, one module an area. The
@@ -51,6 +52,8 @@ export * from './state/car'
  * was saved played on.
  */
 function start() {
+  // the prices set on this device on the prices page (`?prices`), to try them in play (src/farm/priceBook.ts)
+  applyDevicePrices()
   switchesByPage()
   stepsByPage()
   startSlot()
