@@ -133,6 +133,8 @@ const fetchPages = () => Promise.all([saves(), pages()]).catch(() => {})
 
 /** How long the loading screen's moment plays (its house rolling in, the confetti) before the menu takes its place. */
 const HANDOVER_MS = 1500
+/** The most the loading screen waits over the menu for it to come in (ms). */
+const MENU_IN_MS = 900
 
 export function Intro() {
   const phase = useHome((s) => s.phase)
@@ -178,9 +180,13 @@ function Opening() {
     }
   }, [ready, menu])
   const showMenu = menu || !!failure
+  // the loading screen stays over the menu until the menu has come in under it, then fades: never the bare farm between
+  // the two (its first frames, without the menu's wash or anything on it, showed for about a second on a phone)
+  const [menuIn, setMenuIn] = useState(false)
   return (
     <m.div className="intro" exit={{ pointerEvents: 'none', transition: { duration: 0.6 } }}>
-      <AnimatePresence>{showMenu ? <Menu key="menu" v={v} /> : <Loading key="loading" v={v} />}</AnimatePresence>
+      <AnimatePresence>{showMenu && <Menu key="menu" v={v} onIn={() => setMenuIn(true)} />}</AnimatePresence>
+      <AnimatePresence>{!(showMenu && menuIn) && <Loading key="loading" v={v} />}</AnimatePresence>
     </m.div>
   )
 }
@@ -204,8 +210,16 @@ const SLIDE: Variants = {
   leave: (paged: boolean) => ({ opacity: 0, x: paged ? -60 : 60, transition: { duration: 0.16, ease: 'easeIn' } }),
 }
 
-/** The opening menu, over the farm. */
-function Menu({ v }: { v: LoadView }) {
+/** The opening menu, over the farm; `onIn` once it has come in (its fade done, or a moment at most: the loading screen over it goes then). */
+function Menu({ v, onIn }: { v: LoadView; onIn: () => void }) {
+  const came = useRef(onIn)
+  useEffect(() => {
+    came.current = onIn
+  })
+  useEffect(() => {
+    const t = setTimeout(() => came.current(), MENU_IN_MS)
+    return () => clearTimeout(t)
+  }, [])
   const failure = useHome((s) => s.failure)
   const quality = useHome((s) => s.quality)
   const qualityAuto = useHome((s) => s.qualityAuto)
@@ -261,6 +275,7 @@ function Menu({ v }: { v: LoadView }) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, transition: { delay: 0.3, duration: 0.25 } }}
       transition={{ duration: 0.3 }}
+      onAnimationComplete={(done) => (done as { opacity?: number }).opacity === 1 && came.current()}
     >
       <span className="intro-wash" aria-hidden="true" />
       <div className="intro-motes" aria-hidden="true">

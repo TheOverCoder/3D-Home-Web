@@ -288,7 +288,7 @@ export function Loading({ v }: { v: LoadView }) {
       style={{ '--p': v.p } as CSSProperties}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0, transition: { duration: 0.32, ease: [0.4, 0, 1, 1] } }}
+      exit={{ opacity: 0, pointerEvents: 'none', transition: { duration: 0.32, ease: [0.4, 0, 1, 1] } }}
       transition={{ duration: 0.22 }}
     >
       <span className="ls-sky" aria-hidden="true">

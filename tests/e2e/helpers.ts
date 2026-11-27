@@ -245,6 +245,10 @@ export async function openGame(browser: Browser, counting = false): Promise<{ ga
         // the neighbours quiet (src/farm/state/neighbours.ts: no story, letter or neighbour comes by itself), as a ?debug
         // page starts: a spec that turned them on (45-neighbours) leaves them quiet for the next
         h.neighbours?.quiet?.(true)
+        // a whole visit for the cards that open by themselves (src/ui/cardQueue.ts), as a page starts: a spec whose farm
+        // ended its first steps (03 skips them) or opened cards leaves none of its visit to the next, where it would let
+        // a level's "Unlocked!" pass (36)
+        h.cards?.newVisit?.()
       }, map)
     },
   }

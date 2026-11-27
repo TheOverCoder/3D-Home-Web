@@ -5,7 +5,7 @@ import { freeUpSpace, restoreCopy, saveState, saveWords, useFarm } from '../farm
 import { debugSet } from '../lib/debug'
 import { coarsePointer } from '../lib/device'
 import { useHome } from '../store'
-import { cardShowing, visitNow } from './cardQueue'
+import { cardShowing, newVisit, visitNow } from './cardQueue'
 import { Curtain } from './Curtain'
 import { FilmLayer } from './FilmLayer'
 import { GraphicsNotice } from './GraphicsNotice'
@@ -31,11 +31,11 @@ import { FpsMeter, fpsAsked } from '../scene/frameRate'
 const TouchControls = lazy(() => import('./TouchControls').then((m) => ({ default: m.TouchControls })))
 
 // (?debug) a part of the interface that throws, on purpose (./PanelGuard.tsx); the cards that open by themselves
-// (./cardQueue.ts): this visit, the card showing, whether the game is free; how the save stands (src/farm/state/save.ts:
+// (./cardQueue.ts): this visit, the card showing, whether the game is free, a visit begun (as a page starts); how the save stands (src/farm/state/save.ts:
 // the farm could not be read, the storage is full, another tab has it) and what the saves list does about it. Here with
 // the interface they are about, which is in before the game can be entered
 debugSet('guard', guardHooks)
-debugSet('cards', { visit: visitNow, showing: cardShowing, free: () => gameFree() })
+debugSet('cards', { visit: visitNow, showing: cardShowing, free: () => gameFree(), newVisit })
 debugSet('saves', { state: saveState, restoreCopy, freeUpSpace })
 
 /** The screen open (the television, a computer): if it throws, it closes. */
