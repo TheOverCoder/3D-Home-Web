@@ -1,5 +1,5 @@
 {
- "at": "2026-11-24T14:19:09.879Z",
+ "at": "2026-11-27T00:23:52.069Z",
  "devices": [
   "upright",
   "sideways"
@@ -307,6 +307,16 @@
    "off": []
   },
   "loading-farmer": {
+   "screens": 24,
+   "errors": [],
+   "blank": [],
+   "scroll": [],
+   "small": [],
+   "tiny": [],
+   "under": [],
+   "off": []
+  },
+  "loading-calendar": {
    "screens": 24,
    "errors": [],
    "blank": [],

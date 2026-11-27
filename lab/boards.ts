@@ -23,10 +23,12 @@ import { tools3dBoard } from './boards/tools-3d'
 import { loadingFarmerBoard } from './boards/loading-farmer'
 import { loadingAlmanacBoard } from './boards/loading-almanac'
 import { loadingTodayBoard } from './boards/loading-today'
+import { loadingCalendarBoard } from './boards/loading-calendar'
 
 /** Every board of the lab, newest first. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const BOARDS: Board<any>[] = [
+  loadingCalendarBoard,
   loadingTodayBoard,
   loadingAlmanacBoard,
   loadingFarmerBoard,

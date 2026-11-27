@@ -1,0 +1,389 @@
+/* A · the farm's tear-off calendar, with the tips on its slips (./LoadingCalendarA.tsx): a warm table, the calendar pad on
+   it — today's weekday, the date circled by a marker as the farm loads, what is on at the farm, and under a perforated
+   line a pad of tip slips torn off one by one — a mug steaming beside it, and the line by the thumb. Every rule under
+   .v-loading-calendar-a. What loops, runs or follows the slips' scroll is a transform or an opacity (off the page's
+   thread). */
+.v-loading-calendar-a {
+  --pad-w: min(22rem, 92vw);
+  --ring: min(12.25rem, 25dvh, 54vw);
+  /* a slip: as wide as the page's column, so a slip's place is one step of the scroller */
+  --w: calc(var(--pad-w) - 2rem);
+  --slip-h: 6.875rem;
+  /* the room round the slips inside their scroller (left, right, top, bottom), so a slip torn away is not cut at the
+     pad's edge */
+  --rl: 3rem;
+  --rr: 3rem;
+  --rt: 0.5rem;
+  --rb: 5rem;
+  --marker: color-mix(in oklab, var(--berry) 88%, var(--ink));
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template: auto minmax(0, 1fr) auto / minmax(0, 1fr);
+  justify-items: center;
+  align-items: center;
+  gap: 0.625rem;
+  padding: calc(env(safe-area-inset-top) + 0.625rem) 1rem calc(env(safe-area-inset-bottom) + 0.875rem);
+  overflow: hidden;
+  color: var(--ink);
+  user-select: none;
+}
+/* the table: warm wood, its grain, a pool of morning light on it */
+.v-loading-calendar-a .lc-table {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(70% 45% at 50% 42%, color-mix(in oklab, var(--sun) 45%, transparent), transparent 75%),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0 0.125rem, transparent 0.125rem 1.75rem, rgba(60, 35, 10, 0.07) 1.75rem 1.875rem, transparent 1.875rem 4.5rem),
+    linear-gradient(to bottom, color-mix(in oklab, var(--edge) 85%, var(--sun)), var(--edge) 50%, color-mix(in oklab, var(--edge) 80%, var(--ink)));
+}
+
+.v-loading-calendar-a .lc-name h1 { margin: 0; font: 700 2.25rem/1 var(--font-display); color: #fff; -webkit-text-stroke: 0.375rem var(--ink); paint-order: stroke fill; text-shadow: 0 0.3125rem 0 rgba(40, 24, 10, 0.3); }
+
+/* the pad: the page on top, the edges of the pages under it */
+.v-loading-calendar-a .lc-pad { position: relative; width: var(--pad-w); }
+.v-loading-calendar-a .lc-jolt { position: relative; }
+.v-loading-calendar-a .lc-under {
+  position: absolute;
+  inset: 0.75rem 0 -0.625rem;
+  border-radius: 1rem;
+  background: var(--paper-2);
+  box-shadow:
+    0 0.375rem 0 var(--paper-3),
+    0 0.75rem 0 -0.125rem var(--paper-2),
+    0 1.125rem 0 -0.125rem var(--paper-3),
+    0 1.5rem 2rem rgba(30, 15, 5, 0.35);
+}
+.v-loading-calendar-a .lc-page { position: relative; display: grid; border-radius: 1rem; background: var(--paper); box-shadow: 0 0.1875rem 0 var(--edge-soft); }
+.v-loading-calendar-a .lc-rings { position: absolute; top: -0.875rem; left: 0; right: 0; z-index: 2; display: flex; justify-content: space-around; padding: 0 3.5rem; }
+.v-loading-calendar-a .lc-rings i { width: 0.75rem; height: 1.75rem; border: 0.25rem solid color-mix(in oklab, var(--ink) 80%, #fff); border-radius: 62.4375rem; box-shadow: 0 0.125rem 0 rgba(0, 0, 0, 0.2); }
+.v-loading-calendar-a .lc-band { padding: 0.75rem 1rem 0.5rem; border-radius: 1rem 1rem 0 0; background: var(--ribbon); color: #fff; text-align: center; font: 600 1.375rem/1.1 var(--font-display); letter-spacing: 0.02em; text-shadow: 0 0.125rem 0 var(--berry-lip); }
+.v-loading-calendar-a .lc-body { display: grid; grid-template-columns: var(--w); justify-content: center; padding: 0 1rem 0.875rem; }
+.v-loading-calendar-a .lc-date { display: grid; justify-items: center; padding: 0.25rem 0 0.375rem; }
+.v-loading-calendar-a .lc-month { margin: 0; font: 600 1.0625rem/1.2 var(--font-display); color: var(--ink-2); }
+
+/* the date, and the marker circling it: three strokes, a step each */
+/* (the step under the date stands out below the ring: room for it) */
+.v-loading-calendar-a .lc-ring { position: relative; width: var(--ring); aspect-ratio: 1; display: grid; place-items: center; margin: 0.25rem 0 1.375rem; }
+.v-loading-calendar-a .lc-track { position: absolute; inset: 0; width: 100%; height: 100%; rotate: -4deg; }
+.v-loading-calendar-a .lc-track path { fill: none; stroke: var(--paper-3); stroke-width: 9; stroke-dasharray: 1.2 3.4; stroke-linecap: round; }
+.v-loading-calendar-a .lc-strokes { position: absolute; inset: 0; rotate: -4deg; -webkit-mask: radial-gradient(closest-side, transparent 80.5%, #000 81%, #000 99%, transparent 99.5%); mask: radial-gradient(closest-side, transparent 80.5%, #000 81%, #000 99%, transparent 99.5%); }
+.v-loading-calendar-a .lc-arc { position: absolute; inset: 0; }
+.v-loading-calendar-a .lc-clip { position: absolute; left: 50%; top: 0; width: 50%; height: 100%; overflow: hidden; }
+.v-loading-calendar-a .lc-clip i { position: absolute; top: 0; left: -100%; width: 200%; height: 100%; background: linear-gradient(to right, var(--marker) 50%, transparent 50%); rotate: 0deg; }
+.v-loading-calendar-a .lc-arc.done .lc-clip i { background: linear-gradient(to right, var(--leaf) 50%, transparent 50%); }
+/* the marker's tip, glowing where it draws */
+.v-loading-calendar-a .lc-tip { position: absolute; left: calc(50% - 0.5rem); top: 0; width: 1rem; height: 1.375rem; border-radius: 50%; background: radial-gradient(closest-side, #fff, color-mix(in oklab, var(--sun) 80%, transparent) 60%, transparent); opacity: 0; }
+.v-loading-calendar-a .lc-arc.now .lc-tip { animation: lc-glow 0.9s ease-in-out infinite alternate; }
+.v-loading-calendar-a .lc-num { position: relative; font: 700 calc(var(--ring) * 0.46) / 1 var(--font-display); color: var(--ink); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+/* each step's picture beside its stroke */
+.v-loading-calendar-a .lc-step {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 0.125rem solid #fff;
+  border-radius: 50%;
+  background: var(--paper-2);
+  box-shadow: 0 0.125rem 0 var(--paper-3);
+  transform: translate(-50%, -50%) rotate(var(--a)) translateY(calc(var(--ring) * -0.5 - 0.5rem)) rotate(calc(-1 * var(--a)));
+}
+.v-loading-calendar-a .lc-step img { width: 1.625rem; height: 1.625rem; transition: opacity 0.3s; }
+.v-loading-calendar-a .lc-step.later img { opacity: 0.4; filter: grayscale(0.7); }
+.v-loading-calendar-a .lc-step.now { background: color-mix(in oklab, var(--sun) 40%, var(--paper)); box-shadow: 0 0 0 0.1875rem color-mix(in oklab, var(--sun) 55%, transparent); }
+.v-loading-calendar-a .lc-step.now img { animation: lc-busy 1.1s ease-in-out infinite; }
+.v-loading-calendar-a .lc-step b {
+  position: absolute;
+  right: -0.375rem;
+  bottom: -0.25rem;
+  display: grid;
+  place-items: center;
+  width: 1.125rem;
+  height: 1.125rem;
+  border: 0.125rem solid #fff;
+  border-radius: 50%;
+  background: var(--leaf);
+  color: #fff;
+  animation: lc-pop 0.4s var(--ease-pop) both;
+}
+.v-loading-calendar-a .lc-step b svg { width: 0.6875rem; height: 0.6875rem; }
+
+/* what is on at the farm today, or next */
+.v-loading-calendar-a .lc-day { display: grid; align-content: start; }
+.v-loading-calendar-a .lc-today { display: grid; grid-template-columns: 2.75rem 1fr; align-items: center; gap: 0.625rem; padding: 0.25rem 0.25rem 0.375rem; }
+.v-loading-calendar-a .lc-today img { width: 2.75rem; height: 2.75rem; }
+.v-loading-calendar-a .lc-today p { margin: 0; }
+.v-loading-calendar-a .lc-when { font: 800 0.9375rem/1.25 var(--font-text); color: var(--berry-lip); }
+.v-loading-calendar-a .lc-when span { color: var(--ink-2); }
+.v-loading-calendar-a .lc-ev { display: flex; flex-wrap: wrap; align-items: center; gap: 0.125rem 0.375rem; font: 600 1.1875rem/1.2 var(--font-display); }
+.v-loading-calendar-a .lc-chip { padding: 0 0.5rem; border-radius: 62.4375rem; background: color-mix(in oklab, var(--sun) 45%, var(--paper)); font: 800 0.9375rem/1.4 var(--font-text); color: var(--amber-ink); }
+.v-loading-calendar-a .lc-say { font: 600 0.9375rem/1.3 var(--font-text); color: var(--ink-2); }
+
+/* the perforation: a dotted line with a hole punched at each edge of the page, and the hint on it */
+.v-loading-calendar-a .lc-perf { position: relative; display: grid; place-items: center; height: 1.75rem; margin: 0 -1rem; }
+.v-loading-calendar-a .lc-perf::before { content: ''; position: absolute; left: 0.75rem; right: 0.75rem; top: 50%; border-top: 0.1875rem dotted color-mix(in oklab, var(--edge) 55%, var(--paper-3)); }
+.v-loading-calendar-a .lc-perf::after { content: ''; position: absolute; inset: calc(50% - 0.4375rem) -0.4375rem auto; height: 0.875rem; background: radial-gradient(circle at 0.4375rem 50%, var(--edge) 0.4375rem, transparent 0.46875rem), radial-gradient(circle at calc(100% - 0.4375rem) 50%, var(--edge) 0.4375rem, transparent 0.46875rem); }
+.v-loading-calendar-a.wide .lc-perf::after { background: radial-gradient(circle at calc(100% - 0.4375rem) 50%, var(--edge) 0.4375rem, transparent 0.46875rem); }
+.v-loading-calendar-a .lc-hint { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 0.375rem; padding: 0 0.625rem; background: var(--paper); font: 600 0.9375rem/1.4 var(--font-display); color: var(--ink-2); }
+.v-loading-calendar-a .lc-hint svg { width: 1.25rem; height: 1.25rem; color: var(--sun-lip); scale: -1 1; animation: lc-nudge 1.6s ease-in-out infinite; }
+.v-loading-calendar-a .lc-hint .by-mouse { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  .v-loading-calendar-a .lc-hint .by-finger { display: none; }
+  .v-loading-calendar-a .lc-hint .by-mouse { display: inline; }
+}
+.v-loading-calendar-a.swiped .lc-hint svg,
+.v-loading-calendar-a.ready .lc-hint svg { animation: none; }
+
+/* the pad of slips: the top one, the edges of those under it, and its corner to turn it */
+.v-loading-calendar-a .lc-stack { position: relative; width: var(--w); height: var(--slip-h); margin-top: 0.125rem; }
+.v-loading-calendar-a .lc-stack-under { position: absolute; inset: 0.5rem 0.125rem 0; border-radius: 0 0 0.75rem 0.75rem; background: var(--paper-2); box-shadow: 0 0.25rem 0 -0.0625rem var(--paper-3), 0 0.5rem 0 -0.125rem var(--paper-2), 0 0.5625rem 0 -0.125rem var(--paper-3); }
+.v-loading-calendar-a .lc-slips {
+  position: absolute;
+  inset: calc(-1 * var(--rt)) calc(-1 * var(--rr)) calc(-1 * var(--rb)) calc(-1 * var(--rl));
+  z-index: 1;
+  display: flex;
+  padding: var(--rt) var(--rr) var(--rb) var(--rl);
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: var(--rl) var(--rr);
+  scrollbar-width: none;
+  touch-action: pan-x;
+  outline: none;
+  cursor: pointer;
+}
+.v-loading-calendar-a .lc-slips::-webkit-scrollbar { display: none; }
+.v-loading-calendar-a .lc-slips:focus-visible + .lc-corner { outline: 0.1875rem solid var(--sun); outline-offset: 0.125rem; }
+/* a slip is where it snaps (never moved: the browser snaps to its box as it is drawn), its leaf what moves */
+.v-loading-calendar-a .lc-slip { position: relative; z-index: calc(100 - var(--i)); flex: none; width: var(--w); scroll-snap-align: start; scroll-snap-stop: always; }
+.v-loading-calendar-a .lc-leaf { position: relative; height: 100%; transform-origin: 100% 0; }
+/* its shadow, lifted off the page (not cut by the perforated edge) */
+.v-loading-calendar-a .lc-leaf::before { content: ''; position: absolute; inset: 0.5rem 0 0; border-radius: 0 0 0.75rem 0.75rem; box-shadow: 0 0.1875rem 0 var(--paper-3), 0 0.5rem 0.875rem rgba(60, 35, 10, 0.2); }
+/* the slip's paper, its top edge torn along the perforation */
+.v-loading-calendar-a .lc-paper {
+  position: relative;
+  height: 100%;
+  display: grid;
+  grid-template-columns: 4.25rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 2.5rem 0.625rem 0.75rem;
+  border-radius: 0 0 0.75rem 0.75rem;
+  background: linear-gradient(to bottom, #fffdf7, #fffaf0);
+  -webkit-mask:
+    radial-gradient(circle at 50% 0, transparent 0.1875rem, #000 0.21875rem) top / 0.625rem 0.5rem repeat-x,
+    linear-gradient(#000 0 0) bottom / 100% calc(100% - 0.5rem) no-repeat;
+  mask:
+    radial-gradient(circle at 50% 0, transparent 0.1875rem, #000 0.21875rem) top / 0.625rem 0.5rem repeat-x,
+    linear-gradient(#000 0 0) bottom / 100% calc(100% - 0.5rem) no-repeat;
+}
+.v-loading-calendar-a .lc-slip { --tone: var(--sun); }
+.v-loading-calendar-a .lc-slip.berry { --tone: var(--berry); }
+.v-loading-calendar-a .lc-slip.leaf { --tone: var(--leaf); }
+.v-loading-calendar-a .lc-slip.xp { --tone: var(--xp); }
+/* the slip's picture in its own window of colour and light (the almanac's card) */
+.v-loading-calendar-a .lc-pic {
+  display: grid;
+  place-items: center;
+  width: 4.25rem;
+  aspect-ratio: 1;
+  border-radius: 0.875rem;
+  background:
+    radial-gradient(circle at 50% 45%, rgba(255, 255, 255, 0.85) 0, transparent 60%),
+    repeating-conic-gradient(from 0deg at 50% 45%, color-mix(in oklab, var(--tone) 30%, #fff) 0 12deg, color-mix(in oklab, var(--tone) 42%, #fff) 12deg 24deg);
+  box-shadow: inset 0 -0.1875rem 0 color-mix(in oklab, var(--tone) 35%, transparent);
+}
+.v-loading-calendar-a .lc-pic img { width: 3.25rem; height: 3.25rem; filter: drop-shadow(0 0.375rem 0.25rem rgba(40, 24, 10, 0.25)); animation: lc-bob 2.6s ease-in-out infinite alternate; }
+.v-loading-calendar-a .lc-words { display: grid; gap: 0.0625rem; min-width: 0; }
+.v-loading-calendar-a .lc-words p,
+.v-loading-calendar-a .lc-words h2 { margin: 0; }
+.v-loading-calendar-a .lc-count { font: 800 0.9375rem/1.2 var(--font-text); color: color-mix(in oklab, var(--tone) 55%, var(--ink)); }
+.v-loading-calendar-a .lc-words h2 { font: 600 1.25rem/1.15 var(--font-display); }
+.v-loading-calendar-a .lc-text { font: 600 0.9375rem/1.3 var(--font-text); color: var(--ink-2); text-wrap: pretty; }
+/* what waits on the farm (✦): its goods and the buyers, each with how many */
+.v-loading-calendar-a .lc-slip.away .lc-paper { grid-template-columns: minmax(0, 1fr); align-content: center; gap: 0.375rem; }
+.v-loading-calendar-a .lc-goods { display: flex; gap: 0.75rem; }
+.v-loading-calendar-a .lc-goods .item-pic .art { width: 2.375rem; height: 2.375rem; }
+.v-loading-calendar-a .lc-goods .item-pic .qty { min-width: 1.5rem; height: 1.5rem; font-size: 0.9375rem; }
+
+/* the slip's corner, curled: a press turns the slip (and lifts in a draught now and then) */
+.v-loading-calendar-a .lc-corner {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0 0 0.75rem 0;
+  background: none;
+  color: var(--ink);
+  cursor: pointer;
+  transform-origin: 100% 100%;
+  animation: lc-curl 4.5s ease-in-out infinite;
+  transition: scale var(--t-release) var(--ease-pop);
+}
+.v-loading-calendar-a .lc-corner::before { content: ''; position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(135deg, transparent 50%, color-mix(in oklab, var(--paper-3) 70%, var(--edge)) 50%, var(--paper-2) 80%); filter: drop-shadow(-0.125rem -0.125rem 0.125rem rgba(60, 35, 10, 0.18)); }
+.v-loading-calendar-a .lc-corner svg { position: absolute; right: 0.3125rem; bottom: 0.3125rem; width: 1rem; height: 1rem; }
+.v-loading-calendar-a .lc-corner:active { scale: 0.9; transition-duration: var(--t-press); }
+.v-loading-calendar-a .lc-corner:focus-visible { outline: 0.1875rem solid var(--sun); outline-offset: 0.125rem; }
+
+/* scroll-driven: each slip held under the one on top (its place cancels the scroll), coming up as that one goes, then
+   torn away as the scroller moves on — a transform and an opacity, off the page's thread; slip i between scroll offsets
+   (i − 1) and (i + 1) slips. Without them (or with less motion) the slips are a plain row that snaps, one in view. */
+@supports (animation-timeline: scroll()) {
+  :where(:root:not([data-motion='less'])) .v-loading-calendar-a .lc-leaf {
+    opacity: 0;
+    animation: lc-tear linear forwards;
+    animation-timeline: scroll(nearest inline);
+    animation-range: calc((var(--i) - 1) * var(--w)) calc((var(--i) + 1) * var(--w));
+  }
+}
+@supports not (animation-timeline: scroll()) {
+  .v-loading-calendar-a { --rl: 0rem; --rr: 0rem; }
+}
+/* the tear: the slip held at its top-right corner as the finger pulls it (its left side drooping), then free, lifted
+   towards you and gone */
+@keyframes lc-tear {
+  0% { translate: -100% 0.3125rem; scale: 0.97; rotate: 0deg; opacity: 1; }
+  50% { translate: 0 0; scale: 1; rotate: 0deg; opacity: 1; animation-timing-function: cubic-bezier(0.25, 0, 0.5, 1); }
+  62% { translate: 0 0; scale: 1.02; rotate: -5deg; opacity: 1; }
+  82% { translate: -4% 0.75rem; scale: 1.05; rotate: -11deg; opacity: 0.8; }
+  100% { translate: -10% 2rem; scale: 1.06; rotate: -16deg; opacity: 0; }
+}
+
+/* the line, by the thumb */
+.v-loading-calendar-a .lc-line {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.125rem 0.625rem;
+  margin: 0;
+  padding: 0.5rem 1.125rem;
+  border-radius: 1.375rem;
+  background: rgba(255, 247, 232, 0.95);
+  box-shadow: 0 0.25rem 0 rgba(30, 15, 5, 0.25);
+  text-align: center;
+}
+.v-loading-calendar-a .lc-line strong { font: 600 1.125rem/1.25 var(--font-display); }
+.v-loading-calendar-a .lc-line strong svg { width: 1.125rem; height: 1.125rem; margin-inline-end: 0.375rem; vertical-align: -0.1875rem; color: var(--leaf); }
+.v-loading-calendar-a .lc-left { display: inline-flex; align-items: center; gap: 0.25rem; font: 700 0.9375rem/1.3 var(--font-text); color: var(--ink-2); }
+.v-loading-calendar-a .lc-left svg { width: 1rem; height: 1rem; }
+
+/* the page's stamp: down on the date when the farm is ready */
+.v-loading-calendar-a .lc-stamp {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 3;
+  padding: 0.25rem 0.875rem 0.375rem;
+  border: 0.3125rem double var(--leaf);
+  border-radius: 0.75rem;
+  color: var(--leaf);
+  background: color-mix(in oklab, var(--leaf) 8%, rgba(255, 255, 255, 0.7));
+  font: 700 2.25rem/1 var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  translate: -50% -50%;
+  rotate: -14deg;
+  opacity: 0;
+  scale: 2.4;
+  pointer-events: none;
+}
+.v-loading-calendar-a.ready .lc-stamp { animation: lc-stamp 0.42s cubic-bezier(0.5, 0, 0.75, 0) 0.35s both; }
+.v-loading-calendar-a.ready .lc-jolt { animation: lc-jolt 0.4s ease-out 0.74s both; }
+.v-loading-calendar-a.ready .lc-step b { animation-delay: calc(var(--i) * 0.09s); }
+
+/* the mug, steaming */
+.v-loading-calendar-a .lc-mug { position: absolute; right: calc(env(safe-area-inset-right) + 1.125rem); top: calc(env(safe-area-inset-top) + 0.5rem); z-index: 1; width: 3.25rem; height: 3.25rem; }
+.v-loading-calendar-a .lc-mug img { position: absolute; inset: 0; width: 100%; height: 100%; filter: drop-shadow(0 0.375rem 0.25rem rgba(30, 15, 5, 0.35)); }
+.v-loading-calendar-a .lc-mug i { position: absolute; left: 40%; top: -0.5rem; width: 0.75rem; height: 1.75rem; border-radius: 62.4375rem; background: radial-gradient(closest-side, rgba(255, 255, 255, 0.75), transparent); opacity: 0; animation: lc-steam 2.8s ease-out infinite; }
+.v-loading-calendar-a .lc-mug i:nth-child(2) { left: 26%; animation-delay: 0.9s; }
+.v-loading-calendar-a .lc-mug i:nth-child(3) { left: 54%; animation-delay: 1.8s; }
+
+/* sideways: a landscape page — the date on its left, the day and the slips on its right — with the name and the line
+   beside it */
+.v-loading-calendar-a.wide {
+  --ring: min(9.25rem, 36dvh);
+  --w: min(18.25rem, 35vw);
+  --slip-h: 6.625rem;
+  --rl: calc(var(--ring) + 8rem);
+  --rr: 2rem;
+  --pad-w: auto;
+  grid-template: auto auto / auto minmax(0, 12.5rem);
+  align-content: center;
+  justify-content: center;
+  row-gap: 1rem;
+  column-gap: 1.5rem;
+  padding: 0.5rem calc(env(safe-area-inset-right) + 1rem) calc(env(safe-area-inset-bottom) + 0.5rem) calc(env(safe-area-inset-left) + 0.75rem);
+}
+.v-loading-calendar-a.wide .lc-pad { grid-row: 1 / 3; grid-column: 1; }
+.v-loading-calendar-a.wide .lc-name { grid-row: 1; grid-column: 2; align-self: end; }
+.v-loading-calendar-a.wide .lc-name h1 { font-size: 2rem; -webkit-text-stroke-width: 0.3125rem; }
+.v-loading-calendar-a.wide .lc-line { grid-row: 2; grid-column: 2; align-self: start; padding: 0.5rem 0.875rem; }
+.v-loading-calendar-a.wide .lc-line strong { font-size: 1.0625rem; }
+.v-loading-calendar-a.wide .lc-ring { margin: 0.25rem 0 1rem; }
+.v-loading-calendar-a.wide .lc-paper { grid-template-columns: 3.5rem minmax(0, 1fr); gap: 0.625rem; padding: 0.625rem 2.375rem 0.5rem 0.625rem; }
+.v-loading-calendar-a.wide .lc-pic { width: 3.5rem; }
+.v-loading-calendar-a.wide .lc-pic img { width: 2.75rem; height: 2.75rem; }
+.v-loading-calendar-a.wide .lc-words h2 { font-size: 1.125rem; }
+.v-loading-calendar-a.wide .lc-goods { gap: 0.5rem; }
+.v-loading-calendar-a.wide .lc-goods .item-pic .art { width: 2.125rem; height: 2.125rem; }
+.v-loading-calendar-a.wide .lc-band { padding: 0.625rem 1rem 0.4375rem; font-size: 1.25rem; }
+.v-loading-calendar-a.wide .lc-body { grid-template-columns: calc(var(--ring) + 2.5rem) var(--w); align-items: center; column-gap: 0.5rem; padding: 0.25rem 0.875rem 0.75rem 0.5rem; }
+.v-loading-calendar-a.wide .lc-date { padding: 0; }
+.v-loading-calendar-a.wide .lc-month { font-size: 1rem; }
+.v-loading-calendar-a.wide .lc-perf { margin: 0 -0.875rem 0 -0.25rem; }
+.v-loading-calendar-a.wide .lc-stamp { font-size: 1.75rem; border-width: 0.25rem; }
+.v-loading-calendar-a.wide .lc-mug { top: auto; bottom: calc(env(safe-area-inset-bottom) + 0.75rem); }
+
+/* a tablet upright: a bigger pad, as a calendar on the table seen nearer */
+@media (orientation: portrait) and (min-width: 700px) and (min-height: 900px) {
+  .v-loading-calendar-a { --pad-w: min(28rem, 70vw); --ring: min(15.5rem, 26dvh); --slip-h: 7.25rem; }
+  .v-loading-calendar-a .lc-name h1 { font-size: 2.75rem; }
+  .v-loading-calendar-a .lc-band { font-size: 1.625rem; }
+  .v-loading-calendar-a .lc-pic { width: 4.75rem; }
+  .v-loading-calendar-a .lc-paper { grid-template-columns: 4.75rem minmax(0, 1fr); }
+}
+
+/* a short phone upright: a smaller date and name, so the page and the line both fit */
+@media (orientation: portrait) and (max-height: 740px) {
+  .v-loading-calendar-a { --ring: min(10.5rem, 21dvh); --slip-h: 6.625rem; gap: 0.5rem; }
+  .v-loading-calendar-a .lc-name h1 { font-size: 1.875rem; -webkit-text-stroke-width: 0.3125rem; }
+  .v-loading-calendar-a .lc-band { padding: 0.5rem 1rem 0.375rem; font-size: 1.25rem; }
+  .v-loading-calendar-a .lc-ring { margin-bottom: 1.25rem; }
+}
+
+@keyframes lc-glow { from { opacity: 0.35; scale: 0.8; } to { opacity: 1; scale: 1.15; } }
+@keyframes lc-busy { 0%, 100% { rotate: -8deg; scale: 1; } 50% { rotate: 8deg; scale: 1.1; } }
+@keyframes lc-pop { from { scale: 0; } to { scale: 1; } }
+@keyframes lc-bob { from { translate: 0 0.125rem; rotate: -2deg; } to { translate: 0 -0.25rem; rotate: 2deg; } }
+@keyframes lc-nudge { 0%, 100% { translate: 0 0; } 50% { translate: -0.375rem 0; } }
+@keyframes lc-curl { 0%, 72%, 100% { scale: 1; } 84% { scale: 1.25; } }
+@keyframes lc-steam { 0% { opacity: 0; translate: 0 0; scale: 0.6 0.8; } 25% { opacity: 0.9; } 100% { opacity: 0; translate: 0.25rem -2.5rem; scale: 1.4 1.6; } }
+@keyframes lc-stamp { 0% { opacity: 0; scale: 2.4; } 70% { opacity: 1; } 100% { opacity: 1; scale: 1; } }
+@keyframes lc-jolt { 0% { translate: 0 0; } 25% { translate: 0 0.375rem; scale: 1.01 0.99; } 60% { translate: 0 -0.125rem; } 100% { translate: 0 0; } }
+
+/* less motion: the slips still turn (at once, or under the finger) and the strokes and the stamp still say it, without
+   travel */
+:where(:root[data-motion='less']) {
+  .v-loading-calendar-a .lc-tip,
+  .v-loading-calendar-a .lc-step.now img,
+  .v-loading-calendar-a .lc-pic img,
+  .v-loading-calendar-a .lc-hint svg,
+  .v-loading-calendar-a .lc-corner,
+  .v-loading-calendar-a .lc-mug i,
+  .v-loading-calendar-a.ready .lc-jolt { animation: none; }
+  .v-loading-calendar-a .lc-mug i { display: none; }
+  .v-loading-calendar-a.ready .lc-stamp { animation: none; opacity: 1; scale: 1; }
+  /* one slip in view, the next coming in under the finger as a plain row */
+  .v-loading-calendar-a { --rl: 0rem; --rr: 0rem; --rt: 0rem; --rb: 0rem; }
+  .v-loading-calendar-a .lc-slips { scroll-behavior: auto; }
+}
