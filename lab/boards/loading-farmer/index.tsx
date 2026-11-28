@@ -19,6 +19,7 @@ export const loadingFarmerBoard: Board<LoadingState> = {
   title: 'מסך טעינה: החקלאי מחכה איתך',
   kind: 'ui',
   added: '2026-11-24T14:19',
+  done: { round: '2026-11-24T14:19', what: 'לא נבנה: סימנת ✗' },
   ask: ASK,
   status: 'choose',
   still: 'none',

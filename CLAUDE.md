@@ -411,8 +411,9 @@ The README has the overview; `tests/README.md` what each test guards.
   and sideways, with their safe areas) over a still of the game, published in the design lab (`lab/`,
   `lab/README.md`; `npm run lab:build`, then the Artifact tool with `capabilities: {db: {}}`: seconds, no CI). It
   opens on a sandbox, the game's screen where what has a design is ringed where it opens from: the user marks it ✓ or
-  ✗ with a note (pinned to a point or not), kept in the lab's database (`lab/feedback`). A ✗ brings the next single
-  proposal only if the user asks for it; a ✓ is built into the game in the very next round. Every board has its kind,
+  ✗ with a note (pinned to a point or not), kept in the lab's database (`lab/feedback`); once a round is acted on, its
+  board's `done` line moves it to the sandbox's *Done*, so what waits is only what is still to do. A ✗ brings the next
+  single proposal only if the user asks for it; a ✓ is built into the game in the very next round. Every board has its kind,
   its icon there: `ui`, `film`, `3d`. A proposal may add a feature the game does not have (its `adds` line, ✦ in the
   sandbox, on sample data); its logic is written only once the user chose it. A
   panel's look is a component of its own fed with data (`LevelCard` from `levelView`; `LevelPanel` reads the farm), so

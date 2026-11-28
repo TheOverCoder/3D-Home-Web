@@ -48,6 +48,10 @@ export interface Board<S> {
   /** where it stands: waiting for the user's choice, chosen (and which), or in the game */
   status: 'choose' | 'chosen' | 'live'
   chosen?: string
+  /** what was done with what the user said of this round, once the main agent acted on it (built into the game, made
+   *  into a new board, or let go): `round` is the board's `added` then, `what` one line in the user's words. The
+   *  sandbox moves it out of "ready to send" into "done" with this line; a new round (another `added`) waits again. */
+  done?: { round: string; what: string }
   /** what this round changed after what the user said (one or two lines), when it is not the first */
   round?: string
   /** the game still behind it: lab/stills/<name>-upright.jpg and -sideways.jpg, or none (a page of its own) */

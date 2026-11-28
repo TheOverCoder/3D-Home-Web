@@ -21,6 +21,7 @@ export const firstStepsBoard: Board<StepsState> = {
   title: 'צעדים ראשונים',
   kind: 'ui',
   added: '2026-11-16T22:30',
+  done: { round: '2026-11-16T22:30', what: 'נבנה במשחק: הצעדים הראשונים C, והחקלאי עם פרצופים ותנועות לפי מה שהוא אומר' },
   ask: ASK,
   status: 'live',
   chosen: 'c',

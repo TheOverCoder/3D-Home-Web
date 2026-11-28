@@ -30,6 +30,7 @@ export const loadingTodayBoard: Board<TodayState> = {
   title: 'מסך טעינה: הדף של היום',
   kind: 'ui',
   added: '2026-11-24T14:21',
+  done: { round: '2026-11-24T14:21', what: 'אוחד עם ספר החווה ללוח אחד: לוח התלישה עם הטיפים' },
   ask: ASK,
   status: 'choose',
   still: 'none',

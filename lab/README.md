@@ -38,13 +38,14 @@ No 3D, no farm state, no CI: it builds in a second and is published as a link of
 `lab/play/Play.tsx` is the lab's one view, full screen like the game: a sidebar of every design, the screen, and a bar
 under the thumb.
 
-- **The sidebar** (always beside the screen on a computer; on a phone it slides over it, ☰) has two lists. **Designs**:
+- **The sidebar** (always beside the screen on a computer; on a phone it slides over it, ☰) has three lists. **Designs**:
   every board, the oldest first, as a card with its picture and its kind's icon (🎬 a film, a window a piece of the
   interface, a cube a 3D element: every board has one, its `kind`). A card waiting is grey and numbered (1 the oldest,
   by its `added`), with its title only; answered, it turns **green** ("אושר", a ✓, or "הערות", only notes) or **red**
   ("נדחה", only ✗) and gets a send button (✈) that moves it to **ready to send**, the outbox for the designer, where a
   return button brings it back. A new round of a board (a later `added`) waits again: what was said and sent about the
-  round before no longer counts for it. Under them: the game's screen, the screens with no design yet (🙋 to ask for
+  round before no longer counts for it. **Done** (בוצע): what was done with what was sent, the newest first, each with
+  its line (a board's `done`, for the round it shows): such a board is in neither list above. Under them: the game's screen, the screens with no design yet (🙋 to ask for
   one), and the settings (the screen on a computer, 🐢 slow, 🧘 less motion, 📋 the lab's status).
 - **The screen**: the game's screen with nothing of the game in it but its look — a still of the game (the frame,
   `?play=1`) on which every chip or button that has designs is ringed in yellow and named. A touch opens it there, as
@@ -65,7 +66,10 @@ screen, its `screen` (an id of `lab/map.ts`) gives it its picture and place in t
 `verdicts` by variant, `notes` with the variant, state, the phone's way round and the point, `at`, `round` — `outbox/<board>`
 — `sent`, `at`, `round` — and `requests/screens`). An answer names the round it was about (the board's `added` then) and
 counts for that round only, whatever the clocks say: a board's `added` may even be ahead of the user's time. The main agent reads it (`ArtifactData`, `list` of `reviews` and `outbox` with
-`out_dir`) and hands what is **ready to send** to its designer as `lab/feedback/<board>.json`. Where there is no database (`npm run lab`), it is kept in that browser.
+`out_dir`) and hands what is **ready to send** to its designer as `lab/feedback/<board>.json`. Once that round is acted on (built into the
+game, made into a new board, or let go), its board gets `done: { round: <its added>, what: <one line in the user's
+words> }` and the lab is published again, every time: "ready to send" holds only what is still to do. Where there is
+no database (`npm run lab`), it is kept in that browser.
 
 ## The side by side and the map (for the designer)
 
@@ -91,7 +95,8 @@ finger, with its states to switch between.
 
 `lab/boards/<id>/index.tsx` exports a `Board` (`lab/board.ts`) and is listed in `lab/boards.ts`. It names its still
 (`still: 'yard'`, or `'none'` for a page of its own), the screens it is for (`devices`, upright and sideways when not
-given) and where it stands (`status`, `chosen`, and `round`: what changed since the last one). Each variant is a
+given) and where it stands (`status`, `chosen`, `round`: what changed since the last one, and `done`: what was done
+with what was said of this round). Each variant is a
 component and a CSS file of its own in that folder, every rule under a class of its own (`.v-level-a …`), with a `note`
 (what is different) and a `motion` line (what moves and when). A variant draws with the game's base (CLAUDE.md,
 "Interface": the presets of `src/ui/motion.tsx`, the surfaces and the premium tokens of `src/styles.css`, `PanelSheet`,

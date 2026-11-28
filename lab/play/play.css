@@ -818,7 +818,7 @@ button.row-main {
 .side-tabs {
   flex: 1;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 4px;
   padding: 4px;
   border-radius: 14px;
@@ -989,6 +989,22 @@ button.row-main {
 .a-yes .card-said,
 .a-note .card-said {
   color: var(--said-yes-mark);
+}
+/* done: what was done with what was sent, in two lines at most */
+.card-done {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--ink-2);
+  font: 500 14px/1.3 var(--text);
+}
+.info-done {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--said-yes);
+  color: var(--said-yes-ink);
 }
 .a-no .card-said {
   color: var(--said-no-mark);

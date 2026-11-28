@@ -47,6 +47,10 @@ const KIND: Record<BoardKind, { name: string; Icon: typeof Cube }> = {
 }
 /** Every board, the oldest first (by when its round was put before the user). */
 const BY_AGE = [...BOARDS].sort((a, b) => a.added.localeCompare(b.added))
+/** `?undone`: every board as if nothing had been done with it yet (scripts/lab-check.mjs answers and sends designs). */
+const UNDONE = new URLSearchParams(location.search).has('undone')
+/** What was done with what the user said of the round a board shows now (its `done`), or null while it is still to do. */
+const doneOf = (b: AnyBoard) => (!UNDONE && b.done && b.done.round === b.added ? b.done.what : null)
 
 /** a short tap felt under the finger for an answer given (phones that can) */
 function buzz() {
@@ -194,8 +198,8 @@ export function Play({ start }: { start?: string }) {
     const it = board.variants.find((x) => x.id === v)
     if (it) say(`${letter(v)} · ${it.name}${it.adds ? ' · ✦ פיצ׳ר חדש' : ''}`)
   }
-  // waiting: not answered and not sent; "next" is the next of them after the one open, in the sidebar's order
-  const isWaiting = (b: AnyBoard) => !r.sent(b.id) && answerOf(r.review(b.id)) === 'none'
+  // waiting: not answered, not sent and not done; "next" is the next of them after the one open, in the sidebar's order
+  const isWaiting = (b: AnyBoard) => !doneOf(b) && !r.sent(b.id) && answerOf(r.review(b.id)) === 'none'
   const nextId = () => {
     const at = board ? BY_AGE.indexOf(board) : -1
     const order = [...BY_AGE.slice(at + 1), ...BY_AGE.slice(0, at + 1)]
@@ -396,7 +400,7 @@ export function Play({ start }: { start?: string }) {
               <button className="d-btn d-info" onClick={() => setSheet({ kind: 'info' })} aria-label="על העיצוב והתשובות שלך">
                 ℹ︎
               </button>
-              {answerOf(review) !== 'none' && !r.sent(board.id) ? (
+              {answerOf(review) !== 'none' && !r.sent(board.id) && !doneOf(board) ? (
                 <button className="d-btn d-next d-send" onClick={sendNext} aria-label="לשלוח למוכן לשליחה ולעבור לעיצוב הבא">
                   <PaperPlaneTilt weight="bold" /> <span>שלח</span> <i className="arr">←</i>
                 </button>
@@ -533,14 +537,16 @@ function Side({
   real: boolean
   isWaiting: (b: AnyBoard) => boolean
 }) {
-  const [tab, setTab] = useState<'designs' | 'outbox'>('designs')
+  const [tab, setTab] = useState<'designs' | 'outbox' | 'done'>('designs')
   const designed = new Set(BOARDS.map((b) => b.screen).filter(Boolean))
   const rest = MAP.screens.filter((s) => !designed.has(s.id))
-  const designs = BY_AGE.filter((b) => !r.sent(b.id))
-  const outbox = BY_AGE.filter((b) => r.sent(b.id))
+  // a board done (what was said of its round acted on) is in neither list but "done", the newest first
+  const designs = BY_AGE.filter((b) => !doneOf(b) && !r.sent(b.id))
+  const outbox = BY_AGE.filter((b) => !doneOf(b) && r.sent(b.id))
+  const done = BY_AGE.filter((b) => doneOf(b)).reverse()
   const waiting = designs.filter(isWaiting)
   const answered = designs.filter((b) => answerOf(r.review(b.id)) !== 'none')
-  const shown = tab === 'designs' ? designs : outbox
+  const shown = tab === 'designs' ? designs : tab === 'outbox' ? outbox : done
   const send = (ids: string[]) => {
     for (const id of ids) r.send(id)
     buzz()
@@ -557,6 +563,9 @@ function Side({
             <button role="tab" aria-selected={tab === 'outbox'} className={tab === 'outbox' ? 'on' : ''} onClick={() => setTab('outbox')}>
               מוכן לשליחה {outbox.length > 0 && <i className="count">{outbox.length}</i>}
             </button>
+            <button role="tab" aria-selected={tab === 'done'} className={tab === 'done' ? 'on' : ''} onClick={() => setTab('done')}>
+              בוצע
+            </button>
           </div>
           {floating && (
             <button className="d-btn side-x" onClick={onClose} aria-label="סגור">
@@ -572,21 +581,23 @@ function Side({
             <b className="card-title">המסך של המשחק</b>
           </button>
         )}
-        {tab === 'outbox' && <p className="side-line">{outbox.length ? 'אלה יגיעו לסוכן בסבב הבא' : 'כאן יהיה מה ששלחת לסוכן. ענית על עיצוב? לחצו ✈ בכרטיס שלו'}</p>}
-        <nav className="side-list" aria-label={tab === 'designs' ? 'עיצובים לבחירה' : 'מוכן לשליחה'}>
+        {tab === 'outbox' && <p className="side-line">{outbox.length ? 'אלה עוד לא נעשו: יגיעו לסוכן בסבב הבא' : 'כאן יהיה מה ששלחת ועוד לא נעשה. ענית על עיצוב? לחצו ✈ בכרטיס שלו'}</p>}
+        {tab === 'done' && <p className="side-line">{done.length ? 'מה שנעשה עם מה ששלחת. סבב חדש של עיצוב חוזר לרשימת העיצובים' : 'כאן יהיה מה שנעשה עם מה ששלחת'}</p>}
+        <nav className="side-list" aria-label={tab === 'designs' ? 'עיצובים לבחירה' : tab === 'outbox' ? 'מוכן לשליחה' : 'בוצע'}>
           {shown.map((b) => {
             const a = answerOf(r.review(b.id))
             const no = waiting.indexOf(b) + 1
-            const said = a === 'none' ? null : SAID[a]
+            const what = doneOf(b)
+            const said = what || a === 'none' ? null : SAID[a]
             const kind = KIND[b.kind]
             const thumb = thumbOf(b.screen)
             return (
-              <div key={b.id} className={`card a-${a}${openId === b.id ? ' on' : ''}`}>
+              <div key={b.id} className={`card ${what ? 'done' : `a-${a}`}${openId === b.id ? ' on' : ''}`}>
                 <button
                   className="card-open"
                   onClick={() => onOpen(b.id)}
                   aria-current={openId === b.id ? 'true' : undefined}
-                  aria-label={`${no ? `${no}. ` : ''}${b.title}, ${kind.name}${said ? `, ${said.word}` : ''}`}
+                  aria-label={`${no ? `${no}. ` : ''}${b.title}, ${kind.name}${said ? `, ${said.word}` : ''}${what ? `, בוצע: ${what}` : ''}`}
                 >
                   {no > 0 && <span className="card-no">{no}</span>}
                   <span className="card-pic">
@@ -602,6 +613,7 @@ function Side({
                         <said.Icon weight="bold" /> {said.word}
                       </span>
                     )}
+                    {what && <span className="card-done">{what}</span>}
                   </span>
                 </button>
                 {tab === 'designs' && said && (
@@ -684,6 +696,7 @@ function Side({
 function Info({ board, variant, review, onRemove, onAgain, onClose }: { board: AnyBoard; variant: string; review: Review; onRemove: (id: string) => void; onAgain: () => void; onClose: () => void }) {
   const v = board.variants.find((x) => x.id === variant)
   const kind = KIND[board.kind]
+  const what = doneOf(board)
   return (
     <>
       <SheetHead title={board.title} onClose={onClose}>
@@ -691,6 +704,11 @@ function Info({ board, variant, review, onRemove, onAgain, onClose }: { board: A
           <kind.Icon weight="bold" />
         </span>
       </SheetHead>
+      {what && (
+        <p className="info-done">
+          <b>✓ בוצע:</b> {what}
+        </p>
+      )}
       {v && (
         <div className="info-variant">
           <b>

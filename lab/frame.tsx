@@ -195,6 +195,7 @@ hooks.__lab = {
     title: b.title,
     kind: b.kind,
     added: b.added,
+    done: !!(b.done && b.done.round === b.added),
     variants: b.variants.map((v) => v.id),
     states: b.states.map((s) => s.id),
     devices: b.devices ?? ['upright', 'sideways'],

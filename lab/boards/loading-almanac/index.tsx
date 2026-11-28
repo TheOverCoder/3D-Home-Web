@@ -14,6 +14,7 @@ export const loadingAlmanacBoard: Board<LoadingState> = {
   title: 'מסך טעינה: ספר החווה בכף היד',
   kind: 'ui',
   added: '2026-11-24T14:20',
+  done: { round: '2026-11-24T14:20', what: 'אוחד עם הדף של היום ללוח אחד: לוח התלישה עם הטיפים' },
   ask: ASK,
   status: 'choose',
   still: 'none',

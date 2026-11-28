@@ -25,6 +25,9 @@ const ALL_SCREENS = [
 // --screens sideways,computer: those only (a step looked at again)
 const SCREENS = a.screens ? ALL_SCREENS.filter((s) => String(a.screens).split(',').includes(s.id)) : ALL_SCREENS
 
+// answering and sending need designs waiting: those flows run with every board as if nothing were done yet
+const undone = new URL('?undone', base).href
+
 const browser = await launch()
 const report = { at: new Date().toISOString(), steps: [] }
 const step = (screen, what, ok, detail = '') => {
@@ -73,7 +76,7 @@ async function markThreeD(s, boards) {
     return { yes, no }
   }
   try {
-    await p.goto(base)
+    await p.goto(undone)
     await p.waitForTimeout(2500)
     await side()
     await press(card.locator('.card-open'))
@@ -111,6 +114,55 @@ async function markThreeD(s, boards) {
   if (errors.length) step(s.name, `${b.title} (תלת־ממד): בלי שגיאות בדף`, false, errors.slice(0, 2).join(' | '))
   await ctx.close()
 }
+/**
+ * What was done with what the user sent (a board's `done`, for the round it shows): in neither the designs nor "ready to
+ * send", but in "done" with its line, the newest first, and it still opens from there.
+ */
+async function doneList(s, boards) {
+  const done = boards.filter((b) => b.done)
+  const ctx = await browser.newContext(s.ctx)
+  const p = await ctx.newPage()
+  const errors = []
+  p.on('pageerror', (e) => errors.push(e.message))
+  const press = (loc) => (s.touch ? loc.tap() : loc.click())
+  const cards = p.locator('.side-list .card')
+  try {
+    await p.goto(base)
+    await p.waitForTimeout(2500)
+    if (!(await p.locator('.side.open').count())) await press(p.locator('.d-menu, .d-list').first())
+    await p.waitForTimeout(350)
+    const designs = await cards.count()
+    await press(p.locator('.side-tabs [role=tab]').nth(2))
+    await p.waitForTimeout(300)
+    const titles = (await p.locator('.side-list .card-title').allInnerTexts()).map((x) => x.trim())
+    const lines = await p.locator('.side-list .card-done').count()
+    const order =
+      titles.join('|') ===
+      [...done]
+        .reverse()
+        .map((b) => b.title)
+        .join('|')
+    let opens = true
+    if (done.length) {
+      await press(cards.first().locator('.card-open'))
+      await p.waitForTimeout(1500)
+      const drawn = await p
+        .locator('.play-screen iframe')
+        .evaluate((f) => [...(f.contentDocument?.querySelectorAll('#root *') ?? [])].filter((el) => !el.closest('.lab-still, .lab-marks, .lab-chrome, .lab-touches')).length)
+      opens = drawn > 0
+    }
+    step(
+      s.name,
+      'מה שבוצע יוצא מהעיצובים וממוכן לשליחה, ונמצא ב"בוצע" עם השורה שלו, החדש ראשון, ונפתח משם',
+      designs === boards.length - done.length && lines === done.length && order && opens,
+      `${done.length} בוצעו · ${designs} בעיצובים`,
+    )
+  } catch (e) {
+    step(s.name, 'רשימת "בוצע": הבדיקה נעצרה', false, String(e.message).split('\n')[0].slice(0, 160))
+  }
+  if (errors.length) step(s.name, 'רשימת "בוצע": בלי שגיאות בדף', false, errors.slice(0, 2).join(' | '))
+  await ctx.close()
+}
 try {
   const lab = await labOf(browser, base)
   // the sidebar's order: the oldest first
@@ -138,7 +190,7 @@ try {
     const cards = p.locator('.side-list .card')
     const tab = (n) => press(p.locator('.side-tabs [role=tab]').nth(n))
     try {
-      await p.goto(base)
+      await p.goto(undone)
       await p.waitForTimeout(2500)
       await side()
       const n = await cards.count()
@@ -287,6 +339,7 @@ try {
     step(s.name, 'בלי שגיאות בדף', errors.length === 0, errors.slice(0, 2).join(' | '))
     await ctx.close()
     await markThreeD(s, boards)
+    await doneList(s, boards)
   }
 } finally {
   await browser.close()

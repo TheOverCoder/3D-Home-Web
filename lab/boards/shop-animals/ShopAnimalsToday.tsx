@@ -13,7 +13,10 @@ export function ShopAnimalsToday({ s, act }: { s: ShopState; act: Act<ShopState>
   const shop = useShop(s, act)
   const farm = farmRows(s)
   const herds: Record<string, Row> = { cow: herdRow(s, 'cows'), sheep: herdRow(s, 'sheep'), hen: herdRow(s, 'hens') }
-  const rows = UPGRADES.map((u) => herds[u.id] ?? farm.find((r) => r.key === u.id)!).map((r): Row => (r.state === 'locked' ? { ...r, state: 'buy', why: undefined, lock: undefined } : r))
+  // an upgrade the game added after this board (the north field) has no row here: left out, not a crash
+  const rows = UPGRADES.map((u) => herds[u.id] ?? farm.find((r) => r.key === u.id))
+    .filter((r): r is Row => r !== undefined)
+    .map((r): Row => (r.state === 'locked' ? { ...r, state: 'buy', why: undefined, lock: undefined } : r))
   return (
     <>
       <Behind coins={s.coins} level={s.level} />
